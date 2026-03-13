@@ -110,6 +110,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     return (
       <TestSummaryGraph
         selectedTimeRange={selectedTimeRange}
+        testCaseFqn={data.fullyQualifiedName ?? ''}
         testCaseName={data.name}
         testCaseParameterValue={data.parameterValues}
         testCaseResults={results}

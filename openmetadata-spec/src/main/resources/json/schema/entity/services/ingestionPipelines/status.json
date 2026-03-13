@@ -88,6 +88,50 @@
               }
             }
           }
+        },
+        "operationMetrics": {
+          "description": "Operation metrics by category (db_queries, api_calls) -> operation -> entityType -> summary",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "description": "Total number of operations",
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "totalTimeMs": {
+                    "description": "Total time spent in milliseconds",
+                    "type": "number"
+                  },
+                  "avgTimeMs": {
+                    "description": "Average time per operation in milliseconds",
+                    "type": "number"
+                  },
+                  "minTimeMs": {
+                    "description": "Minimum operation time in milliseconds",
+                    "type": "number"
+                  },
+                  "maxTimeMs": {
+                    "description": "Maximum operation time in milliseconds",
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "sourceTimeMs": {
+          "description": "Total time spent fetching data from source systems (milliseconds)",
+          "type": "number"
+        },
+        "sinkTimeMs": {
+          "description": "Total time spent processing and sinking data to OpenMetadata (milliseconds)",
+          "type": "number"
         }
       },
       "additionalProperties": false,

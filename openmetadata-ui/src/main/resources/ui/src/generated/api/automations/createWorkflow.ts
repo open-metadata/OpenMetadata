@@ -333,6 +333,9 @@ export interface RequestConnection {
  *
  * Hex Connection Config
  *
+ * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
+ * create, deploy, and manage paginated reports
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -627,6 +630,8 @@ export interface ConfigObject {
      *
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
+     * Host and Port of the Ssrs instance.
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -727,6 +732,12 @@ export interface ConfigObject {
      */
     usageLocation?: string;
     awsConfig?:     AWSCredentials;
+    /**
+     * Catalog ID for Athena. For S3 Tables, use the format 's3tablescatalog/<bucket-name>'. For
+     * cross-account Glue catalogs, use the AWS account ID. If not provided, defaults to the
+     * caller's AWS account.
+     */
+    catalogId?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -834,8 +845,6 @@ export interface ConfigObject {
      *
      * Password to connect to Presto.
      *
-     * Password to connect to Redshift.
-     *
      * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
@@ -873,6 +882,8 @@ export interface ConfigObject {
      * Password to connect to PowerBI report server.
      *
      * Password to connect to MicroStrategy.
+     *
+     * Password to connect to Ssrs.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -992,6 +1003,8 @@ export interface ConfigObject {
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
      *
+     * Username to connect to Ssrs.
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -1034,6 +1047,8 @@ export interface ConfigObject {
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
+     *
+     * Choose Auth Configuration Type.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
@@ -1181,6 +1196,11 @@ export interface ConfigObject {
      */
     preserveIdentifierCase?: boolean;
     /**
+     * Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA
+     * privileges.
+     */
+    useDBATable?: boolean;
+    /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      *
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
@@ -1318,6 +1338,12 @@ export interface ConfigObject {
      * Prefix of the data source.
      */
     prefix?: string;
+    /**
+     * Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS
+     * Coldline/Archive). When enabled, only files in hot/standard storage tiers will be
+     * processed.
+     */
+    skipColdStorage?: boolean;
     /**
      * Access token to connect to DOMO
      *
@@ -1458,6 +1484,8 @@ export interface ConfigObject {
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
+     * Client SSL verification.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      *
@@ -1528,6 +1556,8 @@ export interface ConfigObject {
     realmName?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
+     *
+     * Regex to exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
     /**
@@ -2252,6 +2282,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to exclude or include projects that matches the pattern.
  *
+ * Regex to exclude or include charts that matches the pattern.
+ *
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex exclude pipelines.
@@ -2383,6 +2415,8 @@ export enum AuthProvider {
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
+ *
+ * Choose Auth Configuration Type.
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
@@ -3863,6 +3897,8 @@ export enum ConnectionType {
 /**
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
+ * Client SSL verification.
+ *
  * Flag to verify SSL Certificate for OpenMetadata Server.
  */
 export enum VerifySSL {
@@ -4842,6 +4878,7 @@ export enum ConfigType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    Ssrs = "Ssrs",
     StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",

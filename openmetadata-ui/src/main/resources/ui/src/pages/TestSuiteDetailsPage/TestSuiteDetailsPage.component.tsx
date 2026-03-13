@@ -12,17 +12,13 @@
  */
 
 import {
-  Box,
   Button,
   Dialog,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  Stack,
-  Tab,
+  Modal,
+  ModalOverlay,
   Tabs,
-  useTheme,
-} from '@mui/material';
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isArray, isEmpty } from 'lodash';
@@ -96,10 +92,10 @@ import {
 } from '../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../utils/TestCaseUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './test-suite-details-page.less';
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { entityRules } = useEntityRules(EntityType.TEST_SUITE);
   const { getEntityPermissionByFqn, permissions: globalPermissions } =
     usePermissionProvider();
@@ -334,13 +330,18 @@ const TestSuiteDetailsPage = () => {
 
   const handleDomainUpdate = useCallback(
     async (updateDomain?: EntityReference | EntityReference[]) => {
+      let domains: EntityReference[];
+      if (isArray(updateDomain)) {
+        domains = updateDomain;
+      } else if (isEmpty(updateDomain)) {
+        domains = [];
+      } else {
+        domains = [updateDomain as EntityReference];
+      }
+
       const updatedTestSuite: TestSuite = {
         ...testSuite,
-        domains: isArray(updateDomain)
-          ? updateDomain
-          : isEmpty(updateDomain)
-          ? []
-          : [updateDomain],
+        domains,
       } as TestSuite;
 
       await updateTestSuiteData(updatedTestSuite);
@@ -448,7 +449,7 @@ const TestSuiteDetailsPage = () => {
       : undefined;
 
     const renderDescription = () => (
-      <Box sx={{ width: '100%' }}>
+      <div className="tw:w-full">
         <DescriptionV1
           wrapInCard
           description={testSuiteDescription}
@@ -458,7 +459,7 @@ const TestSuiteDetailsPage = () => {
           showCommentsIcon={false}
           onDescriptionUpdate={onDescriptionUpdate}
         />
-      </Box>
+      </div>
     );
 
     return {
@@ -472,16 +473,9 @@ const TestSuiteDetailsPage = () => {
         ),
         key: EntityTabs.TEST_CASES,
         children: (
-          <Stack
-            spacing={4}
-            sx={{
-              border: `1px solid ${theme.palette.grey[200]}`,
-              borderRadius: 1.25,
-              background: theme.palette.background.paper,
-              p: 4,
-            }}>
+          <div className="tw:flex tw:w-full tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-gray-200 tw:bg-white tw:p-4">
             {renderDescription()}
-            <Box sx={{ width: '100%' }}>
+            <div className="tw:w-full">
               <DataQualityTab
                 afterDeleteAction={fetchTestCases}
                 breadcrumbData={incidentUrlState}
@@ -494,8 +488,8 @@ const TestSuiteDetailsPage = () => {
                 onTestCaseResultUpdate={handleTestSuiteUpdate}
                 onTestUpdate={handleTestSuiteUpdate}
               />
-            </Box>
-          </Stack>
+            </div>
+          </div>
         ),
       },
       pipelineTab: {
@@ -508,19 +502,12 @@ const TestSuiteDetailsPage = () => {
         ),
         key: EntityTabs.PIPELINE,
         children: (
-          <Stack
-            spacing={4}
-            sx={{
-              border: `1px solid ${theme.palette.grey[200]}`,
-              borderRadius: 1.25,
-              background: theme.palette.background.paper,
-              p: 4,
-            }}>
+          <div className="tw:flex tw:w-full tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-gray-200 tw:bg-white tw:p-4">
             {renderDescription()}
-            <Box sx={{ width: '100%' }}>
+            <div className="tw:w-full">
               <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
-            </Box>
-          </Stack>
+            </div>
+          </div>
         ),
       },
     };
@@ -540,20 +527,12 @@ const TestSuiteDetailsPage = () => {
     testSuiteDescription,
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
-    theme,
     t,
   ]);
 
   const selectedTestCases = useMemo(() => {
     return testCaseResult.map((test) => test.name);
   }, [testCaseResult]);
-
-  const handleTabChange = useCallback(
-    (_event: React.SyntheticEvent, newValue: string) => {
-      setActiveTab(newValue);
-    },
-    []
-  );
 
   if (isLoading) {
     return <Loader />;
@@ -576,23 +555,16 @@ const TestSuiteDetailsPage = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(testSuite),
       })}>
-      <Stack className="page-container" spacing={4}>
-        <Box sx={{ width: '100%' }}>
+      <div className="page-container tw:flex tw:w-full tw:flex-col">
+        <div className="tw:w-full">
           <TitleBreadcrumb
             data-testid="test-suite-breadcrumb"
             titleLinks={slashedBreadCrumb}
           />
-        </Box>
-        <Box sx={{ width: '100%' }}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 4,
-              mb: 2,
-            }}>
-            <Box sx={{ flex: '1 1 0%', minWidth: 0 }}>
+        </div>
+        <div className="tw:w-full">
+          <div className="tw:mb-2 tw:flex tw:items-center tw:justify-between tw:gap-4">
+            <div className="tw:min-w-0 tw:flex-1">
               <EntityHeaderTitle
                 className="w-max-full-45"
                 displayName={testSuite?.displayName}
@@ -601,14 +573,15 @@ const TestSuiteDetailsPage = () => {
                 serviceName="testSuite"
                 suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />}
               />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            </div>
+            <div className="tw:flex tw:items-center tw:gap-1">
               {(testSuitePermissions.EditAll ||
                 testSuitePermissions.EditTests) && (
                 <Button
+                  color="primary"
                   data-testid="add-test-case-btn"
-                  variant="contained"
-                  onClick={() => setIsTestCaseModalOpen(true)}>
+                  size="md"
+                  onPress={() => setIsTestCaseModalOpen(true)}>
                   {t('label.add-entity', {
                     entity: t('label.test-case-plural'),
                   })}
@@ -631,20 +604,10 @@ const TestSuiteDetailsPage = () => {
                 extraDropdownContent={extraDropdownContent}
                 onEditDisplayName={handleDisplayNameChange}
               />
-            </Box>
-          </Box>
+            </div>
+          </div>
 
-          <Box
-            sx={{
-              borderRadius: 1.5,
-              border: `1px solid ${theme.palette.grey[200]}`,
-              padding: `${theme.spacing(4)} ${theme.spacing(5)}`,
-              gap: 4,
-              display: 'flex',
-              backgroundColor: theme.palette.background.paper,
-              flexWrap: 'wrap',
-              mt: 3,
-            }}>
+          <div className="test-suite-details-domain-owner-section tw:mt-3 tw:flex tw:flex-wrap tw:gap-4 tw:rounded-[12px] tw:border tw:border-gray-200 tw:bg-white tw:p-4 tw:sm:p-5">
             <DomainLabel
               headerLayout
               showDashPlaceholder
@@ -656,12 +619,9 @@ const TestSuiteDetailsPage = () => {
               multiple={entityRules.canAddMultipleDomains}
               onUpdate={handleDomainUpdate}
             />
-            <Divider
-              orientation="vertical"
-              sx={{
-                alignSelf: 'center',
-                height: '50px',
-              }}
+            <div
+              aria-hidden
+              className="tw:h-[50px] tw:w-px tw:self-center tw:bg-border-primary"
             />
             <OwnerLabel
               hasPermission={permissions.hasEditOwnerPermission}
@@ -673,56 +633,56 @@ const TestSuiteDetailsPage = () => {
               owners={testOwners}
               onUpdate={onUpdateOwner}
             />
-          </Box>
-        </Box>
-        <Box sx={{ width: '100%', mt: 3 }}>
+          </div>
+        </div>
+        <div
+          className="test-suite-details-tabs-root tw:mt-3 tw:w-full tw:flex tw:flex-col"
+          data-testid="tabs-root">
           <Tabs
-            sx={{ background: 'none' }}
-            value={activeTab}
-            onChange={handleTabChange}>
-            <Tab
-              label={tabs.testCasesTab.label}
-              value={EntityTabs.TEST_CASES}
+            className="test-suite-details-tabs tw:bg-transparent"
+            selectedKey={activeTab}
+            onSelectionChange={(key) => setActiveTab(key as string)}>
+            <Tabs.List
+              items={[
+                { id: EntityTabs.TEST_CASES, label: tabs.testCasesTab.label },
+                { id: EntityTabs.PIPELINE, label: tabs.pipelineTab.label },
+              ]}
+              type="underline"
             />
-            <Tab label={tabs.pipelineTab.label} value={EntityTabs.PIPELINE} />
+            <Tabs.Panel id={EntityTabs.TEST_CASES}>
+              {tabs.testCasesTab.children}
+            </Tabs.Panel>
+            <Tabs.Panel id={EntityTabs.PIPELINE}>
+              {tabs.pipelineTab.children}
+            </Tabs.Panel>
           </Tabs>
-          <Box
-            sx={{
-              mt: 3,
-            }}>
-            {activeTab === EntityTabs.TEST_CASES && tabs.testCasesTab.children}
-            {activeTab === EntityTabs.PIPELINE && tabs.pipelineTab.children}
-          </Box>
-        </Box>
-        <Box sx={{ width: '100%' }}>
-          <Dialog
-            fullWidth
-            maxWidth="md"
-            open={isTestCaseModalOpen}
-            slotProps={{
-              paper: {
-                sx: {
-                  borderRadius: 2,
-                },
-              },
-            }}
-            onClose={() => setIsTestCaseModalOpen(false)}>
-            <DialogTitle>
-              {t('label.add-entity', {
-                entity: t('label.test-case-plural'),
-              })}
-            </DialogTitle>
-            <DialogContent>
-              <AddTestCaseList
-                existingTest={testSuite?.tests ?? []}
-                selectedTest={selectedTestCases}
-                onCancel={() => setIsTestCaseModalOpen(false)}
-                onSubmit={handleAddTestCaseSubmit}
-              />
-            </DialogContent>
-          </Dialog>
-        </Box>
-      </Stack>
+        </div>
+        <div className="tw:w-full">
+          <ModalOverlay
+            isOpen={isTestCaseModalOpen}
+            onOpenChange={setIsTestCaseModalOpen}>
+            <Modal className="tw:max-w-2xl tw:rounded-xl">
+              <Dialog className="tw:flex tw:max-h-[90vh] tw:w-full tw:flex-col tw:overflow-hidden tw:rounded-xl tw:bg-background-paper tw:p-6">
+                <Typography
+                  as="h2"
+                  className="tw:mb-4 tw:text-lg tw:font-semibold tw:text-body">
+                  {t('label.add-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                </Typography>
+                <div className="tw:flex-1 tw:overflow-y-auto">
+                  <AddTestCaseList
+                    existingTest={testSuite?.tests ?? []}
+                    selectedTest={selectedTestCases}
+                    onCancel={() => setIsTestCaseModalOpen(false)}
+                    onSubmit={handleAddTestCaseSubmit}
+                  />
+                </div>
+              </Dialog>
+            </Modal>
+          </ModalOverlay>
+        </div>
+      </div>
     </PageLayoutV1>
   );
 };

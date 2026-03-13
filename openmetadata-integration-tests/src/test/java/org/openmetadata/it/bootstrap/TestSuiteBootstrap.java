@@ -422,7 +422,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         projectRoot + "/bootstrap/sql/migrations/flyway/" + DATABASE_CONTAINER.getDriverClassName();
     String nativeMigrationScriptsLocation = projectRoot + "/bootstrap/sql/migrations/native/";
 
-    config.setElasticSearchConfiguration(getSearchConfig());
+    config.setElasticSearchConfiguration(getBaseSearchConfig());
 
     if (config.getMigrationConfiguration() == null) {
       config.setMigrationConfiguration(
@@ -440,7 +440,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     configurePipelineServiceClient(config);
     configureRdf(config);
 
-    IndexMappingLoader.init(getSearchConfig());
+    IndexMappingLoader.init(getBaseSearchConfig());
 
     APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, config);
 
@@ -475,7 +475,35 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.warn("Seed data load failed: {}", se.getMessage());
     }
 
+    registerMcpServerIfAvailable();
+
     LOG.info("OpenMetadata application started on port {}", APP.getLocalPort());
+  }
+
+  private void registerMcpServerIfAvailable() {
+    try {
+      // ApplicationContext was initialized before seed data loaded, so it missed McpApplication.
+      // Reinitialize to pick up apps created by seed data loading.
+      ApplicationContext.reinitialize();
+
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
+        LOG.info("McpApplication not found, skipping MCP server registration");
+        return;
+      }
+
+      // registerMCPServer is protected, so we use reflection from the test bootstrap
+      OpenMetadataApplication application = (OpenMetadataApplication) APP.getApplication();
+      java.lang.reflect.Method method =
+          OpenMetadataApplication.class.getDeclaredMethod(
+              "registerMCPServer",
+              OpenMetadataApplicationConfig.class,
+              io.dropwizard.core.setup.Environment.class);
+      method.setAccessible(true);
+      method.invoke(application, APP.getConfiguration(), APP.getEnvironment());
+      LOG.info("MCP server registered successfully");
+    } catch (Exception e) {
+      LOG.info("MCP server registration skipped: {}", e.getMessage());
+    }
   }
 
   private OpenMetadataApplicationConfig readTestAppConfig(String path)
@@ -510,7 +538,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             flywayPath,
             config,
             forceMigrations);
-    SearchRepository searchRepository = new SearchRepository(getSearchConfig(), 50);
+    SearchRepository searchRepository = new SearchRepository(getBaseSearchConfig(), 50);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
@@ -525,14 +553,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void createIndices() {
-    ElasticSearchConfiguration config = getSearchConfig();
+    ElasticSearchConfiguration config = getBaseSearchConfig();
     SearchRepository searchRepository = SearchRepositoryFactory.createSearchRepository(config, 50);
     Entity.setSearchRepository(searchRepository);
     LOG.info("Creating {} indexes...", searchType);
     searchRepository.createIndexes();
+    searchRepository.createOrUpdateIndexTemplates();
   }
 
-  private ElasticSearchConfiguration getSearchConfig() {
+  private ElasticSearchConfiguration getBaseSearchConfig() {
     ElasticSearchConfiguration config = new ElasticSearchConfiguration();
     ElasticSearchConfiguration.SearchType type =
         "opensearch".equalsIgnoreCase(searchType)
@@ -551,15 +580,35 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(type);
+    return config;
+  }
 
+  /**
+   * Returns a search config with NL search enabled for OpenSearch. Used by tests that need vector
+   * embeddings without affecting the global app configuration.
+   */
+  public static ElasticSearchConfiguration withNaturalLanguageSearch(
+      ElasticSearchConfiguration config) {
+    org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
+        nlSearch =
+            new org.openmetadata.schema.service.configuration.elasticsearch
+                .NaturalLanguageSearchConfiguration();
+    nlSearch.setSemanticSearchEnabled(true);
+    nlSearch.setEnabled(true);
+    nlSearch.setEmbeddingProvider("djl");
+
+    org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
+        new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
+    djlConfig.setEmbeddingModel(
+        "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
+    nlSearch.setDjl(djlConfig);
+    config.setNaturalLanguageSearch(nlSearch);
     return config;
   }
 
   private void configurePipelineServiceClient(OpenMetadataApplicationConfig config) {
-    PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
-
     if (kubeConfigYaml != null) {
-      // K3s was started - configure K8s pipeline client
+      PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
       LOG.info("Configuring K8sPipelineClient for pipeline operations");
       pipelineConfig.setEnabled(true);
       pipelineConfig.setClassName(
@@ -574,13 +623,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       params.setAdditionalProperty("serviceAccountName", "default");
       params.setAdditionalProperty("imagePullPolicy", "IfNotPresent");
       pipelineConfig.setParameters(params);
+      config.setPipelineServiceClientConfiguration(pipelineConfig);
     } else {
-      // No K3s - disable pipeline service client
-      pipelineConfig.setEnabled(false);
       LOG.info("Pipeline service client disabled (K8s not enabled)");
+      config.getPipelineServiceClientConfiguration().setEnabled(false);
     }
-
-    config.setPipelineServiceClientConfiguration(pipelineConfig);
   }
 
   private void configureRdf(OpenMetadataApplicationConfig config) {
@@ -613,16 +660,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     try {
-      if (WorkflowHandler.isInitialized()) {
-        LOG.info("Shutting down Flowable ProcessEngine...");
-        org.flowable.engine.ProcessEngines.destroy();
-        LOG.info("Flowable ProcessEngine shut down successfully");
-      }
-    } catch (Exception e) {
-      LOG.warn("Error shutting down Flowable ProcessEngine", e);
-    }
-
-    try {
       if (APP != null) {
         APP.after();
         if (APP.getEnvironment() != null
@@ -633,6 +670,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error stopping Dropwizard app", e);
+    }
+
+    try {
+      if (WorkflowHandler.isInitialized()) {
+        LOG.info("Shutting down Flowable ProcessEngine...");
+        org.flowable.engine.ProcessEngines.destroy();
+        LOG.info("Flowable ProcessEngine shut down successfully");
+      }
+    } catch (Exception e) {
+      LOG.warn("Error shutting down Flowable ProcessEngine", e);
     }
 
     try {

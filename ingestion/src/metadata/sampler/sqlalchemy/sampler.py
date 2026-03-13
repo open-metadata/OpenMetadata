@@ -15,8 +15,8 @@ for the profiler
 import hashlib
 from typing import List, Optional, Union, cast
 
-from sqlalchemy import Column, inspect, text
-from sqlalchemy.orm import DeclarativeMeta, Query
+from sqlalchemy import Column, inspect, select, text
+from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
 from sqlalchemy.sql.sqltypes import Enum
@@ -66,7 +66,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
     run the query in the whole table.
 
     Args:
-        orm_table (Optional[DeclarativeMeta]): ORM Table
+        orm_table (Optional[type]): ORM Table
     """
 
     def __init__(self, *args, **kwargs):
@@ -186,7 +186,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 f"{self.get_sampler_table_name()}_rnd"
             )
 
-    def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
+    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -199,8 +199,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             and self.sample_config.profileSample == 100
         ):
             if self.partition_details:
-                partitioned = self._partitioned_table()
-                return partitioned.cte(f"{self.get_sampler_table_name()}_partitioned")
+                return self._partitioned_table()
 
             return self.raw_dataset
 
@@ -258,21 +257,17 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 .all()
             )
 
-        # Process array columns manually if we used text() expressions
+        # Process rows: handle array columns and truncate large text values
+        # to prevent OOM in downstream processing.
         processed_rows = []
-        if has_array_columns:
-            for row in sqa_sample:
-                processed_row = []
-                for i, col in enumerate(sqa_columns):
-                    value = row[i]
-                    if self._handle_array_column(col):
-                        processed_value = self._process_array_value(value)
-                        processed_row.append(processed_value)
-                    else:
-                        processed_row.append(value)
-                processed_rows.append(processed_row)
-        else:
-            processed_rows = [list(row) for row in sqa_sample]
+        for row in sqa_sample:
+            processed_row = []
+            for i, col in enumerate(sqa_columns):
+                value = row[i]
+                if has_array_columns and self._handle_array_column(col):
+                    value = self._process_array_value(value)
+                processed_row.append(self._truncate_cell(value))
+            processed_rows.append(processed_row)
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=processed_rows,
@@ -284,14 +279,17 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
         with self.session_factory() as client:
-            rnd = client.execute(f"{self.sample_query}")
+            rnd = client.execute(text(f"{self.sample_query}"))
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
             columns = list(rnd.keys())
         return TableData(
             columns=columns,
-            rows=[list(row) for row in rnd.fetchmany(100)],
+            rows=[
+                [self._truncate_cell(cell) for cell in row]
+                for row in rnd.fetchmany(100)
+            ],
         )
 
     def _rdn_sample_from_user_query(self) -> Query:
@@ -307,9 +305,18 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 f"{self.get_sampler_table_name()}_user_sampled"
             )
 
-    def _partitioned_table(self) -> Query:
-        """Return the Query object for partitioned tables"""
-        return self.get_partitioned_query()
+    def _partitioned_table(self):
+        """Return a CTE for partitioned tables.
+
+        Build the CTE using Core select() so it does not require an active Session.
+        """
+        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
+        partition_filter = build_partition_predicate(
+            self.partition_details,
+            self.raw_dataset.__table__.c,
+        )
+        stmt = select(self.raw_dataset).where(partition_filter)
+        return stmt.cte(f"{self.get_sampler_table_name()}_partitioned")
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
@@ -323,8 +330,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if query is not None:
             return query.filter(partition_filter)
 
-        with self.session_factory() as client:
-            return client.query(self.raw_dataset).filter(partition_filter)
+        # Return a Core select so callers do not require an active Session
+        return select(self.raw_dataset).where(partition_filter)
 
     def get_columns(self):
         """get columns from entity"""

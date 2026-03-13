@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { isEmpty, isUndefined } from 'lodash';
 import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
+import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToExplorePage } from './common';
 import { openEntitySummaryPanel } from './entityPanel';
 
@@ -28,15 +30,15 @@ export const searchAndClickOnOption = async (
 ) => {
   let testId = (filter.value ?? '').toLowerCase();
   // Filtering for tiers is done on client side, so no API call will be triggered
-  if (filter.key !== 'tier.tagFQN') {
+  if (filter.key === 'tier.tagFQN') {
+    testId = filter.value ?? '';
+  } else {
     const searchRes = page.waitForResponse(
       `/api/v1/search/aggregate?index=dataAsset&field=${filter.key}**`
     );
 
     await page.fill('[data-testid="search-input"]', filter.value ?? '');
     await searchRes;
-  } else {
-    testId = filter.value ?? '';
   }
 
   await page.getByTestId(testId).click();
@@ -112,10 +114,10 @@ export const checkCheckboxStatus = async (
   boxId: string,
   isChecked: boolean
 ) => {
-  const checkbox = await page.getByTestId(boxId);
+  const checkbox = page.getByTestId(boxId);
   const isCheckedOnPage = await checkbox.isChecked();
 
-  await expect(isCheckedOnPage).toEqual(isChecked);
+  expect(isCheckedOnPage).toEqual(isChecked);
 };
 
 export const selectDataAssetFilter = async (
@@ -210,6 +212,53 @@ export const expandDatabaseInExploreTree = async (
   await databaseSchemaRes;
 };
 
+export const expandSchemaInExploreTree = async (
+  page: Page,
+  schemaName: string
+) => {
+  const schemaRes = page.waitForResponse(
+    '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
+  );
+  await page
+    .locator('.ant-tree-treenode')
+    .filter({ hasText: schemaName })
+    .locator('.ant-tree-switcher svg')
+    .click();
+  await schemaRes;
+};
+
+export const expandTableInExploreTree = async (
+  page: Page,
+  tableName: string
+) => {
+  const columnRes = page.waitForResponse(
+    '/api/v1/search/query?*entityType*tableColumn*'
+  );
+  await page
+    .locator('.ant-tree-treenode')
+    .filter({ hasText: tableName })
+    .locator('.ant-tree-switcher svg')
+    .click();
+  await columnRes;
+};
+
+export const verifyColumnSuggestion = async (
+  page: Page,
+  columnName: string,
+  tableName: string
+) => {
+  const suggestionsContainer = page.locator('[data-testid="suggestion-box"]');
+  const columnSuggestion = suggestionsContainer
+    .locator('.suggestion-item')
+    .filter({ hasText: columnName })
+    .filter({ hasText: tableName })
+    .first();
+
+  await expect(columnSuggestion).toBeVisible();
+
+  return columnSuggestion;
+};
+
 export const verifyDatabaseAndSchemaInExploreTree = async (
   page: Page,
   serviceName: string,
@@ -293,7 +342,13 @@ export const verifyEntitiesAreSorted = async (page: Page) => {
     const aLower = a.toLowerCase();
     const bLower = b.toLowerCase();
 
-    return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
+    if (aLower < bLower) {
+      return -1;
+    }
+    if (aLower > bLower) {
+      return 1;
+    }
+    return 0;
   });
 
   expect(entityNames).toEqual(sortedEntityNames);
@@ -311,10 +366,19 @@ export const navigateToExploreAndSelectEntity = async (
     timeout: 30000,
   });
 
-  await openEntitySummaryPanel(
-    page,
-    entityName,
-    endpoint,
-    fullyQualifiedName
-  );
+  await openEntitySummaryPanel(page, entityName, endpoint, fullyQualifiedName);
+};
+
+export const getFlatColumnCountOfTable = (
+  columns: TableClass['entity']['columns']
+) => {
+  let columnsCount = columns.length;
+
+  columns.forEach((column) => {
+    if (!isEmpty(column.children) && !isUndefined(column.children)) {
+      columnsCount += getFlatColumnCountOfTable(column.children);
+    }
+  });
+
+  return columnsCount;
 };

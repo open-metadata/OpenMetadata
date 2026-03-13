@@ -97,11 +97,11 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
     def get_metric_stats_map(cls) -> Dict[MetricRegistry, str]:
         """Map OpenMetadata metrics to StarRocks statistics column names"""
         return {
-            cls.metrics.ROW_COUNT: "row_count",
-            cls.metrics.DISTINCT_COUNT: "distinct_count",
-            cls.metrics.NULL_COUNT: "null_count",
-            cls.metrics.MAX: "max_value",
-            cls.metrics.MIN: "min_value",
+            cls.metrics.rowCount: "row_count",
+            cls.metrics.distinctCount: "distinct_count",
+            cls.metrics.nullCount: "null_count",
+            cls.metrics.max: "max_value",
+            cls.metrics.min: "min_value",
         }
 
     @classmethod

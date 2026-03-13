@@ -15,7 +15,7 @@ apiVersion: v3.1.0
 kind: DataContract
 id: dim-address-contract
 name: Dim Address Data Contract
-version: "1.0.0"
+version: '1.0.0'
 status: active
 description:
   purpose: Data contract for the dim_address dimension table containing customer billing and shipping addresses
@@ -70,11 +70,11 @@ schema:
         description: The phone number of the customer
 slaProperties:
   - property: freshness
-    value: "24"
+    value: '24'
     unit: hours
     description: Data should be no older than 24 hours
   - property: availability
-    value: "99.9"
+    value: '99.9'
     unit: percent
     description: Table should be available 99.9% of the time
 team:

@@ -49,9 +49,53 @@ ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
 logger = ingestion_logger()
 
 
+def _redshift_initialize(self, connection):
+    """
+    Override PGDialect + PGDialect_psycopg2 initialization to skip
+    PostgreSQL-specific queries that Redshift doesn't support
+    (e.g., SHOW standard_conforming_strings).
+    """
+    from sqlalchemy.engine.default import DefaultDialect
+
+    DefaultDialect.initialize(self, connection)
+    self._backslash_escapes = False
+    self.supports_smallserial = False
+    self._supports_drop_index_concurrently = False
+    self.supports_identity_columns = False
+    self._has_native_hstore = False
+
+
+def _load_domains(self, connection, **kw):
+    """
+    Override to return empty dict since Redshift does not support user-created
+    domains and pg_catalog.pg_collation does not exist in Redshift, causing a
+    ProgrammingError that aborts the transaction and breaks all subsequent queries.
+    """
+    return {}
+
+
+def get_temp_table_names(self, connection, schema=None, **kw):
+    """
+    Override PGDialect's get_temp_table_names to avoid querying
+    pg_catalog.pg_class.relpersistence which does not exist in Redshift,
+    causing a ProgrammingError that aborts the transaction and breaks all
+    subsequent queries.
+    """
+    return []
+
+
+def get_multi_columns(self, connection, **kw):
+    """
+    Override PGDialect's get_multi_columns to avoid querying
+    pg_attribute.attcollation which does not exist in Redshift.
+    Falls back to the default implementation that delegates to
+    the already-overridden get_columns() method.
+    """
+    return self._default_multi_reflect(self.get_columns, connection, **kw)
+
+
 # pylint: disable=protected-access
 @calculate_execution_time()
-@reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
     Return information about columns in `table_name`.
@@ -61,6 +105,10 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     overriding the default dialect method to include the
     distkey and sortkey info
+
+    Note: @reflection.cache removed to avoid unbounded memory growth
+    across schemas (issue #20649). The underlying
+    _get_schema_column_info already caches per-schema.
     """
     cols = self._get_redshift_columns(connection, table_name, schema, **kw)
     if not self._domains:
@@ -121,31 +169,33 @@ def _get_column_info(self, *args, **kwargs):
 
 
 @calculate_execution_time()
-@reflection.cache
 def _get_schema_column_info(
     self, connection, schema=None, **kw
 ):  # pylint: disable=unused-argument
     """
     Get schema column info
 
-    Args:
-        connection:
-        schema:
-        **kw:
-    Returns:
-
-    This method is responsible for fetching all the column details like
-    name, type, constraints, distkey and sortkey etc.
+    Uses a custom single-schema cache instead of @reflection.cache
+    to prevent unbounded memory growth across schemas (issue #20649).
+    Only the most recently requested schema's data is retained.
     """
+    # Single-schema cache: invalidate when schema changes
+    cached = getattr(self, "_schema_col_cache", None)
+    if cached is not None and cached[0] == schema:
+        return cached[1]
+
     schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
     result = connection.execute(
-        REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
+        sa.text(REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause))
     )
     for col in result:
         key = RelationKey(col.table_name, col.schema, connection)
         all_columns[key].append(col)
-    return dict(all_columns)
+    result.close()
+    data = dict(all_columns)
+    self._schema_col_cache = (schema, data)
+    return data
 
 
 def _handle_array_type(attype):
@@ -377,10 +427,19 @@ def get_table_comment(
 
 
 @calculate_execution_time()
-@reflection.cache
 def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-argument
+    """
+    Uses a custom single-schema cache instead of @reflection.cache
+    to prevent unbounded memory growth across schemas (issue #20649).
+    """
     # pylint: disable=consider-using-f-string
     schema = kw.get("schema", None)
+
+    # Single-schema cache: invalidate when schema changes
+    cached = getattr(self, "_relation_info_cache", None)
+    if cached is not None and cached[0] == schema:
+        return cached[1]
+
     schema_clause = "AND schema = '{schema}'".format(schema=schema) if schema else ""
 
     table_name = kw.get("table_name", None)
@@ -399,6 +458,8 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
     for rel in result:
         key = RelationKey(rel.relname, rel.schema, connection)
         relations[key] = rel
+    result.close()
+    self._relation_info_cache = (schema, relations)
     return relations
 
 

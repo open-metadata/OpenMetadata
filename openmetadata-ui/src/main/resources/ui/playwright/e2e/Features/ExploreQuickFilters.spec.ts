@@ -110,7 +110,7 @@ test('search dropdown should work properly for quick filters', async ({
 
 test('should search for empty or null filters', async ({ page }) => {
   const items = [
-    { label: 'Owners', key: 'owners.displayName.keyword' },
+    { label: 'Owners', key: 'ownerDisplayName' },
     { label: 'Tag', key: 'tags.tagFQN' },
     { label: 'Domains', key: 'domains.displayName.keyword' },
     { label: 'Tier', key: 'tier.tagFQN' },
@@ -187,7 +187,7 @@ test('should search for multiple values along with null filters', async ({
 });
 
 test('should persist quick filter on global search', async ({ page }) => {
-  const items = [{ label: 'Owners', key: 'owners.displayName.keyword' }];
+  const items = [{ label: 'Owners', key: 'ownerDisplayName' }];
 
   for (const filter of items) {
     await selectNullOption(page, filter, false);
@@ -218,4 +218,34 @@ test('should persist quick filter on global search', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: 'Owners : No Owners' })
   ).toBeVisible();
+});
+
+test('Filter by column entity type shows only column results', async ({
+  page,
+}) => {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await page.waitForLoadState('networkidle');
+
+  await page.getByRole('button', { name: 'Data Assets' }).click();
+
+  const columnCheckbox = page.getByTestId('tablecolumn-checkbox');
+
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*tableColumn*'
+  );
+
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill('tableColumn');
+
+  await dataAssetDropdownRequest;
+
+  await columnCheckbox.check();
+  await page.getByTestId('update-btn').click();
+
+  await page.waitForLoadState('networkidle');
+
+  const quickFilter = page.getByTestId('search-dropdown-Data Assets');
+  await expect(quickFilter).toContainText('tablecolumn');
 });

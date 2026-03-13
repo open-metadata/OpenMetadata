@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, SxProps, Theme } from '@mui/material';
+import { Grid } from '@openmetadata/ui-core-components';
 import { Form } from 'antd';
 import { castArray } from 'lodash';
 import { Suspense, useEffect, useMemo } from 'react';
@@ -46,11 +46,6 @@ import {
 } from './tagFormFields';
 import './TagsForm.less';
 import { RenameFormProps } from './TagsPage.interface';
-
-const LABEL_STYLES: SxProps<Theme> = {
-  color: (theme) => theme.palette.grey[700],
-  fontWeight: (theme) => theme.typography.subtitle2.fontWeight,
-};
 
 const TagsForm = ({
   formRef,
@@ -121,9 +116,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      muiLabel: (
-        <MUIFormItemLabel label={t(field.muiLabel)} labelSx={LABEL_STYLES} />
-      ),
+      muiLabel: <MUIFormItemLabel label={t(field.muiLabel)} />,
       props: {
         ...field.props,
         placeholder: t(field.placeholder),
@@ -134,12 +127,7 @@ const TagsForm = ({
   const colorField = useMemo(
     () => ({
       ...COLOR_FIELD,
-      muiLabel: (
-        <MUIFormItemLabel
-          label={t(COLOR_FIELD.muiLabel)}
-          labelSx={LABEL_STYLES}
-        />
-      ),
+      muiLabel: <MUIFormItemLabel label={t(COLOR_FIELD.muiLabel)} />,
     }),
     [t]
   );
@@ -214,12 +202,7 @@ const TagsForm = ({
     const fields: FieldProp[] = [
       {
         ...descriptionField,
-        label: (
-          <MUIFormItemLabel
-            label={t(descriptionField.label)}
-            labelSx={LABEL_STYLES}
-          />
-        ),
+        label: <MUIFormItemLabel label={t(descriptionField.label)} />,
       },
     ];
 
@@ -307,29 +290,27 @@ const TagsForm = ({
         name="tags"
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSave}>
-        {/* Name and Display Name row */}
-        <Grid container spacing={4}>
-          <Grid size={6}>{getField(nameField)}</Grid>
-          <Grid size={6}>{getField(displayNameField)}</Grid>
+        <Grid colGap="4">
+          <Grid.Item span={12}>{getField(nameField)}</Grid.Item>
+          <Grid.Item span={12}>{getField(displayNameField)}</Grid.Item>
         </Grid>
 
-        {/* Icon and Color row */}
         {!isClassification && (
-          <Grid container spacing={2} sx={{ flexWrap: 'nowrap' }}>
-            <Grid>{getField(iconField)}</Grid>
-            <Grid sx={{ ml: 'auto', minWidth: 0 }}>{getField(colorField)}</Grid>
+          <Grid colGap="4">
+            <Grid.Item span={4}>{getField(iconField)}</Grid.Item>
+            <Grid.Item span={20}>{getField(colorField)}</Grid.Item>
           </Grid>
         )}
 
-        {/* Remaining fields */}
         {generateFormFields(formFields)}
-        <Box sx={{ mb: 6 }}>
+        <div className="tw:mb-6">
           {showMutuallyExclusive && getField(mutuallyExclusiveField)}
-        </Box>
+        </div>
 
-        {/* Owner and Domain fields */}
-        <div className="m-t-xss">{getField(ownerField)}</div>
-        <div className="m-t-xss">{getField(domainField)}</div>
+        <Grid>
+          <Grid.Item>{getField(ownerField)}</Grid.Item>
+          <Grid.Item>{getField(domainField)}</Grid.Item>
+        </Grid>
 
         {/* Auto Classification fields */}
         {autoClassificationComponent && (

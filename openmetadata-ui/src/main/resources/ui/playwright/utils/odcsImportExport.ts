@@ -33,9 +33,9 @@ export const openODCSImportDropdown = async (page: Page) => {
   if (addButtonVisible) {
     await addButton.click();
     await page.getByTestId('add-contract-menu').waitFor({
-    state: 'visible',
-    timeout: 10000,
-  });
+      state: 'visible',
+      timeout: 10000,
+    });
   } else if (manageButtonVisible) {
     await manageButton.click();
   }
@@ -99,7 +99,7 @@ export const importODCSYaml = async (
 
   // Click Import button
   const importButton = await page.getByTestId('import-button');
-  await importButton.click({delay: 100});
+  await importButton.click({ delay: 100 });
 
   await importResponse;
   await toastNotification(page, 'ODCS Contract imported successfully');

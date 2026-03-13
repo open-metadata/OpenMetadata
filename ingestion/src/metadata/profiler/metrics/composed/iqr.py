@@ -27,6 +27,8 @@ class InterQuartileRange(ComposedMetric):
     Given the first and third quartile compute the IQR,
     """
 
+    schema_metric_type = MetricType.interQuartileRange
+
     @classmethod
     def name(cls):
         return MetricType.interQuartileRange.value

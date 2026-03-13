@@ -100,6 +100,77 @@ export class CustomPropertiesPageObject extends RightPanelBase {
     return this;
   }
 
+  // ============ VERIFICATION METHODS FOR PROPERTY VALUES AND TYPES ============
+
+  /**
+   * Verify property value for a specific custom property
+   * @param propertyName - Name of the custom property
+   * @param expectedValue - Expected value to verify
+   */
+  async verifyPropertyValue(
+    propertyName: string,
+    expectedValue: any
+  ): Promise<void> {
+    const propertyCard = this.page.getByTestId(propertyName);
+    await propertyCard.waitFor({ state: 'visible' });
+
+    const valueElement = propertyCard.getByTestId('property-value');
+    await expect(valueElement).toBeVisible();
+    await expect(valueElement).toContainText(String(expectedValue));
+  }
+
+  /**
+   * Verify property type display
+   * @param propertyName - Name of the custom property
+   * @param expectedType - Expected type (string, integer, markdown, etc.)
+   */
+  async verifyPropertyType(propertyName: string): Promise<void> {
+    const propertyCard = this.page.getByTestId(propertyName);
+    await propertyCard.waitFor({ state: 'visible' });
+
+    const propertyNameElement = propertyCard.getByTestId('property-name');
+    await expect(propertyNameElement).toBeVisible();
+    await expect(propertyNameElement).toContainText(propertyName);
+  }
+
+  /**
+   * Verify search results count
+   * @param searchTerm - The search term used
+   * @param expectedCount - Expected number of results
+   */
+  async verifySearchResults(
+    searchTerm: string,
+    expectedCount: number
+  ): Promise<void> {
+    await this.searchCustomProperties(searchTerm);
+
+    if (expectedCount === 0) {
+      const noResultsText = this.page.getByText(
+        /No Custom Properties found for/i
+      );
+      await expect(noResultsText).toBeVisible();
+    } else {
+      await expect(this.propertyCard).toHaveCount(expectedCount);
+    }
+  }
+
+  /**
+   * Verify all property types are displayed correctly
+   * @param propertyTypes - Array of property type names to verify
+   */
+  async verifyAllPropertyTypesDisplay(propertyTypes: string[]): Promise<void> {
+    for (const propertyType of propertyTypes) {
+      const propertyCard = this.page.getByTestId(propertyType);
+      await expect(propertyCard).toBeVisible();
+
+      const propertyNameElement = propertyCard.getByTestId('property-name');
+      await expect(propertyNameElement).toBeVisible();
+
+      const propertyValueElement = propertyCard.locator('.value-container');
+      await expect(propertyValueElement).toBeVisible();
+    }
+  }
+
   /**
    * Verify that the Custom Properties tab is currently visible
    */
@@ -150,12 +221,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
       '.value, [class*="value"], [data-testid="value"]'
     );
     await valueElement.waitFor({ state: 'visible' });
-    const actualValue = await valueElement.textContent();
-    if (!actualValue?.includes(expectedValue)) {
-      throw new Error(
-        `Custom property "${propertyName}" should show value "${expectedValue}" but shows "${actualValue}"`
-      );
-    }
+    await expect(valueElement).toContainText(expectedValue);
   }
 
   /**
@@ -163,14 +229,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    * @param expectedCount - Expected number of custom properties
    */
   async shouldShowCustomPropertiesCount(expectedCount: number): Promise<void> {
-    // Use semantic selectors - count all property elements
-    const cards = this.propertyCard;
-    const actualCount = await cards.count();
-    if (actualCount !== expectedCount) {
-      throw new Error(
-        `Should show ${expectedCount} custom properties, but shows ${actualCount}`
-      );
-    }
+    await expect(this.propertyCard).toHaveCount(expectedCount);
   }
 
   /**
@@ -186,12 +245,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    */
   async shouldShowSearchText(expectedText: string): Promise<void> {
     await this.searchBar.waitFor({ state: 'visible' });
-    const actualText = await this.searchBar.inputValue();
-    if (actualText !== expectedText) {
-      throw new Error(
-        `Search bar should show "${expectedText}" but shows "${actualText}"`
-      );
-    }
+    await expect(this.searchBar).toHaveValue(expectedText);
   }
 
   /**

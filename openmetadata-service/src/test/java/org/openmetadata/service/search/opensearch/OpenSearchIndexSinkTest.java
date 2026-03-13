@@ -5,14 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,9 +22,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.workflows.interfaces.TaggedOperation;
+import os.org.opensearch.client.opensearch._types.ErrorCause;
+import os.org.opensearch.client.opensearch._types.ErrorResponse;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.bulk.IndexOperation;
@@ -58,19 +64,13 @@ class OpenSearchIndexSinkTest {
 
   @Test
   void testWriteSuccess() throws Exception {
-    // Given
-    List<BulkOperation> operations = createMockBulkOperations(5);
-    Map<String, Object> contextData = new HashMap<>();
-    contextData.put(
-        "entityNameList", List.of("entity1", "entity2", "entity3", "entity4", "entity5"));
+    List<TaggedOperation<BulkOperation>> data = createTaggedOperations(5);
 
     when(searchClient.bulkOpenSearch(any())).thenReturn(bulkResponse);
     when(bulkResponse.errors()).thenReturn(false);
 
-    // When
-    BulkResponse result = sink.write(operations, contextData);
+    BulkResponse result = sink.write(data);
 
-    // Then
     assertNotNull(result);
     verify(searchClient, times(1)).bulkOpenSearch(any());
     assertEquals(5, sink.getStats().getSuccessRecords());
@@ -79,52 +79,102 @@ class OpenSearchIndexSinkTest {
 
   @Test
   void testWriteWithErrors() throws Exception {
-    // Given
-    List<BulkOperation> operations = createMockBulkOperations(5);
-    Map<String, Object> contextData = new HashMap<>();
-    contextData.put(
-        "entityNameList", List.of("entity1", "entity2", "entity3", "entity4", "entity5"));
+    List<TaggedOperation<BulkOperation>> data = createTaggedOperations(5);
 
     when(searchClient.bulkOpenSearch(any()))
         .thenThrow(new RuntimeException("Bulk operation failed"));
 
-    // When & Then
-    assertThrows(SearchIndexException.class, () -> sink.write(operations, contextData));
+    assertThrows(SearchIndexException.class, () -> sink.write(data));
     assertEquals(0, sink.getStats().getSuccessRecords());
     assertEquals(5, sink.getStats().getFailedRecords());
   }
 
   @Test
   void testUpdateStats() {
-    // Given
     assertEquals(0, sink.getStats().getSuccessRecords());
     assertEquals(0, sink.getStats().getFailedRecords());
 
-    // When
     sink.updateStats(12, 3);
 
-    // Then
     assertEquals(12, sink.getStats().getSuccessRecords());
     assertEquals(3, sink.getStats().getFailedRecords());
   }
 
   @Test
   void testWriteWithEmptyData() throws Exception {
-    // Given
-    List<BulkOperation> operations = new ArrayList<>();
-    Map<String, Object> contextData = new HashMap<>();
+    List<TaggedOperation<BulkOperation>> data = new ArrayList<>();
 
-    // When & Then - should not throw exception for empty list
-    assertDoesNotThrow(() -> sink.write(operations, contextData));
+    assertDoesNotThrow(() -> sink.write(data));
     assertEquals(0, sink.getStats().getSuccessRecords());
     assertEquals(0, sink.getStats().getFailedRecords());
   }
 
-  private List<BulkOperation> createMockBulkOperations(int count) {
-    List<BulkOperation> operations = new ArrayList<>();
+  @Test
+  void testSingleDocumentExceedsPayloadLimit413() throws Exception {
+    List<TaggedOperation<BulkOperation>> data = createTaggedOperations(1);
+
+    OpenSearchException e413 =
+        new OpenSearchException(
+            new ErrorResponse.Builder()
+                .status(413)
+                .error(
+                    new ErrorCause.Builder()
+                        .reason("Request Entity Too Large")
+                        .type("request_entity_too_large")
+                        .build())
+                .build());
+
+    when(searchClient.bulkOpenSearch(any())).thenThrow(e413);
+
+    SearchIndexException ex = assertThrows(SearchIndexException.class, () -> sink.write(data));
+
+    assertEquals(1, ex.getIndexingError().getFailedCount());
+    assertEquals(0, ex.getIndexingError().getSuccessCount());
+  }
+
+  @Test
+  void testBisectionOnPayloadTooLargeWithMixedResults() throws Exception {
+    List<TaggedOperation<BulkOperation>> data = createTaggedOperations(4);
+
+    OpenSearchException e413 =
+        new OpenSearchException(
+            new ErrorResponse.Builder()
+                .status(413)
+                .error(
+                    new ErrorCause.Builder()
+                        .reason("Request Entity Too Large")
+                        .type("request_entity_too_large")
+                        .build())
+                .build());
+
+    BulkResponse successResponse = BulkResponse.of(b -> b.errors(false).items(List.of()).took(1));
+
+    // Call 1: full batch (4 ops) → 413, bisects into [0,1] and [2,3]
+    // Call 2: [0,1] → success
+    // Call 3: [2,3] → 413, bisects into [2] and [3]
+    // Call 4: [2] → success
+    // Call 5: [3] → 413 on single doc, recorded as error
+    when(searchClient.bulkOpenSearch(argThat(ops -> ops != null && ops.size() == 4)))
+        .thenThrow(e413);
+    when(searchClient.bulkOpenSearch(argThat(ops -> ops != null && ops.size() == 2)))
+        .thenReturn(successResponse)
+        .thenThrow(e413);
+    when(searchClient.bulkOpenSearch(argThat(ops -> ops != null && ops.size() == 1)))
+        .thenReturn(successResponse)
+        .thenThrow(e413);
+
+    SearchIndexException ex = assertThrows(SearchIndexException.class, () -> sink.write(data));
+
+    assertEquals(1, ex.getIndexingError().getFailedCount());
+    assertEquals(3, ex.getIndexingError().getSuccessCount());
+    verify(searchClient, times(5)).bulkOpenSearch(any());
+  }
+
+  private List<TaggedOperation<BulkOperation>> createTaggedOperations(int count) {
+    List<TaggedOperation<BulkOperation>> tagged = new ArrayList<>();
     for (int i = 0; i < count; i++) {
       int finalI = i;
-      operations.add(
+      BulkOperation op =
           BulkOperation.of(
               b ->
                   b.index(
@@ -132,8 +182,11 @@ class OpenSearchIndexSinkTest {
                           io ->
                               io.index("test_index")
                                   .id("id_" + finalI)
-                                  .document(Map.of("field", "value" + finalI))))));
+                                  .document(Map.of("field", "value" + finalI)))));
+      tagged.add(
+          new TaggedOperation<>(
+              op, new EntityReference().withId(UUID.randomUUID()).withType("table")));
     }
-    return operations;
+    return tagged;
   }
 }

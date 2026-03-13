@@ -15,20 +15,25 @@ import { SearchIndexField } from '../../../../generated/entity/data/searchIndex'
 import { Column } from '../../../../generated/entity/data/table';
 import { Field } from '../../../../generated/entity/data/topic';
 import { EntityReference } from '../../../../generated/entity/type';
-import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
+import { LineageNodeType } from '../../../Lineage/Lineage.interface';
 
 export interface NodeChildrenProps {
-  node: SearchedDataProps['data'][number]['_source'];
+  node: LineageNodeType;
   isConnectable: boolean;
   isChildrenListExpanded: boolean;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
 export type EntityChildrenItem =
-  | Column
-  | EntityReference
-  | MlFeature
-  | Field
-  | SearchIndexField;
+  | Flatten<Column>
+  | Flatten<Field>
+  | Flatten<EntityReference>
+  | Flatten<MlFeature>
+  | Flatten<Field>
+  | Flatten<SearchIndexField>;
 
 export type EntityChildren = EntityChildrenItem[];
+
+export type Flatten<T> = T & {
+  depth?: number;
+};

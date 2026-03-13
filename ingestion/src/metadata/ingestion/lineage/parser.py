@@ -25,6 +25,7 @@ from collate_sqllineage import SQLPARSE_DIALECT
 from collate_sqllineage.core.models import Column, DataFunction, Location, Table
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
 from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
+from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 from collate_sqllineage.exceptions import SQLLineageException
 from collate_sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
@@ -702,7 +703,7 @@ class LineageParser:
         #     context=self.query_hash,
         # )
         def get_sqlparse_lineage_runner(query: str) -> LineageRunner:
-            lr_sqlparse = LineageRunner(query)
+            lr_sqlparse = LineageRunner(query, analyzer=SqlParseLineageAnalyzer)
             lr_sqlparse.get_column_lineage()
             return lr_sqlparse
 

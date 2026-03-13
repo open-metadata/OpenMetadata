@@ -15,12 +15,13 @@ Check incremental extraction
 
 import random
 from datetime import datetime
-from unittest import TestCase
 from unittest.mock import create_autospec, patch
 
 from sqlalchemy.engine import Connection
 
 from metadata.ingestion.source.database.redshift.incremental_table_processor import (
+    _FIRST_KW_RE,
+    _KW_TO_CANDIDATES,
     RedshiftIncrementalTableProcessor,
 )
 
@@ -48,7 +49,7 @@ VALID_CREATE_TABLE_STATEMENT_TEMPLATES = [
 ]
 
 VALID_ALTER_TABLE_STATEMENT_TEMPLATES = [
-    # Add new trable constraint
+    # Add new table constraint
     "ALTER TABLE {table_name} ADD CONSTRAINT constraint UNIQUE column_1",
     # Alter Column Type
     "ALTER TABLE {table_name} ALTER COLUMN column_1 TYPE varchar(1000)",
@@ -140,13 +141,12 @@ VALID_COMMENT_STATEMENT_TEMPLATES = [
 ]
 
 
-class RedshiftIncrementalTableProcessorTest(TestCase):
+class TestRedshiftIncrementalTableProcessor:
     """Validate RedshiftIncrementalTableProcessor logic"""
 
     def test_create_table_regex_works_as_expected(self):
         """Check if the CREATE_TABLE regex works as expected."""
         for template in VALID_CREATE_TABLE_STATEMENT_TEMPLATES:
-            print(f"{template}")
             return_value = [template.format(table_name="my_schema.my_table")]
 
             with patch.object(
@@ -159,15 +159,14 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
                 )
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-                self.assertEqual(processor.get_not_deleted("my_schema"), ["my_table"])
-                self.assertEqual(processor.get_not_deleted("other_schema"), [])
-                self.assertEqual(processor.get_deleted("my_schema"), [])
-                self.assertEqual(processor.get_deleted("other_schema"), [])
+                assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
+                assert processor.get_not_deleted("other_schema") == frozenset()
+                assert processor.get_deleted("my_schema") == []
+                assert processor.get_deleted("other_schema") == []
 
     def test_alter_table_regex_works_as_expected(self):
         """Check if the ALTER_TABLE regex works as expected."""
         for template in VALID_ALTER_TABLE_STATEMENT_TEMPLATES:
-            print(f"{template}")
             return_value = [template.format(table_name="my_schema.my_table")]
 
             with patch.object(
@@ -180,15 +179,14 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
                 )
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-                self.assertEqual(processor.get_not_deleted("my_schema"), ["my_table"])
-                self.assertEqual(processor.get_not_deleted("other_schema"), [])
-                self.assertEqual(processor.get_deleted("my_schema"), [])
-                self.assertEqual(processor.get_deleted("other_schema"), [])
+                assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
+                assert processor.get_not_deleted("other_schema") == frozenset()
+                assert processor.get_deleted("my_schema") == []
+                assert processor.get_deleted("other_schema") == []
 
     def test_drop_table_regex_works_as_expected(self):
         """Check if the DROP_TABLE regex works as expected."""
         for template in VALID_DROP_TABLE_STATEMENT_TEMPLATES:
-            print(f"{template}")
             return_value = [template.format(table_name="my_schema.my_table")]
 
             with patch.object(
@@ -201,17 +199,14 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
                 )
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-                self.assertEqual(processor.get_not_deleted("my_schema"), [])
-                self.assertEqual(processor.get_not_deleted("other_schema"), [])
-                self.assertEqual(
-                    processor.get_deleted("my_schema"), [("my_schema", "my_table")]
-                )
-                self.assertEqual(processor.get_deleted("other_schema"), [])
+                assert processor.get_not_deleted("my_schema") == frozenset()
+                assert processor.get_not_deleted("other_schema") == frozenset()
+                assert processor.get_deleted("my_schema") == [("my_schema", "my_table")]
+                assert processor.get_deleted("other_schema") == []
 
     def test_create_view_regex_works_as_expected(self):
         """Check if the CREATE_VIEW regex works as expected."""
         for template in VALID_CREATE_VIEW_STATEMENT_TEMPLATES:
-            print(f"{template}")
             return_value = [template.format(table_name="my_schema.my_table")]
 
             with patch.object(
@@ -224,15 +219,14 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
                 )
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-                self.assertEqual(processor.get_not_deleted("my_schema"), ["my_table"])
-                self.assertEqual(processor.get_not_deleted("other_schema"), [])
-                self.assertEqual(processor.get_deleted("my_schema"), [])
-                self.assertEqual(processor.get_deleted("other_schema"), [])
+                assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
+                assert processor.get_not_deleted("other_schema") == frozenset()
+                assert processor.get_deleted("my_schema") == []
+                assert processor.get_deleted("other_schema") == []
 
     def test_alter_view_regex_works_as_expected(self):
         """Check if the ALTER_VIEW regex works as expected."""
         for template in VALID_ALTER_VIEW_STATEMENT_TEMPLATES:
-            print(f"{template}")
             return_value = [template.format(table_name="my_schema.my_table")]
 
             with patch.object(
@@ -245,15 +239,14 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
                 )
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-                self.assertEqual(processor.get_not_deleted("my_schema"), ["my_table"])
-                self.assertEqual(processor.get_not_deleted("other_schema"), [])
-                self.assertEqual(processor.get_deleted("my_schema"), [])
-                self.assertEqual(processor.get_deleted("other_schema"), [])
+                assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
+                assert processor.get_not_deleted("other_schema") == frozenset()
+                assert processor.get_deleted("my_schema") == []
+                assert processor.get_deleted("other_schema") == []
 
     def test_drop_view_regex_works_as_expected(self):
         """Check if the DROP_VIEW regex works as expected."""
         for template in VALID_DROP_VIEW_STATEMENT_TEMPLATES:
-            print(f"{template}")
             return_value = [template.format(table_name="my_schema.my_table")]
 
             with patch.object(
@@ -266,17 +259,14 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
                 )
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-                self.assertEqual(processor.get_not_deleted("my_schema"), [])
-                self.assertEqual(processor.get_not_deleted("other_schema"), [])
-                self.assertEqual(
-                    processor.get_deleted("my_schema"), [("my_schema", "my_table")]
-                )
-                self.assertEqual(processor.get_deleted("other_schema"), [])
+                assert processor.get_not_deleted("my_schema") == frozenset()
+                assert processor.get_not_deleted("other_schema") == frozenset()
+                assert processor.get_deleted("my_schema") == [("my_schema", "my_table")]
+                assert processor.get_deleted("other_schema") == []
 
     def test_comment_regex_works_as_expected(self):
         """Check if the COMMENT regex works as expected."""
         for template in VALID_COMMENT_STATEMENT_TEMPLATES:
-            print(f"{template}")
             return_value = [template.format(table_name="my_schema.my_table")]
 
             with patch.object(
@@ -289,10 +279,10 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
                 )
                 processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-                self.assertEqual(processor.get_not_deleted("my_schema"), ["my_table"])
-                self.assertEqual(processor.get_not_deleted("other_schema"), [])
-                self.assertEqual(processor.get_deleted("my_schema"), [])
-                self.assertEqual(processor.get_deleted("other_schema"), [])
+                assert processor.get_not_deleted("my_schema") == frozenset({"my_table"})
+                assert processor.get_not_deleted("other_schema") == frozenset()
+                assert processor.get_deleted("my_schema") == []
+                assert processor.get_deleted("other_schema") == []
 
     def test_default_schema_works_as_expected(self):
         """Check if when no schema is present in the table name, the default_schema is used."""
@@ -310,7 +300,9 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
             )
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-            self.assertEqual(processor.get_not_deleted("default_schema"), ["my_table"])
+            assert processor.get_not_deleted("default_schema") == frozenset(
+                {"my_table"}
+            )
 
     def test_no_duplicates_are_allowed(self):
         """Checks if only the first time table is seen it is saved."""
@@ -330,10 +322,8 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
             )
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-            self.assertEqual(
-                processor.get_deleted("my_schema"), [("my_schema", "my_table")]
-            )
-            self.assertEqual(processor.get_not_deleted("my_schema"), [])
+            assert processor.get_deleted("my_schema") == [("my_schema", "my_table")]
+            assert processor.get_not_deleted("my_schema") == frozenset()
 
     def test_bulk(self):
         """Check if the result is as expected from many tables."""
@@ -383,93 +373,154 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
             # schema_1
-            self.assertLessEqual(
-                len(
-                    processor.get_deleted("schema_1")
-                    + processor.get_not_deleted("schema_1")
-                ),
-                4,
+            assert (
+                len(processor.get_deleted("schema_1"))
+                + len(processor.get_not_deleted("schema_1"))
+            ) <= 4
+
+            assert all(
+                table_name in ["table_1", "table_2", "table_3", "table_4"]
+                for table_name in processor.get_not_deleted("schema_1")
             )
 
-            self.assertTrue(
-                all(
-                    table_name in ["table_1", "table_2", "table_3", "table_4"]
-                    for table_name in (processor.get_not_deleted("schema_1"))
-                )
-            )
-
-            self.assertTrue(
-                all(
-                    table_name in ["table_1", "table_2", "table_3", "table_4"]
-                    for (_, table_name) in (processor.get_deleted("schema_1"))
-                )
+            assert all(
+                table_name in ["table_1", "table_2", "table_3", "table_4"]
+                for (_, table_name) in processor.get_deleted("schema_1")
             )
 
             # schema_2
-            self.assertLessEqual(
-                len(
-                    processor.get_deleted("schema_2")
-                    + processor.get_not_deleted("schema_2")
-                ),
-                1,
+            assert (
+                len(processor.get_deleted("schema_2"))
+                + len(processor.get_not_deleted("schema_2"))
+            ) <= 1
+
+            assert all(
+                table_name == "table_1"
+                for table_name in processor.get_not_deleted("schema_2")
             )
 
-            self.assertTrue(
-                all(
-                    table_name == "table_1"
-                    for table_name in (processor.get_not_deleted("schema_2"))
-                )
-            )
-
-            self.assertTrue(
-                all(
-                    table_name == "table_1"
-                    for (_, table_name) in (processor.get_deleted("schema_2"))
-                )
+            assert all(
+                table_name == "table_1"
+                for (_, table_name) in processor.get_deleted("schema_2")
             )
 
             # schema_3
-            self.assertLessEqual(
-                len(
-                    processor.get_deleted("schema_3")
-                    + processor.get_not_deleted("schema_3")
-                ),
-                3,
+            assert (
+                len(processor.get_deleted("schema_3"))
+                + len(processor.get_not_deleted("schema_3"))
+            ) <= 3
+
+            assert all(
+                table_name in ["table_1", "table_2", "table_4"]
+                for table_name in processor.get_not_deleted("schema_3")
             )
 
-            self.assertTrue(
-                all(
-                    table_name in ["table_1", "table_2", "table_4"]
-                    for table_name in (processor.get_not_deleted("schema_3"))
-                )
-            )
-
-            self.assertTrue(
-                all(
-                    table_name in ["table_1", "table_2", "table_4"]
-                    for (_, table_name) in (processor.get_deleted("schema_3"))
-                )
+            assert all(
+                table_name in ["table_1", "table_2", "table_4"]
+                for (_, table_name) in processor.get_deleted("schema_3")
             )
 
             # default_schema
-            self.assertLessEqual(
-                len(
-                    processor.get_deleted("default_schema")
-                    + processor.get_not_deleted("default_schema")
-                ),
-                2,
+            assert (
+                len(processor.get_deleted("default_schema"))
+                + len(processor.get_not_deleted("default_schema"))
+            ) <= 2
+
+            assert all(
+                table_name in ["table_1", "table_2"]
+                for table_name in processor.get_not_deleted("default_schema")
             )
 
-            self.assertTrue(
-                all(
-                    table_name in ["table_1", "table_2"]
-                    for table_name in (processor.get_not_deleted("default_schema"))
-                )
+            assert all(
+                table_name in ["table_1", "table_2"]
+                for (_, table_name) in processor.get_deleted("default_schema")
             )
 
-            self.assertTrue(
-                all(
-                    table_name in ["table_1", "table_2"]
-                    for (_, table_name) in (processor.get_deleted("default_schema"))
-                )
+    def test_get_not_deleted_returns_frozenset(self):
+        """Verify get_not_deleted returns a frozenset for O(1) membership checks."""
+        return_value = [
+            VALID_CREATE_TABLE_STATEMENT_TEMPLATES[0].format(
+                table_name="my_schema.my_table"
             )
+        ]
+
+        with patch.object(
+            RedshiftIncrementalTableProcessor,
+            "_query_for_changes",
+            return_value=return_value,
+        ):
+            processor = RedshiftIncrementalTableProcessor.create(
+                create_autospec(Connection), "default_schema"
+            )
+            processor.set_table_map("my_database", datetime(2020, 1, 1))
+
+            result = processor.get_not_deleted("my_schema")
+            assert isinstance(result, frozenset)
+            assert "my_table" in result
+
+    def test_clean_statement_normalizes_whitespace_and_strips_quotes(self):
+        """Verify _clean_statement replaces whitespace chars and removes double quotes."""
+        processor = RedshiftIncrementalTableProcessor.create(
+            create_autospec(Connection), "default_schema"
+        )
+        raw = 'CREATE\tTABLE\n"my_schema"."my_table"\v(col INT)'
+        cleaned = processor._clean_statement(raw)
+
+        assert "\t" not in cleaned
+        assert "\n" not in cleaned
+        assert "\v" not in cleaned
+        assert '"' not in cleaned
+        assert "CREATE" in cleaned
+        assert "my_table" in cleaned
+
+    def test_keyword_dispatch_candidates_mapping(self):
+        """Verify _KW_TO_CANDIDATES routes each DDL keyword to the correct candidate patterns."""
+        assert set(_KW_TO_CANDIDATES.keys()) == {"ALTER", "CREATE", "DROP", "COMMENT"}
+        assert len(_KW_TO_CANDIDATES["ALTER"]) == 2
+        assert len(_KW_TO_CANDIDATES["CREATE"]) == 2
+        assert len(_KW_TO_CANDIDATES["DROP"]) == 2
+        assert len(_KW_TO_CANDIDATES["COMMENT"]) == 1
+
+    def test_first_kw_re_matches_ddl_keywords(self):
+        """Verify _FIRST_KW_RE extracts the first DDL keyword from a statement."""
+        assert _FIRST_KW_RE.search("CREATE TABLE my_table").group(1).upper() == "CREATE"
+        assert _FIRST_KW_RE.search("ALTER TABLE my_table").group(1).upper() == "ALTER"
+        assert _FIRST_KW_RE.search("DROP TABLE my_table").group(1).upper() == "DROP"
+        assert (
+            _FIRST_KW_RE.search("COMMENT ON TABLE my_table IS NULL").group(1).upper()
+            == "COMMENT"
+        )
+        assert _FIRST_KW_RE.search("SELECT * FROM my_table") is None
+
+    def test_unknown_keyword_does_not_register_table(self):
+        """Verify statements without a DDL keyword don't add entries to the table map."""
+        return_value = ["SELECT * FROM my_schema.my_table"]
+
+        with patch.object(
+            RedshiftIncrementalTableProcessor,
+            "_query_for_changes",
+            return_value=return_value,
+        ):
+            processor = RedshiftIncrementalTableProcessor.create(
+                create_autospec(Connection), "default_schema"
+            )
+            processor.set_table_map("my_database", datetime(2020, 1, 1))
+
+            assert processor.get_not_deleted("my_schema") == frozenset()
+            assert processor.get_deleted("my_schema") == []
+
+    def test_quoted_table_names_are_matched_after_cleaning(self):
+        """Verify quoted table names are matched after double-quote removal by _clean_statement."""
+        return_value = ['CREATE TABLE "my_schema"."my_table" (col INT)']
+
+        with patch.object(
+            RedshiftIncrementalTableProcessor,
+            "_query_for_changes",
+            return_value=return_value,
+        ):
+            processor = RedshiftIncrementalTableProcessor.create(
+                create_autospec(Connection), "default_schema"
+            )
+            processor.set_table_map("my_database", datetime(2020, 1, 1))
+
+            assert "my_table" in processor.get_not_deleted("my_schema")

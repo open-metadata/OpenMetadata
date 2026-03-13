@@ -158,6 +158,10 @@
       "type": "boolean",
       "default": false
     },
+    "entityStatus": {
+      "description": "Status of the entity.",
+      "$ref": "../../type/status.json"
+    },
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },

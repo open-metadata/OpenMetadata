@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Grid } from '@mui/material';
 import {
+  Button,
   Card,
   Col,
   Divider,
@@ -430,11 +430,10 @@ const AddNotificationPage = () => {
                       )}
 
                       <Col span={24}>
-                        <Grid container justifyContent="end" spacing={2}>
+                        <div className="flex justify-end gap-2">
                           <Button
-                            className="float-right"
                             data-testid="cancel-button"
-                            variant="text"
+                            type="text"
                             onClick={() => navigate(-1)}>
                             {t('label.cancel')}
                           </Button>
@@ -453,14 +452,13 @@ const AddNotificationPage = () => {
                             )
                           )}
                           <Button
-                            className="float-right"
                             data-testid="save-button"
+                            htmlType="submit"
                             loading={isButtonLoading}
-                            type="submit"
-                            variant="contained">
+                            type="primary">
                             {t('label.save')}
                           </Button>
-                        </Grid>
+                        </div>
                       </Col>
                     </Row>
                   )}

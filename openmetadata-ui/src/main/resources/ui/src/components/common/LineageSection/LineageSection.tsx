@@ -10,14 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  ButtonBase,
-  Divider,
-  Stack,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Button, Divider, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,40 +25,34 @@ import {
   LineageItemProps,
   LineageSectionProps,
 } from './LineageSection.interface';
-import {
-  getIconWrapperStyles,
-  getSectionStyles,
-  getTextStyles,
-} from './LineageSection.styles';
 
 const LineageItem = React.memo<LineageItemProps>(function LineageItem({
   type,
   Icon,
   count,
   onClick,
-  sectionSx,
-  iconWrapperSx,
-  textSx,
 }) {
   const { t } = useTranslation();
 
   return (
-    <ButtonBase
+    <Button
+      color="tertiary"
       data-testid={`${type}-lineage`}
-      sx={sectionSx}
+      iconLeading={<Icon height={14} width={14} />}
+      size="sm"
       onClick={onClick}>
-      <Box sx={iconWrapperSx}>
-        <Icon height={14} width={14} />
-      </Box>
-      <Stack direction="row" spacing={0.5}>
-        <Typography sx={textSx}>
+      <div className="tw:flex tw:flex-row tw:gap-1">
+        <Typography as="p" className="tw:text-blue-700 tw:font-normal">
           {t('label.-with-colon', { text: t(`label.${type}`) })}
         </Typography>
-        <Typography data-testid={`${type}-count`} sx={textSx}>
+        <Typography
+          as="p"
+          className="tw:text-blue-700 tw:font-normal"
+          data-testid={`${type}-count`}>
           {count}
         </Typography>
-      </Stack>
-    </ButtonBase>
+      </div>
+    </Button>
   );
 });
 
@@ -74,7 +61,6 @@ const LineageSection: React.FC<LineageSectionProps> = ({
   entityType,
   onLineageClick,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const [lineagePagingInfo, setLineagePagingInfo] =
     useState<LineagePagingInfo | null>(null);
@@ -109,7 +95,6 @@ const LineageSection: React.FC<LineageSectionProps> = ({
   }, [entityFqn, entityType]);
 
   const { upstreamCount, downstreamCount } = useMemo(() => {
-    // Get count for depth 1 entities only
     const upstream = getEntityCountAtDepth(
       lineagePagingInfo?.upstreamDepthInfo,
       1
@@ -128,68 +113,47 @@ const LineageSection: React.FC<LineageSectionProps> = ({
     onLineageClick?.();
   }, [onLineageClick]);
 
-  const iconWrapperSx = useMemo(() => getIconWrapperStyles(theme), [theme]);
-  const textSx = useMemo(() => getTextStyles(theme), [theme]);
-  const upstreamSectionSx = useMemo(() => getSectionStyles(2.5), []);
-  const downstreamSectionSx = useMemo(() => getSectionStyles(2), []);
+  const renderContent = useMemo(() => {
+    if (isLoading) {
+      return <Loader size="small" />;
+    }
 
-  return (
-    <Box
-      data-testid="lineage-section"
-      sx={{
-        paddingX: theme.spacing(3.25),
-        paddingBottom: theme.spacing(4),
-        borderBottom: `0.6px solid ${theme.palette.allShades?.gray?.[200]}`,
-      }}>
-      <Typography
-        sx={{
-          fontWeight: theme.typography.h1.fontWeight,
-          fontSize: '13px',
-          mb: theme.spacing(3),
-        }}>
-        {t('label.lineage')}
-      </Typography>
-      {isLoading ? (
-        <Loader size="small" />
-      ) : !hasLineage ? (
-        <Typography
-          color={theme.palette.allShades?.gray?.[500]}
-          fontSize={theme.typography.caption.fontSize}>
+    if (!hasLineage) {
+      return (
+        <Typography as="span" className="tw:text-gray-500 tw:text-xs">
           {t('message.no-lineage-available')}
         </Typography>
-      ) : (
-        <Stack direction="row" spacing={0} width="fit-content">
-          <LineageItem
-            Icon={UpstreamIcon}
-            count={upstreamCount}
-            iconWrapperSx={iconWrapperSx}
-            sectionSx={upstreamSectionSx}
-            textSx={textSx}
-            type="upstream"
-            onClick={handleClick}
-          />
-          <Divider
-            flexItem
-            orientation="vertical"
-            sx={{
-              alignSelf: 'center',
-              height: theme.spacing(5),
-              marginX: theme.spacing(4),
-              borderColor: theme.palette.allShades?.gray?.[200],
-            }}
-          />
-          <LineageItem
-            Icon={DownstreamIcon}
-            count={downstreamCount}
-            iconWrapperSx={iconWrapperSx}
-            sectionSx={downstreamSectionSx}
-            textSx={textSx}
-            type="downstream"
-            onClick={handleClick}
-          />
-        </Stack>
-      )}
-    </Box>
+      );
+    }
+
+    return (
+      <div className="tw:flex tw:flex-row tw:gap-3">
+        <LineageItem
+          Icon={UpstreamIcon}
+          count={upstreamCount}
+          type="upstream"
+          onClick={handleClick}
+        />
+        <Divider className="tw:self-center tw:h-5" orientation="vertical" />
+        <LineageItem
+          Icon={DownstreamIcon}
+          count={downstreamCount}
+          type="downstream"
+          onClick={handleClick}
+        />
+      </div>
+    );
+  }, [hasLineage, isLoading, downstreamCount, handleClick, t, upstreamCount]);
+
+  return (
+    <div
+      className="tw:px-3.25 tw:pb-4 tw:border-b tw:border-gray-200"
+      data-testid="lineage-section">
+      <Typography as="p" className="tw:font-bold tw:text-gray-400">
+        {t('label.lineage')}
+      </Typography>
+      {renderContent}
+    </div>
   );
 };
 

@@ -40,6 +40,10 @@ export interface DashboardService {
      */
     domains?: EntityReference[];
     /**
+     * Status of the entity.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Followers of this entity.
      */
     followers?: EntityReference[];
@@ -217,10 +221,15 @@ export interface DashboardConnection {
  * Grafana Connection Config
  *
  * Hex Connection Config
+ *
+ * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
+ * create, deploy, and manage paginated reports
  */
 export interface Connection {
     /**
      * Regex exclude or include charts that matches the pattern.
+     *
+     * Regex to exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
     /**
@@ -286,6 +295,8 @@ export interface Connection {
      * URL to the Grafana instance.
      *
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
+     *
+     * Host and Port of the Ssrs instance.
      */
     hostPort?: string;
     /**
@@ -322,6 +333,8 @@ export interface Connection {
      * Password to connect to PowerBI report server.
      *
      * Password to connect to MicroStrategy.
+     *
+     * Password to connect to Ssrs.
      */
     password?: string;
     /**
@@ -333,6 +346,8 @@ export interface Connection {
      *
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
+     *
+     * Username to connect to Ssrs.
      */
     username?: string;
     /**
@@ -404,10 +419,15 @@ export interface Connection {
     /**
      * Tableau Site Name.
      */
-    siteName?:  string;
+    siteName?: string;
+    /**
+     * SSL Configuration details.
+     */
     sslConfig?: CertificatesSSLConfig;
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
      */
     verifySSL?: boolean | VerifySSL;
     /**
@@ -695,6 +715,8 @@ export interface CertificatesSSLConfig {
  * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to exclude or include charts that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1024,6 +1046,8 @@ export enum SupersetConnectionType {
 
 /**
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -1409,6 +1433,7 @@ export enum DashboardServiceType {
     QuickSight = "QuickSight",
     Redash = "Redash",
     Sigma = "Sigma",
+    Ssrs = "Ssrs",
     Superset = "Superset",
     Tableau = "Tableau",
     ThoughtSpot = "ThoughtSpot",
@@ -1470,6 +1495,21 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the entity.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**

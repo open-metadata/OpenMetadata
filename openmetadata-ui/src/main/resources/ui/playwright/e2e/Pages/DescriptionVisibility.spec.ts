@@ -132,8 +132,7 @@ test.describe('Long Description Visibility', () => {
               id: persona.responseData.id,
               name: persona.responseData.name,
               displayName: persona.responseData.displayName,
-              fullyQualifiedName:
-                persona.responseData.fullyQualifiedName,
+              fullyQualifiedName: persona.responseData.fullyQualifiedName,
               type: 'persona',
             },
           },
@@ -144,8 +143,7 @@ test.describe('Long Description Visibility', () => {
               id: persona.responseData.id,
               name: persona.responseData.name,
               displayName: persona.responseData.displayName,
-              fullyQualifiedName:
-                persona.responseData.fullyQualifiedName,
+              fullyQualifiedName: persona.responseData.fullyQualifiedName,
               type: 'persona',
             },
           },
@@ -221,9 +219,7 @@ test.describe('Long Description Visibility', () => {
     const descContainer = page.getByTestId('asset-description-container');
     await expect(descContainer).toBeVisible();
 
-    await expect(
-      descContainer.getByTestId('read-more-button')
-    ).toBeVisible();
+    await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
 
     await expect(
       descContainer.getByText(LONG_DESCRIPTION_END_TEXT)
@@ -245,17 +241,13 @@ test.describe('Long Description Visibility', () => {
 
     await verifyEndOfDescriptionReachable(descContainer, page);
 
-    await expect(
-      descContainer.getByTestId('read-less-button')
-    ).toBeVisible();
+    await expect(descContainer.getByTestId('read-less-button')).toBeVisible();
 
     await descContainer.getByTestId('read-less-button').click();
     await expect(
       descContainer.getByText(LONG_DESCRIPTION_END_TEXT)
     ).not.toBeVisible();
-    await expect(
-      descContainer.getByTestId('read-more-button')
-    ).toBeVisible();
+    await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
   });
 
   test('Data Product description card collapse hides content and expand restores it', async ({
@@ -287,9 +279,7 @@ test.describe('Long Description Visibility', () => {
     const descContainer = page.getByTestId('asset-description-container');
     await expect(descContainer).toBeVisible();
 
-    await expect(
-      descContainer.getByTestId('read-more-button')
-    ).toBeVisible();
+    await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
 
     await expect(
       descContainer.getByText(LONG_DESCRIPTION_END_TEXT)
@@ -308,17 +298,13 @@ test.describe('Long Description Visibility', () => {
 
     await verifyEndOfDescriptionReachable(descContainer, page);
 
-    await expect(
-      descContainer.getByTestId('read-less-button')
-    ).toBeVisible();
+    await expect(descContainer.getByTestId('read-less-button')).toBeVisible();
 
     await descContainer.getByTestId('read-less-button').click();
     await expect(
       descContainer.getByText(LONG_DESCRIPTION_END_TEXT)
     ).not.toBeVisible();
-    await expect(
-      descContainer.getByTestId('read-more-button')
-    ).toBeVisible();
+    await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
   });
 
   test('Glossary description card collapse hides content and expand restores it', async ({
@@ -347,9 +333,7 @@ test.describe('Long Description Visibility', () => {
     const descContainer = page.getByTestId('asset-description-container');
     await expect(descContainer).toBeVisible();
 
-    await expect(
-      descContainer.getByTestId('read-more-button')
-    ).toBeVisible();
+    await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
 
     await expect(
       descContainer.getByText(LONG_DESCRIPTION_END_TEXT)
@@ -368,17 +352,13 @@ test.describe('Long Description Visibility', () => {
 
     await verifyEndOfDescriptionReachable(descContainer, page);
 
-    await expect(
-      descContainer.getByTestId('read-less-button')
-    ).toBeVisible();
+    await expect(descContainer.getByTestId('read-less-button')).toBeVisible();
 
     await descContainer.getByTestId('read-less-button').click();
     await expect(
       descContainer.getByText(LONG_DESCRIPTION_END_TEXT)
     ).not.toBeVisible();
-    await expect(
-      descContainer.getByTestId('read-more-button')
-    ).toBeVisible();
+    await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
   });
 
   test('Glossary Term description card collapse hides content and expand restores it', async ({
@@ -407,15 +387,10 @@ test.describe('Long Description Visibility', () => {
     await adminUser.login(adminPage);
     await redirectToHomePage(adminPage);
 
-    const personaListResponse =
-      adminPage.waitForResponse('/api/v1/personas?*');
+    const personaListResponse = adminPage.waitForResponse('/api/v1/personas?*');
     await settingClick(adminPage, GlobalSettingOptions.PERSONA);
     await personaListResponse;
-    await navigateToPersonaWithPagination(
-      adminPage,
-      persona.data.name,
-      true
-    );
+    await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
     await adminPage.waitForLoadState('networkidle');
 
@@ -437,15 +412,11 @@ test.describe('Long Description Visibility', () => {
     await expect(addButton).toBeEnabled();
     await addButton.click();
 
-    await expect(
-      adminPage.getByTestId('tab-Description Tab')
-    ).toBeVisible();
+    await expect(adminPage.getByTestId('tab-Description Tab')).toBeVisible();
 
     // Wait for dialog to close
     await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
-    await adminPage
-      .locator('.ant-modal-wrap')
-      .waitFor({ state: 'detached' });
+    await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
 
     // Add Description widget to custom tab
     const addWidgetButton = adminPage

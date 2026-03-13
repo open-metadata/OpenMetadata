@@ -83,8 +83,9 @@ const StoredProcedurePage = () => {
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { tab: activeTab = EntityTabs.CODE } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.CODE } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
 
   const { entityFqn: decodedStoredProcedureFQN } = useFqn({
     type: EntityType.STORED_PROCEDURE,

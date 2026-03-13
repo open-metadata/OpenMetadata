@@ -621,7 +621,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Drive Service Directories page', () => {
-    const driveService = new DriveServiceClass();
+    const driveService = new DriveServiceClass(`pw-drive-service-${uuid()}`);
     let serviceFqn: string;
 
     test.beforeAll(async ({ browser }) => {
@@ -672,7 +672,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Drive Service Files page', () => {
-    const driveService = new DriveServiceClass();
+    const driveService = new DriveServiceClass(`pw-drive-service-${uuid()}`);
     let serviceFqn: string;
 
     test.beforeAll(async ({ browser }) => {
@@ -820,7 +820,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Drive Service Spreadsheets page', () => {
-    const driveService = new DriveServiceClass();
+    const driveService = new DriveServiceClass(`pw-drive-service-${uuid()}`);
     let serviceFqn: string;
 
     test.beforeAll(async ({ browser }) => {

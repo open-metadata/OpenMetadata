@@ -60,11 +60,35 @@ export const RIGHT_PANEL_ASSET_TYPES = [
   'Metric',
 ] as const;
 
-export type AssetType = typeof RIGHT_PANEL_ASSET_TYPES[number] | string;
+export type AssetType = (typeof RIGHT_PANEL_ASSET_TYPES)[number] | string;
 
 // Interface for entities that have children
 interface EntityWithChildren extends EntityClass {
   children: unknown[];
+}
+
+// Page context enum for reusability across different pages
+export enum PageContext {
+  EXPLORE = 'explore',
+  ENTITY_DETAILS = 'entity-details',
+  LINEAGE = 'lineage',
+  SERVICE_DETAILS = 'service-details',
+}
+
+// Role permissions interface for role-based testing
+export interface RolePermissions {
+  canEditDescription: boolean;
+  canEditOwners: boolean;
+  canEditTags: boolean;
+  canEditGlossaryTerms: boolean;
+  canEditTier: boolean;
+  canEditDomains: boolean;
+  canEditDataProducts: boolean;
+  canEditCustomProperties: boolean;
+  canViewDataQuality: boolean;
+  canViewLineage: boolean;
+  canViewSchema: boolean;
+  canViewCustomProperties: boolean;
 }
 
 // Configuration for different data asset types and their right panel characteristics
@@ -73,11 +97,6 @@ export interface DataAssetConfig {
   childrenTabId?: string;
   availableTabs: string[];
   hasSchemaTab?: boolean;
-  hasTasksTab?: boolean;
-  hasFeaturesTab?: boolean;
-  hasFieldsTab?: boolean;
-  hasModelTab?: boolean;
-  hasChartsTab?: boolean;
   supportsDataQuality?: boolean;
   supportsCustomProperties?: boolean;
 }
@@ -86,6 +105,9 @@ export class RightPanelPageObject {
   public readonly page: Page;
   private readonly summaryPanel = '.entity-summary-panel-container';
   private entityConfig?: DataAssetConfig;
+  private entityEndpoint?: string;
+  private rolePermissions?: RolePermissions;
+  private pageContext: PageContext = PageContext.EXPLORE;
 
   // Section page objects
   public readonly overview: OverviewPageObject;
@@ -99,6 +121,17 @@ export class RightPanelPageObject {
     loader: '[data-testid="loader"]',
     selectableList: '[data-testid="selectable-list"]',
   };
+
+  // Locators for verifyPermissions and panel load checks
+  private readonly panelEditDescription: Locator;
+  private readonly panelEditOwners: Locator;
+  private readonly panelEditTags: Locator;
+  private readonly panelEditGlossaryTerms: Locator;
+  private readonly panelEditTier: Locator;
+  private readonly panelAddDomain: Locator;
+  private readonly panelEditDataProducts: Locator;
+  private readonly panelLoaders: Locator;
+  private readonly pageLoader: Locator;
 
   // Data asset configurations aligned with EntityRightPanelVerticalNav (hasSchemaTab, hasLineageTab, data quality for Table only, hasCustomPropertiesTab)
   private static readonly DATA_ASSET_CONFIGS: Record<string, DataAssetConfig> =
@@ -313,6 +346,29 @@ export class RightPanelPageObject {
     this.dataQuality = new DataQualityPageObject(this);
     this.customProperties = new CustomPropertiesPageObject(this);
 
+    this.panelEditDescription = this.getSummaryPanel().locator(
+      '[data-testid="edit-description"]'
+    );
+    this.panelEditOwners = this.getSummaryPanel().locator(
+      '[data-testid="edit-owners"]'
+    );
+    this.panelEditTags = this.getSummaryPanel().locator(
+      '[data-testid="edit-icon-tags"]'
+    );
+    this.panelEditGlossaryTerms = this.getSummaryPanel().locator(
+      '[data-testid="edit-glossary-terms"]'
+    );
+    this.panelEditTier = this.getSummaryPanel().locator(
+      '[data-testid="edit-icon-tier"]'
+    );
+    this.panelAddDomain = this.getSummaryPanel().getByTestId('add-domain');
+    this.panelEditDataProducts =
+      this.getSummaryPanel().getByTestId('edit-data-products');
+    this.panelLoaders = this.getSummaryPanel().locator(
+      '[data-testid="loader"]'
+    );
+    this.pageLoader = this.page.locator('[data-testid="loader"]');
+
     // Set entity configuration if provided
     if (entity) {
       this.setEntityConfig(entity);
@@ -324,6 +380,7 @@ export class RightPanelPageObject {
    * @param entity - EntityClass instance to configure for
    */
   public setEntityConfig(entity: EntityClass): void {
+    this.entityEndpoint = entity.endpoint;
     const entityType = entity.getType();
     this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[entityType];
 
@@ -358,6 +415,196 @@ export class RightPanelPageObject {
         supportsCustomProperties: true,
       };
     }
+  }
+
+  /**
+   * Set role permissions for permission-based testing
+   * @param role - User role (Admin, DataSteward, DataConsumer)
+   */
+  public setRolePermissions(
+    role: 'Admin' | 'DataSteward' | 'DataConsumer'
+  ): void {
+    switch (role) {
+      case 'Admin':
+        this.rolePermissions = {
+          canEditDescription: true,
+          canEditOwners: true,
+          canEditTags: true,
+          canEditGlossaryTerms: true,
+          canEditTier: true,
+          canEditDomains: true,
+          canEditDataProducts: true,
+          canEditCustomProperties: true,
+          canViewDataQuality: true,
+          canViewLineage: true,
+          canViewSchema: true,
+          canViewCustomProperties: true,
+        };
+        break;
+      case 'DataSteward':
+        this.rolePermissions = {
+          canEditDescription: true,
+          canEditOwners: true,
+          canEditTags: true,
+          canEditGlossaryTerms: true,
+          canEditTier: true,
+          canEditDomains: false,
+          canEditDataProducts: false,
+          canEditCustomProperties: true,
+          canViewDataQuality: true,
+          canViewLineage: true,
+          canViewSchema: true,
+          canViewCustomProperties: true,
+        };
+        break;
+      case 'DataConsumer':
+        this.rolePermissions = {
+          canEditDescription: true,
+          canEditOwners: false,
+          canEditTags: true,
+          canEditGlossaryTerms: true,
+          canEditTier: true,
+          canEditDomains: false,
+          canEditDataProducts: false,
+          canEditCustomProperties: false,
+          canViewDataQuality: true,
+          canViewLineage: true,
+          canViewSchema: true,
+          canViewCustomProperties: true,
+        };
+        break;
+    }
+  }
+
+  /**
+   * Verify that UI elements match role permissions
+   * Checks visibility of edit buttons based on configured role
+   */
+  public async verifyPermissions(isOwnerless: boolean = true): Promise<void> {
+    if (!this.rolePermissions) {
+      throw new Error(
+        'Role permissions not set. Call setRolePermissions first.'
+      );
+    }
+
+    // 1. Description
+    if (this.rolePermissions.canEditDescription) {
+      await expect(this.panelEditDescription).toBeVisible();
+    } else {
+      await expect(this.panelEditDescription).not.toBeVisible();
+    }
+
+    // 2. Owners
+    if (this.rolePermissions.canEditOwners) {
+      await expect(this.panelEditOwners).toBeVisible();
+    } else {
+      // In OpenMetadata, if an entity has no owner, any user can claim it.
+      // Therefore, the edit-owners button will be visible even if the user
+      // lacks EditOwners permission, provided the entity is ownerless.
+      if (!isOwnerless) {
+        await expect(this.panelEditOwners).not.toBeVisible();
+      }
+    }
+
+    // 3. Tags
+    if (this.rolePermissions.canEditTags) {
+      await expect(this.panelEditTags).toBeVisible();
+    } else {
+      await expect(this.panelEditTags).not.toBeVisible();
+    }
+
+    // 4. Glossary Terms
+    if (this.rolePermissions.canEditGlossaryTerms) {
+      await expect(this.panelEditGlossaryTerms).toBeVisible();
+    } else {
+      await expect(this.panelEditGlossaryTerms).not.toBeVisible();
+    }
+
+    // 5. Tier
+    if (this.rolePermissions.canEditTier) {
+      await expect(this.panelEditTier).toBeVisible();
+    } else {
+      await expect(this.panelEditTier).not.toBeVisible();
+    }
+
+    // 6. Domains
+    if (this.rolePermissions.canEditDomains) {
+      await expect(this.panelAddDomain).toBeVisible();
+    } else {
+      await expect(this.panelAddDomain).not.toBeVisible();
+    }
+
+    // 7. Data Products
+    if (this.rolePermissions.canEditDataProducts) {
+      await expect(this.panelEditDataProducts).toBeVisible();
+    } else {
+      await expect(this.panelEditDataProducts).not.toBeVisible();
+    }
+
+    // 8. Custom Properties (Edit)
+    if (
+      this.rolePermissions.canEditCustomProperties &&
+      this.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)
+    ) {
+      // Check if edit button inside custom properties tab is visible (requires navigation if not in tab)
+      // For now, checks if the tab itself is visible as proxy or check if we are in the tab.
+      // A better check would be to navigate to the tab and check the edit button, but that changes state.
+      // We will check if the custom properties tab is present.
+      const tab = this.getTabLocator(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES);
+      await expect(tab).toBeVisible();
+    }
+
+    // 9. Data Quality (View)
+    if (
+      this.rolePermissions.canViewDataQuality &&
+      this.isTabAvailable(RIGHT_PANEL_TAB.DATA_QUALITY)
+    ) {
+      const tab = this.getTabLocator(RIGHT_PANEL_TAB.DATA_QUALITY);
+      await expect(tab).toBeVisible();
+    }
+
+    // 10. Lineage (View)
+    if (
+      this.rolePermissions.canViewLineage &&
+      this.isTabAvailable(RIGHT_PANEL_TAB.LINEAGE)
+    ) {
+      const tab = this.getTabLocator(RIGHT_PANEL_TAB.LINEAGE);
+      await expect(tab).toBeVisible();
+    }
+
+    // 11. Schema (View)
+    if (
+      this.rolePermissions.canViewSchema &&
+      this.isTabAvailable(RIGHT_PANEL_TAB.SCHEMA)
+    ) {
+      const tab = this.getTabLocator(RIGHT_PANEL_TAB.SCHEMA);
+      await expect(tab).toBeVisible();
+    }
+
+    // 12. Custom Properties (View)
+    if (
+      this.rolePermissions.canViewCustomProperties &&
+      this.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)
+    ) {
+      const tab = this.getTabLocator(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES);
+      await expect(tab).toBeVisible();
+    }
+  }
+
+  /**
+   * Set the page context for context-aware behavior
+   * @param context - Page context (explore, entity-details, lineage, etc.)
+   */
+  public setPageContext(context: PageContext): void {
+    this.pageContext = context;
+  }
+
+  /**
+   * Get the current page context
+   * @returns Current page context
+   */
+  public getPageContext(): PageContext {
+    return this.pageContext;
   }
 
   /**
@@ -423,6 +670,10 @@ export class RightPanelPageObject {
    */
   public getEntityConfig(): DataAssetConfig | undefined {
     return this.entityConfig;
+  }
+
+  public getEntityEndpoint(): string | undefined {
+    return this.entityEndpoint;
   }
 
   /**
@@ -493,90 +744,10 @@ export class RightPanelPageObject {
    * Verify content in the children tab based on entity type
    */
   private async verifyChildrenTabContent(): Promise<void> {
-    if (!this.entityConfig) {
+    if (!this.entityConfig?.hasSchemaTab) {
       return;
     }
-
-    // Verify entity-specific content based on type
-    if (this.entityConfig.hasSchemaTab) {
-      await this.verifySchemaTabContent();
-    } else if (this.entityConfig.hasTasksTab) {
-      await this.verifyTasksTabContent();
-    } else if (this.entityConfig.hasFeaturesTab) {
-      await this.verifyFeaturesTabContent();
-    } else if (this.entityConfig.hasFieldsTab) {
-      await this.verifyFieldsTabContent();
-    } else if (this.entityConfig.hasModelTab) {
-      await this.verifyModelTabContent();
-    } else if (this.entityConfig.hasChartsTab) {
-      await this.verifyChartsTabContent();
-    }
-  }
-
-  /**
-   * Verify schema tab content (for Tables, Topics, API Endpoints)
-   */
-  private async verifySchemaTabContent(): Promise<void> {
-    // Schema tab verification logic
-    await this.page.waitForSelector(this.testIds.loader, {
-      state: 'detached',
-    });
-    // Additional schema-specific verifications can be added here
-  }
-
-  /**
-   * Verify tasks tab content (for Pipelines)
-   */
-  private async verifyTasksTabContent(): Promise<void> {
-    // Tasks tab verification logic
-    await this.page.waitForSelector(this.testIds.loader, {
-      state: 'detached',
-    });
-    // Additional tasks-specific verifications can be added here
-  }
-
-  /**
-   * Verify features tab content (for ML Models)
-   */
-  private async verifyFeaturesTabContent(): Promise<void> {
-    // Features tab verification logic
-    await this.page.waitForSelector(this.testIds.loader, {
-      state: 'detached',
-    });
-    // Additional features-specific verifications can be added here
-  }
-
-  /**
-   * Verify fields tab content (for Search Indexes)
-   */
-  private async verifyFieldsTabContent(): Promise<void> {
-    // Fields tab verification logic
-    await this.page.waitForSelector(this.testIds.loader, {
-      state: 'detached',
-    });
-    // Additional fields-specific verifications can be added here
-  }
-
-  /**
-   * Verify model tab content (for Dashboard Data Models)
-   */
-  private async verifyModelTabContent(): Promise<void> {
-    // Model tab verification logic
-    await this.page.waitForSelector(this.testIds.loader, {
-      state: 'detached',
-    });
-    // Additional model-specific verifications can be added here
-  }
-
-  /**
-   * Verify charts tab content (for Dashboards)
-   */
-  private async verifyChartsTabContent(): Promise<void> {
-    // Charts tab verification logic
-    await this.page.waitForSelector(this.testIds.loader, {
-      state: 'detached',
-    });
-    // Additional charts-specific verifications can be added here
+    await this.schema.assertInternalFields(this.entityConfig.entityType);
   }
 
   /**
@@ -761,19 +932,10 @@ export class RightPanelPageObject {
     await this.getSummaryPanel().waitFor({ state: 'visible', timeout });
 
     // Step 2: Wait for all loaders within the panel to disappear
-    // Use the summary panel as the scope for loaders
-    const panelLoaders = this.getSummaryPanel().locator(
-      '[data-testid="loader"]'
-    );
-
-    // Wait for loader count to become 0 within the panel
-    await expect(panelLoaders).toHaveCount(0, { timeout });
+    await expect(this.panelLoaders).toHaveCount(0, { timeout });
 
     // Step 3: Wait for any remaining loaders on the page (fallback)
-    await this.page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-      timeout,
-    });
+    await this.pageLoader.waitFor({ state: 'detached', timeout });
 
     // Step 4: Ensure panel is still visible and stable
     await this.getSummaryPanel().waitFor({ state: 'visible' });
@@ -785,9 +947,7 @@ export class RightPanelPageObject {
   async navigateToTab(tabName: string) {
     const tab = this.getTabLocator(tabName);
     await tab.click();
-    await this.page.waitForSelector(this.testIds.loader, {
-      state: 'detached',
-    });
+    await this.pageLoader.waitFor({ state: 'detached' });
   }
 
   /**
@@ -862,9 +1022,7 @@ export class RightPanelPageObject {
    * Wait for all loaders to disappear
    */
   async waitForLoadersToDisappear() {
-    await this.page.waitForSelector(this.testIds.loader, {
-      state: 'detached',
-    });
+    await this.pageLoader.waitFor({ state: 'detached' });
   }
 
   /**

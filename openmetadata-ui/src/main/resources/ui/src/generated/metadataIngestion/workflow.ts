@@ -43,6 +43,11 @@ export interface OpenMetadataWorkflowConfig {
      */
     ingestionPipelineFQN?: string;
     /**
+     * Name of the ingestion runner executing this workflow. Set at dispatch time by the
+     * execution environment.
+     */
+    ingestionRunnerName?: string;
+    /**
      * Unique identifier of pipeline run, used to identify the current pipeline run
      */
     pipelineRunId?: string;
@@ -175,6 +180,9 @@ export interface ServiceConnection {
  * Grafana Connection Config
  *
  * Hex Connection Config
+ *
+ * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
+ * create, deploy, and manage paginated reports
  *
  * Google BigQuery Connection Config
  *
@@ -452,6 +460,8 @@ export interface ConfigObject {
     type?: PurpleType;
     /**
      * Regex exclude or include charts that matches the pattern.
+     *
+     * Regex to exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
     /**
@@ -529,6 +539,8 @@ export interface ConfigObject {
      * URL to the Grafana instance.
      *
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
+     *
+     * Host and Port of the Ssrs instance.
      *
      * BigQuery APIs URL.
      *
@@ -657,6 +669,8 @@ export interface ConfigObject {
      *
      * Password to connect to MicroStrategy.
      *
+     * Password to connect to Ssrs.
+     *
      * Password to connect to AzureSQL.
      *
      * Password to connect to Clickhouse.
@@ -678,8 +692,6 @@ export interface ConfigObject {
      * Password to connect to Oracle.
      *
      * Password to connect to Presto.
-     *
-     * Password to connect to Redshift.
      *
      * Password to connect to Salesforce.
      *
@@ -729,6 +741,8 @@ export interface ConfigObject {
      *
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
+     *
+     * Username to connect to Ssrs.
      *
      * Username to connect to AzureSQL. This user should have privileges to read the metadata.
      *
@@ -920,6 +934,8 @@ export interface ConfigObject {
      *
      * Choose Auth Config Type.
      *
+     * Choose Auth Configuration Type.
+     *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
      * Types of methods used to authenticate to the alation instance
@@ -949,10 +965,10 @@ export interface ConfigObject {
      */
     siteName?: string;
     /**
+     * SSL Configuration details.
+     *
      * SSL Configuration details for DB2 connection. Provide CA certificate for server
      * validation, and optionally client certificate and key for mutual TLS authentication.
-     *
-     * SSL Configuration details.
      *
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
@@ -962,6 +978,8 @@ export interface ConfigObject {
     sslConfig?: SSLConfigObject;
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
      *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *
@@ -1186,6 +1204,12 @@ export interface ConfigObject {
      * multi-regions are not yet in GA.
      */
     usageLocation?: string;
+    /**
+     * Catalog ID for Athena. For S3 Tables, use the format 's3tablescatalog/<bucket-name>'. For
+     * cross-account Glue catalogs, use the AWS account ID. If not provided, defaults to the
+     * caller's AWS account.
+     */
+    catalogId?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -1422,6 +1446,11 @@ export interface ConfigObject {
      */
     preserveIdentifierCase?: boolean;
     /**
+     * Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA
+     * privileges.
+     */
+    useDBATable?: boolean;
+    /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      *
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
@@ -1559,6 +1588,12 @@ export interface ConfigObject {
      * Prefix of the data source.
      */
     prefix?: string;
+    /**
+     * Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS
+     * Coldline/Archive). When enabled, only files in hot/standard storage tiers will be
+     * processed.
+     */
+    skipColdStorage?: boolean;
     /**
      * Couchbase connection Bucket options.
      */
@@ -2184,6 +2219,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only include/exclude tables that matches the pattern.
  *
+ * Regex to exclude or include charts that matches the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -2351,6 +2388,8 @@ export enum AuthProvider {
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
+ *
+ * Choose Auth Configuration Type.
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
@@ -3825,6 +3864,8 @@ export enum ConnectionType {
 /**
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
+ * Client SSL verification.
+ *
  * Flag to verify SSL Certificate for OpenMetadata Server.
  */
 export enum VerifySSL {
@@ -4802,6 +4843,7 @@ export enum PurpleType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    Ssrs = "Ssrs",
     StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",
@@ -5093,6 +5135,11 @@ export interface Pipeline {
      */
     includeDraftDashboard?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of usage metadata for dashboards. When
+     * enabled, usage statistics will be collected and ingested.
+     */
+    includeUsage?: boolean;
+    /**
      * Details required to generate Lineage
      */
     lineageInformation?: LineageInformation;
@@ -5141,15 +5188,15 @@ export interface Pipeline {
      */
     computeColumnMetrics?: boolean;
     /**
-     * Option to turn on/off computing profiler metrics.
-     */
-    computeMetrics?: boolean;
-    /**
      * Option to turn on/off table metric computation. If enabled, profiler will compute table
      * level metrics.
      */
     computeTableMetrics?: boolean;
-    processingEngine?:    ProcessingEngine;
+    /**
+     * List of metrics to compute. If empty, then all metrics will be computed
+     */
+    metrics?:          MetricType[];
+    processingEngine?: ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -5166,16 +5213,17 @@ export interface Pipeline {
     /**
      * Number of threads to use during metric computations
      */
-    threadCount?: number;
+    threadCount?: number | null;
     /**
      * Profiler Timeout in Seconds
      */
     timeoutSeconds?: number;
     /**
-     * Use system tables to extract metrics. Metrics that cannot be gathered from system tables
-     * will use the default methods. Using system tables can be faster but requires gathering
-     * statistics before running (for example using the ANALYZE procedure). More information can
-     * be found in the documentation: https://docs.openmetadata.org/latest/profler
+     * Use system tables to extract table metrics. Metrics that cannot be gathered from system
+     * tables will use the default methods. Using system tables can be faster but requires
+     * gathering statistics before running (for example using the ANALYZE procedure). More
+     * information can be found in the documentation:
+     * https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
     /**
@@ -5589,6 +5637,17 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Per-entity-type override for time series max days. Keys are entity type names (e.g.
+     * testCaseResult, queryCostRecord), values are number of days. Entities not listed here use
+     * the default Time Series Max Days value.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Default 0 (index all data).
+     * Set to a positive value like 15 to limit to recent data only.
+     */
+    timeSeriesMaxDays?: number;
     /**
      * Enable distributed indexing to scale reindexing across multiple servers with fault
      * tolerance and parallel processing
@@ -6790,6 +6849,48 @@ export interface LineageInformation {
      */
     storageServiceNames?: string[];
     [property: string]: any;
+}
+
+/**
+ * This schema defines all possible metric types in OpenMetadata.
+ */
+export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
+    ColumnCount = "columnCount",
+    ColumnNames = "columnNames",
+    CountInSet = "countInSet",
+    DistinctCount = "distinctCount",
+    DistinctProportion = "distinctProportion",
+    DuplicateCount = "duplicateCount",
+    FirstQuartile = "firstQuartile",
+    Histogram = "histogram",
+    ILikeCount = "iLikeCount",
+    ILikeRatio = "iLikeRatio",
+    InterQuartileRange = "interQuartileRange",
+    LikeCount = "likeCount",
+    LikeRatio = "likeRatio",
+    Max = "max",
+    MaxLength = "maxLength",
+    Mean = "mean",
+    Median = "median",
+    Min = "min",
+    MinLength = "minLength",
+    NonParametricSkew = "nonParametricSkew",
+    NotLikeCount = "notLikeCount",
+    NotRegexCount = "notRegexCount",
+    NullCount = "nullCount",
+    NullMissingCount = "nullMissingCount",
+    NullProportion = "nullProportion",
+    RegexCount = "regexCount",
+    RowCount = "rowCount",
+    Stddev = "stddev",
+    Sum = "sum",
+    System = "system",
+    ThirdQuartile = "thirdQuartile",
+    UniqueCount = "uniqueCount",
+    UniqueProportion = "uniqueProportion",
+    ValueRank = "valueRank",
+    ValuesCount = "valuesCount",
 }
 
 /**

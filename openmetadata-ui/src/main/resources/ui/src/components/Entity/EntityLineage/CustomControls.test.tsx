@@ -90,10 +90,8 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     onExportClick: mockOnExportClick,
-    onLineageConfigUpdate: mockOnLineageConfigUpdate,
     selectedQuickFilters: [],
     setSelectedQuickFilters: mockSetSelectedQuickFilters,
-    lineageConfig: mockLineageConfig,
     nodes: [],
   })),
 }));
@@ -117,6 +115,17 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
     search: '?mode=lineage&depth=3&dir=downstream',
   }));
 });
+
+jest.mock('../../../hooks/useLineageStore', () => ({
+  useLineageStore: jest.fn().mockImplementation(() => ({
+    isDQEnabled: false,
+    setLineageConfig: mockOnLineageConfigUpdate,
+    lineageConfig: {},
+    toggleEditMode: jest.fn(),
+    isEditMode: false,
+    platformView: false,
+  })),
+}));
 
 // Mock window.location
 Object.defineProperty(window, 'location', {
@@ -184,6 +193,24 @@ describe('CustomControls', () => {
     });
 
     expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+  });
+
+  it('Not shows SearchBar when in impact analysis mode & onSearchValueChange is not provided', () => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=3&dir=downstream',
+    }));
+
+    render(
+      <CustomControlsComponent
+        {...defaultProps}
+        onSearchValueChange={undefined}
+      />,
+      {
+        wrapper: Wrapper,
+      }
+    );
+
+    expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
   });
 
   it('toggles filter selection when filter button is clicked', () => {

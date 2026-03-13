@@ -120,7 +120,13 @@
 }
 
 .entity-list-body {
+  flex: 1;
   min-width: 0px;
+}
+
+.custom-property-card .entity-list-body {
+  max-height: 128px;
+  overflow-y: auto;
 }
 
 .value-container {
@@ -129,4 +135,11 @@
   display: flex;
   align-items: center;
   gap: @size-md;
+}
+
+.custom-property-scrollable-container {
+  flex: 1;
+  min-width: 0px;
+  max-height: 200px;
+  overflow-y: auto;
 }

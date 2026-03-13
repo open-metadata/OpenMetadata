@@ -157,6 +157,23 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
 
     try {
       thread = feedRepository.getTask(about, TaskType.RecognizerFeedbackApproval, TaskStatus.Open);
+      // Update the existing thread with new assignees before terminating the workflow
+      TaskDetails updatedTaskDetails =
+          new TaskDetails()
+              .withAssignees(FeedMapper.formatAssignees(assignees))
+              .withType(TaskType.RecognizerFeedbackApproval)
+              .withStatus(TaskStatus.Open)
+              .withFeedback(feedback);
+
+      thread
+          .withTask(updatedTaskDetails)
+          .withUpdatedBy(createdByFqn)
+          .withUpdatedAt(System.currentTimeMillis());
+
+      // Save the updated thread to database
+      Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+
+      // Now terminate the old workflow instance
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
       LOG.debug(

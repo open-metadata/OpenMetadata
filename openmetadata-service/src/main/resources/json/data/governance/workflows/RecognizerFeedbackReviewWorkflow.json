@@ -10,7 +10,8 @@
     "config": {
       "entityTypes": ["recognizerFeedback"],
       "events": ["Created", "Updated"],
-      "exclude": ["reviewers"],
+      "exclude": [],
+      "include": [],
       "filter": {}
     },
     "output": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"]
@@ -29,7 +30,9 @@
       "displayName": "Review Recognizer Feedback",
       "config": {
         "assignees": {
-          "addReviewers": true
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": []
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1

@@ -55,6 +55,11 @@ public class IndexingFailureRecorder implements AutoCloseable {
         stackTrace);
   }
 
+  public void recordReaderEntityFailure(
+      String entityType, String entityId, String entityFqn, String errorMessage) {
+    recordFailure(entityType, entityId, entityFqn, FailureStage.READER, errorMessage, null);
+  }
+
   public void recordSinkFailure(
       String entityType, String entityId, String entityFqn, String errorMessage) {
     recordSinkFailure(entityType, entityId, entityFqn, errorMessage, null);
@@ -202,6 +207,7 @@ public class IndexingFailureRecorder implements AutoCloseable {
     if (closed) {
       return;
     }
+    LOG.info("Closing failure recorder for job {} (buffered={})", jobId, buffer.size());
     closed = true;
     flush();
   }

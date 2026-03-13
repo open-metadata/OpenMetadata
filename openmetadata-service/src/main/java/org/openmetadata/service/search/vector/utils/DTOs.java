@@ -18,6 +18,7 @@ public final class DTOs {
     public String query = "";
     public Map<String, List<String>> filters = Map.of();
     public int size = 10;
+    public Integer from = 0;
     public int k = 1_000;
     public double threshold = 0.0;
   }

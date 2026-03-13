@@ -46,6 +46,7 @@ import { Paging } from '../../generated/type/paging';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -88,12 +89,9 @@ import { StyledMenu, StyledToggleButtonGroup } from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
 
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
-  const {
-    selectedQuickFilters,
-    setSelectedQuickFilters,
-    lineageConfig,
-    updateEntityData,
-  } = useLineageProvider();
+  const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
+    useLineageProvider();
+  const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { t } = useTranslation();
@@ -272,12 +270,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         onChange={(_, value) => {
           handlePageChange(1);
           updateURLParams({ dir: value });
-        }}>
+        }}
+      >
         {radioGroupOptions.map((option) => (
           <ToggleButton
             className="font-semibold"
             key={option.value}
-            value={option.value}>
+            value={option.value}
+          >
             {option.label}
           </ToggleButton>
         ))}
@@ -330,7 +330,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               },
             },
           }}
-          onClick={(event) => setImpactOnEl(event.currentTarget)}>
+          onClick={(event) => setImpactOnEl(event.currentTarget)}
+        >
           <Transi18next
             i18nKey="label.impact-on-area"
             renderElement={<span className="m-l-xss text-primary" />}
@@ -340,7 +341,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <StyledMenu
           anchorEl={impactOnEl}
           open={Boolean(impactOnEl)}
-          onClose={() => setImpactOnEl(null)}>
+          onClose={() => setImpactOnEl(null)}
+        >
           {LINEAGE_IMPACT_OPTIONS.map((option) => (
             <MenuItem
               key={option.key}
@@ -349,7 +351,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
                 setSelectedImpactLevel(option.key);
                 handlePageChange(currentPage);
                 setImpactOnEl(null);
-              }}>
+              }}
+            >
               {option.icon}
               {option.label}
             </MenuItem>
@@ -483,23 +486,33 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         nodeDepthOptions={nodeDepthOptions}
         queryFilterNodeIds={filterNodeIds}
         searchValue={searchValue}
-        onSearchValueChange={setSearchValue}
+        onSearchValueChange={
+          impactLevel === EImpactLevel.TableLevel ? setSearchValue : undefined
+        }
       />
     );
-  }, [searchValue, lineagePagingInfo, nodeDepthOptions, filterNodeIds]);
+  }, [
+    searchValue,
+    lineagePagingInfo,
+    nodeDepthOptions,
+    filterNodeIds,
+    impactLevel,
+  ]);
 
   // Render function for column names with search highlighting and popover
   const renderName = useCallback(
     (_: string, record: SearchSourceAlias) => (
       <EntityPopOverCard
         entityFQN={record.fullyQualifiedName ?? ''}
-        entityType={record.entityType ?? ''}>
+        entityType={record.entityType ?? ''}
+      >
         <Link
           to={getEntityLinkFromType(
             record.fullyQualifiedName ?? '',
             record.entityType as EntityType,
             record
-          )}>
+          )}
+        >
           {stringToHTML(
             highlightSearchText(getEntityName(record), searchValue)
           )}
@@ -655,7 +668,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
-            )}>
+            )}
+          >
             {stringToHTML(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
@@ -680,7 +694,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
-            )}>
+            )}
+          >
             {stringToHTML(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
@@ -801,7 +816,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         'lineage-card lineage-card-table'
       )}
       data-testid="lineage-card-table"
-      title={cardHeader}>
+      title={cardHeader}
+    >
       <Table
         bordered
         className="h-full"
@@ -811,7 +827,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
         entityType="impact_analysis"
         extraTableFilters={extraTableFilters}
-        key={`lineage-table-${impactLevel}-${lineageDirection}`}
+        key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
         loading={loading}
         locale={{
           emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,

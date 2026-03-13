@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { Table } from '../../../src/generated/entity/data/table';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
@@ -287,6 +286,7 @@ test.describe(
     test('expand collapse should only visible for nested columns', async ({
       page,
     }) => {
+      test.slow();
       await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
 
       await page.waitForLoadState('networkidle');
@@ -328,11 +328,17 @@ test.describe(
       });
 
       const colsResponse = page.waitForResponse(
-        '/api/v1/tables/name/*/columns?*'
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns'
+            ) && response.request().method() === 'GET'
       );
       await page.getByRole('tab', { name: 'Column Profile' }).click();
 
-      await colsResponse;
+      const data = await colsResponse;
+      expect(data.status()).toBe(200);
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -639,7 +645,11 @@ test.describe(
     const largeTable = new TableClass();
     const largeTableName = `large_table_${uuid()}`;
     const targetColumnName = 'test_col_071';
-    let createdTable: Table;
+    type TableColumn = NonNullable<
+      Parameters<TableClass['createAdditionalTable']>[0]['columns']
+    >[number];
+    type ColumnDataType = TableColumn['dataType'];
+    let createdTable: Record<string, ColumnDataType | string | number>;
 
     test.beforeAll('Setup large table', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -648,12 +658,12 @@ test.describe(
       await largeTable.create(apiContext);
 
       // Generate columns
-      const columns = [];
+      const columns: TableColumn[] = [];
       // Create modest number of columns to ensure pagination/search is active
       for (let i = 0; i < 50; i++) {
         columns.push({
           name: `extra_col_${i}`,
-          dataType: 'VARCHAR',
+          dataType: 'VARCHAR' as ColumnDataType,
           dataLength: 100,
           dataTypeDisplay: 'varchar',
           description: `Extra column ${i}`,
@@ -662,7 +672,7 @@ test.describe(
       // Add the target column
       columns.push({
         name: targetColumnName,
-        dataType: 'VARCHAR',
+        dataType: 'VARCHAR' as ColumnDataType,
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'Target column for search test',
@@ -685,6 +695,7 @@ test.describe(
     test('Search for column, copy link, and verify side panel behavior', async ({
       page,
     }) => {
+      test.slow();
       await redirectToHomePage(page);
 
       const columnsResponse = page.waitForResponse(
@@ -727,11 +738,21 @@ test.describe(
       expect(clipboardText).toContain(targetColumnName);
 
       // 5. Visit the copied Link
-      const visitLinkResponse = page.waitForResponse((response) =>
-        response.url().includes(`/table/${createdTable.fullyQualifiedName}`)
-      );
-      await page.goto(clipboardText);
-      await visitLinkResponse;
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(
+                `/api/v1/tables/name/${encodeURIComponent(
+                  createdTable.fullyQualifiedName
+                )}/columns`
+              ) &&
+            response.url().includes('fields=') &&
+            response.request().method() === 'GET'
+        ),
+        page.goto(clipboardText),
+      ]);
       await waitForAllLoadersToDisappear(page);
 
       // 6. Verify Side Panel is open

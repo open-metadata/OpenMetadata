@@ -198,6 +198,7 @@ describe('isDomainExist', () => {
                           EntityType.TEST_SUITE,
                           EntityType.QUERY,
                           EntityType.TEST_CASE,
+                          EntityType.TABLE_COLUMN,
                         ],
                       },
                     },
@@ -254,7 +255,8 @@ describe('isDomainExist', () => {
       expect(excludedEntityTypes).toContain(EntityType.TEST_SUITE);
       expect(excludedEntityTypes).toContain(EntityType.QUERY);
       expect(excludedEntityTypes).toContain(EntityType.TEST_CASE);
-      expect(excludedEntityTypes).toHaveLength(4);
+      expect(excludedEntityTypes).toContain(EntityType.TABLE_COLUMN);
+      expect(excludedEntityTypes).toHaveLength(5);
     });
 
     it('should handle empty string parameters', () => {
@@ -449,6 +451,25 @@ describe('withDomainFilter', () => {
       expect(result.params?.query_filter).toBeUndefined();
     });
 
+    it('should use fullyQualifiedName field for DOMAIN index searches', () => {
+      mockGetPathName.mockReturnValue('/api/search');
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.DOMAIN,
+      });
+      const result = withDomainFilter(config);
+      const queryFilter = JSON.parse(result.params?.query_filter as string);
+      const shouldClauses =
+        queryFilter.query.bool.must[queryFilter.query.bool.must.length - 1].bool
+          .should;
+
+      expect(shouldClauses).toEqual([
+        { term: { fullyQualifiedName: 'engineering' } },
+        { prefix: { fullyQualifiedName: 'engineering.' } },
+      ]);
+    });
+
     it('should preserve existing query_filter and add should filter', () => {
       mockGetPathName.mockReturnValue('/api/search');
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
@@ -612,67 +633,67 @@ describe('withDomainFilter', () => {
       });
     });
 
-      it('should preserve existing params when adding query_filter', () => {
-        mockGetPathName.mockReturnValue('/api/search');
-        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+    it('should preserve existing params when adding query_filter', () => {
+      mockGetPathName.mockReturnValue('/api/search');
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-        const config = createMockConfig('get', '/search/query', {
-          index: SearchIndex.TABLE,
-          limit: 10,
-          offset: 0,
-        });
-        const result = withDomainFilter(config);
-
-        expect(result.params).toHaveProperty('index', SearchIndex.TABLE);
-        expect(result.params).toHaveProperty('limit', 10);
-        expect(result.params).toHaveProperty('offset', 0);
-        expect(result.params).toHaveProperty('query_filter');
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.TABLE,
+        limit: 10,
+        offset: 0,
       });
+      const result = withDomainFilter(config);
 
-      it('should preserve non-bool top-level clauses when adding domain filter', () => {
-        mockGetPathName.mockReturnValue('/api/search');
-        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
-
-        const existingFilter = JSON.stringify({
-          query: {
-            term: { 'some.field': 'someValue' },
-            bool: { must: [{ term: { 'other.field': 'otherValue' } }] },
-          },
-        });
-
-        const config = createMockConfig('get', '/search/query', {
-          index: SearchIndex.TABLE,
-          query_filter: existingFilter,
-        });
-        const result = withDomainFilter(config);
-
-        const parsed = JSON.parse(result.params?.query_filter as string);
-
-        expect(parsed.query.bool.must).toContainEqual({
-          term: { 'some.field': 'someValue' },
-        });
-        expect(parsed.query.bool.must).toContainEqual({
-          term: { 'other.field': 'otherValue' },
-        });
-        expect(parsed.query.bool.must).toContainEqual({
-          bool: {
-            should: [
-              {
-                term: {
-                  'domains.fullyQualifiedName': 'engineering',
-                },
-              },
-              {
-                prefix: {
-                  'domains.fullyQualifiedName': 'engineering.',
-                },
-              },
-            ],
-          },
-        });
-        expect(parsed.query.bool.must).toHaveLength(3);
-      });
+      expect(result.params).toHaveProperty('index', SearchIndex.TABLE);
+      expect(result.params).toHaveProperty('limit', 10);
+      expect(result.params).toHaveProperty('offset', 0);
+      expect(result.params).toHaveProperty('query_filter');
     });
+
+    it('should preserve non-bool top-level clauses when adding domain filter', () => {
+      mockGetPathName.mockReturnValue('/api/search');
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const existingFilter = JSON.stringify({
+        query: {
+          term: { 'some.field': 'someValue' },
+          bool: { must: [{ term: { 'other.field': 'otherValue' } }] },
+        },
+      });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.TABLE,
+        query_filter: existingFilter,
+      });
+      const result = withDomainFilter(config);
+
+      const parsed = JSON.parse(result.params?.query_filter as string);
+
+      expect(parsed.query.bool.must).toContainEqual({
+        term: { 'some.field': 'someValue' },
+      });
+      expect(parsed.query.bool.must).toContainEqual({
+        term: { 'other.field': 'otherValue' },
+      });
+      expect(parsed.query.bool.must).toContainEqual({
+        bool: {
+          should: [
+            {
+              term: {
+                'domains.fullyQualifiedName': 'engineering',
+              },
+            },
+            {
+              prefix: {
+                'domains.fullyQualifiedName': 'engineering.',
+              },
+            },
+          ],
+        },
+      });
+      expect(parsed.query.bool.must).toHaveLength(3);
+    });
+  });
 
   describe('nested domain paths', () => {
     it('should handle nested domain paths correctly', () => {

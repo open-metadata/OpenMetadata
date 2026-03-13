@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToNotMatchRegex import (
     BaseColumnValuesToNotMatchRegexValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_pandas,
@@ -65,6 +62,7 @@ class ColumnValuesToNotMatchRegexValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
@@ -96,14 +94,14 @@ class ColumnValuesToNotMatchRegexValidator(
 
             dfs = self.runner
             not_regex_count_impl = add_props(expression=forbidden_regex)(
-                Metrics.NOT_REGEX_COUNT.value
+                Metrics.notRegexCount.value
             )(column).get_pandas_computation()
-            row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()
+            row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.NOT_REGEX_COUNT.name: not_regex_count_impl.create_accumulator(),
-                    Metrics.ROW_COUNT.name: row_count_impl.create_accumulator(),
+                    Metrics.notRegexCount.name: not_regex_count_impl.create_accumulator(),
+                    Metrics.rowCount.name: row_count_impl.create_accumulator(),
                 }
             )
 
@@ -115,34 +113,34 @@ class ColumnValuesToNotMatchRegexValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.NOT_REGEX_COUNT.name
+                        Metrics.notRegexCount.name
                     ] = not_regex_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][
-                            Metrics.NOT_REGEX_COUNT.name
+                            Metrics.notRegexCount.name
                         ],
                         group_df,
                     )
                     dimension_aggregates[dimension_value][
-                        Metrics.ROW_COUNT.name
+                        Metrics.rowCount.name
                     ] = row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.ROW_COUNT.name],
+                        dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 not_regex_count = not_regex_count_impl.aggregate_accumulator(
-                    agg[Metrics.NOT_REGEX_COUNT.name]
+                    agg[Metrics.notRegexCount.name]
                 )
                 row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.ROW_COUNT.name]
+                    agg[Metrics.rowCount.name]
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.NOT_REGEX_COUNT.name: not_regex_count,
-                        Metrics.ROW_COUNT.name: row_count,
+                        Metrics.notRegexCount.name: not_regex_count,
+                        Metrics.rowCount.name: row_count,
                         DIMENSION_TOTAL_COUNT_KEY: row_count,
                         DIMENSION_FAILED_COUNT_KEY: not_regex_count,
                     }
@@ -160,27 +158,15 @@ class ColumnValuesToNotMatchRegexValidator(
                 results_df = aggregate_others_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                 )
 
-                for row_dict in results_df.to_dict("records"):
-                    metric_values = self._build_metric_values_from_row(
-                        row_dict, metrics_to_compute, test_params
-                    )
-
-                    evaluation = self._evaluate_test_condition(
-                        metric_values, test_params
-                    )
-
-                    dimension_result = self._create_dimension_result(
-                        row_dict,
-                        dimension_col.name,
-                        metric_values,
-                        evaluation,
-                        test_params,
-                    )
-
-                    dimension_results.append(dimension_result)
+                dimension_results = self._process_dimension_rows(
+                    results_df.to_dict("records"),
+                    dimension_col.name,
+                    metrics_to_compute,
+                    test_params,
+                )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

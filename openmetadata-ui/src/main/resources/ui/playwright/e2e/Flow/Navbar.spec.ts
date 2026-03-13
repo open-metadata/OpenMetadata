@@ -23,21 +23,29 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 for (const searchItem of navbarSearchItems) {
   const { label, searchIndex } = searchItem;
 
-  test(`Search Term - ${label}`, PLAYWRIGHT_BASIC_TEST_TAG_OBJ, async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.EXPLORE);
-    await page.waitForLoadState('networkidle');
+  test(
+    `Search Term - ${label}`,
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    async ({ page }) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await page.waitForLoadState('networkidle');
 
-    await selectOption(page, page.getByTestId('global-search-selector'), label);
+      await selectOption(
+        page,
+        page.getByTestId('global-search-selector'),
+        label
+      );
 
-    await expect(page.getByTestId('global-search-selector')).toContainText(
-      label
-    );
+      await expect(page.getByTestId('global-search-selector')).toContainText(
+        label
+      );
 
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=*&index=${searchIndex}**`
-    );
-    await page.getByTestId('searchBox').fill('dim');
-    await searchRes;
-  });
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/query?q=*&index=${searchIndex}**`
+      );
+      await page.getByTestId('searchBox').fill('dim');
+      await searchRes;
+    }
+  );
 }

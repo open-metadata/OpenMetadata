@@ -4,7 +4,11 @@ import static org.openmetadata.service.governance.workflows.Workflow.getFlowable
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -38,6 +42,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.StartEven
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.UserTaskBuilder;
 
+@Slf4j
 public class UserApprovalTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
@@ -50,7 +55,9 @@ public class UserApprovalTask implements NodeInterface {
     FieldExtension assigneesExpr =
         new FieldExtensionBuilder()
             .fieldName("assigneesExpr")
-            .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getConfig().getAssignees()))
+            .fieldValue(
+                JsonUtils.pojoToJson(
+                    transformAssigneesForFlowable(nodeDefinition.getConfig().getAssignees())))
             .build();
 
     FieldExtension assigneesVarNameExpr =
@@ -264,5 +271,51 @@ public class UserApprovalTask implements NodeInterface {
     for (Message message : messages) {
       model.addMessage(message);
     }
+  }
+
+  /**
+   * Transform assignees configuration from EntityReference format to simplified format for Flowable.
+   * Separates candidates into users and teams arrays with FQNs only, avoiding NPEs and simplifying processing.
+   */
+  private Map<String, Object> transformAssigneesForFlowable(Object assigneesConfig) {
+    Map<String, Object> result = new HashMap<>();
+
+    // First convert the object to a Map using JsonUtils
+    Map<String, Object> config = JsonUtils.readOrConvertValue(assigneesConfig, Map.class);
+    if (config != null) {
+
+      // Copy boolean flags as-is
+      result.put("addReviewers", config.getOrDefault("addReviewers", true));
+      result.put("addOwners", config.getOrDefault("addOwners", false));
+
+      // Transform candidates from EntityReference to separate users and teams arrays
+      Set<String> users = new HashSet<>();
+      Set<String> teams = new HashSet<>();
+
+      Object candidatesObj = config.get("candidates");
+      if (candidatesObj instanceof List) {
+        List<?> candidates = (List<?>) candidatesObj;
+        for (Object candidate : candidates) {
+          if (candidate instanceof Map) {
+            Map<String, Object> candidateMap = (Map<String, Object>) candidate;
+            String type = (String) candidateMap.get("type");
+            String fqn = (String) candidateMap.get("fullyQualifiedName");
+
+            if (fqn != null) {
+              if ("user".equals(type)) {
+                users.add(fqn);
+              } else if ("team".equals(type)) {
+                teams.add(fqn);
+              }
+            }
+          }
+        }
+      }
+
+      result.put("users", new ArrayList<>(users));
+      result.put("teams", new ArrayList<>(teams));
+    }
+
+    return result;
   }
 }

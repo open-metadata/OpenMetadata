@@ -16,7 +16,7 @@ import re
 from typing import Optional
 
 from impala.sqlalchemy import ImpalaDialect, _impala_type_to_sqlalchemy_type
-from sqlalchemy import types, util
+from sqlalchemy import text, types, util
 from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
@@ -49,7 +49,7 @@ def get_impala_table_or_view_names(connection, schema=None, target_type="table")
     if schema:
         query += " IN " + schema
 
-    cursor = connection.execute(query)
+    cursor = connection.execute(text(query))
     results = cursor.fetchall()
     tables_and_views = [result[0] for result in results]
 
@@ -57,7 +57,7 @@ def get_impala_table_or_view_names(connection, schema=None, target_type="table")
 
     for table_view in tables_and_views:
         query = f"describe formatted `{schema}`.`{table_view}`"
-        cursor = connection.execute(query)
+        cursor = connection.execute(text(query))
         results = cursor.fetchall()
 
         for result in list(results):
@@ -96,7 +96,7 @@ def get_table_comment(
     query = IMPALA_GET_COMMENTS.format(
         schema_name=split_name[0], table_name=split_name[1]
     )
-    cursor = connection.execute(query)
+    cursor = connection.execute(text(query))
     results = cursor.fetchall()
 
     found_table_parameters = False
@@ -127,7 +127,7 @@ def get_columns(
     full_table_name = f"{schema}.{table_name}" if schema is not None else table_name
     split_name = full_table_name.split(".")
     query = f"DESCRIBE `{split_name[0]}`.`{split_name[1]}`"
-    describe_table_rows = connection.execute(query)
+    describe_table_rows = connection.execute(text(query))
     column_info = []
     ordinal_pos = 0
     for col in describe_table_rows:
@@ -168,7 +168,7 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     Gets the view definition
     """
     full_view_name = f"`{view_name}`" if not schema else f"`{schema}`.`{view_name}`"
-    res = connection.execute(f"SHOW CREATE VIEW {full_view_name}").fetchall()
+    res = connection.execute(text(f"SHOW CREATE VIEW {full_view_name}")).fetchall()
     if res:
         return "\n".join(i[0] for i in res)
     return None

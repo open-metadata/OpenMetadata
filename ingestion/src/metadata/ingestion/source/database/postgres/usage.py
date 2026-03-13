@@ -56,7 +56,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 row_count = 0
                 for row in rows:
                     row_count += 1
-                    row = dict(row)
+                    row = row._asdict()
                     try:
                         queries.append(
                             TableQuery(
@@ -98,5 +98,5 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
     def get_filters(self) -> str:
         if filter_condition := self.source_config.filterCondition:
             filter_condition = filter_condition.replace("%", "%%")
-            return f"{self.filters} AND s.{filter_condition}"
+            return f"{self.filters} AND (s.{filter_condition})"
         return self.filters

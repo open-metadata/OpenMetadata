@@ -21,6 +21,7 @@ import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,9 +39,11 @@ import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -59,6 +62,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.logstorage.LogStorageInterface;
+import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -80,9 +84,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
+  private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
+  @Setter @Getter private IngestionProgressTracker progressTracker;
 
   // HTTP/2 metrics tracking
   private static long http2RequestCount = 0;
@@ -156,17 +162,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Batch fetch service references for all pipelines
     Map<UUID, EntityReference> serviceRefs = batchFetchServices(pipelines);
 
-    // Set service field for all pipelines
+    // Batch fetch latest pipeline statuses if requested
+    Map<String, PipelineStatus> statusMap = Map.of();
+    if (fields.contains("pipelineStatuses")) {
+      statusMap = batchFetchLatestPipelineStatuses(pipelines);
+    }
+
     for (IngestionPipeline pipeline : pipelines) {
+      if (fields.contains("pipelineStatuses")) {
+        String fqnHash = FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
+        pipeline.setPipelineStatuses(statusMap.get(fqnHash));
+      }
       EntityReference serviceRef = serviceRefs.get(pipeline.getId());
-      pipeline.setPipelineStatuses(
-          fields.contains("pipelineStatuses")
-              ? getLatestPipelineStatus(pipeline)
-              : pipeline.getPipelineStatuses());
       if (serviceRef != null) {
         pipeline.withService(serviceRef);
       } else {
-        // Service is guaranteed to exist, so fetch it individually if batch fetch missed it
         LOG.warn(
             "Service not found in batch fetch for pipeline: {} (id: {}). Fetching individually.",
             pipeline.getName(),
@@ -182,6 +192,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         }
       }
     }
+  }
+
+  private Map<String, PipelineStatus> batchFetchLatestPipelineStatuses(
+      List<IngestionPipeline> pipelines) {
+    List<String> fqnHashes =
+        pipelines.stream()
+            .map(p -> FullyQualifiedName.buildHash(p.getFullyQualifiedName()))
+            .toList();
+    Map<String, String> jsonMap =
+        getLatestExtensionFromTimeSeriesBatch(fqnHashes, PIPELINE_STATUS_EXTENSION);
+    Map<String, PipelineStatus> result = new HashMap<>();
+    for (Map.Entry<String, String> entry : jsonMap.entrySet()) {
+      PipelineStatus status = JsonUtils.readValue(entry.getValue(), PipelineStatus.class);
+      if (status != null) {
+        result.put(entry.getKey(), status);
+      }
+    }
+    return result;
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<IngestionPipeline> pipelines) {
@@ -597,26 +625,61 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public ResultList<PipelineStatus> listPipelineStatus(
       String ingestionPipelineFQN, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs, null);
+  }
+
+  public ResultList<PipelineStatus> listPipelineStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs, Integer limit) {
     IngestionPipeline ingestionPipeline =
         getByName(null, ingestionPipelineFQN, getFields("service"));
+    Integer effectiveLimit = resolvePipelineStatusLimit(startTs, endTs, limit);
+    Long effectiveStartTs = Optional.ofNullable(startTs).orElse(Long.MIN_VALUE);
+    Long effectiveEndTs = Optional.ofNullable(endTs).orElse(Long.MAX_VALUE);
+    List<String> jsonResults;
+    if (effectiveLimit != null) {
+      jsonResults =
+          getResultsFromAndToTimestampsWithLimit(
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              effectiveStartTs,
+              effectiveEndTs,
+              EntityTimeSeriesDAO.OrderBy.DESC,
+              effectiveLimit);
+    } else {
+      jsonResults =
+          getResultsFromAndToTimestamps(
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              effectiveStartTs,
+              effectiveEndTs);
+    }
     List<PipelineStatus> pipelineStatusList =
-        JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(
-                ingestionPipeline.getFullyQualifiedName(),
-                PIPELINE_STATUS_EXTENSION,
-                startTs,
-                endTs),
-            PipelineStatus.class);
+        JsonUtils.readObjects(jsonResults, PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
       allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
     }
     allPipelineStatusList.addAll(pipelineStatusList);
+    allPipelineStatusList.sort(
+        Comparator.comparing(
+            PipelineStatus::getTimestamp, Comparator.nullsLast(Comparator.reverseOrder())));
+
+    if (effectiveLimit != null && allPipelineStatusList.size() > effectiveLimit) {
+      allPipelineStatusList = new ArrayList<>(allPipelineStatusList.subList(0, effectiveLimit));
+    }
+
     return new ResultList<>(
         allPipelineStatusList,
-        String.valueOf(startTs),
-        String.valueOf(endTs),
+        startTs != null ? String.valueOf(startTs) : null,
+        endTs != null ? String.valueOf(endTs) : null,
         allPipelineStatusList.size());
+  }
+
+  private Integer resolvePipelineStatusLimit(Long startTs, Long endTs, Integer limit) {
+    if (limit != null) {
+      return limit;
+    }
+    return startTs == null && endTs == null ? DEFAULT_RECENT_RUN_LIMIT : null;
   }
 
   /* Get the status of the external application by converting the configuration so that it can be
@@ -1112,6 +1175,93 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     } catch (Exception e) {
       return new ArrayList<>();
     }
+  }
+
+  public Response streamProgress(String pipelineFQN, UUID runId) {
+    if (progressTracker == null) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity("Progress tracking is not configured")
+          .build();
+    }
+
+    return Response.ok()
+        .type("text/event-stream")
+        .entity(
+            new jakarta.ws.rs.core.StreamingOutput() {
+              @Override
+              public void write(java.io.OutputStream output) throws java.io.IOException {
+                try {
+                  output.write("retry: 1000\n\n".getBytes());
+                  output.flush();
+
+                  IngestionProgressTracker.ProgressState currentState =
+                      progressTracker.getProgressState(pipelineFQN, runId);
+                  if (currentState != null && currentState.getLatestUpdate() != null) {
+                    String json =
+                        org.openmetadata.schema.utils.JsonUtils.pojoToJson(
+                            currentState.getLatestUpdate());
+                    output.write(
+                        String.format("data: %s\n\n", json)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    output.flush();
+                  }
+
+                  java.util.function.Consumer<ProgressUpdate> listener =
+                      update -> {
+                        try {
+                          String json = org.openmetadata.schema.utils.JsonUtils.pojoToJson(update);
+                          output.write(
+                              String.format("data: %s\n\n", json)
+                                  .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                          output.flush();
+                        } catch (java.io.IOException e) {
+                          LOG.debug(
+                              "Client disconnected for progress stream {}/{}", pipelineFQN, runId);
+                          throw new RuntimeException(e);
+                        }
+                      };
+
+                  progressTracker.registerProgressListener(pipelineFQN, runId, listener);
+
+                  try {
+                    while (!Thread.currentThread().isInterrupted()) {
+                      Thread.sleep(30000);
+                      output.write(": heartbeat\n\n".getBytes());
+                      output.flush();
+                    }
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                  } finally {
+                    progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
+                  }
+                } catch (Exception e) {
+                  LOG.error("Error streaming progress for {}/{}", pipelineFQN, runId, e);
+                }
+              }
+            })
+        .build();
+  }
+
+  public RestUtil.PutResponse<?> updateProgress(
+      String fqn, UUID runId, ProgressUpdate progressUpdate) {
+    if (progressTracker == null) {
+      LOG.debug("Progress tracking is not configured, ignoring progress update");
+      return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
+    }
+
+    progressTracker.updateProgress(fqn, runId, progressUpdate);
+    return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
+  }
+
+  public RestUtil.PutResponse<?> addOperationMetrics(
+      String fqn, UUID runId, OperationMetricsBatch batch) {
+    if (progressTracker == null) {
+      LOG.debug("Progress tracking is not configured, ignoring metrics batch");
+      return new RestUtil.PutResponse<>(Response.Status.OK, batch, ENTITY_FIELDS_CHANGED);
+    }
+
+    progressTracker.addMetricsBatch(fqn, runId, batch);
+    return new RestUtil.PutResponse<>(Response.Status.OK, batch, ENTITY_FIELDS_CHANGED);
   }
 
   public PipelineServiceClientResponse deployIngestionPipeline(

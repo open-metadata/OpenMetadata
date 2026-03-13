@@ -1207,25 +1207,36 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         tableAfterChange.getDomains().getFirst().getFullyQualifiedName(),
         "Domain FQN should match the new domain");
 
-    waitForSearchIndexing();
+    Awaitility.await("Wait for search index to reflect domain migration")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              List<EntityReference> searchIndexDomains =
+                  getEntityReferencesFromSearchIndex(
+                      table.getId(), "table_search_index", "domains");
+              assertNotNull(
+                  searchIndexDomains, "Table should be present in search index with domains");
+              assertEquals(
+                  1,
+                  searchIndexDomains.size(),
+                  "Search index should show exactly 1 domain after migration");
 
-    List<EntityReference> searchIndexDomains =
-        getEntityReferencesFromSearchIndex(table.getId(), "table_search_index", "domains");
-    assertNotNull(searchIndexDomains, "Table should be present in search index with domains");
-    assertEquals(
-        1, searchIndexDomains.size(), "Search index should show exactly 1 domain after migration");
+              List<UUID> searchDomainIds =
+                  searchIndexDomains.stream().map(EntityReference::getId).toList();
+              long uniqueSearchDomainIds = searchDomainIds.stream().distinct().count();
+              assertEquals(
+                  searchDomainIds.size(),
+                  uniqueSearchDomainIds,
+                  "No duplicate domains should exist in search index");
 
-    List<UUID> searchDomainIds = searchIndexDomains.stream().map(EntityReference::getId).toList();
-    long uniqueSearchDomainIds = searchDomainIds.stream().distinct().count();
-    assertEquals(
-        searchDomainIds.size(),
-        uniqueSearchDomainIds,
-        "No duplicate domains should exist in search index (all domain IDs should be unique)");
-
-    assertEquals(
-        domain2.getId(),
-        searchIndexDomains.getFirst().getId(),
-        "Search index should show the migrated domain2");
+              assertEquals(
+                  domain2.getId(),
+                  searchIndexDomains.getFirst().getId(),
+                  "Search index should show the migrated domain2");
+            });
   }
 
   @Test
@@ -1487,29 +1498,37 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         tableAfter.getDomains().get(0).getFullyQualifiedName(),
         "Domain FQN should match the new domain after consolidation");
 
-    waitForSearchIndexing();
+    Awaitility.await("Wait for search index to reflect domain consolidation")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              List<EntityReference> searchIndexDomains =
+                  getEntityReferencesFromSearchIndex(
+                      table.getId(), "table_search_index", "domains");
+              assertNotNull(
+                  searchIndexDomains,
+                  "Table should be present in search index with domains after consolidation");
+              assertEquals(
+                  1,
+                  searchIndexDomains.size(),
+                  "Search index should show exactly 1 domain after consolidation");
 
-    List<EntityReference> searchIndexDomains =
-        getEntityReferencesFromSearchIndex(table.getId(), "table_search_index", "domains");
-    assertNotNull(
-        searchIndexDomains,
-        "Table should be present in search index with domains after consolidation");
-    assertEquals(
-        1,
-        searchIndexDomains.size(),
-        "Search index should show exactly 1 domain after consolidation");
+              List<UUID> searchDomainIds =
+                  searchIndexDomains.stream().map(EntityReference::getId).toList();
+              long uniqueSearchDomainIds = searchDomainIds.stream().distinct().count();
+              assertEquals(
+                  searchDomainIds.size(),
+                  uniqueSearchDomainIds,
+                  "No duplicate domains in search index after consolidation");
 
-    List<UUID> searchDomainIds = searchIndexDomains.stream().map(EntityReference::getId).toList();
-    long uniqueSearchDomainIds = searchDomainIds.stream().distinct().count();
-    assertEquals(
-        searchDomainIds.size(),
-        uniqueSearchDomainIds,
-        "No duplicate domains in search index after domain change and consolidation");
-
-    assertEquals(
-        domain2.getId(),
-        searchIndexDomains.get(0).getId(),
-        "Search index should reflect domain2 after consolidation");
+              assertEquals(
+                  domain2.getId(),
+                  searchIndexDomains.get(0).getId(),
+                  "Search index should reflect domain2 after consolidation");
+            });
   }
 
   // ===================================================================

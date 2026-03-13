@@ -403,7 +403,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals("responseSchema")) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("responseSchema")) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new ResponseSchemaDescriptionWorkflow(threadContext);

@@ -32,7 +32,7 @@ export type ColumnOrTask =
   | MlFeature;
 
 export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
-  column: T | null;
+  column: Column;
   tableFqn?: string;
   isOpen: boolean;
   onClose: () => void;

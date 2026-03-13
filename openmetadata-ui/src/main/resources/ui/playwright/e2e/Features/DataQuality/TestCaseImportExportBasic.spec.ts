@@ -14,7 +14,10 @@ import { expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { DOMAIN_TAGS, PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../../constant/config';
+import {
+  DOMAIN_TAGS,
+  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+} from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -106,7 +109,12 @@ const getFqn = (table: TableClass): string => {
 
 test.describe(
   'Test Case Bulk Import/Export - Admin User',
-  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ.tag] },
+  {
+    tag: [
+      `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`,
+      PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ.tag,
+    ],
+  },
   () => {
     const table = new TableClass();
 
@@ -242,14 +250,8 @@ test.describe(
 
       try {
         await test.step('Navigate to Import Page', async () => {
-          // Navigate to Data Quality tab
           await visitDataQualityTab(page, table);
-
-          await page
-            .getByTestId('table-profiler-container')
-            .getByTestId('manage-button')
-            .click();
-
+          await clickManageButton(page, 'table');
           await page.getByTestId('import-button').click();
           await expect(page).toHaveURL(/\/bulk\/import\/testCase/);
         });

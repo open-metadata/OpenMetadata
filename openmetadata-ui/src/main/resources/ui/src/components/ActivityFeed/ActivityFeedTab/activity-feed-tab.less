@@ -22,6 +22,9 @@
   overflow-x: hidden;
   border: 1px solid @grey-15;
   border-radius: @border-rad-sm;
+  &.two-panel-layout-container {
+    gap: @size-md;
+  }
 
   .custom-menu.ant-menu-root.ant-menu-inline {
     .ant-menu-item {
@@ -36,7 +39,6 @@
     overflow-y: scroll;
     border-radius: 12px;
     background-color: @white;
-    margin-right: 20px;
     display: flex;
     flex-direction: column;
     border: 1px solid @grey-15;
@@ -50,7 +52,6 @@
   .right-container {
     flex: 1;
     min-width: 0;
-    border: none;
     height: @user-profile-page-panel-height;
     overflow-y: scroll;
     background-color: @white;
@@ -102,10 +103,6 @@
     border-radius: 0px;
     margin-right: 0px;
     border: 0px;
-  }
-
-  .three-panel-layout.right-container {
-    border-left: 1px solid @grey-15;
   }
 
   .hide-panel {
@@ -279,15 +276,6 @@
   .ql-toolbar button {
     color: #292929;
   }
-}
-
-.activity-feed-card-container:not(:last-child) .horizontal-line {
-  position: absolute;
-  top: @size-sm;
-  left: @size-sm;
-  bottom: -17px;
-  width: 1px;
-  background-color: @blue-23;
 }
 
 .activity-feed-editor-send-btn {

@@ -157,34 +157,29 @@ test.describe('Service Version pages', () => {
        * - Description container with diff-added showing the updated description text
        * - Two tags (PersonalData.SpecialCategory and PII.Sensitive) marked as added in the right panel
        */
-      await test.step(
-        'should show edited tags and description changes',
-        async () => {
-          await expect(
-            page.locator(
-              '[data-testid="domain-link"] [data-testid="diff-added"]'
-            )
-          ).toBeVisible();
+      await test.step('should show edited tags and description changes', async () => {
+        await expect(
+          page.locator('[data-testid="domain-link"] [data-testid="diff-added"]')
+        ).toBeVisible();
 
-          await expect(
-            page.locator(
-              `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
-            )
-          ).toBeVisible();
+        await expect(
+          page.locator(
+            `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
+          )
+        ).toBeVisible();
 
-          await expect(
-            page.locator(
-              '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
-            )
-          ).toBeVisible();
+        await expect(
+          page.locator(
+            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+          )
+        ).toBeVisible();
 
-          await expect(
-            page.locator(
-              '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
-            )
-          ).toBeVisible();
-        }
-      );
+        await expect(
+          page.locator(
+            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+          )
+        ).toBeVisible();
+      });
 
       /**
        * Step 2: Validate owner change tracking in version 0.3
@@ -248,48 +243,45 @@ test.describe('Service Version pages', () => {
        *
        * This ensures that soft-deleted entities remain viewable in version history with proper deleted indicators
        */
-      await test.step(
-        'should show version details after soft deleted',
-        async () => {
-          await page.locator('[data-testid="version-button"]').click();
+      await test.step('should show version details after soft deleted', async () => {
+        await page.locator('[data-testid="version-button"]').click();
 
-          await page.click('[data-testid="manage-button"]');
-          await page.click('[data-testid="delete-button"]');
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="delete-button"]');
 
-          await page.waitForSelector('[role="dialog"].ant-modal');
+        await page.waitForSelector('[role="dialog"].ant-modal');
 
-          await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
-          await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-          const deleteResponse = page.waitForResponse(
-            `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
-          );
-          await page.click('[data-testid="confirm-button"]');
+        await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+        const deleteResponse = page.waitForResponse(
+          `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
+        );
+        await page.click('[data-testid="confirm-button"]');
 
-          await deleteResponse;
+        await deleteResponse;
 
-          await toastNotification(
-            page,
-            /deleted successfully!/,
-            BIG_ENTITY_DELETE_TIMEOUT
-          );
+        await toastNotification(
+          page,
+          /deleted successfully!/,
+          BIG_ENTITY_DELETE_TIMEOUT
+        );
 
-          await page.reload();
+        await page.reload();
 
-          const deletedBadge = page.locator('[data-testid="deleted-badge"]');
+        const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
-          await expect(deletedBadge).toHaveText('Deleted');
+        await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
-          await page.locator('[data-testid="version-button"]').click();
-          await versionDetailResponse;
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
+        await page.locator('[data-testid="version-button"]').click();
+        await versionDetailResponse;
 
-          // Deleted badge should be visible
-          await expect(
-            page.locator('[data-testid="deleted-badge"]')
-          ).toBeVisible();
-        }
-      );
+        // Deleted badge should be visible
+        await expect(
+          page.locator('[data-testid="deleted-badge"]')
+        ).toBeVisible();
+      });
     });
   });
 });

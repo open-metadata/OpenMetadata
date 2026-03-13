@@ -53,6 +53,8 @@ from metadata.utils.class_helper import (
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.operation_metrics import OperationMetricsState
+from metadata.utils.progress_tracker import ProgressTrackerState
 from metadata.utils.streamable_logger import (
     cleanup_streamable_logging,
     setup_streamable_logging_for_workflow,
@@ -128,6 +130,15 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 enable_streaming=True,
             )
 
+        self._log_workflow_execution_info()
+
+        # Set run context for operation metrics tracking
+        OperationMetricsState().set_run_context(
+            run_id=str(self.config.pipelineRunId.root)
+            if self.config.pipelineRunId
+            else None,
+            pipeline_fqn=self.config.ingestionPipelineFQN,
+        )
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
@@ -150,6 +161,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         # Cleanup streamable logging if it was configured
         cleanup_streamable_logging()
+
+        # Reset progress and metrics tracking singletons
+        ProgressTrackerState().reset()
+        OperationMetricsState().reset()
 
         self.metadata.close()
 
@@ -226,6 +241,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"{step.name} reported warning: {Summary.from_step(step)}"
                 )
 
+    def _log_workflow_execution_info(self) -> None:
+        """Log the workflow type and ingestion runner at the start of execution"""
+        if self.config.ingestionRunnerName:
+            logger.info(
+                f"Executing workflow [{self.config.ingestionPipelineFQN}]"
+                f" in Runner [{self.config.ingestionRunnerName}]"
+            )
+
     def execute(self) -> None:
         """
         Main entrypoint:
@@ -291,7 +314,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         try:
             maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(
-                entity=IngestionPipeline, fqn=self.config.ingestionPipelineFQN
+                entity=IngestionPipeline,
+                fqn=self.config.ingestionPipelineFQN,
             )
 
             if maybe_pipeline:
@@ -376,6 +400,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"({metrics.memory_usage_percent:.2f}%) | "
                     f"Processes: {metrics.active_processes}"
                 )
+
+            # Send progress update to the server for live tracking
+            self.send_progress_update()
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

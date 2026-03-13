@@ -494,6 +494,7 @@ export const ADVANCED_PROPERTIES = [
   'sampleDataCount',
   'threadCount',
   'timeoutSeconds',
+  'metrics',
   'sslConfig',
   'sslMode',
   'schemaRegistrySSL',

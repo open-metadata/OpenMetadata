@@ -26,6 +26,7 @@ import {
   toastNotification,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
+import { visitLineageTab } from '../../../utils/lineage';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -84,7 +85,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
     await page.fill('#root\\/username', redshiftUsername);
     await checkServiceFieldSectionHighlighting(page, 'username');
-    await page.fill('#root\\/password', redshiftPassword);
+    await page.fill('#root\\/authType\\/password', redshiftPassword);
     await checkServiceFieldSectionHighlighting(page, 'password');
     await page.fill('#root\\/hostPort', redshiftHost);
     await checkServiceFieldSectionHighlighting(page, 'hostPort');
@@ -264,6 +265,19 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await expect(page.getByTestId(DBT.dataQualityTest1)).toHaveText(
         DBT.dataQualityTest1
       );
+    });
+
+    await test.step('validate DBT icon should be show to lineage node', async () => {
+      await visitLineageTab(page);
+
+      await expect(
+        page.getByTestId(`lineage-node-${this.dbtEntityFqn}`)
+      ).toBeVisible();
+      await expect(
+        page
+          .getByTestId(`lineage-node-${this.dbtEntityFqn}`)
+          .getByTestId('dbt-icon')
+      ).toBeVisible();
     });
   }
 

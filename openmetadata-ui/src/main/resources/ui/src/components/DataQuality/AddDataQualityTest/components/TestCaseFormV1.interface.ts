@@ -54,6 +54,7 @@ export interface FormValues {
   params?: Record<string, string | { [key: string]: string }[]>;
   parameterValues?: Array<{ name: string; value: string }>;
   dimensionColumns?: string[];
+  topDimensions?: number;
   // Scheduler fields
   pipelineName?: string;
   cron?: string;

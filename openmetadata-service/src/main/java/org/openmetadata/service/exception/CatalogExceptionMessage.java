@@ -207,6 +207,16 @@ public final class CatalogExceptionMessage {
     return String.format("User '%s' is not a reviewer", name);
   }
 
+  public static String notTaskAssignee(String name) {
+    return String.format("User '%s' is not an assignee of the pending approval task", name);
+  }
+
+  public static String pendingApprovalTaskExists(String entityFqn) {
+    return String.format(
+        "Entity '%s' has a pending approval task. Only the task assignee can perform this operation.",
+        entityFqn);
+  }
+
   public static String permissionDenied(
       String user,
       MetadataOperation operation,

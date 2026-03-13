@@ -30,14 +30,20 @@ public interface BulkSink {
   @FunctionalInterface
   interface FailureCallback {
     /**
-     * Called when a document fails to index in ES/OpenSearch.
+     * Called when a document fails to index.
      *
      * @param entityType The type of entity that failed
      * @param entityId The ID of the entity (from document ID), may be null for build failures
      * @param entityFqn The FQN of the entity, may be null if not available
-     * @param errorMessage The error message from ES/OpenSearch
+     * @param errorMessage The error message describing the failure
+     * @param stage The pipeline stage where the failure occurred (PROCESS or SINK)
      */
-    void onFailure(String entityType, String entityId, String entityFqn, String errorMessage);
+    void onFailure(
+        String entityType,
+        String entityId,
+        String entityFqn,
+        String errorMessage,
+        IndexingFailureRecorder.FailureStage stage);
   }
 
   /**
@@ -61,6 +67,16 @@ public interface BulkSink {
   }
 
   /**
+   * Returns the process stage statistics. This tracks document building/transformation
+   * separately from the actual sink (bulk indexing) stats.
+   *
+   * @return StepStats with process success/failed counts, or null if not supported
+   */
+  default StepStats getProcessStats() {
+    return null;
+  }
+
+  /**
    * Wait for all pending vector embedding tasks to complete. This is important for ensuring
    * no vector tasks are lost when the job completes. The sink's close() method should also
    * call this, but this method allows explicit waiting before close if needed.
@@ -80,6 +96,40 @@ public interface BulkSink {
    */
   default int getPendingVectorTaskCount() {
     return 0;
+  }
+
+  /**
+   * Returns the number of currently active (in-flight) bulk requests.
+   *
+   * @return Number of active bulk requests
+   */
+  default int getActiveBulkRequestCount() {
+    return 0;
+  }
+
+  /**
+   * Wait for vector embedding tasks to complete and return detailed result including timing.
+   *
+   * @param timeoutSeconds Maximum time to wait
+   * @return VectorCompletionResult with completion status, pending count, and wait time
+   */
+  default VectorCompletionResult awaitVectorCompletionWithDetails(int timeoutSeconds) {
+    long start = System.currentTimeMillis();
+    boolean ok = awaitVectorCompletion(timeoutSeconds);
+    long waited = System.currentTimeMillis() - start;
+    return ok
+        ? VectorCompletionResult.success(waited)
+        : VectorCompletionResult.timeout(getPendingVectorTaskCount(), waited);
+  }
+
+  /**
+   * Returns the column indexing statistics. Columns are indexed as a side effect of table
+   * processing, so their stats are tracked separately.
+   *
+   * @return StepStats with column indexing success/failed counts, or null if not supported
+   */
+  default StepStats getColumnStats() {
+    return null;
   }
 
   /** Key for passing StageStatsTracker through context data to the sink. */

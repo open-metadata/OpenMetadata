@@ -619,11 +619,9 @@ class unitycatalogUnitTest(TestCase):
             self.unitycatalog_source.get_database_schema_names()
         )
 
-    @patch("databricks.sdk.service.catalog.TablesAPI.get")
-    def test_yield_table(self, mock_data):
-        mock_data.return_value = MOCK_TABLE_INFO
+    def test_yield_table(self):
         table_list = []
-        self.unitycatalog_source.context.get().table_data = MOCK_CONTEXT_TABLEDATA
+        self.unitycatalog_source.context.get().table_data = MOCK_TABLE_INFO
         for table in self.unitycatalog_source.yield_table(("complex_data", "Regular")):
             if isinstance(table, Either):
                 table_list.append(table)

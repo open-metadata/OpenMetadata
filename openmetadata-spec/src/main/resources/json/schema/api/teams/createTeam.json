@@ -67,6 +67,10 @@
       },
       "default": null
     },
+    "defaultPersona": {
+      "description": "Default persona for all users in this team. Only applicable to Group type teams.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
     "owners": {
       "description": "Owners sof this team. ",
       "$ref": "../../type/entityReferenceList.json",

@@ -12,7 +12,8 @@
  */
 
 import { Box, Typography } from '@mui/material';
-import React, { useCallback, useMemo } from 'react';
+import { Avatar } from '@openmetadata/ui-core-components';
+import { useCallback, useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
 import {
   DATAPRODUCT_DEFAULT_QUICK_FILTERS,
@@ -22,8 +23,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { useListingData } from '../../common/atoms/compositions/useListingData';
-import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import {
   CellRenderer,
   ColumnConfig,
@@ -97,7 +98,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
 
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <EntityAvatar entity={entity} size={40} />
+            <Avatar size="lg" {...getEntityAvatarProps(entity)} />
             <Box>
               <Typography
                 sx={{

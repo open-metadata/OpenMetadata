@@ -174,7 +174,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 test.describe('User with Admin Roles', () => {
-
   test('Update own admin details', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
 
@@ -198,16 +197,13 @@ test.describe('User with Admin Roles', () => {
 
     await visitUserListPage(adminPage);
 
-    await test.step(
-      "User shouldn't be allowed to create User with same Email",
-      async () => {
-        await checkForUserExistError(adminPage, {
-          name: updatedUserDetails.name,
-          email: updatedUserDetails.email,
-          password: updatedUserDetails.password,
-        });
-      }
-    );
+    await test.step("User shouldn't be allowed to create User with same Email", async () => {
+      await checkForUserExistError(adminPage, {
+        name: updatedUserDetails.name,
+        email: updatedUserDetails.email,
+        password: updatedUserDetails.password,
+      });
+    });
 
     await permanentDeleteUser(
       adminPage,
@@ -304,7 +300,8 @@ test.describe('User with Admin Roles', () => {
     });
 
     const userName = user3.responseData.name;
-    const userDisplayName = user3.responseData.displayName ?? user3.responseData.name;
+    const userDisplayName =
+      user3.responseData.displayName ?? user3.responseData.name;
     // Patch Table to add the user to the custom property
     await tableEntity.patch({
       apiContext,
@@ -367,8 +364,6 @@ test.describe('User with Admin Roles', () => {
 });
 
 test.describe('User with Data Consumer Roles', () => {
-
-
   test('Token generation & revocation for Data Consumer', async ({
     dataConsumerPage,
   }) => {
@@ -520,8 +515,6 @@ test.describe('User with Data Consumer Roles', () => {
 });
 
 test.describe('User with Data Steward Roles', () => {
-
-
   test('Update user details for Data Steward', async ({ dataStewardPage }) => {
     await redirectToHomePage(dataStewardPage);
 
@@ -571,7 +564,7 @@ test.describe('User with Data Steward Roles', () => {
     adminPage,
     dataStewardPage,
   }) => {
-    test.slow()
+    test.slow();
     await redirectToHomePage(adminPage);
 
     await checkStewardServicesPermissions(dataStewardPage);
@@ -617,8 +610,6 @@ test.describe('User Profile Feed Interactions', () => {
   test('Should navigate to user profile from feed card avatar click', async ({
     browser,
   }) => {
-
-
     const { page, afterAction } = await performUserLogin(browser, user3);
 
     await redirectToHomePage(page);
@@ -653,7 +644,7 @@ test.describe('User Profile Feed Interactions', () => {
     await userNameElement.click();
     await userDetailsResponse;
 
-   // redirecting on new page
+    // redirecting on new page
     await page.waitForLoadState('networkidle');
 
     // Verify we navigated to the correct user's profile
@@ -686,8 +677,6 @@ test.describe('User Profile Feed Interactions', () => {
 });
 
 test.describe('User Profile Dropdown Persona Interactions', () => {
-
-
   test.beforeAll('Prerequisites', async ({ browser }) => {
     const { apiContext, afterAction } = await performUserLogin(
       browser,
@@ -873,7 +862,9 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         .allTextContents();
 
       // Verify first one contains the default persona name
-      expect(personaTexts[0]).toContain(persona1.responseData.displayName??persona1.responseData.name);
+      expect(personaTexts[0]).toContain(
+        persona1.responseData.displayName ?? persona1.responseData.name
+      );
     }
   });
 
@@ -1162,30 +1153,27 @@ test.describe('User Profile Persona Interactions', () => {
     await adminPage.waitForSelector('[data-testid="persona-details-card"]');
 
     // Test clicking on persona chip to navigate to persona page
-    await test.step(
-      'Navigate to persona page by clicking on persona chip',
-      async () => {
-        const personaCard = adminPage.locator(
-          '[data-testid="persona-details-card"]'
-        );
-        const personaChip = personaCard
-          .locator('[data-testid="chip-container"] [data-testid="tag-chip"]')
-          .first();
-        const personaLink = personaChip.locator('a').first();
+    await test.step('Navigate to persona page by clicking on persona chip', async () => {
+      const personaCard = adminPage.locator(
+        '[data-testid="persona-details-card"]'
+      );
+      const personaChip = personaCard
+        .locator('[data-testid="chip-container"] [data-testid="tag-chip"]')
+        .first();
+      const personaLink = personaChip.locator('a').first();
 
-        // Get the persona name/link for verification
-        const personaText = await personaLink.textContent();
+      // Get the persona name/link for verification
+      const personaText = await personaLink.textContent();
 
-        expect(personaText).toBeTruthy();
+      expect(personaText).toBeTruthy();
 
-        // Click the persona link to navigate
-        await personaLink.click();
-        await adminPage.waitForLoadState('networkidle');
+      // Click the persona link to navigate
+      await personaLink.click();
+      await adminPage.waitForLoadState('networkidle');
 
-        // Verify we're on the persona page
-        await expect(adminPage.url()).toContain('/persona/');
-      }
-    );
+      // Verify we're on the persona page
+      await expect(adminPage.url()).toContain('/persona/');
+    });
 
     // Navigate back to user profile for removal test
     await test.step('Navigate back to user profile', async () => {
@@ -1282,27 +1270,24 @@ test.describe('User Profile Persona Interactions', () => {
     });
 
     // Test clicking on default persona chip to navigate to persona page
-    await test.step(
-      'Navigate to persona page by clicking on default persona chip',
-      async () => {
-        const defaultPersonaChip = adminPage
-          .locator('.default-persona-text [data-testid="tag-chip"]')
-          .first();
-        const personaLink = defaultPersonaChip.locator('a').first();
+    await test.step('Navigate to persona page by clicking on default persona chip', async () => {
+      const defaultPersonaChip = adminPage
+        .locator('.default-persona-text [data-testid="tag-chip"]')
+        .first();
+      const personaLink = defaultPersonaChip.locator('a').first();
 
-        // Get the persona name/link for verification
-        const personaText = await personaLink.textContent();
+      // Get the persona name/link for verification
+      const personaText = await personaLink.textContent();
 
-        expect(personaText).toBeTruthy();
+      expect(personaText).toBeTruthy();
 
-        // Click the persona link to navigate
-        await personaLink.click();
-        await adminPage.waitForLoadState('networkidle');
+      // Click the persona link to navigate
+      await personaLink.click();
+      await adminPage.waitForLoadState('networkidle');
 
-        // Verify we're on the persona page
-        await expect(adminPage.url()).toContain('/persona/');
-      }
-    );
+      // Verify we're on the persona page
+      await expect(adminPage.url()).toContain('/persona/');
+    });
 
     // Navigate back to user profile for removal test
     await test.step('Navigate back to user profile', async () => {

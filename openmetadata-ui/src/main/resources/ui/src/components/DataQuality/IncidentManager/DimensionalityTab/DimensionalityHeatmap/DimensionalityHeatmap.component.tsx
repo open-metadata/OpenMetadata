@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, CircularProgress, Tooltip, Typography } from '@mui/material';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
-import { HEATMAP_TOOLTIP_SLOT_PROPS } from './DimensionalityHeatmap.constants';
+import Loader from '../../../../common/Loader/Loader';
 import { DimensionalityHeatmapProps } from './DimensionalityHeatmap.interface';
 import './DimensionalityHeatmap.less';
 import {
@@ -60,127 +61,122 @@ const DimensionalityHeatmap = ({
   }, [startDate, endDate]);
 
   if (isLoading) {
-    return (
-      <Box className="dimensionality-heatmap__loading">
-        <CircularProgress size={40} />
-      </Box>
-    );
+    return <Loader size="small" />;
   }
 
   if (!data || data.length === 0) {
     return (
-      <Box className="dimensionality-heatmap__empty">
-        <Typography>{t('message.no-data-available')}</Typography>
-      </Box>
+      <div className="dimensionality-heatmap__empty tw:py-8 tw:text-center">
+        <Typography as="span" className="tw:text-body tw:text-tertiary">
+          {t('message.no-data-available')}
+        </Typography>
+      </div>
     );
   }
 
   return (
-    <Box
+    <div
       aria-label={t('label.dimensionality')}
-      className="dimensionality-heatmap">
-      <Box className="dimensionality-heatmap__layout">
-        <Box className="dimensionality-heatmap__labels-column">
-          <Box className="dimensionality-heatmap__header-corner" />
+      className="dimensionality-heatmap tw:w-full">
+      <div className="dimensionality-heatmap__layout tw:flex">
+        <div className="dimensionality-heatmap__labels-column tw:shrink-0">
+          <div className="dimensionality-heatmap__header-corner" />
           {heatmapData.map((row) => (
             <Tooltip key={row.dimensionValue} title={row.dimensionValue}>
-              <Box className="dimensionality-heatmap__dimension-label">
+              <div className="dimensionality-heatmap__dimension-label tw:cursor-default">
                 {row.dimensionValue}
-              </Box>
+              </div>
             </Tooltip>
           ))}
-        </Box>
+        </div>
 
-        <Box className="dimensionality-heatmap__scroll-wrapper">
+        <div className="dimensionality-heatmap__scroll-wrapper tw:relative tw:flex-1">
           {showLeftIndicator && (
-            <Box
+            <button
               aria-label={`${t('label.scroll')} ${t('label.left')}`}
-              className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--left"
-              tabIndex={0}
-              onClick={handleScrollLeft}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleScrollLeft();
-                }
-              }}>
+              className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--left tw:cursor-pointer tw:outline-focus-ring"
+              type="button"
+              onClick={handleScrollLeft}>
               <RightArrowIcon />
-            </Box>
+            </button>
           )}
 
-          <Box
-            className="dimensionality-heatmap__scroll-container"
+          <div
+            className="dimensionality-heatmap__scroll-container tw:overflow-auto"
             ref={containerRef}>
-            <Box className="dimensionality-heatmap__header-row">
+            <div className="dimensionality-heatmap__header-row tw:flex">
               {dateRange.map((date) => (
-                <Box
+                <div
                   aria-label={getDateLabel(date)}
                   className="dimensionality-heatmap__header-cell"
                   key={date}>
                   {getDateLabel(date)}
-                </Box>
+                </div>
               ))}
-            </Box>
+            </div>
 
             {heatmapData.map((row) => (
-              <Box
-                className="dimensionality-heatmap__data-row"
+              <div
+                className="dimensionality-heatmap__data-row tw:flex"
                 key={`row-${row.dimensionValue}`}>
                 {row.cells.map((cell) => (
                   <Tooltip
                     key={`${cell.dimensionValue}-${cell.date}`}
+                    overlayClassName="dimensionality-heatmap-cell-tooltip"
                     placement="top"
-                    slotProps={HEATMAP_TOOLTIP_SLOT_PROPS}
+                    showArrow={false}
                     title={<HeatmapCellTooltip cell={cell} />}>
-                    <Box
+                    <div
                       aria-label={`${cell.dimensionValue}, ${getDateLabel(
                         cell.date
                       )}: ${getStatusLabel(cell.status, t)}`}
-                      className={`dimensionality-heatmap__cell dimensionality-heatmap__cell--${cell.status}`}
+                      className={`dimensionality-heatmap__cell dimensionality-heatmap__cell--${cell.status} tw:cursor-default`}
                     />
                   </Tooltip>
                 ))}
-              </Box>
+              </div>
             ))}
-          </Box>
+          </div>
 
           {showRightIndicator && (
-            <Box
+            <button
               aria-label={`${t('label.view')} ${t('label.more')}`}
-              className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--right"
-              tabIndex={0}
-              onClick={handleScrollRight}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleScrollRight();
-                }
-              }}>
+              className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--right tw:cursor-pointer tw:outline-focus-ring"
+              type="button"
+              onClick={handleScrollRight}>
               <RightArrowIcon />
-            </Box>
+            </button>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
-      <Box className="dimensionality-heatmap__legend">
-        <Box className="dimensionality-heatmap__legend-item">
-          <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--success" />
-          {t('label.success')}
-        </Box>
-        <Box className="dimensionality-heatmap__legend-item">
-          <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--failed" />
-          {t('label.failed')}
-        </Box>
-        <Box className="dimensionality-heatmap__legend-item">
-          <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--aborted" />
-          {t('label.aborted')}
-        </Box>
-        <Box className="dimensionality-heatmap__legend-item">
-          <Box className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--no-data" />
-          {t('label.no-data')}
-        </Box>
-      </Box>
-    </Box>
+      <div className="dimensionality-heatmap__legend tw:mt-4 tw:flex tw:flex-wrap tw:gap-4">
+        <div className="dimensionality-heatmap__legend-item tw:flex tw:items-center tw:gap-2">
+          <div className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--success tw:shrink-0" />
+          <Typography as="span" className="tw:text-body">
+            {t('label.success')}
+          </Typography>
+        </div>
+        <div className="dimensionality-heatmap__legend-item tw:flex tw:items-center tw:gap-2">
+          <div className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--failed tw:shrink-0" />
+          <Typography as="span" className="tw:text-body">
+            {t('label.failed')}
+          </Typography>
+        </div>
+        <div className="dimensionality-heatmap__legend-item tw:flex tw:items-center tw:gap-2">
+          <div className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--aborted tw:shrink-0" />
+          <Typography as="span" className="tw:text-body">
+            {t('label.aborted')}
+          </Typography>
+        </div>
+        <div className="dimensionality-heatmap__legend-item tw:flex tw:items-center tw:gap-2">
+          <div className="dimensionality-heatmap__legend-box dimensionality-heatmap__legend-box--no-data tw:shrink-0" />
+          <Typography as="span" className="tw:text-body">
+            {t('label.no-data')}
+          </Typography>
+        </div>
+      </div>
+    </div>
   );
 };
 

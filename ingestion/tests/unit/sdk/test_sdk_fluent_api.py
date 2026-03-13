@@ -16,6 +16,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 
@@ -25,6 +26,7 @@ from metadata.sdk import (
     DatabaseSchemas,
     Glossaries,
     GlossaryTerms,
+    StorageServices,
     Tables,
     Teams,
     Users,
@@ -267,9 +269,36 @@ class TestSDKFluentAPI:
             entity_type=DatabaseSchema, fqn_search_string="staging", size=10
         )
 
+    @patch.object(StorageServices, "_get_client")
+    def test_storage_services_retrieve(self, mock_get_client):
+        """Test retrieving a storage service by ID using StorageServices SDK"""
+        mock_get_client.return_value = self.mock_ometa
+
+        storage_service_id = "d1589e1d-2ab0-431c-a383-15e4be20a106"
+        mock_storage_service = MagicMock(spec=StorageService)
+        mock_storage_service.id = UUID(storage_service_id)
+        mock_storage_service.name = "s3-prod"
+        self.mock_ometa.get_by_id.return_value = mock_storage_service
+
+        result = StorageServices.retrieve(storage_service_id)
+
+        assert result.name == "s3-prod"
+        self.mock_ometa.get_by_id.assert_called_once_with(
+            entity=StorageService,
+            entity_id=storage_service_id,
+            fields=None,
+        )
+
 
 class TestSDKEntityTypes:
     """Test that all SDK entities have proper entity_type methods"""
+
+    def test_storage_services_exported_from_entities_module(self):
+        """Verify StorageServices can be imported from metadata.sdk.entities."""
+        from metadata.sdk import StorageServices as TopLevelStorageServices
+        from metadata.sdk.entities import StorageServices as EntitiesStorageServices
+
+        assert EntitiesStorageServices is TopLevelStorageServices
 
     def test_all_entities_have_entity_type(self):
         """Verify all plural SDK entities implement entity_type method"""
@@ -293,6 +322,7 @@ class TestSDKEntityTypes:
             Pipelines,
             Queries,
             SearchIndexes,
+            StorageServices,
             StoredProcedures,
             Tables,
             Tags,
@@ -325,6 +355,7 @@ class TestSDKEntityTypes:
             APICollections,
             APIEndpoints,
             SearchIndexes,
+            StorageServices,
             StoredProcedures,
             DashboardDataModels,
             TestCases,

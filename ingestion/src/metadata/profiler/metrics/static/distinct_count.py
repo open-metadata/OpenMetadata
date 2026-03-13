@@ -37,6 +37,8 @@ class DistinctCount(StaticMetric):
     Given a column, count the number of distinct values
     """
 
+    schema_metric_type = MetricType.distinctCount
+
     @classmethod
     def name(cls):
         return MetricType.distinctCount.value

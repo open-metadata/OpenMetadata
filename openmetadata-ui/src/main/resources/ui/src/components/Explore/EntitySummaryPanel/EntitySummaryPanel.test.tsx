@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
-import { ThemeColors } from '@openmetadata/ui-core-components';
 import {
   act,
   fireEvent,
@@ -31,37 +29,6 @@ import { mockTableEntityDetails } from './mocks/TableSummary.mock';
 import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
 
 const mockHandleClosePanel = jest.fn();
-
-const mockThemeColors: ThemeColors = {
-  white: '#FFFFFF',
-  blue: {
-    50: '#E6F4FF',
-    100: '#BAE0FF',
-    600: '#1677FF',
-    700: '#0958D9',
-  },
-  blueGray: {
-    50: '#F8FAFC',
-  },
-  gray: {
-    300: '#D1D5DB',
-    700: '#374151',
-    900: '#111827',
-  },
-} as ThemeColors;
-
-const theme: Theme = createTheme({
-  palette: {
-    allShades: mockThemeColors,
-    background: {
-      paper: '#FFFFFF',
-    },
-  },
-});
-
-const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={theme}>{children}</ThemeProvider>
-);
 
 jest.mock('../../../utils/EntityUtils', () => {
   const LINEAGE_TABS_SET = new Set([
@@ -185,6 +152,34 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
+jest.mock('@mui/material/styles', () => {
+  const actual = jest.requireActual('@mui/material/styles');
+  const theme = actual.createTheme({
+    palette: {
+      allShades: {
+        gray: { 200: '#eaecf0', 700: '#344054' },
+        info: { 700: '#175cd3' },
+      },
+    },
+  });
+
+  return { ...actual, useTheme: jest.fn().mockReturnValue(theme) };
+});
+jest.mock('@mui/material', () => {
+  const actual = jest.requireActual('@mui/material');
+  const { createTheme } = jest.requireActual('@mui/material/styles');
+  const theme = createTheme({
+    palette: {
+      allShades: {
+        gray: { 200: '#eaecf0', 700: '#344054' },
+        info: { 700: '#175cd3' },
+      },
+    },
+  });
+
+  return { ...actual, useTheme: jest.fn().mockReturnValue(theme) };
+});
+
 jest.mock('../../../utils/SearchClassBase', () => ({
   __esModule: true,
   default: {
@@ -204,18 +199,20 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
           props.entityDetails?.displayName ??
           props.entityDetails?.name}
       </span>
-      {props.hasEditPermission && props.entityType && props.entityDetails?.id && (
-        <button
-          data-testid="edit-displayName-button"
-          onClick={() => {
-            if (props.onDisplayNameUpdate) {
-              props.onDisplayNameUpdate('Updated Display Name');
-              mockOnDisplayNameUpdate('Updated Display Name');
-            }
-          }}>
-          Edit
-        </button>
-      )}
+      {props.hasEditPermission &&
+        props.entityType &&
+        props.entityDetails?.id && (
+          <button
+            data-testid="edit-displayName-button"
+            onClick={() => {
+              if (props.onDisplayNameUpdate) {
+                props.onDisplayNameUpdate('Updated Display Name');
+                mockOnDisplayNameUpdate('Updated Display Name');
+              }
+            }}>
+            Edit
+          </button>
+        )}
     </div>
   )),
 }));
@@ -240,8 +237,7 @@ describe('EntitySummaryPanel component tests', () => {
             },
           }}
           handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -261,8 +257,7 @@ describe('EntitySummaryPanel component tests', () => {
             },
           }}
           handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -282,8 +277,7 @@ describe('EntitySummaryPanel component tests', () => {
             },
           }}
           handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -303,8 +297,7 @@ describe('EntitySummaryPanel component tests', () => {
             },
           }}
           handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -324,8 +317,7 @@ describe('EntitySummaryPanel component tests', () => {
             },
           }}
           handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -345,8 +337,7 @@ describe('EntitySummaryPanel component tests', () => {
             },
           }}
           handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -366,8 +357,7 @@ describe('EntitySummaryPanel component tests', () => {
             },
           }}
           handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -388,8 +378,7 @@ describe('EntitySummaryPanel component tests', () => {
             },
           }}
           handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -410,8 +399,7 @@ describe('EntitySummaryPanel component tests', () => {
           }}
           handleClosePanel={mockHandleClosePanel}
           isSideDrawer={false}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -432,8 +420,7 @@ describe('EntitySummaryPanel component tests', () => {
             },
           }}
           handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
+        />
       );
     });
 
@@ -467,8 +454,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -489,8 +475,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -513,8 +498,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -533,8 +517,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -558,8 +541,7 @@ describe('EntitySummaryPanel component tests', () => {
               details: entityWithoutFQN,
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -580,8 +562,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -600,8 +581,7 @@ describe('EntitySummaryPanel component tests', () => {
               details: null as unknown as any,
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -623,8 +603,7 @@ describe('EntitySummaryPanel component tests', () => {
               details: entityWithoutId,
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -644,8 +623,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -654,17 +632,15 @@ describe('EntitySummaryPanel component tests', () => {
       // Change entity type to Topic
       await act(async () => {
         rerender(
-          <Wrapper>
-            <EntitySummaryPanel
-              entityDetails={{
-                details: {
-                  ...mockTopicEntityDetails,
-                  entityType: EntityType.TOPIC,
-                },
-              }}
-              handleClosePanel={mockHandleClosePanel}
-            />
-          </Wrapper>
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTopicEntityDetails,
+                entityType: EntityType.TOPIC,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />
         );
       });
 
@@ -687,8 +663,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -710,8 +685,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -720,19 +694,17 @@ describe('EntitySummaryPanel component tests', () => {
       // Change to different entity with different ID
       await act(async () => {
         rerender(
-          <Wrapper>
-            <EntitySummaryPanel
-              entityDetails={{
-                details: {
-                  ...mockTableEntityDetails,
-                  id: 'table-2',
-                  fullyQualifiedName: 'new.table.fqn',
-                  entityType: EntityType.TABLE,
-                },
-              }}
-              handleClosePanel={mockHandleClosePanel}
-            />
-          </Wrapper>
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                id: 'table-2',
+                fullyQualifiedName: 'new.table.fqn',
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />
         );
       });
 
@@ -764,8 +736,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -810,8 +781,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -844,8 +814,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -874,8 +843,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -919,8 +887,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -956,8 +923,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 
@@ -997,8 +963,7 @@ describe('EntitySummaryPanel component tests', () => {
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+          />
         );
       });
 

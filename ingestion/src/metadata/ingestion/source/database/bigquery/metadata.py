@@ -18,6 +18,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
 from sqlalchemy.types import String
@@ -66,6 +67,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
@@ -447,6 +449,44 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
         return self._current_dataset_obj
 
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Override to skip lifecycle data for schemas whose dataset location does not
+        match the configured usageLocation.
+
+        BigQuery routes INFORMATION_SCHEMA queries to the location specified in the
+        connection (usageLocation). When a dataset lives in a different GCP region,
+        the query returns a 404. Skipping early avoids one failed API call per table
+        in the affected schema.
+        """
+        usage_location = getattr(self.service_connection, "usageLocation", None)
+        if usage_location:
+            schema_name = self.context.get().database_schema
+            try:
+                dataset_obj = self.get_dataset_obj(schema_name)
+                dataset_location = getattr(dataset_obj, "location", None)
+                if (
+                    dataset_location
+                    and dataset_location.upper() != usage_location.upper()
+                ):
+                    logger.debug(
+                        "Skipping lifecycle data for schema '%s': dataset location '%s' "
+                        "differs from configured usageLocation '%s'. "
+                        "BigQuery INFORMATION_SCHEMA queries are location-specific.",
+                        schema_name,
+                        dataset_location,
+                        usage_location,
+                    )
+                    return
+            except Exception as exc:
+                logger.debug(
+                    "Could not verify dataset location for schema '%s', "
+                    "proceeding with lifecycle query: %s",
+                    schema_name,
+                    exc,
+                )
+        yield from super().yield_life_cycle_data(_)
+
     def _prefetch_policy_tags(self):
         """Pre-fetch all policy tags at schema level to avoid per-column API calls"""
         if not self.service_connection.includePolicyTags:
@@ -509,7 +549,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 database_name=database,
                 schema_name=schema_name,
             )
-            results = self.engine.execute(query).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(text(query)).all()
             for row in results:
                 self._table_ddl_cache[row.table_name] = row.ddl
         except Exception as exc:
@@ -1116,14 +1157,18 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     def get_stored_procedures(self) -> Iterable[BigQueryStoredProcedure]:
         """List BigQuery Stored Procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
-                BIGQUERY_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        BIGQUERY_GET_STORED_PROCEDURES.format(
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
+                        )
+                    )
+                ).all()
             for row in results:
-                stored_procedure = BigQueryStoredProcedure.model_validate(dict(row))
+                row_dict = row._asdict() if hasattr(row, "_asdict") else row
+                stored_procedure = BigQueryStoredProcedure.model_validate(row_dict)
                 if self.is_stored_procedure_filtered(stored_procedure.name):
                     continue
                 yield stored_procedure

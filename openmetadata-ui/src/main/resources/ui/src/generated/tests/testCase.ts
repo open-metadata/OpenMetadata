@@ -131,6 +131,11 @@ export interface TestCase {
      */
     testSuites?: TestSuite[];
     /**
+     * Number of top dimension values to show before grouping the rest as Others. Controls the
+     * cardinality of dimensional test results. Defaults to 5 when not specified.
+     */
+    topDimensions?: number;
+    /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
      */

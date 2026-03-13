@@ -262,10 +262,13 @@ class LookerUnitTest(TestCase):
         """
         ref = EntityReference(id=uuid.uuid4(), type="user")
 
-        with patch.object(Looker40SDK, "user", return_value=MOCK_USER), patch.object(
-            OpenMetadata,
-            "get_reference_by_email",
-            return_value=ref,
+        with (
+            patch.object(Looker40SDK, "user", return_value=MOCK_USER),
+            patch.object(
+                OpenMetadata,
+                "get_reference_by_email",
+                return_value=ref,
+            ),
         ):
             self.assertEqual(self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD), ref)
 
@@ -377,6 +380,93 @@ class LookerUnitTest(TestCase):
             "`BQ-project.dataset.sample_data`",
         )
 
+    def test_resolve_lookml_constants(self):
+        """
+        Check that LookML constants (@{...}) in sql_table_name are resolved from manifest,
+        and unresolved constants are stripped as fallback.
+        """
+        self.looker._lookml_constants_map = {
+            "data_prod_dw_main": "my_dataset",
+            "schema_name": "my_schema",
+        }
+
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{data_prod_dw_main}.View_Dim_Countries`"
+            ),
+            "`my_dataset.View_Dim_Countries`",
+        )
+
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{schema_name}.@{data_prod_dw_main}.some_table`"
+            ),
+            "`my_schema.my_dataset.some_table`",
+        )
+
+        # No constants in input — fast path passthrough
+        self.assertEqual(
+            self.looker._resolve_lookml_constants("`dataset.table`"),
+            "`dataset.table`",
+        )
+
+        # Unknown constant is stripped, table name still usable
+        self.assertEqual(
+            self.looker._resolve_lookml_constants("`@{unknown_const}.table`"),
+            "`table`",
+        )
+
+        # Partial resolution: known resolved, unknown stripped
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{data_prod_dw_main}.@{unknown}.table`"
+            ),
+            "`my_dataset.table`",
+        )
+
+        # Empty constants map — constants stripped, table name still usable
+        self.looker._lookml_constants_map = {}
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{data_prod_dw_main}.View_Dim_Countries`"
+            ),
+            "`View_Dim_Countries`",
+        )
+
+    def test_resolve_lookml_constants_no_strip(self):
+        """
+        Check that strip_unresolved=False keeps unknown constants as-is
+        (used for derived_table SQL where stripping would produce invalid SQL).
+        """
+        self.looker._lookml_constants_map = {
+            "dataset": "prod_dataset",
+        }
+
+        # Known constant resolved
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "SELECT * FROM @{dataset}.my_table", strip_unresolved=False
+            ),
+            "SELECT * FROM prod_dataset.my_table",
+        )
+
+        # Unknown constant left as-is
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "SELECT * FROM @{unknown}.my_table", strip_unresolved=False
+            ),
+            "SELECT * FROM @{unknown}.my_table",
+        )
+
+        # Mixed: known resolved, unknown left as-is
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "SELECT * FROM @{dataset}.@{unknown_schema}.my_table",
+                strip_unresolved=False,
+            ),
+            "SELECT * FROM prod_dataset.@{unknown_schema}.my_table",
+        )
+
     def test_get_dashboard_sources(self):
         """
         Check how we are building the sources
@@ -406,8 +496,9 @@ class LookerUnitTest(TestCase):
         )
 
         # If no from_entity, return none
-        with patch.object(fqn, "build", return_value=None), patch.object(
-            OpenMetadata, "get_by_name", return_value=None
+        with (
+            patch.object(fqn, "build", return_value=None),
+            patch.object(OpenMetadata, "get_by_name", return_value=None),
         ):
             self.assertIsNone(
                 self.looker.build_lineage_request(source, db_service_name, to_entity)
@@ -420,8 +511,9 @@ class LookerUnitTest(TestCase):
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
-        with patch.object(fqn, "build", return_value=None), patch.object(
-            OpenMetadata, "get_by_name", return_value=table
+        with (
+            patch.object(fqn, "build", return_value=None),
+            patch.object(OpenMetadata, "get_by_name", return_value=table),
         ):
             original_lineage = self.looker.build_lineage_request(
                 source, db_service_name, to_entity
@@ -560,11 +652,7 @@ class LookerUnitTest(TestCase):
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             self.assertEqual(
-                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 1
-            )
-
-            self.assertIsNotNone(
-                list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))[0].left
+                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0
             )
 
     def test_derived_view_references(self):

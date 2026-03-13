@@ -123,6 +123,10 @@
     },
     "certification": {
       "$ref": "../../type/assetCertification.json"
+    },
+    "entityStatus": {
+      "description": "Status of the entity.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "description", "domainType"],

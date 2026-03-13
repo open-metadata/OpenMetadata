@@ -84,6 +84,26 @@ export const tagSortingFields = [
   },
 ];
 
+export const columnSortingFields: SortingField[] = [
+  {
+    name: 'label.data-type',
+    value: 'dataType',
+  },
+  {
+    name: 'label.table',
+    value: 'table.name.keyword',
+  },
+  {
+    name: 'label.name',
+    value: 'displayName.keyword',
+  },
+  { name: 'label.relevance', value: '_score' },
+  {
+    name: 'label.last-updated',
+    value: 'updatedAt',
+  },
+];
+
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
   'tags.tagFQN',
@@ -144,7 +164,7 @@ export const NO_OWNER_ADVANCE_SEARCH_FILTER = {
         ownerID2: {
           type: 'rule',
           properties: {
-            field: 'owners.displayName.keyword',
+            field: 'ownerDisplayName',
             operator: 'is_null',
             value: [],
             valueSrc: [],

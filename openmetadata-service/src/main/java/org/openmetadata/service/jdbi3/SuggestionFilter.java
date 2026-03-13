@@ -2,6 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.RestUtil.decodeCursor;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,24 +21,27 @@ public class SuggestionFilter {
   private SuggestionRepository.PaginationType paginationType;
   private String before;
   private String after;
+  @Builder.Default private final Map<String, String> queryParams = new HashMap<>();
 
   public String getCondition(boolean includePagination) {
     StringBuilder condition = new StringBuilder();
     condition.append("WHERE TRUE ");
     if (suggestionType != null) {
-      condition.append(String.format(" AND suggestionType = '%s' ", suggestionType.value()));
+      queryParams.put("suggestionType", suggestionType.value());
+      condition.append(" AND suggestionType = :suggestionType ");
     }
     if (suggestionStatus != null) {
-      condition.append(String.format(" AND status = '%s' ", suggestionStatus.value()));
+      queryParams.put("suggestionStatus", suggestionStatus.value());
+      condition.append(" AND status = :suggestionStatus ");
     }
     if (entityFQN != null) {
-      condition.append(
-          String.format(" AND fqnHash = '%s' ", FullyQualifiedName.buildHash(entityFQN)));
+      queryParams.put("fqnHashParam", FullyQualifiedName.buildHash(entityFQN));
+      condition.append(" AND fqnHash = :fqnHashParam ");
     }
     if (createdBy != null) {
+      queryParams.put("createdByParam", createdBy.toString());
       condition.append(
-          String.format(
-              " AND id in (select toId from entity_relationship where fromId = '%s') ", createdBy));
+          " AND id in (select toId from entity_relationship where fromId = :createdByParam) ");
     }
     if (paginationType != null && includePagination) {
       String paginationCondition =

@@ -32,6 +32,11 @@ public class TableService extends EntityServiceBase<Table> {
     return httpClient.execute(HttpMethod.POST, basePath, request, Table.class);
   }
 
+  // Create or update table using CreateTable request (PUT /tables)
+  public Table createOrUpdate(CreateTable request) throws OpenMetadataException {
+    return httpClient.execute(HttpMethod.PUT, basePath, request, Table.class);
+  }
+
   // ===================================================================
   // COLUMNS OPERATIONS
   // ===================================================================
@@ -176,6 +181,21 @@ public class TableService extends EntityServiceBase<Table> {
   public Table updateSampleData(String id, TableData sampleData) throws OpenMetadataException {
     return httpClient.execute(
         HttpMethod.PUT, basePath + "/" + id + "/sampleData", sampleData, Table.class);
+  }
+
+  /**
+   * Get sample data for a table
+   *
+   * @param id Table UUID
+   * @return Table with sample data populated
+   */
+  public Table getSampleData(UUID id) throws OpenMetadataException {
+    return getSampleData(id.toString());
+  }
+
+  public Table getSampleData(String id) throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.GET, basePath + "/" + id + "/sampleData", null, Table.class);
   }
 
   // ===================================================================

@@ -70,6 +70,8 @@ thread_local = threading.local()
 OVERFLOW_ERROR_CODES = {
     "snowflake": {100046, 100058},
 }
+MAX_THREADS = 20
+MIN_THREADS = 5
 
 
 def handle_query_exception(msg, exc, session):
@@ -94,7 +96,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         entity: Table,
         source_config: DatabaseServiceProfilerPipeline,
         sampler: SamplerInterface,
-        thread_count: int = 5,
+        thread_count: Optional[int],
         timeout_seconds: int = 43200,
         **kwargs,
     ):
@@ -126,6 +128,41 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     def table(self):
         return self._table
 
+    def _get_effective_thread_count(self, metric_funcs: List[ThreadPoolMetrics]) -> int:
+        """Given the number of tasks to perform return a dynamic thread count.
+        If the thread count is explicitly set by the user, we will use that.
+
+        This method clamps user-provided values to [1, MAX_THREADS]. If thread_count
+        is falsy (None or 0), it will be auto-calculated based on task count.
+        """
+        # If user provided an explicit thread count, coerce and clamp it
+        if self._thread_count:
+            try:
+                user_count = int(self._thread_count)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "Provided threadCount is not an integer. Falling back to auto-calculation."
+                )
+                user_count = None
+
+            if user_count is not None:
+                clamped = max(1, min(MAX_THREADS, user_count))
+                if clamped != user_count:
+                    logger.debug(
+                        f"Clamped threadCount from {user_count} to {clamped} (allowed range 1-{MAX_THREADS})."
+                    )
+                return clamped
+
+        # Auto-calculate based on task count
+        task_counts = len(MetricFilter.filter_empty_metrics(metric_funcs))
+        min_threads = min(MIN_THREADS, task_counts)
+        calculated = min(MAX_THREADS, max(min_threads, (task_counts // 3) or 1))
+        logger.debug(
+            f"Calculated effective thread count: {calculated} for {task_counts} tasks."
+        )
+
+        return int(calculated)
+
     def _session_factory(self) -> scoped_session:
         """Create thread safe session that will be automatically
         garbage collected once the application thread ends
@@ -154,7 +191,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     and metric not in {Sum, StdDev, Mean}
                 ]
             )
-            return dict(row)
+            return row._asdict()
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -188,7 +225,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
             row = table_metric_computer.compute()
             if row:
-                return dict(row)
+                return row._asdict()
             return None
 
         except Exception as exc:
@@ -225,7 +262,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if not metric.is_window_metric()
                 ],
             )
-            return dict(row)
+            return row._asdict()
         except (ProgrammingError, DBAPIError) as exc:
             return self._programming_error_static_metric(
                 runner, column, exc, session, metrics
@@ -262,14 +299,16 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 return None
             if col_metric.metric_type == dict:
                 results = runner.select_all_from_query(metric_query)
-                data = {k: [result[k] for result in results] for k in dict(results[0])}
+                data = {
+                    k: [result[k] for result in results] for k in results[0]._asdict()
+                }
                 return {metric.name(): data}
             if isinstance(metric_query, Label):
                 # hotfix to handle transition of unique count implementation
                 sample_column = (
-                    sample.__table__.c[column.name]
+                    sample.__table__.c[column.key]
                     if hasattr(sample, "__table__")
-                    else sample.c[column.name]
+                    else sample.c[column.key]
                 )
                 subquery = (
                     self.session.query(Count(sample_column).fn().label(column.name))
@@ -281,7 +320,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 metric_query = self.session.query(metric_query).select_from(subquery)
 
             row = runner.select_first_from_query(metric_query)
-            return dict(row)
+            return row._asdict()
         except ResourceClosedError as exc:
             # if the query returns no results, we will get a ResourceClosedError from Druid
             if (
@@ -322,7 +361,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 *[metric(column).fn() for metric in metrics],
             )
             if row:
-                return dict(row)
+                return row._asdict()
         except ProgrammingError as exc:
             logger.info(
                 f"Skipping metrics for {runner.table_name}.{column.name} due to {exc}"
@@ -505,9 +544,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         metric_funcs: list,
     ):
         """get all profiler metrics"""
-        logger.debug(f"Computing metrics with {self._thread_count} threads.")
+        thread_count = self._get_effective_thread_count(metric_funcs)
+        logger.debug(f"Computing metrics with {thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}
-        with CustomThreadPoolExecutor(max_workers=self._thread_count) as pool:
+        with CustomThreadPoolExecutor(max_workers=thread_count) as pool:
             futures = [
                 pool.submit(
                     self.compute_metrics_in_thread,

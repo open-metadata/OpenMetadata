@@ -49,10 +49,10 @@ cd docker/development/distributed-test
 
 ```bash
 # Load 10,000 tables (default)
-./scripts/load-test-data.sh
+./scripts/perf-test.sh
 
 # Or specify the number
-./scripts/load-test-data.sh --tables 50000 --databases 50
+./scripts/perf-test.sh --tables 50000 --databases 50
 ```
 
 ### 3. Trigger Reindexing
@@ -163,7 +163,7 @@ OPENMETADATA_HEAP_OPTS=-Xmx1G -Xms1G
 ### Verify Partition Distribution
 
 1. Start all 3 servers
-2. Load test data: `./scripts/load-test-data.sh --tables 10000`
+2. Load test data: `./scripts/perf-test.sh --tables 10000`
 3. Trigger reindex: `./scripts/trigger-reindex.sh --recreate`
 4. Watch logs: `./scripts/logs.sh -f --grep "partition"`
 
@@ -242,7 +242,7 @@ distributed-test/
 │   ├── stop.sh                 # Stop environment
 │   ├── logs.sh                 # View aggregated logs
 │   ├── trigger-reindex.sh      # Trigger reindexing
-│   └── load-test-data.sh       # Load test data
+│   └── perf-test.sh       # Load test data
 ├── local/
 │   ├── docker-compose-deps.yml # Dependencies only (for IDE debugging)
 │   ├── server1.yaml            # Server 1 config (port 8585)

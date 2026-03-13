@@ -14,8 +14,6 @@ Default simple profiler to use
 """
 from typing import List, Optional, Type
 
-from sqlalchemy.orm import DeclarativeMeta
-
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.settings.settings import Settings
@@ -28,39 +26,33 @@ from metadata.profiler.registry import MetricRegistry
 
 def get_default_metrics(
     metrics_registry: Type[MetricRegistry],
-    table: DeclarativeMeta,
+    table: type,
     ometa_client: Optional[OpenMetadata] = None,
     db_service: Optional[DatabaseService] = None,
 ) -> List[Metric]:
     return [
         # Table Metrics
-        metrics_registry.ROW_COUNT.value,
-        add_props(table=table)(metrics_registry.COLUMN_COUNT.value),
-        add_props(table=table)(metrics_registry.COLUMN_NAMES.value),
-        # We'll use the ometa_client & db_service in case we need to fetch info to ES
-        add_props(table=table, ometa_client=ometa_client, db_service=db_service)(
-            metrics_registry.SYSTEM.value
-        ),
+        metrics_registry.rowCount.value,
+        add_props(table=table)(metrics_registry.columnCount.value),
+        add_props(table=table)(metrics_registry.columnNames.value),
         # Column Metrics
-        metrics_registry.MEDIAN.value,
-        metrics_registry.FIRST_QUARTILE.value,
-        metrics_registry.THIRD_QUARTILE.value,
-        metrics_registry.MEAN.value,
-        metrics_registry.COUNT.value,
-        metrics_registry.DISTINCT_COUNT.value,
-        metrics_registry.DISTINCT_RATIO.value,
-        metrics_registry.MIN.value,
-        metrics_registry.MAX.value,
-        metrics_registry.NULL_COUNT.value,
-        metrics_registry.NULL_RATIO.value,
-        metrics_registry.STDDEV.value,
-        metrics_registry.SUM.value,
-        metrics_registry.UNIQUE_COUNT.value,
-        metrics_registry.UNIQUE_RATIO.value,
-        metrics_registry.IQR.value,
-        metrics_registry.HISTOGRAM.value,
-        metrics_registry.CARDINALITY_DISTRIBUTION.value,
-        metrics_registry.NON_PARAMETRIC_SKEW.value,
+        metrics_registry.median.value,
+        metrics_registry.firstQuartile.value,
+        metrics_registry.thirdQuartile.value,
+        metrics_registry.mean.value,
+        metrics_registry.valuesCount.value,
+        metrics_registry.distinctCount.value,
+        metrics_registry.distinctProportion.value,
+        metrics_registry.min.value,
+        metrics_registry.max.value,
+        metrics_registry.nullCount.value,
+        metrics_registry.nullProportion.value,
+        metrics_registry.stddev.value,
+        metrics_registry.sum.value,
+        metrics_registry.uniqueCount.value,
+        metrics_registry.uniqueProportion.value,
+        metrics_registry.interQuartileRange.value,
+        metrics_registry.nonParametricSkew.value,
     ]
 
 

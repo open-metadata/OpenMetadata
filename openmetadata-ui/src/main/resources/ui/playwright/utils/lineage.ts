@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
+import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -32,6 +33,7 @@ import {
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { parseCSV } from './entityImport';
+import { sidebarClick } from './sidebar';
 
 type LineageCSVRecord = {
   fromEntityFQN: string;
@@ -120,15 +122,45 @@ export const editLineage = async (page: Page) => {
   ).toBeVisible();
 };
 
-export const performZoomOut = async (page: Page) => {
+export const performZoomOut = async (page: Page, xTimes = 10) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    for (const _index of Array.from({ length: 10 })) {
+    for (const _index of Array.from({ length: xTimes })) {
       await zoomOutBtn.dispatchEvent('click');
     }
   }
+};
+
+export const clickEdgeBetweenNodes = async (
+  page: Page,
+  fromNode: EntityClass,
+  toNode: EntityClass,
+  isPipeline = false
+) => {
+  const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
+  const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
+
+  const edgeDiv = page.getByTestId(
+    isPipeline
+      ? `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
+      : `edge-${fromNodeFqn}-${toNodeFqn}`
+  );
+  await expect(edgeDiv).toBeVisible();
+
+  await edgeDiv.dispatchEvent('click');
+};
+
+export const clickEdgeBetweenColumns = async (
+  page: Page,
+  fromNodeFqn: string,
+  toNodeFqn: string
+) => {
+  const edgeDiv = page.getByTestId(`column-edge-${fromNodeFqn}-${toNodeFqn}`);
+
+  await expect(edgeDiv).toBeVisible();
+
+  await edgeDiv.dispatchEvent('click');
 };
 
 export const deleteEdge = async (
@@ -136,12 +168,7 @@ export const deleteEdge = async (
   fromNode: EntityClass,
   toNode: EntityClass
 ) => {
-  const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
-  const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
-
-  await page
-    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
-    .dispatchEvent('click');
+  await clickEdgeBetweenNodes(page, fromNode, toNode, true);
 
   await page.getByTestId('add-pipeline').dispatchEvent('click');
 
@@ -184,9 +211,9 @@ export const dragConnection = async (
   targetId: string,
   isColumnLineage = false
 ) => {
-  const selector = !isColumnLineage
-    ? '.lineage-node-handle'
-    : '.lineage-column-node-handle';
+  const selector = isColumnLineage
+    ? '.lineage-column-node-handle'
+    : '.lineage-node-handle';
 
   const lineageRes = page.waitForResponse('/api/v1/lineage');
   await page
@@ -202,6 +229,7 @@ export const dragConnection = async (
 export const rearrangeNodes = async (page: Page) => {
   await page.getByTestId('fit-screen').click();
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
+  await page.waitForTimeout(500);
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -211,7 +239,7 @@ export const connectEdgeBetweenNodes = async (
 ) => {
   const type = getEntityTypeSearchIndexMapping(toNode.type);
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
-  const toNodeName = get(toNode, 'entityResponseData.name');
+  const toNodeName = get(toNode, 'entityResponseData.name') ?? '';
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
   const source = `[data-testid="${type}-draggable-icon"]`;
@@ -244,10 +272,10 @@ export const connectEdgeBetweenNodes = async (
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
-  const name = get(node, 'entityResponseData.displayName');
+  const name = get(node, 'entityResponseData.displayName') ?? '';
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
-  await lineageNode.waitFor({ state: 'attached'});
+  await lineageNode.waitFor({ state: 'attached' });
   await lineageNode.scrollIntoViewIfNeeded();
 
   await expect(lineageNode).toBeVisible();
@@ -274,7 +302,7 @@ export const performExpand = async (
 
   if (newNode) {
     const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
-    await expandBtn.click();
+    await expandBtn.dispatchEvent('click');
     await expandRes;
     await verifyNodePresent(page, newNode);
   }
@@ -390,9 +418,6 @@ export const editPipelineEdgeDescription = async (
     `[data-testid="pipeline-label-${fromNodeFqn}-${toNodeFqn}"]`
   );
   await page.locator('.edge-info-drawer').isVisible();
-  await page
-    .locator('.edge-info-drawer [data-testid="Edge"] a')
-    .filter({ hasText: pipelineData.name });
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
   await page.locator('.ProseMirror').first().click();
@@ -407,7 +432,7 @@ export const editPipelineEdgeDescription = async (
   ).toContainText(description);
 };
 
-const verifyPipelineDataInDrawer = async (
+export const verifyPipelineDataInDrawer = async (
   page: Page,
   fromNode: EntityClass,
   toNode: EntityClass,
@@ -418,14 +443,11 @@ const verifyPipelineDataInDrawer = async (
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
   const pipelineName = get(pipelineItem, 'entityResponseData.name');
 
-  await page.click(
-    `[data-testid="pipeline-label-${fromNodeFqn}-${toNodeFqn}"]`
-  );
+  await page
+    .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
+    .dispatchEvent('click');
 
   await page.locator('.edge-info-drawer').isVisible();
-  await page
-    .locator('.edge-info-drawer [data-testid="Edge"] a')
-    .filter({ hasText: pipelineName });
 
   if (bVisitPipelinePageFromDrawer) {
     await expect(page.getByTestId('edge-header-title')).toHaveText(
@@ -433,10 +455,10 @@ const verifyPipelineDataInDrawer = async (
     );
     await expect(
       page.locator('.overview-section').getByTestId('Source-value')
-    ).toHaveText(fromNode.entity.displayName);
+    ).toHaveText(get(fromNode, 'entity.displayName', ''));
     await expect(
       page.locator('.overview-section').getByTestId('Target-value')
-    ).toHaveText(toNode.entity.displayName);
+    ).toHaveText(get(toNode, 'entity.displayName', ''));
     await expect(
       page.locator('.overview-section').getByTestId('Edge-value')
     ).toHaveText(pipelineName);
@@ -453,18 +475,14 @@ export const applyPipelineFromModal = async (
   toNode: EntityClass,
   pipelineItem?: PipelineClass
 ) => {
-  const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
-  const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
-  const pipelineName = get(pipelineItem, 'entityResponseData.name');
+  const pipelineName = get(pipelineItem, 'entityResponseData.name') ?? '';
   const pipelineFqn = get(
     pipelineItem,
     'entityResponseData.fullyQualifiedName'
   );
 
-  await page
-    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
-    .dispatchEvent('click');
-  await page.getByTestId('add-pipeline').dispatchEvent('click');
+  await clickEdgeBetweenNodes(page, fromNode, toNode);
+  await page.getByTestId('add-pipeline').click();
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*`
@@ -524,11 +542,7 @@ export const addColumnLineage = async (
   }
 
   await expect(
-    page.locator(
-      `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
-        toColumnNode
-      )}"]`
-    )
+    page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)
   ).toBeVisible();
 };
 
@@ -537,13 +551,7 @@ export const removeColumnLineage = async (
   fromColumnNode: string,
   toColumnNode: string
 ) => {
-  await page
-    .locator(
-      `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
-        toColumnNode
-      )}"]`
-    )
-    .dispatchEvent('click');
+  await clickEdgeBetweenColumns(page, fromColumnNode, toColumnNode);
 
   await page.locator('[data-testid="delete-button"]').dispatchEvent('click');
 
@@ -556,11 +564,7 @@ export const removeColumnLineage = async (
   await editLineageClick(page);
 
   await expect(
-    page.locator(
-      `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
-        toColumnNode
-      )}"]`
-    )
+    page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)
   ).not.toBeVisible();
 };
 
@@ -570,6 +574,10 @@ export const visitLineageTab = async (page: Page) => {
   await lineageRes;
   await page.waitForLoadState('networkidle');
   await waitForAllLoadersToDisappear(page);
+  // Go to full screen to get nodes to view
+  await page.getByRole('button', { name: 'Full Screen View' }).first().click();
+  const pane = page.locator('.react-flow__pane');
+  await pane.click({ position: { x: 0, y: 0 } });
 };
 
 export const addPipelineBetweenNodes = async (
@@ -639,9 +647,9 @@ export const verifyCSVHeaders = async (headers: string[]) => {
 };
 
 export const getLineageCSVData = async (page: Page) => {
-  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
+  await expect(page.getByTestId('export-button')).toBeEnabled();
 
-  await page.getByRole('button', { name: 'Export' }).click();
+  await page.getByTestId('export-button').click();
 
   await page.waitForSelector(
     '[data-testid="export-entity-modal"] #submit-button',
@@ -670,7 +678,9 @@ export const getLineageCSVData = async (page: Page) => {
 
   const csvRows = fileData
     .split('\n')
-    .map((row) => row.split(',').map((cell) => cell.replace(/"/g, '').trim()));
+    .map((row) =>
+      row.split(',').map((cell) => cell.replaceAll('"', '').trim())
+    );
 
   const headers = csvRows[0];
   await verifyCSVHeaders(headers);
@@ -697,11 +707,12 @@ export const verifyExportLineageCSV = async (
   const parsedData = await getLineageCSVData(page);
   const currentEntityFQN = get(
     currentEntity,
-    'entityResponseData.fullyQualifiedName'
+    'entityResponseData.fullyQualifiedName',
+    ''
   );
 
   const arr = [];
-  for (let i = 0; i < entities.length; i++) {
+  for (const entity of entities) {
     arr.push({
       fromEntityFQN: currentEntityFQN,
       fromServiceName: get(
@@ -710,18 +721,14 @@ export const verifyExportLineageCSV = async (
         ''
       ),
       fromServiceType: get(currentEntity, 'entityResponseData.serviceType', ''),
-      toEntityFQN: get(
-        entities[i],
-        'entityResponseData.fullyQualifiedName',
-        ''
-      ),
-      toServiceName: get(entities[i], 'entityResponseData.service.name', ''),
-      toServiceType: get(entities[i], 'entityResponseData.serviceType', ''),
+      toEntityFQN: get(entity, 'entityResponseData.fullyQualifiedName', ''),
+      toServiceName: get(entity, 'entityResponseData.service.name', ''),
+      toServiceType: get(entity, 'entityResponseData.serviceType', ''),
       pipelineName: get(pipeline, 'entityResponseData.name', ''),
     });
   }
 
-  arr.forEach((expectedRow: LineageCSVRecord) => {
+  arr.forEach((expectedRow) => {
     const matchingRow = parsedData.find((row) =>
       Object.keys(expectedRow).every(
         (key) => row[key] === expectedRow[key as keyof LineageCSVRecord]
@@ -736,9 +743,9 @@ export const verifyExportLineagePNG = async (
   page: Page,
   isPNGSelected?: boolean
 ) => {
-  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
+  await expect(page.getByTestId('export-button')).toBeEnabled();
 
-  await page.getByRole('button', { name: 'Export' }).click();
+  await page.getByTestId('export-button').click();
 
   await page.waitForSelector(
     '[data-testid="export-entity-modal"] #submit-button',
@@ -833,7 +840,7 @@ export const connectEdgeBetweenNodesViaAPI = (
   apiContext: APIRequestContext,
   fromEntity: { id: string; type: string },
   toEntity: { id: string; type: string },
-  columnsLineage: Array<{ fromColumns: string[]; toColumn: string }>
+  columnsLineage?: Array<{ fromColumns: string[]; toColumn: string }>
 ) => {
   return apiContext.put('/api/v1/lineage/', {
     data: {
@@ -854,6 +861,9 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
     .getByTestId(`lineage-node-${tableFqn}`)
     .getByTestId('lineage-filter-button')
     .click();
+
+  // To remove tooltip
+  await clickOutside(page);
 };
 
 export const clickLineageNode = async (page: Page, nodeFqn: string) => {
@@ -883,4 +893,35 @@ export const updateLineageConfigFromModal = async (
   const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
   await page.getByText('OK').click();
   await saveRes;
+};
+
+export const verifyPlatformLineageForEntity = async (
+  page: Page,
+  fromFqn: string,
+  toFqn?: string
+) => {
+  // Verify relation in platform lineage
+  await sidebarClick(page, SidebarItem.LINEAGE);
+
+  await page
+    .getByTestId('search-entity-select')
+    .locator('div')
+    .filter({ hasText: /^Search entity to view lineage$/ })
+    .click();
+  await page.getByTestId('search-entity-select').locator('input').fill(fromFqn);
+
+  await page.getByTestId(`node-suggestion-${fromFqn}`).click();
+
+  await page.waitForTimeout(500);
+
+  const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
+
+  // ensure node will be visible in the viewport
+  await performZoomOut(page);
+
+  await expect(fromNode).toBeVisible();
+
+  if (toFqn) {
+    await expect(page.getByTestId(`lineage-node-${toFqn}`)).toBeVisible();
+  }
 };

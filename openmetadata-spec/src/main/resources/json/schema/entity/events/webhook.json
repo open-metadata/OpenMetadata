@@ -31,10 +31,6 @@
       "type": "string",
       "format": "uri"
     },
-    "secretKey": {
-      "description": "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
-      "type": "string"
-    },
     "headers": {
       "description": "Custom headers to be sent with the webhook request.",
       "type": "object",
@@ -60,6 +56,22 @@
       "description": "Send the Event to Owners",
       "type": "boolean",
       "default": false
+    },
+    "authType": {
+      "description": "Authentication configuration for the webhook. If not specified, the webhook will be sent without authentication.",
+      "title": "Authentication Configuration Type",
+      "mask": true,
+      "oneOf": [
+        {
+          "$ref": "./authentication/webhookNoAuth.json"
+        },
+        {
+          "$ref": "./authentication/webhookBearerAuth.json"
+        },
+        {
+          "$ref": "./authentication/webhookOAuth2Config.json"
+        }
+      ]
     },
     "sendToFollowers": {
       "description": "Send the Event to Followers",

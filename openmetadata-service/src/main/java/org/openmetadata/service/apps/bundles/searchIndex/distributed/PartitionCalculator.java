@@ -22,6 +22,8 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.EntityPriority;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -79,38 +81,6 @@ public class PartitionCalculator {
           Map.entry("queryCostRecord", 0.3) // Time series, simple structure
           );
 
-  /**
-   * Priority ordering for entity types during indexing. Higher priority entities should be indexed
-   * first as they may be referenced by others. This ensures that when indexing tables, their parent
-   * databases and schemas already exist in the search index.
-   */
-  private static final Map<String, Integer> ENTITY_PRIORITY =
-      Map.ofEntries(
-          Map.entry("databaseService", 100),
-          Map.entry("messagingService", 100),
-          Map.entry("dashboardService", 100),
-          Map.entry("pipelineService", 100),
-          Map.entry("mlmodelService", 100),
-          Map.entry("storageService", 100),
-          Map.entry("database", 90),
-          Map.entry("databaseSchema", 80),
-          Map.entry("glossary", 70),
-          Map.entry("classification", 70),
-          Map.entry("team", 65),
-          Map.entry("user", 60),
-          Map.entry("table", 50),
-          Map.entry("dashboard", 50),
-          Map.entry("pipeline", 50),
-          Map.entry("mlmodel", 50),
-          Map.entry("topic", 50),
-          Map.entry("container", 50),
-          Map.entry("glossaryTerm", 45),
-          Map.entry("tag", 40),
-          Map.entry("testCase", 30),
-          Map.entry("testCaseResult", 20),
-          Map.entry("testCaseResolutionStatus", 20),
-          Map.entry("queryCostRecord", 10));
-
   /** Time series entity types */
   private static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
@@ -124,13 +94,19 @@ public class PartitionCalculator {
           "aggregatedCostAnalysisReportData");
 
   private final int partitionSize;
+  private final int minPartitionsPerEntity;
 
   public PartitionCalculator() {
-    this(DEFAULT_PARTITION_SIZE);
+    this(DEFAULT_PARTITION_SIZE, 1);
   }
 
   public PartitionCalculator(int partitionSize) {
+    this(partitionSize, 1);
+  }
+
+  public PartitionCalculator(int partitionSize, int minPartitionsPerEntity) {
     this.partitionSize = Math.clamp(partitionSize, MIN_PARTITION_SIZE, MAX_PARTITION_SIZE);
+    this.minPartitionsPerEntity = Math.max(1, minPartitionsPerEntity);
   }
 
   /**
@@ -144,10 +120,16 @@ public class PartitionCalculator {
    * @throws IllegalStateException if partition count would exceed safe limits
    */
   public List<SearchIndexPartition> calculatePartitions(UUID jobId, Set<String> entityTypes) {
+    return calculatePartitions(jobId, entityTypes, null);
+  }
+
+  public List<SearchIndexPartition> calculatePartitions(
+      UUID jobId, Set<String> entityTypes, ReindexingConfiguration reindexConfig) {
     List<SearchIndexPartition> partitions = new ArrayList<>();
 
     for (String entityType : entityTypes) {
-      List<SearchIndexPartition> entityPartitions = calculatePartitionsForEntity(jobId, entityType);
+      List<SearchIndexPartition> entityPartitions =
+          calculatePartitionsForEntity(jobId, entityType, reindexConfig);
       partitions.addAll(entityPartitions);
 
       if (partitions.size() > MAX_TOTAL_PARTITIONS) {
@@ -174,14 +156,19 @@ public class PartitionCalculator {
    * @return List of partitions for this entity type
    */
   public List<SearchIndexPartition> calculatePartitionsForEntity(UUID jobId, String entityType) {
-    long totalCount = getEntityCount(entityType);
+    return calculatePartitionsForEntity(jobId, entityType, null);
+  }
+
+  public List<SearchIndexPartition> calculatePartitionsForEntity(
+      UUID jobId, String entityType, ReindexingConfiguration reindexConfig) {
+    long totalCount = getEntityCount(entityType, reindexConfig);
     if (totalCount == 0) {
       LOG.debug("No entities found for type: {}", entityType);
       return List.of();
     }
 
     double complexityFactor = ENTITY_COMPLEXITY_FACTORS.getOrDefault(entityType, 1.0);
-    int priority = ENTITY_PRIORITY.getOrDefault(entityType, 50);
+    int priority = EntityPriority.getNumericPriority(entityType);
 
     // Adjust partition size based on complexity - more complex entities get smaller partitions
     long adjustedPartitionSizeLong = (long) (partitionSize / complexityFactor);
@@ -190,6 +177,13 @@ public class PartitionCalculator {
     // Calculate partition count with overflow protection
     long numPartitionsLong =
         (totalCount + adjustedPartitionSizeLong - 1) / adjustedPartitionSizeLong;
+
+    // Ensure minimum partitions so all workers stay busy (e.g. testCaseResult with
+    // only 4 partitions leaves 6 of 10 workers idle for minutes)
+    if (numPartitionsLong < minPartitionsPerEntity && totalCount >= minPartitionsPerEntity) {
+      numPartitionsLong = minPartitionsPerEntity;
+      adjustedPartitionSizeLong = (totalCount + numPartitionsLong - 1) / numPartitionsLong;
+    }
 
     // Enforce per-entity-type limit and adjust partition size if needed
     if (numPartitionsLong > MAX_PARTITIONS_PER_ENTITY_TYPE) {
@@ -208,6 +202,9 @@ public class PartitionCalculator {
 
     for (int i = 0; i < numPartitions; i++) {
       long rangeStart = (long) i * adjustedPartitionSize;
+      if (rangeStart >= totalCount) {
+        break;
+      }
       long rangeEnd = Math.min(rangeStart + adjustedPartitionSize, totalCount);
       long estimatedCount = rangeEnd - rangeStart;
 
@@ -253,10 +250,14 @@ public class PartitionCalculator {
    * @return Total count of entities
    */
   public long getEntityCount(String entityType) {
+    return getEntityCount(entityType, null);
+  }
+
+  public long getEntityCount(String entityType, ReindexingConfiguration reindexConfig) {
     try {
       long count;
       if (TIME_SERIES_ENTITIES.contains(entityType)) {
-        count = getTimeSeriesEntityCount(entityType);
+        count = getTimeSeriesEntityCount(entityType, reindexConfig);
       } else {
         count = getRegularEntityCount(entityType);
       }
@@ -270,10 +271,10 @@ public class PartitionCalculator {
 
   private long getRegularEntityCount(String entityType) {
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    return repository.getDao().listTotalCount();
+    return repository.getDao().listCount(new ListFilter(Include.ALL));
   }
 
-  private long getTimeSeriesEntityCount(String entityType) {
+  private long getTimeSeriesEntityCount(String entityType, ReindexingConfiguration reindexConfig) {
     ListFilter listFilter = new ListFilter(Include.ALL);
     EntityTimeSeriesRepository<?> repository;
 
@@ -282,6 +283,21 @@ public class PartitionCalculator {
       repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
     } else {
       repository = Entity.getEntityTimeSeriesRepository(entityType);
+    }
+
+    if (reindexConfig != null) {
+      long startTs = reindexConfig.getTimeSeriesStartTs(entityType);
+      if (startTs > 0) {
+        long endTs = System.currentTimeMillis();
+        long count = repository.getTimeSeriesDao().listCount(listFilter, startTs, endTs, false);
+        LOG.info(
+            "Time series date filter for {}: last {} days → {} records (was {} total)",
+            entityType,
+            reindexConfig.timeSeriesMaxDays(),
+            count,
+            repository.getTimeSeriesDao().listCount(listFilter));
+        return count;
+      }
     }
 
     return repository.getTimeSeriesDao().listCount(listFilter);
@@ -298,9 +314,14 @@ public class PartitionCalculator {
    * @return Map of entity type to count
    */
   public Map<String, Long> getEntityCounts(Set<String> entityTypes) {
+    return getEntityCounts(entityTypes, null);
+  }
+
+  public Map<String, Long> getEntityCounts(
+      Set<String> entityTypes, ReindexingConfiguration reindexConfig) {
     Map<String, Long> counts = new HashMap<>();
     for (String entityType : entityTypes) {
-      counts.put(entityType, getEntityCount(entityType));
+      counts.put(entityType, getEntityCount(entityType, reindexConfig));
     }
     return counts;
   }
@@ -312,7 +333,7 @@ public class PartitionCalculator {
    * @return Priority value (higher = processed first)
    */
   public int getEntityPriority(String entityType) {
-    return ENTITY_PRIORITY.getOrDefault(entityType, 50);
+    return EntityPriority.getNumericPriority(entityType);
   }
 
   /**

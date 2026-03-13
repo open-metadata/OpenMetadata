@@ -16,11 +16,11 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isString } from 'lodash';
+import { get, isEmpty, isString } from 'lodash';
 import React from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
 import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
-import { ClientErrors } from '../enums/Axios.enum';
+import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
@@ -100,6 +100,7 @@ export const showErrorToast = (
   callback?: (value: React.SetStateAction<string | JSX.Element>) => void
 ) => {
   let errorMessage;
+  let isRuleViolation = false;
   if (React.isValidElement(error)) {
     errorMessage = error;
   } else if (isString(error)) {
@@ -111,6 +112,8 @@ export const showErrorToast = (
         ? fallbackText
         : i18n.t('server.unexpected-error');
     errorMessage = getErrorText(error, fallback);
+    isRuleViolation =
+      get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
     // do not show error toasts for 401
     // since they will be intercepted and the user will be redirected to the signin page
     // except for principal domain mismatch errors
@@ -127,9 +130,12 @@ export const showErrorToast = (
     errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
   }
   callback && callback(errorMessage);
+
+  const alertType = isRuleViolation ? 'warning' : 'error';
+
   useAlertStore
     .getState()
-    .addAlert({ type: 'error', message: errorMessage }, autoCloseTimer);
+    .addAlert({ type: alertType, message: errorMessage }, autoCloseTimer);
 };
 
 /**
@@ -141,6 +147,17 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
   useAlertStore
     .getState()
     .addAlert({ type: 'success', message }, autoCloseTimer);
+};
+
+/**
+ * Display a warning toast message.
+ * @param message warning message.
+ * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
+ */
+export const showWarningToast = (message: string, autoCloseTimer = 5000) => {
+  useAlertStore
+    .getState()
+    .addAlert({ type: 'warning', message }, autoCloseTimer);
 };
 
 /**

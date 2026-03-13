@@ -953,6 +953,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("OpenMetadata Database Schema is Updated.");
       LOG.info("create indexes.");
       searchRepository.createIndexes();
+      searchRepository.createOrUpdateIndexTemplates();
       Entity.cleanup();
       return 0;
     } catch (Exception e) {
@@ -1031,6 +1032,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       validateAndRunSystemDataMigrations(force);
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
+      LOG.info("Update Index Templates.");
+      searchRepository.createOrUpdateIndexTemplates();
       printChangeLog();
       // update entities secrets if required
       new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
@@ -1475,38 +1478,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         return 1;
       }
 
-      IndexMapping vectorMapping =
-          repo.getIndexMapping(
-              org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY);
-      if (vectorMapping != null) {
-        try {
-          String indexName = vectorMapping.getIndexName(repo.getClusterAlias());
-          LOG.info("Dropping vector index '{}' before re-embedding", indexName);
-          repo.deleteIndex(vectorMapping);
-        } catch (Exception e) {
-          LOG.warn(
-              "Failed to drop vector index '{}' - continuing with recreate",
-              org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY,
-              e);
-        }
-        try {
-          repo.createIndex(vectorMapping);
-        } catch (Exception e) {
-          LOG.error(
-              "Failed to recreate vector index '{}'",
-              org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY,
-              e);
-          return 1;
-        }
-      } else {
-        LOG.warn(
-            "Vector index mapping '{}' not found; skipping index recreation step",
-            org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY);
-      }
-
-      String targetIndex =
-          org.openmetadata.service.search.vector.VectorIndexService.getClusteredIndexName();
-
       java.util.concurrent.ConcurrentHashMap<String, Integer> entityTotals =
           new java.util.concurrent.ConcurrentHashMap<>();
       int totalBatches = calculateReembedTotalBatches(batchSize, entityTotals);
@@ -1527,7 +1498,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               taskQueue,
               producersDone,
               vecService,
-              targetIndex,
               processedCounts,
               failedCounts);
 
@@ -1622,7 +1592,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
       org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
-      String targetIndex,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     java.util.concurrent.CountDownLatch consumerLatch =
@@ -1633,13 +1602,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           () -> {
             try {
               runReembedConsumer(
-                  consumerId,
-                  taskQueue,
-                  producersDone,
-                  vecService,
-                  targetIndex,
-                  processedCounts,
-                  failedCounts);
+                  consumerId, taskQueue, producersDone, vecService, processedCounts, failedCounts);
             } finally {
               consumerLatch.countDown();
             }
@@ -1653,7 +1616,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
       org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
-      String targetIndex,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     LOG.debug("Consumer {} started", consumerId);
@@ -1667,9 +1629,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
           break;
         }
         String entityType = task.entityType();
+        String entityIndexName = resolveEntityIndexName(entityType);
+        if (entityIndexName == null) {
+          LOG.warn("No index mapping found for entity type: {}, skipping batch", entityType);
+          continue;
+        }
         for (EntityInterface entity : task.batch().getData()) {
           try {
-            vecService.updateVectorEmbeddings(entity, targetIndex);
+            vecService.updateEntityEmbedding(entity, entityIndexName);
             processedCounts
                 .computeIfAbsent(
                     entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
@@ -1687,6 +1654,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
       Thread.currentThread().interrupt();
     } finally {
       LOG.debug("Consumer {} stopped", consumerId);
+    }
+  }
+
+  private String resolveEntityIndexName(String entityType) {
+    try {
+      org.openmetadata.search.IndexMapping mapping =
+          Entity.getSearchRepository().getIndexMapping(entityType);
+      if (mapping == null) {
+        return null;
+      }
+      return mapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+    } catch (Exception e) {
+      LOG.warn("Failed to resolve index name for entity type {}: {}", entityType, e.getMessage());
+      return null;
     }
   }
 
@@ -2277,6 +2258,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Creating indexes for search engine...");
       parseConfig();
       searchRepository.createIndexes();
+      searchRepository.createOrUpdateIndexTemplates();
       createDataInsightsIndexes();
       Entity.cleanup();
       LOG.info("All indexes created successfully.");
@@ -2607,10 +2589,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Make bulk deploy API call for this chunk
       String jsonBody = JsonUtils.pojoToJson(pipelineIds);
+      String normalizedServerUrl =
+          serverUrl != null && serverUrl.endsWith("/")
+              ? serverUrl.substring(0, serverUrl.length() - 1)
+              : serverUrl;
 
       HttpRequest request =
           HttpRequest.newBuilder()
-              .uri(URI.create(serverUrl + COLLECTION_PATH + "bulk/deploy"))
+              .uri(URI.create(normalizedServerUrl + COLLECTION_PATH + "bulk/deploy"))
               .header("Authorization", "Bearer " + jwtToken)
               .header("Content-Type", "application/json")
               .POST(HttpRequest.BodyPublishers.ofString(jsonBody))

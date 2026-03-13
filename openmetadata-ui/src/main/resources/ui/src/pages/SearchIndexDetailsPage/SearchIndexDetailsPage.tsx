@@ -76,8 +76,9 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { tab: activeTab = EntityTabs.FIELDS } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.FIELDS } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
   const { entityFqn: decodedSearchIndexFQN } = useFqn({
     type: EntityType.SEARCH_INDEX,
   });

@@ -16,6 +16,7 @@ package org.openmetadata.client.security.interfaces;
 import feign.RequestInterceptor;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
+@Deprecated(since = "1.12.0", forRemoval = true)
 public interface AuthenticationProvider extends RequestInterceptor {
   AuthenticationProvider create(OpenMetadataConnection iConfig);
 

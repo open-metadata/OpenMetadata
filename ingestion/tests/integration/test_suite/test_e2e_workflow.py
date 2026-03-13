@@ -18,7 +18,7 @@ import unittest
 from datetime import datetime, timedelta
 
 import sqlalchemy as sqa
-from sqlalchemy.orm import Session, declarative_base
+from sqlalchemy.orm import DeclarativeBase, Session
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -98,7 +98,9 @@ test_suite_config = {
     },
 }
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):

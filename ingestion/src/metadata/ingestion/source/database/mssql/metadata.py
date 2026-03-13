@@ -12,6 +12,7 @@
 import traceback
 from typing import Iterable, Optional
 
+from sqlalchemy import text
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 
@@ -127,19 +128,22 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
-        results = self.engine.execute(MSSQL_GET_SCHEMA_COMMENTS).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(MSSQL_GET_SCHEMA_COMMENTS)).all()
         self.schema_desc_map = {
             (row.DATABASE_NAME, row.SCHEMA_NAME): row.COMMENT for row in results
         }
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
-        results = self.engine.execute(MSSQL_GET_DATABASE_COMMENTS).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(MSSQL_GET_DATABASE_COMMENTS)).all()
         self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
 
     def set_stored_procedure_description_map(self) -> None:
         self.stored_procedure_desc_map.clear()
-        results = self.engine.execute(MSSQL_GET_STORED_PROCEDURE_COMMENTS).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(MSSQL_GET_STORED_PROCEDURE_COMMENTS)).all()
         self.stored_procedure_desc_map = {
             (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
             for row in results
@@ -216,15 +220,20 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
-                MSSQL_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        MSSQL_GET_STORED_PROCEDURES.format(
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
+                        )
+                    )
+                ).all()
             for row in results:
                 try:
-                    stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
+                    stored_procedure = MssqlStoredProcedure.model_validate(
+                        row._asdict()
+                    )
                     if self.is_stored_procedure_filtered(stored_procedure.name):
                         continue
                     yield stored_procedure
@@ -232,7 +241,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     logger.error(f"Error parsing Stored Procedure row: {row}")
                     self.status.failed(
                         error=StackTraceError(
-                            name=dict(row).get("name", "UNKNOWN"),
+                            name=row._asdict().get("name", "UNKNOWN"),
                             error=f"Error parsing Stored Procedure payload: {exc}",
                             stackTrace=traceback.format_exc(),
                         )

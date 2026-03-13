@@ -2963,3 +2963,174 @@ class TestStorageStreamingBehavior(TestCase):
         mock_get_blobs.assert_called_once()
         blobs_arg = mock_get_blobs.call_args[1]["blobs"]
         self.assertIsInstance(blobs_arg, GeneratorType)
+
+
+class TestFilterLatestPerProject:
+    """Tests for _filter_latest_per_project and _has_date_pattern"""
+
+    def test_empty_dict(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        result = _filter_latest_per_project({})
+        assert result == {}
+
+    def test_single_directory_returns_unchanged(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "project/target_2025-04-19": ["project/target_2025-04-19/manifest.json"]
+        }
+        result = _filter_latest_per_project(grouped)
+        assert result == grouped
+
+    def test_picks_latest_dated_dir_per_project(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "projectA/target_2025-04-19_18:07:16": [
+                "projectA/target_2025-04-19_18:07:16/manifest.json",
+                "projectA/target_2025-04-19_18:07:16/catalog.json",
+            ],
+            "projectA/target_2025-04-20_10:00:00": [
+                "projectA/target_2025-04-20_10:00:00/manifest.json",
+            ],
+            "projectA/target_2025-04-18_08:00:00": [
+                "projectA/target_2025-04-18_08:00:00/manifest.json",
+            ],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 1
+        assert "projectA/target_2025-04-20_10:00:00" in result
+
+    def test_multiple_projects_each_keeps_latest(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "projectA/target_2025-04-19": ["projectA/target_2025-04-19/manifest.json"],
+            "projectA/target_2025-04-20": ["projectA/target_2025-04-20/manifest.json"],
+            "projectB/target_2025-04-15": ["projectB/target_2025-04-15/manifest.json"],
+            "projectB/target_2025-04-21": ["projectB/target_2025-04-21/manifest.json"],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 2
+        assert "projectA/target_2025-04-20" in result
+        assert "projectB/target_2025-04-21" in result
+        assert "projectA/target_2025-04-19" not in result
+        assert "projectB/target_2025-04-15" not in result
+
+    def test_non_dated_sibling_dirs_all_kept(self):
+        """Directories without date patterns should all be kept even under the same parent."""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "dbt_files/dbt_project_one": [
+                "dbt_files/dbt_project_one/manifest.json",
+                "dbt_files/dbt_project_one/catalog.json",
+            ],
+            "dbt_files/dbt_new_projects/dbt_project_two": [
+                "dbt_files/dbt_new_projects/dbt_project_two/manifest.json",
+                "dbt_files/dbt_new_projects/dbt_project_two/catalog.json",
+            ],
+            "dbt_files/dbt_new_projects/dbt_project_three": [
+                "dbt_files/dbt_new_projects/dbt_project_three/manifest.json",
+                "dbt_files/dbt_new_projects/dbt_project_three/catalog.json",
+            ],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 3
+        assert "dbt_files/dbt_project_one" in result
+        assert "dbt_files/dbt_new_projects/dbt_project_two" in result
+        assert "dbt_files/dbt_new_projects/dbt_project_three" in result
+
+    def test_mixed_dated_and_non_dated_dirs(self):
+        """Dated dirs get filtered to latest; non-dated dirs are always kept."""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "projectA/target_2025-04-19": ["projectA/target_2025-04-19/manifest.json"],
+            "projectA/target_2025-04-20": ["projectA/target_2025-04-20/manifest.json"],
+            "projectB/some_static_dir": ["projectB/some_static_dir/manifest.json"],
+            "projectB/another_static_dir": [
+                "projectB/another_static_dir/manifest.json"
+            ],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 3
+        assert "projectA/target_2025-04-20" in result
+        assert "projectA/target_2025-04-19" not in result
+        assert "projectB/some_static_dir" in result
+        assert "projectB/another_static_dir" in result
+
+    def test_root_level_non_dated_dirs_kept(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "dir_a": ["dir_a/manifest.json"],
+            "dir_b": ["dir_b/manifest.json"],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 2
+        assert "dir_a" in result
+        assert "dir_b" in result
+
+    def test_deeply_nested_dated_dirs(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "org/team/projectA/run_2025-01-01": [
+                "org/team/projectA/run_2025-01-01/manifest.json"
+            ],
+            "org/team/projectA/run_2025-06-15": [
+                "org/team/projectA/run_2025-06-15/manifest.json"
+            ],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 1
+        assert "org/team/projectA/run_2025-06-15" in result
+
+    def test_root_level_dated_dirs_filtered_to_latest(self):
+        """Root-level dated dirs (no parent) should be grouped together and filtered."""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "target_2025-04-18": ["target_2025-04-18/manifest.json"],
+            "target_2025-04-19": ["target_2025-04-19/manifest.json"],
+            "target_2025-04-20": [
+                "target_2025-04-20/manifest.json",
+                "target_2025-04-20/catalog.json",
+            ],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 1
+        assert "target_2025-04-20" in result
+        assert "target_2025-04-18" not in result
+        assert "target_2025-04-19" not in result
+
+    def test_has_date_pattern(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import _has_date_pattern
+
+        assert _has_date_pattern("project/target_2025-04-19") is True
+        assert _has_date_pattern("project/target_2025-04-19_18:07:16") is True
+        assert _has_date_pattern("project/run_2024-12-31") is True
+        assert _has_date_pattern("2025-01-01") is True
+        assert _has_date_pattern("project/dbt_project_one") is False
+        assert _has_date_pattern("project/some_static_dir") is False
+        assert _has_date_pattern("dir_a") is False

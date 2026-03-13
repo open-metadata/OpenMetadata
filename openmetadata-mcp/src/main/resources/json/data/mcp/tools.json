@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Keyword-based search for data assets in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes.",
+      "description": "Keyword-based search for data assets in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
         "type": "object",
@@ -17,7 +17,7 @@
           },
           "queryFilter": {
             "type": "string",
-            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested."
+            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested, owners IS nested (wrap owners queries in {\"nested\": {\"path\": \"owners\", \"query\": ...}})."
           },
           "from": {
             "type": "integer",
@@ -78,7 +78,7 @@
           },
           {
             "description": "Advanced - Owner filter with OpenSearch",
-            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}"
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}"
           },
           {
             "description": "Advanced - Column search with OpenSearch",
@@ -101,7 +101,7 @@
     },
     {
       "name": "semantic_search",
-      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes.",
+      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' to describe what you're looking for in plain language. The system finds conceptually similar assets using vector similarity. Optionally filter by entity type, service, or tags.",
         "type": "object",
@@ -112,7 +112,7 @@
           },
           "filters": {
             "type": "object",
-            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entity_type' (e.g., ['table', 'dashboard']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entity_type\": [\"table\"], \"service\": [\"BigQuery\"]}.",
+            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}.",
             "additionalProperties": {
               "type": "array",
               "items": {
@@ -145,7 +145,7 @@
           {
             "description": "Find dashboards about revenue in BigQuery",
             "query": "revenue metrics dashboard",
-            "filters": {"entity_type": ["dashboard"], "service": ["BigQuery"]}
+            "filters": {"entityType": ["dashboard"], "service": ["BigQuery"]}
           },
           {
             "description": "High-confidence search for PII data",
@@ -155,25 +155,25 @@
           {
             "description": "Find pipeline assets processing user events",
             "query": "user event processing pipeline",
-            "filters": {"entity_type": ["pipeline"]}
+            "filters": {"entityType": ["pipeline"]}
           }
         ]
       }
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity. Response is optimized for LLM context by excluding verbose metadata fields.",
+      "description": "Get detailed information about a specific entity by its fully qualified name. IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context by excluding verbose metadata fields.",
       "parameters": {
-        "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
+        "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Type of entity"
+            "description": "Type of entity (e.g., table, dashboard, topic, pipeline). Use the 'entityType' value from search results."
           },
           "fqn": {
             "type": "string",
-            "description": "Fully qualified name of the entity"
+            "description": "Fully qualified name of the entity. IMPORTANT: Use the exact 'fullyQualifiedName' value from search_metadata or semantic_search results. Do not attempt to construct or modify the FQN."
           }
         },
         "required": [
@@ -262,7 +262,7 @@
     },
     {
       "name": "patch_entity",
-      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch.",
+      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -276,7 +276,7 @@
           },
           "patch": {
             "type": "string",
-            "description": "JSONPatch as String format."
+            "description": "JSONPatch operations as a JSON array string. Each operation has 'op' (add/remove/replace), 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
           }
         },
         "required": [
@@ -451,6 +451,91 @@
           "testDefinitionName",
           "parameterValues"
         ]
+      }
+    },
+    {
+      "name": "create_metric",
+      "description": "Creates a new Metric entity in OpenMetadata. A Metric represents a measurable business or technical KPI (e.g. daily revenue, error rate). Use this to register new metrics with optional expression, type, granularity, and unit of measurement. Metric can be expressed in SQL, Python, Java, or JavaScript.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the metric. Must be unique and must not contain '::'."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the metric in Markdown format."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the metric."
+          },
+          "metricExpressionLanguage": {
+            "type": "string",
+            "description": "Language used to define the metric expression.",
+            "enum": ["SQL", "Java", "JavaScript", "Python", "External"]
+          },
+          "metricExpressionCode": {
+            "type": "string",
+            "description": "The code or query that computes the metric value (e.g. a SQL SELECT statement)."
+          },
+          "metricType": {
+            "type": "string",
+            "description": "Type of the metric.",
+            "enum": ["COUNT", "SUM", "AVERAGE", "RATIO", "PERCENTAGE", "MIN", "MAX", "MEDIAN", "MODE", "STANDARD_DEVIATION", "VARIANCE", "OTHER"]
+          },
+          "granularity": {
+            "type": "string",
+            "description": "Time granularity at which the metric is computed.",
+            "enum": ["SECOND", "MINUTE", "HOUR", "DAY", "WEEK", "MONTH", "QUARTER", "YEAR"]
+          },
+          "unitOfMeasurement": {
+            "type": "string",
+            "description": "Unit of measurement for the metric value.",
+            "enum": ["COUNT", "DOLLARS", "PERCENTAGE", "TIMESTAMP", "SIZE", "REQUESTS", "EVENTS", "TRANSACTIONS", "OTHER"]
+          },
+          "customUnitOfMeasurement": {
+            "type": "string",
+            "description": "Custom unit of measurement string. Required only when unitOfMeasurement is 'OTHER'."
+          },
+          "owners": {
+            "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as owners of this metric.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as reviewers of this metric.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relatedMetrics": {
+            "type": "array",
+            "description": "Fully qualified names of related metrics (e.g. 'DailyRevenue', 'WeeklyRevenue').",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this metric (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": {
+              "type": "string"
+            }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of the domains this metric belongs to (e.g. 'Finance', 'Marketing'). Assigns the metric to a domain for governance and access control.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "metricExpressionLanguage", "metricExpressionCode"]
       }
     },
     {

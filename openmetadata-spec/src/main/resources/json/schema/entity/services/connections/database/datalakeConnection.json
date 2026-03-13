@@ -97,6 +97,12 @@
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "skipColdStorage": {
+      "title": "Skip Cold Storage",
+      "description": "Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS Coldline/Archive). When enabled, only files in hot/standard storage tiers will be processed.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

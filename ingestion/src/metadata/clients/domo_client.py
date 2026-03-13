@@ -29,7 +29,8 @@ from metadata.generated.schema.entity.services.connections.database.domoDatabase
 from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -109,7 +110,7 @@ class DomoClient:
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config)
 
     def get_chart_details(self, page_id) -> Optional[DomoChartDetails]:
         """

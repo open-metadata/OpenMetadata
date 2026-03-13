@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box } from '@mui/material';
 import { Button, Col, Row, Tabs, TabsProps, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -156,10 +155,10 @@ const IncidentManagerDetailPage = ({
     return tabs.map(({ LabelComponent, labelProps, key, Tab, isBeta }) => ({
       key,
       label: (
-        <Box alignItems="center" display="flex" gap={1}>
+        <div className="tw:flex tw:items-center tw:gap-1">
           <LabelComponent {...labelProps} />
           {isBeta && <BetaBadge />}
-        </Box>
+        </div>
       ),
       children: <Tab />,
     }));

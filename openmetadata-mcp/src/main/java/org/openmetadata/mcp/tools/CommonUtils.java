@@ -44,7 +44,11 @@ public class CommonUtils {
           teamsOrUsers.add(user.getEntityReference());
         }
       } catch (Exception e) {
-        LOG.error(String.format("Could not add teams or users '%s' due to", e.getMessage()), e);
+        LOG.error(
+            "Could not resolve owner or reviewer '{}' to a user or team: {}",
+            owner,
+            e.getMessage(),
+            e);
       }
     }
     return teamsOrUsers;

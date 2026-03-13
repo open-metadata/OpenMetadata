@@ -49,12 +49,19 @@ class ColumnValuesMissingCountValidator(
         """
         return self.run_query_results(self.runner, metric, column, **kwargs)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        total_missing_count = row.get(self.TOTAL_MISSING_COUNT)
+        if total_missing_count is None:
+            return None
+        return {self.TOTAL_MISSING_COUNT: total_missing_count}
+
     def _execute_dimensional_validation(
         self,
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for missing count with deviation recalculation
 
@@ -78,13 +85,13 @@ class ColumnValuesMissingCountValidator(
             missing_values = test_params.get(self.MISSING_VALUE_MATCH)
             expected_missing_count = test_params.get(self.MISSING_COUNT_VALUE, 0)
 
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            total_missing_expr = Metrics.NULL_MISSING_COUNT(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            total_missing_expr = Metrics.nullMissingCount(column).fn()
 
             if missing_values:
                 total_missing_expr = (
                     total_missing_expr
-                    + add_props(values=missing_values)(Metrics.COUNT_IN_SET.value)(
+                    + add_props(values=missing_values)(Metrics.countInSet.value)(
                         column
                     ).fn()
                 )
@@ -105,29 +112,12 @@ class ColumnValuesMissingCountValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
-            for row in result_rows:
-                total_missing_count = row.get(self.TOTAL_MISSING_COUNT)
-
-                if total_missing_count is None:
-                    continue
-
-                metric_values = {
-                    self.TOTAL_MISSING_COUNT: total_missing_count,
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

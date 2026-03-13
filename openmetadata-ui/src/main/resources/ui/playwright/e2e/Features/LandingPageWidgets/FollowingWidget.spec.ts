@@ -84,7 +84,7 @@ entities.forEach((EntityClass) => {
       const entityName = entity.entityResponseData?.['displayName'];
 
       await followEntity(adminPage, entity.endpoint);
-      await validateFollowedEntityToWidget(adminPage, entityName, true);
+      await validateFollowedEntityToWidget(adminPage, entityName ?? '', true);
     });
   });
 });

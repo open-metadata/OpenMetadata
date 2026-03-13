@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -695,12 +697,22 @@ public class DashboardDataModelResourceIT
       createEntity(request);
     }
 
-    // Wait for indexing
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    Awaitility.await("Wait for data models to be indexed")
+        .atMost(Duration.ofSeconds(15))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              ListParams checkParams = new ListParams();
+              checkParams.setLimit(100);
+              checkParams.setService(service.getFullyQualifiedName());
+              ListResponse<DashboardDataModel> checkList = listEntities(checkParams);
+              return checkList.getData().stream()
+                      .filter(dm -> dm.getName().startsWith(ns.prefix("dm_pagination_")))
+                      .count()
+                  >= 3;
+            });
 
     ListParams params = new ListParams();
     params.setFields("tags");

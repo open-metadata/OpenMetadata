@@ -28,6 +28,8 @@ class LikeRatio(ComposedMetric):
     compute the LIKE ratio
     """
 
+    schema_metric_type = MetricType.likeRatio
+
     @classmethod
     def name(cls):
         return MetricType.likeRatio.value

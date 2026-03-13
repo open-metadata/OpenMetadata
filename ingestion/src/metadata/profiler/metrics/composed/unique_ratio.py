@@ -28,6 +28,8 @@ class UniqueRatio(ComposedMetric):
     compute the unique ratio
     """
 
+    schema_metric_type = MetricType.uniqueProportion
+
     @classmethod
     def name(cls):
         return MetricType.uniqueProportion.value

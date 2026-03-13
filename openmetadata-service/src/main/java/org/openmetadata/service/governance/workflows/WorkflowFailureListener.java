@@ -17,6 +17,7 @@ import org.flowable.common.engine.api.delegate.event.FlowableExceptionEvent;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngines;
 import org.flowable.engine.RuntimeService;
+import org.flowable.engine.delegate.event.FlowableCancelledEvent;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
@@ -43,6 +44,15 @@ public class WorkflowFailureListener implements FlowableEventListener {
         storeFailureInDatabase(event, "PROCESS_ERROR");
         break;
       case PROCESS_CANCELLED:
+        if (event instanceof FlowableCancelledEvent cancelledEvent
+            && ("Cleanup before redeployment".equals(cancelledEvent.getCause())
+                || "Terminated due to conflicting workflow instance"
+                    .equals(cancelledEvent.getCause()))) {
+          LOG.debug(
+              "[WorkflowFailure] Ignoring expected PROCESS_CANCELLED: {}",
+              cancelledEvent.getCause());
+          break;
+        }
         LOG.error("[WorkflowFailure] PROCESS_CANCELLED: {}", event);
         storeFailureInDatabase(event, "PROCESS_CANCELLED");
         break;

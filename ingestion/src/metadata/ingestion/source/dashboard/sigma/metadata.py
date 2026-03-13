@@ -50,6 +50,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
     Workbook,
     WorkbookDetails,
 )
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -320,7 +321,7 @@ class SigmaSource(DashboardServiceSource):
             try:
                 datamodel_columns.append(
                     Column(
-                        name=col,
+                        name=truncate_column_name(col),
                         displayName=col,
                         dataType=DataType.UNKNOWN,
                         dataTypeDisplay="Sigma Field",

@@ -668,6 +668,13 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart, long start, long end, boolean live, String filter)
+      throws IOException {
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, filter);
+  }
+
+  @Override
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
     return dataInsightAggregatorManager.getQueryCostRecords(serviceName);
   }
@@ -775,6 +782,12 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
     genericManager.deleteILMPolicy(policyName);
+  }
+
+  @Override
+  public void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    genericManager.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
   }
 
   @Override

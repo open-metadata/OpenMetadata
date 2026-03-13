@@ -28,6 +28,8 @@ class DistinctRatio(ComposedMetric):
     compute the distinct ratio
     """
 
+    schema_metric_type = MetricType.distinctProportion
+
     @classmethod
     def name(cls):
         return MetricType.distinctProportion.value

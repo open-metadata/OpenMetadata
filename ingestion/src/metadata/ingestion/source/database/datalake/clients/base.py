@@ -44,7 +44,12 @@ class DatalakeBaseClient(ABC):
         """Returns the RAW database schema names, based on the underlying client."""
 
     @abstractmethod
-    def get_table_names(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:
+    def get_table_names(
+        self,
+        bucket_name: str,
+        prefix: Optional[str],
+        skip_cold_storage: bool = False,
+    ) -> Iterable[str]:
         """Returns the Table names, based on the underlying client."""
 
     @abstractmethod

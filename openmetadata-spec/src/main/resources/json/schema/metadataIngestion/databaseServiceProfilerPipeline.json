@@ -68,12 +68,6 @@
       "default": false,
       "title": "Use FQN For Filtering"
     },
-    "computeMetrics": {
-      "description": "Option to turn on/off computing profiler metrics.",
-      "type": "boolean",
-      "default": true,
-      "title": "Compute Metrics"
-    },
     "computeTableMetrics": {
       "description": "Option to turn on/off table metric computation. If enabled, profiler will compute table level metrics.",
       "type": "boolean",
@@ -87,10 +81,10 @@
       "title": "Compute Column Metrics"
     },
     "useStatistics": {
-      "description": "Use system tables to extract metrics. Metrics that cannot be gathered from system tables will use the default methods. Using system tables can be faster but requires gathering statistics before running (for example using the ANALYZE procedure). More information can be found in the documentation: https://docs.openmetadata.org/latest/profler",
+      "description": "Use system tables to extract table metrics. Metrics that cannot be gathered from system tables will use the default methods. Using system tables can be faster but requires gathering statistics before running (for example using the ANALYZE procedure). More information can be found in the documentation: https://docs.openmetadata.org/latest/profler",
       "type": "boolean",
       "default": false,
-      "title": "Use Gathered Statistics"
+      "title": "Use System Table Statistics"
     },
     "profileSampleType": {
       "$ref": "../entity/data/table.json#/definitions/profileSampleType",
@@ -113,8 +107,8 @@
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",
-      "type": "number",
-      "default": 5,
+      "type": ["integer", "null"],
+      "default": null,
       "title": "Thread Count"
     },
     "timeoutSeconds": {
@@ -122,6 +116,35 @@
       "type": "integer",
       "default": 43200,
       "title": "Timeout (in sec.)"
+    },
+    "metrics": {
+      "description": "List of metrics to compute. If empty, then all metrics will be computed",
+      "type": "array",
+      "items": {
+        "$ref": "../configuration/profilerConfiguration.json#/definitions/metricType"
+      },
+      "default": [
+          "mean",
+          "valuesCount",
+          "columnCount",
+          "distinctCount",
+          "distinctProportion",
+          "max",
+          "min",
+          "nullCount",
+          "rowCount",
+          "stddev",
+          "sum",
+          "uniqueCount",
+          "uniqueProportion",
+          "columnNames",
+          "nullProportion",
+          "median",
+          "firstQuartile",
+          "thirdQuartile",
+          "interQuartileRange",
+          "nonParametricSkew"
+      ]
     }
   },
   "additionalProperties": false

@@ -470,7 +470,7 @@ public class EmailUtil {
             .getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
     OpenMetadataBaseUrlConfiguration urlConfiguration =
         (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
-    return urlConfiguration.getOpenMetadataUrl();
+    return StringUtils.stripEnd(urlConfiguration.getOpenMetadataUrl(), "/");
   }
 
   static class TemplatePopulatorBuilder {

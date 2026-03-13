@@ -51,6 +51,8 @@ class Median(StaticMetric, PercentilMixin):
     - For a quantifiable value, return the usual Median
     """
 
+    schema_metric_type = MetricType.median
+
     @classmethod
     def name(cls):
         return MetricType.median.value
@@ -68,7 +70,7 @@ class Median(StaticMetric, PercentilMixin):
         """sqlalchemy function
 
         Supports optional dimension_col property for GROUP BY correlation.
-        Set via: add_props(dimension_col=col.name)(Metrics.MEDIAN.value)
+        Set via: add_props(dimension_col=col.name)(Metrics.median.value)
         """
         # Get optional dimension_col property (for dimensionality validation)
         # Expected to be a string column name, not a Column object

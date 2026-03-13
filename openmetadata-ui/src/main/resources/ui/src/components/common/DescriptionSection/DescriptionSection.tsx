@@ -46,7 +46,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
       // Look for the markdown-parser element within the rich-text-editor-container
       const markdownParser = element.querySelector('.markdown-parser');
       // Fallback to the container itself if markdown parser is not found
-      const measureNode = (markdownParser as HTMLElement) || element;
+      const measureNode = markdownParser ?? element;
       // If element is not visible (e.g., tab hidden), avoid recalculating to false
       const isVisible = measureNode.getClientRects().length > 0;
       if (!isVisible) {

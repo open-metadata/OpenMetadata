@@ -28,6 +28,8 @@ class DuplicateCount(ComposedMetric):
     compute the number of rows that are duplicates
     """
 
+    schema_metric_type = MetricType.duplicateCount
+
     @classmethod
     def name(cls):
         return MetricType.duplicateCount.value
