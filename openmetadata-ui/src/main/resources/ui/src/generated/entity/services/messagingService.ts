@@ -219,6 +219,10 @@ export interface Connection {
      */
     consumerConfigSSL?: Config;
     /**
+     * New test property description.
+     */
+    newTestProperty?: string;
+    /**
      * sasl.mechanism Consumer Config property
      */
     saslMechanism?: SaslMechanismType;

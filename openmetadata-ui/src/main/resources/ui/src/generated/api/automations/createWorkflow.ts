@@ -1752,6 +1752,10 @@ export interface ConfigObject {
      */
     consumerConfigSSL?: ConsumerConfigSSLClass;
     /**
+     * New test property description.
+     */
+    newTestProperty?: string;
+    /**
      * sasl.mechanism Consumer Config property
      */
     saslMechanism?: SaslMechanismType;

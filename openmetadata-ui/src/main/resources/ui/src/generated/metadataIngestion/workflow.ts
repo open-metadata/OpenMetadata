@@ -1706,6 +1706,10 @@ export interface ConfigObject {
      */
     consumerConfigSSL?: ConsumerConfigSSLClass;
     /**
+     * New test property description.
+     */
+    newTestProperty?: string;
+    /**
      * sasl.mechanism Consumer Config property
      */
     saslMechanism?: SaslMechanismType;
@@ -5208,7 +5212,7 @@ export interface Pipeline {
     /**
      * Number of threads to use during metric computations
      */
-    threadCount?: number;
+    threadCount?: number | null;
     /**
      * Profiler Timeout in Seconds
      */
