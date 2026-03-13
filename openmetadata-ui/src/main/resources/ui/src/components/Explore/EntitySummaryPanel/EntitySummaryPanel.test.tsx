@@ -152,33 +152,14 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
-jest.mock('@mui/material/styles', () => {
-  const actual = jest.requireActual('@mui/material/styles');
-  const theme = actual.createTheme({
-    palette: {
-      allShades: {
-        gray: { 200: '#eaecf0', 700: '#344054' },
-        info: { 700: '#175cd3' },
-      },
-    },
-  });
-
-  return { ...actual, useTheme: jest.fn().mockReturnValue(theme) };
-});
-jest.mock('@mui/material', () => {
-  const actual = jest.requireActual('@mui/material');
-  const { createTheme } = jest.requireActual('@mui/material/styles');
-  const theme = createTheme({
-    palette: {
-      allShades: {
-        gray: { 200: '#eaecf0', 700: '#344054' },
-        info: { 700: '#175cd3' },
-      },
-    },
-  });
-
-  return { ...actual, useTheme: jest.fn().mockReturnValue(theme) };
-});
+jest.mock('../../common/OwnerUserList/OwnerUserList.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="owner-user-list">OwnerUserList</div>
+    )),
+}));
 
 jest.mock('../../../utils/SearchClassBase', () => ({
   __esModule: true,
