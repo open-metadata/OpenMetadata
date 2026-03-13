@@ -54,6 +54,11 @@
                 "type": "string"
             }
         },
+        "logoUrl": {
+            "description": "URL to the logo image for this service. Primarily used for custom service types.",
+            "type": "string",
+            "format": "uri"
+        },
         "ingestionRunner": {
             "description": "The ingestion agent responsible for executing the ingestion pipeline.",
             "$ref": "../../type/entityReference.json"

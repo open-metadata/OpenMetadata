@@ -56,7 +56,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
         <div
           className="d-flex justify-center items-center"
           data-testid="service-icon">
-          {getServiceLogo(capitalize(key) ?? '', 'h-8')}
+          {getServiceLogo(capitalize(key) ?? '', 'h-8', { serviceType: capitalize(key) })}
         </div>
 
         <Typography.Text

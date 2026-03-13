@@ -58,6 +58,11 @@
         "type": "string"
       }
     },
+    "logoUrl": {
+      "description": "URL to the logo image for this service. Primarily used for custom service types.",
+      "type": "string",
+      "format": "uri"
+    },
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
