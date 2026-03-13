@@ -1062,7 +1062,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           <Alert
             closable
             className=""
-            title=""
+            title={t('label.error')}
             variant="error"
             onClose={() => setErrorMessage('')}>
             {errorMessage}
@@ -1323,7 +1323,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
 
         {shouldShowScheduler && (
           <Row gutter={[20, 20]}>
-            <Col span={24}>
+            <Col className="m-l-md m-r-md">
               <AlertBar
                 defaultExpand
                 className="test-case-form-alert custom-alert-description"
