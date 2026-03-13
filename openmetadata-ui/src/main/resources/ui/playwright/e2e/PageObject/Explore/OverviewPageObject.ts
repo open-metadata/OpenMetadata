@@ -258,7 +258,9 @@ export class OverviewPageObject extends RightPanelBase {
     }
 
     await this.updateButton.waitFor({ state: 'visible' });
+    const tagPatchPromise = this.waitForPatchResponse();
     await this.updateButton.click();
+    await tagPatchPromise;
 
     // After update the popover closes; rely on tag list container assertions
     // with built-in retry rather than a page-wide loader that may be ambiguous.
@@ -303,7 +305,9 @@ export class OverviewPageObject extends RightPanelBase {
     }
 
     await this.updateButton.waitFor({ state: 'visible' });
+    const glossaryPatchPromise = this.waitForPatchResponse();
     await this.updateButton.click();
+    await glossaryPatchPromise;
     // After update the popover closes; rely on glossary-term container assertion
     // with built-in retry rather than a page-wide loader that may be ambiguous.
     await this.glossaryTermListContainer.waitFor({ state: 'visible' });
@@ -334,10 +338,10 @@ export class OverviewPageObject extends RightPanelBase {
     await tierRadioButton.click();
 
     await this.updateTierButton.waitFor({ state: 'visible' });
+    const tierPatchPromise = this.waitForPatchResponse();
     await this.updateTierButton.click();
+    await tierPatchPromise;
 
-    // Wait for loader to disappear
-    await this.loader.waitFor({ state: 'hidden' });
     await this.tierList.waitFor({ state: 'visible' });
     await expect(this.tierList).toContainText(tierName);
     return this;
@@ -370,9 +374,9 @@ export class OverviewPageObject extends RightPanelBase {
       await this.domainTreeNode
         .filter({ hasText: domainName })
         .waitFor({ state: 'visible' });
+      const domainPatchPromise = this.waitForPatchResponse();
       await this.domainTreeNode.filter({ hasText: domainName }).click();
-
-      await this.loader.waitFor({ state: 'hidden' });
+      await domainPatchPromise;
     }
 
     await this.domainList.waitFor({ state: 'visible' });
@@ -410,6 +414,7 @@ export class OverviewPageObject extends RightPanelBase {
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
 
+    const ownerPatchPromise = this.waitForPatchResponse();
     if (type === 'Teams') {
       await this.page
         .getByRole('listitem', { name: owner, exact: true })
@@ -420,7 +425,7 @@ export class OverviewPageObject extends RightPanelBase {
         .click();
       await this.updateOwnersButton.click();
     }
-    await this.loader.waitFor({ state: 'detached' });
+    await ownerPatchPromise;
     return this;
   }
 
@@ -436,8 +441,10 @@ export class OverviewPageObject extends RightPanelBase {
       .waitFor({ state: 'visible' });
     await this.userListItem.filter({ hasText: ownerName }).click();
     await this.updateButton.waitFor({ state: 'visible' });
+    const editOwnersPatchPromise = this.waitForPatchResponse();
     await this.updateButton.click();
-    await this.loader.waitFor({ state: 'hidden' });
+    await editOwnersPatchPromise;
+
     await this.userListContainer.waitFor({ state: 'visible' });
     await expect(this.userListContainer).toContainText(ownerName);
     return this;
@@ -732,10 +739,12 @@ export class OverviewPageObject extends RightPanelBase {
   // ============ HELPER METHODS ============
 
   private async waitForPatchResponse(): Promise<void> {
+    const endpoint = this.rightPanel.getEntityEndpoint();
+    const urlPattern = endpoint ? `/api/v1/${endpoint}/` : '/api/v1/';
     const responsePromise = this.page.waitForResponse(
       (resp) =>
-        resp.url().includes('/api/v1/') &&
         resp.request().method() === 'PATCH' &&
+        resp.url().includes(urlPattern) &&
         !resp.url().includes('/api/v1/analytics')
     );
 

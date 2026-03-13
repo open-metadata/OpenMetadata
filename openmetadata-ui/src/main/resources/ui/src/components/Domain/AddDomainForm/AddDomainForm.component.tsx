@@ -180,7 +180,7 @@ const AddDomainForm = ({
         required: false,
         label: t('label.tag-plural'),
         id: 'root/tags',
-        type: FieldTypes.TAG_SUGGESTION_MUI,
+        type: FieldTypes.UT_TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'tags-container',
@@ -373,7 +373,8 @@ const AddDomainForm = ({
       data-testid="add-domain"
       form={form}
       layout="vertical"
-      onFinish={handleFormSubmit}>
+      onFinish={handleFormSubmit}
+    >
       {/* Cover Image */}
       {coverImageField && <Box sx={{ mb: 2 }}>{getField(coverImageField)}</Box>}
 
@@ -398,7 +399,8 @@ const AddDomainForm = ({
         <Space
           className="w-full justify-end"
           data-testid="cta-buttons"
-          size={16}>
+          size={16}
+        >
           <Button data-testid="cancel-domain" type="link" onClick={onCancel}>
             {t('label.cancel')}
           </Button>
@@ -407,7 +409,8 @@ const AddDomainForm = ({
             disabled={!createPermission}
             htmlType="submit"
             loading={loading}
-            type="primary">
+            type="primary"
+          >
             {t('label.save')}
           </Button>
         </Space>

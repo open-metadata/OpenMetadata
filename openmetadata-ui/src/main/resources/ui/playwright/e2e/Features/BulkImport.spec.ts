@@ -30,7 +30,6 @@ import {
 } from '../../utils/common';
 import {
   createColumnRowDetails,
-  createColumnRowDetailsWithEncloseDot,
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
@@ -536,10 +535,17 @@ test.describe('Bulk Import Export', () => {
         page
       );
 
+      const importProgressCheck = page.waitForSelector(
+        'text=Import is in progress.',
+        {
+          state: 'attached',
+        }
+      );
+
       await page.getByRole('button', { name: 'Next' }).click();
-      await page.waitForSelector('text=Import is in progress.', {
-        state: 'attached',
-      });
+
+      await importProgressCheck;
+
       await page.waitForSelector('text=Import is in progress.', {
         state: 'detached',
       });
@@ -826,7 +832,7 @@ test.describe('Bulk Import Export', () => {
       });
 
       // total column count +2 for newly added columns
-      const rowStatus = Array(
+      const rowStatus = new Array(
         tableEntity.entityLinkColumnsName.length + 2
       ).fill('Entity updated');
 
@@ -1095,7 +1101,7 @@ test.describe('Bulk Import Export', () => {
       });
 
       await test.step('should select all the cells in the column by clicking on column header', async () => {
-        const firstHeaderCell = await page
+        const firstHeaderCell = page
           .locator('.rdg-header-row')
           .first()
           .locator('.rdg-cell')

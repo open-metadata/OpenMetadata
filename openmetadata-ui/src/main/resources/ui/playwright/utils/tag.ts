@@ -596,7 +596,7 @@ export const verifyEntityTypeFilterInTagAssets = async (
   await clearResponse;
 };
 
-export const selectTagInMUITagSuggestion = async (
+export const selectTagInTagSuggestion = async (
   page: Page,
   {
     searchTerm,
@@ -624,4 +624,6 @@ export const selectTagInMUITagSuggestion = async (
   const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
   await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="listbox"]', { state: 'hidden' });
 };

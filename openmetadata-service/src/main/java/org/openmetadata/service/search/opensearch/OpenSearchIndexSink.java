@@ -1,18 +1,17 @@
 package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.SINK;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.stream.JsonGenerator;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Deque;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.system.EntityError;
@@ -22,12 +21,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.interfaces.Sink;
+import org.openmetadata.service.workflows.interfaces.TaggedOperation;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
+import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 
 @Slf4j
 public class OpenSearchIndexSink
-    implements Sink<List<BulkOperation>, os.org.opensearch.client.opensearch.core.BulkResponse> {
+    implements Sink<List<TaggedOperation<BulkOperation>>, BulkResponse> {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
@@ -44,53 +46,42 @@ public class OpenSearchIndexSink
   }
 
   @Override
-  public os.org.opensearch.client.opensearch.core.BulkResponse write(
-      List<BulkOperation> data, Map<String, Object> contextData) throws SearchIndexException {
+  public BulkResponse write(List<TaggedOperation<BulkOperation>> data) throws SearchIndexException {
     LOG.debug("[OsSearchIndexSink] Processing a Batch of Size: {}", data.size());
     try {
-      List<?> entityNames =
-          (List<?>)
-              Optional.ofNullable(contextData.get(ENTITY_NAME_LIST_KEY))
-                  .orElse(Collections.emptyList());
       List<EntityError> entityErrorList = new ArrayList<>();
-      os.org.opensearch.client.opensearch.core.BulkResponse response = null;
+      BulkResponse response = null;
 
-      List<BulkOperation> bufferData = new ArrayList<>();
+      List<TaggedOperation<BulkOperation>> buffer = new ArrayList<>();
       long bufferSize = 0;
-      int requestIndex = 0;
 
-      for (BulkOperation operation : data) {
-        long operationSize = estimateBulkOperationSize(operation);
+      for (TaggedOperation<BulkOperation> tagged : data) {
+        long operationSize = estimateBulkOperationSize(tagged.operation());
 
         if (operationSize > maxPayLoadSizeInBytes) {
+          LOG.error(
+              "[OsSearchIndexSink] Entity size exceeds payload limit, skipping entity: {} (type={})",
+              tagged.entityRef().getId(),
+              tagged.entityRef().getType());
           entityErrorList.add(
               new EntityError()
                   .withMessage("Entity size exceeds opensearch maximum payload size")
-                  .withEntity(
-                      requestIndex < entityNames.size()
-                          ? entityNames.get(requestIndex)
-                          : String.format("Unknown entity at index %d", requestIndex)));
-          requestIndex++;
+                  .withEntity(tagged.entityRef()));
           continue;
         }
 
-        if (bufferSize + operationSize > maxPayLoadSizeInBytes && !bufferData.isEmpty()) {
-          response = searchRepository.getSearchClient().bulkOpenSearch(bufferData);
-          entityErrorList.addAll(
-              extractErrorsFromResponse(response, entityNames, requestIndex - bufferData.size()));
-          bufferData = new ArrayList<>();
+        if (bufferSize + operationSize > maxPayLoadSizeInBytes && !buffer.isEmpty()) {
+          response = sendWithBisection(buffer, entityErrorList);
+          buffer = new ArrayList<>();
           bufferSize = 0;
         }
 
-        bufferData.add(operation);
+        buffer.add(tagged);
         bufferSize += operationSize;
-        requestIndex++;
       }
 
-      if (!bufferData.isEmpty()) {
-        response = searchRepository.getSearchClient().bulkOpenSearch(bufferData);
-        entityErrorList.addAll(
-            extractErrorsFromResponse(response, entityNames, requestIndex - bufferData.size()));
+      if (!buffer.isEmpty()) {
+        response = sendWithBisection(buffer, entityErrorList);
       }
 
       LOG.debug(
@@ -130,6 +121,53 @@ public class OpenSearchIndexSink
     }
   }
 
+  /**
+   * Sends bulk operations to OpenSearch, iteratively bisecting the batch on 413 (Request Entity Too
+   * Large) responses. If a single operation exceeds the server limit, it is recorded as a failed
+   * entity and skipped so the rest of the batch can proceed.
+   */
+  private BulkResponse sendWithBisection(
+      List<TaggedOperation<BulkOperation>> taggedOps, List<EntityError> errorList)
+      throws IOException {
+    Deque<List<TaggedOperation<BulkOperation>>> pending = new ArrayDeque<>();
+    pending.push(taggedOps);
+    BulkResponse lastResponse = null;
+
+    while (!pending.isEmpty()) {
+      List<TaggedOperation<BulkOperation>> chunk = pending.pop();
+      List<BulkOperation> operations = chunk.stream().map(TaggedOperation::operation).toList();
+      try {
+        BulkResponse response = searchRepository.getSearchClient().bulkOpenSearch(operations);
+        errorList.addAll(extractErrorsFromResponse(response, chunk));
+        lastResponse = response;
+      } catch (OpenSearchException e) {
+        if (e.status() != 413) {
+          throw e;
+        }
+        if (chunk.size() == 1) {
+          LOG.error(
+              "[OsSearchIndexSink] Single document exceeds OpenSearch payload limit, skipping entity: {} (type={})",
+              chunk.getFirst().entityRef().getId(),
+              chunk.getFirst().entityRef().getType());
+          errorList.add(
+              new EntityError()
+                  .withMessage("Document exceeds OpenSearch maximum payload size (413)")
+                  .withEntity(chunk.getFirst().entityRef()));
+          continue;
+        }
+        int mid = chunk.size() / 2;
+        LOG.warn(
+            "[OsSearchIndexSink] Bulk request rejected with 413, bisecting batch of {} into [{}, {}]",
+            chunk.size(),
+            mid,
+            chunk.size() - mid);
+        pending.push(chunk.subList(mid, chunk.size()));
+        pending.push(chunk.subList(0, mid));
+      }
+    }
+    return lastResponse;
+  }
+
   private long estimateBulkOperationSize(BulkOperation operation) {
     try {
       StringWriter writer = new StringWriter();
@@ -144,23 +182,17 @@ public class OpenSearchIndexSink
   }
 
   private List<EntityError> extractErrorsFromResponse(
-      os.org.opensearch.client.opensearch.core.BulkResponse response,
-      List<?> entityNames,
-      int startIndex) {
+      BulkResponse response, List<TaggedOperation<BulkOperation>> taggedOps) {
     List<EntityError> errors = new ArrayList<>();
     if (response != null && response.errors()) {
       for (int i = 0; i < response.items().size(); i++) {
         os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem item =
             response.items().get(i);
         if (item.error() != null) {
-          int entityIndex = startIndex + i;
           errors.add(
               new EntityError()
                   .withMessage(item.error().reason())
-                  .withEntity(
-                      entityIndex < entityNames.size()
-                          ? entityNames.get(entityIndex)
-                          : String.format("Unknown entity at index %d", entityIndex)));
+                  .withEntity(taggedOps.get(i).entityRef()));
         }
       }
     }

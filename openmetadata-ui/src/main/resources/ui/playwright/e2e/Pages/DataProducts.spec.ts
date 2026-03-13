@@ -15,6 +15,7 @@ import base, { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -31,8 +32,7 @@ import {
 } from '../../utils/domain';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { selectTagInMUITagSuggestion } from '../../utils/tag';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { selectTagInTagSuggestion } from '../../utils/tag';
 
 const user = new UserClass();
 const domain = new Domain();
@@ -465,7 +465,7 @@ test.describe('Data Products', () => {
     });
   });
 
-  test('Create data product with tags using MUITagSuggestion', async ({
+  test('Create data product with tags using TagSuggestion', async ({
     page,
   }) => {
     const dataProduct = new DataProduct([domain]);
@@ -501,8 +501,8 @@ test.describe('Data Products', () => {
       await domainOption.click();
     });
 
-    await test.step('Search and select tag via MUITagSuggestion', async () => {
-      await selectTagInMUITagSuggestion(page, {
+    await test.step('Search and select tag via TagSuggestion', async () => {
+      await selectTagInTagSuggestion(page, {
         searchTerm: tag.data.displayName,
         tagFqn: tag.responseData.fullyQualifiedName,
       });

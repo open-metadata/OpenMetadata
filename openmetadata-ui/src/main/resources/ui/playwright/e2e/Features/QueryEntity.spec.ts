@@ -259,10 +259,20 @@ test('Query Entity', async ({ page }) => {
   });
 
   await test.step('Verify vote for query', async () => {
+    const upVoteInterceptor = page.waitForResponse(
+      (response) =>
+        response.url().includes('api/v1/queries/') &&
+        response.url().includes('/vote') &&
+        response.request().method() === 'PUT'
+    );
     await page
       .getByTestId('extra-option-container')
       .getByTestId('up-vote-btn')
       .click();
+
+    const upVoteResponse = await upVoteInterceptor;
+
+    expect(upVoteResponse.status()).toBe(200);
 
     await page.reload();
     await page.waitForLoadState('networkidle');

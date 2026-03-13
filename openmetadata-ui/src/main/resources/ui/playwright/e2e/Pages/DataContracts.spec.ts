@@ -142,7 +142,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     test(`Create Data Contract and validate for ${entityType}`, async ({
       page,
     }) => {
-      test.setTimeout(360000);
+      test.slow(true);
 
       const testClassification = new ClassificationClass();
       const testTag = new TagClass({
