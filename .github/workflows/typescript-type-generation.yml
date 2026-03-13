@@ -38,10 +38,11 @@ jobs:
           BASE_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_DATA=$(gh pr view "$PR_NUMBER" --json headRepository,headRefName,headRepositoryOwner --repo "$BASE_REPO")
+          PR_DATA=$(gh pr view "$PR_NUMBER" --json headRepository,headRefName,headRepositoryOwner,headRefOid --repo "$BASE_REPO")
           echo "head_repo=$(echo "$PR_DATA" | jq -r '.headRepository.name')" >> $GITHUB_OUTPUT
           echo "head_owner=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')" >> $GITHUB_OUTPUT
           echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
+          echo "head_sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> $GITHUB_OUTPUT
           echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
 
       - name: Wait for the labeler
@@ -96,6 +97,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_DETAILS_HEAD_SHA: ${{ steps.pr-details.outputs.head_sha }}
           PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
           INPUT_BRANCH: ${{ github.event.inputs.branch }}
           GITHUB_REF: ${{ github.ref }}
@@ -104,6 +106,8 @@ jobs:
             echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
           elif [ "$EVENT_NAME" == "pull_request_target" ]; then
             echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
+          elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
+            echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
           elif [ -n "$PR_DETAILS_HEAD_REF" ]; then
             echo "ref=$PR_DETAILS_HEAD_REF" >> $GITHUB_OUTPUT
           elif [ -n "$INPUT_BRANCH" ]; then
@@ -151,7 +155,6 @@ jobs:
       - name: Commit and push changes
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false'
         run: |
-          git add openmetadata-ui/src/main/resources/ui/src/generated/
           git commit -m "Update generated TypeScript types"
           git push --force-with-lease
 
