@@ -9,9 +9,7 @@
     "kafkaType": {
       "description": "Kafka service type",
       "type": "string",
-      "enum": [
-        "Kafka"
-      ],
+      "enum": ["Kafka"],
       "default": "Kafka"
     }
   },
@@ -48,12 +46,7 @@
       "title": "Security Protocol",
       "description": "security.protocol consumer config property",
       "type": "string",
-      "enum": [
-        "PLAINTEXT",
-        "SASL_PLAINTEXT",
-        "SASL_SSL",
-        "SSL"
-      ],
+      "enum": ["PLAINTEXT", "SASL_PLAINTEXT", "SASL_SSL", "SSL"],
       "default": "PLAINTEXT"
     },
     "saslMechanism": {
@@ -67,6 +60,11 @@
       "description": "basic.auth.user.info schema registry config property, Client HTTP credentials in the form of username:password.",
       "type": "string",
       "format": "password"
+    },
+    "newTestProperty": {
+      "title": "New Test Property",
+      "description": "New test property description.",
+      "type": "string"
     },
     "consumerConfig": {
       "title": "Consumer Config",
@@ -109,7 +107,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "bootstrapServers"
-  ]
+  "required": ["bootstrapServers"]
 }
