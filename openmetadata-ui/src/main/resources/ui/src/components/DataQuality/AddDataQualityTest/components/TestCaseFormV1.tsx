@@ -15,6 +15,7 @@
 // IMPORTS
 // =============================================
 import { EditOutlined } from '@ant-design/icons';
+import { Alert } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -1058,12 +1059,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       {/* Floating Error Alert - always visible at top */}
       {errorMessage && (
         <div className="floating-error-alert">
-          <AlertBar
-            defaultExpand
-            className="test-case-form-alert custom-alert-description"
-            message={errorMessage}
-            type="error"
-          />
+          <Alert
+            closable
+            className=""
+            title=""
+            variant="error"
+            onClose={() => setErrorMessage('')}>
+            {errorMessage}
+          </Alert>
         </div>
       )}
 
