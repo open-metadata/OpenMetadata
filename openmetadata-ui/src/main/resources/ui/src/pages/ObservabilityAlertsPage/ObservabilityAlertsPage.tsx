@@ -297,14 +297,14 @@ const ObservabilityAlertsPage = () => {
         <Col span={24}>
           <Card>
             <Row>
-              <Col span={12}>
+              <Col span={16}>
                 <PageHeader
                   data={pageHeaderData}
                   learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
                   title={t('label.observability-alert')}
                 />
               </Col>
-              <Col className="d-flex justify-end" span={12}>
+              <Col className="d-flex justify-end" span={8}>
                 {(alertResourcePermission?.Create ||
                   alertResourcePermission?.All) && (
                   <LimitWrapper resource="eventsubscription">
