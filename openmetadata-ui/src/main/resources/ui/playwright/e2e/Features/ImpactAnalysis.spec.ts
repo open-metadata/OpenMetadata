@@ -180,7 +180,7 @@ test.describe('Impact Analysis', () => {
       const impactAnalysisResponse = page.waitForResponse(
         `/api/v1/lineage/getPaginationInfo?*`
       );
-      await page.getByRole('button', { name: 'Impact Analysis' }).click();
+      await page.getByRole('tab', { name: 'Impact Analysis' }).click();
       await lineageResponse;
       await impactAnalysisResponse;
       await waitForAllLoadersToDisappear(page);
