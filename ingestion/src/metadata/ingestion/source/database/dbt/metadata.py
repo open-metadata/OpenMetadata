@@ -1643,7 +1643,7 @@ class DbtSource(DbtServiceSource):
                 )
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 if not dbt_test_result:
-                    logger.warning(
+                    logger.debug(
                         f"DBT Test Case Results not found for node: {manifest_node.name}"
                     )
                     return
