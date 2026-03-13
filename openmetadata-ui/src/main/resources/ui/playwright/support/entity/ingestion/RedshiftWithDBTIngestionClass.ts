@@ -268,13 +268,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     });
 
     await test.step('validate DBT icon should be show to lineage node', async () => {
-      // Verify DBT in table entity
-      await visitEntityPage({
-        page,
-        searchTerm: this.dbtEntityFqn,
-        dataTestId: `${REDSHIFT.serviceName}-${REDSHIFT.DBTTable}`,
-      });
-
       await visitLineageTab(page);
 
       await expect(

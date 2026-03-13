@@ -4,14 +4,18 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-ui/src/main/resources/ui/src/generated/**"
+      - 'openmetadata-spec/src/main/resources/json/schema/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/generated/**'
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to run the workflow on"
-        required: true
-        default: "main"
+        description: 'Branch to run the workflow on (ignored if pr_number is provided)'
+        required: false
+        default: 'main'
+        type: string
+      pr_number:
+        description: 'PR number to run the workflow for (works for both forked and non-forked PRs)'
+        required: false
         type: string
 
 concurrency:

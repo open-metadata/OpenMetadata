@@ -1017,13 +1017,25 @@ export const openColumnDetailPanel = async ({
   columnId,
   columnNameTestId = 'column-name',
   entityType,
+  entityEndpoint,
 }: {
   page: Page;
   rowSelector?: string;
   columnId: string;
   columnNameTestId?: string;
   entityType?: EntityType;
+  entityEndpoint?: string;
 }) => {
+  // Register before click so the listener is in place before the response fires.
+  const apiResponsePromise = entityEndpoint
+    ? page.waitForResponse(
+        (response) =>
+          (response.url().includes(`/api/v1/${entityEndpoint}/name/`) ||
+            response.url().includes('/api/v1/columns/name/')) &&
+          response.request().method() === 'GET'
+      )
+    : null;
+
   if (entityType === 'MlModel') {
     const columnName = page
       .locator(`[${rowSelector}="${columnId}"]`)
@@ -1049,7 +1061,10 @@ export const openColumnDetailPanel = async ({
   }
   await expect(page.locator('.column-detail-panel')).toBeVisible();
 
-  await page.waitForLoadState('networkidle');
+  if (apiResponsePromise) {
+    const apiResponse = await apiResponsePromise;
+    expect(apiResponse.status()).toBe(200);
+  }
 
   const panelContainer = page.locator('.column-detail-panel');
 
