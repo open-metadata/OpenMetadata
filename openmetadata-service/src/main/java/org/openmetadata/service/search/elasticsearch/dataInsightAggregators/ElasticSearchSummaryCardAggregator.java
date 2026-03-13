@@ -11,6 +11,7 @@ import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -127,7 +128,7 @@ public class ElasticSearchSummaryCardAggregator
 
     try {
       String queryToProcess = EsUtils.parseJsonQuery(filter);
-      Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+      Query filterQuery = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
 
       return Query.of(q -> q.bool(BoolQuery.of(b -> b.must(rangeQuery).filter(filterQuery))));
     } catch (Exception e) {

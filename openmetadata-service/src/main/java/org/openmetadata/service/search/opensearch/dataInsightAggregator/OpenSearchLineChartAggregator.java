@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -255,7 +256,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
 
     try {
       String queryToProcess = OsUtils.parseJsonQuery(filter);
-      Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+      Query filterQuery = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
 
       return Query.of(q -> q.bool(BoolQuery.of(b -> b.must(rangeQuery).filter(filterQuery))));
     } catch (Exception e) {
