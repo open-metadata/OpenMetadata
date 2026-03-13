@@ -31,6 +31,8 @@ from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
 
+# TODO: Paused due to credential issue - re-enable once credentials are restored
+@pytest.mark.skip(reason="TODO: Paused due to credential issue")
 class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
     Snowflake CLI Tests

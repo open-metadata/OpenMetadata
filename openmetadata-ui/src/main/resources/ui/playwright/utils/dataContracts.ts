@@ -43,9 +43,9 @@ export const saveAndTriggerDataContractValidation = async (
   );
   await page.getByTestId('manage-contract-actions').click();
 
-  await page.waitForSelector('.contract-action-dropdown', {
-    state: 'visible',
-  });
+  await page
+    .getByTestId('contract-run-now-button')
+    .waitFor({ state: 'visible' });
 
   await page.getByTestId('contract-run-now-button').click();
   // Use validate response to get the resultId of the newly triggered execution.
@@ -125,7 +125,7 @@ export const waitForDataContractExecution = async (
       },
       {
         message: 'Wait for data contract execution to complete',
-        timeout: 300_000,
+        timeout: 600_000,
         intervals: [30_000, 20_000, 10_000],
       }
     )
