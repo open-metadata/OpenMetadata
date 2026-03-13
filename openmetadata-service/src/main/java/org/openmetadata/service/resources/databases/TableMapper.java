@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.InputSanitizer.sanitize;
 
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -34,7 +35,7 @@ public class TableMapper implements EntityMapper<Table, CreateTable> {
   public CustomMetric createCustomMetricToEntity(CreateCustomMetric create, String user) {
     return new CustomMetric()
         .withId(UUID.randomUUID())
-        .withDescription(create.getDescription())
+        .withDescription(sanitize(create.getDescription()))
         .withName(create.getName())
         .withColumnName(create.getColumnName())
         .withOwners(create.getOwners())

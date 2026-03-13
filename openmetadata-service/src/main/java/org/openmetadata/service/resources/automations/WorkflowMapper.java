@@ -9,7 +9,6 @@ public class WorkflowMapper implements EntityMapper<Workflow, CreateWorkflow> {
   @Override
   public Workflow createToEntity(CreateWorkflow create, String user) {
     return copy(new Workflow(), create, user)
-        .withDescription(create.getDescription())
         .withRequest(create.getRequest())
         .withWorkflowType(create.getWorkflowType())
         .withDisplayName(create.getDisplayName())

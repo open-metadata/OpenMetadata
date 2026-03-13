@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.feeds;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.util.InputSanitizer.sanitize;
 
 import jakarta.ws.rs.core.Response;
 import java.util.UUID;
@@ -22,10 +23,9 @@ public class SuggestionMapper {
     validate(create);
     return new Suggestion()
         .withId(UUID.randomUUID())
-        .withDescription(create.getDescription())
+        .withDescription(sanitize(create.getDescription()))
         .withEntityLink(create.getEntityLink())
         .withType(create.getType())
-        .withDescription(create.getDescription())
         .withTagLabels(create.getTagLabels())
         .withStatus(SuggestionStatus.Open)
         .withCreatedBy(UserUtil.getUserOrBot(user))
