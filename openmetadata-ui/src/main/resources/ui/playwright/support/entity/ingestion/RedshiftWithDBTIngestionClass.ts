@@ -244,15 +244,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       expect(codeMirrorText).toContain(DBT.dbtQuery);
 
-      await page.click('[data-testid="lineage"]');
-
-      await page.waitForSelector('[data-testid="entity-header-display-name"]');
-      const entityHeaderDisplayName = await page.textContent(
-        '[data-testid="entity-header-display-name"]'
-      );
-
-      expect(entityHeaderDisplayName).toContain(DBT.dbtLineageNodeLabel);
-
       // Verify Data Quality
       await page.click('[data-testid="profiler"]');
 
@@ -269,6 +260,14 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
     await test.step('validate DBT icon should be show to lineage node', async () => {
       await visitLineageTab(page);
+
+      // Verify entity header display name
+      await page.waitForSelector('[data-testid="entity-header-display-name"]');
+      const entityHeaderDisplayName = await page.textContent(
+        '[data-testid="entity-header-display-name"]'
+      );
+
+      expect(entityHeaderDisplayName).toContain(DBT.dbtLineageNodeLabel);
 
       await expect(
         page.getByTestId(`lineage-node-${this.dbtEntityFqn}`)
