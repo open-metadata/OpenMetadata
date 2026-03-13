@@ -129,7 +129,10 @@ export const deleteService = async (
   const serviceSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
 
-    return url.includes('/api/v1/search/query') && url.includes(serviceName);
+    return (
+      url.includes('/api/v1/search/query') &&
+      decodeURIComponent(url).includes(serviceName)
+    );
   });
 
   await page.fill('[data-testid="searchbar"]', serviceName);
