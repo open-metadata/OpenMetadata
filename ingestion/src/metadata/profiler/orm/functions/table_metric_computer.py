@@ -16,6 +16,8 @@ Run profiler metrics on the table
 
 import traceback
 from abc import ABC, abstractmethod
+from collections import namedtuple
+from datetime import datetime as _datetime
 from typing import Callable, List, Optional, Tuple, Type
 
 from sqlalchemy import (
@@ -701,6 +703,72 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
         return res
 
 
+class InformixTableMetricComputer(BaseTableMetricComputer):
+    """Informix table metrics from systables.
+
+    Reads nrows, npused * pagesize (size), and created date.
+    owner is CHAR-padded — TRIM() is required for equality match.
+
+    JayDeBeApi returns systables.created as a JPype Java string proxy,
+    not a Python datetime. core.py calls .replace(tzinfo=...) on it,
+    which fails on a string. Since SQLAlchemy Row is immutable, we
+    convert to a namedtuple so the date can be patched before returning.
+    """
+
+    def _parse_created_datetime(self, value) -> Optional[_datetime]:
+        for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
+            try:
+                return _datetime.strptime(str(value), fmt)
+            except (ValueError, TypeError):
+                continue
+        return None
+
+    def _get_col_names_and_count(self):
+        """Route literals through ColumnCountFn/ColunNameFn to avoid ? bind params.
+
+        Informix JDBC 4.50 rejects ? in SELECT projections via prepareStatement().
+        These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
+        that set literal_binds=True, inlining values directly into SQL.
+        """
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn
+        from metadata.profiler.metrics.static.column_names import ColunNameFn
+
+        col_names = ColunNameFn(
+            literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)
+        ).label(COLUMN_NAMES)
+        col_count = ColumnCountFn(
+            literal(len(inspect(self.runner.raw_dataset).c))
+        ).label(COLUMN_COUNT)
+        return col_names, col_count
+
+    def compute(self):
+        columns = [
+            Column("nrows").label(ROW_COUNT),
+            (Column("npused") * Column("pagesize")).label(SIZE_IN_BYTES),
+            Column("created").label(CREATE_DATETIME),
+            *self._get_col_names_and_count(),
+        ]
+        where_clause = [
+            Column("tabname") == self.table_name,
+            func.trim(Column("owner")) == self.schema_name,
+        ]
+        query = self._build_query(
+            columns,
+            self._build_table("systables", None),
+            where_clause,
+        )
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or res.rowCount == 0:
+            return super().compute()
+        d = dict(res._asdict())
+        created = d.get(CREATE_DATETIME)
+        if created is not None and not isinstance(created, _datetime):
+            d[CREATE_DATETIME] = self._parse_created_datetime(created)
+        return namedtuple("Row", d.keys())(**d)
+
+
 class TableMetricComputer:
     """Table Metric Construct"""
 
@@ -783,3 +851,4 @@ table_metric_computer_factory.register(Dialects.Cockroach, CockroachTableMetricC
 table_metric_computer_factory.register(Dialects.Db2, DB2TableMetricComputer)
 table_metric_computer_factory.register(Dialects.Vertica, VerticaTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Hana, SAPHanaTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Informix, InformixTableMetricComputer)
