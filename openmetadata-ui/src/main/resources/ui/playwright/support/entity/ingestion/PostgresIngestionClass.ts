@@ -206,5 +206,4 @@ class PostgresIngestionClass extends ServiceBaseClass {
   }
 }
 
-// eslint-disable-next-line jest/no-export
 export default PostgresIngestionClass;

@@ -12,6 +12,7 @@
 - [Common Test Patterns](#common-test-patterns)
 - [Support Classes Reference](#support-classes-reference)
 - [Domain Tags](#domain-tags)
+- [ESLint Enforcement](#eslint-enforcement)
 - [Validation Checklist](#validation-checklist)
 
 ---
@@ -632,6 +633,47 @@ Available domain tags (from `DOMAIN_TAGS` in `playwright/constant/config.ts`):
 
 ---
 
+## ESLint Enforcement
+
+Playwright tests are linted with `eslint-plugin-playwright` to automatically catch common anti-patterns. This runs as a CI check on all PRs touching `playwright/` files.
+
+### Running the Lint
+
+```bash
+cd openmetadata-ui/src/main/resources/ui
+yarn lint:playwright
+```
+
+### Rule Levels
+
+**Blocking (error)** — these fail CI and must be fixed before merging:
+
+| Rule | What It Catches |
+|------|----------------|
+| `no-networkidle` | `waitForLoadState('networkidle')` — unreliable with websockets/polling |
+| `no-page-pause` | `page.pause()` — debug statement left in code |
+| `no-focused-test` | `test.only()` / `describe.only()` — accidentally committed focus |
+
+**Aspirational (warn)** — reported but don't block CI; fix when touching a file:
+
+| Rule | What It Catches |
+|------|----------------|
+| `missing-playwright-await` | Missing `await` on `expect()` matchers and Playwright API calls |
+| `no-wait-for-timeout` | `page.waitForTimeout()` — use event-driven waits instead |
+| `no-force-option` | `{ force: true }` — hides real interaction issues |
+| `no-element-handle` | `page.$()` / `page.$$()` — use locators with auto-retry |
+| `no-eval` | `page.$eval()` / `page.$$eval()` — use locators instead |
+| `no-skipped-test` | `test.skip()` — skipped tests should be fixed or removed |
+| `prefer-web-first-assertions` | `textContent()` / `isVisible()` — use `toHaveText()` / `toBeVisible()` |
+| `no-useless-await` | Unnecessary `await` on non-async methods |
+| `no-wait-for-selector` | `page.waitForSelector()` — use `expect().toBeVisible()` instead |
+
+### Promoting Rules
+
+As existing violations are fixed, warning-level rules should be promoted to error level to prevent regressions.
+
+---
+
 ## Validation Checklist
 
 Before finalizing tests, verify:
@@ -661,6 +703,10 @@ Before finalizing tests, verify:
 - [ ] All actions followed by `waitForAllLoadersToDisappear(page)`
 - [ ] Semantic locators (getByRole, getByTestId) used
 - [ ] Assertions use `.toBeVisible()` instead of `.waitForSelector()`
+
+### ESLint
+- [ ] `yarn lint:playwright` passes with zero errors
+- [ ] No new warnings introduced (fix existing ones when touching a file)
 
 ### Coverage & Roles
 - [ ] Multi-role tests use appropriate fixtures

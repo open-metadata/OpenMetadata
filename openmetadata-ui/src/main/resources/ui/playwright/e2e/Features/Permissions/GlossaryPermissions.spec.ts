@@ -36,7 +36,6 @@ const test = base.extend<{
     const adminPage = await browser.newPage();
     try {
       await adminUser.login(adminPage);
-      // eslint-disable-next-line react-hooks/rules-of-hooks
       await use(adminPage);
     } finally {
       await adminPage.close();

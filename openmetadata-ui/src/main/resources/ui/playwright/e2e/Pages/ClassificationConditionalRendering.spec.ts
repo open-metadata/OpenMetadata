@@ -126,7 +126,6 @@ test('Should render classification correctly after page reload', async ({
   await page.reload();
   await classificationsResponse;
 
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
