@@ -535,16 +535,21 @@ test.describe('Bulk Import Export', () => {
         page
       );
 
-      const importProgressCheck = page.waitForSelector(
-        'text=Import is in progress.',
-        {
-          state: 'attached',
-        }
+      const importApiCall = page.waitForResponse(
+        (resp) =>
+          resp.url().includes('/importAsync?dryRun=true') &&
+          resp.request().method() === 'PUT'
       );
 
       await page.getByRole('button', { name: 'Next' }).click();
+      await importApiCall;
 
-      await importProgressCheck;
+      // Wait directly for final state (results grid)
+      await page.waitForSelector('[data-testid="passed-row"]', {
+        state: 'visible',
+      });
+      // Verify no loading state remains
+      await expect(page.getByText('Import is in progress.')).not.toBeVisible();
 
       await page.waitForSelector('text=Import is in progress.', {
         state: 'detached',
