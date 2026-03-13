@@ -220,15 +220,13 @@ const CustomControls: FC<{
       lineageConfig.upstreamDepth,
     ]);
 
-  const handleImpactAnalysisClick = useCallback(() => {
-    queryParams['mode'] = 'impact_analysis';
-    navigate({ search: QueryString.stringify(queryParams) });
-  }, [navigate, queryParams]);
-
-  const handleLineageClick = useCallback(() => {
-    queryParams['mode'] = 'lineage';
-    navigate({ search: QueryString.stringify(queryParams) });
-  }, [navigate, queryParams]);
+  const handleTabChange = useCallback(
+    (key: string) => {
+      queryParams['mode'] = key;
+      navigate({ search: QueryString.stringify(queryParams) });
+    },
+    [navigate, queryParams]
+  );
 
   const updateURLParams = useCallback(
     (
@@ -402,13 +400,7 @@ const CustomControls: FC<{
           {isEditMode ? null : (
             <Tabs
               selectedKey={activeTab}
-              onSelectionChange={(key) => {
-                if (key === 'impact_analysis') {
-                  handleImpactAnalysisClick();
-                } else {
-                  handleLineageClick();
-                }
-              }}>
+              onSelectionChange={(key) => handleTabChange(key as string)}>
               <Tabs.List size="sm" type="button-brand">
                 <Tabs.Item id="lineage" key="lineage">
                   {t('label.lineage')}

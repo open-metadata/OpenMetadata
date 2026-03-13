@@ -153,7 +153,7 @@ export const BulkImportVersionSummary = ({
               })}
               width={800}
               onClose={handleClose}>
-              <Dialog.Content className="tw:overflow-scroll">
+              <Dialog.Content className="tw:overflow-auto">
                 <div
                   data-testid="bulk-import-details-modal"
                   style={{ height: '60vh', maxHeight: 700 }}>
