@@ -14,10 +14,10 @@
 import {
   Button,
   Dialog,
+  DialogTrigger,
   Modal,
   ModalOverlay,
   Tabs,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -577,15 +577,42 @@ const TestSuiteDetailsPage = () => {
             <div className="tw:flex tw:items-center tw:gap-1">
               {(testSuitePermissions.EditAll ||
                 testSuitePermissions.EditTests) && (
-                <Button
-                  color="primary"
-                  data-testid="add-test-case-btn"
-                  size="md"
-                  onPress={() => setIsTestCaseModalOpen(true)}>
-                  {t('label.add-entity', {
-                    entity: t('label.test-case-plural'),
-                  })}
-                </Button>
+                <DialogTrigger
+                  isOpen={isTestCaseModalOpen}
+                  onOpenChange={setIsTestCaseModalOpen}>
+                  <Button
+                    color="primary"
+                    data-testid="add-test-case-btn"
+                    size="md"
+                    onPress={() => setIsTestCaseModalOpen(true)}>
+                    {t('label.add-entity', {
+                      entity: t('label.test-case-plural'),
+                    })}
+                  </Button>
+                  <ModalOverlay>
+                    <Modal>
+                      <Dialog
+                        showCloseButton
+                        title={t('label.add-entity', {
+                          entity: t('label.test-case-plural'),
+                        })}
+                        onClose={() => setIsTestCaseModalOpen(false)}>
+                        <Dialog.Content>
+                          <AddTestCaseList
+                            existingTest={testSuite?.tests ?? []}
+                            getPopupContainer={(trigger) =>
+                              trigger.closest('[role="dialog"]') ??
+                              document.body
+                            }
+                            selectedTest={selectedTestCases}
+                            onCancel={() => setIsTestCaseModalOpen(false)}
+                            onSubmit={handleAddTestCaseSubmit}
+                          />
+                        </Dialog.Content>
+                      </Dialog>
+                    </Modal>
+                  </ModalOverlay>
+                </DialogTrigger>
               )}
               <ManageButton
                 isRecursiveDelete
@@ -656,31 +683,6 @@ const TestSuiteDetailsPage = () => {
               {tabs.pipelineTab.children}
             </Tabs.Panel>
           </Tabs>
-        </div>
-        <div className="tw:w-full">
-          <ModalOverlay
-            isOpen={isTestCaseModalOpen}
-            onOpenChange={setIsTestCaseModalOpen}>
-            <Modal className="tw:max-w-2xl tw:rounded-xl">
-              <Dialog className="tw:flex tw:max-h-[90vh] tw:w-full tw:flex-col tw:overflow-hidden tw:rounded-xl tw:bg-background-paper tw:p-6">
-                <Typography
-                  as="h2"
-                  className="tw:mb-4 tw:text-lg tw:font-semibold tw:text-body">
-                  {t('label.add-entity', {
-                    entity: t('label.test-case-plural'),
-                  })}
-                </Typography>
-                <div className="tw:flex-1 tw:overflow-y-auto">
-                  <AddTestCaseList
-                    existingTest={testSuite?.tests ?? []}
-                    selectedTest={selectedTestCases}
-                    onCancel={() => setIsTestCaseModalOpen(false)}
-                    onSubmit={handleAddTestCaseSubmit}
-                  />
-                </div>
-              </Dialog>
-            </Modal>
-          </ModalOverlay>
         </div>
       </div>
     </PageLayoutV1>
