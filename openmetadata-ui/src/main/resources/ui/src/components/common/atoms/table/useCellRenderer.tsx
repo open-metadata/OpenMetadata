@@ -12,12 +12,13 @@
  */
 
 import { AvatarGroup, Box, Typography, useTheme } from '@mui/material';
+import { Avatar } from '@openmetadata/ui-core-components';
 import { Globe01 } from '@untitledui/icons';
 import { ReactNode, useMemo } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { EntityAvatar } from '../../EntityAvatar/EntityAvatar';
+import { getEntityAvatarProps } from '../../../../utils/IconUtils';
 import { ProfilePicture } from '../ProfilePicture';
 import { CellRenderer, ColumnConfig } from '../shared/types';
 import TagsCell from './TagsCell';
@@ -45,7 +46,7 @@ export const useCellRenderer = <
 
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <EntityAvatar entity={entity} size={40} />
+            <Avatar size="lg" {...getEntityAvatarProps(entity)} />
             <Box>
               <Typography
                 sx={{

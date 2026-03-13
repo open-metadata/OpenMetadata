@@ -85,7 +85,7 @@ import {
   SettingOptionsType,
   sidebarClick,
 } from '../../utils/sidebar';
-import { selectTagInMUITagSuggestion } from '../../utils/tag';
+import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 const user = new UserClass();
 
@@ -1167,7 +1167,7 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Create domain with tags using MUITagSuggestion', async ({ page }) => {
+  test('Create domain with tags using TagSuggestion', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const testDomain = new Domain();
 
@@ -1185,8 +1185,8 @@ test.describe('Domains', () => {
         await fillDomainForm(page, testDomain.data);
       });
 
-      await test.step('Search and select tag via MUITagSuggestion', async () => {
-        await selectTagInMUITagSuggestion(page, {
+      await test.step('Search and select tag via TagSuggestion', async () => {
+        await selectTagInTagSuggestion(page, {
           searchTerm: tag.data.displayName,
           tagFqn: tag.responseData.fullyQualifiedName,
         });
@@ -1214,9 +1214,7 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Create subdomain with tags using MUITagSuggestion', async ({
-    page,
-  }) => {
+  test('Create subdomain with tags using TagSuggestion', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const parentDomain = new Domain();
     const subDomain = new SubDomain(parentDomain);
@@ -1239,8 +1237,8 @@ test.describe('Domains', () => {
         await fillDomainForm(page, subDomain.data, false);
       });
 
-      await test.step('Search and select tag via MUITagSuggestion', async () => {
-        await selectTagInMUITagSuggestion(page, {
+      await test.step('Search and select tag via TagSuggestion', async () => {
+        await selectTagInTagSuggestion(page, {
           searchTerm: tag.data.displayName,
           tagFqn: tag.responseData.fullyQualifiedName,
         });

@@ -4,14 +4,18 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-ui/src/main/resources/ui/src/generated/**"
+      - 'openmetadata-spec/src/main/resources/json/schema/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/generated/**'
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to run the workflow on"
-        required: true
-        default: "main"
+        description: 'Branch to run the workflow on (ignored if pr_number is provided)'
+        required: false
+        default: 'main'
+        type: string
+      pr_number:
+        description: 'PR number to run the workflow for (works for both forked and non-forked PRs)'
+        required: false
         type: string
 
 concurrency:
@@ -26,19 +30,97 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Get PR details for workflow_dispatch
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''
+        id: pr-details
+        env:
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          BASE_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_DATA=$(gh pr view "$PR_NUMBER" --json headRepository,headRefName,headRepositoryOwner,headRefOid --repo "$BASE_REPO")
+          echo "head_repo=$(echo "$PR_DATA" | jq -r '.headRepository.name')" >> $GITHUB_OUTPUT
+          echo "head_owner=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')" >> $GITHUB_OUTPUT
+          echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
+          echo "head_sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> $GITHUB_OUTPUT
+          echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'github-actions[bot]' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'github-actions[bot]' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true
+
       - name: Check if repository is a fork
         id: check-fork
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
+          HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
         run: |
-          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-            echo "is_fork=true" >> $GITHUB_OUTPUT
+          if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
+            # For workflow_dispatch with PR number
+            if [ "$FULL_REPO" != "$BASE_REPO" ]; then
+              echo "is_fork=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_fork=false" >> $GITHUB_OUTPUT
+            fi
+          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
+            # For pull_request_target events
+            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ]; then
+              echo "is_fork=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_fork=false" >> $GITHUB_OUTPUT
+            fi
           else
+            # Default to non-fork for direct branch runs
             echo "is_fork=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine checkout ref
+        id: checkout-ref
+        env:
+          IS_FORK: ${{ steps.check-fork.outputs.is_fork }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_DETAILS_HEAD_SHA: ${{ steps.pr-details.outputs.head_sha }}
+          PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          if [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
+            echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
+          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
+            echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
+          elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
+            echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
+          elif [ -n "$PR_DETAILS_HEAD_REF" ]; then
+            echo "ref=$PR_DETAILS_HEAD_REF" >> $GITHUB_OUTPUT
+          elif [ -n "$INPUT_BRANCH" ]; then
+            echo "ref=$INPUT_BRANCH" >> $GITHUB_OUTPUT
+          else
+            echo "ref=$GITHUB_REF" >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch || github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
+          ref: ${{ steps.checkout-ref.outputs.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node.js
@@ -59,44 +141,56 @@ jobs:
 
       - name: Check for changes
         id: git-check
+        continue-on-error: true
         run: |
-          git diff --quiet || echo "changes=true" >> $GITHUB_OUTPUT
+          git add openmetadata-ui/src/main/resources/ui/src/generated/
+          git diff --cached --quiet
 
       - name: Configure Git
-        if: steps.git-check.outputs.changes == 'true'
+        if: steps.git-check.outcome != 'success'
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Commit and push changes
-        if: steps.git-check.outputs.changes == 'true' && steps.check-fork.outputs.is_fork == 'false'
-        id: commit-changes
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false'
         run: |
-          git add openmetadata-ui/src/main/resources/ui/src/generated/
           git commit -m "Update generated TypeScript types"
           git push --force-with-lease
-          echo "committed=true" >> $GITHUB_OUTPUT
 
       - name: Create PR comment about auto-update
-        if: steps.commit-changes.outputs.committed == 'true' && steps.check-fork.outputs.is_fork == 'false' && github.event_name == 'pull_request_target'
-        uses: peter-evans/create-or-update-comment@v1
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
+        uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
           body: |
-            **TypeScript types have been updated based on the JSON schema changes in the PR**
+            ## ✅ TypeScript Types Auto-Updated
 
-      - name: Create PR comment about forked repository
-        if: steps.git-check.outputs.changes == 'true' && steps.check-fork.outputs.is_fork == 'true' && github.event_name == 'pull_request_target'
-        uses: peter-evans/create-or-update-comment@v1
+            The generated TypeScript types have been automatically updated based on JSON schema changes in this PR.
+
+      - name: Create PR comment for fork repository
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
+        uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
           body: |
-            ⚠️**Generated types need to be updated.**
-            The generated TypeScript types cannot be automatically committed from a forked repository.
-            Please run the type generation locally and commit the changes manually.
+            ## ⚠️ TypeScript Types Need Update
 
-            To generate the types locally, run:
+            **The generated TypeScript types are out of sync with the JSON schema changes.**
+
+            Since this is a pull request from a forked repository, the types cannot be automatically committed.
+            Please generate and commit the types manually:
+
             ```bash
             cd openmetadata-ui/src/main/resources/ui
             ./json2ts-generate-all.sh -l true
+            git add src/generated/
+            git commit -m "Update generated TypeScript types"
+            git push
             ```
+
+            After pushing the changes, this check will pass automatically.
+
+      - name: Fail workflow for fork PRs with type changes
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true'
+        run: exit 1

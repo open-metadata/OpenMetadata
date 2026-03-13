@@ -48,24 +48,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('@mui/material', () => {
-  const actual = jest.requireActual('@mui/material');
-
-  return {
-    ...actual,
-    Link: jest.fn().mockImplementation(({ children, ...props }) => (
-      <a data-testid="mui-link" {...props}>
-        {children}
-      </a>
-    )),
-    Divider: jest
-      .fn()
-      .mockImplementation(({ className, ...props }) => (
-        <div className={className} data-testid="mui-divider" {...props} />
-      )),
-  };
-});
-
 jest.mock(
   '../../../DataQuality/IncidentManager/Severity/Severity.component',
   () => ({
@@ -95,7 +77,8 @@ jest.mock('antd', () => {
           className={className}
           data-span={span}
           data-testid="col"
-          {...props}>
+          {...props}
+        >
           {children}
         </div>
       )),
@@ -106,7 +89,8 @@ jest.mock('antd', () => {
           className={className}
           data-gutter={gutter}
           data-testid="row"
-          {...props}>
+          {...props}
+        >
           {children}
         </div>
       )),
@@ -133,7 +117,8 @@ jest.mock('antd', () => {
             className={className}
             data-ellipsis={ellipsis}
             data-testid="typography-text"
-            {...props}>
+            {...props}
+          >
             {children}
           </span>
         )),
@@ -143,7 +128,8 @@ jest.mock('antd', () => {
           <p
             className={className}
             data-testid="typography-paragraph"
-            {...props}>
+            {...props}
+          >
             {children}
           </p>
         )),
@@ -163,7 +149,8 @@ jest.mock('../../../common/DataQualitySection', () => {
             data-testid={`test-${test.type}`}
             key={index}
             role="button"
-            onClick={() => onFilterChange?.(test.type)}>
+            onClick={() => onFilterChange?.(test.type)}
+          >
             {test.count}
           </div>
         ))}

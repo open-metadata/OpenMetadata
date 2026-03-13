@@ -67,6 +67,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
@@ -447,6 +448,44 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 f"{database}.{schema_name}"
             )
         return self._current_dataset_obj
+
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Override to skip lifecycle data for schemas whose dataset location does not
+        match the configured usageLocation.
+
+        BigQuery routes INFORMATION_SCHEMA queries to the location specified in the
+        connection (usageLocation). When a dataset lives in a different GCP region,
+        the query returns a 404. Skipping early avoids one failed API call per table
+        in the affected schema.
+        """
+        usage_location = getattr(self.service_connection, "usageLocation", None)
+        if usage_location:
+            schema_name = self.context.get().database_schema
+            try:
+                dataset_obj = self.get_dataset_obj(schema_name)
+                dataset_location = getattr(dataset_obj, "location", None)
+                if (
+                    dataset_location
+                    and dataset_location.upper() != usage_location.upper()
+                ):
+                    logger.debug(
+                        "Skipping lifecycle data for schema '%s': dataset location '%s' "
+                        "differs from configured usageLocation '%s'. "
+                        "BigQuery INFORMATION_SCHEMA queries are location-specific.",
+                        schema_name,
+                        dataset_location,
+                        usage_location,
+                    )
+                    return
+            except Exception as exc:
+                logger.debug(
+                    "Could not verify dataset location for schema '%s', "
+                    "proceeding with lifecycle query: %s",
+                    schema_name,
+                    exc,
+                )
+        yield from super().yield_life_cycle_data(_)
 
     def _prefetch_policy_tags(self):
         """Pre-fetch all policy tags at schema level to avoid per-column API calls"""

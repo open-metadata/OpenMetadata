@@ -42,7 +42,7 @@ export enum FieldTypes {
   SLIDER_INPUT = 'slider_input',
   DESCRIPTION = 'description',
   TAG_SUGGESTION = 'tag_suggestion',
-  TAG_SUGGESTION_MUI = 'tag_suggestion_mui',
+  UT_TAG_SUGGESTION = 'ut_tag_suggestion',
   GLOSSARY_TAG_SUGGESTION_MUI = 'glossary_tag_suggestion_mui',
   USER_TEAM_SELECT = 'user_team_select',
   USER_TEAM_SELECT_INPUT = 'user_team_select_input',

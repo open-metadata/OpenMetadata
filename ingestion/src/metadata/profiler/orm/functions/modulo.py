@@ -58,6 +58,7 @@ def _(element, compiler, **kw):
 @compiles(ModuloFn, Dialects.Trino)
 @compiles(ModuloFn, Dialects.IbmDbSa)
 @compiles(ModuloFn, Dialects.Db2)
+@compiles(ModuloFn, Dialects.Informix)
 @compiles(ModuloFn, Dialects.Vertica)
 @compiles(ModuloFn, Dialects.Hana)
 @compiles(ModuloFn, Dialects.Cockroach)
