@@ -244,18 +244,6 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       boolean live)
       throws IOException;
 
-  default SearchRequest prepareSearchRequest(
-      @NotNull DataInsightCustomChart diChart,
-      long start,
-      long end,
-      List<FormulaHolder> formulas,
-      Map metricHolder,
-      boolean live,
-      String filter)
-      throws IOException {
-    return prepareSearchRequest(diChart, start, end, formulas, metricHolder, live);
-  }
-
   DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,
       SearchResponse<JsonData> searchResponse,
