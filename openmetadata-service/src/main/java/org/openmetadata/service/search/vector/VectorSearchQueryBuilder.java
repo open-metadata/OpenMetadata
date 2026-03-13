@@ -195,30 +195,52 @@ public class VectorSearchQueryBuilder {
   }
 
   public static String escape(String s) {
-    return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    return s.replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+        .replace("\b", "\\b")
+        .replace("\f", "\\f");
   }
 
-  private static void appendCustomPropertiesFilter(
+  public static void appendCustomPropertiesFilter(
       StringBuilder sb, String field, List<String> vals) {
     if (nullOrEmpty(vals)) {
       return;
     }
-    boolean first = true;
-    for (String v : vals) {
-      if (!first) sb.append(',');
-      first = false;
-
-      if (field.endsWith(".name")) {
-        sb.append(String.format("{\"term\":{\"%s\":\"%s\"}}", field, escape(v)));
-      } else {
-        // We have a fuzzy search
-        sb.append("{\"match\":{")
-            .append(String.format("\"%s\":{", field))
-            .append(String.format("\"query\": \"%s\",", escape(v)))
-            .append("\"fuzziness\": \"AUTO\"")
-            .append("}}}");
-      }
+    if (!field.startsWith("customProperties.")) {
+      throw new IllegalArgumentException("field must start with 'customProperties.': " + field);
     }
+    String propName = field.substring("customProperties.".length());
+
+    // customPropertiesTyped is a nested field; each entry has a "name" keyword and typed value
+    // sub-fields. Build a nested query that matches on name + value across all value sub-fields.
+    sb.append("{\"bool\":{\"should\":[");
+    for (int i = 0; i < vals.size(); i++) {
+      if (i > 0) sb.append(',');
+      String val = escape(vals.get(i));
+      sb.append("{\"nested\":{\"path\":\"customPropertiesTyped\",\"query\":{\"bool\":{\"must\":[")
+          .append("{\"term\":{\"customPropertiesTyped.name\":\"")
+          .append(escape(propName))
+          .append("\"}},")
+          .append("{\"bool\":{\"should\":[")
+          .append("{\"term\":{\"customPropertiesTyped.stringValue\":\"")
+          .append(val)
+          .append("\"}},")
+          .append("{\"term\":{\"customPropertiesTyped.refFqn\":\"")
+          .append(val)
+          .append("\"}},")
+          .append("{\"term\":{\"customPropertiesTyped.refName\":\"")
+          .append(val)
+          .append("\"}},")
+          .append("{\"match\":{\"customPropertiesTyped.textValue\":\"")
+          .append(val)
+          .append("\"}}")
+          .append("]}}")
+          .append("]}}}}");
+    }
+    sb.append("]}}");
   }
 
   private static void appendOwnersFilter(StringBuilder sb, List<String> vals) {

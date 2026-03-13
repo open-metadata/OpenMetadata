@@ -21,7 +21,10 @@ export const searchServiceFromSettingPage = async (
   const serviceResponse = page.waitForResponse((response) => {
     const url = response.url();
 
-    return url.includes('/api/v1/search/query') && url.includes(service);
+    return (
+      url.includes('/api/v1/search/query') &&
+      decodeURIComponent(url).includes(service)
+    );
   });
   await page.fill('[data-testid="searchbar"]', service);
 

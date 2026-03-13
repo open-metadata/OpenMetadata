@@ -31,8 +31,8 @@ describe('IncidentManagerPage', () => {
   it('should render component', async () => {
     render(<IncidentManagerPage />);
 
-    expect(await screen.findByTestId('page-title')).toBeInTheDocument();
-    expect(await screen.findByTestId('page-sub-title')).toBeInTheDocument();
+    expect(await screen.findByTestId('heading')).toBeInTheDocument();
+    expect(await screen.findByTestId('sub-heading')).toBeInTheDocument();
 
     expect(
       await screen.findByText('IncidentManager.component')
