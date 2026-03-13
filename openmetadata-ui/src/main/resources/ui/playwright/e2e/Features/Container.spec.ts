@@ -15,7 +15,7 @@ import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
@@ -34,6 +34,22 @@ test.use({
 });
 
 const container = new ContainerClass();
+
+const S3_SERVICE_CONFIG = {
+  serviceType: 'S3',
+  connection: {
+    config: {
+      type: 'S3',
+      awsConfig: {
+        awsAccessKeyId: 'admin',
+        awsSecretAccessKey: 'key',
+        awsRegion: 'us-east-2',
+        assumeRoleSessionName: 'OpenMetadataSession',
+      },
+      supportsMetadataExtraction: true,
+    },
+  },
+};
 
 test.slow(true);
 
@@ -233,5 +249,164 @@ test.describe('Container entity specific tests ', () => {
         `/container/${container.entityResponseData?.['fullyQualifiedName']}$`
       )
     );
+  });
+});
+test.describe('Deeply nested container navigation', () => {
+  const serviceName = `pw-storage-service-deep-${uuid()}`;
+  const deepContainer1Name = `pw-container-l1-${uuid()}`;
+  const deepContainer2Name = `pw-container-l2-${uuid()}`;
+  const deepContainer3Name = `pw-container-l3-${uuid()}`;
+  const deepContainer4Name = `pw-container-l4-${uuid()}`;
+
+  let deepContainer1Id = '';
+  let deepContainer2Id = '';
+  let deepContainer3Id = '';
+  let deepContainer2Fqn = '';
+  let deepContainer3Fqn = '';
+  let deepContainer4Fqn = '';
+
+  test.beforeAll('Setup deeply nested containers', async ({ browser }) => {
+    test.slow(true);
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    const serviceRes = await apiContext.post(
+      '/api/v1/services/storageServices',
+      {
+        data: {
+          name: serviceName,
+          ...S3_SERVICE_CONFIG,
+        },
+      }
+    );
+    await serviceRes.json();
+
+    const container1Res = await apiContext.post('/api/v1/containers', {
+      data: { name: deepContainer1Name, service: serviceName },
+    });
+    const containerLevel1 = await container1Res.json();
+    deepContainer1Id = containerLevel1.id;
+
+    const container2Res = await apiContext.post('/api/v1/containers', {
+      data: {
+        name: deepContainer2Name,
+        service: serviceName,
+        parent: { id: deepContainer1Id, type: 'container' },
+      },
+    });
+    const containerLevel2 = await container2Res.json();
+    deepContainer2Id = containerLevel2.id;
+    deepContainer2Fqn = containerLevel2.fullyQualifiedName;
+
+    const container3Res = await apiContext.post('/api/v1/containers', {
+      data: {
+        name: deepContainer3Name,
+        service: serviceName,
+        parent: { id: deepContainer2Id, type: 'container' },
+      },
+    });
+    const containerLevel3 = await container3Res.json();
+    deepContainer3Id = containerLevel3.id;
+    deepContainer3Fqn = containerLevel3.fullyQualifiedName;
+
+    const container4Res = await apiContext.post('/api/v1/containers', {
+      data: {
+        name: deepContainer4Name,
+        service: serviceName,
+        parent: { id: deepContainer3Id, type: 'container' },
+      },
+    });
+    const containerLevel4 = await container4Res.json();
+    deepContainer4Fqn = containerLevel4.fullyQualifiedName;
+
+    await afterAction();
+  });
+
+  test.afterAll('Clean up deeply nested containers', async ({ browser }) => {
+    test.slow(true);
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    await apiContext.delete(
+      `/api/v1/services/storageServices/name/${encodeURIComponent(
+        serviceName
+      )}?recursive=true&hardDelete=true`
+    );
+
+    await afterAction();
+  });
+
+  test('should correctly load, display breadcrumbs, and navigate deeply nested containers', async ({
+    page,
+  }) => {
+    const initialContainerResponse = page.waitForResponse(
+      '/api/v1/containers/name/*'
+    );
+    await page.goto(`/container/${deepContainer4Fqn}`);
+    await initialContainerResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await test.step('correct container loads for 5-part FQN (4 nesting levels)', async () => {
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        deepContainer4Name
+      );
+    });
+
+    await test.step('breadcrumb shows all 4 ancestor levels at L4', async () => {
+      const breadcrumb = page.getByTestId('breadcrumb');
+
+      await expect(breadcrumb).toContainText(serviceName);
+      await expect(breadcrumb).toContainText(deepContainer1Name);
+      await expect(breadcrumb).toContainText(deepContainer2Name);
+      await expect(breadcrumb).toContainText(deepContainer3Name);
+    });
+
+    await test.step('clicking L3 breadcrumb link navigates to L3 and updates page', async () => {
+      const containerResponse = page.waitForResponse(
+        '/api/v1/containers/name/*'
+      );
+      await page
+        .getByTestId('breadcrumb')
+        .getByRole('link', { name: deepContainer3Name })
+        .click();
+      await containerResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page).toHaveURL(
+        new RegExp(`/container/${deepContainer3Fqn}$`)
+      );
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        deepContainer3Name
+      );
+
+      const breadcrumb = page.getByTestId('breadcrumb');
+      await expect(breadcrumb).toContainText(serviceName);
+      await expect(breadcrumb).toContainText(deepContainer1Name);
+      await expect(breadcrumb).toContainText(deepContainer2Name);
+      await expect(breadcrumb).not.toContainText(deepContainer4Name);
+    });
+
+    await test.step('clicking L2 breadcrumb link navigates to L2 and updates page', async () => {
+      const containerResponse = page.waitForResponse(
+        '/api/v1/containers/name/*'
+      );
+      await page
+        .getByTestId('breadcrumb')
+        .getByRole('link', { name: deepContainer2Name })
+        .click();
+      await containerResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page).toHaveURL(
+        new RegExp(`/container/${deepContainer2Fqn}$`)
+      );
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        deepContainer2Name
+      );
+
+      const breadcrumb = page.getByTestId('breadcrumb');
+      await expect(breadcrumb).toContainText(serviceName);
+      await expect(breadcrumb).toContainText(deepContainer1Name);
+      await expect(breadcrumb).not.toContainText(deepContainer3Name);
+      await expect(breadcrumb).not.toContainText(deepContainer4Name);
+    });
   });
 });

@@ -15,7 +15,7 @@ for the profiler
 import hashlib
 from typing import List, Optional, Union, cast
 
-from sqlalchemy import Column, inspect, text
+from sqlalchemy import Column, inspect, select, text
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
@@ -199,8 +199,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             and self.sample_config.profileSample == 100
         ):
             if self.partition_details:
-                partitioned = self._partitioned_table()
-                return partitioned.cte(f"{self.get_sampler_table_name()}_partitioned")
+                return self._partitioned_table()
 
             return self.raw_dataset
 
@@ -306,9 +305,18 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 f"{self.get_sampler_table_name()}_user_sampled"
             )
 
-    def _partitioned_table(self) -> Query:
-        """Return the Query object for partitioned tables"""
-        return self.get_partitioned_query()
+    def _partitioned_table(self):
+        """Return a CTE for partitioned tables.
+
+        Build the CTE using Core select() so it does not require an active Session.
+        """
+        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
+        partition_filter = build_partition_predicate(
+            self.partition_details,
+            self.raw_dataset.__table__.c,
+        )
+        stmt = select(self.raw_dataset).where(partition_filter)
+        return stmt.cte(f"{self.get_sampler_table_name()}_partitioned")
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
@@ -322,8 +330,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if query is not None:
             return query.filter(partition_filter)
 
-        with self.session_factory() as client:
-            return client.query(self.raw_dataset).filter(partition_filter)
+        # Return a Core select so callers do not require an active Session
+        return select(self.raw_dataset).where(partition_filter)
 
     def get_columns(self):
         """get columns from entity"""

@@ -155,18 +155,40 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         dblink
 
     """
-    resolve_synonyms = kw.get("oracle_resolve_synonyms", False)
     dblink = kw.get("dblink", "")
+    resolve_synonyms = kw.get("oracle_resolve_synonyms", False)
     info_cache = kw.get("info_cache")
 
-    (table_name, schema, dblink, _) = self._prepare_reflection_args(
-        connection,
-        table_name,
-        schema,
-        resolve_synonyms,
-        dblink,
-        info_cache=info_cache,
-    )
+    if resolve_synonyms:
+        try:
+            rows = list(
+                self._get_synonyms(
+                    connection, schema, [table_name], dblink, info_cache=info_cache
+                )
+            )
+        except Exception:
+            rows = []
+
+        if rows:
+            row = rows[0]
+            actual_name = getattr(row, "table_name", None)
+            actual_owner = getattr(row, "table_owner", None)
+            db_link_val = getattr(row, "db_link", None)
+
+            if actual_name:
+                table_name = self.denormalize_name(actual_name)
+            if actual_owner:
+                schema = self.denormalize_name(actual_owner)
+            if db_link_val:
+                if not db_link_val.startswith("@"):
+                    dblink = "@" + db_link_val
+                else:
+                    dblink = db_link_val
+    else:
+        table_name = self.denormalize_name(table_name)
+        if schema is not None:
+            schema = self.denormalize_name(schema)
+
     columns = []
 
     char_length_col = "data_length"
@@ -395,22 +417,51 @@ def get_indexes_preserve_case(
     **kw,
 ):
     """Override get_indexes to fix two issues when preserveIdentifierCase=True:
-    1. Use original table_name (before _prepare_reflection_args uppercases it)
+    1. Use original table_name (before denormalize_name uppercases it)
        so quoted lowercase identifiers are found in ALL_IND_COLUMNS.
     2. Access result row columns case-insensitively — Oracle thick mode returns
        INDEX_NAME (uppercase) while thin mode returns index_name (lowercase).
        A lowercased dict handles both without branching.
     """
     original_table_name = table_name
-    info_cache = kw.get("info_cache")
-    (table_name, schema, dblink, _) = self._prepare_reflection_args(
-        connection,
-        table_name,
-        schema,
-        resolve_synonyms,
-        dblink,
-        info_cache=info_cache,
-    )
+    resolve_synonyms = kw.get("oracle_resolve_synonyms", False)
+
+    # SQLAlchemy 2.0 removed _prepare_reflection_args; denormalize schema/table
+    # for the pk_constraint lookup while the index query itself uses
+    # original_table_name (preserve-case mode keeps identifiers as-is).
+    table_name = self.denormalize_name(table_name)
+    if schema is not None:
+        schema = self.denormalize_name(schema)
+    if dblink and not dblink.startswith("@"):
+        dblink = "@" + dblink
+
+    if resolve_synonyms:
+        try:
+            rows = list(
+                self._get_synonyms(
+                    connection,
+                    schema,
+                    [table_name],
+                    dblink,
+                    info_cache=kw.get("info_cache"),
+                )
+            )
+        except Exception:
+            rows = []
+        if rows:
+            row = rows[0]
+            actual_name = getattr(row, "table_name", None)
+            actual_owner = getattr(row, "table_owner", None)
+            db_link_val = getattr(row, "db_link", None)
+            if actual_name:
+                table_name = self.denormalize_name(actual_name)
+            if actual_owner:
+                schema = self.denormalize_name(actual_owner)
+            if db_link_val:
+                if not db_link_val.startswith("@"):
+                    dblink = "@" + db_link_val
+                else:
+                    dblink = db_link_val
 
     params = {"table_name": original_table_name}
     text = (

@@ -69,7 +69,42 @@ class ProfilerConfigBuilder(BaseBuilder):
             }
             self.config["source"]["sourceConfig"]["config"]["includeViews"] = True
 
+        # By default, use the default profiler metrics. For certain connectors that support system
+        # profile (BigQuery, Databricks, Redshift, Snowflake) include the system metric as well
         self.config["processor"] = {"type": "orm-profiler", "config": {}}
+
+        connector = str(self.config.get("source", {}).get("type", "")).lower()
+        connectors_with_system = {"bigquery", "databricks", "redshift", "snowflake"}
+        if connector in connectors_with_system:
+            # Default metrics used by DefaultProfiler + the system metric
+            default_metric_names = [
+                "rowCount",
+                "columnCount",
+                "columnNames",
+                "median",
+                "firstQuartile",
+                "thirdQuartile",
+                "mean",
+                "valuesCount",
+                "distinctCount",
+                "distinctProportion",
+                "min",
+                "max",
+                "nullCount",
+                "nullProportion",
+                "stddev",
+                "sum",
+                "uniqueCount",
+                "uniqueProportion",
+                "interQuartileRange",
+                "nonParametricSkew",
+                "system",
+            ]
+            self.config["processor"]["config"]["profiler"] = {
+                "name": "default_profiler",
+                "metrics": default_metric_names,
+            }
+
         return self.config
 
 

@@ -81,8 +81,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Install antlr cli
+        run: sudo make install_antlr_cli
+
       - name: Build with Maven
-        run: mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+        run: mvn -DskipTests clean package
 
       - name: Upload Maven build artifact
         uses: actions/upload-artifact@v4
