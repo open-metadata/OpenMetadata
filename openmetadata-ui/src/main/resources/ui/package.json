@@ -17,7 +17,6 @@
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
-    "pre-commit": "yarn license-header-fix && yarn i18n && yarn lint:fix && yarn pretty",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --passWithNoTests --watch",
     "test:coverage": "jest --passWithNoTests --coverage",
