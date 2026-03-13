@@ -9,9 +9,13 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to run the workflow on"
-        required: true
+        description: "Branch to run the workflow on (ignored if pr_number is provided)"
+        required: false
         default: "main"
+        type: string
+      pr_number:
+        description: "PR number to run the workflow for (works for both forked and non-forked PRs)"
+        required: false
         type: string
 
 concurrency:
@@ -26,6 +30,18 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Get PR details for workflow_dispatch
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''
+        id: pr-details
+        run: |
+          PR_DATA=$(gh pr view ${{ github.event.inputs.pr_number }} --json headRepository,headRefName,headRepositoryOwner --repo ${{ github.repository }})
+          echo "head_repo=$(echo $PR_DATA | jq -r '.headRepository.name')" >> $GITHUB_OUTPUT
+          echo "head_owner=$(echo $PR_DATA | jq -r '.headRepositoryOwner.login')" >> $GITHUB_OUTPUT
+          echo "head_ref=$(echo $PR_DATA | jq -r '.headRefName')" >> $GITHUB_OUTPUT
+          echo "full_repo=$(echo $PR_DATA | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -47,16 +63,30 @@ jobs:
       - name: Check if repository is a fork
         id: check-fork
         run: |
-          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-            echo "is_fork=true" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ steps.pr-details.outputs.full_repo }}" ]; then
+            # For workflow_dispatch with PR number
+            if [ "${{ steps.pr-details.outputs.full_repo }}" != "${{ github.repository }}" ]; then
+              echo "is_fork=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_fork=false" >> $GITHUB_OUTPUT
+            fi
+          elif [ "${{ github.event_name }}" == "pull_request_target" ]; then
+            # For pull_request_target events
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+              echo "is_fork=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_fork=false" >> $GITHUB_OUTPUT
+            fi
           else
+            # Default to non-fork for direct branch runs
             echo "is_fork=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch || github.event.pull_request.head.sha || github.ref }}
+          repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
+          ref: ${{ steps.pr-details.outputs.head_ref || github.event.inputs.branch || github.event.pull_request.head.sha || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node.js
