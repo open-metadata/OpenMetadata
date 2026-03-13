@@ -33,14 +33,16 @@ jobs:
       - name: Get PR details for workflow_dispatch
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''
         id: pr-details
-        run: |
-          PR_DATA=$(gh pr view ${{ github.event.inputs.pr_number }} --json headRepository,headRefName,headRepositoryOwner --repo ${{ github.repository }})
-          echo "head_repo=$(echo $PR_DATA | jq -r '.headRepository.name')" >> $GITHUB_OUTPUT
-          echo "head_owner=$(echo $PR_DATA | jq -r '.headRepositoryOwner.login')" >> $GITHUB_OUTPUT
-          echo "head_ref=$(echo $PR_DATA | jq -r '.headRefName')" >> $GITHUB_OUTPUT
-          echo "full_repo=$(echo $PR_DATA | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
         env:
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          BASE_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_DATA=$(gh pr view "$PR_NUMBER" --json headRepository,headRefName,headRepositoryOwner --repo "$BASE_REPO")
+          echo "head_repo=$(echo "$PR_DATA" | jq -r '.headRepository.name')" >> $GITHUB_OUTPUT
+          echo "head_owner=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')" >> $GITHUB_OUTPUT
+          echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
+          echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
 
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
@@ -62,17 +64,22 @@ jobs:
 
       - name: Check if repository is a fork
         id: check-fork
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
+          HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ steps.pr-details.outputs.full_repo }}" ]; then
+          if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
             # For workflow_dispatch with PR number
-            if [ "${{ steps.pr-details.outputs.full_repo }}" != "${{ github.repository }}" ]; then
+            if [ "$FULL_REPO" != "$BASE_REPO" ]; then
               echo "is_fork=true" >> $GITHUB_OUTPUT
             else
               echo "is_fork=false" >> $GITHUB_OUTPUT
             fi
-          elif [ "${{ github.event_name }}" == "pull_request_target" ]; then
+          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
             # For pull_request_target events
-            if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ]; then
               echo "is_fork=true" >> $GITHUB_OUTPUT
             else
               echo "is_fork=false" >> $GITHUB_OUTPUT
@@ -82,11 +89,34 @@ jobs:
             echo "is_fork=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Determine checkout ref
+        id: checkout-ref
+        env:
+          IS_FORK: ${{ steps.check-fork.outputs.is_fork }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          if [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
+            echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
+          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
+            echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
+          elif [ -n "$PR_DETAILS_HEAD_REF" ]; then
+            echo "ref=$PR_DETAILS_HEAD_REF" >> $GITHUB_OUTPUT
+          elif [ -n "$INPUT_BRANCH" ]; then
+            echo "ref=$INPUT_BRANCH" >> $GITHUB_OUTPUT
+          else
+            echo "ref=$GITHUB_REF" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
-          ref: ${{ steps.pr-details.outputs.head_ref || github.event.inputs.branch || github.event.pull_request.head.sha || github.ref }}
+          ref: ${{ steps.checkout-ref.outputs.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node.js
@@ -109,7 +139,8 @@ jobs:
         id: git-check
         continue-on-error: true
         run: |
-          git diff-files --quiet
+          git add openmetadata-ui/src/main/resources/ui/src/generated/
+          git diff --cached --quiet
 
       - name: Configure Git
         if: steps.git-check.outcome != 'success'
