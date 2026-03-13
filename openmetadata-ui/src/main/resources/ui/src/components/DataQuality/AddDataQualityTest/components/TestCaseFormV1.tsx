@@ -114,7 +114,6 @@ import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
-import AlertBar from '../../../AlertBar/AlertBar';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
@@ -1323,21 +1322,16 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         {shouldShowScheduler && (
           <Row gutter={[20, 20]}>
             <Col className="m-l-md m-r-md">
-              <AlertBar
-                defaultExpand
-                className="h-auto custom-alert-description"
-                message={
-                  <Transi18next
-                    i18nKey="message.entity-pipeline-information"
-                    renderElement={<strong />}
-                    values={{
-                      entity: t('label.test-case-lowercase'),
-                      type: t('label.table-lowercase'),
-                    }}
-                  />
-                }
-                type="grey-info"
-              />
+              <Alert closable title="" variant="gray">
+                <Transi18next
+                  i18nKey="message.entity-pipeline-information"
+                  renderElement={<strong />}
+                  values={{
+                    entity: t('label.test-case-lowercase'),
+                    type: t('label.table-lowercase'),
+                  }}
+                />
+              </Alert>
             </Col>
 
             <Col span={24}>
