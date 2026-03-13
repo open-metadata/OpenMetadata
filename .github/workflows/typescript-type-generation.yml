@@ -156,20 +156,20 @@ jobs:
           git push --force-with-lease
 
       - name: Create PR comment about auto-update
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name == 'pull_request_target'
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
           body: |
             ## ✅ TypeScript Types Auto-Updated
 
             The generated TypeScript types have been automatically updated based on JSON schema changes in this PR.
 
       - name: Create PR comment for fork repository
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && github.event_name == 'pull_request_target'
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
           body: |
             ## ⚠️ TypeScript Types Need Update
 
