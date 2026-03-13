@@ -39,9 +39,9 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   authorize:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request_target' }}
     steps:
       - name: Wait for the labeler
+        if: ${{ github.event_name == 'pull_request_target' }}
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -50,6 +50,7 @@ jobs:
           wait-interval: 90
 
       - name: Verify PR labels
+        if: ${{ github.event_name == 'pull_request_target' }}
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
@@ -95,7 +96,7 @@ jobs:
           yarn lint:fix
           yarn pretty
           yarn license-header-fix
-          
+
           if [ -n "$(git status --porcelain)" ]; then
             echo "changes=true" >> "$GITHUB_OUTPUT"
             git status --porcelain
@@ -114,6 +115,9 @@ jobs:
             ```bash
             yarn organize-imports && yarn lint:fix && yarn pretty && yarn license-header-fix
             ```
+
+      - name: Reset working tree after lint check
+        run: git checkout -- .
 
       - name: Run I18n Sync Check
         id: i18n
@@ -140,6 +144,9 @@ jobs:
             yarn i18n
             ```
 
+      - name: Reset working tree after i18n check
+        run: git checkout -- .
+
       - name: Run App Docs Check
         id: docs
         continue-on-error: true
@@ -165,7 +172,7 @@ jobs:
             yarn generate:app-docs
             ```
 
-      - name: Fail if any check detected changes
+      - name: Fail if any check detected changes or failed
         if: steps.lint.outputs.changes == 'true' || steps.i18n.outputs.changes == 'true' || steps.docs.outputs.changes == 'true' || steps.lint.outcome != 'success' || steps.i18n.outcome != 'success' || steps.docs.outcome != 'success'
         run: |
           echo "One or more checkstyle steps introduced changes or did not complete successfully."
