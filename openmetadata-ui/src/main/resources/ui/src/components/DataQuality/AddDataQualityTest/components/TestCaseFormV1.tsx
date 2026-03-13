@@ -1061,7 +1061,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         <div className="floating-error-alert">
           <Alert
             closable
-            className=""
             title={t('label.error')}
             variant="error"
             onClose={() => setErrorMessage('')}>
@@ -1326,7 +1325,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             <Col className="m-l-md m-r-md">
               <AlertBar
                 defaultExpand
-                className="test-case-form-alert custom-alert-description"
+                className="h-auto custom-alert-description"
                 message={
                   <Transi18next
                     i18nKey="message.entity-pipeline-information"
