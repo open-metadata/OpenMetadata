@@ -32,7 +32,7 @@ const IncidentManagerPage = () => {
       header: t(PAGE_HEADERS.INCIDENT_MANAGER.header),
       subHeader: t(PAGE_HEADERS.INCIDENT_MANAGER.subHeader),
     }),
-    []
+    [t]
   );
 
   return (
