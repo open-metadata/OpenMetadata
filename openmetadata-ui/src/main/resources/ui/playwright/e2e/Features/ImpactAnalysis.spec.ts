@@ -56,10 +56,10 @@ test.describe('Impact Analysis', () => {
     ]);
 
     tableColumns = get(table, 'entityResponseData.columns', []).map(
-      (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
+      (col: { fullyQualifiedName?: string }) => col.fullyQualifiedName ?? ''
     );
     table2Columns = get(table2, 'entityResponseData.columns', []).map(
-      (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
+      (col: { fullyQualifiedName?: string }) => col.fullyQualifiedName ?? ''
     );
 
     // connect table and table2 with column lineage
@@ -198,9 +198,9 @@ test.describe('Impact Analysis', () => {
 
   test('Verify Downstream connections', async ({ page }) => {
     const tableDownstreamNodes: string[] = [
-      pipeline.entityResponseData.displayName,
-      dataModel.entityResponseData.displayName,
-      topic.entityResponseData.displayName,
+      pipeline.entityResponseData.displayName ?? pipeline.entity.displayName,
+      dataModel.entityResponseData.displayName ?? dataModel.entity.displayName,
+      topic.entityResponseData.displayName ?? topic.entity.displayName,
       table2.entityResponseData.displayName ?? table2.entity.displayName,
     ];
     for (const node of tableDownstreamNodes) {
@@ -222,7 +222,7 @@ test.describe('Impact Analysis', () => {
     const impactAnalysisResponse = page.waitForResponse(
       `/api/v1/lineage/getPaginationInfo?*`
     );
-    await page.getByRole('button', { name: 'Impact Analysis' }).click();
+    await page.getByRole('tab', { name: 'Impact Analysis' }).click();
     await dashboardLineageResponse;
     await impactAnalysisResponse;
 
@@ -234,10 +234,10 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     const dashboardDownstreamNodes: string[] = [
-      dataModel.entityResponseData.displayName,
+      dataModel.entityResponseData.displayName ?? dataModel.entity.displayName,
       table.entityResponseData.displayName ?? table.entity.displayName,
-      pipeline.entityResponseData.displayName,
-      mlModel.entityResponseData.displayName,
+      pipeline.entityResponseData.displayName ?? pipeline.entity.displayName,
+      mlModel.entityResponseData.displayName ?? mlModel.entity.displayName,
       table2.entityResponseData.displayName ?? table2.entity.displayName,
     ];
 
@@ -262,7 +262,7 @@ test.describe('Impact Analysis', () => {
     const impactAnalysisResponse = page.waitForResponse(
       `/api/v1/lineage/getPaginationInfo?*`
     );
-    await page.getByRole('button', { name: 'Impact Analysis' }).click();
+    await page.getByRole('tab', { name: 'Impact Analysis' }).click();
     await topicLineageResponse;
     await impactAnalysisResponse;
 
@@ -404,7 +404,7 @@ test.describe('Impact Analysis', () => {
     const impactAnalysisResponse = page.waitForResponse(
       `/api/v1/lineage/getPaginationInfo?*`
     );
-    await page.getByRole('button', { name: 'Impact Analysis' }).click();
+    await page.getByRole('tab', { name: 'Impact Analysis' }).click();
     await table2LineageResponse;
     await impactAnalysisResponse;
 
@@ -510,7 +510,7 @@ test.describe('Impact Analysis', () => {
     const impactAnalysisResponse = page.waitForResponse(
       `/api/v1/lineage/getPaginationInfo?*`
     );
-    await page.getByRole('button', { name: 'Impact Analysis' }).click();
+    await page.getByRole('tab', { name: 'Impact Analysis' }).click();
     await table2LineageResponse;
     await impactAnalysisResponse;
     await waitForAllLoadersToDisappear(page);
