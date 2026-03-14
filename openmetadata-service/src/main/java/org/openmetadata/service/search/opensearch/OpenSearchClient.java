@@ -665,13 +665,6 @@ public class OpenSearchClient implements SearchClient {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
   }
 
-  @Override
-  public DataInsightCustomChartResultList buildDIChart(
-      @NotNull DataInsightCustomChart diChart, long start, long end, boolean live, String filter)
-      throws IOException {
-    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, filter);
-  }
-
   /**
    * Parses the host string for AwsSdk2Transport. Strips protocol prefix, trailing slash, handles
    * comma-separated hosts (uses first), and removes port. AwsSdk2Transport expects a bare hostname.

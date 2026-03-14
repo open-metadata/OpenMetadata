@@ -195,13 +195,11 @@ test.describe(
         state: 'visible',
       });
       await testCaseDoc;
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     };
 
     const visitDataQualityPage = async (page: Page) => {
       await page.goto('/data-quality/test-cases');
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     };
 
@@ -243,7 +241,6 @@ test.describe(
           page,
           ...tableTestCaseDetails,
         });
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -361,14 +358,12 @@ test.describe(
         })
         .click();
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
       await page.click('[data-testid="profiler-add-table-test-btn"]');
       await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
-      await page.waitForLoadState('networkidle');
 
       await createTestCase({
         page,
@@ -381,7 +376,6 @@ test.describe(
         .getByTestId('select-table-card')
         .getByText('Column Level')
         .click();
-      await page.waitForLoadState('networkidle');
 
       await selectColumn(page, table.entity.columns[0].name);
 
@@ -426,7 +420,6 @@ test.describe(
         .getByTestId('edit-button')
         .click();
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

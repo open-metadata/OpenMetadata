@@ -214,14 +214,18 @@ export const dragConnection = async (
   const selector = isColumnLineage
     ? '.lineage-column-node-handle'
     : '.lineage-node-handle';
+  const sourceNode = page.locator(`[data-testid="${sourceId}"]`);
+  const targetNode = page.locator(`[data-testid="${targetId}"]`);
+  const sourceHandle = sourceNode.locator(
+    `${selector}.react-flow__handle-right`
+  );
+  const targetHandle = targetNode.locator(
+    `${selector}.react-flow__handle-left`
+  );
 
   const lineageRes = page.waitForResponse('/api/v1/lineage');
-  await page
-    .locator(`[data-testid="${sourceId}"] ${selector}.react-flow__handle-right`)
-    .dispatchEvent('click');
-  await page
-    .locator(`[data-testid="${targetId}"] ${selector}.react-flow__handle-left`)
-    .dispatchEvent('click');
+  await sourceHandle.dispatchEvent('click');
+  await targetHandle.dispatchEvent('click');
 
   await lineageRes;
 };
@@ -249,7 +253,6 @@ export const connectEdgeBetweenNodes = async (
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
-  await page.waitForLoadState('networkidle');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*&from=0&size=10&*`
@@ -295,6 +298,8 @@ export const performExpand = async (
 ) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const handleDirection = upstream ? 'left' : 'right';
+  const nodeLocator = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
+  await nodeLocator.hover();
   const expandBtn = page
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
     .locator(`.react-flow__handle-${handleDirection}`)
@@ -572,7 +577,6 @@ export const visitLineageTab = async (page: Page) => {
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
-  await page.waitForLoadState('networkidle');
   await waitForAllLoadersToDisappear(page);
   // Go to full screen to get nodes to view
   await page.getByRole('button', { name: 'Full Screen View' }).first().click();

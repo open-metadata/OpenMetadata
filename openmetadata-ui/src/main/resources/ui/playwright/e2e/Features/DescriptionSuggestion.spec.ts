@@ -111,7 +111,6 @@ test.describe.serial(
         await singleResolveResponse;
 
         await page.reload();
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -153,7 +152,6 @@ test.describe.serial(
         await singleResolveResponse;
 
         await page.reload();
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });

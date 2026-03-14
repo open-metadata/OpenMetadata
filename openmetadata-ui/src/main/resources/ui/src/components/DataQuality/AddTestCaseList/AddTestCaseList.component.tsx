@@ -198,7 +198,8 @@ export const AddTestCaseList = ({
             align="center"
             className="w-full"
             direction="vertical"
-            prefixCls="w-full">
+            prefixCls="w-full"
+          >
             <ErrorPlaceHolder
               className="mt-0-important"
               type={ERROR_PLACEHOLDER_TYPE.FILTER}
@@ -213,12 +214,14 @@ export const AddTestCaseList = ({
             loading={{
               spinning: isLoading,
               indicator: <Loader />,
-            }}>
+            }}
+          >
             <VirtualList
               data={items}
               height={500}
               itemKey="id"
-              onScroll={onScroll}>
+              onScroll={onScroll}
+            >
               {(test) => {
                 const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
@@ -228,12 +231,14 @@ export const AddTestCaseList = ({
                   <Space
                     className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
                     direction="vertical"
-                    onClick={() => handleCardClick(test)}>
+                    onClick={() => handleCardClick(test)}
+                  >
                     <Space className="justify-between w-full">
                       <Typography.Paragraph
                         className="m-0 font-medium text-base w-max-500"
                         data-testid={test.name}
-                        ellipsis={{ tooltip: true }}>
+                        ellipsis={{ tooltip: true }}
+                      >
                         {getEntityName(test)}
                       </Typography.Paragraph>
 
@@ -244,7 +249,8 @@ export const AddTestCaseList = ({
                     </Space>
                     <Typography.Paragraph
                       className="m-0 w-max-500"
-                      ellipsis={{ tooltip: true }}>
+                      ellipsis={{ tooltip: true }}
+                    >
                       {getEntityName(test.testDefinition)}
                     </Typography.Paragraph>
                     <Typography.Paragraph className="m-0">
@@ -255,7 +261,8 @@ export const AddTestCaseList = ({
                           tableFqn,
                           EntityTabs.PROFILER
                         )}
-                        onClick={(e) => e.stopPropagation()}>
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {tableName}
                       </Link>
                     </Typography.Paragraph>
@@ -301,7 +308,8 @@ export const AddTestCaseList = ({
             className="p-0 h-auto font-normal"
             data-testid="select-all-test-cases"
             type="link"
-            onClick={handleSelectAll}>
+            onClick={handleSelectAll}
+          >
             {t('label.select-all')}
             {(selectedItems?.size ?? 0) > 0 && ` (${selectedItems?.size ?? 0})`}
           </Button>
@@ -311,7 +319,8 @@ export const AddTestCaseList = ({
       {showButton && (
         <Col
           className="d-flex justify-end items-center p-y-xss gap-4"
-          span={24}>
+          span={24}
+        >
           <Button data-testid="cancel" type="link" onClick={onCancel}>
             {cancelText ?? t('label.cancel')}
           </Button>
@@ -319,7 +328,8 @@ export const AddTestCaseList = ({
             data-testid="submit"
             loading={isLoading}
             type="primary"
-            onClick={handleSubmit}>
+            onClick={handleSubmit}
+          >
             {submitText ?? t('label.create')}
           </Button>
         </Col>

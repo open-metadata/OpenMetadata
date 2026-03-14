@@ -214,6 +214,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
         // increase timeout as it using single test for multiple steps
         test.slow(true);
+        test.setTimeout(6 * 60 * 1000);
 
         const { apiContext, afterAction } = await getApiContext(page);
         await entity.prepareCustomProperty(apiContext);

@@ -1,5 +1,7 @@
 package org.openmetadata.service.socket;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -181,5 +183,23 @@ public class OpenMetadataAssetServletTest {
     // Verify Content-Encoding is gzip (Fallback)
     verify(response).setHeader("Content-Encoding", "gzip");
     verify(response).setContentType("application/javascript");
+  }
+
+  @Test
+  public void testSpaRouteWithDotSeparatedEntityFqn() {
+    assertTrue(servlet.isSpaRoute("/table/service.db.schema.table"));
+  }
+
+  @Test
+  public void testStaticAssetsAreNotSpaRoutes() {
+    assertFalse(servlet.isSpaRoute("/assets/index.js"));
+    assertFalse(servlet.isSpaRoute("/images/logo.png"));
+    assertFalse(servlet.isSpaRoute("/favicons/favicon-32x32.png"));
+  }
+
+  @Test
+  public void testApiPathsAreNotSpaRoutes() {
+    assertFalse(servlet.isSpaRoute("/api/v1/system/version"));
+    assertFalse(servlet.isSpaRoute("/openapi.json"));
   }
 }

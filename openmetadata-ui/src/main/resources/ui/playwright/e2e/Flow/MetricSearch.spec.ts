@@ -13,9 +13,10 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
+const metricSuffix = uuid();
 const metric = new MetricClass();
 
 test.describe(
@@ -27,7 +28,7 @@ test.describe(
 
       // Override the metric entity with a long multi-word name
       metric.entity = {
-        name: 'AcceleratedConnection_WBA_Ethernet_ServiceLevel',
+        name: `AcceleratedConnection_WBA_Ethernet_${metricSuffix}`,
         description: 'Metric with a long multi-word name for search testing',
         metricExpression: {
           code: 'SUM(accelerated_connection)',
@@ -35,7 +36,7 @@ test.describe(
         },
         granularity: 'QUARTER',
         metricType: 'SUM',
-        displayName: 'AcceleratedConnection WBA Ethernet ServiceLevel',
+        displayName: `AcceleratedConnection WBA Ethernet ${metricSuffix}`,
         unitOfMeasurement: 'COUNT',
       };
 
@@ -71,7 +72,6 @@ test.describe(
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.EXPLORE);
-      await page.waitForLoadState('networkidle');
 
       await test.step('Select Metric search index and search', async () => {
         await page.getByTestId('global-search-selector').click();
@@ -100,7 +100,7 @@ test.describe(
         );
         await metricOption.click();
 
-        const searchQuery = 'AcceleratedConnection WBA Ethernet ServiceLevel';
+        const searchQuery = `AcceleratedConnection WBA Ethernet ${metricSuffix}`;
 
         const searchResponse = page.waitForResponse(
           (response) =>

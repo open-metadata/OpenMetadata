@@ -101,7 +101,6 @@ test.describe.serial('Custom Property Search Settings', () => {
 
       // Verify the custom property was saved by refreshing the page
       await page.reload();
-      await page.waitForLoadState('networkidle');
 
       const customPropertiesTab = page.getByTestId('custom_properties');
       await customPropertiesTab.click();
@@ -130,7 +129,6 @@ test.describe.serial('Custom Property Search Settings', () => {
         /settings\/preferences\/search-settings\/dashboards$/
       );
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -196,7 +194,6 @@ test.describe.serial('Custom Property Search Settings', () => {
         await searchInput.fill(dashboard.entityResponseData.name);
         await searchInput.press('Enter');
 
-        await page.waitForLoadState('networkidle');
         await page.waitForTimeout(2000);
 
         const searchResults = page.getByTestId('search-results');
@@ -216,7 +213,6 @@ test.describe.serial('Custom Property Search Settings', () => {
         await searchInput.fill(dashboardPropertyValue);
         await searchInput.press('Enter');
 
-        await page.waitForLoadState('networkidle');
         await page.waitForTimeout(2000);
 
         const searchResults = page.getByTestId('search-results');
@@ -281,7 +277,6 @@ test.describe.serial('Custom Property Search Settings', () => {
         /settings\/preferences\/search-settings\/pipelines$/
       );
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -337,7 +332,6 @@ test.describe.serial('Custom Property Search Settings', () => {
       await searchInput.fill(pipelinePropertyValue);
       await searchInput.press('Enter');
 
-      await page.waitForLoadState('networkidle');
       await page.waitForTimeout(2000);
 
       const searchResults = page.getByTestId('search-results');
@@ -363,7 +357,6 @@ test.describe.serial('Custom Property Search Settings', () => {
       );
       await dashboardCard.click();
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -383,7 +376,6 @@ test.describe.serial('Custom Property Search Settings', () => {
       );
       await pipelineCard.click();
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

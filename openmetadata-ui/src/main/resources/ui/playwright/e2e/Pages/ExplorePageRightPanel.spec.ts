@@ -42,7 +42,10 @@ import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
-import { openColumnDetailPanel } from '../../utils/entity';
+import {
+  openColumnDetailPanel,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 
 const domainEntity = new Domain();
 const user1 = new UserClass();
@@ -248,9 +251,7 @@ test.describe('Right Panel Test Suite', () => {
           // Removal operations
           await test.step('Remove tag', async () => {
             await overview.removeTag([tagToUpdate]);
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -270,9 +271,7 @@ test.describe('Right Panel Test Suite', () => {
 
           await test.step('Remove tier', async () => {
             await overview.removeTier();
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -292,9 +291,7 @@ test.describe('Right Panel Test Suite', () => {
 
           await test.step('Remove glossary term', async () => {
             await overview.removeGlossaryTerm([glossaryTermToUpdate]);
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -316,9 +313,7 @@ test.describe('Right Panel Test Suite', () => {
 
           await test.step('Remove domain', async () => {
             await overview.removeDomain(domainToUpdate);
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -338,9 +333,7 @@ test.describe('Right Panel Test Suite', () => {
 
           await test.step('Remove user owner', async () => {
             await overview.removeOwner([user1.getUserDisplayName()], 'Users');
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -2487,7 +2480,6 @@ test.describe('Right Panel Test Suite', () => {
           });
 
           await panelContainer.getByTestId('data-quality-tab').click();
-          await page.waitForLoadState('networkidle');
 
           await expect(
             panelContainer.locator(
@@ -2528,7 +2520,6 @@ test.describe('Right Panel Test Suite', () => {
             entityType: 'table',
           });
 
-          await page.waitForLoadState('networkidle');
 
           expect(forbiddenUrls).toHaveLength(0);
         } finally {

@@ -17,6 +17,7 @@ import { TopicClass } from '../../../support/entity/TopicClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   addAssetToGlossaryTerm,
   goToAssetsTab,
@@ -325,24 +326,12 @@ test.describe('Glossary Asset Operations', () => {
       const topicFqn = topicEntity.entityResponseData?.fullyQualifiedName;
 
       await page.goto(`/topic/${topicFqn}`);
+      await waitForAllLoadersToDisappear(page);
 
       // Verify entity page is loaded
       const entityHeader = page.getByTestId('entity-header-display-name');
 
-      await expect(entityHeader).toBeVisible({ timeout: 10000 });
-
-      // Look for glossary term section
-      const glossarySection = page.getByTestId('glossary-container');
-
-      if (
-        await glossarySection.isVisible({ timeout: 3000 }).catch(() => false)
-      ) {
-        // Glossary term section exists - test passes
-        await expect(glossarySection).toBeVisible();
-      } else {
-        // Verify page is accessible without glossary section
-        await expect(entityHeader).toBeVisible();
-      }
+      await expect(entityHeader).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
       await topicEntity.delete(apiContext);

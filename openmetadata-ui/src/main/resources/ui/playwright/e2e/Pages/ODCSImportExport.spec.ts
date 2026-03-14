@@ -1645,12 +1645,13 @@ version: "1.0.0"`;
         buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
       });
 
-      // Wait for object selector to appear
+      await page.getByTestId('file-info-card').waitFor({ timeout: 30000 });
       await expect(page.locator('.object-selector-section')).toBeVisible({
-        timeout: 10000,
+        timeout: 30000,
       });
 
       // Open the dropdown to see all options
+      await page.getByTestId('schema-object-select').waitFor({ state: 'visible' });
       await page.getByTestId('schema-object-select').click();
 
       // Verify all three objects from the multi-object YAML are listed
@@ -1770,7 +1771,6 @@ version: "1.0.0"`;
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      await page.waitForLoadState('networkidle');
 
       // Verify SLA card is now visible after adding SLA
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -1859,7 +1859,6 @@ version: "1.0.0"`;
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      await page.waitForLoadState('networkidle');
 
       // Step 3: Export as ODCS YAML
       const downloadPromise = page.waitForEvent('download');

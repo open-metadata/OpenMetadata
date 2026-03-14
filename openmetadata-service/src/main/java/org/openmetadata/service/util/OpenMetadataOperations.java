@@ -14,11 +14,9 @@ import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -207,14 +205,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
         row.add(serverChangeLog.getInstalledOn());
 
         if (serverChangeLog.getMetrics() != null) {
-          JsonObject metricsJson =
-              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
-          for (Map.Entry<String, JsonElement> entry : metricsJson.entrySet()) {
-            if (!columns.contains(entry.getKey())) {
-              columns.add(entry.getKey());
-            }
-            row.add(entry.getValue().toString());
-          }
+          JsonNode metricsJson = new ObjectMapper().readTree(serverChangeLog.getMetrics());
+          metricsJson
+              .fields()
+              .forEachRemaining(
+                  entry -> {
+                    if (!columns.contains(entry.getKey())) {
+                      columns.add(entry.getKey());
+                    }
+                    row.add(entry.getValue().toString());
+                  });
         }
         rows.add(row);
       }
@@ -2959,17 +2959,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
       for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
         List<String> row = new ArrayList<>();
         if (serverChangeLog.getMetrics() != null) {
-          JsonObject metricsJson =
-              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
-          Set<String> keys = metricsJson.keySet();
-          columns.addAll(keys);
+          JsonNode metricsJson = new ObjectMapper().readTree(serverChangeLog.getMetrics());
+          metricsJson.fieldNames().forEachRemaining(columns::add);
           row.add(serverChangeLog.getVersion());
           row.add(serverChangeLog.getInstalledOn());
-          row.addAll(
-              metricsJson.entrySet().stream()
-                  .map(Map.Entry::getValue)
-                  .map(JsonElement::toString)
-                  .toList());
+          metricsJson.fields().forEachRemaining(entry -> row.add(entry.getValue().toString()));
           rows.add(row);
         }
       }

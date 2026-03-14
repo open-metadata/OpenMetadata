@@ -131,7 +131,6 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
 
       await page.click('[data-testid="configuration"]');
-      await page.waitForLoadState('networkidle');
 
       await expect(page.locator('#search-indexing-application')).toContainText(
         'Search Indexing Application'

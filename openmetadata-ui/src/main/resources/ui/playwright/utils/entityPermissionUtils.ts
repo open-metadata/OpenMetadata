@@ -483,7 +483,6 @@ export const testDashboardDataModelSpecificOperations = async (
 // after a vote action triggers the re-fetch of entity details.
 const testVotePreservesUsage = async (testUserPage: Page) => {
   await testUserPage.locator('[data-testid="up-vote-btn"]').click();
-  await testUserPage.waitForLoadState('networkidle');
   await expect(testUserPage.getByText('Usage').first()).toBeVisible();
 };
 

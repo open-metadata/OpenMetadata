@@ -41,7 +41,6 @@ import { sidebarClick } from './sidebar';
 
 export const visitObservabilityAlertPage = async (page: Page) => {
   await redirectToHomePage(page);
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -52,9 +51,7 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   );
 
   // Set up navigation promise before clicking
-  const navigationPromise = page.waitForURL('**/observability/alerts', {
-    waitUntil: 'networkidle',
-  });
+  const navigationPromise = page.waitForURL('**/observability/alerts');
 
   await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
 

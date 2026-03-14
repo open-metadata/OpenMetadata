@@ -168,6 +168,18 @@ test.describe('Impact Analysis', () => {
     await afterAction();
   });
 
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await table.delete(apiContext);
+    await table2.delete(apiContext);
+    await topic.delete(apiContext);
+    await dashboard.delete(apiContext);
+    await dataModel.delete(apiContext);
+    await pipeline.delete(apiContext);
+    await mlModel.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach(
     'prepare for test and navigate to Impact Analysis',
     async ({ page }) => {

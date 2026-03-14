@@ -70,6 +70,8 @@ RUN if [ $(uname -m) = "x86_64" ]; \
 COPY --chown=airflow:0 --chmod=775 ingestion/ingestion_dependency.sh /opt/airflow
 # Required for Ingesting Sample Data
 COPY --chown=airflow:0 ingestion /home/airflow/ingestion
+COPY --chown=airflow:0 openmetadata-spec /home/airflow/openmetadata-spec
+COPY --chown=airflow:0 scripts/datamodel_generation.py /home/airflow/scripts/datamodel_generation.py
 
 COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airflow-apis
 # Required for Airflow DAGs of Sample Data
@@ -104,6 +106,8 @@ WORKDIR /home/airflow/ingestion
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
 RUN pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-databricks==0.2.0" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+RUN pip install "datamodel-code-generator==0.25.6"
+RUN python /home/airflow/scripts/datamodel_generation.py
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"

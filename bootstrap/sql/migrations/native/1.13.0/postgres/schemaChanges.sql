@@ -22,6 +22,32 @@ SET json = (json - 'preview') || jsonb_build_object(
 )
 WHERE jsonb_exists(json, 'preview');
 
+-- Reduce deadlocks for entity_usage upserts by reordering the unique constraint columns
+-- to (id, usageDate) so that row-level locks follow the lookup predicate order.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint c
+        JOIN pg_attribute a1 ON a1.attrelid = c.conrelid AND a1.attnum = c.conkey[1]
+        JOIN pg_attribute a2 ON a2.attrelid = c.conrelid AND a2.attnum = c.conkey[2]
+        WHERE c.conrelid = 'entity_usage'::regclass
+          AND c.contype = 'u'
+          AND a1.attname = 'id'
+          AND a2.attname = 'usageDate'
+    ) THEN
+        -- Drop the old constraint (usageDate, id) if it exists
+        IF EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conrelid = 'entity_usage'::regclass AND contype = 'u'
+        ) THEN
+            EXECUTE format('ALTER TABLE entity_usage DROP CONSTRAINT %I',
+                (SELECT conname FROM pg_constraint WHERE conrelid = 'entity_usage'::regclass AND contype = 'u' LIMIT 1));
+        END IF;
+        ALTER TABLE entity_usage ADD CONSTRAINT entity_usage_id_usagedate_key UNIQUE (id, usageDate);
+    END IF;
+END $$;
+
 -- Rename 'preview' to 'enabled' in event_subscription_entity config.app
 -- The App JSON is stored as an escaped JSON string inside config.app, so we need string replacement
 UPDATE event_subscription_entity

@@ -38,7 +38,6 @@ test(
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
 
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     const firstColumnName = table.columnsName[0];

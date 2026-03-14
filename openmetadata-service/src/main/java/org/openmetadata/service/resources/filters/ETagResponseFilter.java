@@ -20,6 +20,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import java.io.IOException;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.util.EntityETag;
 
 /**
@@ -33,14 +34,15 @@ public class ETagResponseFilter implements ContainerResponseFilter {
   public void filter(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext)
       throws IOException {
-    // Only add ETag for successful GET requests
-    if ("GET".equals(requestContext.getMethod())
-        && responseContext.getStatus() == Response.Status.OK.getStatusCode()
-        && responseContext.getEntity() instanceof EntityInterface) {
+    try (var ignored = RequestLatencyContext.phase("etagGeneration")) {
+      if ("GET".equals(requestContext.getMethod())
+          && responseContext.getStatus() == Response.Status.OK.getStatusCode()
+          && responseContext.getEntity() instanceof EntityInterface) {
 
-      EntityInterface entity = (EntityInterface) responseContext.getEntity();
-      String etag = EntityETag.generateETag(entity);
-      responseContext.getHeaders().add("ETag", etag);
+        EntityInterface entity = (EntityInterface) responseContext.getEntity();
+        String etag = EntityETag.generateETag(entity);
+        responseContext.getHeaders().add("ETag", etag);
+      }
     }
   }
 }

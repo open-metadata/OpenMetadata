@@ -21,6 +21,7 @@ import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
   redirectToHomePage,
+  removeLandingBanner,
   uuid,
   visitOwnProfilePage,
 } from '../../utils/common';
@@ -63,6 +64,8 @@ test.describe('FeedWidget on landing page', () => {
         try {
           // Set persona as default
           await redirectToHomePage(adminPage);
+          await removeLandingBanner(adminPage);
+          await waitForAllLoadersToDisappear(adminPage);
           await setUserDefaultPersona(adminPage, testPersona.data.displayName);
 
           // Navigate to customize landing page
@@ -88,12 +91,12 @@ test.describe('FeedWidget on landing page', () => {
           if (await saveButton.isEnabled()) {
             const saveResponse = adminPage.waitForResponse('/api/v1/docStore*');
             await saveButton.click();
-            await adminPage.waitForLoadState('networkidle');
             await saveResponse;
           }
 
           await redirectToHomePage(adminPage);
-          await adminPage.waitForLoadState('networkidle');
+          await removeLandingBanner(adminPage);
+          await waitForAllLoadersToDisappear(adminPage);
         } finally {
           await adminPage.close();
         }
@@ -106,7 +109,8 @@ test.describe('FeedWidget on landing page', () => {
   test.beforeEach(async ({ page }) => {
     await adminUser.login(page);
     await redirectToHomePage(page);
-    await page.waitForLoadState('networkidle');
+    await removeLandingBanner(page);
+    await waitForAllLoadersToDisappear(page);
   });
 
   test('renders widget wrapper and header with sort dropdown', async ({
@@ -155,7 +159,6 @@ test.describe('FeedWidget on landing page', () => {
       .getByTestId('widget-header')
       .getByText('Activity Feed');
     await titleLink.click();
-    await page.waitForLoadState('networkidle');
 
     // Verify navigation to user activity feed
     await expect(page.url()).toContain('/users/');
@@ -203,7 +206,6 @@ test.describe('FeedWidget on landing page', () => {
 
     const feedResponse = page.waitForResponse('/api/v1/feed*');
     await myDataOption.click();
-    await page.waitForLoadState('networkidle');
     await feedResponse;
 
     // Switch back to All Activity
@@ -216,7 +218,6 @@ test.describe('FeedWidget on landing page', () => {
     if (await allActivityOption.isVisible()) {
       const feedResponse = page.waitForResponse('/api/v1/feed*');
       await allActivityOption.click();
-      await page.waitForLoadState('networkidle');
       await feedResponse;
     }
   });
@@ -233,7 +234,6 @@ test.describe('FeedWidget on landing page', () => {
 
     // Click and verify navigation
     await viewMoreLink.click();
-    await page.waitForLoadState('networkidle');
 
     // Should navigate away from home page
     expect(page.url()).not.toMatch(/home|welcome/i);
@@ -334,7 +334,6 @@ test.describe('FeedWidget on landing page', () => {
 
     if (await commentInput.count()) {
       await commentInput.click();
-      await page.waitForLoadState('networkidle');
 
       // Fill in the editor
       const editorField = page.locator(
@@ -348,7 +347,6 @@ test.describe('FeedWidget on landing page', () => {
       await expect(sendButton).toBeEnabled();
 
       const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
-      await page.waitForLoadState('networkidle');
       await sendButton.click();
       await sendReply;
 
@@ -425,13 +423,11 @@ test.describe('Mention notifications in Notification Box', () => {
           // wait for 2s before querying again
           await adminPage.waitForTimeout(2000);
           await adminPage.reload();
-          await adminPage.waitForLoadState('networkidle');
           await waitForAllLoadersToDisappear(adminPage);
         }
       }
 
       await adminPage.getByTestId('activity_feed').click();
-      await adminPage.waitForLoadState('networkidle');
 
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -466,7 +462,6 @@ test.describe('Mention notifications in Notification Box', () => {
       await entity.visitEntityPage(user1Page);
 
       await user1Page.getByTestId('activity_feed').click();
-      await user1Page.waitForLoadState('networkidle');
 
       await user1Page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -572,7 +567,6 @@ test.describe('Mention notifications in Notification Box', () => {
       const navigationPromise = adminPage.waitForURL(/activity_feed/);
       await mentionNotificationLink.click();
       await navigationPromise;
-      await adminPage.waitForLoadState('networkidle');
 
       expect(adminPage.url()).toContain('activity_feed');
       expect(adminPage.url()).toContain('/all');
@@ -692,7 +686,21 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     expect(feedResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('comments-input-field').click();
+    const commentsInput = page.getByTestId('comments-input-field');
+    if (!(await commentsInput.isVisible().catch(() => false))) {
+      const seededThread = page
+        .locator('[data-testid="message-container"], [data-testid="feed-reply-card"]')
+        .filter({
+          hasText: 'Initial conversation for Chinese character encoding test',
+        })
+        .first();
+
+      await expect(seededThread).toBeVisible({ timeout: 30_000 });
+      await seededThread.click();
+      await waitForAllLoadersToDisappear(page);
+    }
+
+    await commentsInput.click();
 
     const editorLocator = page.locator(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
@@ -752,7 +760,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     );
 
     await waitForAllLoadersToDisappear(newPage);
-    expect(newPage.getByTestId('user-display-name')).toHaveText(userName);
+    await expect(newPage.getByTestId('user-display-name')).toHaveText(userName);
   });
 
   test('Should encode the chinese character while mentioning api endpoint', async ({

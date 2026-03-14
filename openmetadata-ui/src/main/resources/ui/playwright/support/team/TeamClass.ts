@@ -12,7 +12,8 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { uuid } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import { searchTeam } from '../../utils/team';
 import { EntityReference } from '../entity/Entity.interface';
@@ -27,6 +28,7 @@ type ResponseDataType = {
   defaultRoles?: string[];
   policies?: string[];
   owners?: EntityReference[];
+  isJoinable?: boolean;
 };
 
 export class TeamClass {
@@ -54,25 +56,42 @@ export class TeamClass {
   }
 
   async visitTeamPage(page: Page) {
-    // complete url since we are making basic and advance call to get the details of the team
+    const teamName = this.responseData?.name ?? this.data.name;
+    const expectedDisplayName =
+      this.responseData?.displayName ?? this.data.displayName;
+    const directTeamPath = `/settings/members/teams/${encodeURIComponent(teamName)}`;
+
+    await page.goto(directTeamPath, { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
+    const teamHeading = page.getByTestId('team-heading');
+    if (await teamHeading.isVisible().catch(() => false)) {
+      await expect(teamHeading).toHaveText(expectedDisplayName);
+
+      return;
+    }
+
     const fetchOrganizationResponse = page.waitForResponse(
       `/api/v1/teams/name/Organization?fields=users%2CuserCount%2CdefaultRoles%2CdefaultPersona%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
     );
+    await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.TEAMS);
     await fetchOrganizationResponse;
 
-    await searchTeam(page, this.responseData?.['displayName']);
+    await searchTeam(page, expectedDisplayName);
 
-    await page
-      .locator(`[data-row-key="${this.data.name}"]`)
-      .getByRole('link')
-      .click();
+    const teamLink = page.getByRole('link', { name: expectedDisplayName }).first();
+    await expect(teamLink).toBeVisible({ timeout: 60000 });
+    const teamHref = await teamLink.getAttribute('href');
 
-    await page.waitForLoadState('networkidle');
+    if (teamHref) {
+      await page.goto(teamHref, { waitUntil: 'domcontentloaded' });
+    } else {
+      await teamLink.click();
+    }
 
-    await expect(page.getByTestId('team-heading')).toHaveText(
-      this.data.displayName
-    );
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await expect(page.getByTestId('team-heading')).toHaveText(expectedDisplayName);
   }
 
   async create(apiContext: APIRequestContext) {

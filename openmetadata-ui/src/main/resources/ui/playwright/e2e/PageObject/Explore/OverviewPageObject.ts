@@ -394,16 +394,30 @@ export class OverviewPageObject extends RightPanelBase {
     await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
 
     if (type === 'Users') {
-      const isAlreadyActive = await this.selectOwnerUsersTab.getAttribute(
-        'aria-selected'
-      );
-      if (isAlreadyActive !== 'true') {
-        await this.selectOwnerUsersTab.click();
-      }
+      await expect
+        .poll(
+          async () => {
+            const isAlreadyActive =
+              (await this.selectOwnerUsersTab.getAttribute('aria-selected')) ===
+              'true';
+            if (!isAlreadyActive) {
+              await this.selectOwnerUsersTab.click();
+            }
+
+            return await this.userSearchBar.isVisible().catch(() => false);
+          },
+          {
+            timeout: 120000,
+            intervals: [500, 1000, 2000],
+            message: 'Timed out waiting for owner search input to become visible',
+          }
+        )
+        .toBe(true);
     }
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
     await this.userSearchBar.waitFor({ state: 'visible' });
+    await this.userSearchBar.scrollIntoViewIfNeeded();
 
     const searchUser = this.page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
@@ -416,13 +430,9 @@ export class OverviewPageObject extends RightPanelBase {
 
     const ownerPatchPromise = this.waitForPatchResponse();
     if (type === 'Teams') {
-      await this.page
-        .getByRole('listitem', { name: owner, exact: true })
-        .click();
+      await this.page.getByRole('listitem', { name: owner }).click();
     } else {
-      await this.page
-        .getByRole('listitem', { name: owner, exact: true })
-        .click();
+      await this.page.getByRole('listitem', { name: owner }).click();
       await this.updateOwnersButton.click();
     }
     await ownerPatchPromise;

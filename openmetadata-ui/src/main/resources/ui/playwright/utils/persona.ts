@@ -62,7 +62,6 @@ export const checkPersonaInProfile = async (
     state: 'visible',
   });
   await page.getByTestId('user-name').click();
-  await page.waitForLoadState('networkidle');
 
   if (expectedPersonaName) {
     // Expect persona to be visible with specific name
@@ -107,13 +106,20 @@ export const navigateToPersonaWithPagination = async (
     // Check if element is visible on current page
     if (await locator.isVisible()) {
       if (click) {
-        const personaDetailsResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/personas/name/') &&
-            response.status() === 200
-        );
+        const personaDetailsResponse = page
+          .waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/personas/name/') &&
+              response.status() === 200,
+            { timeout: 30000 }
+          )
+          .catch(() => undefined);
+
         await locator.click();
         await personaDetailsResponse;
+        await expect(
+          page.getByRole('tab', { name: 'Customize UI' })
+        ).toBeVisible();
       }
 
       return;

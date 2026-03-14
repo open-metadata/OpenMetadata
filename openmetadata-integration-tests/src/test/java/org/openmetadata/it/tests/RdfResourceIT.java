@@ -1,14 +1,16 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.time.Duration;
 import java.util.List;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -36,7 +38,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
  *
  * <p>Migrated from: org.openmetadata.service.resources.rdf.RdfResourceTest
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class RdfResourceIT {
 
@@ -44,6 +46,9 @@ public class RdfResourceIT {
 
   @BeforeAll
   static void enableRdf() {
+    assumeTrue(
+        RdfTestUtils.isRdfEnabled(),
+        "RDF is disabled for this test run. Use the RDF test profile to execute RdfResourceIT.");
     RdfConfiguration rdfConfig = new RdfConfiguration();
     rdfConfig.setEnabled(true);
     rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));
@@ -137,7 +142,10 @@ public class RdfResourceIT {
     Tables.delete(
         table.getId().toString(), java.util.Map.of("hardDelete", "true", "recursive", "true"));
 
-    RdfTestUtils.verifyEntityNotInRdf(table.getFullyQualifiedName());
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(() -> RdfTestUtils.verifyEntityNotInRdf(table.getFullyQualifiedName()));
   }
 
   @Test
@@ -157,12 +165,18 @@ public class RdfResourceIT {
     Table table = Tables.create(createRequest);
     assertNotNull(table.getId());
 
-    RdfTestUtils.verifyEntityInRdf(table, TABLE_RDF_TYPE);
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(() -> RdfTestUtils.verifyEntityInRdf(table, TABLE_RDF_TYPE));
 
     table.setDescription("Updated description for RDF test");
     Table updated = Tables.update(table.getId().toString(), table);
     assertNotNull(updated);
 
-    RdfTestUtils.verifyEntityUpdatedInRdf(updated);
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(() -> RdfTestUtils.verifyEntityUpdatedInRdf(updated));
   }
 }

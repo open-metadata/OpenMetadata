@@ -59,6 +59,12 @@ test.describe(
       await afterAction();
     });
 
+    test.afterAll('Cleanup admin user', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await adminUser.delete(apiContext);
+      await afterAction();
+    });
+
     test.describe('Superset', () => {
       // Create the Certificate file for upload
       const testCertPath = path.join(__dirname, '..', 'output', CERT_FILE);
@@ -332,7 +338,6 @@ test.describe(
         test.slow();
 
         await page.goto('/databaseServices/add-service');
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId('BigQuery').click();
@@ -350,16 +355,13 @@ test.describe(
         await page.getByTestId('next-button').click();
         await page.getByTestId('submit-btn').click();
         await page.getByTestId('submit-btn').click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('entity-header-title')).toBeVisible();
 
         await page.getByRole('link', { name: 'Database Services' }).click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('add-service-button').click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('Databricks').click();
         await page.getByTestId('next-button').click();
@@ -368,19 +370,16 @@ test.describe(
         await page
           .getByTestId('service-name')
           .fill(`${SERVICE_NAMES.service1}`);
-        await page.waitForLoadState('networkidle');
 
         await expect(page.locator('#name_help')).toContainText(
           'Name already exists.'
         );
 
         await page.getByRole('link', { name: 'Database Services' }).click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
         await page
           .getByTestId(`service-name-${SERVICE_NAMES.service1}`)
           .click();
-        await page.waitForLoadState('networkidle');
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button-title').click();
         await page.getByTestId('confirmation-text-input').fill('DELETE');
@@ -404,7 +403,6 @@ test.describe(
         page,
       }) => {
         await page.goto('/dashboardServices/add-service');
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId('Looker').click();

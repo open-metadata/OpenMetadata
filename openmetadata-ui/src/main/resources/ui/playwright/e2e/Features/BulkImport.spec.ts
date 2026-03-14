@@ -167,8 +167,6 @@ test.describe('Bulk Import Export', () => {
         'downloads/' + dbService.entity.name + '.csv',
       ]);
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
       // Wait for upload widget to be hidden indicating file is loaded
       await page.waitForSelector('[data-testid="upload-file-widget"]', {
         state: 'hidden',
@@ -343,7 +341,6 @@ test.describe('Bulk Import Export', () => {
         page
       );
 
-      await page.waitForTimeout(100);
       await page.getByRole('button', { name: 'Next' }).click();
 
       const loader = page.locator(
@@ -633,8 +630,6 @@ test.describe('Bulk Import Export', () => {
         'downloads/' + dbSchemaEntity.entity.name + '.csv',
       ]);
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
       // Wait for upload widget to be hidden indicating file is loaded
       await page.waitForSelector('[data-testid="upload-file-widget"]', {
         state: 'hidden',
@@ -796,8 +791,6 @@ test.describe('Bulk Import Export', () => {
         'downloads/' + tableEntity.entity.name + '.csv',
       ]);
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
       // Wait for upload widget to be hidden indicating file is loaded
       await page.waitForSelector('[data-testid="upload-file-widget"]', {
         state: 'hidden',
@@ -1021,7 +1014,6 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should verify the removed value from entity', async () => {
       await page.getByTestId('column-name').first().click();
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page

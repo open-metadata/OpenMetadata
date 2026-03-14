@@ -100,7 +100,6 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     page.locator('.ant-tabs-tab-active').getByText('Teams')
   ).toBeVisible();
 
-  await page.waitForLoadState('networkidle');
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -110,7 +109,6 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
 
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.waitForSelector('[data-testid="owner-select-users-search-bar"]', {
@@ -126,7 +124,6 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
     await searchOwner;
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector(
       '[data-testid="select-owner-tabs"] [data-testid="loader"]',
       { state: 'detached' }
@@ -154,7 +151,6 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
     page.locator('.ant-tabs-tab-active').getByText('Users')
   ).toBeVisible();
 
-  await page.waitForLoadState('networkidle');
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -163,7 +159,6 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
     .getByRole('tab', { name: 'Teams' })
     .click();
 
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.waitForSelector('[data-testid="owner-select-teams-search-bar"]', {
@@ -179,12 +174,11 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
     await page.locator('[data-testid="owner-select-teams-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-teams-search-bar"]', owner);
     await searchOwner;
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector(
       '[data-testid="select-owner-tabs"] [data-testid="loader"]',
       { state: 'detached' }
     );
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await page.getByRole('listitem', { name: owner }).click();
   }
 
   await page
@@ -567,7 +561,7 @@ export const uploadCSVAndWaitForGrid = async (
     state: 'hidden',
   });
 
-  await page.waitForTimeout(500);
+  await expect(page.locator('.rdg-header-row')).toBeVisible();
   const rowCount = await page.locator('.rdg-row').count();
   return { rowCount, tempFilePath };
 };

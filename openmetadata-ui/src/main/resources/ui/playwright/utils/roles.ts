@@ -34,8 +34,18 @@ export const getElementWithPagination = async (
   page: Page,
   locator: Locator,
   click = true,
-  maxPages = 15
+  maxPages = 50
 ) => {
+  const previousBtn = page.locator('[data-testid="previous"]');
+  if (await previousBtn.isVisible()) {
+    while (await previousBtn.isEnabled()) {
+      await previousBtn.click();
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+    }
+  }
+
   for (let currentPage = 0; currentPage < maxPages; currentPage++) {
     // Check if element is visible on current page
     if (await locator.isVisible()) {

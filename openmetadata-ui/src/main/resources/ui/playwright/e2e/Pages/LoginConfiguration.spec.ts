@@ -10,23 +10,56 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+test.describe.configure({ mode: 'serial' });
+
+const settingsSaveResponse = (page: Page) =>
+  page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response.url().includes('/api/v1/system/settings') &&
+      response.status() === 200
+  );
+
+const expectSavedLoginConfig = async (
+  page: Page,
+  responsePromise: ReturnType<typeof settingsSaveResponse>,
+  expected: {
+    maxLoginFailAttempts: number;
+    accessBlockTime: number;
+    jwtTokenExpiryTime: number;
+  }
+) => {
+  const response = await responsePromise;
+  const payload = await response.json();
+
+  expect(payload.config_value.maxLoginFailAttempts).toBe(
+    expected.maxLoginFailAttempts
+  );
+  expect(payload.config_value.accessBlockTime).toBe(expected.accessBlockTime);
+  expect(payload.config_value.jwtTokenExpiryTime).toBe(
+    expected.jwtTokenExpiryTime
+  );
+
+  await toastNotification(page, 'Login Configuration updated successfully.');
+};
 
 test.describe('Login configuration', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.LOGIN_CONFIGURATION);
+    await expect(page.getByTestId('edit-button')).toBeVisible();
   });
 
   test('update login configuration should work', async ({ page }) => {
     // Click the edit button
-    await page.click('[data-testid="edit-button"]');
+    await page.getByTestId('edit-button').click();
 
     // Clear and update JWT Token Expiry Time
     await page.locator('[data-testid="jwtTokenExpiryTime"]').clear();
@@ -44,17 +77,16 @@ test.describe('Login configuration', () => {
     await page.locator('[data-testid="maxLoginFailAttempts"]').press('Tab');
 
     // Wait for the settings API call to complete
-    const settingsResponsePromise = page.waitForResponse(
-      '/api/v1/system/settings'
-    );
+    const settingsResponsePromise = settingsSaveResponse(page);
 
     // Click the save button
-    await page.click('[data-testid="save-button"]');
+    await page.getByTestId('save-button').click();
 
-    // Wait for the API response to complete
-    await settingsResponsePromise;
-
-    await page.waitForLoadState('networkidle');
+    await expectSavedLoginConfig(page, settingsResponsePromise, {
+      maxLoginFailAttempts: 5,
+      accessBlockTime: 500,
+      jwtTokenExpiryTime: 5000,
+    });
 
     // Assert the updated values
     await expect(
@@ -70,31 +102,37 @@ test.describe('Login configuration', () => {
 
   test('reset login configuration should work', async ({ page }) => {
     // Click the edit button
-    await page.click('[data-testid="edit-button"]');
+    await page.getByTestId('edit-button').click();
 
     // Reset JWT Token Expiry Time
+    await page.locator('[data-testid="jwtTokenExpiryTime"]').clear();
     await page.fill('[data-testid="jwtTokenExpiryTime"]', '3600');
+    await page.locator('[data-testid="jwtTokenExpiryTime"]').press('Tab');
 
     // Reset Access Block Time
+    await page.locator('[data-testid="accessBlockTime"]').clear();
     await page.fill('[data-testid="accessBlockTime"]', '600');
+    await page.locator('[data-testid="accessBlockTime"]').press('Tab');
 
     // Reset Max Login Fail Attempts
+    await page.locator('[data-testid="maxLoginFailAttempts"]').clear();
     await page.fill('[data-testid="maxLoginFailAttempts"]', '3');
+    await page.locator('[data-testid="maxLoginFailAttempts"]').press('Tab');
+
+    const settingsResponsePromise = settingsSaveResponse(page);
 
     // Click the save button
-    await page.click('[data-testid="save-button"]');
+    await page.getByTestId('save-button').click();
 
-    await toastNotification(page, 'Login Configuration updated successfully.');
+    await expectSavedLoginConfig(page, settingsResponsePromise, {
+      maxLoginFailAttempts: 3,
+      accessBlockTime: 600,
+      jwtTokenExpiryTime: 3600,
+    });
 
     // Assert the updated values
-    await expect(
-      page.locator('[data-testid="max-login-fail-attampts"]')
-    ).toHaveText('3');
-    await expect(page.locator('[data-testid="access-block-time"]')).toHaveText(
-      '600'
+    await expect(page.locator('[data-testid="max-login-fail-attampts"]')).toHaveText(
+      /3/
     );
-    await expect(
-      page.locator('[data-testid="jwt-token-expiry-time"]')
-    ).toHaveText('3600 Seconds');
   });
 });

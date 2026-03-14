@@ -15,6 +15,7 @@ import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { redirectToHomePage, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
@@ -186,6 +187,7 @@ test.describe('Hyperlink Custom Property Tests', () => {
     try {
       await EntityDataClass.container1.visitEntityPage(page);
       await page.click('[data-testid="custom_properties"]');
+      await waitForAllLoadersToDisappear(page);
 
       const containerLocator = page.locator(
         `[data-testid="custom-property-${propertyName}-card"]`

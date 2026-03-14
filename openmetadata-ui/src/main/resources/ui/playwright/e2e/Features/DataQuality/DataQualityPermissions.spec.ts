@@ -30,6 +30,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
 import {
   visitTestSuiteDetailsPage,
@@ -649,6 +650,7 @@ test.describe(
         viewBasicPage,
       }) => {
         await visitTestSuiteDetailsPage(viewBasicPage, logicalTestSuiteFqn);
+        await waitForAllLoadersToDisappear(viewBasicPage);
 
         await expect(
           viewBasicPage.getByTestId('add-test-case-btn')

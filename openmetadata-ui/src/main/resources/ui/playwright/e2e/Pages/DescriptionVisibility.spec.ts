@@ -214,7 +214,6 @@ test.describe('Long Description Visibility', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProductData);
-    await page.waitForLoadState('networkidle');
 
     const descContainer = page.getByTestId('asset-description-container');
     await expect(descContainer).toBeVisible();
@@ -232,7 +231,6 @@ test.describe('Long Description Visibility', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProductData);
-    await page.waitForLoadState('networkidle');
 
     const descContainer = page.getByTestId('asset-description-container');
     await expect(descContainer).toBeVisible();
@@ -256,7 +254,6 @@ test.describe('Long Description Visibility', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProductData);
-    await page.waitForLoadState('networkidle');
 
     const descContainer = page.getByTestId('asset-description-container');
     await expect(descContainer).toBeVisible();
@@ -392,7 +389,6 @@ test.describe('Long Description Visibility', () => {
     await personaListResponse;
     await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-    await adminPage.waitForLoadState('networkidle');
 
     await adminPage.getByText('Data Assets').click();
     await adminPage.getByText('Table', { exact: true }).click();
@@ -456,7 +452,6 @@ test.describe('Long Description Visibility', () => {
     await redirectToHomePage(userPage);
 
     await table.visitEntityPage(userPage);
-    await userPage.waitForLoadState('networkidle');
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
