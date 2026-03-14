@@ -538,6 +538,119 @@ class OpenlineageSource(PipelineServiceSource):
                 stackTrace=traceback.format_exc(),
             )
 
+    def _has_annotated_pipeline_edge(
+        self,
+        dataset_node: LineageNode,
+        pipeline_entity: Pipeline,
+        direction: str,
+    ) -> bool:
+        """
+        Check if a dataset already has a proper both-sided lineage edge where the
+        given pipeline is an annotation (in lineageDetails.pipeline), not a direct
+        endpoint. This prevents creating redundant pipeline-as-node edges when a
+        both-sided event was already processed.
+
+        :param dataset_node: the dataset (table/topic) to check
+        :param pipeline_entity: the pipeline to look for as an annotation
+        :param direction: "upstream" or "downstream" — which edges of the dataset to check
+        :return: True if an annotated edge already exists
+        """
+        entity_class = Table if dataset_node.node_type == "table" else Topic
+        dataset_id = str(dataset_node.uuid)
+        pipeline_id = str(pipeline_entity.id.root)
+        try:
+            lineage_data = self.metadata.get_lineage_by_id(
+                entity=entity_class,
+                entity_id=dataset_id,
+                up_depth=1 if direction == "upstream" else 0,
+                down_depth=1 if direction == "downstream" else 0,
+            )
+            if not lineage_data:
+                return False
+
+            edges_key = (
+                "upstreamEdges" if direction == "upstream" else "downstreamEdges"
+            )
+            for edge_entry in lineage_data.get(edges_key, []):
+                details = edge_entry.get("lineageDetails", {}) or {}
+                pipeline_ref = details.get("pipeline")
+                if pipeline_ref and str(pipeline_ref.get("id")) == pipeline_id:
+                    return True
+        except Exception:
+            logger.debug(traceback.format_exc())
+        return False
+
+    def _cleanup_pipeline_as_node_edges(
+        self,
+        pipeline_entity: Pipeline,
+        event_entity_map: Dict[str, str],
+    ) -> None:
+        """
+        When a pipeline transitions from single-sided (pipeline-as-node) to both-sided
+        lineage, remove stale edges where the pipeline is a direct from/to endpoint
+        paired with a topic or table. Only targets OpenLineage-sourced edges whose
+        other endpoint matches one of the datasets in the current event.
+
+        :param pipeline_entity: the pipeline entity
+        :param event_entity_map: mapping of entity ID -> entity type for datasets
+            resolved from the current event's inputs and outputs
+        """
+        pipeline_id = str(pipeline_entity.id.root)
+        try:
+            lineage_data = self.metadata.get_lineage_by_id(
+                entity=Pipeline,
+                entity_id=pipeline_id,
+                up_depth=1,
+                down_depth=1,
+            )
+            if not lineage_data:
+                return
+
+            for edge_entry in lineage_data.get("upstreamEdges", []):
+                if edge_entry["toEntity"] != pipeline_id:
+                    continue
+                details = edge_entry.get("lineageDetails", {}) or {}
+                if details.get("source") != Source.OpenLineage.value:
+                    continue
+                from_id = edge_entry["fromEntity"]
+                if from_id not in event_entity_map:
+                    continue
+                self.metadata.delete_lineage_edge(
+                    EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=from_id, type=event_entity_map[from_id]
+                        ),
+                        toEntity=EntityReference(
+                            id=pipeline_id, type="pipeline"
+                        ),
+                    )
+                )
+
+            for edge_entry in lineage_data.get("downstreamEdges", []):
+                if edge_entry["fromEntity"] != pipeline_id:
+                    continue
+                details = edge_entry.get("lineageDetails", {}) or {}
+                if details.get("source") != Source.OpenLineage.value:
+                    continue
+                to_id = edge_entry["toEntity"]
+                if to_id not in event_entity_map:
+                    continue
+                self.metadata.delete_lineage_edge(
+                    EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=pipeline_id, type="pipeline"
+                        ),
+                        toEntity=EntityReference(
+                            id=to_id, type=event_entity_map[to_id]
+                        ),
+                    )
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to cleanup pipeline-as-node edges for {pipeline_entity.fullyQualifiedName.root}: {exc}"
+            )
+
     def yield_pipeline_lineage_details(
         self, pipeline_details: OpenLineageEvent
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -605,7 +718,54 @@ class OpenlineageSource(PipelineServiceSource):
         )
 
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+
+        if not pipeline_entity:
+            logger.warning(f"Pipeline entity not found for {pipeline_fqn}, skipping lineage")
+            return
+
+        event_has_no_outputs = not outputs
+        event_has_no_inputs = not inputs
+
+        if event_has_no_outputs and input_edges:
+            pipeline_node = LineageNode(
+                fqn=TableFQN(value=pipeline_fqn),
+                uuid=pipeline_entity.id.root,
+                node_type="pipeline",
+            )
+            for input_node in input_edges:
+                if not self._has_annotated_pipeline_edge(
+                    input_node, pipeline_entity, direction="downstream"
+                ):
+                    edges.append(LineageEdge(from_node=input_node, to_node=pipeline_node))
+                else:
+                    logger.info(f"Skipping pipeline-as-node edge for {input_node.fqn.value}")
+
+        if event_has_no_inputs and output_edges:
+            pipeline_node = LineageNode(
+                fqn=TableFQN(value=pipeline_fqn),
+                uuid=pipeline_entity.id.root,
+                node_type="pipeline",
+            )
+            for output_node in output_edges:
+                if not self._has_annotated_pipeline_edge(
+                    output_node, pipeline_entity, direction="upstream"
+                ):
+                    edges.append(LineageEdge(from_node=pipeline_node, to_node=output_node))
+                else:
+                    logger.info(f"Skipping pipeline-as-node edge for {output_node.fqn.value}")
+
+        if inputs and outputs:
+            event_entity_map = {
+                str(node.uuid): node.node_type
+                for node in input_edges + output_edges
+            }
+            self._cleanup_pipeline_as_node_edges(pipeline_entity, event_entity_map)
+
         for edge in edges:
+            is_pipeline_endpoint = (
+                edge.from_node.node_type == "pipeline"
+                or edge.to_node.node_type == "pipeline"
+            )
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
@@ -616,7 +776,9 @@ class OpenlineageSource(PipelineServiceSource):
                             id=edge.to_node.uuid, type=edge.to_node.node_type
                         ),
                         lineageDetails=LineageDetails(
-                            pipeline=EntityReference(
+                            pipeline=None
+                            if is_pipeline_endpoint
+                            else EntityReference(
                                 id=pipeline_entity.id.root,
                                 type="pipeline",
                             ),
