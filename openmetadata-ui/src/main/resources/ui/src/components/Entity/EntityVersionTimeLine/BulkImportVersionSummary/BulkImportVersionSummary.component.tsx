@@ -17,7 +17,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { capitalize } from 'lodash';
+import { capitalize, isUndefined } from 'lodash';
 import { useState } from 'react';
 import DataGrid from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
@@ -50,7 +50,9 @@ const buildRow = (
 ): Record<string, string> => {
   const acc: Record<string, string> = { id: idx + '' };
   row.forEach((value, index) => {
-    acc[cols[index]] = value;
+    if (!isUndefined(cols[index])) {
+      acc[cols[index]] = value;
+    }
   });
 
   return acc;
