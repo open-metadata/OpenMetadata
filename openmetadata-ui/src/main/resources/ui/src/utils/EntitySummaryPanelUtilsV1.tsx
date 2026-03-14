@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography, useTheme } from '@mui/material';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -87,8 +87,6 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
   expandedRowKeys,
   onToggleExpand,
 }) => {
-  const theme = useTheme();
-
   const hasChildren = !isEmpty(column.children);
   const isExpanded = expandedRowKeys.includes(column.fullyQualifiedName ?? '');
   const isHighlighted = highlights?.column?.includes(column.name);
@@ -129,7 +127,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               size="small"
               type="link"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
-              <Typography color={theme.palette.primary.main} variant="caption">
+              <Typography as="span" className="tw:text-xs tw:text-primary">
                 {isExpanded
                   ? t('label.show-less')
                   : `${t('label.show-nested')} (${childrenCount})`}
@@ -172,7 +170,6 @@ const NestedSchemaFieldCard: React.FC<{
   expandedRowKeys,
   onToggleExpand,
 }) => {
-  const theme = useTheme();
   const hasChildren = !isEmpty(field.children);
   const rowKey = field.fullyQualifiedName ?? field.name;
   const isExpanded = expandedRowKeys.includes(rowKey);
@@ -211,7 +208,7 @@ const NestedSchemaFieldCard: React.FC<{
               size="small"
               type="link"
               onClick={() => onToggleExpand(rowKey)}>
-              <Typography color={theme.palette.primary.main} variant="caption">
+              <Typography as="span" className="tw:text-xs tw:text-primary">
                 {isExpanded
                   ? t('label.show-less')
                   : `${t('label.show-nested')} (${childrenCount})`}
@@ -1018,7 +1015,7 @@ const APIEndpointSchemaV1: React.FC<{
       key: 'dataType',
       width: 150,
       render: (dataType: string, record: Record<string, any>) => (
-        <Typography variant="caption">
+        <Typography as="span" className="tw:text-xs">
           {record.dataTypeDisplay || dataType || 'Unknown'}
         </Typography>
       ),

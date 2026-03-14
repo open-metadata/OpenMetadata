@@ -201,7 +201,6 @@ test.describe('Glossary P3 Tests', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       // Wait for page to load fully
-      await page.waitForLoadState('networkidle');
       await page.waitForTimeout(1000);
 
       // Find the glossary terms search input (not the global search)
@@ -214,7 +213,6 @@ test.describe('Glossary P3 Tests', () => {
       // Test a single special character
       await searchInput.fill('@');
       await page.waitForTimeout(500);
-      await page.waitForLoadState('networkidle');
 
       // Search should not crash - either shows results, table, or empty state
       const table = page.getByTestId('glossary-term-table');
@@ -361,7 +359,6 @@ test.describe('Glossary P3 Tests', () => {
 
       // Navigate to term
       await page.click(`[data-testid="${glossaryTerm.data.displayName}"]`);
-      await page.waitForLoadState('networkidle');
 
       // Verify we're on term page
       await expect(
@@ -401,7 +398,6 @@ test.describe('Glossary P3 Tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
       // The page should eventually load without errors
-      await page.waitForLoadState('networkidle');
 
       // Verify page is loaded (loader should be gone)
       const loader = page.getByTestId('loader');
@@ -624,7 +620,6 @@ test.describe('Glossary P3 Tests', () => {
       await glossary.visitEntityPage(page);
 
       // Perform multiple operations
-      await page.waitForLoadState('networkidle');
 
       // Navigate around
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -682,7 +677,6 @@ test.describe('Glossary P3 Tests', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       // Wait for page to load
-      await page.waitForLoadState('networkidle');
 
       // Page should be functional - either shows table or empty state
       const table = page.getByTestId('glossary-term-table');
@@ -702,7 +696,6 @@ test.describe('Glossary P3 Tests', () => {
           ) {
             await expandIcon.click();
             await page.waitForTimeout(500);
-            await page.waitForLoadState('networkidle');
           } else {
             break;
           }
@@ -731,7 +724,6 @@ test.describe('Glossary P3 Tests', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       // Wait for page to load
-      await page.waitForLoadState('networkidle');
 
       // Rapid clicks on various elements
       const searchInput = page.getByPlaceholder(/search.*term/i);
@@ -744,7 +736,6 @@ test.describe('Glossary P3 Tests', () => {
 
       // Clear search
       await searchInput.clear();
-      await page.waitForLoadState('networkidle');
 
       // Page should still be functional
       await expect(
@@ -804,7 +795,6 @@ test.describe('Glossary P3 Tests', () => {
 
       // Wait for page to settle
       await page.waitForTimeout(3000);
-      await page.waitForLoadState('networkidle');
 
       // Check for various states that indicate the app handled the invalid URL
       // App may show error OR redirect to glossary list page

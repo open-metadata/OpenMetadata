@@ -111,7 +111,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  private static final String FUSEKI_IMAGE = "stain/jena-fuseki:latest";
+  private static final String DEFAULT_FUSEKI_IMAGE = "stain/jena-fuseki:latest";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -123,6 +123,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   // Database and search configuration (read from system properties)
   private static String databaseType;
   private static String searchType;
+  private static boolean rdfEnabled;
 
   private static JdbcDatabaseContainer<?> DATABASE_CONTAINER;
   private static GenericContainer<?> SEARCH_CONTAINER;
@@ -146,10 +147,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     // Read configuration from system properties
     databaseType = System.getProperty("databaseType", "postgres");
     searchType = System.getProperty("searchType", "elasticsearch");
+    rdfEnabled = Boolean.parseBoolean(System.getProperty("enableRdf", "false"));
 
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
+    LOG.info("RDF enabled: {}", rdfEnabled);
     boolean k8sEnabled = isK8sTestsRequested();
     LOG.info("K8s tests enabled: {}", k8sEnabled);
     long startTime = System.currentTimeMillis();
@@ -157,7 +160,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     try {
       startDatabase();
       startSearch();
-      startFuseki();
+      if (rdfEnabled) {
+        startFuseki();
+      }
       if (k8sEnabled) {
         startK3s();
       }
@@ -167,7 +172,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.info("=== TestSuiteBootstrap: Infrastructure started in {}ms ===", duration);
       LOG.info("Database ({}): {}", databaseType, DATABASE_CONTAINER.getJdbcUrl());
       LOG.info("Search ({}): {}:{}", searchType, searchHost, searchPort);
-      LOG.info("Fuseki SPARQL: {}", fusekiEndpoint);
+      if (rdfEnabled) {
+        LOG.info("Fuseki SPARQL: {}", fusekiEndpoint);
+      }
       if (k8sEnabled) {
         LOG.info("K3s Kubernetes: enabled");
       }
@@ -329,9 +336,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void startFuseki() {
+    String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
     LOG.info("Starting Fuseki SPARQL container...");
     FUSEKI_CONTAINER =
-        new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
+        new GenericContainer<>(DockerImageName.parse(image))
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
             .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
@@ -558,6 +566,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     Entity.setSearchRepository(searchRepository);
     LOG.info("Creating {} indexes...", searchType);
     searchRepository.createIndexes();
+    searchRepository.createOrUpdateIndexTemplates();
   }
 
   private ElasticSearchConfiguration getBaseSearchConfig() {
@@ -630,15 +639,19 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void configureRdf(OpenMetadataApplicationConfig config) {
-    LOG.info("Configuring RDF with Fuseki endpoint: {}", fusekiEndpoint);
-
     RdfConfiguration rdfConfig = config.getRdfConfiguration();
     if (rdfConfig == null) {
       rdfConfig = new RdfConfiguration();
       config.setRdfConfiguration(rdfConfig);
     }
 
-    rdfConfig.setEnabled(false);
+    rdfConfig.setEnabled(rdfEnabled);
+    if (!rdfEnabled) {
+      LOG.info("RDF disabled for this test run");
+      return;
+    }
+
+    LOG.info("Configuring RDF with Fuseki endpoint: {}", fusekiEndpoint);
     rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));
     rdfConfig.setStorageType(RdfConfiguration.StorageType.FUSEKI);
     rdfConfig.setRemoteEndpoint(java.net.URI.create(fusekiEndpoint));

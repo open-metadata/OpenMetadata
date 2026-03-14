@@ -27,6 +27,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -47,6 +48,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
+import org.openmetadata.service.workflows.interfaces.TaggedOperation;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
@@ -54,6 +56,7 @@ public class DataAssetsWorkflow {
   public static final String DATA_STREAM_KEY = "DataStreamKey";
   public static final String ENTITY_TYPE_FIELDS_KEY = "EnityTypeFields";
   private static final String ALL_ENTITIES = "all";
+
   private final DataAssetsConfig dataAssetsConfig;
   private final int retentionDays = 30;
   private final Long startTimestamp;
@@ -250,7 +253,7 @@ public class DataAssetsWorkflow {
       PaginatedEntitiesSource source, Map<String, Object> contextData, int budget)
       throws SearchIndexException {
     Semaphore concurrencyLimit = new Semaphore(budget);
-    ConcurrentLinkedQueue<Object> operationsQueue = new ConcurrentLinkedQueue<>();
+    ConcurrentLinkedQueue<TaggedOperation<?>> opsQueue = new ConcurrentLinkedQueue<>();
 
     try (ExecutorService sourceExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
       this.executor = sourceExecutor;
@@ -285,7 +288,8 @@ public class DataAssetsWorkflow {
                                 entityEnricher.enrichSingle(entity, contextData);
                             List<?> bulkOps =
                                 (List<?>) entityProcessor.process(enriched, contextData);
-                            operationsQueue.addAll(bulkOps);
+                            EntityReference ref = entity.getEntityReference();
+                            bulkOps.forEach(op -> opsQueue.add(new TaggedOperation<>(op, ref)));
                           } finally {
                             concurrencyLimit.release();
                           }
@@ -309,7 +313,7 @@ public class DataAssetsWorkflow {
             }
           }
 
-          drainAndFlush(operationsQueue, contextData);
+          drainAndFlush(opsQueue);
 
           batchFailed += batch.getErrors().size();
           source.updateStats(batchSuccess, batchFailed);
@@ -334,22 +338,22 @@ public class DataAssetsWorkflow {
     }
 
     try {
-      drainAndFlush(operationsQueue, contextData);
+      drainAndFlush(opsQueue);
     } finally {
       updateWorkflowStats(source.getName(), source.getStats());
     }
   }
 
   @SuppressWarnings("unchecked")
-  private void drainAndFlush(ConcurrentLinkedQueue<Object> queue, Map<String, Object> contextData)
+  private void drainAndFlush(ConcurrentLinkedQueue<TaggedOperation<?>> queue)
       throws SearchIndexException {
-    List<Object> batch = new ArrayList<>();
-    Object op;
-    while ((op = queue.poll()) != null) {
-      batch.add(op);
+    List<TaggedOperation<?>> batch = new ArrayList<>();
+    TaggedOperation<?> tagged;
+    while ((tagged = queue.poll()) != null) {
+      batch.add(tagged);
     }
     if (!batch.isEmpty()) {
-      searchIndexSink.write((List) batch, contextData);
+      searchIndexSink.write(batch);
     }
   }
 

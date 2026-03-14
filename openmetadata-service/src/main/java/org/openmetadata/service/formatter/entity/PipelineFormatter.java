@@ -53,12 +53,12 @@ public class PipelineFormatter implements EntityFormatter {
     if (status != null) {
       String date =
           new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getTimestamp()));
-      String format =
-          String.format(
-              "Pipeline %s %s at %s", messageFormatter.getBold(), messageFormatter.getBold(), date);
-      return String.format(format, pipelineName, status.getExecutionStatus());
+      return String.format(
+          "Pipeline %s %s at %s",
+          messageFormatter.bold(pipelineName),
+          messageFormatter.bold(String.valueOf(status.getExecutionStatus())),
+          date);
     }
-    String format = String.format("Pipeline %s is updated", messageFormatter.getBold());
-    return String.format(format, pipelineName);
+    return String.format("Pipeline %s is updated", messageFormatter.bold(pipelineName));
   }
 }

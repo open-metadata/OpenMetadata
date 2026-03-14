@@ -413,7 +413,6 @@ test.describe(
         state: 'detached',
       });
 
-      await page.waitForLoadState('networkidle');
 
       await getElementWithPagination(page, policyLocator);
 

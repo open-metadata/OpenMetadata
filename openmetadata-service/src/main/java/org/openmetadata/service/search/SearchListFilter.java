@@ -224,12 +224,17 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           Arrays.stream(tags.split(","))
               .map(this::escapeDoubleQuotes)
               .collect(Collectors.joining("\", \"", "\"", "\""));
-      conditions.add(String.format("{\"terms\":{\"tags.tagFQN\":[%s]}}", tagsList));
+      conditions.add(
+          String.format(
+              "{\"nested\":{\"path\":\"tags\",\"query\":{\"terms\":{\"tags.tagFQN\":[%s]}}}}",
+              tagsList));
     }
 
     if (tier != null) {
       conditions.add(
-          String.format("{\"terms\":{\"tags.tagFQN\":[\"%s\"]}}", escapeDoubleQuotes(tier)));
+          String.format(
+              "{\"nested\":{\"path\":\"tags\",\"query\":{\"terms\":{\"tags.tagFQN\":[\"%s\"]}}}}",
+              escapeDoubleQuotes(tier)));
     }
 
     if (serviceName != null) {

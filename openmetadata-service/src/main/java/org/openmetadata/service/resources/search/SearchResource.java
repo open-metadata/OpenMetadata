@@ -31,6 +31,7 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -67,6 +68,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
@@ -87,6 +89,7 @@ import os.org.opensearch.client.opensearch.core.search.Suggest;
 @Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "search")
+@LatencyPhase
 public class SearchResource {
   private final SearchRepository searchRepository;
   private final Authorizer authorizer;
@@ -1008,6 +1011,88 @@ public class SearchResource {
     response.setDeletedCount(result.deleted());
 
     return Response.ok(response).build();
+  }
+
+  @PUT
+  @Path("/templates")
+  @Operation(
+      operationId = "syncAllIndexTemplates",
+      summary = "Sync all index templates",
+      description =
+          "Create or update index templates for all entity types from indexMapping.json. "
+              + "Templates ensure proper mappings when ES/OS auto-creates indices.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Sync result"),
+        @ApiResponse(responseCode = "403", description = "Admin only")
+      })
+  public Response syncAllIndexTemplates(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
+    int success = 0;
+    int failed = 0;
+    List<String> failedEntities = new ArrayList<>();
+    Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
+
+    for (String entityType : indexMap.keySet()) {
+      try {
+        searchRepository.createOrUpdateIndexTemplate(entityType);
+        success++;
+      } catch (Exception e) {
+        failed++;
+        failedEntities.add(entityType);
+        LOG.warn("Failed to sync index template for {}: {}", entityType, e.getMessage());
+      }
+    }
+
+    return Response.ok(
+            Map.of(
+                "total", indexMap.size(),
+                "success", success,
+                "failed", failed,
+                "failedEntities", failedEntities))
+        .build();
+  }
+
+  @PUT
+  @Path("/templates/{entityType}")
+  @Operation(
+      operationId = "syncIndexTemplateByEntityType",
+      summary = "Sync index template for a specific entity type",
+      description =
+          "Create or update index template for a specific entity type from indexMapping.json.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Template synced"),
+        @ApiResponse(responseCode = "400", description = "Invalid entity type"),
+        @ApiResponse(responseCode = "403", description = "Admin only")
+      })
+  public Response syncIndexTemplate(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity type", schema = @Schema(type = "string"))
+          @PathParam("entityType")
+          String entityType) {
+    authorizer.authorizeAdminOrBot(securityContext);
+    try {
+      searchRepository.createOrUpdateIndexTemplate(entityType);
+      IndexMapping indexMapping = searchRepository.getEntityIndexMap().get(entityType);
+      String indexName = indexMapping.getIndexName(searchRepository.getClusterAlias());
+      return Response.ok(
+              Map.of(
+                  "entityType",
+                  entityType,
+                  "templateName",
+                  "om_" + indexName,
+                  "indexPattern",
+                  indexName + "*",
+                  "status",
+                  "synced"))
+          .build();
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("error", e.getMessage()))
+          .build();
+    } catch (Exception e) {
+      LOG.error("Failed to sync index template for {}", entityType, e);
+      return Response.serverError().entity(Map.of("error", e.getMessage())).build();
+    }
   }
 
   private static final String SEARCH_INDEXING_APP_NAME = "SearchIndexingApplication";

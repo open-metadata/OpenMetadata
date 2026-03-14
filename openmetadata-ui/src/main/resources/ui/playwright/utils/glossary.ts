@@ -80,8 +80,6 @@ export const selectActiveGlossary = async (
     }
   }
 
-  await page.waitForLoadState('networkidle');
-
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -92,8 +90,6 @@ export const selectActiveGlossaryTerm = async (
   glossaryTermName: string
 ) => {
   await page.getByTestId(glossaryTermName).click();
-
-  await page.waitForLoadState('networkidle');
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
@@ -664,8 +660,7 @@ export const updateGlossaryTermDataFromTree = async (
   page: Page,
   termFqn: string
 ) => {
-  // eslint-disable-next-line no-useless-escape
-  const escapedFqn = termFqn.replace(/\"/g, '\\"');
+  const escapedFqn = termFqn.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
   await termRow.getByTestId('edit-button').click();
 
@@ -695,8 +690,7 @@ export const validateGlossaryTerm = async (
   status: 'Draft' | 'In Review' | 'Approved',
   isGlossaryTermPage = false
 ) => {
-  // eslint-disable-next-line no-useless-escape
-  const escapedFqn = term.fullyQualifiedName.replace(/\"/g, '\\"');
+  const escapedFqn = term.fullyQualifiedName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
@@ -1405,7 +1399,6 @@ export const approveTagsTask = async (
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryTermsResponse;
   await selectActiveGlossary(page, entity.data.displayName);
-  await page.waitForLoadState('networkidle');
 
   const tagVisibility = page.locator(`[data-testid="tag-${value.tag}"]`);
   await tagVisibility.scrollIntoViewIfNeeded();
@@ -1669,8 +1662,7 @@ export const dragAndDropColumn = async (
 };
 
 export const getEscapedTermFqn = (term: GlossaryTermData) => {
-  // eslint-disable-next-line no-useless-escape
-  return term.fullyQualifiedName.replace(/\"/g, '\\"');
+  return term.fullyQualifiedName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 };
 
 export const openEditGlossaryTermModal = async (

@@ -142,7 +142,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     test(`Create Data Contract and validate for ${entityType}`, async ({
       page,
     }) => {
-      test.setTimeout(360000);
+      test.slow(true);
 
       const testClassification = new ClassificationClass();
       const testTag = new TagClass({
@@ -163,6 +163,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       await test.step('Redirect to Home Page and visit entity', async () => {
         await redirectToHomePage(page);
         await entity.visitEntityPage(page);
+        await waitForAllLoadersToDisappear(page);
       });
 
       await test.step('Open contract section and start adding contract', async () => {
@@ -2323,6 +2324,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
             'Create Data Contract in Table and validate it fails',
             async () => {
               await entity.visitEntityPage(page);
+              await waitForAllLoadersToDisappear(page);
 
               // Open contract section and start adding contract
               await navigateToContractTab(page);
@@ -2469,10 +2471,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
             async () => {
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-
-              await page.waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page);
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
               await expect(
@@ -2552,10 +2551,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-
-              await page.waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page);
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
               await expect(

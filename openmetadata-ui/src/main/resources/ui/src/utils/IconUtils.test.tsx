@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { isImageUrl, renderIcon } from './IconUtils';
+import { getEntityAvatarProps, isImageUrl, renderIcon } from './IconUtils';
 
 describe('IconUtils', () => {
   describe('isImageUrl', () => {
@@ -199,6 +199,61 @@ describe('IconUtils', () => {
       const result = renderIcon('not-an-image.txt');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('getEntityAvatarProps', () => {
+    it('should return src for http icon URLs', () => {
+      const result = getEntityAvatarProps({
+        style: { iconURL: 'http://example.com/icon.png' },
+        entityType: 'domain',
+      });
+
+      expect(result.src).toBe('http://example.com/icon.png');
+    });
+
+    it('should return src for absolute path icon URLs', () => {
+      const result = getEntityAvatarProps({
+        style: { iconURL: '/assets/icon.svg' },
+        entityType: 'domain',
+      });
+
+      expect(result.src).toBe('/assets/icon.svg');
+    });
+
+    it('should return undefined src for non-URL iconURL', () => {
+      const result = getEntityAvatarProps({
+        style: { iconURL: 'Cube01' },
+        entityType: 'dataProduct',
+      });
+
+      expect(result.src).toBeUndefined();
+    });
+
+    it('should return undefined src when no iconURL', () => {
+      const result = getEntityAvatarProps({ entityType: 'domain' });
+
+      expect(result.src).toBeUndefined();
+    });
+
+    it('should return Cube01 placeholderIcon for dataProduct entityType', () => {
+      const result = getEntityAvatarProps({ entityType: 'dataProduct' });
+      const { container } = render(<result.placeholderIcon />);
+
+      expect(container.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('should return Globe01 placeholderIcon for domain entityType', () => {
+      const result = getEntityAvatarProps({ entityType: 'domain' });
+      const { container } = render(<result.placeholderIcon />);
+
+      expect(container.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('should return default placeholderIcon when entityType is undefined', () => {
+      const result = getEntityAvatarProps({});
+
+      expect(result.placeholderIcon).toBeDefined();
     });
   });
 });

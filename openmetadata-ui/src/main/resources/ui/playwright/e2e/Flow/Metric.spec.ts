@@ -66,6 +66,17 @@ test.describe(
       await afterAction();
     });
 
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await Promise.all([
+        metric1.delete(apiContext),
+        metric2.delete(apiContext),
+        metric3.delete(apiContext),
+      ]);
+      await adminUser.delete(apiContext);
+      await afterAction();
+    });
+
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
       await metric1.visitEntityPage(page);

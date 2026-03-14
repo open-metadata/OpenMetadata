@@ -855,7 +855,6 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
         await page.click('[data-testid="test-cases"]');
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1129,7 +1128,6 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
         await page.click('[data-testid="test-cases"]');
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1190,7 +1188,6 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
         await page.click('[data-testid="test-cases"]');
 
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });

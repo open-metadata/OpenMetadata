@@ -172,7 +172,6 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
     await page.getByTestId(tag.responseData.name).click();
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -238,7 +237,6 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-owner')).toBeVisible();
 
     await page.getByTestId(tag.responseData.name).click();
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -428,7 +426,6 @@ test('Classification Page', async ({ page }) => {
     await page.reload();
     await databaseSchemasPage;
 
-    await page.waitForLoadState('networkidle');
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -489,7 +486,6 @@ test('Classification Page', async ({ page }) => {
 
     // Verify term count is now 0 after deleting the tag
     await page.reload();
-    await page.waitForLoadState('networkidle');
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -530,7 +526,6 @@ test('Classification Page', async ({ page }) => {
     await page.click('[data-testid="confirm-button"]');
     await deleteClassification;
 
-    await page.waitForLoadState('networkidle');
 
     await expect(
       page
@@ -547,7 +542,6 @@ test('Search tag using classification display name should work', async ({
 
   await table.visitEntityPage(page);
 
-  await page.waitForLoadState('networkidle');
 
   const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
 
@@ -671,7 +665,6 @@ test('Verify Owner Add Delete', async ({ page }) => {
   });
 
   await page.getByTestId(tag1.data.name).click();
-  await page.waitForLoadState('networkidle');
 
   await expect(
     page.locator(`[data-testid="owner-link"]`).getByTestId(OWNER1)
@@ -679,7 +672,6 @@ test('Verify Owner Add Delete', async ({ page }) => {
 
   await classification1.visitPage(page);
 
-  await page.waitForLoadState('networkidle');
 
   await removeOwner({
     page,

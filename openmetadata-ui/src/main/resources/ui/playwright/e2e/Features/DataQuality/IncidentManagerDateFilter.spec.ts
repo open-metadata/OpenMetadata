@@ -16,6 +16,7 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
 
@@ -209,6 +210,7 @@ test.describe(
 
       await page.reload();
       await page.waitForLoadState('domcontentloaded');
+      await waitForAllLoadersToDisappear(page);
       const response = await incidentListResponse;
       expect(response.status()).toBe(200);
 

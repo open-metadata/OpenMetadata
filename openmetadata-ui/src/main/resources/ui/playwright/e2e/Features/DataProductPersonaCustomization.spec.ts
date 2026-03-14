@@ -31,6 +31,7 @@ import {
   getCustomizeDetailsDefaultTabs,
   getCustomizeDetailsEntity,
 } from '../../utils/customizeDetails';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
@@ -131,7 +132,6 @@ test.describe('Data Product Persona customization', () => {
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
 
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-      await adminPage.waitForLoadState('networkidle');
       await adminPage.getByText('Governance').click();
       await adminPage.getByText('Data Product', { exact: true }).click();
 
@@ -160,7 +160,7 @@ test.describe('Data Product Persona customization', () => {
     });
 
     await test.step('apply customization', async () => {
-      expect(adminPage.locator('#KnowledgePanel\\.Description')).toBeVisible();
+      await expect(adminPage.locator('#KnowledgePanel\\.Description')).toBeVisible();
 
       await adminPage
         .locator('#KnowledgePanel\\.Description')
@@ -184,7 +184,20 @@ test.describe('Data Product Persona customization', () => {
         .getByRole('button', { name: 'Add' })
         .click();
 
-      await adminPage.getByTestId('add-widget-button').click();
+      // Wait for "Add tab" dialog to fully close before interacting with grid
+      await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
+      await adminPage
+        .locator('.ant-modal-wrap')
+        .waitFor({ state: 'detached' });
+
+      const addWidgetButton = adminPage.getByTestId('add-widget-button');
+      await addWidgetButton.waitFor({ state: 'visible' });
+      await addWidgetButton.click();
+
+      await adminPage
+        .getByTestId('widget-info-tabs')
+        .waitFor({ state: 'visible' });
+
       await adminPage.getByTestId('Description-widget').click();
       await adminPage
         .getByTestId('add-widget-modal')
@@ -202,12 +215,11 @@ test.describe('Data Product Persona customization', () => {
       await redirectToHomePage(userPage);
 
       await entity?.visitEntityPage(userPage);
-      await userPage.waitForLoadState('networkidle');
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
-      expect(userPage.getByRole('tab', { name: 'Custom Tab' })).toBeVisible();
+      await expect(userPage.getByRole('tab', { name: 'Custom Tab' })).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Custom Tab' }).click();
 
@@ -303,6 +315,7 @@ test.describe('Data Product Persona customization', () => {
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
+      await waitForAllLoadersToDisappear(userPage);
 
       // Verify the custom tab name is displayed
       await expect(

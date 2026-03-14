@@ -1230,7 +1230,6 @@ test.describe('Glossary Advanced Operations', () => {
     await page.click('[data-testid="cancel-glossary"]');
 
     // Verify we're back on glossary page and the glossary was not created
-    await page.waitForLoadState('networkidle');
 
     // The glossary should not exist - check it's not in the list
     await expect(page.getByTestId(glossaryName)).not.toBeVisible();
@@ -1343,7 +1342,6 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Navigate to term1 details
       await page.getByTestId(term1.responseData.displayName).click();
-      await page.waitForLoadState('networkidle');
 
       // Verify term2 is shown as related term
       await expect(
@@ -1357,7 +1355,6 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('related-term-container')
         .getByTestId(term2.responseData.displayName)
         .click();
-      await page.waitForLoadState('networkidle');
 
       // Verify we're on term2 page
       await expect(

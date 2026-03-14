@@ -99,6 +99,20 @@ SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
       and OBJECT_NAME IS NOT NULL
       and COLUMN_NAME IS NULL
       and DOMAIN = 'SCHEMA'
+      and OBJECT_DELETED IS NULL
+"""
+)
+
+SNOWFLAKE_FETCH_DATABASE_TAGS = textwrap.dedent(
+    """
+    select TAG_NAME, TAG_VALUE, OBJECT_DATABASE as DATABASE_NAME
+    from {account_usage}.tag_references
+    where OBJECT_DATABASE = '{database_name}'
+      and OBJECT_SCHEMA IS NULL
+      and OBJECT_NAME IS NULL
+      and COLUMN_NAME IS NULL
+      and DOMAIN = 'DATABASE'
+      and OBJECT_DELETED IS NULL
 """
 )
 

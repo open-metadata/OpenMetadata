@@ -571,7 +571,6 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
-      <version>5.9.3</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -852,7 +851,6 @@
     <dependency>
       <groupId>org.junit.platform</groupId>
       <artifactId>junit-platform-commons</artifactId>
-      <version>1.9.3</version>
       <scope>test</scope>
     </dependency>
     <dependency>

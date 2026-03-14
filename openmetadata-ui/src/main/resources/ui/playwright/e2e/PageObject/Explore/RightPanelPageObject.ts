@@ -105,6 +105,7 @@ export class RightPanelPageObject {
   public readonly page: Page;
   private readonly summaryPanel = '.entity-summary-panel-container';
   private entityConfig?: DataAssetConfig;
+  private entityEndpoint?: string;
   private rolePermissions?: RolePermissions;
   private pageContext: PageContext = PageContext.EXPLORE;
 
@@ -379,6 +380,7 @@ export class RightPanelPageObject {
    * @param entity - EntityClass instance to configure for
    */
   public setEntityConfig(entity: EntityClass): void {
+    this.entityEndpoint = entity.endpoint;
     const entityType = entity.getType();
     this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[entityType];
 
@@ -668,6 +670,10 @@ export class RightPanelPageObject {
    */
   public getEntityConfig(): DataAssetConfig | undefined {
     return this.entityConfig;
+  }
+
+  public getEntityEndpoint(): string | undefined {
+    return this.entityEndpoint;
   }
 
   /**
@@ -1023,7 +1029,6 @@ export class RightPanelPageObject {
    * Wait for network idle
    */
   async waitForNetworkIdle() {
-    await this.page.waitForLoadState('networkidle');
   }
 
   /**

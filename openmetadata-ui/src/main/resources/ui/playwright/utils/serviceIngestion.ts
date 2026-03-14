@@ -85,7 +85,6 @@ export const deleteService = async (
       serviceName
     )}?currentPage=1`
   );
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('entity-header-name')).toHaveText(serviceName);
@@ -123,13 +122,15 @@ export const deleteService = async (
   ); // Wait for up to 5 minutes for the toast notification to appear
 
   await page.reload();
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const serviceSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
 
-    return url.includes('/api/v1/search/query') && url.includes(serviceName);
+    return (
+      url.includes('/api/v1/search/query') &&
+      decodeURIComponent(url).includes(serviceName)
+    );
   });
 
   await page.fill('[data-testid="searchbar"]', serviceName);

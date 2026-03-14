@@ -128,6 +128,15 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
+test.afterAll('Cleanup shared entities', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await tableEntity.delete(apiContext);
+  await user.delete(apiContext);
+  await dataConsumerUser.delete(apiContext);
+  await adminUser.delete(apiContext);
+  await afterAction();
+});
+
 Object.entries(entities).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
@@ -141,6 +150,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await entity.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup entity', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await entity.delete(apiContext);
       await afterAction();
     });
 
@@ -593,9 +608,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             '[data-testid="glossary-term-select-search-bar"]'
           );
           await expect(searchBar).toBeVisible();
+          const glossarySearchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.url().includes('glossary_term_search_index') &&
+              response.request().method() === 'GET'
+          );
           await searchBar.fill(
             EntityDataClass.glossaryTerm1.responseData.displayName
           );
+          const glossarySearchRequest = await glossarySearchResponse;
+          expect(glossarySearchRequest.status()).toBe(200);
+          await waitForAllLoadersToDisappear(page);
 
           // Wait for term option to be visible before clicking
           const termOption = page.locator('.ant-list-item').filter({
@@ -702,8 +726,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             columnId: entity.childrenSelectorId ?? '',
             columnNameTestId,
             entityType: entity.type as EntityType,
+            entityEndpoint:
+              entity.type === 'Table' ? entity.endpoint : undefined,
           });
 
+          await waitForAllLoadersToDisappear(page);
           // Remove glossary term
           await cleanupPanel.getByTestId('edit-glossary-terms').click();
           await page
@@ -823,7 +850,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               if (await nextButton.isEnabled()) {
                 // Navigate to next column
                 await nextButton.click();
-                await page.waitForLoadState('networkidle');
 
                 // Verify pagination updated
                 const updatedPagination = await paginationText.textContent();
@@ -844,7 +870,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                   .nth(0);
 
                 await prevButton.click();
-                await page.waitForLoadState('networkidle');
 
                 // Verify we're back
                 const finalPagination = await paginationText.textContent();
@@ -872,7 +897,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         }
 
         await page.getByTestId(entity.childrenTabId ?? '').click();
-        await page.waitForLoadState('networkidle');
 
         await test.step('Verify nested column has expand icon in main table', async () => {
           // Get the third column which is the nested parent column (name column)
@@ -1017,7 +1041,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const clickResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes('/api/v1/tables/name/'),
+              response.url().includes(`/api/v1/${entity.endpoint}/name/`),
             { timeout: 10000 }
           );
 
@@ -1070,7 +1094,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const intermediateClickResponse = page.waitForResponse(
               (response) =>
                 response.url().includes('/api/v1/columns/name/') ||
-                response.url().includes('/api/v1/tables/name/'),
+                response.url().includes(`/api/v1/${entity.endpoint}/name/`),
               { timeout: 10000 }
             );
 
@@ -1168,7 +1192,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         }
 
         await page.getByTestId(entity.childrenTabId ?? '').click();
-        await page.waitForLoadState('networkidle');
 
         await test.step('Verify array column with nested children renders correctly', async () => {
           const tableResponse = entity.entityResponseData as Table;
@@ -1203,7 +1226,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const parentRow = page.locator(`[data-row-key="${nestedParentFQN}"]`);
 
           await parentRow.waitFor({ state: 'visible' });
-          await page.waitForLoadState('networkidle');
 
           const arrayColumnRow = page.locator(
             `[data-row-key="${arrayColumnFQN}"]`
@@ -1249,7 +1271,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         }
 
         await page.getByTestId(entity.childrenTabId ?? '').click();
-        await page.waitForLoadState('networkidle');
 
         await test.step('Verify mixed siblings have consistent indentation', async () => {
           // columnsName[2] has mixed children: columnsName[3] (STRUCT) and columnsName[4] (ARRAY with nested children)
@@ -1322,6 +1343,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       test('Glossary Term Add, Update and Remove for child entities', async ({
         page,
       }) => {
+        test.slow(true);
         await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.glossaryTermChildren({
@@ -1343,8 +1365,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             columnId: entity.childrenSelectorId ?? '',
             columnNameTestId,
             entityType: entity.type as EntityType,
+            entityEndpoint:
+              entity.type === 'Table' ? entity.endpoint : undefined,
           });
 
+          await waitForAllLoadersToDisappear(page);
           // Add glossary term via panel
           const editButton = panelContainer.getByTestId('edit-glossary-terms');
           await expect(editButton).toBeVisible();
@@ -2158,7 +2183,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
         // Navigate to the table entity page
         await entity.visitEntityPage(page);
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -2179,7 +2203,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await profilerTab.click();
           await profilerResponse;
 
-          await page.waitForLoadState('networkidle');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });
@@ -2210,7 +2233,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await activityFeedTab.click();
           await activityFeedResponse;
 
-          await page.waitForLoadState('networkidle');
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });

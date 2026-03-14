@@ -73,7 +73,6 @@ test.describe('TestCase Version Page', () => {
     await page.goto(
       `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`
     );
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -104,14 +103,12 @@ test.describe('TestCase Version Page', () => {
       await expect(page.getByTestId('version-button')).toHaveText('0.2');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.getByTestId('entity-header-display-name').getByTestId('diff-added')
       ).toHaveText('test-case-version-changed');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -135,7 +132,6 @@ test.describe('TestCase Version Page', () => {
       await expect(page.getByTestId('version-button')).toHaveText('0.3');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page
@@ -145,7 +141,6 @@ test.describe('TestCase Version Page', () => {
       ).toHaveText('test case description changed');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -173,7 +168,6 @@ test.describe('TestCase Version Page', () => {
       await expect(page.getByTestId('version-button')).toHaveText('0.4');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.getByTestId('minValue').getByTestId('diff-removed')

@@ -168,7 +168,6 @@ test.describe('Move Assets Between Domains', () => {
           table.entityResponseData.fullyQualifiedName
         )}`
       );
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.locator('[data-testid="domain-link"]').first()
@@ -189,7 +188,6 @@ test.describe('Move Assets Between Domains', () => {
       });
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.locator('[data-testid="domain-link"]').first()
@@ -256,7 +254,6 @@ test.describe('Move Assets Between Domains', () => {
           table.entityResponseData.fullyQualifiedName
         )}`
       );
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -399,7 +396,6 @@ test.describe('Subdomain Permissions', () => {
     const subDomainFqn =
       testResources.subDomain.responseData.fullyQualifiedName;
     await userPage.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
-    await userPage.waitForLoadState('networkidle');
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -443,7 +439,6 @@ test.describe('Domain Version History', () => {
       await expect(page.getByTestId('version-button')).toContainText('0.2');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
 
       await expect(page.locator('.version-data')).toBeVisible();
     } finally {
@@ -516,7 +511,6 @@ test.describe('Domain Description Editing', () => {
       await page.getByTestId('save').click();
       await saveRes;
 
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.locator('.om-block-editor[contenteditable="false"]')
@@ -549,7 +543,6 @@ test.describe('Domain Description Editing', () => {
       await page.getByTestId('save').click();
       await saveRes;
 
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.locator('.om-block-editor[contenteditable="false"]')
@@ -758,7 +751,6 @@ test.describe('Cross-Domain Access Denial', () => {
     const tableFqn =
       testResources.accessibleTable.entityResponseData.fullyQualifiedName;
     await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`);
-    await userPage.waitForLoadState('networkidle');
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -782,7 +774,6 @@ test.describe('Cross-Domain Access Denial', () => {
     const tableFqn =
       testResources.accessibleTable.entityResponseData.fullyQualifiedName;
     await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`);
-    await userPage.waitForLoadState('networkidle');
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -981,7 +972,6 @@ test.describe('Domain Search and Filter', () => {
       });
 
       await page.goto('/explore/tables');
-      await page.waitForLoadState('networkidle');
 
       await page.getByTestId('domain-dropdown').click();
 
@@ -991,7 +981,6 @@ test.describe('Domain Search and Filter', () => {
 
       if (await domainTag.isVisible()) {
         await domainTag.click();
-        await page.waitForLoadState('networkidle');
 
         await expect(page.getByTestId('domain-dropdown')).toContainText(
           domain.data.displayName

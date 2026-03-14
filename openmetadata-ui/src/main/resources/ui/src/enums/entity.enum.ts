@@ -251,6 +251,8 @@ export enum EntityTabs {
   WORKSHEETS = 'worksheets',
   FILES = 'files',
   SPREADSHEETS = 'spreadsheets',
+  DATA_OBSERVABILITY = 'data_observability',
+  RECOGNIZER = 'recognizer',
 }
 
 export enum EntityAction {

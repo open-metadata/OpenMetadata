@@ -50,7 +50,6 @@ const test = base.extend<{
 
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('loader', { state: 'hidden' });
 
     await expect(page.getByTestId('nav-user-name')).toHaveText('ingestion-bot');
@@ -96,7 +95,6 @@ test.describe('Ingestion Bot ', () => {
     await test.step('Assign assets to domains', async () => {
       // Add assets to domain 1
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -105,7 +103,6 @@ test.describe('Ingestion Bot ', () => {
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -146,7 +143,6 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -156,7 +152,6 @@ test.describe('Ingestion Bot ', () => {
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

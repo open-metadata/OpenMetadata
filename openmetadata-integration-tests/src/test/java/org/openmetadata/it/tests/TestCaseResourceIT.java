@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -132,6 +133,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   private Table createTable(TestNamespace ns) {
+    return createTable(ns, null);
+  }
+
+  private Table createTable(TestNamespace ns, List<org.openmetadata.schema.type.TagLabel> tags) {
     // Use short names to avoid FQN length limit (256 chars)
     String shortId = ns.uniqueShortId();
 
@@ -174,6 +179,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 .withName("name")
                 .withDataType(ColumnDataType.VARCHAR)
                 .withDataLength(255)));
+    tableRequest.setTags(tags);
 
     return SdkClients.adminClient().tables().create(tableRequest);
   }
@@ -1266,6 +1272,29 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_testCaseInheritsTableTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    Table table = createTable(ns, List.of(shared.PII_SENSITIVE_TAG_LABEL));
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("inherits_table_tags"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase fetchedWithTags = client.testCases().get(testCase.getId().toString(), "tags");
+    assertNotNull(fetchedWithTags.getTags());
+    assertTrue(
+        fetchedWithTags.getTags().stream()
+            .anyMatch(
+                tag ->
+                    shared.PII_SENSITIVE_TAG_LABEL.getTagFQN().equalsIgnoreCase(tag.getTagFQN())));
+  }
+
+  @Test
   void test_testCaseWithInspectionQuery(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -1835,6 +1864,223 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_searchListReturnsIncidentIdWhenFieldsIncludeAll(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("incident_search_list"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    failedResult.setTimestamp(System.currentTimeMillis());
+    failedResult.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    failedResult.setResult("Test failed - trigger incident");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched =
+                  client.testCases().get(testCase.getId().toString(), "incidentId,testCaseResult");
+              assertNotNull(fetched.getIncidentId());
+              assertNotNull(fetched.getTestCaseResult());
+            });
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fields", "*")
+            .queryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
+            .queryParam("includeAllTests", "true")
+            .queryParam("limit", "100")
+            .queryParam("offset", "0")
+            .build();
+
+    String responseJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+    TestCaseResource.TestCaseList result =
+        JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+
+    TestCase matching =
+        result.getData().stream()
+            .filter(tc -> testCase.getId().equals(tc.getId()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(matching, "Expected created test case in search/list response");
+    assertNotNull(
+        matching.getIncidentId(),
+        "search/list with fields=* must include incidentId even when testCaseResult is present");
+  }
+
+  @Test
+  void test_incidentReopensAsNewAfterResolveAndNewFailure(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("incident_reopen"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+            .withResult("Initial failure");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    final java.util.UUID firstIncidentId =
+        Awaitility.await()
+            .atMost(30, TimeUnit.SECONDS)
+            .pollInterval(Duration.ofSeconds(2))
+            .until(
+                () -> {
+                  TestCase fetched =
+                      client.testCases().get(testCase.getId().toString(), "incidentId");
+                  return fetched.getIncidentId();
+                },
+                java.util.Objects::nonNull);
+
+    // Mirror Incident Manager flow: New -> Ack -> Resolved, then verify a new failure reopens.
+    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus ackStatus =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(
+                org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Ack);
+    client.testCaseResolutionStatuses().create(ackStatus);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
+                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Ack,
+                  latestStatus.getTestCaseResolutionStatusType());
+              assertEquals(firstIncidentId, latestStatus.getStateId());
+            });
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus resolvedStatus =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(
+                org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Resolved)
+            .withTestCaseResolutionStatusDetails(new org.openmetadata.schema.tests.type.Resolved());
+    client.testCaseResolutionStatuses().create(resolvedStatus);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
+                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Resolved,
+                  latestStatus.getTestCaseResolutionStatusType());
+              assertEquals(firstIncidentId, latestStatus.getStateId());
+            });
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedAgain =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis() + 1)
+            .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+            .withResult("Failure after resolve");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedAgain);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched =
+                  client
+                      .testCases()
+                      .get(testCase.getId().toString(), "incidentId,testCaseResult,testCaseStatus");
+              assertNotNull(fetched.getIncidentId());
+              assertNotEquals(firstIncidentId, fetched.getIncidentId());
+              assertNotNull(fetched.getTestCaseResult());
+              assertEquals(fetched.getIncidentId(), fetched.getTestCaseResult().getIncidentId());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
+                  fetched.getTestCaseStatus());
+
+              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
+                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.New,
+                  latestStatus.getTestCaseResolutionStatusType());
+              assertEquals(fetched.getIncidentId(), latestStatus.getStateId());
+            });
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              RequestOptions options =
+                  RequestOptions.builder()
+                      .queryParam("fields", "*")
+                      .queryParam(
+                          "entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
+                      .queryParam("includeAllTests", "true")
+                      .queryParam("limit", "100")
+                      .queryParam("offset", "0")
+                      .build();
+
+              String responseJson =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+              TestCaseResource.TestCaseList result =
+                  JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+
+              TestCase matching =
+                  result.getData().stream()
+                      .filter(tc -> testCase.getId().equals(tc.getId()))
+                      .findFirst()
+                      .orElse(null);
+
+              assertNotNull(matching, "Expected reopened test case in search/list response");
+              assertNotNull(matching.getIncidentId());
+              assertNotEquals(firstIncidentId, matching.getIncidentId());
+              assertNotNull(matching.getTestCaseResult());
+              assertEquals(matching.getIncidentId(), matching.getTestCaseResult().getIncidentId());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
+                  matching.getTestCaseStatus());
+            });
+  }
+
+  private org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestIncidentStatus(
+      OpenMetadataClient client, String testCaseFqn) {
+    ListParams params =
+        new ListParams().withLatest(true).withLimit(10).addFilter("testCaseFQN", testCaseFqn);
+    ListResponse<?> response = client.testCaseResolutionStatuses().searchList(params);
+    assertEquals(1, response.getData().size());
+    return JsonUtils.convertValue(
+        response.getData().get(0),
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatus.class);
+  }
+
+  @Test
   void test_listTestCasesFilteredByOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -2033,14 +2279,19 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Delete the latest result
     client.testCaseResults().delete(testCase.getFullyQualifiedName(), timestamp2);
 
-    // Fetch test case - should have first result as latest
-    TestCase fetchedCase = client.testCases().get(testCase.getId().toString(), "testCaseResult");
-
-    assertNotNull(fetchedCase.getTestCaseResult());
-    assertEquals(timestamp1, fetchedCase.getTestCaseResult().getTimestamp());
-    assertEquals(
-        org.openmetadata.schema.tests.type.TestCaseStatus.Success,
-        fetchedCase.getTestCaseResult().getTestCaseStatus());
+    Awaitility.await("Wait for test case result deletion to be reflected")
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              TestCase fetchedCase =
+                  client.testCases().get(testCase.getId().toString(), "testCaseResult");
+              assertNotNull(fetchedCase.getTestCaseResult());
+              assertEquals(timestamp1, fetchedCase.getTestCaseResult().getTimestamp());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseStatus.Success,
+                  fetchedCase.getTestCaseResult().getTestCaseStatus());
+            });
   }
 
   @Test
@@ -2139,12 +2390,19 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     result2.setResult("Second test result");
     client.testCaseResults().create(testCase.getFullyQualifiedName(), result2);
 
-    TestCase fetchedCase = client.testCases().get(testCase.getId().toString(), "testCaseResult");
-    assertNotNull(fetchedCase.getTestCaseResult());
-    assertEquals(timestamp2, fetchedCase.getTestCaseResult().getTimestamp());
-    assertEquals(
-        org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
-        fetchedCase.getTestCaseResult().getTestCaseStatus());
+    Awaitility.await("Wait for test case result to be reflected")
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              TestCase fetchedCase =
+                  client.testCases().get(testCase.getId().toString(), "testCaseResult");
+              assertNotNull(fetchedCase.getTestCaseResult());
+              assertEquals(timestamp2, fetchedCase.getTestCaseResult().getTimestamp());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
+                  fetchedCase.getTestCaseResult().getTestCaseStatus());
+            });
   }
 
   @Test
@@ -2173,8 +2431,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     org.openmetadata.schema.tests.type.TestCaseResult result1 =
         client.testCaseResults().create(testCase.getFullyQualifiedName(), createResult1);
 
-    TestCase fetchedCase1 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
-    assertEquals(result1.getTimestamp(), fetchedCase1.getTestCaseResult().getTimestamp());
+    Awaitility.await("Wait for first result to be reflected")
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              TestCase fc1 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+              assertEquals(result1.getTimestamp(), fc1.getTestCaseResult().getTimestamp());
+            });
 
     org.openmetadata.schema.api.tests.CreateTestCaseResult createResult2 =
         new org.openmetadata.schema.api.tests.CreateTestCaseResult();
@@ -2183,8 +2447,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     createResult2.setResult("Recent result");
     client.testCaseResults().create(testCase.getFullyQualifiedName(), createResult2);
 
-    TestCase fetchedCase2 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
-    assertEquals(timestamp2, fetchedCase2.getTestCaseResult().getTimestamp());
+    Awaitility.await("Wait for second result to be reflected")
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              TestCase fc2 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+              assertEquals(timestamp2, fc2.getTestCaseResult().getTimestamp());
+            });
 
     org.openmetadata.schema.api.tests.CreateTestCaseResult createResult3 =
         new org.openmetadata.schema.api.tests.CreateTestCaseResult();
@@ -2194,13 +2464,25 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     org.openmetadata.schema.tests.type.TestCaseResult result3 =
         client.testCaseResults().create(testCase.getFullyQualifiedName(), createResult3);
 
-    TestCase fetchedCase3 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
-    assertEquals(result3.getTimestamp(), fetchedCase3.getTestCaseResult().getTimestamp());
+    Awaitility.await("Wait for third result to be reflected")
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              TestCase fc3 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+              assertEquals(result3.getTimestamp(), fc3.getTestCaseResult().getTimestamp());
+            });
 
     client.testCaseResults().delete(testCase.getFullyQualifiedName(), timestamp3);
 
-    TestCase fetchedCase4 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
-    assertEquals(timestamp2, fetchedCase4.getTestCaseResult().getTimestamp());
+    Awaitility.await("Wait for delete to be reflected")
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              TestCase fc4 = client.testCases().get(testCase.getId().toString(), "testCaseResult");
+              assertEquals(timestamp2, fc4.getTestCaseResult().getTimestamp());
+            });
   }
 
   @Test

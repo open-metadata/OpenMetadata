@@ -15,6 +15,7 @@ import base, { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -31,8 +32,7 @@ import {
 } from '../../utils/domain';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { selectTagInMUITagSuggestion } from '../../utils/tag';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { selectTagInTagSuggestion } from '../../utils/tag';
 
 const user = new UserClass();
 const domain = new Domain();
@@ -99,7 +99,6 @@ test.describe('Data Products', () => {
   test('Data Product List Page - Initial Load', async ({ page }) => {
     await test.step('Navigate to Data Products page', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -149,7 +148,6 @@ test.describe('Data Products', () => {
 
     await test.step('Navigate to Data Products page', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -159,7 +157,6 @@ test.describe('Data Products', () => {
 
     await test.step('Open data product details', async () => {
       await selectDataProduct(page, dataProduct.data);
-      await page.waitForLoadState('networkidle');
 
       // Verify we're on the data product details page
       await expect(page.getByTestId('entity-header-display-name')).toHaveText(
@@ -228,7 +225,6 @@ test.describe('Data Products', () => {
 
     await test.step('Navigate to Data Products page', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -237,7 +233,6 @@ test.describe('Data Products', () => {
         .getByRole('main')
         .getByPlaceholder('Search')
         .fill(dataProduct1.data.name);
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByText(dataProduct1.data.displayName)).toBeVisible();
@@ -248,7 +243,6 @@ test.describe('Data Products', () => {
 
     await test.step('Clear search', async () => {
       await page.getByRole('main').getByPlaceholder('Search').clear();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByTestId('pagination')).toBeVisible();
@@ -277,7 +271,6 @@ test.describe('Data Products', () => {
 
     await test.step('Navigate to Data Products page', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -288,7 +281,6 @@ test.describe('Data Products', () => {
 
     await test.step('Switch to card view', async () => {
       await page.getByTestId('card-view-toggle').click();
-      await page.waitForLoadState('networkidle');
 
       // Table should be hidden, cards should be visible
       await expect(page.getByTestId('table-view-container')).not.toBeVisible();
@@ -298,7 +290,6 @@ test.describe('Data Products', () => {
 
     await test.step('Switch back to table view', async () => {
       await page.getByTestId('table-view-toggle').click();
-      await page.waitForLoadState('networkidle');
 
       await expect(page.getByTestId('card-view-container')).not.toBeVisible();
       await expect(page.getByTestId('table-view-container')).toBeVisible();
@@ -332,7 +323,6 @@ test.describe('Data Products', () => {
 
     await test.step('Navigate to Data Products page', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -346,7 +336,6 @@ test.describe('Data Products', () => {
 
     await test.step('Navigate to page 2', async () => {
       await page.getByTestId('next').click();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -358,7 +347,6 @@ test.describe('Data Products', () => {
 
     await test.step('Navigate back to page 1', async () => {
       await page.getByTestId('previous').click();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -409,7 +397,6 @@ test.describe('Data Products', () => {
 
     await test.step('Navigate to Data Products page', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -440,11 +427,9 @@ test.describe('Data Products', () => {
 
     await test.step('Navigate to data product details', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       await selectDataProduct(page, dataProduct.data);
-      await page.waitForLoadState('networkidle');
     });
 
     await test.step('Follow data product', async () => {
@@ -465,14 +450,13 @@ test.describe('Data Products', () => {
     });
   });
 
-  test('Create data product with tags using MUITagSuggestion', async ({
+  test('Create data product with tags using TagSuggestion', async ({
     page,
   }) => {
     const dataProduct = new DataProduct([domain]);
 
     await test.step('Navigate to add data product', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('add-entity-button').click();
       await expect(page.getByTestId('form-heading')).toContainText(
@@ -501,8 +485,8 @@ test.describe('Data Products', () => {
       await domainOption.click();
     });
 
-    await test.step('Search and select tag via MUITagSuggestion', async () => {
-      await selectTagInMUITagSuggestion(page, {
+    await test.step('Search and select tag via TagSuggestion', async () => {
+      await selectTagInTagSuggestion(page, {
         searchTerm: tag.data.displayName,
         tagFqn: tag.responseData.fullyQualifiedName,
       });

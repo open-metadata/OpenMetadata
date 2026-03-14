@@ -180,7 +180,7 @@ const AddDomainForm = ({
         required: false,
         label: t('label.tag-plural'),
         id: 'root/tags',
-        type: FieldTypes.TAG_SUGGESTION_MUI,
+        type: FieldTypes.UT_TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'tags-container',

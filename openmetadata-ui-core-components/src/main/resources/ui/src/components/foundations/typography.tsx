@@ -40,7 +40,7 @@ export const Typography = (props: TypographyProps) => {
     } = props;
 
     return (
-        <div {...(!Component ? otherProps : {})} className={cx("prose", quoteStyles[quoteVariant])}>
+        <div {...(!Component ? (otherProps as HTMLAttributes<HTMLDivElement>) : {})} className={cx("prose", quoteStyles[quoteVariant])}>
             {Component ? (
                 <Component {...otherProps} className={className}>
                     {children}

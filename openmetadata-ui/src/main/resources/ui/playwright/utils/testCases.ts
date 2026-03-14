@@ -630,8 +630,6 @@ export const performE2EExportImportFlow = async (
       .find((f: string) => f.includes(table.entity.name) && f.endsWith('.csv'));
     await fileInput?.setInputFiles(['downloads/' + exportedFile]);
 
-    await page.waitForTimeout(500);
-
     await expect(page.locator('.rdg-header-row')).toBeVisible();
     await expect(page.getByTestId('add-row-btn')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();

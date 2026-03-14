@@ -70,17 +70,17 @@ test.describe('Glossary tests', () => {
   test('should check for glossary term search', async ({ page }) => {
     test.slow(true);
 
-    glossary.visitEntityPage(page);
+    await glossary.visitEntityPage(page);
 
     // Wait for terms to load
     await page.waitForSelector('[data-testid="glossary-terms-table"]');
 
     // Test 1: Search for specific term
     const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchResponse = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('SearchTestTerm5');
 
-    // Wait for search API call with new endpoint
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    await searchResponse;
     const table = page.getByTestId('glossary-terms-table');
     const filteredTerms = await table.locator('tbody .ant-table-row').count();
 
@@ -94,12 +94,13 @@ test.describe('Glossary tests', () => {
     ).not.toBeVisible();
 
     // Test 2: Partial search
+    const clearResponse = page.waitForResponse('**/api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
+    await clearResponse;
 
+    const partialSearchResponse = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('TestTerm');
-
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    await partialSearchResponse;
 
     const partialFilteredTerms = await table
       .locator('tbody .ant-table-row')
@@ -108,8 +109,9 @@ test.describe('Glossary tests', () => {
     expect(partialFilteredTerms).toBeGreaterThan(0);
 
     // Test 3: Clear search and verify all terms are shown
+    const clearResponse2 = page.waitForResponse('**/api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
+    await clearResponse2;
 
     // Verify terms are visible again
     await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
@@ -134,10 +136,10 @@ test.describe('Glossary tests', () => {
 
     // Test 1: Search within parent term for child terms
     const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchRes1 = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('ChildSearchTerm');
+    await searchRes1;
 
-    // Wait for search API call with parent filter
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
     const nestedTable = page.getByTestId('glossary-terms-table');
     const filteredTerms = await nestedTable
       .locator('tbody .ant-table-row')
@@ -158,19 +160,22 @@ test.describe('Glossary tests', () => {
     ).not.toBeVisible();
 
     // Test 2: Search for specific child term
+    const clearRes1 = page.waitForResponse('**/api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
-    await searchInput.fill('ChildSearchTerm3');
+    await clearRes1;
 
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    const searchRes2 = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    await searchInput.fill('ChildSearchTerm3');
+    await searchRes2;
 
     await expect(
       page.getByText('ChildSearchTerm3', { exact: true })
     ).toBeVisible();
 
     // Clear search
+    const clearRes2 = page.waitForResponse('**/api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
+    await clearRes2;
   });
 
   // S-S03: Search is case-insensitive
@@ -183,41 +188,44 @@ test.describe('Glossary tests', () => {
     const searchInput = page.getByPlaceholder(/search.*term/i);
 
     // Search with lowercase
+    const lowerRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('searchtestterm5');
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    await lowerRes;
 
-    // Should find the term despite case difference
     await expect(
       page.getByText('SearchTestTerm5', { exact: true })
     ).toBeVisible();
 
     // Clear and search with uppercase
+    const clearRes1 = page.waitForResponse('**/api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
+    await clearRes1;
 
+    const upperRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('SEARCHTESTTERM5');
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    await upperRes;
 
-    // Should still find the term
     await expect(
       page.getByText('SearchTestTerm5', { exact: true })
     ).toBeVisible();
 
     // Clear and search with mixed case
+    const clearRes2 = page.waitForResponse('**/api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
+    await clearRes2;
 
+    const mixedRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('SeArChTeStTeRm5');
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    await mixedRes;
 
-    // Should still find the term
     await expect(
       page.getByText('SearchTestTerm5', { exact: true })
     ).toBeVisible();
 
     // Clear search
+    const clearRes3 = page.waitForResponse('**/api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
+    await clearRes3;
   });
 
   // S-S07: Search no results - empty state
@@ -232,15 +240,17 @@ test.describe('Glossary tests', () => {
     const searchInput = page.getByPlaceholder(/search.*term/i);
 
     // Search for a term that doesn't exist
+    const noResultsRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('NonExistentTermXYZ12345');
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    await noResultsRes;
 
     // Verify empty state message is shown (uses ErrorPlaceHolder component)
     await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
 
     // Clear search and verify terms return
+    const clearRes = page.waitForResponse('**/api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
+    await clearRes;
 
     // Verify terms are visible again after clearing search
     await expect(page.getByTestId('no-data-placeholder')).not.toBeVisible();
@@ -270,7 +280,6 @@ test.describe('Glossary tests', () => {
     await saveButton.click();
 
     // Verify filter is applied (may show no results if no InReview terms exist)
-    await page.waitForLoadState('networkidle');
 
     // The filter should be applied - either showing InReview terms or empty state
     const table = page.getByTestId('glossary-terms-table');
@@ -310,7 +319,6 @@ test.describe('Glossary tests', () => {
     await saveButton.click();
 
     // Wait for filter to apply
-    await page.waitForLoadState('networkidle');
 
     // Verify filtered results
     const table = page.getByTestId('glossary-terms-table');

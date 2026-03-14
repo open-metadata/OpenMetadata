@@ -17,6 +17,7 @@ import {
   clickOutside,
   descriptionBox,
   redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
   removeUnitOfMeasurement,
@@ -38,18 +39,17 @@ test.describe(
 
       await test.step('Navigate to Metrics and create a metric', async () => {
         // Navigate to Metrics
-        await sidebarClick(page, SidebarItem.METRICS);
-
         const listAPIPromise = page.waitForResponse(
           '/api/v1/metrics?fields=owners%2Ctags&limit=15&include=all'
         );
+        await sidebarClick(page, SidebarItem.METRICS);
         await listAPIPromise;
 
         // Click Add Metric button and create metric using existing utility
         await page.getByTestId('create-metric').click();
 
         // Use a simplified metric creation approach
-        const metricName = `test-unit-metric-${Date.now()}`;
+        const metricName = `test-unit-metric-${uuid()}`;
 
         // Click create to trigger validation
         await page.getByTestId('create-button').click();

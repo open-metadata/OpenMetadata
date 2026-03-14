@@ -239,7 +239,6 @@ test.describe('Glossary Navigation', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, emptyGlossary.data.displayName);
-      await page.waitForLoadState('networkidle');
 
       // Verify empty state is shown (with default status filter active)
       await expect(page.getByText('No Glossary Term found')).toBeVisible();

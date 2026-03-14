@@ -27,7 +27,7 @@ import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createBot } from '../../rest/botsAPI';
-import { getRoles } from '../../rest/rolesAPIV1';
+import { getAllRoles } from '../../rest/rolesAPIV1';
 import {
   createUser,
   createUserWithPut,
@@ -156,14 +156,12 @@ const CreateUserPage = () => {
 
   const fetchRoles = async () => {
     try {
-      const response = await getRoles(
+      const roles = await getAllRoles(
         '',
-        undefined,
-        undefined,
         false,
-        PAGE_SIZE_EXTRA_LARGE // until we implement search for roles, putting high limit
+        PAGE_SIZE_EXTRA_LARGE // until we implement server-side search, fetch all pages
       );
-      setRoles(response.data);
+      setRoles(roles);
     } catch (err) {
       setRoles([]);
       showErrorToast(
@@ -217,7 +215,8 @@ const CreateUserPage = () => {
   return (
     <PageLayoutV1
       center
-      pageTitle={t('label.create-entity', { entity: t('label.user') })}>
+      pageTitle={t('label.create-entity', { entity: t('label.user') })}
+    >
       <Card className="m-x-auto w-800">
         <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
         <div className="m-t-md">

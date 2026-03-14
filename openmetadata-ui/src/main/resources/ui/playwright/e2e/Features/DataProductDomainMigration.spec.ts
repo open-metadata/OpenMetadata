@@ -289,7 +289,6 @@ test.describe('Data Product Domain Migration', () => {
 
       // Refresh page to see updated domain
       await page.reload();
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

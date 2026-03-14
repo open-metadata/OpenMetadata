@@ -121,7 +121,6 @@ export class LineagePageObject extends RightPanelBase {
     const card = this.lineageItemCards.filter({ hasText: entityName });
     await card.waitFor({ state: 'visible' });
     await card.click();
-    await this.page.waitForLoadState('networkidle');
     return this;
   }
 

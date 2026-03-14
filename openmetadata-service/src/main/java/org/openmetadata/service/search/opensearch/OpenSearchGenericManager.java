@@ -3,6 +3,8 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -120,6 +122,49 @@ public class OpenSearchGenericManager implements GenericClient {
     } catch (Exception e) {
       LOG.error("Failed to delete ISM policy {}", policyName, e);
       throw e;
+    }
+  }
+
+  @Override
+  public void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot create index template.");
+      return;
+    }
+    try {
+      String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(mappingContent);
+      ObjectMapper mapper = new ObjectMapper();
+      ObjectNode body = mapper.createObjectNode();
+      body.putArray("index_patterns").add(indexPattern);
+      body.put("priority", 100);
+      body.set("template", mapper.readTree(transformedContent));
+      String bodyStr = mapper.writeValueAsString(body);
+      OpenSearchGenericClient genericClient = client.generic();
+      try (var response =
+          genericClient.execute(
+              Requests.builder()
+                  .method("PUT")
+                  .endpoint("/_index_template/" + templateName)
+                  .json(bodyStr)
+                  .build())) {
+        int statusCode = response.getStatus();
+        if (statusCode == 200) {
+          LOG.debug("Successfully created/updated index template: {}", templateName);
+        } else {
+          LOG.error(
+              "Failed to create/update index template: {}. Status: {}", templateName, statusCode);
+          throw new IOException("Failed to create/update index template: HTTP " + statusCode);
+        }
+      }
+    } catch (OpenSearchException e) {
+      LOG.error("Failed to create/update index template: {}", templateName, e);
+      throw e;
+    } catch (IOException e) {
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Failed to create/update index template {}", templateName, e);
+      throw new IOException("Failed to create/update index template: " + e.getMessage(), e);
     }
   }
 
