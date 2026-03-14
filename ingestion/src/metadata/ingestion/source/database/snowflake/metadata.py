@@ -87,6 +87,7 @@ from metadata.ingestion.source.database.snowflake.models import (
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_DESC_FUNCTION,
     SNOWFLAKE_DESC_STORED_PROCEDURE,
+    SNOWFLAKE_FETCH_DATABASE_TAGS,
     SNOWFLAKE_FETCH_SCHEMA_TAGS,
     SNOWFLAKE_FETCH_TABLE_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
@@ -213,6 +214,7 @@ class SnowflakeSource(
         self.database_desc_map = {}
         self.external_location_map = {}
         self.schema_tags_map = {}
+        self.database_tags_map = {}
 
         self._account: Optional[str] = None
         self._org_name: Optional[str] = None
@@ -341,6 +343,32 @@ class SnowflakeSource(
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch schema tags: {exc}")
 
+    def set_database_tags_map(self, database_name: str) -> None:
+        """Fetch and store database-level tags for the current database"""
+        self.database_tags_map.clear()
+        if not self.source_config.includeTags:
+            return
+
+        try:
+            results = self.engine.execute(
+                SNOWFLAKE_FETCH_DATABASE_TAGS.format(
+                    database_name=database_name,
+                    account_usage=self.service_connection.accountUsageSchema,
+                )
+            ).all()
+
+            for row in results:
+                db_name = row.DATABASE_NAME
+                if db_name not in self.database_tags_map:
+                    self.database_tags_map[db_name] = []
+                self.database_tags_map[db_name].append(
+                    {"tag_name": row.TAG_NAME, "tag_value": row.TAG_VALUE}
+                )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch database tags: {exc}")
+
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         """
         Method to fetch the schema description
@@ -372,6 +400,7 @@ class SnowflakeSource(
             self.set_database_description_map()
             self.set_external_location_map(configured_db)
             self.set_schema_tags_map(configured_db)
+            self.set_database_tags_map(configured_db)
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
@@ -401,6 +430,7 @@ class SnowflakeSource(
                     self.set_database_description_map()
                     self.set_external_location_map(new_database)
                     self.set_schema_tags_map(new_database)
+                    self.set_database_tags_map(new_database)
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -872,8 +902,8 @@ class SnowflakeSource(
                         f"Missing ownership permissions on procedure {stored_procedure.name}."
                         " Trying to fetch description via DESCRIBE."
                     )
-                    stored_procedure.definition = self.describe_procedure_definition(
-                        stored_procedure
+                    stored_procedure.definition = (
+                        self.describe_procedure_definition(stored_procedure)
                     )
                 if self.is_stored_procedure_filtered(stored_procedure.name):
                     continue
@@ -1173,7 +1203,9 @@ class SnowflakeSource(
 
     def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
-        Return tags for schema entity including Snowflake schema-level tags.
+        Return tags for schema entity including:
+        1. Snowflake schema-level tags
+        2. Inherited database-level tags (only if no tag with same classification exists)
         """
         schema_fqn = cast(
             "str",
@@ -1206,10 +1238,13 @@ class SnowflakeSource(
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
-        Override to include schema-level tags inherited by tables.
+        Override to include inherited tags from both schema and database levels.
         This method combines:
         1. Tags directly assigned to the table (from parent implementation)
-        2. Tags inherited from the schema level
+        2. Tags inherited from the schema level (only if no tag with same classification)
+        3. Tags inherited from the database level (only if no tag with same classification)
+
+        Tag values at lower levels take precedence over inherited values.
         """
         table_fqn = cast(
             "str",

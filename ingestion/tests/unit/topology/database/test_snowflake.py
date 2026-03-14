@@ -14,7 +14,7 @@ snowflake unit tests
 """
 # pylint: disable=line-too-long
 from unittest import TestCase
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import sqlalchemy.types as sqltypes
 
@@ -569,6 +569,7 @@ class SnowflakeUnitTest(TestCase):
                 classification_description="",
                 tag_description="",
             )
+            mock_parent_get_schema_tag_labels.return_value = None
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
             self.assertIsNotNone(schema_labels)
@@ -591,11 +592,9 @@ class SnowflakeUnitTest(TestCase):
                     TAG_VALUE="DB_VALUE",
                 ),
             ]
-            mock_conn = MagicMock()
-            mock_conn.execute.return_value = mock_database_tags
-            source.engine = MagicMock()
-            source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
-            source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+            mock_execute = Mock()
+            mock_execute.all.return_value = mock_database_tags
+            source.engine.execute = Mock(return_value=mock_execute)
 
             source.set_database_tags_map("TEST_DATABASE")
             self.assertEqual(len(source.database_tags_map["TEST_DATABASE"]), 1)
