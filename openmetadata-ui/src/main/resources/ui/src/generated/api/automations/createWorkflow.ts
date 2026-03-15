@@ -294,6 +294,8 @@ export interface RequestConnection {
  *
  * BurstIQ LifeGraph Database Connection Config
  *
+ * IOMETE Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -595,6 +597,8 @@ export interface ConfigObject {
      * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      *
+     * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -866,6 +870,8 @@ export interface ConfigObject {
      *
      * Password to connect to BurstIQ.
      *
+     * Password to connect to IOMETE.
+     *
      * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
@@ -980,6 +986,8 @@ export interface ConfigObject {
      *
      * Username to connect to BurstIQ. This user should have privileges to read all the metadata
      * in BurstIQ LifeGraph.
+     *
+     * Username to connect to IOMETE.
      *
      * Username to connect to Metabase. Required for basic authentication.
      *
@@ -1532,6 +1540,14 @@ export interface ConfigObject {
      * BurstIQ Keycloak realm name (e.g., 'ems' from https://auth.burstiq.com/realms/ems).
      */
     realmName?: string;
+    /**
+     * IOMETE lakehouse cluster name to connect to.
+     */
+    cluster?: string;
+    /**
+     * IOMETE data plane name.
+     */
+    dataPlane?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -4794,6 +4810,7 @@ export enum ConfigType {
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
+    Iomete = "Iomete",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",

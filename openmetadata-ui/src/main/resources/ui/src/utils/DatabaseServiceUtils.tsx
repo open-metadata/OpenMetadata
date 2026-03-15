@@ -46,6 +46,7 @@ import greenplumConnection from '../jsons/connectionSchemas/connections/database
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
 import icebergConnection from '../jsons/connectionSchemas/connections/database/icebergConnection.json';
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
+import iometeConnection from '../jsons/connectionSchemas/connections/database/iometeConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
 import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
@@ -310,6 +311,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.BurstIQ: {
       schema = burstiqConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Iomete: {
+      schema = iometeConnection;
 
       break;
     }

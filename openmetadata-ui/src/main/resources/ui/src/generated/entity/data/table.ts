@@ -1375,6 +1375,7 @@ export enum DatabaseServiceType {
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
+    Iomete = "Iomete",
     MariaDB = "MariaDB",
     MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",

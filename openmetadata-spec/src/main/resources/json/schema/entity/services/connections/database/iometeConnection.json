@@ -1,0 +1,103 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/iometeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IometeConnection",
+  "description": "IOMETE Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.IometeConnection",
+  "definitions": {
+    "iometeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Iomete"],
+      "default": "Iomete"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/iometeType",
+      "default": "Iomete"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the IOMETE service, e.g. dev.iomete.cloud:443",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to IOMETE.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to IOMETE.",
+      "type": "string",
+      "format": "password"
+    },
+    "cluster": {
+      "title": "Cluster",
+      "description": "IOMETE lakehouse cluster name to connect to.",
+      "type": "string"
+    },
+    "dataPlane": {
+      "title": "Data Plane",
+      "description": "IOMETE data plane name.",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsViewLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort"]
+}

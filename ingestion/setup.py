@@ -295,6 +295,11 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
+    "iomete": {
+        "sqlalchemy-iomete-flightsql",
+        "adbc-driver-flightsql",
+        "adbc-driver-manager",
+    },
     "iceberg": {
         VERSIONS["pyiceberg"],
         # Forcing the version of a few packages so it plays nicely with other requirements.

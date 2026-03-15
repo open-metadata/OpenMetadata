@@ -198,6 +198,8 @@ export interface ServiceConnectionClass {
  *
  * BurstIQ LifeGraph Database Connection Config
  *
+ * IOMETE Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -511,6 +513,8 @@ export interface ConfigObject {
      * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      *
+     * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
      *
@@ -626,6 +630,8 @@ export interface ConfigObject {
      * Password to connect to ServiceNow.
      *
      * Password to connect to BurstIQ.
+     *
+     * Password to connect to IOMETE.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -744,6 +750,8 @@ export interface ConfigObject {
      *
      * Username to connect to BurstIQ. This user should have privileges to read all the metadata
      * in BurstIQ LifeGraph.
+     *
+     * Username to connect to IOMETE.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -1574,6 +1582,14 @@ export interface ConfigObject {
      * BurstIQ Keycloak realm name (e.g., 'ems' from https://auth.burstiq.com/realms/ems).
      */
     realmName?: string;
+    /**
+     * IOMETE lakehouse cluster name to connect to.
+     */
+    cluster?: string;
+    /**
+     * IOMETE data plane name.
+     */
+    dataPlane?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -4657,6 +4673,7 @@ export enum ConfigType {
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
+    Iomete = "Iomete",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
