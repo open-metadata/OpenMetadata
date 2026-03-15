@@ -43,7 +43,8 @@ const placeholderAccounts: NavAccountType[] = [
 
 export const NavAccountMenu = ({
     className,
-    selectedAccountId = "olivia",
+    accounts = placeholderAccounts,
+    selectedAccountId = placeholderAccounts[0].id,
     ...dialogProps
 }: AriaDialogProps & { className?: string; accounts?: NavAccountType[]; selectedAccountId?: string }) => {
     const focusManager = useFocusManager();
@@ -92,7 +93,7 @@ export const NavAccountMenu = ({
                     <div className="tw:px-3 tw:pt-1.5 tw:pb-1 tw:text-xs tw:font-semibold tw:text-tertiary">Switch account</div>
 
                     <div className="tw:flex tw:flex-col tw:gap-0.5 tw:px-1.5">
-                        {placeholderAccounts.map((account) => (
+                        {accounts.map((account) => (
                             <button
                                 key={account.id}
                                 className={cx(
@@ -153,7 +154,7 @@ const NavAccountCardMenuItem = ({
 
 export const NavAccountCard = ({
     popoverPlacement,
-    selectedAccountId = "olivia",
+    selectedAccountId,
     items = placeholderAccounts,
 }: {
     popoverPlacement?: Placement;
@@ -163,10 +164,11 @@ export const NavAccountCard = ({
     const triggerRef = useRef<HTMLDivElement>(null);
     const isDesktop = useBreakpoint("lg");
 
-    const selectedAccount = placeholderAccounts.find((account) => account.id === selectedAccountId);
+    const resolvedSelectedId = selectedAccountId ?? items[0]?.id;
+    const selectedAccount = items.find((account) => account.id === resolvedSelectedId);
 
     if (!selectedAccount) {
-        console.warn(`Account with ID ${selectedAccountId} not found in <NavAccountCard />`);
+        console.warn(`Account with ID ${resolvedSelectedId} not found in <NavAccountCard />`);
         return null;
     }
 
@@ -199,7 +201,7 @@ export const NavAccountCard = ({
                             )
                         }
                     >
-                        <NavAccountMenu selectedAccountId={selectedAccountId} accounts={items} />
+                        <NavAccountMenu selectedAccountId={resolvedSelectedId} accounts={items} />
                     </AriaPopover>
                 </AriaDialogTrigger>
             </div>
