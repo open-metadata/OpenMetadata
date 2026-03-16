@@ -13,7 +13,6 @@
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@untitledui/icons';
 import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { InternalAxiosRequestConfig } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
@@ -369,39 +368,6 @@ export const iconTooltipDataRender = () => (
     </TooltipTrigger>
   </Tooltip>
 );
-
-export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
-  const domainOptions: ItemType[] = [
-    {
-      label: t('label.all-domain-plural'),
-      key: DEFAULT_DOMAIN_VALUE,
-    },
-  ];
-
-  for (const domain of domains) {
-    domainOptions.push({
-      label: getEntityName(domain),
-      key: domain.fullyQualifiedName ?? '',
-      icon: get(domain, 'parent') ? (
-        <SubDomainIcon
-          color={DE_ACTIVE_COLOR}
-          height={20}
-          name="subdomain"
-          width={20}
-        />
-      ) : (
-        <DomainIcon
-          color={DE_ACTIVE_COLOR}
-          height={20}
-          name="domain"
-          width={20}
-        />
-      ),
-    });
-  }
-
-  return domainOptions;
-};
 
 export const renderDomainLink = (
   domain: EntityReference,

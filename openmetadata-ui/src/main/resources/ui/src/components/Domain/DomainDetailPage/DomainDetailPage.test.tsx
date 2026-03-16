@@ -38,11 +38,6 @@ jest.mock('react-helmet-async', () => ({
 }));
 
 jest.mock('../../../rest/domainAPI');
-jest.mock('../../../hooks/useDomainStore', () => ({
-  useDomainStore: () => ({
-    updateDomains: jest.fn(),
-  }),
-}));
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
     currentUser: { id: '1' },
