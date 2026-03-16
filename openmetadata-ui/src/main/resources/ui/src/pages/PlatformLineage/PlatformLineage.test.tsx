@@ -65,6 +65,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
         <span>{children}</span>
       )),
+    ButtonUtility: jest
+      .fn()
+      .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
+        <button data-testid={testId} onClick={onClick}>
+          {children}
+        </button>
+      )),
   };
 });
 
@@ -243,10 +250,6 @@ jest.mock('@mui/material', () => {
     Tooltip: jest.fn(({ children }) => <div>{children}</div>),
   };
 });
-
-jest.mock('../../components/LineageTable/LineageTable.styled', () => ({
-  StyledIconButton: jest.fn(({ children }) => <button>{children}</button>),
-}));
 
 jest.mock('../../assets/svg/ic-download.svg', () => ({
   ReactComponent: () => <div>DownloadIcon</div>,
