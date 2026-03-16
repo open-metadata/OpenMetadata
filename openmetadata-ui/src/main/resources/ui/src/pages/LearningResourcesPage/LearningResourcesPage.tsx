@@ -37,7 +37,7 @@ import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
 import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
 
-import { DeleteModal } from '../../components/common/DeleteModal/DeleteModal';
+import { DeleteModalMUI } from '../../components/common/DeleteModal/DeleteModalMUI';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -712,7 +712,7 @@ export const LearningResourcesPage: React.FC = () => {
         )}
 
         {deletingResource && (
-          <DeleteModal
+          <DeleteModalMUI
             entityTitle={deletingResource.displayName || deletingResource.name}
             isDeleting={isDeleting}
             message={t('message.delete-entity-permanently', {

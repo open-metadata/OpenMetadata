@@ -33,7 +33,7 @@ export enum FieldTypes {
   PASSWORD_MUI = 'password_mui',
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
-  UT_SWITCH = 'ut_switch',
+  SWITCH_MUI = 'switch_mui',
   SELECT = 'select',
   SELECT_MUI = 'select_mui',
   ASYNC_SELECT_LIST = 'async_select_list',
