@@ -313,14 +313,15 @@ export const InputOutputPortsTab = forwardRef<
                       isInputPortsExpanded &&
                       inputPortsCount > 0 && (
                         <Button
-                          color="secondary"
+                          color="link-color"
                           data-testid="add-input-port-button"
+                          iconLeading={<PlusOutlined />}
                           size="sm"
                           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.stopPropagation();
                             handleAddInputPort();
                           }}>
-                          {t('label.add')}
+                          {`${t('label.add')} ${t('label.port')}`}
                         </Button>
                       )}
                   </div>
@@ -402,14 +403,15 @@ export const InputOutputPortsTab = forwardRef<
                       isOutputPortsExpanded &&
                       outputPortsCount > 0 && (
                         <Button
-                          color="secondary"
+                          color="link-color"
                           data-testid="add-output-port-button"
+                          iconLeading={<PlusOutlined />}
                           size="sm"
                           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.stopPropagation();
                             handleAddOutputPort();
                           }}>
-                          {t('label.add')}
+                          {`${t('label.add')} ${t('label.port')}`}
                         </Button>
                       )}
                   </div>

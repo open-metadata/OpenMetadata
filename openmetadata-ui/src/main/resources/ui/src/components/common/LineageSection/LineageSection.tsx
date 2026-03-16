@@ -148,7 +148,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
 
   return (
     <div
-      className="tw:px-3.25 tw:pb-4 tw:border-b tw:border-gray-200"
+      className="tw:px-3.25 tw:pb-4 tw:border-b-[0.6px] tw:border-gray-200"
       data-testid="lineage-section">
       <div className="tw:mb-3">
         <Typography as="p" className="tw:font-semibold">
