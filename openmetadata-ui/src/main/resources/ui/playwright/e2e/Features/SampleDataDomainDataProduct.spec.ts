@@ -78,10 +78,9 @@ test.describe(
       const dataProductCard = page.getByTestId('explore-card-TestDataProduct');
       await expect(dataProductCard).toBeVisible();
       await dataProductCard.click();
-      await page.waitForSelector(
-        '[data-testid="entity-summary-panel-container"]',
-        { state: 'visible' }
-      );
+      await page
+        .getByTestId('entity-summary-panel-container')
+        .waitFor({ state: 'visible' });
       const summaryPanel = page.getByTestId('entity-summary-panel-container');
       await expect(summaryPanel).toContainText('Test Data Product');
       await expect(summaryPanel).toContainText(

@@ -106,8 +106,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
             {item.label}
             <button
               data-testid="tag-chip-delete"
-              onClick={() => onItemCleared?.(item.id)}
-            >
+              onClick={() => onItemCleared?.(item.id)}>
               x
             </button>
           </span>
@@ -119,8 +118,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
                 data-testid={`tag-option-${item.id}`}
                 key={item.id}
                 value={item.id}
-                onClick={() => handleOptionClick(item.id)}
-              >
+                onClick={() => handleOptionClick(item.id)}>
                 {[item.label, item.supportingText].filter(Boolean).join(' | ')}
               </option>
             ))}

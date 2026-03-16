@@ -23,13 +23,13 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import Loader from '../../Loader/Loader';
 import { Trash01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { deleteEntity } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import Loader from '../../Loader/Loader';
 
 interface UseDeleteConfig<
   T extends { id: string; name?: string; displayName?: string }

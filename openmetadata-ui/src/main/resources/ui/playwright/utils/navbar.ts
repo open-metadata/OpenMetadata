@@ -112,7 +112,7 @@ export const selectOption = async (
   await page.mouse.move(1280, 0);
 
   await dropdownLocator.click();
-  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -144,7 +144,7 @@ export const selectOption = async (
     // Scroll down
     await page.mouse.wheel(0, scrollStep);
 
-    // Small delay to allow DOM to update
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- DOM update delay after scroll
     await page.waitForTimeout(100);
 
     scrollAttempts++;

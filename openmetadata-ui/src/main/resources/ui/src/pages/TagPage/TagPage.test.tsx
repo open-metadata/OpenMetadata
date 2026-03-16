@@ -15,7 +15,37 @@ import { render, waitFor } from '@testing-library/react';
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTagByFqn } from '../../rest/tagAPI';
+import tagClassBase from '../../utils/TagClassBase';
 import TagPage from './TagPage';
+
+jest.mock('../../hooks/useCustomPages', () => ({
+  useCustomPages: jest
+    .fn()
+    .mockReturnValue({ customizedPage: null, isLoading: false }),
+}));
+
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockReturnValue({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    }),
+  })
+);
+
+jest.mock('../../utils/TagClassBase', () => ({
+  __esModule: true,
+  default: {
+    getAdditionalTagDetailPageTabs: jest.fn().mockReturnValue([]),
+    getTagDetailPageTabsIds: jest.fn().mockReturnValue([]),
+    getDefaultLayout: jest.fn().mockReturnValue([]),
+    getWidgetHeight: jest.fn().mockReturnValue(0),
+    getClassificationFields: jest.fn().mockReturnValue([]),
+    getTags: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
+  },
+}));
 
 jest.mock('../../rest/tagAPI', () => ({
   getTagByFqn: jest.fn().mockResolvedValue({
@@ -149,6 +179,26 @@ jest.mock(
 );
 
 describe('TagPage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (tagClassBase.getAdditionalTagDetailPageTabs as jest.Mock).mockReturnValue(
+      []
+    );
+  });
+
+  it('should call getAdditionalTagDetailPageTabs with the fetched tag', async () => {
+    (useFqn as jest.Mock).mockReturnValue({ fqn: 'PII.NonSensitive' });
+
+    render(<TagPage />);
+
+    await waitFor(() => {
+      expect(tagClassBase.getAdditionalTagDetailPageTabs).toHaveBeenCalledWith(
+        expect.objectContaining({ fullyQualifiedName: 'PII.NonSensitive' }),
+        expect.any(String)
+      );
+    });
+  });
+
   it('should call getTagData and fetchClassificationTagAssets when tagFqn changes', async () => {
     (useFqn as jest.Mock).mockReturnValue({ fqn: 'PII.NonSensitive' });
 

@@ -1,8 +1,10 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.Entity;
 
 @Slf4j
 public class StatsReconciler {
@@ -32,16 +34,21 @@ public class StatsReconciler {
     int sinkFailed = safeGet(sinkStats.getFailedRecords());
     int sinkWarnings = safeGet(sinkStats.getWarningRecords());
 
-    // Reconcile entity-level totals
+    // Reconcile entity-level totals (exclude TABLE_COLUMN — columns are indexed as a
+    // side effect of table processing and should not inflate the job-level totals)
     if (stats.getEntityStats() != null
         && stats.getEntityStats().getAdditionalProperties() != null) {
       int reconciledTotal = 0;
-      for (StepStats es : stats.getEntityStats().getAdditionalProperties().values()) {
+      for (Map.Entry<String, StepStats> entry :
+          stats.getEntityStats().getAdditionalProperties().entrySet()) {
+        StepStats es = entry.getValue();
         int actual = safeGet(es.getSuccessRecords()) + safeGet(es.getFailedRecords());
         if (actual > safeGet(es.getTotalRecords())) {
           es.setTotalRecords(actual);
         }
-        reconciledTotal += safeGet(es.getTotalRecords());
+        if (!Entity.TABLE_COLUMN.equals(entry.getKey())) {
+          reconciledTotal += safeGet(es.getTotalRecords());
+        }
       }
       if (reconciledTotal > readerTotal) {
         readerStats.setTotalRecords(reconciledTotal);

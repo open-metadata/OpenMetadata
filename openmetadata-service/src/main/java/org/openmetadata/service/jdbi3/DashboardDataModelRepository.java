@@ -19,7 +19,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -142,36 +141,25 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void prepare(DashboardDataModel dashboardDataModel, boolean update) {
-    DashboardService dashboardService =
-        Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
+    var dashboardService =
+        (DashboardService) getCachedParentOrLoad(dashboardDataModel.getService(), "", Include.ALL);
     dashboardDataModel.setService(dashboardService.getEntityReference());
     dashboardDataModel.setServiceType(dashboardService.getServiceType());
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
   public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) {
-    EntityReference service = dashboardDataModel.getService();
-    dashboardDataModel.withService(null);
     store(dashboardDataModel, update);
-    dashboardDataModel.withService(service);
   }
 
   @Override
   public void storeEntities(List<DashboardDataModel> entities) {
-    List<DashboardDataModel> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (DashboardDataModel dashboardDataModel : entities) {
-      EntityReference service = dashboardDataModel.getService();
-      dashboardDataModel.withService(null);
-
-      String jsonCopy = gson.toJson(dashboardDataModel);
-      entitiesToStore.add(gson.fromJson(jsonCopy, DashboardDataModel.class));
-
-      dashboardDataModel.withService(service);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -185,6 +173,25 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @SneakyThrows
   public void storeRelationships(DashboardDataModel dashboardDataModel) {
     addServiceRelationship(dashboardDataModel, dashboardDataModel.getService());
+  }
+
+  @Override
+  protected void storeEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
+    List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
+    for (DashboardDataModel dataModel : entities) {
+      EntityReference service = dataModel.getService();
+      if (service == null || service.getId() == null) {
+        continue;
+      }
+      relationships.add(
+          newRelationship(
+              service.getId(),
+              dataModel.getId(),
+              service.getType(),
+              entityType,
+              Relationship.CONTAINS));
+    }
+    bulkInsertRelationships(relationships);
   }
 
   @Override
@@ -288,6 +295,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
+  protected EntityReference getParentReference(DashboardDataModel entity) {
+    return entity.getService();
+  }
+
+  @Override
   public EntityInterface getParentEntity(DashboardDataModel entity, String fields) {
     if (entity.getService() == null) {
       return null;
@@ -320,17 +332,34 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      DatabaseUtil.validateColumns(original.getColumns());
-      updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
-      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange(
+      compareAndUpdate(
+          "columns",
+          () -> {
+            DatabaseUtil.validateColumns(original.getColumns());
+            updateColumns(
+                "columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+          });
+      compareAndUpdate(
+          "sourceUrl",
+          () -> {
+            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+          });
+      compareAndUpdate(
           "sourceHash",
-          original.getSourceHash(),
-          updated.getSourceHash(),
-          false,
-          EntityUtil.objectMatch,
-          false);
-      recordChange("sql", original.getSql(), updated.getSql());
+          () -> {
+            recordChange(
+                "sourceHash",
+                original.getSourceHash(),
+                updated.getSourceHash(),
+                false,
+                EntityUtil.objectMatch,
+                false);
+          });
+      compareAndUpdate(
+          "sql",
+          () -> {
+            recordChange("sql", original.getSql(), updated.getSql());
+          });
     }
   }
 

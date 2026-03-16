@@ -17,8 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.Entity.USER;
 
-import com.google.gson.Gson;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -71,35 +69,18 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("users");
+  }
+
+  @Override
   public void storeEntity(Persona persona, boolean update) {
-    // Relationships and fields such as href are derived and not stored as part of json
-    List<EntityReference> users = persona.getUsers();
-    // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
-    persona.withUsers(null);
-
     store(persona, update);
-
-    // Restore the relationships
-    persona.withUsers(users);
   }
 
   @Override
   public void storeEntities(List<Persona> entities) {
-    List<Persona> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Persona persona : entities) {
-      List<EntityReference> users = persona.getUsers();
-
-      persona.withUsers(null);
-
-      String jsonCopy = gson.toJson(persona);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Persona.class));
-
-      persona.withUsers(users);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -170,8 +151,16 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateUsers(original, updated);
-      updateDefault(original, updated);
+      compareAndUpdate(
+          "users",
+          () -> {
+            updateUsers(original, updated);
+          });
+      compareAndUpdate(
+          "default",
+          () -> {
+            updateDefault(original, updated);
+          });
     }
 
     @Transaction

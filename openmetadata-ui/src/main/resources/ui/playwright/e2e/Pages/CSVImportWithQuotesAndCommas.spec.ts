@@ -88,7 +88,7 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
         await page.getByRole('button', { name: 'Next' }).click();
         await validationResponse;
-        await page.waitForSelector('text=Import is in progress.', {
+        await page.getByText('Import is in progress.').waitFor({
           state: 'detached',
         });
 
@@ -167,7 +167,7 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
         await page.getByRole('button', { name: 'Next' }).click();
         await validationResponse;
-        await page.waitForSelector('text=Import is in progress.', {
+        await page.getByText('Import is in progress.').waitFor({
           state: 'detached',
         });
 

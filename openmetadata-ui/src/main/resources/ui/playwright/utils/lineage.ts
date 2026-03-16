@@ -84,9 +84,9 @@ export type LineageEdge = {
 
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.getByTestId('lineage-layer-btn').click(); // Open Layer popover
-  await page.waitForSelector(
-    '[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)'
-  );
+  await page
+    .locator('[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)')
+    .waitFor();
   await clickOutside(page); // close Layer popover
 };
 
@@ -111,7 +111,8 @@ export const editLineageClick = async (page: Page) => {
   await expect(page.getByTestId('edit-lineage')).toBeVisible();
 
   await page.getByTestId('edit-lineage').click();
-  await page.waitForTimeout(1); // wait for the edit mode to activate
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for edit mode to activate
+  await page.waitForTimeout(1);
 };
 
 export const editLineage = async (page: Page) => {
@@ -192,8 +193,10 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization before drag operation
   await page.waitForTimeout(1000);
-  const destinationElement = await page.waitForSelector(destinationSelector);
+  const destinationElement = page.locator(destinationSelector);
+  await destinationElement.waitFor();
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox()) as DOMRect;
@@ -212,14 +215,18 @@ export const dragConnection = async (
   const selector = isColumnLineage
     ? '.lineage-column-node-handle'
     : '.lineage-node-handle';
+  const sourceNode = page.locator(`[data-testid="${sourceId}"]`);
+  const targetNode = page.locator(`[data-testid="${targetId}"]`);
+  const sourceHandle = sourceNode.locator(
+    `${selector}.react-flow__handle-right`
+  );
+  const targetHandle = targetNode.locator(
+    `${selector}.react-flow__handle-left`
+  );
 
   const lineageRes = page.waitForResponse('/api/v1/lineage');
-  await page
-    .locator(`[data-testid="${sourceId}"] ${selector}.react-flow__handle-right`)
-    .dispatchEvent('click');
-  await page
-    .locator(`[data-testid="${targetId}"] ${selector}.react-flow__handle-left`)
-    .dispatchEvent('click');
+  await sourceHandle.dispatchEvent('click');
+  await targetHandle.dispatchEvent('click');
 
   await lineageRes;
 };
@@ -227,6 +234,7 @@ export const dragConnection = async (
 export const rearrangeNodes = async (page: Page) => {
   await page.getByTestId('fit-screen').click();
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- node rearrange animation settling time
   await page.waitForTimeout(500);
 };
 
@@ -247,7 +255,6 @@ export const connectEdgeBetweenNodes = async (
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
-  await page.waitForLoadState('networkidle');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*&from=0&size=10&*`
@@ -293,6 +300,8 @@ export const performExpand = async (
 ) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const handleDirection = upstream ? 'left' : 'right';
+  const nodeLocator = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
+  await nodeLocator.hover();
   const expandBtn = page
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
     .locator(`.react-flow__handle-${handleDirection}`)
@@ -498,7 +507,7 @@ export const applyPipelineFromModal = async (
   await page.click('[data-testid="save-button"]');
   await saveRes;
 
-  await page.waitForSelector('[data-testid="add-edge-modal"]', {
+  await page.getByTestId('add-edge-modal').waitFor({
     state: 'detached',
   });
 };
@@ -570,7 +579,6 @@ export const visitLineageTab = async (page: Page) => {
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
-  await page.waitForLoadState('networkidle');
   await waitForAllLoadersToDisappear(page);
   // Go to full screen to get nodes to view
   await page.getByRole('button', { name: 'Full Screen View' }).first().click();
@@ -632,9 +640,9 @@ export const fillLineageConfigForm = async (
 
 export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
-  await page.waitForSelector(
-    '[data-testid="lineage-layer-column-btn"].Mui-selected'
-  );
+  await page
+    .locator('[data-testid="lineage-layer-column-btn"].Mui-selected')
+    .waitFor();
   await clickOutside(page); // Close Layer popover
 };
 
@@ -649,12 +657,11 @@ export const getLineageCSVData = async (page: Page) => {
 
   await page.getByTestId('export-button').click();
 
-  await page.waitForSelector(
-    '[data-testid="export-entity-modal"] #submit-button',
-    {
+  await page
+    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .waitFor({
       state: 'visible',
-    }
-  );
+    });
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -745,12 +752,11 @@ export const verifyExportLineagePNG = async (
 
   await page.getByTestId('export-button').click();
 
-  await page.waitForSelector(
-    '[data-testid="export-entity-modal"] #submit-button',
-    {
+  await page
+    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .waitFor({
       state: 'visible',
-    }
-  );
+    });
 
   if (!isPNGSelected) {
     await page.getByTestId('export-type-select').click();
@@ -805,7 +811,7 @@ export const verifyColumnLineageInCSV = async (
 export const verifyLineageConfig = async (page: Page) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.waitForSelector('.ant-modal-content', {
+  await page.locator('.ant-modal-content').first().waitFor({
     state: 'visible',
   });
 
@@ -877,7 +883,7 @@ export const updateLineageConfigFromModal = async (
 ) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.waitForSelector('.ant-modal-content', {
+  await page.locator('.ant-modal-content').first().waitFor({
     state: 'visible',
   });
 
@@ -910,6 +916,7 @@ export const verifyPlatformLineageForEntity = async (
 
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
 
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization after node selection
   await page.waitForTimeout(500);
 
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);

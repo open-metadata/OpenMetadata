@@ -151,6 +151,14 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
   }
 });
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(({ onClick, disabled, 'data-testid': testId }) => (
+      <button data-testid={testId} disabled={disabled} onClick={onClick} />
+    )),
+}));
+
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn(() => ({
     pipelineStatus: {},

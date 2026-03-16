@@ -50,13 +50,11 @@ base.afterAll('Cleanup', async ({ browser }) => {
 const navigateToPersonaNavigation = async (page: Page) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
   await settingClick(page, GlobalSettingOptions.PERSONA);
-  await page.waitForLoadState('networkidle');
   await getPersonas;
 
   await navigateToPersonaWithPagination(page, persona.data.name, true);
 
   await page.getByTestId('navigation').click();
-  await page.waitForLoadState('networkidle');
 };
 
 test.describe.serial('Settings Navigation Page Tests', () => {
@@ -145,7 +143,6 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     // Test discard changes
     await page.getByTestId('unsaved-changes-modal-discard').click();
-    await page.waitForLoadState('networkidle');
 
     // Should navigate away and changes should be discarded
     await expect(page).toHaveURL(/.*settings.*/);
@@ -179,7 +176,6 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     const saveResponse = page.waitForResponse('**/api/v1/docStore/**');
     await page.getByTestId('unsaved-changes-modal-save').click();
     await saveResponse;
-    await page.waitForLoadState('networkidle');
 
     // Should navigate to settings page
     await expect(page).toHaveURL(/.*settings.*/);
@@ -188,12 +184,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await redirectToHomePage(page);
 
     // Check if Insights navigation item visibility changed
-    const insightsVisible = await page
-      .getByTestId('left-sidebar')
-      .getByTestId('app-bar-item-insights')
-      .isVisible();
-
-    expect(insightsVisible).toBe(false);
+    await expect(
+      page.getByTestId('left-sidebar').getByTestId('app-bar-item-insights')
+    ).toBeHidden();
 
     // Clean up: Restore original state
     await navigateToPersonaNavigation(page);
@@ -223,7 +216,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     // Verify save button is enabled
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    expect(await domainSwitch.isChecked()).toBeFalsy();
+    await expect(domainSwitch).not.toBeChecked();
 
     // Test reset functionality
     await page.getByTestId('reset-button').click();
@@ -244,10 +237,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     // Test discard changes
     await page.getByTestId('unsaved-changes-modal-save').click();
-    await page.waitForLoadState('networkidle');
 
     // Verify reset worked - save button disabled and state reverted
-    expect(await domainSwitch.isChecked()).toBeTruthy();
+    await expect(domainSwitch).toBeChecked();
     await expect(page.getByTestId('save-button')).not.toBeEnabled();
   });
 
@@ -326,9 +318,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await redirectToHomePage(page);
 
     await page.locator('[data-testid="dropdown-profile"]').click();
-    await page.waitForSelector('[role="menu"].profile-dropdown', {
-      state: 'visible',
-    });
+    await page
+      .locator('[role="menu"].profile-dropdown')
+      .waitFor({ state: 'visible' });
 
     // Verify personas section is visible
     await expect(page.getByText('Switch Persona')).toBeVisible();

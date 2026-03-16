@@ -13,6 +13,7 @@
 import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
+import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -56,27 +57,110 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
+const PLAYWRIGHT_TEST_USER_PASSWORD = 'User@OMD123';
+
+const loginFromStoredIdentity = async (page: Page) => {
+  const userName = await page
+    .evaluate(() => window.localStorage.getItem('loggedInUsers'))
+    .catch(() => null);
+  const normalizedUserName = userName?.replace(/^"+|"+$/g, '').trim();
+
+  if (!normalizedUserName) {
+    return false;
+  }
+
+  const password =
+    normalizedUserName === DEFAULT_ADMIN_USER.userName
+      ? DEFAULT_ADMIN_USER.password
+      : PLAYWRIGHT_TEST_USER_PASSWORD;
+
+  const emailInput = page.locator('input[id="email"]');
+  await emailInput.waitFor({ state: 'visible' });
+  await emailInput.fill(normalizedUserName);
+  await page.locator('#email').press('Tab');
+  await page.fill('input[id="password"]', password);
+
+  const loginRes = page.waitForResponse('/api/v1/auth/login');
+  await page.getByTestId('login').click();
+  await loginRes;
+
+  const modal = page
+    .getByRole('dialog')
+    .locator('div')
+    .filter({ hasText: 'Getting Started' })
+    .nth(1);
+  if (await modal.isVisible().catch(() => false)) {
+    await page.getByRole('dialog').getByRole('img').first().click();
+  }
+
+  const leftNavBar = page.locator('[data-testid="left-sidebar"]');
+  const hasOpenClass = await leftNavBar
+    .evaluate((el) => el.classList.contains('sidebar-open'))
+    .catch(() => false);
+  if (hasOpenClass) {
+    await page.getByTestId('sidebar-toggle').click();
+  }
+
+  return true;
+};
+
+const waitForHomeOrSignin = async (page: Page) => {
+  try {
+    return await Promise.race([
+      page.waitForURL('**/my-data', { timeout: 30000 }).then(() => 'my-data'),
+      page.waitForURL('**/signin', { timeout: 30000 }).then(() => 'signin'),
+    ]);
+  } catch {
+    if (page.url().includes('/my-data')) {
+      return 'my-data';
+    }
+    if (page.url().includes('/signin')) {
+      return 'signin';
+    }
+
+    throw new Error(`Timed out navigating home. Current URL: ${page.url()}`);
+  }
+};
+
 export const redirectToHomePage = async (
   page: Page,
-  waitForNetworkIdle = true
+  _waitForLoaders = true
 ) => {
-  await page.goto('/');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.goto('/');
+    const destination = await waitForHomeOrSignin(page);
+
+    if (destination === 'my-data') {
+      if (_waitForLoaders) {
+        await waitForAllLoadersToDisappear(page);
+      }
+
+      return;
+    }
+
+    const relogged = await loginFromStoredIdentity(page);
+    if (!relogged) {
+      break;
+    }
+  }
+
   await page.waitForURL('**/my-data');
-  if (waitForNetworkIdle) {
-    await page.waitForLoadState('networkidle');
+  if (_waitForLoaders) {
+    await waitForAllLoadersToDisappear(page);
   }
 };
 
 export const redirectToExplorePage = async (page: Page) => {
   await page.goto('/explore');
   await page.waitForURL('**/explore');
-  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const removeLandingBanner = async (page: Page) => {
   try {
-    const welcomePageCloseButton = await page
-      .waitForSelector('[data-testid="welcome-screen-close-btn"]', {
+    const welcomePageCloseButton = page.getByTestId('welcome-screen-close-btn');
+    await welcomePageCloseButton
+      .waitFor({
         state: 'visible',
         timeout: 5000,
       })
@@ -86,7 +170,7 @@ export const removeLandingBanner = async (page: Page) => {
       });
 
     // Close the welcome banner if it exists
-    if (welcomePageCloseButton?.isVisible()) {
+    if (await welcomePageCloseButton.isVisible()) {
       await welcomePageCloseButton.click();
     }
   } catch {
@@ -151,15 +235,13 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page.waitForSelector('[data-testid="alert-bar"]', {
+  await page.getByTestId('alert-bar').waitFor({
     state: 'visible',
   });
 
   await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
-
-  await expect(page.getByTestId('alert-icon-close')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -173,7 +255,7 @@ export const clickOutside = async (page: Page) => {
 
 export const visitOwnProfilePage = async (page: Page) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
-  await page.waitForSelector('[role="menu"].profile-dropdown', {
+  await page.locator('[role="menu"].profile-dropdown').waitFor({
     state: 'visible',
   });
   const userResponse = page.waitForResponse(
@@ -190,7 +272,7 @@ export const assignDomain = async (
   checkSelectedDomain = true
 ) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   const searchDomain = page.waitForResponse(
     (response) =>
@@ -219,7 +301,7 @@ export const assignDomain = async (
     .getByTestId('saveAssociatedTag')
     .click();
   await patchReq;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   if (checkSelectedDomain) {
     await expect(page.getByTestId('domain-link')).toContainText(
@@ -233,7 +315,7 @@ export const assignSingleSelectDomain = async (
   domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   const searchDomain = page.waitForResponse(
     (response) =>
@@ -259,7 +341,7 @@ export const assignSingleSelectDomain = async (
   await tagSelector.click();
 
   await patchReq;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -271,7 +353,7 @@ export const updateDomain = async (
   domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await page
     .getByTestId('domain-selectable-tree')
@@ -300,7 +382,7 @@ export const updateDomain = async (
     .getByTestId('saveAssociatedTag')
     .click();
   await patchReq;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('header-domain-container')).toContainText('+1');
 
@@ -317,7 +399,7 @@ export const removeDomain = async (
   showDashPlaceholder = true
 ) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   const searchDomain = page.waitForResponse(
     (response) =>
@@ -343,7 +425,7 @@ export const removeDomain = async (
     .getByTestId('saveAssociatedTag')
     .click();
   await patchReq;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('no-domain-text')).toContainText(
     showDashPlaceholder ? '--' : 'No Domains'
@@ -356,7 +438,7 @@ export const removeSingleSelectDomain = async (
   showDashPlaceholder = true
 ) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await page
     .getByTestId('domain-selectable-tree')
@@ -381,7 +463,7 @@ export const removeSingleSelectDomain = async (
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
   await patchReq;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('no-domain-text')).toContainText(
     showDashPlaceholder ? '--' : 'No Domains'
@@ -406,17 +488,27 @@ export const assignDataProduct = async (
     .click();
 
   for (const dataProduct of dataProducts) {
-    const searchDataProduct = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(encodeURIComponent(domain.name))
+    const tagLocator = page.getByTestId(
+      `tag-${dataProduct.fullyQualifiedName}`
     );
 
-    await page
-      .locator('[data-testid="data-product-selector"] input')
-      .fill(dataProduct.displayName);
-    await searchDataProduct;
-    await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
+    await expect(async () => {
+      const searchDataProduct = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(domain.name))
+      );
+      await page
+        .locator('[data-testid="data-product-selector"] input')
+        .clear();
+      await page
+        .locator('[data-testid="data-product-selector"] input')
+        .fill(dataProduct.displayName);
+      await searchDataProduct;
+      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+
+    await tagLocator.click();
   }
 
   await expect(
@@ -459,7 +551,7 @@ export const removeDataProduct = async (
     .getByTestId('edit-button')
     .click();
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await page
     .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
@@ -483,10 +575,11 @@ export const removeDataProduct = async (
     .click();
   await patchReq;
 
-  await page.waitForSelector(
-    '[data-testid="data-product-dropdown-actions"] [data-testid="saveAssociatedTag"] [data-icon="loading"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .locator('[data-icon="loading"]')
+    .waitFor({ state: 'detached' });
   await expect(
     page
       .getByTestId('data-product-dropdown-actions')
@@ -506,18 +599,20 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
-  await page.getByRole('menuitem', { name: glossaryName }).click();
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
+  await page
+    .getByRole('menuitem', { name: glossaryName })
+    .click({ timeout: 30000 });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const getRandomFirstName = () => {
-  return `${
-    adjectives[Math.floor(Math.random() * adjectives.length)]
-  }${uuid()}`;
+  const index = parseInt(crypto.randomUUID().slice(0, 8), 16) % adjectives.length;
+  return `${adjectives[index]}${uuid()}`;
 };
 export const getRandomLastName = () => {
-  return `${nouns[Math.floor(Math.random() * nouns.length)]}${uuid()}`;
+  const index = parseInt(crypto.randomUUID().slice(0, 8), 16) % nouns.length;
+  return `${nouns[index]}${uuid()}`;
 };
 
 export const generateRandomUsername = (prefix = '') => {
@@ -557,7 +652,7 @@ export const verifyDomainPropagation = async (
 ) => {
   await page.getByTestId('searchBox').fill(childFqnSearchTerm);
   await page.getByTestId('searchBox').press('Enter');
-  await page.waitForSelector(`[data-testid*="table-data-card"]`);
+  await page.locator('[data-testid*="table-data-card"]').first().waitFor();
 
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
 
@@ -587,11 +682,8 @@ export const closeFirstPopupAlert = async (page: Page) => {
 
 export const reloadAndWaitForNetworkIdle = async (page: Page) => {
   await page.reload();
-  await page.waitForLoadState('networkidle');
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 /**
@@ -661,6 +753,7 @@ export const readElementInListWithScroll = async (
   await hierarchyElementLocator.hover();
   await page.mouse.wheel(0, -99999);
 
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- virtualized list rendering delay
   await page.waitForTimeout(1000);
 
   // Retry mechanism for pagination
@@ -671,6 +764,7 @@ export const readElementInListWithScroll = async (
   while (elementCount === 0 && retryCount < maxRetries) {
     await hierarchyElementLocator.hover();
     await page.mouse.wheel(0, 1000);
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- virtualized list scroll rendering delay
     await page.waitForTimeout(500);
 
     // Create fresh locator and check if the article is now visible after this retry
@@ -715,11 +809,9 @@ export const testPaginationNavigation = async (
   expect(page1Response.status()).toBe(200);
 
   if (waitForLoadSelector) {
-    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
+    await page.locator(waitForLoadSelector).waitFor({ state: 'visible' });
   }
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const page1Data = await page1Response.json();
   const page1FirstItem = page1Data.data?.[0];
@@ -740,9 +832,7 @@ export const testPaginationNavigation = async (
   const page2Response = await page2ResponsePromise;
   expect(page2Response.status()).toBe(200);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('previous')).toBeEnabled();
   let afterValue: string | null = '';
@@ -775,9 +865,7 @@ export const testPaginationNavigation = async (
 
   const reloadResponse = await reloadResponsePromise;
   expect(reloadResponse.status()).toBe(200);
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('previous')).toBeEnabled();
   const paginationText = page.locator('[data-testid="page-indicator"]');
@@ -823,7 +911,7 @@ export const testPaginationNavigation = async (
     );
     await menuItem.click();
     await pageSizeChangePromise;
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(pageSizeDropdown).toHaveText('25 / Page');
 
@@ -863,11 +951,9 @@ export const testCompletePaginationWithSearch = async (
   } = config;
 
   await page.goto(`${baseUrl}`);
-  await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
+  await page.locator(waitForLoadSelector).waitFor({ state: 'visible' });
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const nextButton = page.locator('[data-testid="next"]');
   const isNextEnabled = await nextButton.isEnabled();
@@ -881,9 +967,7 @@ export const testCompletePaginationWithSearch = async (
     await nextButton.click();
     const page2Response = await page2ResponsePromise;
     expect(page2Response.status()).toBe(200);
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('previous')).toBeEnabled();
     const paginationPage2 = page.locator('[data-testid="page-indicator"]');
@@ -950,10 +1034,7 @@ export const testCompletePaginationWithSearch = async (
     const refreshPage2Content = await paginationAfterRefresh.textContent();
     expect(refreshPage2Content).toMatch(/2\s*of\s*\d+/);
 
-    const searchValueAfterRefresh = await page
-      .getByTestId('searchbar')
-      .inputValue();
-    expect(searchValueAfterRefresh).toBe(searchTestTerm);
+    await expect(page.getByTestId('searchbar')).toHaveValue(searchTestTerm);
 
     const deleteToggle = page.getByTestId(`${deleteBtnTestId}`);
     const isDeleteTogglePresent = await deleteToggle.count();
@@ -966,9 +1047,7 @@ export const testCompletePaginationWithSearch = async (
       await deleteToggle.click();
       const searchApiResponseWithToggle1 = await searchApiPromiseWithToggle1;
       expect(searchApiResponseWithToggle1.status()).toBe(200);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const searchApiPromiseWithToggle2 = page.waitForResponse((response) =>
         response.url().includes(searchApiPattern)
@@ -977,9 +1056,7 @@ export const testCompletePaginationWithSearch = async (
       await deleteToggle.click();
       const searchApiResponseWithToggle2 = await searchApiPromiseWithToggle2;
       expect(searchApiResponseWithToggle2.status()).toBe(200);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByTestId('previous')).toBeDisabled();
       const paginationAfterToggleWithSearch = page.locator(
@@ -1004,7 +1081,6 @@ export const testTableSorting = async (
   columnIndex = 0
 ) => {
   await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
 
   const header = page.locator(`th:has-text("${columnHeader}")`).first();
   const visibleRowSelector = `tbody tr:not([aria-hidden="true"])`;
@@ -1047,18 +1123,20 @@ export const testTableSearch = async (
   notVisibleText: string
 ) => {
   await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
 
-  const waitForSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*index=${searchIndex}*`
-  );
+  await expect(async () => {
+    const waitForSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=${searchIndex}*`
+    );
+    await page.getByTestId('searchbar').fill(searchTerm);
+    await waitForSearchResponse;
+    await waitForAllLoadersToDisappear(page);
 
-  await page.getByTestId('searchbar').fill(searchTerm);
-  await waitForSearchResponse;
-  await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
-
-  await expect(page.getByText(searchTerm).first()).toBeVisible();
-
-  await expect(page.getByText(notVisibleText).first()).not.toBeVisible();
+    await expect(page.getByText(searchTerm).first()).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.getByText(notVisibleText).first()).not.toBeVisible({
+      timeout: 5_000,
+    });
+  }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 };

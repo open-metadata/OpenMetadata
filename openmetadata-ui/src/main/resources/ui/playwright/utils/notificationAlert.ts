@@ -32,7 +32,7 @@ import {
   waitForRecentEventsToFinishExecution,
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
-import { addMultiOwner, updateDescription } from './entity';
+import { addMultiOwner, updateDescription, waitForAllLoadersToDisappear } from './entity';
 import { addExternalDestination } from './observabilityAlert';
 import { sidebarClick } from './sidebar';
 
@@ -54,7 +54,7 @@ export const visitNotificationAlertPage = async (page: Page) => {
   ]);
 
   // Ensure UI is ready after API responses
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const addFilterWithUsersListInput = async ({

@@ -54,6 +54,7 @@ import {
   getAddServicePath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
@@ -73,7 +74,6 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 
 interface ServicesProps {
   serviceName: ServiceCategory;

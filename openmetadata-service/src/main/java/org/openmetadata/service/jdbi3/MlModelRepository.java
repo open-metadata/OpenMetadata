@@ -25,7 +25,6 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -272,33 +271,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service", "dashboard");
+  }
+
+  @Override
   public void storeEntity(MlModel mlModel, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference dashboard = mlModel.getDashboard();
-    EntityReference service = mlModel.getService();
-    mlModel.withService(null).withDashboard(null);
     store(mlModel, update);
-    mlModel.withService(service).withDashboard(dashboard);
   }
 
   @Override
   public void storeEntities(List<MlModel> entities) {
-    List<MlModel> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (MlModel mlModel : entities) {
-      EntityReference dashboard = mlModel.getDashboard();
-      EntityReference service = mlModel.getService();
-
-      mlModel.withService(null).withDashboard(null);
-
-      String jsonCopy = gson.toJson(mlModel);
-      entitiesToStore.add(gson.fromJson(jsonCopy, MlModel.class));
-
-      mlModel.withService(service).withDashboard(dashboard);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -324,6 +308,34 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     setMlFeatureSourcesLineage(mlModel);
+  }
+
+  @Override
+  protected void storeEntitySpecificRelationshipsForMany(List<MlModel> entities) {
+    List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
+    for (MlModel mlModel : entities) {
+      EntityReference service = mlModel.getService();
+      if (service != null && service.getId() != null) {
+        relationships.add(
+            newRelationship(
+                service.getId(),
+                mlModel.getId(),
+                service.getType(),
+                entityType,
+                Relationship.CONTAINS));
+      }
+      if (mlModel.getDashboard() != null && mlModel.getDashboard().getId() != null) {
+        relationships.add(
+            newRelationship(
+                mlModel.getId(),
+                mlModel.getDashboard().getId(),
+                Entity.MLMODEL,
+                Entity.DASHBOARD,
+                Relationship.USES));
+      }
+      setMlFeatureSourcesLineage(mlModel);
+    }
+    bulkInsertRelationships(relationships);
   }
 
   /**
@@ -362,6 +374,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public EntityRepository<MlModel>.EntityUpdater getUpdater(
       MlModel original, MlModel updated, Operation operation, ChangeSource changeSource) {
     return new MlModelUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected EntityReference getParentReference(MlModel entity) {
+    return entity.getService();
   }
 
   @Override
@@ -439,7 +456,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private void populateService(MlModel mlModel) {
-    MlModelService service = Entity.getEntity(mlModel.getService(), "", Include.NON_DELETED);
+    var service =
+        (MlModelService) getCachedParentOrLoad(mlModel.getService(), "", Include.NON_DELETED);
     mlModel.setService(service.getEntityReference());
     mlModel.setServiceType(service.getServiceType());
   }
@@ -459,21 +477,57 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateAlgorithm(original, updated);
-      updateDashboard(original, updated);
-      updateMlFeatures(original, updated);
-      updateMlHyperParameters(original, updated);
-      updateMlStore(original, updated);
-      updateServer(original, updated);
-      updateTarget(original, updated);
-      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange(
+      compareAndUpdate(
+          "algorithm",
+          () -> {
+            updateAlgorithm(original, updated);
+          });
+      compareAndUpdate(
+          "dashboard",
+          () -> {
+            updateDashboard(original, updated);
+          });
+      compareAndUpdate(
+          "mlFeatures",
+          () -> {
+            updateMlFeatures(original, updated);
+          });
+      compareAndUpdate(
+          "mlHyperParameters",
+          () -> {
+            updateMlHyperParameters(original, updated);
+          });
+      compareAndUpdate(
+          "mlStore",
+          () -> {
+            updateMlStore(original, updated);
+          });
+      compareAndUpdate(
+          "server",
+          () -> {
+            updateServer(original, updated);
+          });
+      compareAndUpdate(
+          "target",
+          () -> {
+            updateTarget(original, updated);
+          });
+      compareAndUpdate(
+          "sourceUrl",
+          () -> {
+            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+          });
+      compareAndUpdate(
           "sourceHash",
-          original.getSourceHash(),
-          updated.getSourceHash(),
-          false,
-          EntityUtil.objectMatch,
-          false);
+          () -> {
+            recordChange(
+                "sourceHash",
+                original.getSourceHash(),
+                updated.getSourceHash(),
+                false,
+                EntityUtil.objectMatch,
+                false);
+          });
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) {
