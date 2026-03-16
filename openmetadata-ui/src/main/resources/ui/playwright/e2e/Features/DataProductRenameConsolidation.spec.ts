@@ -33,6 +33,7 @@ import {
   selectDataProduct,
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 const domain = new Domain();
@@ -367,14 +368,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await page.getByTestId('documentation').click();
       // Use add-owner since there's no owner initially
       await page.getByTestId('add-owner').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByRole('tab', { name: 'Users' }).click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Wait for search response after typing user name
       const ownerDisplayName = newOwner.getUserDisplayName();

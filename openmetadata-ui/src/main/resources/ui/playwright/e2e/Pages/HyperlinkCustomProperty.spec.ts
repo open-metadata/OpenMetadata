@@ -55,6 +55,7 @@ test.describe('Hyperlink Custom Property Tests', () => {
         `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
       );
       await editButton.scrollIntoViewIfNeeded();
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
       await editButton.click({ force: true });
 
       await page

@@ -30,7 +30,9 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
-import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
+import { addMultiOwner, removeOwnersFromList,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
 const table = new TableClass();
@@ -336,9 +338,7 @@ test(
       await createTestSuiteResponse;
       await toastNotification(page, 'Test Suite created successfully.');
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Domain Add, Update and Remove', async () => {
@@ -397,20 +397,16 @@ test(
       await testSuite;
 
       await page.click('[data-testid="owner-select-filter"]');
-      await page.waitForSelector("[data-testid='select-owner-tabs']", {
+      await page.getByTestId('select-owner-tabs').waitFor({
         state: 'visible',
       });
-      await page.waitForSelector(`[data-testid="loader"]`, {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       const getOwnerList = page.waitForResponse(
         '/api/v1/search/query?q=&index=user_search_index&*'
       );
       await page.click('.ant-tabs [id*=tab-users]');
       await getOwnerList;
-      await page.waitForSelector(`[data-testid="loader"]`, {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const searchOwner = page.waitForResponse(
         'api/v1/search/query?q=*&index=user_search_index*'
@@ -423,7 +419,7 @@ test(
       );
       await page.click(`.ant-popover [title="${owner}"]`);
       await testSuiteByOwner;
-      await page.waitForSelector(`[data-testid="${NEW_TEST_SUITE.name}"]`, {
+      await page.getByTestId(NEW_TEST_SUITE.name).waitFor({
         state: 'visible',
       });
 

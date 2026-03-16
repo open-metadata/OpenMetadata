@@ -20,7 +20,9 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
-import { addMultiOwner } from '../../utils/entity';
+import { addMultiOwner,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { setupGlossaryAndTerms } from '../../utils/glossary';
 
 // use the admin user to login
@@ -94,9 +96,7 @@ test('Glossary', async ({ page }) => {
     );
     await page.click('[data-testid="version-button"]');
     await versionPageResponse;
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(
       page.locator(
@@ -109,9 +109,7 @@ test('Glossary', async ({ page }) => {
     );
     await page.click('[data-testid="version-button"]');
     await glossaryRes;
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await addMultiOwner({
       page,
@@ -212,9 +210,7 @@ test('GlossaryTerm', async ({ page }) => {
     await page.getByRole('dialog').getByRole('img').click();
     await glossaryTermsRes;
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await addMultiOwner({
       page,
@@ -226,9 +222,7 @@ test('GlossaryTerm', async ({ page }) => {
     });
 
     await page.reload();
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
     // Verify the reviewer was actually added before checking version diff
     await expect(
       page
@@ -240,7 +234,7 @@ test('GlossaryTerm', async ({ page }) => {
     await versionPageResponse;
 
     // Wait for the version dialog to be fully loaded
-    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
     await expect(
       page.locator('[data-testid="glossary-reviewer"]')
@@ -291,7 +285,7 @@ test('Navigate between versions', async ({ page }) => {
     await page.click('[data-testid="version-button"]');
 
     // Wait for version dialog to load
-    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
     // Check if version selector/dropdown exists
     const versionSelector = page.getByTestId('version-selector');
@@ -328,14 +322,14 @@ test('Return to current version from history', async ({ page }) => {
     await page.click('[data-testid="version-button"]');
 
     // Wait for version dialog
-    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
     // Close the version dialog
     await page.getByRole('dialog').getByRole('img').click();
 
     // Wait for dialog to close
-    await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.locator('[role="dialog"]').waitFor({ state: 'hidden' });
+    await waitForAllLoadersToDisappear(page);
 
     // Verify we're back on the main glossary page
     await expect(page.getByTestId('entity-header-display-name')).toContainText(
@@ -360,7 +354,7 @@ test('Version diff shows synonym changes', async ({ page }) => {
     await page.click('[data-testid="version-button"]');
 
     // Wait for version dialog
-    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
     // Check for synonym diff
     const synonymDiff = page.locator('[data-testid="test-synonym"].diff-added');
@@ -381,7 +375,7 @@ test('Version diff shows reference changes', async ({ page }) => {
     await page.click('[data-testid="version-button"]');
 
     // Wait for version dialog
-    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
     // Check for reference diff
     const referenceDiff = page.locator(
@@ -404,7 +398,7 @@ test('Version diff shows related term changes', async ({ page }) => {
     await page.click('[data-testid="version-button"]');
 
     // Wait for version dialog
-    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
     // Check for related term diff (term1 was added as related term to term2)
     const relatedTermDiff = page.locator(

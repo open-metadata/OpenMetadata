@@ -567,7 +567,6 @@ test.describe('Workflow History', () => {
     if (await statusIndicator.isVisible({ timeout: 3000 }).catch(() => false)) {
       // Hover to potentially trigger popover
       await statusIndicator.hover();
-      await page.waitForTimeout(500);
 
       // Verify element is interactive
       await expect(statusIndicator).toBeVisible();

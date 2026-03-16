@@ -13,14 +13,12 @@
 import { Page, Response } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const navigateToContractTab = async (page: Page, table: TableClass) => {
   await table.visitEntityPage(page);
   await page.click('[data-testid="contract"]');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-    timeout: 30000,
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const openODCSImportDropdown = async (page: Page) => {
@@ -98,7 +96,7 @@ export const importODCSYaml = async (
   });
 
   // Click Import button
-  const importButton = await page.getByTestId('import-button');
+  const importButton = page.getByTestId('import-button');
   await importButton.click({ delay: 100 });
 
   await importResponse;

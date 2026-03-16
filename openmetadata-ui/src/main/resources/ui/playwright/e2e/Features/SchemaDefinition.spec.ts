@@ -43,7 +43,10 @@ test.describe(
       });
 
       await page.click('[data-testid="schema_definition"]');
-      await page.waitForSelector('.CodeMirror-line > [role="presentation"]');
+      await page
+        .locator('.CodeMirror-line > [role="presentation"]')
+        .first()
+        .waitFor();
 
       await expect(
         page.locator('.CodeMirror-line > [role="presentation"]')

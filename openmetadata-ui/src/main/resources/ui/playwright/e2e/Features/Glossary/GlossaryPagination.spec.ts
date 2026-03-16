@@ -73,7 +73,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Test 1: Search for specific term
     const searchInput = page.getByPlaceholder(/search.*term/i);
@@ -124,7 +124,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Navigate to parent term
     await page.click(
@@ -183,7 +183,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     const searchInput = page.getByPlaceholder(/search.*term/i);
 
@@ -235,7 +235,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     const searchInput = page.getByPlaceholder(/search.*term/i);
 
@@ -262,7 +262,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Open status filter dropdown
     const dropdownButton = page.getByTestId('glossary-status-dropdown');
@@ -297,7 +297,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Open status filter dropdown
     const dropdownButton = page.getByTestId('glossary-status-dropdown');

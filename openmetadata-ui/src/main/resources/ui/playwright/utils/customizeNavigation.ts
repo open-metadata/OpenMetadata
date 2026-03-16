@@ -77,6 +77,7 @@ export const validateLeftSidebarWithHiddenItems = async (
         } catch {
           // If no children are visible, the dropdown might not have expanded
           // Wait a bit more and continue
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown expansion fallback delay
           await page.waitForTimeout(500);
         }
 

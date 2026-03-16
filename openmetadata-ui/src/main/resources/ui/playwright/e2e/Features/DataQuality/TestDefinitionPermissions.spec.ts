@@ -220,12 +220,9 @@ test.describe(
       await viewOnlyPage.goto('/test-library');
 
       // Wait for table to load
-      await viewOnlyPage.waitForSelector(
-        '[data-testid="test-definition-table"]',
-        {
-          state: 'visible',
-        }
-      );
+      await viewOnlyPage
+        .getByTestId('test-definition-table')
+        .waitFor({ state: 'visible' });
 
       // Verify user can view the table
       await expect(
@@ -250,12 +247,9 @@ test.describe(
       await dataConsumerPage.goto('/test-library');
 
       // Wait for table to load
-      await dataConsumerPage.waitForSelector(
-        '[data-testid="test-definition-table"]',
-        {
-          state: 'visible',
-        }
-      );
+      await dataConsumerPage
+        .getByTestId('test-definition-table')
+        .waitFor({ state: 'visible' });
 
       // Verify user can view the table
       await expect(
@@ -293,12 +287,9 @@ test.describe(
       await dataStewardPage.goto('/test-library');
 
       // Wait for table to load
-      await dataStewardPage.waitForSelector(
-        '[data-testid="test-definition-table"]',
-        {
-          state: 'visible',
-        }
-      );
+      await dataStewardPage
+        .getByTestId('test-definition-table')
+        .waitFor({ state: 'visible' });
 
       // Verify user can view the table
       await expect(

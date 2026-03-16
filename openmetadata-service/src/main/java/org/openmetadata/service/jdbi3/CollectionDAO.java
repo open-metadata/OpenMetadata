@@ -9852,6 +9852,9 @@ public interface CollectionDAO {
         @Bind("stagedIndexMapping") String stagedIndexMapping,
         @Bind("updatedAt") long updatedAt);
 
+    @SqlUpdate("UPDATE search_index_job SET updatedAt = :updatedAt WHERE id = :id")
+    void touchJob(@Bind("id") String id, @Bind("updatedAt") long updatedAt);
+
     /** Row mapper for SearchIndexJobRecord */
     class SearchIndexJobMapper implements RowMapper<SearchIndexJobRecord> {
       @Override
