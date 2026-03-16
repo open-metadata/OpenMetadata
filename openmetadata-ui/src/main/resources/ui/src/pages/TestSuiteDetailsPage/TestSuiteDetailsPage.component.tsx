@@ -574,59 +574,58 @@ const TestSuiteDetailsPage = () => {
                 suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />}
               />
             </div>
-            <div className="tw:flex tw:items-center tw:gap-1">
-              {(testSuitePermissions.EditAll ||
-                testSuitePermissions.EditTests) && (
-                <DialogTrigger
-                  isOpen={isTestCaseModalOpen}
-                  onOpenChange={setIsTestCaseModalOpen}>
-                  <Button
-                    color="primary"
-                    data-testid="add-test-case-btn"
-                    size="md">
-                    {t('label.add-entity', {
-                      entity: t('label.test-case-plural'),
-                    })}
-                  </Button>
-                  <ModalOverlay>
-                    <Modal>
-                      <Dialog
-                        showCloseButton
-                        title={t('label.add-entity', {
-                          entity: t('label.test-case-plural'),
-                        })}
-                        onClose={() => setIsTestCaseModalOpen(false)}>
-                        <Dialog.Content>
-                          <AddTestCaseList
-                            existingTest={testSuite?.tests ?? []}
-                            selectedTest={selectedTestCases}
-                            onCancel={() => setIsTestCaseModalOpen(false)}
-                            onSubmit={handleAddTestCaseSubmit}
-                          />
-                        </Dialog.Content>
-                      </Dialog>
-                    </Modal>
-                  </ModalOverlay>
-                </DialogTrigger>
-              )}
-              <ManageButton
-                isRecursiveDelete
-                afterDeleteAction={afterDeleteAction}
-                allowSoftDelete={false}
-                canDelete={permissions.hasDeletePermission}
-                deleted={testSuite?.deleted}
-                displayName={getEntityName(testSuite)}
-                editDisplayNamePermission={
-                  testSuitePermissions.EditAll ||
-                  testSuitePermissions.EditDisplayName
-                }
-                entityId={testSuite?.id}
-                entityName={testSuite?.fullyQualifiedName as string}
-                entityType={EntityType.TEST_SUITE}
-                extraDropdownContent={extraDropdownContent}
-                onEditDisplayName={handleDisplayNameChange}
-              />
-            </div>
+
+            {(testSuitePermissions.EditAll ||
+              testSuitePermissions.EditTests) && (
+              <DialogTrigger
+                isOpen={isTestCaseModalOpen}
+                onOpenChange={setIsTestCaseModalOpen}>
+                <Button
+                  color="primary"
+                  data-testid="add-test-case-btn"
+                  size="md">
+                  {t('label.add-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                </Button>
+                <ModalOverlay>
+                  <Modal>
+                    <Dialog
+                      showCloseButton
+                      title={t('label.add-entity', {
+                        entity: t('label.test-case-plural'),
+                      })}
+                      onClose={() => setIsTestCaseModalOpen(false)}>
+                      <Dialog.Content>
+                        <AddTestCaseList
+                          existingTest={testSuite?.tests ?? []}
+                          selectedTest={selectedTestCases}
+                          onCancel={() => setIsTestCaseModalOpen(false)}
+                          onSubmit={handleAddTestCaseSubmit}
+                        />
+                      </Dialog.Content>
+                    </Dialog>
+                  </Modal>
+                </ModalOverlay>
+              </DialogTrigger>
+            )}
+            <ManageButton
+              isRecursiveDelete
+              afterDeleteAction={afterDeleteAction}
+              allowSoftDelete={false}
+              canDelete={permissions.hasDeletePermission}
+              deleted={testSuite?.deleted}
+              displayName={getEntityName(testSuite)}
+              editDisplayNamePermission={
+                testSuitePermissions.EditAll ||
+                testSuitePermissions.EditDisplayName
+              }
+              entityId={testSuite?.id}
+              entityName={testSuite?.fullyQualifiedName as string}
+              entityType={EntityType.TEST_SUITE}
+              extraDropdownContent={extraDropdownContent}
+              onEditDisplayName={handleDisplayNameChange}
+            />
           </div>
 
           <div className="test-suite-details-domain-owner-section tw:mt-3 tw:flex tw:flex-wrap tw:gap-4 tw:rounded-[12px] tw:border tw:border-gray-200 tw:bg-white tw:p-4 tw:sm:p-5">
