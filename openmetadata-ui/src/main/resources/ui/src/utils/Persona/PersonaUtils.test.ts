@@ -90,7 +90,7 @@ describe('PersonaUtils', () => {
     it('should return the correct options for data-assets category', () => {
       const options = getCustomizePageOptions('data-assets');
 
-      expect(options).toHaveLength(20);
+      expect(options).toHaveLength(19);
       expect(options).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -126,7 +126,7 @@ describe('PersonaUtils', () => {
       const options = getCustomizePageOptions('data-assets');
       const keys = options.map((option) => option.key);
 
-      expect(options).toHaveLength(20);
+      expect(options).toHaveLength(19);
       expect(keys).not.toContain(PageType.Glossary);
       expect(keys).not.toContain(PageType.GlossaryTerm);
       expect(keys).not.toContain(PageType.Domain);
@@ -139,11 +139,10 @@ describe('PersonaUtils', () => {
       const options = getCustomizePageOptions('data-assets');
       const keys = options.map((option) => option.key);
 
-      expect(options).toHaveLength(20);
+      expect(options).toHaveLength(19);
       expect(keys).toContain(PageType.APICollection);
       expect(keys).toContain(PageType.APIEndpoint);
       expect(keys).toContain(PageType.Chart);
-      expect(keys).toContain(PageType.Classification);
       expect(keys).toContain(PageType.Container);
       expect(keys).toContain(PageType.Dashboard);
       expect(keys).toContain(PageType.DashboardDataModel);

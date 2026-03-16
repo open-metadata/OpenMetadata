@@ -154,6 +154,7 @@ export const getCustomizePageOptions = (
             PageType.DataProduct,
             PageType.LandingPage,
             PageType.Tag,
+            PageType.Classification,
           ].includes(item)
         ) {
           acc.push(generateSettingItems(item));
