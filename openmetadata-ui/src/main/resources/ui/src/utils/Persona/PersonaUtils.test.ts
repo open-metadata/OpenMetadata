@@ -133,6 +133,7 @@ describe('PersonaUtils', () => {
       expect(keys).not.toContain(PageType.DataProduct);
       expect(keys).not.toContain(PageType.LandingPage);
       expect(keys).not.toContain(PageType.Tag);
+      expect(keys).not.toContain(PageType.Classification);
     });
 
     it('should include all other entities in data-assets category', () => {
