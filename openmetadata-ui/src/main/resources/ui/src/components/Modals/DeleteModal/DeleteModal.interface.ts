@@ -12,16 +12,28 @@
  */
 
 export interface DeleteModalProps {
-  /** Whether the modal is open */
+  /**
+   * Controls visibility of the modal
+   */
   open: boolean;
-  /** Title of the entity being deleted */
-  entityTitle: string;
-  /** Confirmation message to display */
-  message: string;
-  /** Whether the delete action is in progress */
+  /**
+   * The name of the entity being deleted (displayed in the title and message)
+   */
+  entityName: string;
+  /**
+   * The type/label of the entity (e.g., "Recognizer", "Exception")
+   */
+  entityType: string;
+  /**
+   * Whether the delete operation is currently in progress
+   */
   isDeleting?: boolean;
-  /** Callback when cancel is clicked */
+  /**
+   * Callback fired when the cancel button is clicked or modal is closed
+   */
   onCancel: () => void;
-  /** Callback when delete is confirmed */
-  onDelete: () => void;
+  /**
+   * Callback fired when the delete/confirm button is clicked
+   */
+  onConfirm: () => void;
 }
