@@ -42,7 +42,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
-  ES_MAX_PAGE_SIZE,
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
@@ -56,9 +55,7 @@ import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
-import { getDomainList } from '../../../rest/domainAPI';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
@@ -150,7 +147,6 @@ export const AuthProvider = ({
     isAuthenticating,
     initializeAuthState,
   } = useApplicationStore();
-  const { updateDomains, updateDomainLoading } = useDomainStore();
   const tokenService = useRef<TokenService>(TokenService.getInstance());
 
   const location = useCustomLocation();
@@ -207,21 +203,6 @@ export const AuthProvider = ({
     navigate(ROUTES.SIGNIN);
   }, [timeoutId]);
 
-  const fetchDomainList = useCallback(async () => {
-    try {
-      updateDomainLoading(true);
-      const { data } = await getDomainList({
-        limit: ES_MAX_PAGE_SIZE,
-        fields: 'parent',
-      });
-      updateDomains(data);
-    } catch (error) {
-      // silent fail
-    } finally {
-      updateDomainLoading(false);
-    }
-  }, []);
-
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
       // Check if provider uses OidcAuthenticator which has routing logic
@@ -276,8 +257,6 @@ export const AuthProvider = ({
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
-        // Fetch domains at the start
-        await fetchDomainList();
       } else {
         resetUserDetails();
       }
@@ -379,9 +358,6 @@ export const AuthProvider = ({
         if (res) {
           const userDetails = await checkIfUpdateRequired(res, newUser);
           setCurrentUser(userDetails);
-
-          // Fetch domains at the start
-          await fetchDomainList();
 
           handledVerifiedUser();
           // Start expiry timer on successful login
