@@ -14,7 +14,11 @@ import { expect, Page, test as base } from '@playwright/test';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import {
+  redirectToHomePage,
+  removeLandingBanner,
+  toastNotification,
+} from '../../utils/common';
 import {
   checkAllDefaultWidgets,
   navigateToCustomizeLandingPage,
@@ -23,6 +27,7 @@ import {
   saveCustomizeLayoutPage,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const adminUser = new UserClass();
@@ -89,7 +94,7 @@ test.describe(
           widgetKey: 'KnowledgePanel.KPI',
         });
 
-        await saveCustomizeLayoutPage(adminPage, true);
+        await saveCustomizeLayoutPage(adminPage);
 
         await redirectToHomePage(adminPage);
 
@@ -199,7 +204,6 @@ test.describe(
 
         // Navigate to the landing page
         await redirectToHomePage(adminPage);
-        await adminPage.waitForLoadState('networkidle');
 
         // Check if removed widgets are not present on the landing page
         await expect(
@@ -259,7 +263,6 @@ test.describe(
         await redirectToHomePage(adminPage);
 
         // Ensures the page is fully loaded
-        await adminPage.waitForLoadState('networkidle');
 
         await checkAllDefaultWidgets(adminPage);
       });
@@ -286,22 +289,31 @@ test.describe(
         const widget2Box = await widget2.boundingBox();
 
         if (widget1Box && widget2Box) {
-          // Test drag functionality (may not actually reorder in test environment)
           await widget1.hover();
 
           await expect(widget1).toBeVisible();
           await expect(widget2).toBeVisible();
 
-          // Verify widgets remain functional after attempted drag
           await saveCustomizeLayoutPage(adminPage);
-          await redirectToHomePage(adminPage);
+          await redirectToHomePage(adminPage, false);
+          await removeLandingBanner(adminPage);
+          await waitForAllLoadersToDisappear(adminPage).catch(() => undefined);
 
-          await expect(
-            adminPage.getByTestId('KnowledgePanel.MyData')
-          ).toBeVisible();
-          await expect(
-            adminPage.getByTestId('KnowledgePanel.Following')
-          ).toBeVisible();
+          await expect
+            .poll(
+              async () => ({
+                myData: await adminPage
+                  .getByTestId('KnowledgePanel.MyData')
+                  .isVisible()
+                  .catch(() => false),
+                following: await adminPage
+                  .getByTestId('KnowledgePanel.Following')
+                  .isVisible()
+                  .catch(() => false),
+              }),
+              { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
+            )
+            .toEqual({ myData: true, following: true });
         }
       }
     });

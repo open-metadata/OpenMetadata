@@ -58,7 +58,6 @@ export const searchForEntityShouldWork = async (
 
   await page.waitForResponse(`api/v1/search/query?**`);
 
-  await page.waitForLoadState('networkidle');
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -71,7 +70,6 @@ export const searchForEntityShouldWork = async (
     .getByTestId('navbar-search-container')
     .getByTestId('cancel-icon')
     .click();
-  await page.waitForLoadState('networkidle');
 };
 
 export const searchForEntityShouldWorkShowNoResult = async (
@@ -94,7 +92,6 @@ export const searchForEntityShouldWorkShowNoResult = async (
 
   await page.waitForResponse(`api/v1/search/query?**`);
 
-  await page.waitForLoadState('networkidle');
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -117,5 +114,4 @@ export const searchForEntityShouldWorkShowNoResult = async (
     .getByTestId('cancel-icon')
     .click();
 
-  await page.waitForLoadState('networkidle');
 };

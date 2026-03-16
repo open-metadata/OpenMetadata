@@ -15,13 +15,13 @@ import { ColumnsType } from 'antd/lib/table';
 import React, { ReactNode } from 'react';
 import { DISABLED } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
-import { getServices, searchService } from '../../../rest/serviceAPI';
-import { ListView } from '../../common/ListView/ListView.component';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineServiceType } from '../../../generated/entity/data/pipeline';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { getServices, searchService } from '../../../rest/serviceAPI';
+import { ListView } from '../../common/ListView/ListView.component';
 import Services from './Services';
 
 let isDescription = true;

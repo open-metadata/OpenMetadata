@@ -1,12 +1,9 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CalendarInterval;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
-import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -26,7 +23,6 @@ import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 public class ElasticSearchLineChartAggregator
     implements ElasticSearchDynamicChartAggregatorInterface {
@@ -50,34 +46,7 @@ public class ElasticSearchLineChartAggregator
       long end,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder,
-      boolean live,
-      String filter)
-      throws IOException {
-    return prepareSearchRequestInternal(
-        diChart, start, end, formulas, metricFormulaHolder, live, filter);
-  }
-
-  @Override
-  public SearchRequest prepareSearchRequest(
-      @NotNull DataInsightCustomChart diChart,
-      long start,
-      long end,
-      List<FormulaHolder> formulas,
-      Map metricFormulaHolder,
       boolean live)
-      throws IOException {
-    return prepareSearchRequestInternal(
-        diChart, start, end, formulas, metricFormulaHolder, live, null);
-  }
-
-  private SearchRequest prepareSearchRequestInternal(
-      @NotNull DataInsightCustomChart diChart,
-      long start,
-      long end,
-      List<FormulaHolder> formulas,
-      Map metricFormulaHolder,
-      boolean live,
-      String filter)
       throws IOException {
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     Map<String, Aggregation> aggregationsMap = new HashMap<>();
@@ -241,9 +210,7 @@ public class ElasticSearchLineChartAggregator
                                           es.co.elastic.clients.json.JsonData.of(
                                               String.valueOf(end))))));
 
-      // Apply filter at query level to reduce document set BEFORE aggregations
-      Query finalQuery = buildQueryWithFilter(rangeQuery, filter);
-      searchRequestBuilder.query(finalQuery);
+      searchRequestBuilder.query(rangeQuery);
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
       searchRequestBuilder.index(
@@ -252,26 +219,6 @@ public class ElasticSearchLineChartAggregator
 
     searchRequestBuilder.aggregations(aggregationsMap);
     return searchRequestBuilder.build();
-  }
-
-  /**
-   * Combines the time range query with the user-provided filter using a bool query.
-   * This ensures documents are filtered BEFORE aggregations run, preventing bucket explosion.
-   */
-  private Query buildQueryWithFilter(Query rangeQuery, String filter) {
-    if (nullOrEmpty(filter) || filter.equals("{}")) {
-      return rangeQuery;
-    }
-
-    try {
-      String queryToProcess = EsUtils.parseJsonQuery(filter);
-      Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
-
-      return Query.of(q -> q.bool(BoolQuery.of(b -> b.must(rangeQuery).filter(filterQuery))));
-    } catch (Exception e) {
-      // If filter parsing fails, fall back to range query only
-      return rangeQuery;
-    }
   }
 
   private String getMetricName(LineChart lineChart, String name) {

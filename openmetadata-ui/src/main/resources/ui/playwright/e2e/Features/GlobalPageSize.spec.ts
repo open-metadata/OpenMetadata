@@ -28,7 +28,6 @@ test.describe(
         '/table/sample_data.ecommerce_db.shopify.performance_test_table'
       );
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -44,7 +43,6 @@ test.describe(
       // Go to Explore Page
       await sidebarClick(page, SidebarItem.EXPLORE);
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -58,7 +56,6 @@ test.describe(
       // Go to Users Page
       await settingClick(page, GlobalSettingOptions.USERS);
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

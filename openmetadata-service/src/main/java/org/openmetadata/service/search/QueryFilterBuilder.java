@@ -77,6 +77,25 @@ public class QueryFilterBuilder {
     return serializeQuery(queryFilter);
   }
 
+  public static String buildGenericAssetsCountFilter(String fieldPath, boolean includeDeleted) {
+    ObjectNode queryFilter = MAPPER.createObjectNode();
+    ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);
+    ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
+    ArrayNode mustArray = boolNode.putArray(MUST_KEY);
+
+    ObjectNode existsNode = MAPPER.createObjectNode();
+    existsNode.putObject("exists").put("field", fieldPath);
+    mustArray.add(existsNode);
+
+    if (!includeDeleted) {
+      ObjectNode deletedNode = MAPPER.createObjectNode();
+      deletedNode.putObject(TERM_KEY).put(DELETED_KEY, false);
+      mustArray.add(deletedNode);
+    }
+
+    return serializeQuery(queryFilter);
+  }
+
   public static String buildTeamAssetsCountFilter() {
     ObjectNode queryFilter = MAPPER.createObjectNode();
     ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);

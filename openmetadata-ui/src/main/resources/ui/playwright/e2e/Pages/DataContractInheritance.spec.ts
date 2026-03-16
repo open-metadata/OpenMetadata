@@ -169,7 +169,6 @@ const saveContract = async (page: Page) => {
   await page.getByTestId('save-contract-btn').click();
   await saveContractResponse;
 
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
@@ -437,7 +436,6 @@ test.describe('Data Contract Inheritance', () => {
       await openContractTab(page);
 
       // Wait for contract to load
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify the contract is displayed (inherited from data product)
@@ -563,7 +561,6 @@ test.describe('Data Contract Inheritance', () => {
       await openContractTab(page);
 
       // Wait for contract to load
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify the contract is displayed
@@ -671,7 +668,6 @@ test.describe('Data Contract Inheritance', () => {
       await openContractTab(page);
 
       // Wait for contract to load - it should show inherited contract
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify inherited SLA is shown
@@ -716,7 +712,6 @@ test.describe('Data Contract Inheritance', () => {
       // Verify POST succeeded (201 Created)
       expect(response.status()).toBe(201);
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -769,7 +764,6 @@ test.describe('Data Contract Inheritance', () => {
       // Verify PATCH succeeded (200 OK)
       expect(response.status()).toBe(200);
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -778,7 +772,6 @@ test.describe('Data Contract Inheritance', () => {
     await test.step('Verify asset now has its own SLA (no inherited icon)', async () => {
       // Reload to get fresh data
       await page.reload();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify SLA section exists using the correct test ID
@@ -850,7 +843,6 @@ test.describe('Data Contract Inheritance', () => {
       await tableForEditInheritedTest.visitEntityPage(page);
       await openContractTab(page);
 
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify the inherited contract is displayed
@@ -906,7 +898,6 @@ test.describe('Data Contract Inheritance', () => {
       // Verify POST succeeded (201 Created)
       expect(response.status()).toBe(201);
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -931,7 +922,6 @@ test.describe('Data Contract Inheritance', () => {
 
       await openContractTab(page);
 
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify the Data Product contract still has its original name
@@ -993,7 +983,6 @@ test.describe('Data Contract Inheritance', () => {
       await tableForDeleteDisabledTest.visitEntityPage(page);
       await openContractTab(page);
 
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify the inherited contract is displayed
@@ -1067,7 +1056,6 @@ test.describe('Data Contract Inheritance', () => {
       await tableForRunValidationTest.visitEntityPage(page);
       await openContractTab(page);
 
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify the inherited contract is displayed
@@ -1149,7 +1137,6 @@ test.describe('Data Contract Inheritance', () => {
       await tableForRemoveAssetTest.visitEntityPage(page);
       await openContractTab(page);
 
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify the inherited contract is displayed
@@ -1168,7 +1155,6 @@ test.describe('Data Contract Inheritance', () => {
       await selectDataProduct(page, dataProductForRemoveAssetTest.data);
 
       await page.getByTestId('assets').click();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Select the asset checkbox
@@ -1185,14 +1171,12 @@ test.describe('Data Contract Inheritance', () => {
       await page.getByTestId('delete-all-button').click();
       await removeResponse;
 
-      await page.waitForLoadState('networkidle');
     });
 
     await test.step('Verify asset no longer shows inherited contract', async () => {
       await tableForRemoveAssetTest.visitEntityPage(page);
       await openContractTab(page);
 
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify no contract is displayed (empty state)
@@ -1251,7 +1235,6 @@ test.describe('Data Contract Inheritance', () => {
       await tableForDeleteFallbackTest.visitEntityPage(page);
       await openContractTab(page);
 
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Click edit to add asset's own contract
@@ -1283,7 +1266,6 @@ test.describe('Data Contract Inheritance', () => {
       // Verify POST succeeded (201 Created)
       expect(response.status()).toBe(201);
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1324,7 +1306,6 @@ test.describe('Data Contract Inheritance', () => {
 
       await deleteResponse;
 
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -1336,7 +1317,6 @@ test.describe('Data Contract Inheritance', () => {
 
       // Refresh the page to ensure we get the latest contract state
       await page.reload();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify the inherited contract from Data Product is now displayed

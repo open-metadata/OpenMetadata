@@ -35,6 +35,7 @@ import {
   visitAlertDetailsPage,
 } from '../../utils/alert';
 import { getApiContext } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addExternalDestination,
   checkAlertDetailsForWithPermissionUser,
@@ -170,6 +171,7 @@ test('Pipeline Alert', async ({ page }) => {
     );
     await diagnosticTab.click();
     await diagnosticInfoResponse;
+    await waitForAllLoadersToDisappear(page);
   });
 
   await test.step('Check created alert details', async () => {

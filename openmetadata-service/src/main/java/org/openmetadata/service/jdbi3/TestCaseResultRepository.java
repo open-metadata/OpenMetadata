@@ -38,6 +38,8 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
+  private static final String TEST_CASE_INDEX_FIELDS =
+      "testDefinition,testSuite,testSuites,owners,tags,followers";
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
   public static String INCLUDE_SEARCH_FIELDS =
@@ -241,8 +243,12 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   private void updateTestCaseStatus(TestCaseResult testCaseResult, OperationType operationType) {
+    // Load the index-relevant relationship fields, but avoid the hydrated "*" view. The "*"
+    // path now reads the latest result/incident back from the time-series table, which masks the
+    // denormalized change we need to persist into the entity row and search document.
     TestCase original =
-        Entity.getEntityByName(TEST_CASE, testCaseResult.getTestCaseFQN(), "*", Include.ALL);
+        Entity.getEntityByName(
+            TEST_CASE, testCaseResult.getTestCaseFQN(), TEST_CASE_INDEX_FIELDS, Include.ALL);
     TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
 
     if (original.getTestCaseResult() == null) {
@@ -264,7 +270,9 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
           Thread.currentThread().getId());
       return;
     }
-    updated.setTestCaseStatus(testCaseResult.getTestCaseStatus());
+    updated.setTestCaseStatus(
+        testCaseResult != null ? testCaseResult.getTestCaseStatus() : original.getTestCaseStatus());
+    updated.setIncidentId(testCaseResult != null ? testCaseResult.getIncidentId() : null);
 
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);

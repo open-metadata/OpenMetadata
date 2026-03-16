@@ -51,7 +51,6 @@ export const openEntitySummaryPanel = async (
         `global-search-select-option-${ENDPOINT_TO_FILTER_MAP[endpoint]}`
       )
       .click();
-    await page.waitForLoadState('networkidle');
   }
   const searchResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/api/v1/search/query')
@@ -79,7 +78,6 @@ export const openEntitySummaryPanel = async (
   const isCardVisible = await entityCard.isVisible().catch(() => false);
   if (isCardVisible) {
     await entityCard.click();
-    await page.waitForLoadState('networkidle');
   }
 };
 // ... (lines 48-468 unchanged)

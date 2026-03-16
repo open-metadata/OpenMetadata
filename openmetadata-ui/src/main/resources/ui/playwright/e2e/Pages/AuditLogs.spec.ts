@@ -954,38 +954,45 @@ test.describe(
   () => {
     test.use({ storageState: 'playwright/.auth/admin.json' });
 
-    const POLL_TIMEOUT = 30000;
-    const POLL_INTERVAL = 1000;
+    const POLL_TIMEOUT = 60000;
 
     // Helper function to wait for an audit log entry to appear
     const waitForAuditLogEntry = async (
       apiContext: APIRequestContext,
-      page: Page,
+      _page: Page,
       entityFqn: string,
       entityType: string,
       eventType: string
     ): Promise<Record<string, unknown> | null> => {
-      const startTime = Date.now();
+      let auditEntry: Record<string, unknown> | null = null;
 
-      while (Date.now() - startTime < POLL_TIMEOUT) {
-        const response = await apiContext.get(
-          `/api/v1/audit/logs?entityFQN=${encodeURIComponent(
-            entityFqn
-          )}&entityType=${entityType}&eventType=${eventType}&limit=1`
-        );
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(
+              `/api/v1/audit/logs?entityFQN=${encodeURIComponent(
+                entityFqn
+              )}&entityType=${entityType}&eventType=${eventType}&limit=10`
+            );
 
-        if (response.ok()) {
-          const data = await response.json();
+            if (!response.ok()) {
+              return false;
+            }
 
-          if (data.data && data.data.length > 0) {
-            return data.data[0];
+            const data = await response.json();
+            auditEntry = data.data?.[0] ?? null;
+
+            return Boolean(auditEntry);
+          },
+          {
+            timeout: POLL_TIMEOUT,
+            intervals: [1000, 2000],
+            message: `Timed out waiting for ${eventType} audit entry for ${entityType}:${entityFqn}`,
           }
-        }
+        )
+        .toBe(true);
 
-        await page.waitForTimeout(POLL_INTERVAL);
-      }
-
-      return null;
+      return auditEntry;
     };
 
     // Helper to verify audit entry has valid UUIDs

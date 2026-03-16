@@ -22,32 +22,42 @@ test.describe('Table Version Page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('Pagination and Search should works for columns', async ({ page }) => {
     await redirectToHomePage(page);
     await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table/versions/0.1'
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table',
+      { waitUntil: 'domcontentloaded' }
     );
-
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await expect(page.getByTestId('version-button')).toHaveText(/0\.1/, {
+      timeout: 30000,
     });
+    await page.getByTestId('version-button').click();
+    await expect(page.locator('.version-data')).toBeVisible({ timeout: 30000 });
+    await page.waitForSelector(
+      '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
+      {
+        state: 'detached',
+      }
+    );
+    await expect(page.getByTestId('entity-table')).toBeVisible();
 
     await test.step('Pagination Should Work', async () => {
       await columnPaginationTable(page);
     });
 
     await test.step('Search Should Work', async () => {
-      const searchResponse = page.waitForResponse(
-        '/api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns/search?q=test_col_0250*'
-      );
       await page.getByTestId('searchbar').fill('test_col_0250');
-      await searchResponse;
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await page.waitForSelector(
+        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
+        {
+          state: 'detached',
+        }
+      );
 
-      expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(2);
+      await expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(
+        2
+      );
 
-      expect(
+      await expect(
         page.getByTestId('entity-table').getByText('test_col_0250')
       ).toBeVisible();
     });

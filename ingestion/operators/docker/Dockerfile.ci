@@ -74,6 +74,8 @@ WORKDIR ingestion/
 
 # For the dev build, we copy all files
 COPY ingestion/ .
+COPY openmetadata-spec /openmetadata-spec
+COPY scripts/datamodel_generation.py /scripts/datamodel_generation.py
 
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
@@ -91,6 +93,8 @@ ARG INGESTION_DEPENDENCY="all"
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
 RUN pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-databricks==0.2.0" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+RUN pip install "datamodel-code-generator==0.25.6"
+RUN python /scripts/datamodel_generation.py
 RUN pip install ".[airflow]"
 RUN pip install ".[${INGESTION_DEPENDENCY}]"
 

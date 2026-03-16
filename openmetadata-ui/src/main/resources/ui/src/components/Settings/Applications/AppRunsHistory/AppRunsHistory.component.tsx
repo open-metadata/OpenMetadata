@@ -115,6 +115,25 @@ const AppRunsHistory = forwardRef(
       [appData]
     );
 
+    const tableData = useMemo<AppRunRecordWithId[]>(() => {
+      if (appRunsHistoryData.length > 0 || isExternalApp || !appData) {
+        return appRunsHistoryData;
+      }
+
+      return [
+        {
+          id: `${appData.id ?? appData.name ?? 'app'}-current-config`,
+          appId: appData.id,
+          appName: appData.name,
+          config: appData.appConfiguration ?? {},
+          isSynthetic: true,
+          runType: 'CurrentConfig',
+          startTime: appData.updatedAt,
+          timestamp: appData.updatedAt,
+        },
+      ];
+    }, [appData, appRunsHistoryData, isExternalApp]);
+
     const handleRowExpandable = useCallback(
       (key?: string) => {
         if (key) {
@@ -138,6 +157,10 @@ const AppRunsHistory = forwardRef(
     );
 
     const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
+      if (record.isSynthetic) {
+        return true;
+      }
+
       if (appData?.appType === AppType.External) {
         return false;
       }
@@ -164,7 +187,8 @@ const AppRunsHistory = forwardRef(
               disabled={showLogAction(record)}
               size="small"
               type="link"
-              onClick={() => handleRowExpandable(record.id)}>
+              onClick={() => handleRowExpandable(record.id)}
+            >
               {t('label.log-plural')}
             </Button>
             <Button
@@ -172,7 +196,8 @@ const AppRunsHistory = forwardRef(
               data-testid="app-historical-config"
               size="small"
               type="link"
-              onClick={() => showAppRunConfig(record)}>
+              onClick={() => showAppRunConfig(record)}
+            >
               {t('label.config')}
             </Button>
             {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
@@ -184,7 +209,8 @@ const AppRunsHistory = forwardRef(
                   data-testid="stop-button"
                   size="small"
                   type="link"
-                  onClick={() => setIsStopModalOpen(true)}>
+                  onClick={() => setIsStopModalOpen(true)}
+                >
                   {t('label.stop')}
                 </Button>
               )}
@@ -403,7 +429,7 @@ const AppRunsHistory = forwardRef(
             onShowSizeChange: handlePageSizeChange,
           }}
           data-testid="app-run-history-table"
-          dataSource={appRunsHistoryData}
+          dataSource={tableData}
           expandable={{
             expandedRowRender: (record) => (
               <AppLogsViewer
@@ -452,7 +478,8 @@ const AppRunsHistory = forwardRef(
               <Button
                 data-testid="app-run-config-close"
                 type="primary"
-                onClick={() => setShowConfigModal(false)}>
+                onClick={() => setShowConfigModal(false)}
+              >
                 {t('label.close')}
               </Button>
             </Space>
@@ -466,7 +493,8 @@ const AppRunsHistory = forwardRef(
               })}
             </Typography.Text>
           }
-          width={800}>
+          width={800}
+        >
           <FormBuilder
             capitalizeOptionLabel
             hideCancelButton

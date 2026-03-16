@@ -136,7 +136,6 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Modal should disappear and navigate to settings
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
 
-    await adminPage.waitForLoadState('networkidle');
 
     // Should navigate to the settings page
     expect(adminPage.url()).toContain('settings');
@@ -189,7 +188,6 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
 
     // Should navigate to the settings page
-    await adminPage.waitForLoadState('networkidle');
 
     // Verify URL changed from customize page
     expect(adminPage.url()).not.toBe(originalUrl);
@@ -235,7 +233,6 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .click();
 
     // Navigation should happen immediately without modal
-    await adminPage.waitForLoadState('networkidle');
 
     expect(adminPage.url()).toContain('settings');
 

@@ -107,7 +107,11 @@ public class OpenMetadataConnectionBuilder {
     PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
         openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
-    verifySSL = pipelineServiceClientConfiguration.getVerifySSL();
+    // Default to NO_SSL when verifySSL is not configured to avoid null handling failures.
+    verifySSL =
+        pipelineServiceClientConfiguration.getVerifySSL() == null
+            ? VerifySSL.NO_SSL
+            : pipelineServiceClientConfiguration.getVerifySSL();
 
     /*
      How this information flows:
@@ -123,8 +127,7 @@ public class OpenMetadataConnectionBuilder {
     */
     openMetadataSSLConfig =
         getOMSSLConfigFromPipelineServiceClient(
-            pipelineServiceClientConfiguration.getVerifySSL(),
-            pipelineServiceClientConfiguration.getSslConfig());
+            verifySSL, pipelineServiceClientConfiguration.getSslConfig());
 
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerLoader = pipelineServiceClientConfiguration.getSecretsManagerLoader();
@@ -218,7 +221,8 @@ public class OpenMetadataConnectionBuilder {
   }
 
   protected Object getOMSSLConfigFromPipelineServiceClient(VerifySSL verifySSL, Object sslConfig) {
-    return switch (verifySSL) {
+    VerifySSL effectiveVerifySSL = verifySSL == null ? VerifySSL.NO_SSL : verifySSL;
+    return switch (effectiveVerifySSL) {
       case NO_SSL, IGNORE -> null;
       case VALIDATE -> JsonUtils.convertValue(sslConfig, ValidateSSLClientConfig.class);
     };

@@ -19,6 +19,7 @@ import {
   clickOutside,
   createNewPage,
   redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -107,8 +108,9 @@ test.describe('Custom properties with custom property config', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup users', async ({ browser }) => {
+  test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    await adminTestEntity.delete(apiContext);
     for (const user of users) {
       await user.delete(apiContext);
     }
@@ -125,7 +127,7 @@ test.describe('Custom properties with custom property config', () => {
       propertiesWithConfigList.forEach((propertyConfig) => {
         test(propertyConfig.name, async ({ page }) => {
           test.slow();
-          const propertyName = `pwcp${Date.now()}test${entity.name}`;
+          const propertyName = `pwcp${uuid()}${uuid()}test${entity.name}`;
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,
@@ -187,7 +189,7 @@ test.describe('Custom properties with custom property config', () => {
       page,
     }) => {
       test.slow();
-      const propertyName = `pwcp${Date.now()}entityRefListLayout`;
+      const propertyName = `pwcp${uuid()}${uuid()}entityRefListLayout`;
 
       await test.step('Create entityReferenceList property', async () => {
         await settingClick(
@@ -209,6 +211,7 @@ test.describe('Custom properties with custom property config', () => {
         await adminTestEntity.visitEntityPage(page);
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('custom_properties').click();
+        await waitForAllLoadersToDisappear(page);
 
         const container = page.locator(
           `[data-testid="custom-property-${propertyName}-card"]`
@@ -284,7 +287,7 @@ test.describe('Custom properties with custom property config', () => {
       page,
     }) => {
       test.slow();
-      const propertyName = `pwcp${Date.now()}tableCpLayout`;
+      const propertyName = `pwcp${uuid()}${uuid()}tableCpLayout`;
 
       await test.step('Create table-cp property', async () => {
         await settingClick(

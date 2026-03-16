@@ -260,7 +260,8 @@
           "state": {
             "type": "keyword"
           }
-        }
+        },
+        "type": "nested"
       },
       "tier": {
         "properties": {

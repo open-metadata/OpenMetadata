@@ -268,7 +268,6 @@ test.describe(
       await page.getByRole('tab', { name: 'Data Quality' }).click();
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
 
       await test.step('Update profiler setting', async () => {
         await page.click('[data-testid="profiler-setting-btn"]');

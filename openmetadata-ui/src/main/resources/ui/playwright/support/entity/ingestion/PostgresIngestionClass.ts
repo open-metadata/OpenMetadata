@@ -121,7 +121,6 @@ class PostgresIngestionClass extends ServiceBaseClass {
         if (await metadataTab.isVisible()) {
           await metadataTab.click();
         }
-        await page.waitForLoadState('networkidle');
         await page.click('[data-testid="add-new-ingestion-button"]');
         await page.waitForSelector(
           '.ant-dropdown:visible [data-menu-id*="usage"]'
@@ -143,7 +142,6 @@ class PostgresIngestionClass extends ServiceBaseClass {
         if (await metadataTab2.isVisible()) {
           await metadataTab2.click();
         }
-        await page.waitForLoadState('networkidle');
         await page
           .getByLabel('agents')
           .getByTestId('loader')

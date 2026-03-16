@@ -49,7 +49,6 @@ export const visitServiceDetailsPage = async (
   // Click on created service
   await page.click(`[data-testid="service-name-${service.name}"]`);
 
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   if (visitChildrenTab) {
@@ -57,7 +56,6 @@ export const visitServiceDetailsPage = async (
     await page.getByRole('tab').nth(1).click();
   }
 
-  await page.waitForLoadState('networkidle');
 
   if (verifyHeader) {
     const text = await page.textContent(`[data-testid="entity-header-name"]`);

@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Checkbox,
-  TableCell,
-  TableRow,
-  useTheme,
-} from '@mui/material';
+import { Checkbox, TableCell, TableRow, useTheme } from '@mui/material';
 import React, { useMemo } from 'react';
 import Loader from '../../../../components/common/Loader/Loader';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
@@ -139,6 +134,10 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
             checked={isSelected}
             data-testid={`column-checkbox-${entity.columnName}`}
             indeterminate={isIndeterminate}
+            inputProps={{
+              'aria-label': entity.columnName,
+              'data-testid': `column-checkbox-input-${entity.columnName}`,
+            }}
             onChange={handleCheckboxChange}
           />
         )}

@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,12 +13,10 @@ import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.search.opensearch.OsUtils;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import os.org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
-import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
@@ -35,32 +31,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
       long end,
       List<FormulaHolder> formulas,
       Map metricHolder,
-      boolean live,
-      String filter)
-      throws IOException {
-    return prepareSearchRequestInternal(diChart, start, end, formulas, metricHolder, live, filter);
-  }
-
-  @Override
-  public SearchRequest prepareSearchRequest(
-      @NotNull DataInsightCustomChart diChart,
-      long start,
-      long end,
-      List<FormulaHolder> formulas,
-      Map metricHolder,
       boolean live)
-      throws IOException {
-    return prepareSearchRequestInternal(diChart, start, end, formulas, metricHolder, live, null);
-  }
-
-  private SearchRequest prepareSearchRequestInternal(
-      @NotNull DataInsightCustomChart diChart,
-      long start,
-      long end,
-      List<FormulaHolder> formulas,
-      Map metricHolder,
-      boolean live,
-      String filter)
       throws IOException {
 
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
@@ -99,8 +70,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
                               .gte(JsonData.of(start))
                               .lte(JsonData.of(end))));
 
-      Query finalQuery = buildQueryWithFilter(rangeQuery, filter);
-      searchRequestBuilder.query(finalQuery);
+      searchRequestBuilder.query(rangeQuery);
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
       searchRequestBuilder.index(DataInsightSystemChartRepository.getLiveSearchIndex(null));
@@ -108,21 +78,6 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
 
     searchRequestBuilder.aggregations(aggregationsMap);
     return searchRequestBuilder.build();
-  }
-
-  private Query buildQueryWithFilter(Query rangeQuery, String filter) {
-    if (nullOrEmpty(filter) || filter.equals("{}")) {
-      return rangeQuery;
-    }
-
-    try {
-      String queryToProcess = OsUtils.parseJsonQuery(filter);
-      Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
-
-      return Query.of(q -> q.bool(BoolQuery.of(b -> b.must(rangeQuery).filter(filterQuery))));
-    } catch (Exception e) {
-      return rangeQuery;
-    }
   }
 
   public DataInsightCustomChartResultList processSearchResponse(

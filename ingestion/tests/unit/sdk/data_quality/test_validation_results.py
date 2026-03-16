@@ -22,7 +22,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sdk.data_quality.dataframes.validation_results import ValidationResult
 
 
-def create_test_case(fqn: str) -> TestCase:
+def create_test_case(fqn: str, top_dimensions: int | None = None) -> TestCase:
     """Helper to create a test case with minimal required fields."""
     return TestCase(
         name=fqn.split(".")[-1],
@@ -38,6 +38,7 @@ def create_test_case(fqn: str) -> TestCase:
             type="testSuite",
             fullyQualifiedName="test_suite",
         ),
+        topDimensions=top_dimensions,
     )
 
 
@@ -60,6 +61,12 @@ def create_test_result(
 
 class TestValidationResultMerge:
     """Test ValidationResult.merge method."""
+
+    def test_test_case_accepts_top_dimensions(self) -> None:
+        """Keep generated ingestion models aligned with the TestCase schema."""
+        test_case = create_test_case("test.case.one", top_dimensions=5)
+
+        assert test_case.topDimensions == 5
 
     def test_merge_single_result(self) -> None:
         """Test merging a single ValidationResult returns equivalent result."""

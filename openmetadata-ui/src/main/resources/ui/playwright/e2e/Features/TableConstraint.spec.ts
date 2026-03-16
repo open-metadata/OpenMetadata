@@ -60,7 +60,6 @@ test.describe('Table Constraints', {}, () => {
 
     await test.step('Add Constraints', async () => {
       await table.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

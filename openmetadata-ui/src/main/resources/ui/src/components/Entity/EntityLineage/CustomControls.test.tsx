@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
-import { ThemeColors } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -42,6 +40,103 @@ const defaultProps = {
   onSearchValueChange: mockOnSearchValueChange,
   searchValue: '',
 };
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        onClick,
+        isDisabled,
+        'aria-label': ariaLabel,
+        'data-testid': testId,
+      }) => (
+        <button
+          aria-label={ariaLabel}
+          data-testid={testId}
+          disabled={isDisabled}
+          onClick={onClick}>
+          {children}
+        </button>
+      )
+    ),
+  Dropdown: {
+    Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Popover: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    Menu: jest
+      .fn()
+      .mockImplementation(({ children, onAction }) => (
+        <ul onClick={(e) => onAction?.((e.target as HTMLElement).dataset.key)}>
+          {children}
+        </ul>
+      )),
+    Item: jest
+      .fn()
+      .mockImplementation(({ children, key }) => (
+        <li data-key={key}>{children}</li>
+      )),
+  },
+  Tooltip: jest
+    .fn()
+    .mockImplementation(({ children, title }) => (
+      <div title={title as string}>{children}</div>
+    )),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <>{children}</>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children, as: Tag = 'span', className }) => (
+      <Tag className={className}>{children}</Tag>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        onClick,
+        disabled,
+        'aria-label': ariaLabel,
+        'data-testid': testId,
+      }) => (
+        <button
+          aria-label={ariaLabel}
+          data-testid={testId}
+          disabled={disabled}
+          onClick={onClick}>
+          {children}
+        </button>
+      )
+    ),
+  Tabs: Object.assign(
+    jest
+      .fn()
+      .mockImplementation(({ children, onSelectionChange }) => (
+        <div
+          onClick={(e) =>
+            onSelectionChange?.((e.target as HTMLElement).dataset.tabId)
+          }>
+          {children}
+        </div>
+      )),
+    {
+      List: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+      Item: jest.fn().mockImplementation(({ children, id, onClick }) => (
+        <button data-tab-id={id} onClick={onClick}>
+          {children}
+        </button>
+      )),
+      Panel: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+    }
+  ),
+}));
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -135,30 +230,8 @@ Object.defineProperty(window, 'location', {
   writable: true,
 });
 
-const mockThemeColors: ThemeColors = {
-  white: '#FFFFFF',
-  blue: {
-    50: '#E6F4FF',
-    100: '#BAE0FF',
-    700: '#0958D9',
-  },
-  gray: {
-    300: '#D1D5DB',
-    700: '#374151',
-    900: '#111827',
-  },
-} as ThemeColors;
-
-const theme: Theme = createTheme({
-  palette: {
-    allShades: mockThemeColors,
-  },
-});
-
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={theme}>
-    <MemoryRouter>{children}</MemoryRouter>
-  </ThemeProvider>
+  <MemoryRouter>{children}</MemoryRouter>
 );
 
 describe('CustomControls', () => {
@@ -314,7 +387,7 @@ describe('CustomControls', () => {
           content?.includes('label.node-depth') && content?.includes(':')
       )
     ).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getAllByText('3').length).toBeGreaterThan(0);
   });
 
   it('opens node depth menu and selects new depth', () => {

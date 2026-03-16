@@ -798,7 +798,6 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         false
       );
       await page.getByTestId(databaseName).click();
-      await page.waitForLoadState('networkidle');
 
       // Export from database level
       await performBulkDownload(page, databaseName);
@@ -910,9 +909,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         false
       );
       await page.getByTestId(databaseName).click();
-      await page.waitForLoadState('networkidle');
       await page.getByTestId(schemaName).click();
-      await page.waitForLoadState('networkidle');
 
       // Export from schema level
       await performBulkDownload(page, schemaName);

@@ -148,6 +148,7 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import {
   ConfigData,
   ExtraInfoType,
@@ -163,10 +164,9 @@ import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
+import { getSearchIndexFromService } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
-import { ServiceType } from '../generated/entity/services/serviceType';
-import { getSearchIndexFromService } from './ServiceUtils';
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [

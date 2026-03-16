@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SwitchProps } from '@mui/material';
+package org.openmetadata.service.config;
 
-export interface MUISwitchProps extends Omit<SwitchProps, 'onChange'> {
-  checked?: boolean;
-  onChange?: (checked: boolean) => void;
-  label?: string;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Min;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class QoSConfiguration {
+
+  @JsonProperty private boolean enabled = false;
+
+  @JsonProperty
+  @Min(1)
+  private int maxRequestCount = 100;
+
+  @JsonProperty
+  @Min(1)
+  private int maxSuspendedRequestCount = 1000;
+
+  @JsonProperty
+  @Min(1)
+  private int maxSuspendSeconds = 30;
 }

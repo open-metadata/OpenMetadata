@@ -117,7 +117,6 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
     await redirectToHomePage(page);
 
     await table.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await addOwner({
@@ -143,7 +142,6 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
       await redirectToHomePage(currentPage);
 
       await table.visitEntityPage(currentPage);
-      await currentPage.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });

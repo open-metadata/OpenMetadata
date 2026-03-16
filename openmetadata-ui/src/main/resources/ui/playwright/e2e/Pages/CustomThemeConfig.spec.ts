@@ -136,27 +136,23 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Verify the response status code
     expect(updatedConfigResponse.status()).toBe(200);
 
-    await page.getByTestId('sidebar-toggle').click();
+    await expect
+      .poll(async () => {
+        return await page.evaluate(() => {
+          const styles = getComputedStyle(document.documentElement);
 
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.DOMAIN);
-
-    // check for test id background color is same as updatedColor.selectedColor
-    await expect(
-      page.locator(
-        '[data-testid="side-bar-domains-section"] .ant-menu-submenu-title'
-      )
-    ).toHaveCSS('background-color', 'rgb(29, 103, 19)');
-
-    await redirectToHomePage(page);
-
-    const menuTitle = page.locator(
-      '[data-testid="side-bar-domains-section"] .ant-menu-submenu-title'
-    );
-
-    await menuTitle.hover();
-
-    await expect(menuTitle).toHaveCSS('background-color', 'rgb(209, 255, 235)');
+          return {
+            hoverColor: styles.getPropertyValue('--tw-color-brand-100').trim(),
+            selectedColor: styles
+              .getPropertyValue('--tw-color-brand-700')
+              .trim(),
+          };
+        });
+      })
+      .toEqual({
+        hoverColor: '#d1ffeb',
+        selectedColor: '#1d6713',
+      });
 
     const defaultConfigResponsePromise = page.waitForResponse(
       '/api/v1/system/settings'

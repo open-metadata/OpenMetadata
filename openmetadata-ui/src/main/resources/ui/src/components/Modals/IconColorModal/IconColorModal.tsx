@@ -22,11 +22,11 @@ import {
 import { Form } from 'antd';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../common/Loader/Loader';
 import { Style } from '../../../generated/type/schema';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
 import { MUIColorPicker } from '../../common/ColorPicker';
 import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
+import Loader from '../../common/Loader/Loader';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 
 const IconColorModal: FC<StyleModalProps> = ({

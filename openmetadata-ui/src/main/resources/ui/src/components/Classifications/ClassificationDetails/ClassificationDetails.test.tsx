@@ -639,10 +639,7 @@ describe('ClassificationDetails', () => {
     await act(async () => {
       render(
         <MemoryRouter>
-          <ClassificationDetails
-            {...defaultProps}
-            isClassificationLoading
-          />
+          <ClassificationDetails {...defaultProps} isClassificationLoading />
         </MemoryRouter>
       );
     });

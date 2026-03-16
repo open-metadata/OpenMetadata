@@ -143,7 +143,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       await sidebarClick(page, SidebarItem.EXPLORE);
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await searchAndExpectEntityVisible(page, domainTable);
       await searchAndExpectEntityNotVisible(page, nonDomainTable);
@@ -215,7 +214,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       await page.getByTestId('assets').click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.locator(
@@ -286,7 +284,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await parentDomainNode.locator('.ant-tree-switcher').click();
 
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       const tagSelector6 = page.getByTestId(
         `tag-${subDomain.responseData.fullyQualifiedName}`
@@ -294,7 +291,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await tagSelector6.waitFor({ state: 'visible' });
       await tagSelector6.click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await searchAndExpectEntityVisible(page, subDomainTable);
       await searchAndExpectEntityVisible(page, subSubDomainTable);
@@ -453,15 +449,12 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await assignDomainToEntity(apiContext, domainTable2, domain);
 
       await domainTable1.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
       await assignTier(page, 'Tier1', domainTable1.endpoint);
 
       await domainTable2.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
       await assignTier(page, 'Tier1', domainTable2.endpoint);
 
       await nonDomainTable.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
       await assignTier(page, 'Tier1', nonDomainTable.endpoint);
 
       await redirectToExplorePage(page);
@@ -480,7 +473,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('update-btn').click();
       await quickFilterApplyRes;
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       // Verify all 3 tables are visible with tier filter applied
       await searchAndExpectEntityVisible(page, domainTable1);
@@ -496,13 +488,13 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await searchAndExpectEntityNotVisible(page, nonDomainTable);
 
       // Step 3: Clear domain filter by selecting "All Domains"
+      await waitForAllLoadersToDisappear(page);
       await page.getByTestId('domain-dropdown').click();
       await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
         state: 'visible',
       });
       await page.getByTestId('all-domains-selector').click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await verifyActiveDomainIsDefault(page);
 
@@ -553,7 +545,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       await page.getByTestId('assets').click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.locator(
@@ -626,7 +617,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       // Go to Data Products tab
       await page.getByTestId('data_products').click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       // Verify the Data Products count is 2 (domainA + subDomainA)
       const dataProductsCount = await page
@@ -753,7 +743,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('search-input')
         .fill(searchTerm);
-      await page.waitForLoadState('networkidle');
       await page.getByRole('menuitem', { name: tagPattern }).click();
       const filterRes = page.waitForResponse(
         '/api/v1/search/query?*index=all*'
@@ -785,7 +774,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     // Helper to clear filters
     const clearFilters = async () => {
       await page.locator('.text-primary').filter({ hasText: /Clear/i }).click();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     };
 
@@ -795,10 +783,8 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       name: string;
     }) => {
       await page.getByTestId('subdomains').click();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId(subDomainData.name).click();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('assets').click();
       await waitForAllLoadersToDisappear(page);
@@ -939,7 +925,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
     // === NAVIGATE TO DOMAIN PAGE ===
     await sidebarClick(page, SidebarItem.DOMAIN);
-    await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page);
     await selectDomain(page, rootDomain.responseData);
 
@@ -949,7 +934,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     // Should NOT see: rootTable, subDomain2Table
     // ==========================================
     await navigateToSubDomain(page, subDomain1.data);
-    await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page);
     await page.getByTestId('assets').click();
     await waitForAllLoadersToDisappear(page);
@@ -1151,11 +1135,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     // Should NOT see: anything from SubDomain1 tree or RootDomain
     // ==========================================
     await sidebarClick(page, SidebarItem.DOMAIN);
-    await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page);
     await selectDomain(page, rootDomain.responseData);
     await navigateToSubDomain(page, subDomain2.data);
-    await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page);
     await page.getByTestId('assets').click();
     await waitForAllLoadersToDisappear(page);
@@ -1211,7 +1193,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     // Should see: ALL tables (root + all children)
     // ==========================================
     await sidebarClick(page, SidebarItem.DOMAIN);
-    await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page);
     await selectDomain(page, rootDomain.responseData);
     await page.getByTestId('assets').click();

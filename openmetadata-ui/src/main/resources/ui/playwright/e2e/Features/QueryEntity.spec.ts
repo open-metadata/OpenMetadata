@@ -231,9 +231,9 @@ test('Query Entity', async ({ page }) => {
       key: 'Owner',
       page,
     });
-    const queryCards = await page.$$('[data-testid="query-card"]');
-
-    expect(queryCards.length).toBeGreaterThan(0);
+    await expect(
+      page.locator('[data-testid="query-card"]').first()
+    ).toBeVisible();
 
     await queryFilters({
       filter: 'None',
@@ -253,9 +253,9 @@ test('Query Entity', async ({ page }) => {
       page,
     });
 
-    const updatedQueryCards = await page.$$('[data-testid="query-card"]');
-
-    expect(updatedQueryCards.length).toBeGreaterThan(0);
+    await expect(
+      page.locator('[data-testid="query-card"]').first()
+    ).toBeVisible();
   });
 
   await test.step('Verify vote for query', async () => {
@@ -275,7 +275,6 @@ test('Query Entity', async ({ page }) => {
     expect(upVoteResponse.status()).toBe(200);
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -293,7 +292,6 @@ test('Query Entity', async ({ page }) => {
       .click();
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

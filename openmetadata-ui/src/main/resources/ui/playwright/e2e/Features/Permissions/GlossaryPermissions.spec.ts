@@ -17,6 +17,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   assignRoleToUser,
   cleanupPermissions,
@@ -101,7 +102,6 @@ test.describe('Glossary Permissions', () => {
 
     const manageButtonElements = ['delete-button', 'rename-button'];
 
-    await testUserPage.waitForLoadState('networkidle');
 
     for (const testId of directElements) {
       let element;
@@ -162,7 +162,6 @@ test.describe('Glossary Permissions', () => {
 
     const manageButtonElements = ['delete-button', 'rename-button'];
 
-    await testUserPage.waitForLoadState('networkidle');
 
     for (const testId of directElements) {
       let element;
@@ -205,7 +204,6 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
 
     // Edit description button should be visible
     const editDescBtn = testUserPage.getByTestId('edit-description');
@@ -227,7 +225,6 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
 
     // Add owner button should be visible
     const addOwner = testUserPage.getByTestId('add-owner');
@@ -254,7 +251,6 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
 
     // Add tag button should be visible
     const addTag = testUserPage
@@ -283,7 +279,6 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
 
     // Manage button should be visible with delete option
     const manageButton = testUserPage.getByTestId('manage-button');
@@ -316,7 +311,6 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
 
     // Add glossary button should be visible (create permission)
     const addGlossaryBtn = testUserPage.getByTestId('add-glossary');
@@ -348,7 +342,6 @@ test.describe('Glossary Permissions', () => {
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
 
     // User should be able to view the glossary page
     const glossaryHeader = testUserPage.getByTestId(
@@ -407,19 +400,17 @@ test.describe('Glossary Permissions', () => {
     ]);
 
     // Login as test user and verify permissions inherited from team
-    await redirectToHomePage(testUserPage);
-    await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
-    await glossary.visitEntityPage(testUserPage);
+    await expect(async () => {
+      await glossary.visitEntityPage(testUserPage);
+      await waitForAllLoadersToDisappear(testUserPage);
 
-    await testUserPage.waitForLoadState('networkidle');
+      const glossaryHeader = testUserPage.getByTestId(
+        'entity-header-display-name'
+      );
 
-    // Verify user can access the glossary page (team membership works)
-    const glossaryHeader = testUserPage.getByTestId(
-      'entity-header-display-name'
-    );
-
-    await expect(glossaryHeader).toBeVisible({ timeout: 10000 });
-    await expect(glossaryHeader).toContainText(glossary.data.displayName);
+      await expect(glossaryHeader).toBeVisible({ timeout: 5_000 });
+      await expect(glossaryHeader).toContainText(glossary.data.displayName);
+    }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 
     // Clean up
     await cleanupPermissions(apiContext);
