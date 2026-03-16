@@ -30,6 +30,7 @@ from sqlalchemy import (
     literal,
     select,
 )
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
 from sqlalchemy.types import String
 
@@ -541,6 +542,59 @@ class MSSQLTableMetricComputer(BaseTableMetricComputer):
             .outerjoin(
                 size_cte,
                 table_meta.c.object_id == size_cte.c.object_id,
+            )
+            .where(
+                table_meta.c.schema_name == self.schema_name,
+                table_meta.c.table_name == self.table_name,
+            )
+        )
+
+        # sys.dm_db_partition_stats provides row count and size for standard MSSQL.
+        # Microsoft Fabric blocks this DMV (error 15871), so Fabric connectors use
+        # sys.partitions instead. This try/except ensures compatibility if the DMV
+        # is not available.
+        try:
+            res = self.runner._session.execute(query).first()
+        except ProgrammingError as err:
+            logger.debug(
+                "sys.dm_db_partition_stats not available, falling back to sys.partitions: %s",
+                err,
+            )
+            return self._compute_with_partitions(table_meta)
+
+        if not res:
+            return None
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
+            return super().compute()
+        return res
+
+    def _compute_with_partitions(self, table_meta):
+        """Fallback using sys.partitions for engines where dm_db_partition_stats is unavailable."""
+        row_count_cte = cte(
+            self._build_query(
+                [
+                    Column("object_id"),
+                    func.sum(Column("rows")).cast(BigInteger).label("row_count"),
+                ],
+                self._build_table("partitions", "sys"),
+                [Column("index_id").in_([0, 1])],
+            ).group_by(Column("object_id"))
+        )
+
+        columns = [
+            row_count_cte.c.row_count.label(ROW_COUNT),
+            table_meta.c.create_date.label(CREATE_DATETIME),
+            *self._get_col_names_and_count(),
+        ]
+
+        query = (
+            select(*columns)
+            .select_from(table_meta)
+            .join(
+                row_count_cte,
+                table_meta.c.object_id == row_count_cte.c.object_id,
             )
             .where(
                 table_meta.c.schema_name == self.schema_name,
