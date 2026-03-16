@@ -187,8 +187,7 @@ const AppRunsHistory = forwardRef(
               disabled={showLogAction(record)}
               size="small"
               type="link"
-              onClick={() => handleRowExpandable(record.id)}
-            >
+              onClick={() => handleRowExpandable(record.id)}>
               {t('label.log-plural')}
             </Button>
             <Button
@@ -196,8 +195,7 @@ const AppRunsHistory = forwardRef(
               data-testid="app-historical-config"
               size="small"
               type="link"
-              onClick={() => showAppRunConfig(record)}
-            >
+              onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
             {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
@@ -209,8 +207,7 @@ const AppRunsHistory = forwardRef(
                   data-testid="stop-button"
                   size="small"
                   type="link"
-                  onClick={() => setIsStopModalOpen(true)}
-                >
+                  onClick={() => setIsStopModalOpen(true)}>
                   {t('label.stop')}
                 </Button>
               )}
@@ -478,8 +475,7 @@ const AppRunsHistory = forwardRef(
               <Button
                 data-testid="app-run-config-close"
                 type="primary"
-                onClick={() => setShowConfigModal(false)}
-              >
+                onClick={() => setShowConfigModal(false)}>
                 {t('label.close')}
               </Button>
             </Space>
@@ -493,8 +489,7 @@ const AppRunsHistory = forwardRef(
               })}
             </Typography.Text>
           }
-          width={800}
-        >
+          width={800}>
           <FormBuilder
             capitalizeOptionLabel
             hideCancelButton

@@ -285,7 +285,12 @@ public interface SearchIndex {
           }
 
           columnIndex++;
-        } catch (EntityNotFoundException ignored) {
+        } catch (EntityNotFoundException ex) {
+          LOG.warn(
+              "Related table [{}] not found for upstream entity relationship of [{}]: {}",
+              relatedEntityFQN,
+              entity.getFullyQualifiedName(),
+              ex.getMessage());
         }
       }
     }
