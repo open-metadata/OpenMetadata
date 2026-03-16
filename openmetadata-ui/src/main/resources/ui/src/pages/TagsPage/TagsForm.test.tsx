@@ -46,6 +46,28 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children: React.ReactNode;
       className?: string;
     }) => <button className={className}>{children}</button>,
+    Toggle: ({
+      id,
+      isSelected,
+      onChange,
+      isDisabled,
+      className,
+    }: {
+      id?: string;
+      isSelected?: boolean;
+      onChange?: (val: boolean) => void;
+      isDisabled?: boolean;
+      className?: string;
+    }) => (
+      <button
+        aria-checked={isSelected}
+        className={className}
+        disabled={isDisabled}
+        id={id}
+        role="switch"
+        onClick={() => onChange?.(!isSelected)}
+      />
+    ),
     Grid: GridComponent,
   };
 });
