@@ -64,6 +64,11 @@ export interface EsLineageData {
      */
     sqlQuery?: string;
     /**
+     * Lineage path through temporary/intermediate tables. Each element represents a hop with
+     * fromEntity and toEntity fields.
+     */
+    tempLineageTables?: TempLineageTable[];
+    /**
      * To Entity.
      */
     toEntity?: RelationshipRef;
@@ -121,5 +126,20 @@ export interface RelationshipRef {
      * Type of the entity.
      */
     type?: string;
+    [property: string]: any;
+}
+
+/**
+ * A single hop in a temporary table lineage path.
+ */
+export interface TempLineageTable {
+    /**
+     * Source entity or table name for this hop.
+     */
+    fromEntity: string;
+    /**
+     * Target entity or table name for this hop.
+     */
+    toEntity: string;
     [property: string]: any;
 }

@@ -6,6 +6,21 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.type.EntityLineage",
   "definitions": {
+    "tempLineageTable": {
+      "description": "A single hop in a temporary table lineage path.",
+      "type": "object",
+      "properties": {
+        "fromEntity": {
+          "description": "Source entity or table name for this hop.",
+          "type": "string"
+        },
+        "toEntity": {
+          "description": "Target entity or table name for this hop.",
+          "type": "string"
+        }
+      },
+      "required": ["fromEntity", "toEntity"]
+    },
     "columnLineage": {
       "type" : "object",
       "properties": {
@@ -74,6 +89,14 @@
         "assetEdges": {
           "description": "Asset count in case of child assets lineage.",
           "type": "integer",
+          "default": null
+        },
+        "tempLineageTables": {
+          "description": "Lineage path through temporary/intermediate tables. Each element represents a hop with fromEntity and toEntity fields.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tempLineageTable"
+          },
           "default": null
         }
       }
