@@ -356,13 +356,16 @@ describe('tagFormFields', () => {
         name: 'disabled',
         required: false,
         label: 'label.disable-tag',
+        muiLabel: 'label.disable-tag',
         id: 'root/disabled',
-        type: FieldTypes.UT_SWITCH,
+        type: FieldTypes.SWITCH_MUI,
         formItemLayout: FormItemLayout.HORIZONTAL,
         props: {
-          'data-testid': 'disabled',
+          inputProps: {
+            'data-testid': 'disabled',
+          },
           initialValue: false,
-          isDisabled: false,
+          disabled: false,
         },
       });
     });
@@ -382,7 +385,7 @@ describe('tagFormFields', () => {
         disabled: true,
       });
 
-      expect(result.props?.isDisabled).toBe(true);
+      expect(result.props?.disabled).toBe(true);
     });
 
     it('should have horizontal form item layout', () => {
@@ -405,12 +408,13 @@ describe('tagFormFields', () => {
       expect(result).toEqual({
         name: 'mutuallyExclusive',
         label: 'label.mutually-exclusive',
-        type: FieldTypes.UT_SWITCH,
+        muiLabel: 'label.mutually-exclusive',
+        type: FieldTypes.SWITCH_MUI,
         required: false,
         props: {
           id: 'tags_mutuallyExclusive',
           'data-testid': 'mutually-exclusive-button',
-          isDisabled: false,
+          disabled: false,
           className: 'mutually-exclusive-switch',
         },
         helperTextType: HelperTextType.ALERT,
@@ -434,7 +438,7 @@ describe('tagFormFields', () => {
         showHelperText: false,
       });
 
-      expect(result.props?.isDisabled).toBe(true);
+      expect(result.props?.disabled).toBe(true);
     });
 
     it('should have ALERT helper text type', () => {
