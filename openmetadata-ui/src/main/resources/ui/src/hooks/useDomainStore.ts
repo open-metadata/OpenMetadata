@@ -16,55 +16,19 @@ import {
   DEFAULT_DOMAIN_VALUE,
   DOMAIN_STORAGE_KEY,
 } from '../constants/constants';
-import { Domain } from '../generated/entity/domains/domain';
 import { EntityReference } from '../generated/entity/type';
 import { DomainStore } from '../interface/store.interface';
-import { getDomainOptions } from '../utils/DomainUtils';
-import { useApplicationStore } from './useApplicationStore';
 
 export const useDomainStore = create<DomainStore>()(
   persist(
     (set) => ({
-      domains: [],
       userDomains: [],
-      domainLoading: false,
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
       activeDomainEntityRef: undefined,
-      domainOptions: [],
-      updateDomains: (data: Domain[]) => {
-        const currentUser = useApplicationStore.getState().currentUser;
-        const { isAdmin = false, domains = [] } = currentUser ?? {};
-        const userDomainsObj = isAdmin ? [] : domains;
-        const userDomainFqn =
-          userDomainsObj.map((item) => item.fullyQualifiedName) ?? [];
-
-        let filteredDomains: Domain[] = data;
-        if (domains.length > 0 && !isAdmin) {
-          filteredDomains = data.filter((domain) =>
-            userDomainFqn.includes(domain.fullyQualifiedName)
-          );
-        }
-
-        set({
-          domains: filteredDomains,
-          domainOptions: getDomainOptions(
-            isAdmin ? filteredDomains : userDomainsObj
-          ),
-        });
-      },
       updateActiveDomain: (domain?: EntityReference) => {
         set({
           activeDomain: domain?.fullyQualifiedName ?? DEFAULT_DOMAIN_VALUE,
           activeDomainEntityRef: domain,
-        });
-      },
-      updateDomainLoading: (loading: boolean) => {
-        set({ domainLoading: loading });
-      },
-      setDomains: (domainsArr: Domain[]) => {
-        set({
-          domains: domainsArr,
-          domainOptions: getDomainOptions(domainsArr),
         });
       },
       setUserDomains: (userDomainsArr: EntityReference[]) => {
