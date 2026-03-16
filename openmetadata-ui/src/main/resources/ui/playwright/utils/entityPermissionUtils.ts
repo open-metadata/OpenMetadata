@@ -33,6 +33,7 @@ import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage } from './common';
 import { addCustomPropertiesForEntity } from './customProperty';
 import { settingClick, SettingOptionsType } from './sidebar';
+import { waitForAllLoadersToDisappear } from './entity';
 
 // All operations across all entities
 export const ALL_OPERATIONS = [
@@ -389,9 +390,7 @@ export const testPipelineSpecificOperations = async (
 
   // Test Edit Lineage for Pipeline
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
-  await testUserPage.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
@@ -446,9 +445,7 @@ export const testDatabaseSpecificOperations = async (
     testUserPage.getByTestId('database-databaseSchemas')
   ).toBeVisible();
 
-  await testUserPage.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(testUserPage);
 
   await checkElementVisibility(
     testUserPage,
@@ -467,9 +464,7 @@ export const testDashboardDataModelSpecificOperations = async (
 
   // Test Edit Lineage for Dashboard Data Model
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
-  await testUserPage.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();

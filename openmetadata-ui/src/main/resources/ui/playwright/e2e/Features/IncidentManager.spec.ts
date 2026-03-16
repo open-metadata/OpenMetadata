@@ -158,9 +158,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await redirectToHomePage(adminPage);
 
       await table1.visitEntityPage(adminPage);
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(adminPage);
 
       await addOwner({
         page: adminPage,
@@ -217,23 +215,19 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       );
       await page.click('[data-testid="incident"]');
       await incidentDetails;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
-      await page.waitForSelector('.ant-skeleton-content', {
+      await page.locator('.ant-skeleton-content').first().waitFor({
         state: 'detached',
       });
 
       await page.locator('role=button[name="down"]').scrollIntoViewIfNeeded();
-      await page.waitForSelector('role=button[name="down"]', {
+      await page.locator('role=button[name="down"]').waitFor({
         state: 'visible',
       });
 
       await page.getByRole('button', { name: 'down' }).click();
-      // there is no API call to wait for here, so adding a small timeout
-      await page.waitForTimeout(1000);
-      await page.waitForSelector('role=menuitem[name="Reassign"]', {
+      await page.locator('role=menuitem[name="Reassign"]').waitFor({
         state: 'visible',
       });
       await page.getByRole('menuitem', { name: 'Reassign' }).click();
@@ -404,7 +398,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       );
       await page.click('[data-testid="incident"]');
       await page.click('[data-testid="closed-task"]');
-      await page.waitForSelector('[data-testid="task-feed-card"]');
+      await page.getByTestId('task-feed-card').waitFor();
 
       await expect(page.locator('[data-testid="task-tab"]')).toContainText(
         'Resolved the Task.'

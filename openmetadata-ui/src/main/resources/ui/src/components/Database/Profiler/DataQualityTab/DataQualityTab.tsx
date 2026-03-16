@@ -174,7 +174,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.status'),
         dataIndex: 'testCaseResult',
         key: 'status',
-        width: 80,
+        width: 120,
         render: (result: TestCaseResult, record) => {
           return result?.testCaseStatus ? (
             <StatusBadge

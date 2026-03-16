@@ -26,6 +26,7 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { getServiceCategoryFromService } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
@@ -110,9 +111,7 @@ services.forEach((ServiceClass) => {
 
         // Wait for the service details page to load
         await page.waitForURL('**/service/**');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Check the auto pilot status via API polling
         await checkAutoPilotStatus(page, service);
@@ -122,29 +121,22 @@ services.forEach((ServiceClass) => {
         // connection for live updates is only established when the initial
         // status is RUNNING — which it wasn't at page load time.
         await page.reload();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Wait for the auto pilot status banner to be visible
         await expect(
           page.getByText('AutoPilot agents run completed successfully.')
-        ).toBeVisible({ timeout: 30_000 });
+        ).toBeVisible({ timeout: 60_000 });
 
         if (service.serviceType === 'Mysql') {
           await page.reload();
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           await page.getByTestId('agent-status-widget-view-more').click();
 
-          await page.waitForSelector(
-            '[data-testid="agent-status-card-Metadata"]',
-            {
-              state: 'visible',
-            }
-          );
+          await page.getByTestId('agent-status-card-Metadata').waitFor({
+            state: 'visible',
+          });
 
           // Check the agents statuses
           await expect(

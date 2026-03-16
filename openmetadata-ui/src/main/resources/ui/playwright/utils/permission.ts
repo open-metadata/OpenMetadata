@@ -20,6 +20,7 @@ import { PolicyClass } from '../support/access-control/PoliciesClass';
 import { RolesClass } from '../support/access-control/RolesClass';
 import { UserClass } from '../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 
 let policy: PolicyClass;
 let role: RolesClass;
@@ -189,32 +190,32 @@ export const validateViewPermissions = async (
   }
 
   await page.click('[data-testid="sample_data"]');
-  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await checkNoPermissionPlaceholder(
     page,
     /Sample Data/,
     permission?.viewSampleData
   );
   await page.click('[data-testid="table_queries"]');
-  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await checkNoPermissionPlaceholder(page, /Queries/, permission?.viewQueries);
 
   await page.click('[data-testid="profiler"]');
-  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByRole('tab', { name: 'Data Quality' }).click();
-  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await checkNoPermissionPlaceholder(
     page,
     /Data Observability/,
     permission?.viewTests
   );
   await page.click('[data-testid="lineage"]');
-  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
 
   await page.click('[data-testid="custom_properties"]');
-  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await checkNoPermissionPlaceholder(page, /Custom Properties/);
 };
 

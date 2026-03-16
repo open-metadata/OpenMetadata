@@ -239,8 +239,7 @@ test.describe('Tag Page with Admin Roles', () => {
           classification.responseData.name
       )}`
     );
-    await adminPage.waitForSelector(
-      '[data-testid="tags-container"] [data-testid="loader"]',
+    await adminPage.getByTestId('tags-container').getByTestId('loader').first().waitFor(
       {
         state: 'detached',
       }
@@ -271,8 +270,7 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.goto(
       `/tag/${encodeURIComponent(createdTagData.fullyQualifiedName ?? NEW_TAG.name)}`
     );
-    await adminPage.waitForSelector(
-      '[data-testid="tags-container"] [data-testid="loader"]',
+    await adminPage.getByTestId('tags-container').getByTestId('loader').first().waitFor(
       {
         state: 'detached',
       }
@@ -369,8 +367,7 @@ test.describe('Tag Page with Admin Roles', () => {
     const openClassification = async () => {
       await redirectToHomePage(adminPage);
       await sidebarClick(adminPage, SidebarItem.TAGS);
-      await adminPage.waitForSelector(
-        '[data-testid="tags-container"] .table-container [data-testid="loader"]',
+      await adminPage.locator('[data-testid="tags-container"] .table-container [data-testid="loader"]').waitFor(
         { state: 'detached' }
       );
 
@@ -414,8 +411,7 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload();
-      await adminPage.waitForSelector(
-        '[data-testid="tags-container"] .table-container [data-testid="loader"]',
+      await adminPage.locator('[data-testid="tags-container"] .table-container [data-testid="loader"]').waitFor(
         { state: 'detached' }
       );
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
@@ -438,8 +434,7 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload();
-      await adminPage.waitForSelector(
-        '[data-testid="tags-container"] .table-container [data-testid="loader"]',
+      await adminPage.locator('[data-testid="tags-container"] .table-container [data-testid="loader"]').waitFor(
         { state: 'detached' }
       );
       await expect(tagToggle).toBeVisible({ timeout: 60000 });

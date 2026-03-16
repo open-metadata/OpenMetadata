@@ -26,6 +26,7 @@ import {
   removePolicyFromRole,
 } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const policies = {
   dataConsumerPolicy: 'Data Consumer Policy',
@@ -550,9 +551,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await page.reload();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
     await expect(page.locator('[data-testid="add-role"]')).toBeVisible();
 
     await getElementWithPagination(page, roleLocator);

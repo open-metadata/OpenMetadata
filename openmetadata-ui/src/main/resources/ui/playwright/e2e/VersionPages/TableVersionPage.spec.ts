@@ -14,6 +14,7 @@ import { expect, test } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
 import { columnPaginationTable } from '../../utils/table';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -25,18 +26,16 @@ test.describe('Table Version Page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       '/table/sample_data.ecommerce_db.shopify.performance_test_table',
       { waitUntil: 'domcontentloaded' }
     );
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
     await expect(page.getByTestId('version-button')).toHaveText(/0\.1/, {
       timeout: 30000,
     });
     await page.getByTestId('version-button').click();
     await expect(page.locator('.version-data')).toBeVisible({ timeout: 30000 });
-    await page.waitForSelector(
-      '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
+    await page
+      .locator('#KnowledgePanel\\.TableSchema')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
     await expect(page.getByTestId('entity-table')).toBeVisible();
 
     await test.step('Pagination Should Work', async () => {
@@ -46,12 +45,10 @@ test.describe('Table Version Page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     await test.step('Search Should Work', async () => {
       await page.getByTestId('searchbar').fill('test_col_0250');
 
-      await page.waitForSelector(
-        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+      await page
+        .locator('#KnowledgePanel\\.TableSchema')
+        .getByTestId('loader')
+        .waitFor({ state: 'detached' });
 
       await expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(
         2

@@ -21,7 +21,9 @@ import {
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPage,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -343,9 +345,7 @@ export class TableClass extends EntityClass {
 
     if (canUseDirectNavigation && tableFqn.length > 0) {
       await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       return;
     }

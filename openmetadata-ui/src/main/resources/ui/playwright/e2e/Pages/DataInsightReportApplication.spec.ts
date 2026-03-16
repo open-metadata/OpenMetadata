@@ -123,7 +123,7 @@ test.describe.serial('Data Insight Report Application', () => {
 
     const { apiContext } = await getApiContext(page);
 
-    expect
+    await expect
       .poll(
         async () => {
           const response = await apiContext

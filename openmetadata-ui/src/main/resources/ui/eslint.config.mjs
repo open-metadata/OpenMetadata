@@ -16,6 +16,7 @@ import i18next from 'eslint-plugin-i18next';
 import jest from 'eslint-plugin-jest';
 import jestFormatting from 'eslint-plugin-jest-formatting';
 import jsoncPlugin from 'eslint-plugin-jsonc';
+import playwright from 'eslint-plugin-playwright';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
@@ -237,20 +238,33 @@ export default [
   // Playwright tests
   {
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
+    plugins: {
+      playwright,
+    },
     rules: {
-      'jest/expect-expect': 'off',
-      'jest/valid-expect-in-promise': 'off',
-      'jest/valid-expect': 'off',
-      'jest/valid-describe': 'off',
-      'jest/consistent-test-it': 'off',
-      'jest/no-done-callback': 'off',
-      'jest/no-standalone-expect': 'off',
-      'jest/no-conditional-expect': 'off',
+      // TypeScript/base rule overrides for Playwright files
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-duplicate-enum-values': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-expressions': 'warn',
-      'react-hooks/rules-of-hooks': 'off',
+      'prefer-const': 'off',
+
+      // Playwright rules — blocking (error): zero existing violations, prevent regressions
+      'playwright/no-networkidle': 'error',
+      'playwright/no-page-pause': 'error',
+      'playwright/no-focused-test': 'error',
+
+      // Playwright rules — aspirational (warn): existing violations to fix over time
+      'playwright/missing-playwright-await': 'warn',
+      'playwright/valid-expect': 'warn',
+      'playwright/no-wait-for-timeout': 'warn',
+      'playwright/no-force-option': 'warn',
+      'playwright/no-element-handle': 'warn',
+      'playwright/no-eval': 'warn',
+      'playwright/no-skipped-test': 'warn',
+      'playwright/prefer-web-first-assertions': 'warn',
+      'playwright/no-useless-await': 'warn',
+      'playwright/no-wait-for-selector': 'warn',
     },
   },
 

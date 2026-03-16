@@ -165,7 +165,7 @@ test.describe('Login flow should work properly', () => {
       await redirectToHomePage(page1);
       await redirectToHomePage(page2);
 
-      // Need to wait until refresh happens and update the storage
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
       await page1.waitForTimeout(3 * 60 * 1000);
 
       await redirectToHomePage(page1);
@@ -200,7 +200,7 @@ test.describe('Login flow should work properly', () => {
 
     await expect(page1.getByTestId('nav-user-name')).toContainText(/admin/i);
 
-    // Wait for token expiry, kept 61 instead 60 so that ensure refresh API done withing timeframe
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
     await page2.waitForTimeout(2 * 61 * 1000);
 
     await redirectToHomePage(page2);
