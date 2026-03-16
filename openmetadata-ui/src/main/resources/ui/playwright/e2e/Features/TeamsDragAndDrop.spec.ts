@@ -214,9 +214,7 @@ test.describe(
         await page.getByRole('link', { name: teamName }).click();
         await getTeamResponse;
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await hardDeleteTeam(page);
 

@@ -71,7 +71,7 @@ export class SchemaPageObject extends RightPanelBase {
    */
   async searchFor(text: string): Promise<void> {
     await this.schemaSearchBar.fill(text);
-    // Brief pause to let debounced filter settle
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for search debounce to trigger
     await this.page.waitForTimeout(300);
   }
 
@@ -80,6 +80,7 @@ export class SchemaPageObject extends RightPanelBase {
    */
   async clearSearch(): Promise<void> {
     await this.schemaSearchBar.clear();
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for search debounce to trigger
     await this.page.waitForTimeout(300);
   }
 

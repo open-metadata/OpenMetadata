@@ -88,7 +88,18 @@ Reference the **Common Test Patterns** section for:
 
 ---
 
-### Step 4: Validate Against Handbook Checklist
+### Step 4: Run ESLint Check
+
+Before returning the generated test, run the Playwright linter to catch anti-patterns automatically:
+
+```bash
+cd openmetadata-ui/src/main/resources/ui
+yarn lint:playwright
+```
+
+Error-level rules (`no-networkidle`, `no-page-pause`, `no-focused-test`) will block CI. Fix any errors before finalizing. See the handbook's **ESLint Enforcement** section for the full rule reference.
+
+### Step 5: Validate Against Handbook Checklist
 
 Before returning the generated test, verify ALL items from the handbook's **Validation Checklist**:
 
@@ -96,6 +107,7 @@ Before returning the generated test, verify ALL items from the handbook's **Vali
 - ✅ Anti-Flakiness (no waitForTimeout, no networkidle, no force: true, no positional selectors, no stored :visible locators)
 - ✅ API & Network (waitForResponse before actions, status code validation)
 - ✅ Waits & Assertions (waitForAllLoadersToDisappear, semantic locators, proper assertions)
+- ✅ ESLint (`yarn lint:playwright` passes with zero errors)
 - ✅ Coverage & Roles (multi-role tests, data persistence, error handling)
 
 ---
@@ -108,7 +120,8 @@ Read and apply the handbook sections in order:
 1. **Anti-Flakiness Patterns** (CRITICAL - #1 cause of flaky tests)
 2. **Test File Structure Template** (for proper test structure)
 3. **Common Test Patterns** (for specific scenarios)
-4. **Validation Checklist** (before returning generated test)
+4. **ESLint Enforcement** (run `yarn lint:playwright` — errors block CI)
+5. **Validation Checklist** (before returning generated test)
 
 ---
 

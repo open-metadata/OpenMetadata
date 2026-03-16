@@ -41,6 +41,7 @@ import {
 import { validateFormNameFieldInput } from '../../utils/form';
 import { getElementWithPagination } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -100,9 +101,7 @@ test.describe(
 
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.POLICIES);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
     });
 
     test('Add new policy with invalid condition', async ({ page }) => {
@@ -308,9 +307,7 @@ test.describe(
 
       await test.step('Delete created policy', async () => {
         await settingClick(page, GlobalSettingOptions.POLICIES);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
         const policyElement = page.locator('[data-testid="policy-name"]', {
           hasText: UPDATED_POLICY_NAME,
         });
@@ -409,9 +406,7 @@ test.describe(
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
 
       await getElementWithPagination(page, policyLocator);

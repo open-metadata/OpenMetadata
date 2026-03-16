@@ -135,9 +135,7 @@ test.describe('Data Product Persona customization', () => {
       await adminPage.getByText('Governance').click();
       await adminPage.getByText('Data Product', { exact: true }).click();
 
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(adminPage);
 
       const expectedTabs = getCustomizeDetailsDefaultTabs(
         ECustomizedGovernance.DATA_PRODUCT
@@ -215,9 +213,7 @@ test.describe('Data Product Persona customization', () => {
       await redirectToHomePage(userPage);
 
       await entity?.visitEntityPage(userPage);
-      await userPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(userPage);
 
       await expect(userPage.getByRole('tab', { name: 'Custom Tab' })).toBeVisible();
 
@@ -263,9 +259,7 @@ test.describe('Data Product Persona customization', () => {
       await adminPage.getByText('Governance').click();
       await adminPage.getByText('Data Product', { exact: true }).click();
 
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(adminPage);
 
       await expect(
         adminPage
@@ -312,9 +306,7 @@ test.describe('Data Product Persona customization', () => {
 
       await entity?.visitEntityPage(userPage);
 
-      await userPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(userPage);
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify the custom tab name is displayed

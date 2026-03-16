@@ -299,7 +299,7 @@ test('Alert operations for a user with and without permissions', async ({
       `[data-testid="fqn-list-select"] [role="combobox"]`,
       table1.entity.name,
       {
-        force: true,
+        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
       }
     );
 
@@ -324,21 +324,19 @@ test('Alert operations for a user with and without permissions', async ({
     await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
 
     // Adding the dropdown visibility check to avoid flakiness here
-    await userWithPermissionsPage.waitForSelector(
-      `.ant-select-dropdown:visible`,
-      {
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
         state: 'visible',
-      }
-    );
+      });
     await userWithPermissionsPage.click(
       '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
     );
-    await userWithPermissionsPage.waitForSelector(
-      `.ant-select-dropdown:visible`,
-      {
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
         state: 'hidden',
-      }
-    );
+      });
 
     await userWithPermissionsPage.click(
       '[data-testid="add-destination-button"]'

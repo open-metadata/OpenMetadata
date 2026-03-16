@@ -40,6 +40,7 @@ import {
   waitForImportAsyncResponse,
 } from '../../../utils/testCases';
 import { test as base } from '../../fixtures/pages';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 // CSV test data as constants
 const VALID_TEST_CASES_CSV = `name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms
@@ -257,9 +258,9 @@ test.describe(
         });
 
         await test.step('Upload Invalid CSV and Verify Errors', async () => {
-          await page.waitForSelector('[type="file"]', { state: 'attached' });
+          await page.locator('[type="file"]').waitFor({ state: 'attached' });
           await page.setInputFiles('[type="file"]', csvFilePath);
-          await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          await page.getByTestId('upload-file-widget').waitFor({
             state: 'hidden',
             timeout: 10000,
           });
@@ -650,9 +651,7 @@ test.describe(
       );
       await page.goto(`/test-suites/${testSuiteName}`);
       await testCaseListResponse;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await clickManageButton(page, 'testSuite');
       const download = await performTestCaseExport(page);
@@ -673,9 +672,7 @@ test.describe(
       );
       await page.goto(`/test-suites/${testSuiteName}`);
       await testCaseListResponse;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await clickManageButton(page, 'testSuite');
       await navigateToImportPage(page, /\/bulk\/import\/testCase/);
@@ -695,9 +692,7 @@ test.describe(
       );
       await page.goto(`/test-suites/${testSuiteName}`);
       await testCaseListResponse;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await clickManageButton(page, 'testSuite');
       await navigateToBulkEditPage(page);
@@ -720,9 +715,7 @@ test.describe(
       );
       await page.goto(`/test-suites/${testSuiteName}`);
       await testCaseListResponse;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await clickManageButton(page, 'testSuite');
       await navigateToBulkEditPage(page);

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import {
   CertificationSupportedServices,
@@ -56,6 +56,18 @@ const entities = {
   'Database Schema': DatabaseSchemaClass,
   'Drive Service': DriveServiceClass,
 } as const;
+
+const expectedPlaceholders: Record<string, string> = {
+  'Api Service': 'Search for Collections',
+  'Database Service': 'Search for Databases',
+  'Messaging Service': 'Search for Topics',
+  'Dashboard Service': 'Search for Dashboards',
+  'Pipeline Service': 'Search for Pipelines',
+  'Mlmodel Service': 'Search for ML Models',
+  'Search Index Service': 'Search for Search Indexes',
+  'Storage Service': 'Search for Containers',
+  'Drive Service': 'Search for Directories',
+};
 
 const adminUser = new UserClass();
 
@@ -281,6 +293,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
     });
+
+    if (expectedPlaceholders[key]) {
+      test('Verify Search Placeholder', async ({ page }) => {
+        const expectedText = expectedPlaceholders[key];
+        const input = page.locator('[data-testid="searchbar"]');
+        await expect(input).toHaveAttribute('placeholder', expectedText);
+      });
+    }
 
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);

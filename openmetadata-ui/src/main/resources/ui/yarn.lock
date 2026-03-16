@@ -2195,8 +2195,9 @@
     compare-versions "^4.1.2"
 
 "@openmetadata/ui-core-components@link:../../../../../openmetadata-ui-core-components/src/main/resources/ui":
-  version "0.0.0"
-  uid ""
+  version "1.0.0"
+  dependencies:
+    "@material/material-color-utilities" "^0.3.0"
 
 "@peculiar/asn1-schema@^2.3.13", "@peculiar/asn1-schema@^2.3.8":
   version "2.6.0"
@@ -7776,6 +7777,13 @@ eslint-plugin-jsx-a11y@^6.10.2:
     safe-regex-test "^1.0.3"
     string.prototype.includes "^2.0.1"
 
+eslint-plugin-playwright@^2.9.0:
+  version "2.9.0"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-playwright/-/eslint-plugin-playwright-2.9.0.tgz#86204dc5720509ce0baae6dcd383dbe802a7e55d"
+  integrity sha512-k3xrG6YzrallWNFMoGUjMNeu3SFFKXN79KJQBD2PkM4PasJegqV2Up+mPY5od2UmPKQGT+MeIhCmWH8r5eYuQQ==
+  dependencies:
+    globals "^17.3.0"
+
 eslint-plugin-prettier@^5.2.1:
   version "5.5.5"
   resolved "https://registry.yarnpkg.com/eslint-plugin-prettier/-/eslint-plugin-prettier-5.5.5.tgz#9eae11593faa108859c26f9a9c367d619a0769c0"
@@ -8354,6 +8362,11 @@ globals@^14.0.0:
   version "14.0.0"
   resolved "https://registry.yarnpkg.com/globals/-/globals-14.0.0.tgz#898d7413c29babcf6bafe56fcadded858ada724e"
   integrity sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ==
+
+globals@^17.3.0:
+  version "17.4.0"
+  resolved "https://registry.yarnpkg.com/globals/-/globals-17.4.0.tgz#33d7d297ed1536b388a0e2f4bcd0ff19c8ff91b5"
+  integrity sha512-hjrNztw/VajQwOLsMNT1cbJiH2muO3OROCHnbehc8eY5JyD2gqz4AcMHPqgaOR59DjgUjYAYLeH699g/eWi2jw==
 
 globalthis@^1.0.4:
   version "1.0.4"
@@ -11734,7 +11747,7 @@ react-antd-column-resize@1.0.3:
     rc-util "^5.31.1"
     react-resizable "^3.0.5"
 
-react-aria-components@^1.15.1:
+react-aria-components@^1.16.0:
   version "1.16.0"
   resolved "https://registry.yarnpkg.com/react-aria-components/-/react-aria-components-1.16.0.tgz#6a5d4c75d5e9bf2c83ef8837ac19fb0a50abb698"
   integrity sha512-MjHbTLpMFzzD2Tv5KbeXoZwPczuUWZcRavVvQQlNHRtXHH38D+sToMEYpNeir7Wh3K/XWtzeX3EujfJW6QNkrw==
@@ -11769,7 +11782,7 @@ react-aria-components@^1.15.1:
     react-stately "^3.45.0"
     use-sync-external-store "^1.6.0"
 
-react-aria@^3.46.0, react-aria@^3.47.0:
+react-aria@^3.47.0:
   version "3.47.0"
   resolved "https://registry.yarnpkg.com/react-aria/-/react-aria-3.47.0.tgz#f16a9f8c41dc6b2c32bd71629119e08f0e2dbe27"
   integrity sha512-nvahimIqdByl/PXk/xPkG30LPRzcin+/Uk0uFfwbbKRRFC9aa22a6BRULZLqVHwa9GaNyKe6CDUxO1Dde4v0kA==
@@ -13476,9 +13489,9 @@ undici-types@~7.18.0:
   integrity sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==
 
 undici@^6.23.0:
-  version "6.23.0"
-  resolved "https://registry.yarnpkg.com/undici/-/undici-6.23.0.tgz#7953087744d9095a96f115de3140ca3828aff3a4"
-  integrity sha512-VfQPToRA5FZs/qJxLIinmU59u0r7LXqoJkCzinq3ckNJp3vKEh7jTWN589YQ5+aoAC/TGRLyJLCPKcLQbM8r9g==
+  version "6.24.1"
+  resolved "https://registry.yarnpkg.com/undici/-/undici-6.24.1.tgz#9df1425cede20b836d95634347946f79578b7e71"
+  integrity sha512-sC+b0tB1whOCzbtlx20fx3WgCXwkW627p4EA9uM+/tNNPkSS+eSEld6pAs9nDv7WbY1UUljBMYPtu9BCOrCWKA==
 
 unfetch@^4.2.0:
   version "4.2.0"

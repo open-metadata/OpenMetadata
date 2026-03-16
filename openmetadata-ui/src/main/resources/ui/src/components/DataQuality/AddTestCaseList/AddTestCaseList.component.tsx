@@ -309,9 +309,7 @@ export const AddTestCaseList = ({
       )}
       {renderList}
       {showButton && (
-        <Col
-          className="d-flex justify-end items-center p-y-xss gap-4"
-          span={24}>
+        <Col className="d-flex justify-end items-center p-y-sm gap-4" span={24}>
           <Button data-testid="cancel" type="link" onClick={onCancel}>
             {cancelText ?? t('label.cancel')}
           </Button>

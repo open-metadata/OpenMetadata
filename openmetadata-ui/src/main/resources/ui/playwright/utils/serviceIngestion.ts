@@ -16,7 +16,7 @@ import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { getApiContext, toastNotification } from './common';
-import { getEncodedFqn } from './entity';
+import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
 
 export enum Services {
   Database = GlobalSettingOptions.DATABASES,
@@ -85,13 +85,13 @@ export const deleteService = async (
       serviceName
     )}?currentPage=1`
   );
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('entity-header-name')).toHaveText(serviceName);
 
   // Clicking on permanent delete radio button and checking the service name
   await page.click('[data-testid="manage-button"]');
-  await page.waitForSelector('[data-menu-id*="delete-button"]');
+  await page.locator('[data-menu-id*="delete-button"]').waitFor();
   await page.click('[data-testid="delete-button-title"]');
 
   // Clicking on permanent delete radio button and checking the service name
@@ -122,7 +122,7 @@ export const deleteService = async (
   ); // Wait for up to 5 minutes for the toast notification to appear
 
   await page.reload();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   const serviceSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
@@ -137,14 +137,14 @@ export const deleteService = async (
 
   await serviceSearchResponse;
 
-  await page.waitForSelector(`[data-testid="service-name-${serviceName}"]`, {
+  await page.getByTestId(`service-name-${serviceName}`).waitFor({
     state: 'detached',
   });
 };
 
 export const testConnection = async (page: Page) => {
   // Test the connection
-  await page.waitForSelector('[data-testid="test-connection-btn"]');
+  await page.getByTestId('test-connection-btn').waitFor();
 
   await page.click('[data-testid="test-connection-btn"]');
   const modalTitle = page.locator(
@@ -173,7 +173,7 @@ export const checkServiceFieldSectionHighlighting = async (
   page: Page,
   field: string
 ) => {
-  await page.waitForSelector(`[data-id="${field}"][data-highlighted="true"]`);
+  await page.locator(`[data-id="${field}"][data-highlighted="true"]`).waitFor();
 };
 
 type RetryRequestData = {
@@ -197,7 +197,8 @@ export const makeRetryRequest = async (data: RetryRequestData) => {
       if (i === retries - 1) {
         throw error;
       }
-      await page.waitForTimeout(1000 * (i + 1)); // Exponential backoff
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- exponential backoff for retry
+      await page.waitForTimeout(1000 * (i + 1));
     }
   }
 };

@@ -75,6 +75,8 @@ async function searchColumn(
 
   if (!expectResults) {
     await runSearch();
+    await waitForAllLoadersToDisappear(page);
+
     return;
   }
 
@@ -204,14 +206,21 @@ test.describe(
       });
 
       await test.step('Verify empty state or zero rows', async () => {
-        const noRecordsText = page.getByText(
-          /no records found|no data|no results/i
-        );
-        const tableRows = page.locator('tbody tr');
-        const noResultsCount = await noRecordsText.count();
-        const rowCount = await tableRows.count();
+        await expect
+          .poll(
+            async () => {
+              const noRecordsText = page.getByText(
+                /no records found|no data|no results/i
+              );
+              const tableRows = page.locator('tbody tr');
+              const noResultsCount = await noRecordsText.count();
+              const rowCount = await tableRows.count();
 
-        expect(noResultsCount > 0 || rowCount === 0).toBe(true);
+              return noResultsCount > 0 || rowCount === 0;
+            },
+            { timeout: 10000, intervals: [500, 1000, 2000] }
+          )
+          .toBe(true);
       });
     });
   }
@@ -831,8 +840,7 @@ test.describe(
           .locator('input');
         await expect(displayNameInput).toBeVisible();
 
-        const displayNameValue = await displayNameInput.inputValue();
-        expect(displayNameValue).not.toBe('Temporary Display Name');
+        await expect(displayNameInput).not.toHaveValue('Temporary Display Name');
       });
 
       await test.step('Close drawer', async () => {
