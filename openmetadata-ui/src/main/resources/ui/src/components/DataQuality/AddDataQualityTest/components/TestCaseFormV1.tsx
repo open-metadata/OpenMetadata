@@ -111,7 +111,10 @@ import {
 } from '../../../../utils/formUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
-import { generateUUID } from '../../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  generateUUID,
+} from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
@@ -1386,6 +1389,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                           ]}
                           valuePropName="selectedTest">
                           <AddTestCaseList
+                            columnFilters={
+                              table?.fullyQualifiedName
+                                ? `fullyQualifiedName:"${escapeESReservedCharacters(
+                                    table.fullyQualifiedName
+                                  )}"`
+                                : undefined
+                            }
+                            hideTableFilter={Boolean(table)}
                             showButton={false}
                             testCaseParams={{
                               testSuiteId:

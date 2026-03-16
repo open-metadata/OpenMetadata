@@ -20,6 +20,8 @@ import {
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
+import { getAggregateFieldOptions } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { AddTestCaseList } from './AddTestCaseList.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
@@ -68,14 +70,30 @@ jest.mock('../../../utils/CommonUtils', () => {
     getNameFromFQN: jest.fn().mockImplementation((fqn) => fqn),
   };
 });
-jest.mock('../../../rest/testAPI', () => {
-  return {
-    getListTestCaseBySearch: jest.fn(),
-  };
-});
+jest.mock('../../../rest/testAPI', () => ({
+  getListTestCaseBySearch: jest.fn(),
+}));
+
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: { hits: [] },
+  }),
+}));
+
+jest.mock('../../../rest/miscAPI', () => ({
+  getAggregateFieldOptions: jest.fn().mockResolvedValue({
+    data: {
+      aggregations: {
+        'sterms#columns.name.keyword': { buckets: [] },
+      },
+    },
+  }),
+}));
 
 jest.mock('../../../constants/constants', () => ({
+  ...jest.requireActual('../../../constants/constants'),
   getEntityDetailsPath: jest.fn(),
+  PAGE_SIZE_BASE: 15,
   PAGE_SIZE_MEDIUM: 25,
 }));
 
@@ -91,6 +109,77 @@ const mockProps: AddTestCaseModalProps = {
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest.fn().mockReturnValue('/path/to/entity'),
+}));
+
+jest.mock('./AddTestCaseListFilters.component', () => ({
+  __esModule: true,
+  default: function MockAddTestCaseListFilters({
+    hideTableFilter = false,
+    onChange,
+    onSearch,
+  }: {
+    hideTableFilter?: boolean;
+    onChange: (
+      values: { key: string; label: string }[],
+      searchKey: string
+    ) => void;
+    onSearch?: (searchText: string, searchKey: string) => void;
+  }) {
+    return (
+      <div data-testid="add-test-case-list-filters">
+        <button
+          data-testid="filter-status-success"
+          type="button"
+          onClick={() =>
+            onChange([{ key: 'Success', label: 'Success' }], 'status')
+          }>
+          Apply status Success
+        </button>
+        <button
+          data-testid="filter-test-type-table"
+          type="button"
+          onClick={() =>
+            onChange([{ key: 'table', label: 'Table' }], 'testType')
+          }>
+          Apply testType table
+        </button>
+        {!hideTableFilter && (
+          <>
+            <button
+              data-testid="filter-table"
+              type="button"
+              onClick={() =>
+                onChange(
+                  [
+                    {
+                      key: 'sample.table',
+                      label: 'sample.table',
+                    },
+                  ],
+                  'table'
+                )
+              }>
+              Apply table filter
+            </button>
+            <button
+              data-testid="filter-table-search"
+              type="button"
+              onClick={() => onSearch?.('table_search_term', 'table')}>
+              Trigger table search
+            </button>
+          </>
+        )}
+        <button
+          data-testid="filter-column"
+          type="button"
+          onClick={() =>
+            onChange([{ key: 'sample.table::id', label: 'id' }], 'column')
+          }>
+          Apply column filter
+        </button>
+      </div>
+    );
+  },
 }));
 
 const mockGetListTestCaseBySearch =
@@ -251,27 +340,27 @@ describe('AddTestCaseList', () => {
       });
     });
 
-    it('applies filters when provided', async () => {
-      const filters = 'testSuiteFullyQualifiedName:sample.test.suite';
+    it('applies testCaseFilters when provided', async () => {
+      const testCaseFilters = 'testSuiteFullyQualifiedName:sample.test.suite';
 
       await act(async () => {
-        renderWithRouter({ ...mockProps, filters });
+        renderWithRouter({ ...mockProps, testCaseFilters });
       });
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: `* && ${filters}`,
+          q: `* && ${testCaseFilters}`,
           limit: 25,
           offset: 0,
         });
       });
     });
 
-    it('combines search term with filters', async () => {
-      const filters = 'testSuiteFullyQualifiedName:sample.test.suite';
+    it('combines search term with testCaseFilters', async () => {
+      const testCaseFilters = 'testSuiteFullyQualifiedName:sample.test.suite';
 
       await act(async () => {
-        renderWithRouter({ ...mockProps, filters });
+        renderWithRouter({ ...mockProps, testCaseFilters });
       });
 
       const searchBar = screen.getByTestId('search-bar');
@@ -282,7 +371,7 @@ describe('AddTestCaseList', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: `*column_test* && ${filters}`,
+          q: `*column_test* && ${testCaseFilters}`,
           limit: 25,
           offset: 0,
         });
@@ -296,9 +385,10 @@ describe('AddTestCaseList', () => {
       };
 
       await act(async () => {
-        render(
-          <AddTestCaseList {...mockProps} testCaseParams={testCaseParams} />
-        );
+        renderWithRouter({
+          ...mockProps,
+          testCaseParams,
+        });
       });
 
       await waitFor(() => {
@@ -309,6 +399,299 @@ describe('AddTestCaseList', () => {
           ...testCaseParams,
         });
       });
+    });
+  });
+
+  describe('hideTableFilter and columnFilters', () => {
+    it('does not display table filter when hideTableFilter is true', async () => {
+      await act(async () => {
+        renderWithRouter({ ...mockProps, hideTableFilter: true });
+      });
+
+      expect(screen.queryByTestId('filter-table')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('filter-table-search')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId('add-test-case-list-filters')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('filter-column')).toBeInTheDocument();
+    });
+
+    it('displays table filter when hideTableFilter is false', async () => {
+      await act(async () => {
+        renderWithRouter({ ...mockProps, hideTableFilter: false });
+      });
+
+      expect(screen.getByTestId('filter-table')).toBeInTheDocument();
+      expect(screen.getByTestId('filter-table-search')).toBeInTheDocument();
+    });
+
+    it('calls getAggregateFieldOptions with columnFilters when columnFilters is passed', async () => {
+      const columnFilters = 'fullyQualifiedName:"service.db.schema.my_table"';
+      const mockGetAggregateFieldOptions =
+        getAggregateFieldOptions as jest.MockedFunction<
+          typeof getAggregateFieldOptions
+        >;
+
+      await act(async () => {
+        renderWithRouter({ ...mockProps, columnFilters });
+      });
+
+      await waitFor(() => {
+        expect(mockGetAggregateFieldOptions).toHaveBeenCalled();
+      });
+
+      const call = mockGetAggregateFieldOptions.mock.calls.find(
+        (args) => args[3] === columnFilters
+      );
+
+      expect(call).toBeDefined();
+      expect(call?.[3]).toBe(columnFilters);
+    });
+
+    it('calls getAggregateFieldOptions with empty string for columnFilters when columnFilters is not passed', async () => {
+      const mockGetAggregateFieldOptions =
+        getAggregateFieldOptions as jest.MockedFunction<
+          typeof getAggregateFieldOptions
+        >;
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(mockGetAggregateFieldOptions).toHaveBeenCalled();
+      });
+
+      const call = mockGetAggregateFieldOptions.mock.calls[0];
+
+      expect(call?.[3]).toBe('');
+    });
+  });
+
+  describe('Filters', () => {
+    it('renders filter section', async () => {
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      expect(
+        screen.getByTestId('add-test-case-list-filters')
+      ).toBeInTheDocument();
+    });
+
+    it('calls API with testCaseStatus when status filter is applied', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            q: '*',
+            limit: 25,
+            offset: 0,
+          })
+        );
+      });
+
+      mockGetListTestCaseBySearch.mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-status-success'));
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            q: '*',
+            limit: 25,
+            offset: 0,
+            testCaseStatus: 'Success',
+          })
+        );
+      });
+    });
+
+    it('calls API with testCaseType when test type filter is applied', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalled();
+      });
+
+      mockGetListTestCaseBySearch.mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-test-type-table'));
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            q: '*',
+            limit: 25,
+            offset: 0,
+            testCaseType: 'table',
+          })
+        );
+      });
+    });
+
+    it('calls API with columnName when column filter is applied', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-column'));
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            columnName: 'id',
+          })
+        );
+      });
+    });
+
+    it('filters list by table selection (server-side)', async () => {
+      mockGetListTestCaseBySearch.mockImplementation((params) => {
+        if (params?.entityLink === '<#E::table::sample.table>') {
+          return Promise.resolve({
+            data: [mockTestCases[0]],
+            paging: { total: 1 },
+          });
+        }
+
+        return Promise.resolve({
+          data: mockTestCases,
+          paging: { total: 3 },
+        });
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+        expect(screen.getByTestId('test_case_3')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-table'));
+      });
+
+      expect(mockGetListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          entityLink: '<#E::table::sample.table>',
+        })
+      );
+    });
+
+    it('filters list by column selection (server-side)', async () => {
+      mockGetListTestCaseBySearch.mockImplementation((params) => {
+        if (params?.columnName) {
+          return Promise.resolve({
+            data: [mockTestCases[1]],
+            paging: { total: 1 },
+          });
+        }
+
+        return Promise.resolve({
+          data: mockTestCases,
+          paging: { total: 3 },
+        });
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+        expect(screen.getByTestId('test_case_3')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-column'));
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            columnName: 'id',
+          })
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test_case_2')).toBeInTheDocument();
+      });
+    });
+
+    it('table filter search calls search API', async () => {
+      jest.useFakeTimers();
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-table-search')).toBeInTheDocument();
+      });
+
+      const mockSearchQuery = searchQuery as jest.MockedFunction<
+        typeof searchQuery
+      >;
+      mockSearchQuery.mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-table-search'));
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      await waitFor(() => {
+        expect(mockSearchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            query: '*table_search_term*',
+            searchIndex: 'table_search_index',
+          })
+        );
+      });
+
+      jest.useRealTimers();
     });
   });
 
@@ -490,7 +873,9 @@ describe('AddTestCaseList', () => {
         },
       });
 
-      renderWithRouter(mockProps);
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
@@ -539,7 +924,7 @@ describe('AddTestCaseList', () => {
         },
       });
 
-      const { container } = renderWithRouter(mockProps);
+      const { container } = await act(async () => renderWithRouter(mockProps));
 
       await waitFor(() => {
         expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
@@ -703,48 +1088,14 @@ describe('AddTestCaseList', () => {
     });
   });
 
-  it('does not render select all button when showSelectAll is false (default)', async () => {
+  it('renders select all button when items exist', async () => {
     mockGetListTestCaseBySearch.mockResolvedValue({
       data: mockTestCases,
       paging: { total: 3 },
     });
 
     await act(async () => {
-      renderWithRouter(mockProps);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
-    });
-
-    expect(screen.queryByTestId('select-all-test-cases')).toBeNull();
-  });
-
-  it('does not render select all button when showSelectAll is false and items exist', async () => {
-    mockGetListTestCaseBySearch.mockResolvedValue({
-      data: mockTestCases,
-      paging: { total: 3 },
-    });
-
-    await act(async () => {
-      renderWithRouter({ ...mockProps, showSelectAll: false });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
-    });
-
-    expect(screen.queryByTestId('select-all-test-cases')).toBeNull();
-  });
-
-  it('renders select all button when showSelectAll is true and items exist', async () => {
-    mockGetListTestCaseBySearch.mockResolvedValue({
-      data: mockTestCases,
-      paging: { total: 3 },
-    });
-
-    await act(async () => {
-      renderWithRouter({ ...mockProps, showSelectAll: true });
+      renderWithRouter({ ...mockProps });
     });
 
     await waitFor(() => {
@@ -754,14 +1105,14 @@ describe('AddTestCaseList', () => {
     expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
   });
 
-  it('does not render select all button when showSelectAll is true but no items', async () => {
+  it('does not render select all button when no items', async () => {
     mockGetListTestCaseBySearch.mockResolvedValue({
       data: [],
       paging: { total: 0 },
     });
 
     await act(async () => {
-      renderWithRouter({ ...mockProps, showSelectAll: true });
+      renderWithRouter({ ...mockProps });
     });
 
     await waitFor(() => {
@@ -778,7 +1129,7 @@ describe('AddTestCaseList', () => {
     });
 
     await act(async () => {
-      renderWithRouter({ ...mockProps, showSelectAll: true });
+      renderWithRouter({ ...mockProps });
     });
 
     await waitFor(() => {
@@ -807,7 +1158,6 @@ describe('AddTestCaseList', () => {
     await act(async () => {
       renderWithRouter({
         ...mockProps,
-        showSelectAll: true,
         onChange,
       });
     });
@@ -847,7 +1197,6 @@ describe('AddTestCaseList', () => {
     await act(async () => {
       renderWithRouter({
         ...mockProps,
-        showSelectAll: true,
         onChange,
       });
     });
@@ -894,7 +1243,6 @@ describe('AddTestCaseList', () => {
     await act(async () => {
       renderWithRouter({
         ...mockProps,
-        showSelectAll: true,
         onChange,
       });
     });
@@ -942,7 +1290,6 @@ describe('AddTestCaseList', () => {
     await act(async () => {
       renderWithRouter({
         ...mockProps,
-        showSelectAll: true,
         onChange,
       });
     });

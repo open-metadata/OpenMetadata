@@ -18,6 +18,11 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  addTestCaseToLogicalTestSuite,
+  addTestSuitePipeline,
+  removeTestCasesFromLogicalTestSuite,
+} from '../../utils/dataQuality';
+import {
   assignSingleSelectDomain,
   descriptionBox,
   redirectToHomePage,
@@ -73,23 +78,255 @@ test(
     const loggedInUserResponse = await loggedInUserRequest;
     const loggedInUser = await loggedInUserResponse.json();
 
-    await test.step('Create', async () => {
+    await test.step('Open create test suite form', async () => {
+      const initialListResponse = page.waitForResponse(
+        `/api/v1/dataQuality/testCases/search/list*`
+      );
       await page.click('[data-testid="add-test-suite-btn"]');
+      await initialListResponse;
       await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
       await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+    });
+
+    await test.step('Verify add test case modal filter dropdowns are visible', async () => {
+      const addTestCaseCard = page.locator(
+        '[data-testid="test-case-selection-card"]'
+      );
+
+      await expect(
+        addTestCaseCard.getByTestId('search-dropdown-Status')
+      ).toBeVisible();
+      await expect(
+        addTestCaseCard.getByTestId('search-dropdown-Test Type')
+      ).toBeVisible();
+      await expect(
+        addTestCaseCard.getByTestId('search-dropdown-Table')
+      ).toBeVisible();
+      await expect(
+        addTestCaseCard.getByTestId('search-dropdown-Column')
+      ).toBeVisible();
+    });
+
+    await test.step('Filter by Test Type Table and wait for API', async () => {
+      const addTestCaseCard = page.locator(
+        '[data-testid="test-case-selection-card"]'
+      );
+      const testTypeFilterResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list*'
+      );
+      await addTestCaseCard.getByTestId('search-dropdown-Test Type').click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByRole('menuitem', { name: 'Table' })
+        .click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('update-btn')
+        .click();
+      await testTypeFilterResponse;
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+    });
+
+    await test.step('Filter by Status Success and wait for API', async () => {
+      const addTestCaseCard = page.locator(
+        '[data-testid="test-case-selection-card"]'
+      );
+      const statusFilterResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list*'
+      );
+      await addTestCaseCard.getByTestId('search-dropdown-Status').click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByRole('menuitem', { name: 'Success' })
+        .click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('update-btn')
+        .click();
+      await statusFilterResponse;
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+    });
+
+    await test.step('Filter by Table and wait for API', async () => {
+      const addTestCaseCard = page.locator(
+        '[data-testid="test-case-selection-card"]'
+      );
+      const tableSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?*index=table_search_index*'
+      );
+      await addTestCaseCard.getByTestId('search-dropdown-Table').click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('search-input')
+        .fill(table.entity?.name ?? '');
+      await tableSearchResponse;
+
+      const tableOption = page
+        .getByTestId('drop-down-menu')
+        .getByTestId(table.entityResponseData?.fullyQualifiedName ?? '');
+      await tableOption.waitFor({ state: 'visible' });
+      await tableOption.click();
+
+      const testCaseByTableResponse = page.waitForResponse(
+        (url) =>
+          url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+          url.url().includes('entityLink')
+      );
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('update-btn')
+        .click();
+      await testCaseByTableResponse;
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+    });
+
+    await test.step('Filter by Column and wait for API', async () => {
+      const addTestCaseCard = page.locator(
+        '[data-testid="test-case-selection-card"]'
+      );
+      await addTestCaseCard.getByTestId('search-dropdown-Column').click();
+
+      const firstColumnOption = page
+        .getByTestId('drop-down-menu')
+        .getByRole('menuitem')
+        .first();
+      await firstColumnOption.waitFor({ state: 'visible' });
+      await firstColumnOption.click();
+
+      const testCaseByColumnResponse = page.waitForResponse(
+        (url) =>
+          url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+          url.url().includes('columnName')
+      );
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('update-btn')
+        .click();
+      await testCaseByColumnResponse;
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+    });
+
+    await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
+      const addTestCaseCard = page.locator(
+        '[data-testid="test-case-selection-card"]'
+      );
+
+      await addTestCaseCard.getByTestId('search-dropdown-Test Type').click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByRole('menuitem', { name: 'All' })
+        .click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('update-btn')
+        .click();
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+
+      const clearTableResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list*'
+      );
+      await addTestCaseCard.getByTestId('search-dropdown-Table').click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId(table.entityResponseData?.fullyQualifiedName ?? '')
+        .click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('update-btn')
+        .click();
+      await clearTableResponse;
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+
+      const clearColumnResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list*'
+      );
+      await addTestCaseCard.getByTestId('search-dropdown-Column').click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByRole('menuitem')
+        .first()
+        .click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('update-btn')
+        .click();
+      await clearColumnResponse;
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+
+      const clearStatusResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list*'
+      );
+      await addTestCaseCard.getByTestId('search-dropdown-Status').click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByRole('menuitem', { name: 'Success' })
+        .click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('update-btn')
+        .click();
+      await clearStatusResponse;
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+    });
+
+    await test.step('Select all then unselect all test cases', async () => {
+      const addTestCaseCard = page.locator(
+        '[data-testid="test-case-selection-card"]'
+      );
+      const selectAllBtn = addTestCaseCard.getByTestId('select-all-test-cases');
+      await expect(selectAllBtn).toBeVisible();
+      await selectAllBtn.click();
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+      await selectAllBtn.click();
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+    });
+
+    await test.step('Select test case and create suite', async () => {
+      const addTestCaseCard = page.locator(
+        '[data-testid="test-case-selection-card"]'
+      );
 
       const getTestCase = page.waitForResponse(
         `/api/v1/dataQuality/testCases/search/list?*`
       );
-      await page.fill(
-        '[data-testid="test-case-selection-card"] [data-testid="searchbar"]',
-        testCaseName1
-      );
+      await addTestCaseCard
+        .locator('[data-testid="searchbar"]')
+        .fill(testCaseName1);
       await getTestCase;
-
-      await page.getByTestId('test-case-selection-card').getByTestId('loader').first().waitFor(
-        { state: 'detached' }
-      );
 
       await page.click(
         `[data-testid="test-case-selection-card"] [data-testid="${testCaseName1}"]`
@@ -133,74 +370,22 @@ test(
     });
 
     await test.step('Add test case to logical test suite by owner', async () => {
-      await ownerPage.goto(`test-suites/${NEW_TEST_SUITE.name}`);
-      await waitForAllLoadersToDisappear(ownerPage);
-      const testCaseResponse = ownerPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list*'
+      await addTestCaseToLogicalTestSuite(
+        ownerPage,
+        NEW_TEST_SUITE.name,
+        testCaseName2 ?? ''
       );
-      await ownerPage.click('[data-testid="add-test-case-btn"]');
-      await testCaseResponse;
-
-      const getTestCase = ownerPage.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?*`
-      );
-      await ownerPage.fill('[data-testid="searchbar"]', testCaseName2);
-      await getTestCase;
-
-      await ownerPage.click(`[data-testid="${testCaseName2}"]`);
-      const updateTestCase = ownerPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/logicalTestCases'
-      );
-      await ownerPage.click('[data-testid="submit"]');
-      await updateTestCase;
-      await ownerPage.locator('.ant-modal-content').waitFor({
-        state: 'detached',
-      });
     });
 
     await test.step('Add test suite pipeline', async () => {
-      await page.getByRole('tab', { name: 'Pipeline' }).click();
-
-      await expect(page.getByTestId('add-placeholder-button')).toBeVisible();
-
-      await page.getByTestId('add-placeholder-button').click();
-      await page.getByTestId('select-all-test-cases').click();
-
-      await expect(
-        page.getByTestId('cron-type').getByText('Day')
-      ).toBeAttached();
-
-      await page.getByTestId('deploy-button').click();
-
-      await expect(page.getByTestId('view-service-button')).toBeVisible();
-
-      await page.getByTestId('body-text').waitFor({
-        state: 'detached',
-      });
-
-      await expect(page.getByTestId('success-line')).toContainText(
-        /has been created and deployed successfully/
-      );
-
-      await page.getByTestId('view-service-button').click();
-      await waitForAllLoadersToDisappear(page);
+      await addTestSuitePipeline(page);
     });
 
     await test.step('Remove test case from logical test suite by owner', async () => {
-      await ownerPage.getByTestId(`action-dropdown-${testCaseName1}`).click();
-      await ownerPage.click(`[data-testid="remove-${testCaseName1}"]`);
-      const removeTestCase1 = ownerPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/logicalTestCases/*/*'
-      );
-      await ownerPage.click('[data-testid="save-button"]');
-      await removeTestCase1;
-      await ownerPage.getByTestId(`action-dropdown-${testCaseName2}`).click();
-      await ownerPage.click(`[data-testid="remove-${testCaseName2}"]`);
-      const removeTestCase2 = ownerPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/logicalTestCases/*/*'
-      );
-      await ownerPage.click('[data-testid="save-button"]');
-      await removeTestCase2;
+      await removeTestCasesFromLogicalTestSuite(ownerPage, [
+        testCaseName1 ?? '',
+        testCaseName2 ?? '',
+      ]);
     });
 
     await test.step('Test suite filters', async () => {

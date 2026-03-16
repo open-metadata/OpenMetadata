@@ -413,15 +413,15 @@ test.describe(
         .getByTestId('edit-button')
         .click();
 
-      await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('select-all-test-cases').waitFor({
-        state: 'visible',
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
       });
+      const selectAllSwitch = page
+        .getByRole('switch')
+        .and(page.getByTestId('select-all-test-cases'));
+      await selectAllSwitch.waitFor({ state: 'visible' });
 
-      await expect(page.getByTestId('select-all-test-cases')).toHaveAttribute(
-        'aria-checked',
-        'true'
-      );
+      await expect(selectAllSwitch).toHaveAttribute('aria-checked', 'true');
     });
 
     /**
