@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { IconButton, ToggleButtonGroup } from '@mui/material';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
@@ -38,6 +37,73 @@ import LineageTable from './LineageTable';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: ({ children }: { children: unknown }) => (
+    <span>{children as never}</span>
+  ),
+  Button: ({
+    children,
+    onClick,
+    ...props
+  }: {
+    children?: unknown;
+    onClick?: () => void;
+    [key: string]: unknown;
+  }) => (
+    <button {...(props as object)} onClick={onClick}>
+      {children as never}
+    </button>
+  ),
+  ButtonGroup: ({ children }: { children: unknown }) => (
+    <div>{children as never}</div>
+  ),
+  ButtonGroupItem: ({
+    children,
+    id,
+    onPress,
+    onClick,
+  }: {
+    children: unknown;
+    id: string;
+    onPress?: () => void;
+    onClick?: () => void;
+  }) => (
+    <button id={id} onClick={onPress ?? onClick}>
+      {children as never}
+    </button>
+  ),
+  Dropdown: {
+    Root: ({ children }: { children: unknown }) => (
+      <div>{children as never}</div>
+    ),
+    Popover: ({ children }: { children: unknown }) => (
+      <div>{children as never}</div>
+    ),
+    Menu: ({
+      children,
+      onAction,
+    }: {
+      children: unknown;
+      onAction?: (key: string) => void;
+    }) => (
+      <ul
+        role="menu"
+        onClick={(e) => onAction?.((e.target as HTMLElement).dataset.id ?? '')}>
+        {children as never}
+      </ul>
+    ),
+    Item: ({
+      children,
+      id,
+      label,
+    }: {
+      children?: unknown;
+      id: string;
+      label?: string;
+    }) => <li data-id={id}>{label ?? (children as never)}</li>,
+  },
+}));
+
 // Mock dependencies
 jest.mock('../../context/LineageProvider/LineageProvider');
 jest.mock('../../hooks/paging/usePaging');
@@ -52,14 +118,10 @@ jest.mock('../../utils/StringsUtils', () => ({
 jest.mock('../../hooks/useLineageStore');
 jest.mock('../../utils/Lineage/LineageUtils');
 jest.mock('./LineageTable.styled', () => {
-  const { Menu: MuiMenu } = jest.requireActual('@mui/material');
-
   return {
-    StyledMenu: (props: React.ComponentProps<typeof MuiMenu>) => (
-      <MuiMenu {...props} />
+    StyledIconButton: (props: { [key: string]: unknown }) => (
+      <button {...(props as object)} />
     ),
-    StyledToggleButtonGroup: ToggleButtonGroup,
-    StyledIconButton: IconButton,
   };
 });
 jest.mock('react-router-dom', () => ({
@@ -268,7 +330,7 @@ describe('LineageTable', () => {
     mockGetLineagePagingData.mockResolvedValue(mockLineagePagingInfo);
 
     // Mock location object
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(globalThis, 'location', {
       value: {
         search: '?dir=Downstream&depth=1',
         pathname: '/test',

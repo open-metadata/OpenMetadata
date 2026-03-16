@@ -278,8 +278,9 @@ const TagsForm = ({
   return (
     <EntityAttachmentProvider
       entityFqn={initialValues?.fullyQualifiedName}
-      entityType={isClassification ? EntityType.CLASSIFICATION : EntityType.TAG}
-    >
+      entityType={
+        isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
+      }>
       <Form
         className="tags-form"
         data-testid="tags-form"

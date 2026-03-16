@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import MenuItem from '@mui/material/MenuItem';
-import ToggleButton from '@mui/material/ToggleButton';
+import {
+  Badge,
+  Button,
+  ButtonGroup,
+  ButtonGroupItem,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/es/table';
 import Card from 'antd/lib/card/Card';
 import classNames from 'classnames';
@@ -85,7 +88,6 @@ import {
   SourceType,
 } from '../SearchedData/SearchedData.interface';
 import { EImpactLevel } from './LineageTable.interface';
-import { StyledMenu, StyledToggleButtonGroup } from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
 
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
@@ -96,7 +98,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  // Use the custom hook for state management
   const {
     filterNodes,
     loading,
@@ -122,7 +123,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     handlePageSizeChange,
   } = usePaging(PAGE_SIZE_LARGE);
 
-  const [impactOnEl, setImpactOnEl] = useState<null | HTMLElement>(null);
+  const [isImpactMenuOpen, setIsImpactMenuOpen] = useState(false);
 
   const { isFullScreen, nodeDepth, lineageDirection } = useMemo(() => {
     const queryParams = QueryString.parse(location.search, {
@@ -182,7 +183,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     [location.search]
   );
 
-  // Get upstream and downstream count when fqn, entityType, lineageDirection or nodeDepth changes
   const { upstreamCount, downstreamCount } = useMemo(() => {
     if (impactLevel === EImpactLevel.ColumnLevel) {
       handlePagingChange({
@@ -200,8 +200,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
     const upstreamCount =
       lineagePagingInfo?.upstreamDepthInfo.reduce((acc, record) => {
-        // No need to count depth 0 nodes as they are not shown in the table
-        // Need count till nodeDepth - 1 as depth 0 nodes are not shown in the table
         if (record.depth > nodeDepth || record.depth === 0) {
           return acc;
         }
@@ -211,8 +209,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       }, 0) ?? 0;
     const downstreamCount =
       lineagePagingInfo?.downstreamDepthInfo.reduce((acc, record) => {
-        // No need to count depth 0 nodes as they are not shown in the table
-        // Need count till nodeDepth - 1 as depth 0 nodes are not shown in the table
         if (record.depth > nodeDepth || record.depth === 0) {
           return acc;
         }
@@ -243,8 +239,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       {
         label: (
           <>
-            {t('label.upstream')}{' '}
-            <Chip label={upstreamCount} size="small" variant="outlined" />
+            {t('label.upstream')} <Badge size="sm">{upstreamCount}</Badge>
           </>
         ),
         value: LineageDirection.Upstream,
@@ -252,8 +247,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       {
         label: (
           <>
-            {t('label.downstream')}{' '}
-            <Chip label={downstreamCount} size="small" />
+            {t('label.downstream')} <Badge size="sm">{downstreamCount}</Badge>
           </>
         ),
         value: LineageDirection.Downstream,
@@ -263,42 +257,43 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   const streamButtonGroup = useMemo(() => {
     return (
-      <StyledToggleButtonGroup
-        exclusive
-        size="small"
-        value={lineageDirection}
-        onChange={(_, value) => {
-          handlePageChange(1);
-          updateURLParams({ dir: value });
+      <ButtonGroup
+        selectedKeys={new Set([lineageDirection])}
+        onSelectionChange={(keys) => {
+          if (keys === 'all') {
+            return;
+          }
+          const value = [...keys][0] as LineageDirection;
+
+          if (value) {
+            handlePageChange(1);
+            updateURLParams({ dir: value });
+          }
         }}>
         {radioGroupOptions.map((option) => (
-          <ToggleButton
-            className="font-semibold"
-            key={option.value}
-            value={option.value}>
+          <ButtonGroupItem
+            className="tw:font-semibold"
+            id={option.value}
+            key={option.value}>
             {option.label}
-          </ToggleButton>
+          </ButtonGroupItem>
         ))}
-      </StyledToggleButtonGroup>
+      </ButtonGroup>
     );
   }, [lineageDirection, radioGroupOptions]);
 
-  // Query filter for table data & search values
   const queryFilter = useMemo(() => {
     const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
     const mustClauses: QueryFieldInterface[] = [];
 
-    // Add quick filter conditions (e.g., service field conditions)
     if (quickFilterQuery?.query?.bool?.must) {
       mustClauses.push(...quickFilterQuery.query.bool.must);
     }
 
-    // Add search value conditions for name and displayName using wildcard
     if (searchValue) {
       mustClauses.push(getSearchNameEsQuery(searchValue));
     }
 
-    // Build final query only if we have conditions
     const query =
       mustClauses.length > 0
         ? { query: { bool: { must: mustClauses } } }
@@ -307,57 +302,49 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     return JSON.stringify(query);
   }, [selectedQuickFilters, searchValue]);
 
-  // Define table columns
   const extraTableFilters = useMemo(() => {
     return (
       <div className="d-flex justify-between items-center w-full">
         <div>{streamButtonGroup}</div>
 
-        <Button
-          aria-controls={impactOnEl ? 'basic-menu' : undefined}
-          aria-expanded={impactOnEl ? 'true' : undefined}
-          aria-haspopup="true"
-          endIcon={<DropdownIcon />}
-          id="impact-on-dropdown"
-          startIcon={<TrendDownIcon />}
-          sx={{
-            fontWeight: 500,
-            '& .MuiButton-endIcon': {
-              svg: {
-                height: 12,
-              },
-            },
-          }}
-          onClick={(event) => setImpactOnEl(event.currentTarget)}>
-          <Transi18next
-            i18nKey="label.impact-on-area"
-            renderElement={<span className="m-l-xss text-primary" />}
-            values={{ area: t(`label.${impactLevel}`) }}
-          />
-        </Button>
-        <StyledMenu
-          anchorEl={impactOnEl}
-          open={Boolean(impactOnEl)}
-          onClose={() => setImpactOnEl(null)}>
-          {LINEAGE_IMPACT_OPTIONS.map((option) => (
-            <MenuItem
-              key={option.key}
-              selected={option.key === impactLevel}
-              onClick={() => {
-                setSelectedImpactLevel(option.key);
+        <Dropdown.Root
+          isOpen={isImpactMenuOpen}
+          onOpenChange={setIsImpactMenuOpen}>
+          <Button
+            color="secondary"
+            iconLeading={TrendDownIcon}
+            iconTrailing={DropdownIcon}
+            id="impact-on-dropdown"
+            size="sm">
+            <Transi18next
+              i18nKey="label.impact-on-area"
+              renderElement={<span className="m-l-xss text-primary" />}
+              values={{ area: t(`label.${impactLevel}`) }}
+            />
+          </Button>
+          <Dropdown.Popover>
+            <Dropdown.Menu
+              selectedKeys={new Set([impactLevel])}
+              onAction={(key) => {
+                setSelectedImpactLevel(key as EImpactLevel);
                 handlePageChange(currentPage);
-                setImpactOnEl(null);
+                setIsImpactMenuOpen(false);
               }}>
-              {option.icon}
-              {option.label}
-            </MenuItem>
-          ))}
-        </StyledMenu>
+              {LINEAGE_IMPACT_OPTIONS.map((option) => (
+                <Dropdown.Item id={option.key} key={option.key}>
+                  <span className="d-flex items-center gap-2">
+                    {option.icon}
+                    {option.label}
+                  </span>
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       </div>
     );
-  }, [navigate, streamButtonGroup, impactOnEl, impactLevel]);
+  }, [navigate, streamButtonGroup, isImpactMenuOpen, impactLevel]);
 
-  // Function to fetch nodes based on current filters and pagination
   const fetchNodes = useCallback(async () => {
     try {
       setLoading(true);
@@ -437,7 +424,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     lineageConfig,
   ]);
 
-  // Fetch Lineage data when dependencies change
   useEffect(() => {
     fetchNodes();
   }, [nodeDepth, currentPage, impactLevel, pageSize, queryFilter]);
@@ -446,7 +432,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     if (impactLevel === EImpactLevel.TableLevel) {
       fetchNodes();
     } else {
-      // Since setState is async, we show loading manually to avoid flicker
       setLoading(true);
       setTimeout(() => {
         setLoading(false);
@@ -474,7 +459,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     return filterNodes.map((node) => node.id ?? '');
   }, [filterNodes]);
 
-  // Card header with search and filter options
   const cardHeader = useMemo(() => {
     return (
       <CustomControlsComponent
@@ -494,7 +478,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     impactLevel,
   ]);
 
-  // Render function for column names with search highlighting and popover
   const renderName = useCallback(
     (_: string, record: SearchSourceAlias) => (
       <EntityPopOverCard
@@ -515,7 +498,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     [searchValue]
   );
 
-  // Define columns for table-level impact analysis
   const tableColumns: ColumnsType<SearchSourceAlias> = useMemo(
     () => [
       {
@@ -529,7 +511,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'nodeDepth',
         key: 'nodeDepth',
         render: (depth: number) => (
-          // Keep a fallback to 0 if depth is NaN for any unexpected reason
           <span>{Number.isNaN(Math.abs(depth)) ? 0 : Math.abs(depth)}</span>
         ),
       },
@@ -633,7 +614,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     [t, renderName]
   );
 
-  // Render function for column names with search highlighting
   const columnNameRender = useCallback(
     (column: string) => {
       const prunedColumnName = Fqn.split(column).pop();
@@ -649,7 +629,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     [searchValue]
   );
 
-  // Define columns for column-level impact analysis
   const columnImpactColumns: ColumnsType<SourceType> = useMemo(
     () => [
       {
@@ -707,7 +686,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     [t, tableColumns, lineageDirection, columnNameRender, searchValue]
   );
 
-  // Initialize quick filters on component mount
   useEffect(() => {
     const items =
       impactLevel === EImpactLevel.TableLevel
@@ -723,7 +701,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
       return {
         ...(originalFilterItem || selectedFilterItem),
-        // preserve original values if exists else set to empty array
         value: originalFilterItem?.value || [],
         hideCounts: impactLevel === EImpactLevel.ColumnLevel,
       };
@@ -734,7 +711,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     }
   }, [impactLevel]);
 
-  // Determine columns and dataSource based on impactLevel
   const { columns, dataSource } = useMemo(() => {
     if (impactLevel === EImpactLevel.TableLevel) {
       return {
@@ -769,7 +745,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     pageSize,
   ]);
 
-  // Memoized paging props to avoid unnecessary re-renders
   const pagingProps = useMemo(() => {
     return {
       paging,
@@ -785,7 +760,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     };
   }, [pageSize, currentPage, showPagination, paging, handlePageSizeChange]);
 
-  // Fetch paging data when fqn, entityType, or queryFilter changes
   useEffect(() => {
     const fetchPagingData = async () => {
       const lineagePagingData = await getLineagePagingData({

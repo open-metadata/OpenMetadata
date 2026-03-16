@@ -389,15 +389,13 @@ export const renderReferenceElement = (
         { 'diff-added': versionStatus?.added },
         { 'diff-removed ': versionStatus?.removed }
       )}
-      key={ref.name}
-    >
+      key={ref.name}>
       <Tooltip placement="bottomLeft" title={ref.name}>
         <a
           data-testid={`reference-link-${ref.name}`}
           href={ref?.endpoint}
           rel="noopener noreferrer"
-          target="_blank"
-        >
+          target="_blank">
           <div className="d-flex items-center">
             <Icon
               className="m-r-xss"

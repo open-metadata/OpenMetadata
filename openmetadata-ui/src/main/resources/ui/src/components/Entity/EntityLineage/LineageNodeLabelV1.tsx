@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Breadcrumbs, Button, Chip, IconButton, Tooltip } from '@mui/material';
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
@@ -98,17 +98,16 @@ const EntityLabel = ({ node }: LineageNodeLabelProps) => {
           <Space
             className="d-flex items-center m-b-xs lineage-breadcrumbs"
             data-testid="lineage-breadcrumbs">
-            <Breadcrumbs
-              separator={<span className="lineage-breadcrumb-item-separator" />}
-              sx={{
-                '& ol': {
-                  gap: 0,
-                },
-              }}>
-              {breadcrumbs.map((breadcrumb) =>
-                renderBreadcrumbItem(breadcrumb.name)
-              )}
-            </Breadcrumbs>
+            <div className="d-flex items-center">
+              {breadcrumbs.map((breadcrumb, index) => (
+                <span key={breadcrumb.name}>
+                  {index > 0 && (
+                    <span className="lineage-breadcrumb-item-separator" />
+                  )}
+                  {renderBreadcrumbItem(breadcrumb.name)}
+                </span>
+              ))}
+            </div>
           </Space>
         </Space>
         {!showDeletedIcon && showDbtIcon && (
@@ -225,23 +224,18 @@ const EntityFooter = ({
   return (
     <div className="entity-footer">
       <div className="entity-footer__entity-type-and-dropdown">
-        <Chip
-          icon={<EntityTypeIcon entityType={node.entityType} />}
-          label={capitalize(node.entityType)}
-          sx={{
-            '& .MuiChip-label': {
-              marginLeft: 1.5,
-            },
-          }}
-          variant="outlined"
-        />
+        <span className="d-flex items-center gap-1 lineage-entity-type-chip">
+          <EntityTypeIcon entityType={node.entityType} />
+          <span>{capitalize(node.entityType)}</span>
+        </span>
         <Button
           className={classNames(
             'children-info-dropdown-label',
             isChildrenListExpanded ? 'expanded' : 'collapsed'
           )}
+          color="secondary"
           data-testid="children-info-dropdown-btn"
-          variant="outlined"
+          size="sm"
           onClick={handleClickColumnInfoDropdown}>
           {childrenInfoDropdownLabel}
         </Button>
@@ -251,16 +245,18 @@ const EntityFooter = ({
         <Tooltip
           placement="right"
           title={t('message.only-show-columns-with-lineage')}>
-          <IconButton
+          <Button
             className={classNames(
               'only-show-columns-with-lineage-filter-button',
               isOnlyShowColumnsWithLineageFilterActive && 'active'
             )}
+            color="tertiary"
             data-testid="lineage-filter-button"
-            disabled={isEditMode}
+            isDisabled={isEditMode}
+            size="sm"
             onClick={handleOnlyShowColumnsWithLineage}>
             <FilterIcon height={20} width={20} />
-          </IconButton>
+          </Button>
         </Tooltip>
       </div>
     </div>

@@ -231,8 +231,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           </div>
         </Card>
       }
-      rightPanelWidth={300}
-    >
+      rightPanelWidth={300}>
       <div className="m-x-box">
         <TitleBreadcrumb
           className="m-y-mlg"

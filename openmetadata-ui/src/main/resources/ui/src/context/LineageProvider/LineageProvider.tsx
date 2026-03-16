@@ -1119,10 +1119,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         entityFqn
       );
 
-      const uniqueNodeMap = new Map<string, typeof newNodes[0]>();
+      const uniqueNodeMap = new Map<string, (typeof newNodes)[0]>();
       newNodes.forEach((n) => uniqueNodeMap.set(n.id, n));
 
-      const uniqueEdgeMap = new Map<string, typeof newEdges[0]>();
+      const uniqueEdgeMap = new Map<string, (typeof newEdges)[0]>();
       newEdges.forEach((e) => {
         const key = `${e.fromEntity.id}-${e.toEntity.id}`;
         uniqueEdgeMap.set(key, e);
