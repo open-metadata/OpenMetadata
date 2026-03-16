@@ -324,8 +324,10 @@ public class LineageBrokenReferenceIT {
   }
 
   private void assertEntitySearchable(OpenMetadataClient client, Table table) {
-    // Escape the FQN for ES query_string — dots are interpreted as field path separators
-    String escapedFqn = "\"" + table.getFullyQualifiedName() + "\"";
+    String termFilter =
+        String.format(
+            "{\"query\":{\"term\":{\"fullyQualifiedName\":\"%s\"}}}",
+            table.getFullyQualifiedName());
     Awaitility.await("Entity should be searchable after reindex")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -333,7 +335,13 @@ public class LineageBrokenReferenceIT {
         .until(
             () -> {
               String searchResult =
-                  client.search().query(escapedFqn).index("table_search_index").size(10).execute();
+                  client
+                      .search()
+                      .query("*")
+                      .queryFilter(termFilter)
+                      .index("table_search_index")
+                      .size(10)
+                      .execute();
               JsonNode resultNode = OBJECT_MAPPER.readTree(searchResult);
               JsonNode hits = resultNode.path("hits").path("hits");
               return hits.isArray() && !hits.isEmpty();
