@@ -24,4 +24,5 @@ export interface AddTestCaseListFiltersProps {
   ) => void;
   onSearch: (searchText: string, searchKey: AddTestCaseListFilterKey) => void;
   hideTableFilter?: boolean;
+  getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
 }
