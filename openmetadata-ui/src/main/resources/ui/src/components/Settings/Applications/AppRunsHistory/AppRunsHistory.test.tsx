@@ -136,8 +136,7 @@ jest.mock('../../../common/Table/Table', () => {
           <button
             onClick={() =>
               customPaginationProps.pagingHandler({ currentPage: 6 })
-            }
-          >
+            }>
             NextPrevious
           </button>
         )}

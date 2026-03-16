@@ -79,7 +79,7 @@ test.describe('Large Glossary Performance Tests', () => {
   test.beforeEach(async ({ page }) => {
     await glossary.visitEntityPage(page);
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
   });
 
   test('should handle large number of glossary terms with pagination', async ({
@@ -295,7 +295,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await statusDropdown.click();
 
     // Wait for dropdown menu
-    await page.waitForSelector('.status-selection-dropdown');
+    await page.locator('.status-selection-dropdown').waitFor();
 
     // Check if status options are available
     const approvedCheckbox = page.locator('text=Approved').first();
@@ -393,7 +393,7 @@ test.describe('Large Glossary Child Term Performace', () => {
   test.beforeEach(async ({ page }) => {
     await glossary.visitEntityPage(page);
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
   });
 
   test('should handle large number of glossary child term with pagination', async ({

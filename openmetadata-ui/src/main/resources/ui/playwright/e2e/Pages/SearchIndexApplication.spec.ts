@@ -50,7 +50,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
 
   await page.reload();
 
-  await page.waitForSelector('[data-testid="app-run-history-table"]');
+  await page.getByTestId('app-run-history-table').waitFor();
 
   await expect(page.getByTestId('pipeline-status')).toContainText('Success');
 };
@@ -98,7 +98,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('View App Run Config', async () => {
       await page.getByTestId('app-historical-config').click();
-      await page.waitForSelector('[role="dialog"].ant-modal');
+      await page.locator('[role="dialog"].ant-modal').waitFor();
 
       await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
@@ -107,14 +107,14 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
 
       await page.click('[data-testid="app-run-config-close"]');
-      await page.waitForSelector('[role="dialog"].ant-modal', {
+      await page.locator('[role="dialog"].ant-modal').waitFor({
         state: 'detached',
       });
     });
 
     await test.step('Edit application', async () => {
       await page.click('[data-testid="edit-button"]');
-      await page.waitForSelector('[data-testid="schedular-card-container"]');
+      await page.getByTestId('schedular-card-container').waitFor();
       await page
         .getByTestId('schedular-card-container')
         .getByText('On Demand')
@@ -186,7 +186,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         '[data-testid="search-indexing-application-card"]'
       );
 
-      expect(await card1.isVisible()).toBe(false);
+      await expect(card1).toBeHidden();
     });
 
     await test.step('Install application', async () => {
@@ -234,7 +234,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.click('[data-testid="install-application"]');
       await page.click('[data-testid="save-button"]');
       await page.click('[data-testid="submit-btn"]');
-      await page.waitForSelector('[data-testid="schedular-card-container"]');
+      await page.getByTestId('schedular-card-container').waitFor();
       await page
         .getByTestId('schedular-card-container')
         .getByText('On Demand')

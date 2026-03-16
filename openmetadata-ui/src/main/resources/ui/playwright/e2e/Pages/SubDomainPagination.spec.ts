@@ -21,6 +21,7 @@ import {
 } from '../../utils/common';
 import { createSubDomain, selectDomain } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -64,7 +65,7 @@ test.describe('SubDomain Pagination', () => {
   test.beforeEach('Navigate to domain page', async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
   });
 
   test('Verify subdomain count and pagination functionality', async ({
@@ -72,7 +73,7 @@ test.describe('SubDomain Pagination', () => {
   }) => {
     await selectDomain(page, domain.data);
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await test.step('Verify subdomain count in tab label', async () => {
       const subDomainsTab = page.getByTestId('subdomains');
@@ -88,9 +89,7 @@ test.describe('SubDomain Pagination', () => {
       );
       await page.getByTestId('subdomains').click();
       await subDomainRes;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(page.locator('table')).toBeVisible();
 

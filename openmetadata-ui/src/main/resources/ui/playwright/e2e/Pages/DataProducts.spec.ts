@@ -99,9 +99,7 @@ test.describe('Data Products', () => {
   test('Data Product List Page - Initial Load', async ({ page }) => {
     await test.step('Navigate to Data Products page', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Verify page header and controls', async () => {
@@ -175,11 +173,9 @@ test.describe('Data Products', () => {
 
     await test.step('Verify asset count', async () => {
       await waitForAllLoadersToDisappear(page);
-      const assetCount = await page
-        .getByTestId('assets')
-        .getByTestId('count')
-        .textContent();
-      expect(assetCount).toBe('1');
+      await expect(
+        page.getByTestId('assets').getByTestId('count')
+      ).toHaveText('1');
     });
 
     await test.step('Remove assets from data product', async () => {
@@ -437,7 +433,7 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify follow button is changed to unfollow', async () => {
-      const followButton = await page.getByTestId('entity-follow-button');
+      const followButton = page.getByTestId('entity-follow-button');
       await expect(followButton).toContainText('Unfollow');
     });
 

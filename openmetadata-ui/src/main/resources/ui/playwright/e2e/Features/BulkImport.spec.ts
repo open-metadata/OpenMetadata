@@ -157,10 +157,9 @@ test.describe('Bulk Import Export', () => {
       await dbService.visitEntityPage(page);
 
       await page.getByTestId('manage-button').click();
-      await page.waitForSelector(
-        '[data-testid="manage-dropdown-list-container"]',
-        { state: 'visible' }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([
@@ -168,7 +167,7 @@ test.describe('Bulk Import Export', () => {
       ]);
 
       // Wait for upload widget to be hidden indicating file is loaded
-      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+      await page.getByTestId('upload-file-widget').waitFor({
         state: 'hidden',
       });
       // Adding some assertion to make sure that CSV loaded correctly
@@ -410,18 +409,16 @@ test.describe('Bulk Import Export', () => {
       await dbEntity.visitEntityPage(page);
 
       await page.getByTestId('manage-button').click();
-      await page.waitForSelector(
-        '[data-testid="manage-dropdown-list-container"]',
-        { state: 'visible' }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
-      const fileInput = await page.$('[type="file"]');
-      await fileInput?.setInputFiles([
+      await page.locator('[type="file"]').setInputFiles([
         'downloads/' + dbEntity.entity.name + '.csv',
       ]);
 
       // Wait for upload widget to be hidden indicating file is loaded
-      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+      await page.getByTestId('upload-file-widget').waitFor({
         state: 'hidden',
       });
 
@@ -542,13 +539,13 @@ test.describe('Bulk Import Export', () => {
       await importApiCall;
 
       // Wait directly for final state (results grid)
-      await page.waitForSelector('[data-testid="passed-row"]', {
+      await page.getByTestId('passed-row').waitFor({
         state: 'visible',
       });
       // Verify no loading state remains
       await expect(page.getByText('Import is in progress.')).not.toBeVisible();
 
-      await page.waitForSelector('text=Import is in progress.', {
+      await page.locator('text=Import is in progress.').waitFor({
         state: 'detached',
       });
 
@@ -558,7 +555,7 @@ test.describe('Bulk Import Export', () => {
         failed: '0',
       });
 
-      await page.waitForSelector('.rdg-header-row', {
+      await page.locator('.rdg-header-row').waitFor({
         state: 'visible',
       });
 
@@ -625,13 +622,12 @@ test.describe('Bulk Import Export', () => {
 
       await page.click('[data-testid="manage-button"] > .anticon');
       await page.click('[data-testid="import-button-title"]');
-      const fileInput = await page.$('[type="file"]');
-      await fileInput?.setInputFiles([
+      await page.locator('[type="file"]').setInputFiles([
         'downloads/' + dbSchemaEntity.entity.name + '.csv',
       ]);
 
       // Wait for upload widget to be hidden indicating file is loaded
-      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+      await page.getByTestId('upload-file-widget').waitFor({
         state: 'hidden',
       });
       // Adding some assertion to make sure that CSV loaded correctly
@@ -786,13 +782,12 @@ test.describe('Bulk Import Export', () => {
       await tableEntity.visitEntityPage(page);
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="import-button-title"]');
-      const fileInput = await page.$('[type="file"]');
-      await fileInput?.setInputFiles([
+      await page.locator('[type="file"]').setInputFiles([
         'downloads/' + tableEntity.entity.name + '.csv',
       ]);
 
       // Wait for upload widget to be hidden indicating file is loaded
-      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+      await page.getByTestId('upload-file-widget').waitFor({
         state: 'hidden',
       });
       // Adding some assertion to make sure that CSV loaded correctly
@@ -840,6 +835,7 @@ test.describe('Bulk Import Export', () => {
         `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=true*`
       );
 
+      // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
       await page.click('[type="button"] >> text="Update"', { force: true });
       await updateButtonResponse;
       await page
@@ -869,12 +865,11 @@ test.describe('Bulk Import Export', () => {
 
       await page.click('[data-testid="manage-button"] > .anticon');
       await page.click('[data-testid="import-button-title"]');
-      const fileInput = await page.$('[type="file"]');
-      await fileInput?.setInputFiles([
+      await page.locator('[type="file"]').setInputFiles([
         'downloads/' + dbEntity.entity.name + '.csv',
       ]);
 
-      await page.waitForSelector('[data-testid="add-row-btn"]', {
+      await page.getByTestId('add-row-btn').waitFor({
         state: 'visible',
       });
 
@@ -950,12 +945,11 @@ test.describe('Bulk Import Export', () => {
     await test.step('Perform Column Select and Delete Operation', async () => {
       await page.click('[data-testid="manage-button"] > .anticon');
       await page.click('[data-testid="import-button-title"]');
-      const fileInput = await page.$('[type="file"]');
-      await fileInput?.setInputFiles([
+      await page.locator('[type="file"]').setInputFiles([
         'downloads/' + `${dbEntity.entity.name}-delete` + '.csv',
       ]);
 
-      await page.waitForSelector('[data-testid="add-row-btn"]', {
+      await page.getByTestId('add-row-btn').waitFor({
         state: 'visible',
       });
 
@@ -1044,6 +1038,7 @@ test.describe('Bulk Import Export', () => {
 
   // Skip this test for now, since it is not working in AUT but working in local and CI
   // <Mostly around the config since it is working in local and CI and not working in AUT>
+  // eslint-disable-next-line playwright/no-skipped-test -- skipped: fails in AUT but works locally
   test.skip('Range selection', async ({ page }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
     test.setTimeout(300_000);
@@ -1062,12 +1057,11 @@ test.describe('Bulk Import Export', () => {
       await dbEntity.visitEntityPage(page);
       await page.click('[data-testid="manage-button"] > .anticon');
       await page.click('[data-testid="import-button-description"]');
-      const fileInput = await page.$('[type="file"]');
-      await fileInput?.setInputFiles([
+      await page.locator('[type="file"]').setInputFiles([
         'downloads/' + dbEntity.entity.name + '.csv',
       ]);
       // Wait for upload widget to be hidden indicating file is loaded
-      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+      await page.getByTestId('upload-file-widget').waitFor({
         state: 'hidden',
       });
 
@@ -1089,10 +1083,10 @@ test.describe('Bulk Import Export', () => {
         const firstRow = page.locator('.rdg-row').first();
         const firstCell = firstRow.locator('.rdg-cell').nth(1);
         const secondCell = firstRow.locator('.rdg-cell').nth(1);
-        secondCell.click();
+        await secondCell.click();
 
-        expect(firstCell).not.toBeFocused();
-        expect(secondCell).toBeFocused();
+        await expect(firstCell).not.toBeFocused();
+        await expect(secondCell).toBeFocused();
 
         await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(0);
       });

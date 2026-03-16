@@ -24,7 +24,6 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   addFollower,
@@ -51,7 +50,6 @@ const DomainDetailPage = () => {
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
   const { permissions } = usePermissionProvider();
-  const { updateDomains } = useDomainStore();
   const [isMainContentLoading, setIsMainContentLoading] = useState(false);
   const [activeDomain, setActiveDomain] = useState<Domain>();
   const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
@@ -78,7 +76,6 @@ const DomainDetailPage = () => {
         const response = await patchDomains(activeDomain.id, jsonPatch);
 
         setActiveDomain(response);
-        updateDomains([response], false);
 
         if (activeDomain?.name !== updatedData.name) {
           navigate(getDomainPath(response.fullyQualifiedName));

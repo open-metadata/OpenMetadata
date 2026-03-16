@@ -36,7 +36,7 @@ test.describe(
       await page.goto('/test-library');
 
       // Wait for page to load
-      await page.waitForSelector('[data-testid="test-definition-table"]', {
+      await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
         timeout: 30000,
       });
@@ -92,7 +92,7 @@ test.describe(
         await page.getByTestId('add-test-definition-button').click();
 
         // Wait for drawer to open
-        await page.waitForSelector('.ant-drawer', { state: 'visible' });
+        await page.locator('.ant-drawer').waitFor({ state: 'visible' });
 
         // Verify drawer title
         await expect(page.locator('.ant-drawer-title')).toContainText(
@@ -142,7 +142,7 @@ test.describe(
 
       await test.step('Edit Test Definition', async () => {
         // Wait for table to load
-        await page.waitForSelector('[data-testid="test-definition-table"]', {
+        await page.getByTestId('test-definition-table').waitFor({
           state: 'visible',
         });
 
@@ -153,7 +153,7 @@ test.describe(
         await firstEditButton.click();
 
         // Wait for drawer to open
-        await page.waitForSelector('.ant-drawer', { state: 'visible' });
+        await page.locator('.ant-drawer').waitFor({ state: 'visible' });
 
         // Verify drawer title
         await expect(page.locator('.ant-drawer-title')).toContainText(
@@ -190,7 +190,7 @@ test.describe(
 
       await test.step('should enable/disable test definition', async () => {
         // Wait for table to load
-        await page.waitForSelector('[data-testid="test-definition-table"]', {
+        await page.getByTestId('test-definition-table').waitFor({
           state: 'visible',
         });
 
@@ -225,7 +225,7 @@ test.describe(
 
       await test.step('should delete a test definition', async () => {
         // Wait for table to load
-        await page.waitForSelector('[data-testid="test-definition-table"]', {
+        await page.getByTestId('test-definition-table').waitFor({
           state: 'visible',
         });
 
@@ -236,7 +236,7 @@ test.describe(
         await deleteButton.click();
 
         // Wait for confirmation modal
-        await page.waitForSelector('.ant-modal', { state: 'visible' });
+        await page.locator('.ant-modal').waitFor({ state: 'visible' });
 
         // Verify modal content
         await expect(
@@ -274,7 +274,7 @@ test.describe(
       await page.getByTestId('add-test-definition-button').click();
 
       // Wait for drawer to open
-      await page.waitForSelector('.ant-drawer', { state: 'visible' });
+      await page.locator('.ant-drawer').waitFor({ state: 'visible' });
 
       // Click save without filling required fields
       await page.getByTestId('save-test-definition').click();
@@ -293,7 +293,7 @@ test.describe(
       await page.getByTestId('add-test-definition-button').click();
 
       // Wait for drawer to open
-      await page.waitForSelector('.ant-drawer', { state: 'visible' });
+      await page.locator('.ant-drawer').waitFor({ state: 'visible' });
 
       // Fill in some fields
       await page.locator('#name').fill('testName');
@@ -337,7 +337,7 @@ test.describe(
       await page.goto('/test-library');
 
       // Wait for table to load
-      await page.waitForSelector('[data-testid="test-definition-table"]', {
+      await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
       });
 
@@ -1009,8 +1009,11 @@ test.describe(
         await expect(page.getByText(/updated successfully/i)).toBeVisible();
 
         // Verify we stayed on the same page (previous button state should be unchanged)
-        const prevDisabledAfter = await previousButton.isDisabled();
-        expect(prevDisabledAfter).toBe(prevDisabledBefore);
+        if (prevDisabledBefore) {
+          await expect(previousButton).toBeDisabled();
+        } else {
+          await expect(previousButton).toBeEnabled();
+        }
 
         // Verify the updated test definition is still visible
         await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();

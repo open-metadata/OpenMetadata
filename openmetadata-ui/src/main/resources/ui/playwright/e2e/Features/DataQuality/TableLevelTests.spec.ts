@@ -98,14 +98,14 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
         await page.getByTestId('test-case-name').fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`[data-id="testType"]`, {
+        await page.locator('[data-id="testType"]').waitFor({
           state: 'visible',
         });
 
@@ -113,7 +113,7 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableRowCountToBeBetween').click();
-        await page.waitForSelector(`[data-id="tableRowCountToBeBetween"]`, {
+        await page.locator('[data-id="tableRowCountToBeBetween"]').waitFor({
           state: 'visible',
         });
 
@@ -198,14 +198,14 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
         await page.getByTestId('test-case-name').fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`[data-id="testType"]`, {
+        await page.locator('[data-id="testType"]').waitFor({
           state: 'visible',
         });
 
@@ -213,7 +213,7 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableRowCountToEqual').click();
-        await page.waitForSelector(`[data-id="tableRowCountToEqual"]`, {
+        await page.locator('[data-id="tableRowCountToEqual"]').waitFor({
           state: 'visible',
         });
 
@@ -296,14 +296,14 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
         await page.getByTestId('test-case-name').fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`[data-id="testType"]`, {
+        await page.locator('[data-id="testType"]').waitFor({
           state: 'visible',
         });
 
@@ -311,7 +311,7 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableColumnCountToBeBetween').click();
-        await page.waitForSelector(`[data-id="tableColumnCountToBeBetween"]`, {
+        await page.locator('[data-id="tableColumnCountToBeBetween"]').waitFor({
           state: 'visible',
         });
 
@@ -402,14 +402,14 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
         await page.getByTestId('test-case-name').fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`[data-id="testType"]`, {
+        await page.locator('[data-id="testType"]').waitFor({
           state: 'visible',
         });
 
@@ -417,7 +417,7 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableColumnCountToEqual').click();
-        await page.waitForSelector(`[data-id="tableColumnCountToEqual"]`, {
+        await page.locator('[data-id="tableColumnCountToEqual"]').waitFor({
           state: 'visible',
         });
 
@@ -502,14 +502,14 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
         await page.getByTestId('test-case-name').fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`[data-id="testType"]`, {
+        await page.locator('[data-id="testType"]').waitFor({
           state: 'visible',
         });
 
@@ -517,7 +517,7 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableColumnNameToExist').click();
-        await page.waitForSelector(`[data-id="tableColumnNameToExist"]`, {
+        await page.locator('[data-id="tableColumnNameToExist"]').waitFor({
           state: 'visible',
         });
 
@@ -603,14 +603,14 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
         await page.getByTestId('test-case-name').fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`[data-id="testType"]`, {
+        await page.locator('[data-id="testType"]').waitFor({
           state: 'visible',
         });
 
@@ -618,7 +618,7 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableColumnToMatchSet').click();
-        await page.waitForSelector(`[data-id="tableColumnToMatchSet"]`, {
+        await page.locator('[data-id="tableColumnToMatchSet"]').waitFor({
           state: 'visible',
         });
 
@@ -712,14 +712,14 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
         await page.getByTestId('test-case-name').fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`[data-id="testType"]`, {
+        await page.locator('[data-id="testType"]').waitFor({
           state: 'visible',
         });
 
@@ -739,7 +739,7 @@ test.describe(
         await expect(table2KeyColumnsInput).toBeDisabled();
 
         await page.click('#testCaseFormV1_params_table2');
-        await page.waitForSelector(`[data-id="tableDiff"]`, {
+        await page.locator('[data-id="tableDiff"]').waitFor({
           state: 'visible',
         });
 
@@ -867,7 +867,7 @@ test.describe(
           .filter({ hasText: "Table 1's key columns" })
           .getByRole('button')
           .click();
-        await page.waitForSelector(`[data-id="tableDiff"]`, {
+        await page.locator('[data-id="tableDiff"]').waitFor({
           state: 'visible',
         });
 
@@ -925,14 +925,14 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
         await page.getByTestId('test-case-name').fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`[data-id="testType"]`, {
+        await page.locator('[data-id="testType"]').waitFor({
           state: 'visible',
         });
 
@@ -940,7 +940,7 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableCustomSQLQuery').click();
-        await page.waitForSelector(`[data-id="tableCustomSQLQuery"]`, {
+        await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
           state: 'visible',
         });
 
@@ -1014,7 +1014,7 @@ test.describe(
           .fill(' update');
         await page.getByTestId('edit-test-form').getByText('ROWS').click();
         await page.getByTitle('COUNT').click();
-        await page.waitForSelector(`[data-id="tableCustomSQLQuery"]`, {
+        await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
           state: 'visible',
         });
 
@@ -1059,14 +1059,14 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
         await page.getByTestId('test-case-name').fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`[data-id="testType"]`, {
+        await page.locator('[data-id="testType"]').waitFor({
           state: 'visible',
         });
 
@@ -1074,8 +1074,7 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableRowInsertedCountToBeBetween').click();
-        await page.waitForSelector(
-          `[data-id="tableRowInsertedCountToBeBetween"]`,
+        await page.locator('[data-id="tableRowInsertedCountToBeBetween"]').waitFor(
           {
             state: 'visible',
           }
@@ -1094,8 +1093,7 @@ test.describe(
         );
 
         await page.click('#testCaseFormV1_params_columnName');
-        await page.waitForSelector(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`,
+        await page.locator(`.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`).waitFor(
           { state: 'visible' }
         );
         await page.click(

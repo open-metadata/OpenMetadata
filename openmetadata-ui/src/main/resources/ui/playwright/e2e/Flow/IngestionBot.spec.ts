@@ -24,6 +24,7 @@ import {
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
 import { setToken } from '../../utils/tokenStorage';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const test = base.extend<{
   page: Page;
@@ -50,7 +51,7 @@ const test = base.extend<{
 
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
-    await page.waitForSelector('loader', { state: 'hidden' });
+    await page.locator('loader').waitFor({ state: 'hidden' });
 
     await expect(page.getByTestId('nav-user-name')).toHaveText('ingestion-bot');
 
@@ -95,17 +96,13 @@ test.describe('Ingestion Bot ', () => {
     await test.step('Assign assets to domains', async () => {
       // Add assets to domain 1
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain1.data);
       await addAssetsToDomain(page, domain1, domainAsset1, true, true);
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain2.data);
       await addAssetsToDomain(page, domain2, domainAsset2, true, true);
     });
@@ -143,18 +140,14 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await addServicesToDomain(page, domain1.data, [
         domainAsset1[0].get().service,
       ]);
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await addServicesToDomain(page, domain2.data, [
         domainAsset2[0].get().service,
       ]);

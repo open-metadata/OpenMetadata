@@ -674,10 +674,6 @@ export interface ConfigObject {
      * Database of the data source. This is the name of your Fabric Warehouse or Lakehouse. This
      * is optional parameter, if you would like to restrict the metadata reading to a single
      * database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
-     *
-     * Database of the data source. This is an optional parameter, if you would like to restrict
-     * the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts
-     * to scan all the databases.
      */
     database?: string;
     /**
@@ -710,6 +706,9 @@ export interface ConfigObject {
      *
      * Ingest data from all databases (Warehouses and Lakehouses) in Microsoft Fabric. You can
      * use databaseFilterPattern on top of this.
+     *
+     * Ingest data from all databases in Informix. You can use databaseFilterPattern on top of
+     * this.
      */
     ingestAllDatabases?: boolean;
     /**

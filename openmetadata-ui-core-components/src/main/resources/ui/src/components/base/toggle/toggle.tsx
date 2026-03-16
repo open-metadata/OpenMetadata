@@ -74,7 +74,7 @@ export const ToggleBase = ({ className, isHovered, isDisabled, isFocusVisible, i
     );
 };
 
-export interface ToggleProps extends AriaSwitchProps {
+interface ToggleProps extends AriaSwitchProps {
     size?: "sm" | "md";
     label?: string;
     hint?: ReactNode;

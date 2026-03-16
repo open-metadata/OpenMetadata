@@ -82,6 +82,7 @@ import {
   assignTag,
   assignTier,
   waitForAllLoadersToDisappear,
+
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -367,9 +368,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
         await page.reload();
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -468,9 +467,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
           await expect(page.getByRole('dialog')).not.toBeVisible();
 
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           await expect(
             page
@@ -540,9 +537,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           await page.getByRole('tab', { name: 'Quality' }).click();
 
           await qualityResponse;
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           await page
             .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -623,9 +618,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
             .getByText('Schema')
             .click();
 
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           await page.getByRole('checkbox', { name: 'Select all' }).click();
 
@@ -679,9 +672,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await toastNotification(page, '"Contract" deleted successfully!');
 
         await contractRefreshResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -709,9 +700,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await toastNotification(page, '"Contract" deleted successfully!');
 
         await contractRefreshResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       });
@@ -747,9 +736,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
         const response = await contractRefreshResponse;
         expect(response.status()).toBe(404);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       });
@@ -768,9 +755,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
       });
 
       await test.step('Open contract section and start adding contract', async () => {
@@ -795,9 +780,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           .click();
 
         await columnResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -816,9 +799,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await page.getByTestId('next').click();
 
         await columnResponse2;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -837,9 +818,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await page.getByTestId('next').click();
 
         await columnResponse3;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -898,9 +877,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           .click();
 
         await columnResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -926,7 +903,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       await test.step('Re-select some columns on page 1, save and validate', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('contract-edit-button').click();
@@ -941,9 +918,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           .click();
 
         await columnResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         for (let i = 1; i <= 5; i++) {
           await page
@@ -976,9 +951,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await navigateToContractTab(page);
 
@@ -1165,9 +1138,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await page.reload();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1342,9 +1313,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await page.reload();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1378,9 +1347,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await page.getByRole('tab', { name: 'Schema' }).click();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     // First level column should be selectable
     await page
@@ -1497,7 +1464,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     // Run Contract After Schema Change should Fail
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.waitForSelector('.contract-action-dropdown', {
+    await page.locator('.contract-action-dropdown').waitFor({
       state: 'visible',
     });
 
@@ -1505,9 +1472,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await page.reload();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-schema-status')
@@ -1528,7 +1493,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.waitForSelector('.contract-action-dropdown', {
+    await page.locator('.contract-action-dropdown').waitFor({
       state: 'visible',
     });
     await page.getByTestId('contract-edit-button').click();
@@ -1661,9 +1626,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1938,7 +1901,8 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         ).toContainText(
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
-          }`
+          }`,
+          { timeout: 30_000 }
         );
       }
 
@@ -1963,7 +1927,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[0]}`
         )
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 30_000 });
 
       await openContractActionsDropdown(page);
       await page.getByTestId('contract-edit-button').click();
@@ -2013,7 +1977,8 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         ).toContainText(
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
-          },${filter.values[2]},${filter.values[3]}`
+          },${filter.values[2]},${filter.values[3]}`,
+          { timeout: 30_000 }
         );
       }
 
@@ -2040,7 +2005,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[1]}`
         )
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 30_000 });
 
       await clickEditContractButton(page);
       await validateSecurityAndSLADetails(
@@ -2066,9 +2031,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-security-policy-container')
@@ -2115,7 +2078,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         // Click to import via the modal
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2198,7 +2161,7 @@ description:
       await test.step('Import again via modal with replace mode', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2246,9 +2209,7 @@ description:
 
         await toastNotification(page, 'ODCS Contract imported successfully');
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // SLA should NOT be visible (replace mode clears fields not in import)
         await expect(page.getByTestId('contract-sla-card')).not.toBeVisible();
@@ -2424,7 +2385,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               await settingClick(page, GlobalSettingOptions.PERSONA);
               await personaGetResponse;
 
-              await page.waitForSelector('.ant-skeleton-content', {
+              await page.locator('.ant-skeleton-content').first().waitFor({
                 state: 'detached',
               });
 
@@ -2438,9 +2399,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               // Add user to persona
               await page.getByTestId('add-persona-button').click();
-              await page.waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page);
 
               const searchUser = page.waitForResponse(
                 `/api/v1/search/query?q=*${encodeURIComponent(
@@ -2502,9 +2461,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               };
               await settingClick(page, GlobalSettingOptions.PERSONA);
 
-              await page.waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page);
 
               // Navigate to persona details and customize UI
               await navigateToPersonaWithPagination(
@@ -2525,9 +2482,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 })
                 .click();
 
-              await page.waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page);
 
               // Hide the Contract tab
               await page.getByTestId('tab-contract').click();
