@@ -4835,6 +4835,19 @@ public interface CollectionDAO {
                 parts = {":fqnhash", ".%"},
                 hash = true)
             String fqnhash);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE tag SET json = JSON_SET(json, '$.recognizers', CAST(:recognizers AS JSON)) "
+                + "WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') = :tagFqn",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE tag SET json = json::jsonb || json_build_object("
+                + "'recognizers', :recognizers::jsonb "
+                + ")::jsonb WHERE json->>'fullyQualifiedName' = :tagFqn",
+        connectionType = POSTGRES)
+    void patchRecognizers(@Bind("tagFqn") String tagFqn, @Bind("recognizers") String recognizers);
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -9851,6 +9864,9 @@ public interface CollectionDAO {
         @Bind("id") String id,
         @Bind("stagedIndexMapping") String stagedIndexMapping,
         @Bind("updatedAt") long updatedAt);
+
+    @SqlUpdate("UPDATE search_index_job SET updatedAt = :updatedAt WHERE id = :id")
+    void touchJob(@Bind("id") String id, @Bind("updatedAt") long updatedAt);
 
     /** Row mapper for SearchIndexJobRecord */
     class SearchIndexJobMapper implements RowMapper<SearchIndexJobRecord> {

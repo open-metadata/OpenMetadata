@@ -37,10 +37,9 @@ test.describe('Language Override Tests', () => {
       .getByTestId('language-selector-button')
       .waitFor({ state: 'visible' });
     await germanLocalePage.getByTestId('language-selector-button').click();
-    await germanLocalePage.waitForSelector(
-      '.ant-dropdown:not(.ant-dropdown-hidden)',
-      { state: 'visible' }
-    );
+    await germanLocalePage
+      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+      .waitFor({ state: 'visible' });
     await germanLocalePage.getByText('English - EN').click();
 
     // navigate(0) triggers a full page reload when language changes
@@ -48,9 +47,9 @@ test.describe('Language Override Tests', () => {
     await germanLocalePage.getByTestId('language-selector-button').waitFor({ state: 'visible' });
 
     await germanLocalePage.locator('[data-testid="dropdown-profile"]').click();
-    await germanLocalePage.waitForSelector('[role="menu"].profile-dropdown', {
-      state: 'visible',
-    });
+    await germanLocalePage
+      .locator('[role="menu"].profile-dropdown')
+      .waitFor({ state: 'visible' });
 
     const profileDropdown = germanLocalePage.locator(
       '[role="menu"].profile-dropdown'

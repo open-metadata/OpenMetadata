@@ -507,6 +507,7 @@ public class ListFilter extends Filter<ListFilter> {
     String status = getQueryParam("testCaseStatus");
     String testSuiteId = getQueryParam("testSuiteId");
     String type = getQueryParam("testCaseType");
+    String columnName = getQueryParam("columnName");
 
     if (entityFQN != null) {
       if (includeAllTests) {
@@ -538,6 +539,17 @@ public class ListFilter extends Filter<ListFilter> {
             case "column" -> "entityLink LIKE '%::columns::%'";
             default -> "";
           });
+    }
+
+    if (columnName != null) {
+      queryParams.put("columnName", columnName);
+      String columnNameQuery = null;
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        columnNameQuery = "entityLink LIKE CONCAT('%::columns::', :columnName, '>')";
+      } else {
+        columnNameQuery = "entityLink LIKE '%::columns::' || :columnName || '>'";
+      }
+      conditions.add(columnNameQuery);
     }
 
     return addCondition(conditions);

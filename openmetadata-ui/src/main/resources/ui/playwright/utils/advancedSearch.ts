@@ -212,7 +212,7 @@ export const selectOption = async (
 
   await expect(dropdownLocator).toHaveClass(/(^|\s)ant-select-focused(\s|$)/);
 
-  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -226,6 +226,7 @@ export const selectOption = async (
 
   // Wait for dropdown animations to settle before clicking
   // This prevents "element detached from DOM" errors during re-renders
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown animation settling
   await page.waitForTimeout(100);
   await optionLocator.click({ timeout: 10000 });
 };
@@ -238,7 +239,7 @@ export const selectRange = async (
 ) => {
   await ruleLocator.locator('.rule--value .ant-picker-range').click();
 
-  await page.waitForSelector('.ant-picker-dropdown-range', {
+  await page.locator('.ant-picker-dropdown-range').waitFor({
     state: 'visible',
   });
 
@@ -690,6 +691,7 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
 
   await expect(dropdownText).toContainText('Loading...');
 
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
   await page.waitForTimeout(1000);
 
   await expect(dropdownText).not.toContainText('Loading...');

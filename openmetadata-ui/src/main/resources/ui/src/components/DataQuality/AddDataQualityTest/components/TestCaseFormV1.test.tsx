@@ -10,12 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React, { act, forwardRef } from 'react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { act, forwardRef } from 'react';
 import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
+import { Table } from '../../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
+import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import { getListTestDefinitions } from '../../../../rest/testAPI';
 import TestCaseFormV1 from './TestCaseFormV1';
 import { TestCaseFormV1Props } from './TestCaseFormV1.interface';
@@ -332,6 +340,14 @@ jest.mock('../../../../utils/formUtils', () => ({
   createScrollToErrorHandler: jest.fn(() => jest.fn()),
 }));
 
+const mockAddTestCaseList = jest
+  .fn()
+  .mockImplementation(() => <div data-testid="add-test-case-list" />);
+jest.mock('../../AddTestCaseList/AddTestCaseList.component', () => ({
+  AddTestCaseList: (props: Record<string, unknown>) =>
+    mockAddTestCaseList(props),
+}));
+
 // Mock DataQualityUtils
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
   ...jest.requireActual('../../../../utils/DataQuality/DataQualityUtils'),
@@ -561,6 +577,116 @@ describe('TestCaseFormV1 Component', () => {
       const tableSelect = await screen.findByTestId('async-select');
 
       expect(tableSelect).toBeDisabled();
+    });
+  });
+
+  describe('AddTestCaseList props when opened from profiler', () => {
+    const tableWithTestSuite = {
+      ...MOCK_TABLE,
+      testSuite: {
+        id: 'suite-1',
+        fullyQualifiedName: 'test-suite',
+        summary: { success: 0, failed: 0, aborted: 0 },
+      },
+    };
+
+    it('passes hideTableFilter and columnFilters when table prop is provided', async () => {
+      (getIngestionPipelines as jest.Mock).mockResolvedValue({
+        paging: { total: 0 },
+      });
+
+      render(
+        <TestCaseFormV1
+          {...mockProps}
+          table={tableWithTestSuite as unknown as Table}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      const schedulerCard = await screen.findByTestId('scheduler-card');
+      await waitFor(
+        () => {
+          expect(schedulerCard).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      const switches = within(schedulerCard).getAllByRole('switch');
+      const selectAllSwitch = switches[0];
+      await act(async () => {
+        fireEvent.click(selectAllSwitch);
+      });
+
+      expect(
+        await screen.findByTestId('add-test-case-list')
+      ).toBeInTheDocument();
+
+      const lastCall =
+        mockAddTestCaseList.mock.calls[
+          mockAddTestCaseList.mock.calls.length - 1
+        ];
+      const props = lastCall[0] as {
+        hideTableFilter: boolean;
+        columnFilters?: string;
+      };
+
+      expect(props.hideTableFilter).toBe(true);
+      expect(props.columnFilters).toBe(
+        'fullyQualifiedName:"sample_data.ecommerce_db.shopify.dim_address"'
+      );
+    });
+
+    it('passes hideTableFilter false and columnFilters undefined when table is not provided', async () => {
+      (getTableDetailsByFQN as jest.Mock).mockResolvedValue(tableWithTestSuite);
+      (getIngestionPipelines as jest.Mock).mockResolvedValue({
+        paging: { total: 0 },
+      });
+
+      render(<TestCaseFormV1 {...mockProps} table={undefined} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      const tableSelect = await screen.findByTestId('async-select');
+      await act(async () => {
+        fireEvent.change(tableSelect, {
+          target: { value: 'sample_data.ecommerce_db.shopify.dim_address' },
+        });
+      });
+
+      const schedulerCard = await screen.findByTestId('scheduler-card');
+      await waitFor(
+        () => {
+          expect(schedulerCard).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      const switches = within(schedulerCard).getAllByRole('switch');
+      const selectAllSwitch = switches[0];
+      await act(async () => {
+        fireEvent.click(selectAllSwitch);
+      });
+
+      expect(
+        await screen.findByTestId('add-test-case-list')
+      ).toBeInTheDocument();
+
+      const lastCall =
+        mockAddTestCaseList.mock.calls[
+          mockAddTestCaseList.mock.calls.length - 1
+        ];
+      const props = lastCall[0] as {
+        hideTableFilter: boolean;
+        columnFilters?: string;
+      };
+
+      expect(props.hideTableFilter).toBe(false);
+      expect(props.columnFilters).toBeUndefined();
     });
   });
 

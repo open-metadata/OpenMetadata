@@ -24,6 +24,7 @@ import {
   updateDisplayNameForEntity,
   validateCopiedLinkFormat,
   waitForAllLoadersToDisappear,
+
 } from '../../utils/entity';
 import {
   expandDatabaseInExploreTree,
@@ -63,9 +64,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('explore-tree-title-Databases')
@@ -219,11 +218,9 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       await expect(page.getByTestId('table')).toBeVisible();
 
       // Verify all table column headers are correct
-      const headers = await page
-        .locator('.ant-table-thead > tr > .ant-table-cell')
-        .allTextContents();
-
-      expect(headers).toEqual([
+      await expect(
+        page.locator('.ant-table-thead > tr > .ant-table-cell')
+      ).toHaveText([
         'Enabled',
         'Tag',
         'Display Name',
@@ -372,9 +369,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   });
 
   test('Verify charts are visible in explore tree', async ({ page }) => {
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     const serviceName = dashboard.serviceResponseData.name;
 
@@ -451,7 +446,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   }) => {
     await searchIndex.visitEntityPage(page);
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await testCopyLinkButton({
       page,
@@ -467,7 +462,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   }) => {
     await apiEndpoint.visitEntityPage(page);
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await testCopyLinkButton({
       page,
@@ -482,7 +477,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     page,
   }) => {
     await searchIndex.visitEntityPage(page);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('search-index-fields-table')).toBeVisible();
 
@@ -524,7 +519,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     page,
   }) => {
     await apiEndpoint.visitEntityPage(page);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('schema-fields-table')).toBeVisible();
 

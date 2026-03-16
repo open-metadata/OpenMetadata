@@ -663,6 +663,7 @@ def _build_table_lineage(
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
     procedure: Optional[EntityReference] = None,
+    temp_lineage_tables: Optional[List] = None,
 ) -> Either[AddLineageRequest]:
     """
     Prepare the lineage request generator
@@ -675,6 +676,7 @@ def _build_table_lineage(
         query (str): query
         column_lineage_map (dict): map of the column lineage
         lineage_source (LineageSource): lineage source
+        temp_lineage_tables (List[TempLineageTable]): lineage path through temporary tables
 
     Returns:
         Either[AddLineageRequest] with the lineage request or an error
@@ -690,6 +692,8 @@ def _build_table_lineage(
         lineage_details = LineageDetails(
             sqlQuery=masked_query, source=lineage_source, pipeline=procedure
         )
+        if temp_lineage_tables:
+            lineage_details.tempLineageTables = temp_lineage_tables
         if col_lineage:
             lineage_details.columnsLineage = col_lineage
         lineage = AddLineageRequest(
@@ -1036,6 +1040,33 @@ def get_lineage_via_table_entity(
         )
 
 
+def _build_temp_table_lineage(
+    table_chain: List[str],
+    from_fqn: str,
+    to_fqn: str,
+) -> List:
+    """
+    Build a list of lineage hops through temporary/intermediate tables.
+
+    The first hop's source uses the from_fqn and the last hop's target uses
+    the to_fqn. Intermediate hops use the raw table names from the chain.
+
+    Returns:
+        List of TempLineageTable objects with fromEntity and toEntity fields.
+    """
+    from metadata.generated.schema.type.entityLineage import TempLineageTable
+
+    if len(table_chain) < 2:
+        return [TempLineageTable(fromEntity=from_fqn, toEntity=to_fqn)]
+
+    hops = []
+    for i in range(len(table_chain) - 1):
+        source = from_fqn if i == 0 else table_chain[i]
+        target = to_fqn if i == len(table_chain) - 2 else table_chain[i + 1]
+        hops.append(TempLineageTable(fromEntity=source, toEntity=target))
+    return hops
+
+
 @calculate_execution_time(context="GetLineageForPath")
 def _get_lineage_for_path(
     from_fqn: str,
@@ -1044,9 +1075,11 @@ def _get_lineage_for_path(
     current_node: Any,
     table_chain: List[str],
     metadata: OpenMetadata,
+    merged_hops: Optional[List] = None,
 ) -> Optional[Either[AddLineageRequest]]:
     """
-    Get lineage for a pair of FQNs in the path
+    Get lineage for a pair of FQNs in the path.
+    If merged_hops is provided, uses those instead of computing from table_chain.
     """
     try:
         to_entity = get_entity_from_es_result(
@@ -1062,18 +1095,21 @@ def _get_lineage_for_path(
             ),
         )
         if to_entity and from_entity:
-            # Create the table chain string
-            table_relationship = "--- TEMPT TABLE LINEAGE \n--- "
-            table_relationship += " > ".join(table_chain)
+            temp_lineage_hops = merged_hops or _build_temp_table_lineage(
+                table_chain=table_chain,
+                from_fqn=from_fqn,
+                to_fqn=to_fqn,
+            )
             return _build_table_lineage(
                 to_entity=to_entity,
                 from_entity=from_entity,
                 to_table_raw_name=str(current_node),
                 from_table_raw_name=str(from_node),
-                masked_query=table_relationship,  # Using table chain as the query
+                masked_query=None,
                 column_lineage_map={},
                 lineage_source=LineageSource.QueryLineage,
                 procedure=None,
+                temp_lineage_tables=temp_lineage_hops,
             )
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -1083,10 +1119,16 @@ def _get_lineage_for_path(
 
 @calculate_execution_time_generator(context="ProcessSequence")
 def _process_sequence(
-    sequence: List[Any], graph: DiGraph, metadata: OpenMetadata
+    sequence: List[Any],
+    graph: DiGraph,
+    metadata: OpenMetadata,
+    hops_map: Optional[Dict[tuple, List]] = None,
+    seen_pairs: Optional[set] = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     Process a sequence of nodes to generate lineage information.
+    When hops_map is provided, uses pre-merged temp lineage hops and skips
+    duplicate (from_fqn, to_fqn) pairs already emitted via seen_pairs.
     """
     from_node = None
     table_chain = []
@@ -1101,6 +1143,11 @@ def _process_sequence(
             if current_fqns and from_node is not None:
                 from_fqns = from_node.get("fqns", [])
                 for from_fqn, to_fqn in itertools.product(from_fqns, current_fqns):
+                    pair_key = (from_fqn, to_fqn)
+                    if seen_pairs is not None:
+                        if pair_key in seen_pairs:
+                            continue
+                        seen_pairs.add(pair_key)
                     lineage = _get_lineage_for_path(
                         from_fqn=from_fqn,
                         to_fqn=to_fqn,
@@ -1108,12 +1155,14 @@ def _process_sequence(
                         current_node=node,
                         table_chain=table_chain,
                         metadata=metadata,
+                        merged_hops=hops_map.get(pair_key) if hops_map else None,
                     )
                     if lineage:
                         yield lineage
 
             if current_fqns:
                 from_node = graph.nodes[node]
+                table_chain = [str(node).replace(f"{DEFAULT_SCHEMA_NAME}.", "")]
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error creating lineage for node [{node}]: {exc}")
@@ -1154,6 +1203,38 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     return paths
 
 
+def _collect_temp_lineage_hops(
+    paths: List[List[Any]], graph: DiGraph
+) -> Dict[tuple, List]:
+    """
+    Pre-compute all temp lineage hops per (from_fqn, to_fqn) pair from paths.
+    This walks through each path without making any ES calls, collecting only
+    the lightweight TempLineageTable objects grouped by endpoint FQN pair.
+    """
+    hops_map: Dict[tuple, List] = {}
+    for sequence in paths:
+        from_node = None
+        table_chain: List[str] = []
+        for node in sequence:
+            current_node = graph.nodes[node]
+            current_fqns = current_node.get("fqns", [])
+            table_chain.append(str(node).replace(f"{DEFAULT_SCHEMA_NAME}.", ""))
+            if current_fqns and from_node is not None:
+                from_fqns = from_node.get("fqns", [])
+                for from_fqn, to_fqn in itertools.product(from_fqns, current_fqns):
+                    key = (from_fqn, to_fqn)
+                    temp_hops = _build_temp_table_lineage(
+                        table_chain=table_chain,
+                        from_fqn=from_fqn,
+                        to_fqn=to_fqn,
+                    )
+                    hops_map.setdefault(key, []).extend(temp_hops)
+            if current_fqns:
+                from_node = graph.nodes[node]
+                table_chain = [str(node).replace(f"{DEFAULT_SCHEMA_NAME}.", "")]
+    return hops_map
+
+
 @calculate_execution_time_generator(context="GetLineageByGraph")
 def get_lineage_by_graph(
     graph: Optional[DiGraph],
@@ -1182,8 +1263,11 @@ def get_lineage_by_graph(
     # Extract each component as an independent subgraph and process paths
     for component in components:
         subtree = graph.subgraph(component).copy()
-        for path in _get_paths_from_subtree(subtree):
-            yield from _process_sequence(path, subtree, metadata)
+        paths = _get_paths_from_subtree(subtree)
+        hops_map = _collect_temp_lineage_hops(paths, subtree)
+        seen_pairs = set()
+        for path in paths:
+            yield from _process_sequence(path, subtree, metadata, hops_map, seen_pairs)
 
 
 @calculate_execution_time_generator(context="GetLineageByProcedureGraph")

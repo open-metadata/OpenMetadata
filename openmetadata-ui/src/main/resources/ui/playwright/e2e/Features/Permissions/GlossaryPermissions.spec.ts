@@ -36,7 +36,6 @@ const test = base.extend<{
     const adminPage = await browser.newPage();
     try {
       await adminUser.login(adminPage);
-      // eslint-disable-next-line react-hooks/rules-of-hooks
       await use(adminPage);
     } finally {
       await adminPage.close();
@@ -90,6 +89,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Test that glossary operation elements are visible
     const directElements = [
@@ -151,6 +151,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Test that glossary operation elements are visible
     const directElements = [
@@ -203,7 +204,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Edit description button should be visible
     const editDescBtn = testUserPage.getByTestId('edit-description');
@@ -224,7 +225,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Add owner button should be visible
     const addOwner = testUserPage.getByTestId('add-owner');
@@ -250,7 +251,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Add tag button should be visible
     const addTag = testUserPage
@@ -278,7 +279,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Manage button should be visible with delete option
     const manageButton = testUserPage.getByTestId('manage-button');
@@ -310,7 +311,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Add glossary button should be visible (create permission)
     const addGlossaryBtn = testUserPage.getByTestId('add-glossary');
@@ -341,7 +342,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // User should be able to view the glossary page
     const glossaryHeader = testUserPage.getByTestId(

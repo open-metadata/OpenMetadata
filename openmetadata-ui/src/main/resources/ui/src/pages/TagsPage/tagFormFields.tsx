@@ -171,13 +171,16 @@ export const getDisabledField = ({
   name: 'disabled',
   required: false,
   label: 'label.disable-tag',
+  muiLabel: 'label.disable-tag',
   id: 'root/disabled',
-  type: FieldTypes.UT_SWITCH,
+  type: FieldTypes.SWITCH_MUI,
   formItemLayout: FormItemLayout.HORIZONTAL,
   props: {
-    'data-testid': 'disabled',
+    inputProps: {
+      'data-testid': 'disabled',
+    },
     initialValue,
-    isDisabled: disabled,
+    disabled,
   },
 });
 
@@ -189,13 +192,14 @@ export const getMutuallyExclusiveField = ({
   showHelperText: boolean;
 }): FieldProp => ({
   name: 'mutuallyExclusive',
+  muiLabel: 'label.mutually-exclusive',
   label: 'label.mutually-exclusive',
-  type: FieldTypes.UT_SWITCH,
+  type: FieldTypes.SWITCH_MUI,
   required: false,
   props: {
     id: 'tags_mutuallyExclusive',
     'data-testid': 'mutually-exclusive-button',
-    isDisabled: disabled,
+    disabled,
     className: 'mutually-exclusive-switch',
   },
   helperTextType: HelperTextType.ALERT,

@@ -38,6 +38,7 @@ import {
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
 import { performUserLogin } from '../../utils/user';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const test = base.extend<{
   page: Page;
@@ -254,9 +255,7 @@ test.describe('Move Assets Between Domains', () => {
           table.entityResponseData.fullyQualifiedName
         )}`
       );
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const domainLinks = page.locator('[data-testid="domain-link"]');
       const count = await domainLinks.count();
@@ -396,9 +395,7 @@ test.describe('Subdomain Permissions', () => {
     const subDomainFqn =
       testResources.subDomain.responseData.fullyQualifiedName;
     await userPage.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
 
     await expect(
       userPage.getByTestId('entity-header-display-name')
@@ -432,7 +429,7 @@ test.describe('Domain Version History', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      await page.waitForSelector('[data-testid="version-button"]', {
+      await page.getByTestId('version-button').waitFor({
         state: 'visible',
       });
 
@@ -475,7 +472,7 @@ test.describe('Domain Version History', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct.responseData);
 
-      await page.waitForSelector('[data-testid="version-button"]', {
+      await page.getByTestId('version-button').waitFor({
         state: 'visible',
       });
 
@@ -751,9 +748,7 @@ test.describe('Cross-Domain Access Denial', () => {
     const tableFqn =
       testResources.accessibleTable.entityResponseData.fullyQualifiedName;
     await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`);
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
 
     await expect(
       userPage.getByTestId('permission-error-placeholder')
@@ -774,9 +769,7 @@ test.describe('Cross-Domain Access Denial', () => {
     const tableFqn =
       testResources.accessibleTable.entityResponseData.fullyQualifiedName;
     await userPage.goto(`/table/${encodeURIComponent(tableFqn)}`);
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
 
     await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
 
@@ -872,9 +865,7 @@ test.describe('Data Product Asset Management', () => {
       await selectDataProduct(page, dataProduct1.responseData);
       await page.getByTestId('assets').click();
       await page.getByTestId('data-product-details-add-button').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const tableName = table.entityResponseData.name;
       const tableFqn = table.entityResponseData.fullyQualifiedName;
@@ -937,9 +928,7 @@ test.describe('Domain Search and Filter', () => {
         '/api/v1/search/query?q=*&index=domain_search_index*'
       );
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByTestId(domain.data.name)).toBeVisible();
     } finally {

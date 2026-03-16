@@ -55,6 +55,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
@@ -172,11 +173,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
+            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
+    LOG.info(
+        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate all bot JWT tokens. "
+            + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
     return 0;
   }
 
@@ -993,6 +997,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.error("Auth Provider is Not Basic. Cannot apply Password");
         return 1;
       }
+
+      initOrganization();
 
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
@@ -2460,6 +2466,97 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  /**
+   * Unlike most ops commands (e.g. deploy-pipelines) that delegate to the server API, this command
+   * operates directly on the database. This is intentional: when JWT signing keys have been rotated,
+   * all existing bot tokens — including the ingestion-bot token we'd use to authenticate against the
+   * server — are invalid. We must bypass the server to regenerate tokens in this scenario.
+   */
+  @Command(
+      name = "regenerate-bot-tokens",
+      description =
+          "Regenerates JWT tokens for all bot users. "
+              + "Use this after rotating JWT signing keys or changing the cluster name.")
+  public Integer regenerateBotTokens(
+      @Option(
+              names = {"--expiry"},
+              description =
+                  "Token expiry for regenerated tokens (OneHour, One, Seven, Thirty, Sixty, Ninety, Unlimited). "
+                      + "Defaults to Unlimited.",
+              defaultValue = "Unlimited")
+          JWTTokenExpiry expiry) {
+    try {
+      parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+
+      JWTTokenGenerator.getInstance()
+          .init(
+              SecurityConfigurationManager.getInstance()
+                  .getCurrentAuthConfig()
+                  .getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
+
+      initOrganization();
+
+      BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+
+      List<Bot> bots =
+          botRepository.listAll(
+              botRepository.getFields("botUser"), new ListFilter(Include.NON_DELETED));
+
+      List<List<String>> rows = new ArrayList<>();
+
+      for (Bot listedBot : bots) {
+        String botName = listedBot.getName();
+        try {
+          // Fetch individually so that setFields populates the botUser relationship
+          Bot bot = botRepository.getByName(null, botName, botRepository.getFields("botUser"));
+
+          if (bot.getBotUser() == null) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "No bot user associated"));
+            continue;
+          }
+
+          User botUser =
+              userRepository.getByName(
+                  null,
+                  bot.getBotUser().getFullyQualifiedName(),
+                  new EntityUtil.Fields(Set.of("authenticationMechanism", "roles")));
+
+          if (botUser.getAuthenticationMechanism() == null
+              || botUser.getAuthenticationMechanism().getAuthType()
+                  != AuthenticationMechanism.AuthType.JWT) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "Not using JWT authentication"));
+            continue;
+          }
+
+          JWTAuthMechanism newJwtAuth =
+              JWTTokenGenerator.getInstance().generateJWTToken(botUser, expiry);
+          botUser.setAuthenticationMechanism(
+              new AuthenticationMechanism()
+                  .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                  .withConfig(newJwtAuth));
+          UserUtil.addOrUpdateUser(botUser);
+
+          rows.add(Arrays.asList(botName, "SUCCESS", "Token regenerated"));
+        } catch (Exception e) {
+          LOG.error("Failed to regenerate token for bot: {}", botName, e);
+          rows.add(Arrays.asList(botName, "FAILED", e.getMessage()));
+        }
+      }
+
+      boolean hasFailures = rows.stream().anyMatch(r -> "FAILED".equals(r.get(1)));
+      printToAsciiTable(Arrays.asList("Bot", "Status", "Details"), rows, "No bots found");
+      return hasFailures ? 1 : 0;
+    } catch (Exception e) {
+      LOG.error("Failed to regenerate bot tokens due to ", e);
+      return 1;
+    }
+  }
+
   @Command(
       name = "cleanup-flowable-history",
       description =
@@ -2927,7 +3024,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           }
           roleRepository.initializeEntity(role);
         }
-        teamRepository.initOrganization();
       } catch (Exception ex) {
         LOG.error("Failed to initialize organization due to ", ex);
         throw new RuntimeException(ex);
@@ -2935,6 +3031,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         rootLogger.setLevel(originalLevel);
       }
     }
+    teamRepository.initOrganization();
   }
 
   public static void printToAsciiTable(

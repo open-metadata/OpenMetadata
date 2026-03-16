@@ -3513,4 +3513,293 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     }
     return value;
   }
+
+  // ===================================================================
+  // COLUMN NAME FILTER TESTS (list and search/list endpoints)
+  // ===================================================================
+
+  @Test
+  void test_listByColumnName_filtersColumnLevelTests(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    String idColumnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("col_id_test"))
+        .forColumn(table, "id")
+        .testDefinition("columnValuesToBeBetween")
+        .parameter("minValue", "1")
+        .parameter("maxValue", "1000")
+        .create();
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("col_name_test"))
+        .forColumn(table, "name")
+        .testDefinition("columnValuesToBeNotNull")
+        .create();
+
+    ListResponse<TestCase> idResults =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setLimit(100)
+                    .addQueryParam("entityLink", idColumnLink)
+                    .addQueryParam("columnName", "id"));
+
+    assertNotNull(idResults);
+    assertFalse(idResults.getData().isEmpty());
+    for (TestCase tc : idResults.getData()) {
+      assertTrue(
+          tc.getEntityLink().contains("::columns::id"),
+          "Expected column 'id' in entity link but got: " + tc.getEntityLink());
+    }
+
+    ListResponse<TestCase> nameResults =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setLimit(100)
+                    .addQueryParam("entityFQN", table.getFullyQualifiedName())
+                    .addQueryParam("includeAllTests", "true")
+                    .addQueryParam("columnName", "name"));
+
+    assertNotNull(nameResults);
+    assertFalse(nameResults.getData().isEmpty());
+    for (TestCase tc : nameResults.getData()) {
+      assertTrue(
+          tc.getEntityLink().contains("::columns::name"),
+          "Expected column 'name' in entity link but got: " + tc.getEntityLink());
+    }
+  }
+
+  @Test
+  void test_listByColumnName_noResults(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("col_id_only"))
+        .forColumn(table, "id")
+        .testDefinition("columnValuesToBeBetween")
+        .parameter("minValue", "1")
+        .parameter("maxValue", "1000")
+        .create();
+
+    ListResponse<TestCase> results =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setLimit(100)
+                    .addQueryParam("entityFQN", table.getFullyQualifiedName())
+                    .addQueryParam("includeAllTests", "true")
+                    .addQueryParam("columnName", "nonexistent_column"));
+
+    assertNotNull(results);
+    assertTrue(results.getData().isEmpty(), "Should return no results for a non-matching column");
+  }
+
+  @Test
+  void test_listByColumnName_doesNotReturnTableLevelTests(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("table_level"))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("col_level"))
+        .forColumn(table, "id")
+        .testDefinition("columnValuesToBeBetween")
+        .parameter("minValue", "1")
+        .parameter("maxValue", "1000")
+        .create();
+
+    ListResponse<TestCase> results =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setLimit(100)
+                    .addQueryParam("entityFQN", table.getFullyQualifiedName())
+                    .addQueryParam("includeAllTests", "true")
+                    .addQueryParam("columnName", "id"));
+
+    assertNotNull(results);
+    assertFalse(results.getData().isEmpty());
+    for (TestCase tc : results.getData()) {
+      assertTrue(
+          tc.getEntityLink().contains("::columns::id"),
+          "Table-level test should not be returned when filtering by columnName");
+    }
+  }
+
+  @Test
+  void test_searchListByColumnName_filtersColumnLevelTests(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("search_col_id"))
+        .forColumn(table, "id")
+        .testDefinition("columnValuesToBeBetween")
+        .parameter("minValue", "1")
+        .parameter("maxValue", "1000")
+        .create();
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("search_col_name"))
+        .forColumn(table, "name")
+        .testDefinition("columnValuesToBeNotNull")
+        .create();
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/dataQuality/testCases/search/list",
+                          null,
+                          RequestOptions.builder()
+                              .queryParam("columnName", "id")
+                              .queryParam(
+                                  "entityLink",
+                                  String.format(
+                                      "<#E::table::%s::columns::id>",
+                                      table.getFullyQualifiedName()))
+                              .queryParam("limit", "100")
+                              .build());
+
+              assertNotNull(response);
+              org.openmetadata.schema.utils.ResultList<TestCase> results =
+                  JsonUtils.readValue(
+                      response,
+                      new com.fasterxml.jackson.core.type.TypeReference<
+                          org.openmetadata.schema.utils.ResultList<TestCase>>() {});
+
+              assertFalse(results.getData().isEmpty());
+              for (TestCase tc : results.getData()) {
+                assertTrue(
+                    tc.getEntityLink().contains("::columns::id"),
+                    "Expected column 'id' in entity link but got: " + tc.getEntityLink());
+              }
+            });
+  }
+
+  @Test
+  void test_searchListByColumnName_noResults(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("search_no_match"))
+        .forColumn(table, "id")
+        .testDefinition("columnValuesToBeBetween")
+        .parameter("minValue", "1")
+        .parameter("maxValue", "1000")
+        .create();
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/dataQuality/testCases/search/list",
+                          null,
+                          RequestOptions.builder()
+                              .queryParam("columnName", "nonexistent_column")
+                              .queryParam(
+                                  "entityLink",
+                                  String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+                              .queryParam("limit", "100")
+                              .build());
+
+              assertNotNull(response);
+              org.openmetadata.schema.utils.ResultList<TestCase> results =
+                  JsonUtils.readValue(
+                      response,
+                      new com.fasterxml.jackson.core.type.TypeReference<
+                          org.openmetadata.schema.utils.ResultList<TestCase>>() {});
+
+              assertTrue(
+                  results.getData().isEmpty(),
+                  "Should return no results for a non-matching column");
+            });
+  }
+
+  @Test
+  void test_searchListByColumnName_doesNotReturnTableLevelTests(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("search_tbl_lvl"))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("search_col_lvl"))
+        .forColumn(table, "id")
+        .testDefinition("columnValuesToBeBetween")
+        .parameter("minValue", "1")
+        .parameter("maxValue", "1000")
+        .create();
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/dataQuality/testCases/search/list",
+                          null,
+                          RequestOptions.builder()
+                              .queryParam("columnName", "id")
+                              .queryParam(
+                                  "entityLink",
+                                  String.format(
+                                      "<#E::table::%s::columns::id>",
+                                      table.getFullyQualifiedName()))
+                              .queryParam("limit", "100")
+                              .build());
+
+              assertNotNull(response);
+              org.openmetadata.schema.utils.ResultList<TestCase> results =
+                  JsonUtils.readValue(
+                      response,
+                      new com.fasterxml.jackson.core.type.TypeReference<
+                          org.openmetadata.schema.utils.ResultList<TestCase>>() {});
+
+              assertFalse(results.getData().isEmpty());
+              for (TestCase tc : results.getData()) {
+                assertTrue(
+                    tc.getEntityLink().contains("::columns::id"),
+                    "Table-level test should not appear when filtering by columnName");
+              }
+            });
+  }
 }

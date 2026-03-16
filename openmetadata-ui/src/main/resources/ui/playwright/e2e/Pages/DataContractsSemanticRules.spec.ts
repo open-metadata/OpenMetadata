@@ -46,6 +46,8 @@ import {
   updateDescription,
   updateDisplayNameForEntity,
   updateOwner,
+
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -138,7 +140,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -150,9 +152,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -244,7 +244,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -256,9 +256,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -351,7 +349,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -363,9 +361,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -456,7 +452,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -468,9 +464,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -542,7 +536,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -554,9 +548,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -626,7 +618,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -638,9 +630,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -710,20 +700,16 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await updateDescription(page, 'New Contract Rules Setting');
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -735,9 +721,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -806,19 +790,15 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await updateDescription(page, 'New Contract Rules Setting');
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -830,9 +810,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -883,9 +861,14 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
 
-      await expect(
-        page.getByTestId('contract-status-card-item-semantics-status')
-      ).toContainText('Passed');
+      await expect(async () => {
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Passed', { timeout: 5_000 });
+      }).toPass({ timeout: 30_000, intervals: [5_000, 10_000] });
+
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
       ).not.toBeVisible();
@@ -895,19 +878,15 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await updateDescription(page, '');
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -917,15 +896,13 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await page.getByTestId('contract-run-now-button').click();
       await runNowResponse;
 
-      await page.reload();
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      await expect(
-        page.getByTestId('contract-status-card-item-semantics-status')
-      ).toContainText('Failed');
+      await expect(async () => {
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Failed', { timeout: 5_000 });
+      }).toPass({ timeout: 30_000, intervals: [5_000, 10_000] });
 
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
@@ -986,20 +963,16 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await updateDescription(page, '');
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1011,9 +984,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1098,7 +1069,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1110,9 +1081,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1185,7 +1154,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1197,9 +1166,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1273,7 +1240,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1285,9 +1252,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1359,7 +1324,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1371,9 +1336,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1438,7 +1401,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1450,9 +1413,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1516,7 +1477,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1528,9 +1489,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1603,6 +1562,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         const actualVersionText = await page
           .getByTestId('version-button')
           .textContent();
+        // eslint-disable-next-line playwright/prefer-web-first-assertions
         expect(
           actualVersionText,
           'Could not read current entity version from version-button'
@@ -1636,7 +1596,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1648,9 +1608,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1723,6 +1681,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
           const currentVersionText = await page
             .getByTestId('version-button')
             .textContent();
+          // eslint-disable-next-line playwright/prefer-web-first-assertions
           expect(
             currentVersionText,
             'Could not read current entity version from version-button'
@@ -1760,7 +1719,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1772,9 +1731,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1844,7 +1801,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1856,9 +1813,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1929,7 +1884,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1941,9 +1896,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2015,7 +1968,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2027,9 +1980,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2102,7 +2053,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2114,9 +2065,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2209,9 +2158,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await removeDataProduct(page, createdDataProducts[0].responseData);
       await assignDataProduct(page, domain.responseData, [
@@ -2219,13 +2166,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       ]);
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2237,9 +2182,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2313,9 +2256,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await removeDataProduct(page, createdDataProducts[1].responseData);
       await assignDataProduct(page, domain.responseData, [
@@ -2323,13 +2264,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       ]);
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2341,9 +2280,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2417,9 +2354,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await removeDataProduct(page, createdDataProducts[1].responseData);
       await assignDataProduct(page, domain.responseData, [
@@ -2427,13 +2362,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       ]);
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2445,9 +2378,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2519,9 +2450,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await removeDataProduct(page, createdDataProducts[1].responseData);
       await assignDataProduct(page, domain.responseData, [
@@ -2529,13 +2458,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       ]);
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2547,9 +2474,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2616,20 +2541,16 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await removeDataProduct(page, createdDataProducts[1].responseData);
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2641,9 +2562,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2708,9 +2627,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         // Move to Schema Tab
         await page.getByTestId('schema').click();
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await assignSingleSelectDomain(page, domain.responseData);
 
@@ -2719,13 +2636,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         ]);
 
         await page.click('[data-testid="contract"]');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2737,9 +2652,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
         await page.reload();
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -2816,13 +2729,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2834,9 +2745,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2911,13 +2820,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2929,9 +2836,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3003,13 +2908,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3021,9 +2924,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3097,13 +2998,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3115,9 +3014,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3184,13 +3081,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3202,9 +3097,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3273,13 +3166,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3291,9 +3182,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3364,7 +3253,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Between condition should failed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3452,7 +3341,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Between condition should passed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3470,7 +3359,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         .locator('.rule--value .ant-picker-range')
         .click();
 
-      await page.waitForSelector('.ant-picker-dropdown-range', {
+      await page.locator('.ant-picker-dropdown-range').waitFor({
         state: 'visible',
       });
 
@@ -3531,7 +3420,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       const date = customFormatDateTime(getCurrentMillis(), 'dd.MM.yyyy');
 
       await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.waitForSelector('.ant-picker-dropdown', {
+      await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
       await page.locator('.ant-picker-input input').fill(date);
@@ -3552,7 +3441,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Less than condition should passed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3570,7 +3459,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         .nth(0)
         .locator('.rule--value .ant-picker')
         .click();
-      await page.waitForSelector('.ant-picker-dropdown', {
+      await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
       await page.locator('.ant-picker-input input').fill(newDate);
@@ -3630,7 +3519,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       );
 
       await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.waitForSelector('.ant-picker-dropdown', {
+      await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
       await page.locator('.ant-picker-input input').fill(date);
@@ -3651,7 +3540,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Greater than condition should passed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3669,7 +3558,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         .nth(0)
         .locator('.rule--value .ant-picker')
         .click();
-      await page.waitForSelector('.ant-picker-dropdown', {
+      await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
       await page.locator('.ant-picker-input input').fill(newDate);
@@ -3729,7 +3618,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       );
 
       await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.waitForSelector('.ant-picker-dropdown', {
+      await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
       await page.locator('.ant-picker-input input').fill(date);
@@ -3749,7 +3638,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Less than condition should failed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3767,7 +3656,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         .nth(0)
         .locator('.rule--value .ant-picker')
         .click();
-      await page.waitForSelector('.ant-picker-dropdown', {
+      await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
       await page.locator('.ant-picker-input input').fill(newDate);
@@ -3831,7 +3720,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       );
 
       await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.waitForSelector('.ant-picker-dropdown', {
+      await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
       await page.locator('.ant-picker-input input').fill(date);
@@ -3851,7 +3740,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with GreaterThanEqual condition should failed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3869,7 +3758,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         .nth(0)
         .locator('.rule--value .ant-picker')
         .click();
-      await page.waitForSelector('.ant-picker-dropdown', {
+      await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
       await page.locator('.ant-picker-input input').fill(newDate);

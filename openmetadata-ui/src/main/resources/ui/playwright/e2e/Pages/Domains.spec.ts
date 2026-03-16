@@ -79,6 +79,7 @@ import {
   unFollowEntity,
   waitForAllLoadersToDisappear,
   getEncodedFqn,
+
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
@@ -1202,7 +1203,7 @@ test.describe('Domains', () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
         await waitForAllLoadersToDisappear(page);
         await page.click('[data-testid="add-domain"]');
-        await page.waitForSelector('h6:has-text("Add Domain")', {
+        await page.locator('h6:has-text("Add Domain")').waitFor({
           state: 'visible',
         });
       });
@@ -1760,9 +1761,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
       await subdomainSearchResponse;
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByTestId(subDomain.data.name)).toBeVisible();
 
@@ -1881,7 +1880,6 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await subdomainSearchResponse1;
 
       await waitForAllLoadersToDisappear(page);
-      await page.waitForTimeout(500);
 
       const subDomain1Card = page.getByTestId(subDomain1.data.name);
       await expect(subDomain1Card).toBeVisible();
@@ -1912,7 +1910,6 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await subdomainSearchResponse2;
 
       await waitForAllLoadersToDisappear(page);
-      await page.waitForTimeout(500);
 
       const subDomain2Card = page.getByTestId(subDomain2.data.name);
       await expect(subDomain2Card).toBeVisible();
@@ -1943,7 +1940,6 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await subdomainSearchResponse3;
 
       await waitForAllLoadersToDisappear(page);
-      await page.waitForTimeout(500);
 
       const subDomain3Card = page.getByTestId(subDomain3.data.name);
       await expect(subDomain3Card).toBeVisible();
@@ -2801,7 +2797,7 @@ test.describe('Domains Rbac', () => {
     await expect(rolesCombobox).toBeVisible();
     await rolesCombobox.click();
 
-    await page.waitForSelector('[data-testid="profile-edit-roles-select"]');
+    await page.getByTestId('profile-edit-roles-select').waitFor();
 
     const roleOption = page.getByText('Domain Only Access Role');
     await expect(roleOption).toBeVisible();
@@ -3033,9 +3029,7 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
-      await userPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
       await expect(
@@ -3101,9 +3095,7 @@ test.describe('Domain Access with noDomain() Rule', () => {
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
-      await userPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
       await expect(
@@ -3118,9 +3110,7 @@ test.describe('Domain Access with noDomain() Rule', () => {
       const noDomainTableFqn =
         testResources.noDomainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
-      await userPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(userPage);
 
       // Verify permission error is shown
       await expect(
@@ -3278,10 +3268,10 @@ test.describe('Domain Tree View Functionality', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, testDomain.data);
 
-      await page.waitForSelector('[data-testid="glossary-container"]', {
+      await page.getByTestId('glossary-container').waitFor({
         state: 'visible',
       });
 
@@ -3316,7 +3306,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
@@ -3353,10 +3343,10 @@ test.describe('Domain Tree View Functionality', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, testDomain.data);
 
-      await page.waitForSelector('[data-testid="tags-container"]', {
+      await page.getByTestId('tags-container').waitFor({
         state: 'visible',
       });
 
@@ -3398,7 +3388,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();

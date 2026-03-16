@@ -84,9 +84,9 @@ export type LineageEdge = {
 
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.getByTestId('lineage-layer-btn').click(); // Open Layer popover
-  await page.waitForSelector(
-    '[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)'
-  );
+  await page
+    .locator('[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)')
+    .waitFor();
   await clickOutside(page); // close Layer popover
 };
 
@@ -111,7 +111,8 @@ export const editLineageClick = async (page: Page) => {
   await expect(page.getByTestId('edit-lineage')).toBeVisible();
 
   await page.getByTestId('edit-lineage').click();
-  await page.waitForTimeout(1); // wait for the edit mode to activate
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for edit mode to activate
+  await page.waitForTimeout(1);
 };
 
 export const editLineage = async (page: Page) => {
@@ -194,8 +195,10 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization before drag operation
   await page.waitForTimeout(1000);
-  const destinationElement = await page.waitForSelector(destinationSelector);
+  const destinationElement = page.locator(destinationSelector);
+  await destinationElement.waitFor();
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox()) as DOMRect;
@@ -233,6 +236,7 @@ export const dragConnection = async (
 export const rearrangeNodes = async (page: Page) => {
   await page.getByTestId('fit-screen').click();
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- node rearrange animation settling time
   await page.waitForTimeout(500);
 };
 
@@ -505,7 +509,7 @@ export const applyPipelineFromModal = async (
   await page.click('[data-testid="save-button"]');
   await saveRes;
 
-  await page.waitForSelector('[data-testid="add-edge-modal"]', {
+  await page.getByTestId('add-edge-modal').waitFor({
     state: 'detached',
   });
 };
@@ -638,9 +642,9 @@ export const fillLineageConfigForm = async (
 
 export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
-  await page.waitForSelector(
-    '[data-testid="lineage-layer-column-btn"].Mui-selected'
-  );
+  await page
+    .locator('[data-testid="lineage-layer-column-btn"].Mui-selected')
+    .waitFor();
   await clickOutside(page); // Close Layer popover
 };
 
@@ -655,12 +659,11 @@ export const getLineageCSVData = async (page: Page) => {
 
   await page.getByTestId('export-button').click();
 
-  await page.waitForSelector(
-    '[data-testid="export-entity-modal"] #submit-button',
-    {
+  await page
+    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .waitFor({
       state: 'visible',
-    }
-  );
+    });
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -751,12 +754,11 @@ export const verifyExportLineagePNG = async (
 
   await page.getByTestId('export-button').click();
 
-  await page.waitForSelector(
-    '[data-testid="export-entity-modal"] #submit-button',
-    {
+  await page
+    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .waitFor({
       state: 'visible',
-    }
-  );
+    });
 
   if (!isPNGSelected) {
     await page.getByTestId('export-type-select').click();
@@ -811,7 +813,7 @@ export const verifyColumnLineageInCSV = async (
 export const verifyLineageConfig = async (page: Page) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.waitForSelector('.ant-modal-content', {
+  await page.locator('.ant-modal-content').first().waitFor({
     state: 'visible',
   });
 
@@ -883,7 +885,7 @@ export const updateLineageConfigFromModal = async (
 ) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.waitForSelector('.ant-modal-content', {
+  await page.locator('.ant-modal-content').first().waitFor({
     state: 'visible',
   });
 
@@ -916,6 +918,7 @@ export const verifyPlatformLineageForEntity = async (
 
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
 
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization after node selection
   await page.waitForTimeout(500);
 
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);

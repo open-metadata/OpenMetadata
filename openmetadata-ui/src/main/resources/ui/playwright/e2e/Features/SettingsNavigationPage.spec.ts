@@ -184,12 +184,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await redirectToHomePage(page);
 
     // Check if Insights navigation item visibility changed
-    const insightsVisible = await page
-      .getByTestId('left-sidebar')
-      .getByTestId('app-bar-item-insights')
-      .isVisible();
-
-    expect(insightsVisible).toBe(false);
+    await expect(
+      page.getByTestId('left-sidebar').getByTestId('app-bar-item-insights')
+    ).toBeHidden();
 
     // Clean up: Restore original state
     await navigateToPersonaNavigation(page);
@@ -219,7 +216,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     // Verify save button is enabled
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    expect(await domainSwitch.isChecked()).toBeFalsy();
+    await expect(domainSwitch).not.toBeChecked();
 
     // Test reset functionality
     await page.getByTestId('reset-button').click();
@@ -242,7 +239,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await page.getByTestId('unsaved-changes-modal-save').click();
 
     // Verify reset worked - save button disabled and state reverted
-    expect(await domainSwitch.isChecked()).toBeTruthy();
+    await expect(domainSwitch).toBeChecked();
     await expect(page.getByTestId('save-button')).not.toBeEnabled();
   });
 
@@ -321,9 +318,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await redirectToHomePage(page);
 
     await page.locator('[data-testid="dropdown-profile"]').click();
-    await page.waitForSelector('[role="menu"].profile-dropdown', {
-      state: 'visible',
-    });
+    await page
+      .locator('[role="menu"].profile-dropdown')
+      .waitFor({ state: 'visible' });
 
     // Verify personas section is visible
     await expect(page.getByText('Switch Persona')).toBeVisible();

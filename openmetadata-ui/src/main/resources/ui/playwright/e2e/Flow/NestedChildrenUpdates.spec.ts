@@ -47,7 +47,7 @@ for (const [
 
         await entity.visitEntityPage(page);
         if (tabSelector) {
-          await page.waitForSelector(tabSelector, { state: 'visible' });
+          await page.locator(tabSelector).waitFor({ state: 'visible' });
 
           await page.click(tabSelector);
         }
@@ -162,7 +162,7 @@ for (const [
 
         await entity.visitEntityPage(page);
         if (tabSelector) {
-          await page.waitForSelector(tabSelector, { state: 'visible' });
+          await page.locator(tabSelector).waitFor({ state: 'visible' });
 
           await page.click(tabSelector);
         }
@@ -267,12 +267,12 @@ for (const [
 }
 
 const expandNestedColumn = async (page: Page, nestedColumnFqn: string) => {
-  await page.waitForSelector(
-    `[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`,
-    {
+  await page
+    .locator(`[data-row-key="${nestedColumnFqn}"]`)
+    .getByTestId('expand-icon')
+    .waitFor({
       state: 'visible',
-    }
-  );
+    });
 
   await page
     .locator(`[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`)

@@ -16,6 +16,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.describe(
   'Table & Data Model columns table pagination',
@@ -28,24 +29,18 @@ test.describe(
         '/table/sample_data.ecommerce_db.shopify.performance_test_table'
       );
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Change page size to 25
       await page.getByTestId('page-size-selection-dropdown').click();
       await page.getByRole('menuitem', { name: '25 / Page' }).click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Go to Explore Page
       await sidebarClick(page, SidebarItem.EXPLORE);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByText('25 / page')).toBeVisible();
 
@@ -56,9 +51,7 @@ test.describe(
       // Go to Users Page
       await settingClick(page, GlobalSettingOptions.USERS);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByText('50 / page')).toBeVisible();
     });

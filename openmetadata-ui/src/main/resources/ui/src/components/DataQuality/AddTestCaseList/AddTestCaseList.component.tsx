@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { Button, Checkbox, Col, List, Row, Space, Typography } from 'antd';
-import { isEmpty } from 'lodash';
+import { debounce } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import VirtualList from 'rc-virtual-list';
 import {
   UIEventHandler,
@@ -23,12 +24,27 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import {
+  TEST_CASE_STATUS_FILTER_OPTIONS,
+  TEST_CASE_STATUS_LABELS,
+  TEST_CASE_TYPE_OPTION,
+} from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { TestCase } from '../../../generated/tests/testCase';
+import { SearchIndex } from '../../../enums/search.enum';
+import { TestCaseType } from '../../../enums/TestSuite.enum';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { getAggregateFieldOptions } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
+import {
+  COLUMN_AGGREGATE_FIELD,
+  getColumnNameFromColumnFilterKey,
+  getSelectedOptionsFromKeys,
+  parseColumnAggregateBuckets,
+} from '../../../utils/DataQuality/DataQualityUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
@@ -39,19 +55,23 @@ import { replacePlus } from '../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
+import AddTestCaseListFilters from './AddTestCaseListFilters.component';
+import { AddTestCaseListFilterKey } from './AddTestCaseListFilters.constants';
 
 export const AddTestCaseList = ({
   onCancel,
   onSubmit,
   cancelText,
   submitText,
-  filters,
+  testCaseFilters,
+  columnFilters,
   selectedTest,
   onChange,
   showButton = true,
-  showSelectAll = false,
   testCaseParams,
+  hideTableFilter = false,
 }: AddTestCaseModalProps) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState<string>();
@@ -60,10 +80,156 @@ export const AddTestCaseList = ({
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<
+    TestCaseStatus | undefined
+  >();
+  const [filterTestType, setFilterTestType] = useState<TestCaseType>(
+    TestCaseType.all
+  );
+  const [filterTables, setFilterTables] = useState<string[]>([]);
+  const [filterColumns, setFilterColumns] = useState<string[]>([]);
+  const [tableOptionsFromApi, setTableOptionsFromApi] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [isTableOptionsLoading, setIsTableOptionsLoading] = useState(false);
+  const [columnOptionsFromApi, setColumnOptionsFromApi] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [isColumnOptionsLoading, setIsColumnOptionsLoading] = useState(false);
+
+  const statusOptions = useMemo<SearchDropdownOption[]>(
+    () =>
+      TEST_CASE_STATUS_FILTER_OPTIONS.map((o) => ({
+        key: o.value,
+        label: o.label,
+      })),
+    []
+  );
+
+  const testTypeOptions = useMemo<SearchDropdownOption[]>(
+    () =>
+      TEST_CASE_TYPE_OPTION.map((o) => ({
+        key: o.value,
+        label: o.label,
+      })),
+    []
+  );
+
+  const statusSelectedKeys = useMemo<SearchDropdownOption[]>(
+    () =>
+      filterStatus == null
+        ? []
+        : [{ key: filterStatus, label: TEST_CASE_STATUS_LABELS[filterStatus] }],
+    [filterStatus]
+  );
+
+  const testTypeSelectedKeys = useMemo<SearchDropdownOption[]>(
+    () =>
+      filterTestType === TestCaseType.all
+        ? []
+        : [
+            {
+              key: filterTestType,
+              label:
+                TEST_CASE_TYPE_OPTION.find((o) => o.value === filterTestType)
+                  ?.label ?? '',
+            },
+          ],
+    [filterTestType]
+  );
+
+  const tableSelectedKeys = useMemo(
+    () =>
+      getSelectedOptionsFromKeys(
+        filterTables,
+        tableOptionsFromApi,
+        getNameFromFQN
+      ),
+    [filterTables, tableOptionsFromApi]
+  );
+
+  const columnSelectedKeys = useMemo(
+    () =>
+      getSelectedOptionsFromKeys(
+        filterColumns,
+        columnOptionsFromApi,
+        (key) => key.split('::').pop() ?? '--'
+      ),
+    [filterColumns, columnOptionsFromApi]
+  );
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
   };
+
+  const fetchTableData = useCallback(async (search = WILD_CARD_CHAR) => {
+    setIsTableOptionsLoading(true);
+    try {
+      const response = await searchQuery({
+        query: `*${search}*`,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        searchIndex: SearchIndex.TABLE,
+        fetchSource: true,
+        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
+      });
+
+      const options: SearchDropdownOption[] = response.hits.hits.map((hit) => ({
+        key: hit._source.fullyQualifiedName ?? '',
+        label: getEntityName(hit._source),
+      }));
+      setTableOptionsFromApi(options);
+    } catch {
+      setTableOptionsFromApi([]);
+    } finally {
+      setIsTableOptionsLoading(false);
+    }
+  }, []);
+
+  const debounceFetchTableData = useCallback(
+    debounce((search: string) => fetchTableData(search), 1000),
+    [fetchTableData]
+  );
+
+  const fetchColumnOptions = useCallback(
+    async (search?: string) => {
+      setIsColumnOptionsLoading(true);
+      try {
+        const response = await getAggregateFieldOptions(
+          SearchIndex.DATA_ASSET,
+          COLUMN_AGGREGATE_FIELD,
+          search ?? '',
+          columnFilters ?? '',
+          undefined,
+          false
+        );
+        const buckets =
+          response.data?.aggregations?.[`sterms#${COLUMN_AGGREGATE_FIELD}`]
+            ?.buckets ?? [];
+        const options = parseColumnAggregateBuckets(
+          buckets as { key: string }[]
+        );
+        setColumnOptionsFromApi(options);
+      } catch {
+        setColumnOptionsFromApi([]);
+      } finally {
+        setIsColumnOptionsLoading(false);
+      }
+    },
+    [columnFilters]
+  );
+
+  const debounceFetchColumnData = useCallback(
+    debounce((search: string) => fetchColumnOptions(search), 500),
+    [fetchColumnOptions]
+  );
+
+  useEffect(() => {
+    return () => {
+      debounceFetchTableData.cancel();
+      debounceFetchColumnData.cancel();
+    };
+  }, [debounceFetchTableData, debounceFetchColumnData]);
 
   const fetchTestCases = useCallback(
     async ({
@@ -76,13 +242,36 @@ export const AddTestCaseList = ({
       try {
         setIsLoading(true);
         const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
+        const q = testCaseFilters
+          ? `${globalSearch} && ${testCaseFilters}`
+          : globalSearch;
 
-        const testCaseResponse = await getListTestCaseBySearch({
-          q: filters ? `${globalSearch} && ${filters}` : globalSearch,
+        const columnNamesFromKeys =
+          filterColumns.length > 0
+            ? (filterColumns
+                .map((k) => getColumnNameFromColumnFilterKey(k))
+                .filter(Boolean) as string[])
+            : [];
+        const columnName =
+          columnNamesFromKeys.length > 0 ? columnNamesFromKeys[0] : undefined;
+        const filterTable = filterTables[0];
+        const entityLink = filterTable
+          ? `<#E::table::${filterTable}>`
+          : undefined;
+
+        const requestParams = {
+          q,
           limit: PAGE_SIZE_MEDIUM,
           offset: (page - 1) * PAGE_SIZE_MEDIUM,
-          ...(testCaseParams ?? {}),
-        });
+          testCaseStatus: filterStatus,
+          testCaseType:
+            filterTestType === TestCaseType.all ? undefined : filterTestType,
+          ...(entityLink && { entityLink }),
+          ...(columnName && { columnName }),
+        };
+        const mergedParams = { ...testCaseParams, ...requestParams };
+
+        const testCaseResponse = await getListTestCaseBySearch(mergedParams);
 
         setTotalCount(testCaseResponse.paging.total ?? 0);
         if (selectedTest) {
@@ -90,7 +279,7 @@ export const AddTestCaseList = ({
             const selectedItemsMap = new Map();
             pre?.forEach((item) => selectedItemsMap.set(item.id, item));
             testCaseResponse.data.forEach((hit) => {
-              if (selectedTest.find((test) => hit.name === test)) {
+              if (selectedTest.includes(hit.name)) {
                 selectedItemsMap.set(hit.id ?? '', hit);
               }
             });
@@ -108,7 +297,15 @@ export const AddTestCaseList = ({
         setIsLoading(false);
       }
     },
-    [selectedTest]
+    [
+      testCaseFilters,
+      selectedTest,
+      testCaseParams,
+      filterStatus,
+      filterTestType,
+      filterTables,
+      filterColumns,
+    ]
   );
 
   const handleSubmit = async () => {
@@ -131,7 +328,7 @@ export const AddTestCaseList = ({
           });
       }
     },
-    [searchTerm, totalCount, items, isLoading]
+    [searchTerm, totalCount, items, isLoading, fetchTestCases, pageNumber]
   );
 
   const handleSelectAll = useCallback(() => {
@@ -141,13 +338,17 @@ export const AddTestCaseList = ({
     const allCurrentlySelected = items.every((item) =>
       selectedItems?.has(item.id ?? '')
     );
+    // When selecting: merge current page into selection. When deselecting: clear all pages.
     if (allCurrentlySelected) {
+      // Deselect all items across all pages.
       setSelectedItems(new Map());
       onChange?.([]);
     } else {
-      const allSelected = new Map(items.map((test) => [test.id ?? '', test]));
-      setSelectedItems(allSelected);
-      onChange?.([...allSelected.values()]);
+      // Add current page's items to selection; keep existing selections from other pages.
+      const next = new Map(selectedItems);
+      items.forEach((test) => next.set(test.id ?? '', test));
+      setSelectedItems(next);
+      onChange?.([...next.values()]);
     }
   }, [items, selectedItems, onChange]);
 
@@ -188,20 +389,48 @@ export const AddTestCaseList = ({
   };
   useEffect(() => {
     fetchTestCases({ searchText: searchTerm });
-  }, [searchTerm]);
+  }, [
+    searchTerm,
+    filterStatus,
+    filterTestType,
+    filterTables,
+    filterColumns,
+    fetchTestCases,
+  ]);
+
+  useEffect(() => {
+    fetchTableData();
+  }, [fetchTableData]);
+
+  useEffect(() => {
+    fetchColumnOptions();
+  }, [fetchColumnOptions]);
+
+  const handleFilterSearch = useCallback(
+    (searchText: string, searchKey: AddTestCaseListFilterKey) => {
+      if (searchKey === AddTestCaseListFilterKey.Table) {
+        debounceFetchTableData(searchText);
+      } else if (searchKey === AddTestCaseListFilterKey.Column) {
+        debounceFetchColumnData(searchText);
+      }
+    },
+    [debounceFetchTableData, debounceFetchColumnData, fetchColumnOptions]
+  );
+
+  const listSource = items;
 
   const renderList = useMemo(() => {
-    if (!isLoading && isEmpty(items)) {
+    const source = listSource;
+    if (!isLoading && isEmpty(source)) {
       return (
         <Col span={24}>
           <Space
             align="center"
             className="w-full"
             direction="vertical"
-            prefixCls="w-full"
-          >
+            prefixCls="w-full">
             <ErrorPlaceHolder
-              className="mt-0-important"
+              className="mt-0-important p-b-sm"
               type={ERROR_PLACEHOLDER_TYPE.FILTER}
             />
           </Space>
@@ -214,14 +443,12 @@ export const AddTestCaseList = ({
             loading={{
               spinning: isLoading,
               indicator: <Loader />,
-            }}
-          >
+            }}>
             <VirtualList
-              data={items}
+              data={listSource}
               height={500}
               itemKey="id"
-              onScroll={onScroll}
-            >
+              onScroll={onScroll}>
               {(test) => {
                 const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
@@ -231,14 +458,12 @@ export const AddTestCaseList = ({
                   <Space
                     className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
                     direction="vertical"
-                    onClick={() => handleCardClick(test)}
-                  >
+                    onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
                       <Typography.Paragraph
                         className="m-0 font-medium text-base w-max-500"
                         data-testid={test.name}
-                        ellipsis={{ tooltip: true }}
-                      >
+                        ellipsis={{ tooltip: true }}>
                         {getEntityName(test)}
                       </Typography.Paragraph>
 
@@ -249,8 +474,7 @@ export const AddTestCaseList = ({
                     </Space>
                     <Typography.Paragraph
                       className="m-0 w-max-500"
-                      ellipsis={{ tooltip: true }}
-                    >
+                      ellipsis={{ tooltip: true }}>
                       {getEntityName(test.testDefinition)}
                     </Typography.Paragraph>
                     <Typography.Paragraph className="m-0">
@@ -261,8 +485,7 @@ export const AddTestCaseList = ({
                           tableFqn,
                           EntityTabs.PROFILER
                         )}
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                        onClick={(e) => e.stopPropagation()}>
                         {tableName}
                       </Link>
                     </Typography.Paragraph>
@@ -286,7 +509,70 @@ export const AddTestCaseList = ({
         </Col>
       );
     }
-  }, [items, selectedItems, isLoading]);
+  }, [items, listSource, selectedItems, isLoading, onScroll]);
+
+  const handleFilterChange = useCallback(
+    (values: SearchDropdownOption[], searchKey: AddTestCaseListFilterKey) => {
+      switch (searchKey) {
+        case AddTestCaseListFilterKey.Status: {
+          setFilterStatus(values[0]?.key as TestCaseStatus | undefined);
+
+          break;
+        }
+        case AddTestCaseListFilterKey.TestType: {
+          setFilterTestType(
+            (values[0]?.key ?? TestCaseType.all) as TestCaseType
+          );
+
+          break;
+        }
+        case AddTestCaseListFilterKey.Table: {
+          setFilterTables(values.length > 0 ? [values[0].key] : []);
+
+          break;
+        }
+        case AddTestCaseListFilterKey.Column: {
+          setFilterColumns(values.length > 0 ? [values[0].key] : []);
+
+          break;
+        }
+      }
+    },
+    []
+  );
+
+  const filterOptions = useMemo(
+    () => ({
+      status: statusOptions,
+      testType: testTypeOptions,
+      table: tableOptionsFromApi,
+      column: columnOptionsFromApi,
+    }),
+    [statusOptions, testTypeOptions, tableOptionsFromApi, columnOptionsFromApi]
+  );
+
+  const filterLoading = useMemo(
+    () => ({
+      table: isTableOptionsLoading,
+      column: isColumnOptionsLoading,
+    }),
+    [isTableOptionsLoading, isColumnOptionsLoading]
+  );
+
+  const filterSelectedKeys = useMemo(
+    () => ({
+      status: statusSelectedKeys,
+      testType: testTypeSelectedKeys,
+      table: tableSelectedKeys,
+      column: columnSelectedKeys,
+    }),
+    [
+      statusSelectedKeys,
+      testTypeSelectedKeys,
+      tableSelectedKeys,
+      columnSelectedKeys,
+    ]
+  );
 
   return (
     <Row gutter={[0, 16]}>
@@ -302,25 +588,32 @@ export const AddTestCaseList = ({
           onSearch={handleSearch}
         />
       </Col>
-      {showSelectAll && items.length > 0 && (
-        <Col className="d-flex justify-end" span={24}>
-          <Button
-            className="p-0 h-auto font-normal"
-            data-testid="select-all-test-cases"
-            type="link"
-            onClick={handleSelectAll}
-          >
-            {t('label.select-all')}
-            {(selectedItems?.size ?? 0) > 0 && ` (${selectedItems?.size ?? 0})`}
-          </Button>
-        </Col>
-      )}
+      <Col span={24}>
+        <Row wrap align="middle" justify="space-between">
+          <AddTestCaseListFilters
+            filterLoading={filterLoading}
+            filterOptions={filterOptions}
+            filterSelectedKeys={filterSelectedKeys}
+            hideTableFilter={hideTableFilter}
+            onChange={handleFilterChange}
+            onSearch={handleFilterSearch}
+          />
+          {items.length > 0 && (
+            <Button
+              className="p-0 h-auto font-normal"
+              data-testid="select-all-test-cases"
+              type="link"
+              onClick={handleSelectAll}>
+              {t('label.select-all')}
+              {(selectedItems?.size ?? 0) > 0 &&
+                ` (${selectedItems?.size ?? 0})`}
+            </Button>
+          )}
+        </Row>
+      </Col>
       {renderList}
       {showButton && (
-        <Col
-          className="d-flex justify-end items-center p-y-xss gap-4"
-          span={24}
-        >
+        <Col className="d-flex justify-end items-center p-y-sm gap-4" span={24}>
           <Button data-testid="cancel" type="link" onClick={onCancel}>
             {cancelText ?? t('label.cancel')}
           </Button>
@@ -328,8 +621,7 @@ export const AddTestCaseList = ({
             data-testid="submit"
             loading={isLoading}
             type="primary"
-            onClick={handleSubmit}
-          >
+            onClick={handleSubmit}>
             {submitText ?? t('label.create')}
           </Button>
         </Col>

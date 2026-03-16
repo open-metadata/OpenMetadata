@@ -365,7 +365,7 @@ test.describe('Input Output Ports', () => {
       await test.step('Add multiple input ports', async () => {
         await page.getByTestId('add-input-port-button').click();
 
-        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+        await page.getByTestId('asset-selection-modal').waitFor({
           state: 'visible',
         });
 
@@ -517,7 +517,7 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Open input port drawer and verify unfiltered assets', async () => {
         await page.getByTestId('add-input-port-button').click();
-        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+        await page.getByTestId('asset-selection-modal').waitFor({
           state: 'visible',
         });
 
@@ -595,7 +595,7 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Open output port drawer and verify info banner', async () => {
         await page.getByTestId('add-output-port-button').click();
-        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+        await page.getByTestId('asset-selection-modal').waitFor({
           state: 'visible',
         });
 
@@ -625,7 +625,7 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Open input port drawer and verify no info banner', async () => {
         await page.getByTestId('add-input-port-button').click();
-        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+        await page.getByTestId('asset-selection-modal').waitFor({
           state: 'visible',
         });
 
@@ -653,7 +653,7 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Verify Entity Type filter in input port drawer', async () => {
         await page.getByTestId('add-input-port-button').click();
-        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+        await page.getByTestId('asset-selection-modal').waitFor({
           state: 'visible',
         });
         await waitForAllLoadersToDisappear(page);
@@ -667,7 +667,7 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Verify Entity Type filter in output port drawer', async () => {
         await page.getByTestId('add-output-port-button').click();
-        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+        await page.getByTestId('asset-selection-modal').waitFor({
           state: 'visible',
         });
         await waitForAllLoadersToDisappear(page);
@@ -702,7 +702,7 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Open output port drawer and verify filtering', async () => {
         await page.getByTestId('add-output-port-button').click();
-        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+        await page.getByTestId('asset-selection-modal').waitFor({
           state: 'visible',
         });
 

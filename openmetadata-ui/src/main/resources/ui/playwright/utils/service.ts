@@ -49,7 +49,7 @@ export const visitServiceDetailsPage = async (
   // Click on created service
   await page.click(`[data-testid="service-name-${service.name}"]`);
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await waitForAllLoadersToDisappear(page);
 
   if (visitChildrenTab) {
     // Click on children tab Ex. DatabaseService -> Databases
@@ -58,8 +58,8 @@ export const visitServiceDetailsPage = async (
 
 
   if (verifyHeader) {
-    const text = await page.textContent(`[data-testid="entity-header-name"]`);
-
-    expect(text).toBe(service.displayName);
+    await expect(
+      page.locator('[data-testid="entity-header-name"]')
+    ).toHaveText(service.displayName);
   }
 };

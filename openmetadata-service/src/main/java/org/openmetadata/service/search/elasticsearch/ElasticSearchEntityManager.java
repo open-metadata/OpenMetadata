@@ -64,6 +64,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -337,20 +338,22 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     try {
       Map<String, JsonData> params = convertToJsonDataMap(doc);
 
-      client.update(
-          u ->
-              u.index(indexName)
-                  .id(docId)
-                  .refresh(Refresh.True)
-                  .retryOnConflict(3)
-                  .scriptedUpsert(true)
-                  .upsert(params)
-                  .script(
-                      s ->
-                          s.source(ss -> ss.scriptString(scriptTxt))
-                              .lang(ScriptLanguage.Painless)
-                              .params(params)),
-          Map.class);
+      SearchRetryUtil.executeWithRetry(
+          () ->
+              client.update(
+                  u ->
+                      u.index(indexName)
+                          .id(docId)
+                          .refresh(Refresh.True)
+                          .retryOnConflict(3)
+                          .scriptedUpsert(true)
+                          .upsert(params)
+                          .script(
+                              s ->
+                                  s.source(ss -> ss.scriptString(scriptTxt))
+                                      .lang(ScriptLanguage.Painless)
+                                      .params(params)),
+                  Map.class));
 
       LOG.info(
           "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
@@ -1392,17 +1395,23 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.error("ElasticSearch client is not available. Cannot {}.", operation);
       return;
     }
-    client.update(
-        u ->
-            u.index(indexName)
-                .id(docId)
-                .docAsUpsert(true)
-                .refresh(Refresh.True)
-                .retryOnConflict(3)
-                .doc(toJsonData(doc)),
-        Map.class);
-    LOG.info(
-        "Successfully {} in ElasticSearch for index: {}, docId: {}", operation, indexName, docId);
+    SearchRetryUtil.executeWithRetry(
+        () -> {
+          client.update(
+              u ->
+                  u.index(indexName)
+                      .id(docId)
+                      .docAsUpsert(true)
+                      .refresh(Refresh.True)
+                      .retryOnConflict(3)
+                      .doc(toJsonData(doc)),
+              Map.class);
+          LOG.info(
+              "Successfully {} in ElasticSearch for index: {}, docId: {}",
+              operation,
+              indexName,
+              docId);
+        });
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
