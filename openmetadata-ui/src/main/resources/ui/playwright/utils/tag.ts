@@ -66,10 +66,11 @@ export const visitClassificationPage = async (
   await classificationResponse;
 
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .locator('.table-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   const classificationEntry = page
     .getByTestId('side-panel-classification')
@@ -84,10 +85,11 @@ export const visitClassificationPage = async (
   );
 
   await fetchTags;
-  await page.waitForSelector(
-    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .locator('.table-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
@@ -102,10 +104,10 @@ export const addAssetsToTag = async (
 
   await tag.visitPage(page);
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -186,10 +188,10 @@ export const removeAssetsFromTag = async (
   await tag.visitPage(page);
   await res;
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
@@ -203,10 +205,10 @@ export const removeAssetsFromTag = async (
   await assetsRemoveRes;
 
   await page.reload();
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
   await checkAssetsCount(page, 0);
 };
 
@@ -330,7 +332,7 @@ export const addTagToTableColumn = async (
   await page.click('[data-testid="saveAssociatedTag"]');
   await saveAssociatedTag;
 
-  await page.waitForSelector('.ant-select-dropdown', {
+  await page.locator('.ant-select-dropdown').first().waitFor({
     state: 'detached',
   });
 
@@ -354,10 +356,10 @@ export const verifyTagPageUI = async (
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
@@ -394,10 +396,10 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   const updatedDescription = `This is updated test description for tag ${tag.data.name}.`;
 
@@ -417,10 +419,10 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   );
   await page.getByTestId('save').click();
   await editDescription;
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
   await expect(page.getByRole('dialog')).not.toBeVisible();
 
   await expect(page.getByTestId('viewer-container')).toContainText(
@@ -643,10 +645,10 @@ export const selectTagInTagSuggestion = async (
   await tagInput.fill(searchTerm);
   await tagSearchResponse;
 
-  await page.waitForSelector('[role="listbox"]', { state: 'visible' });
+  await page.locator('[role="listbox"]').first().waitFor({ state: 'visible' });
   const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
   await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
   await page.keyboard.press('Escape');
-  await page.waitForSelector('[role="listbox"]', { state: 'hidden' });
+  await page.locator('[role="listbox"]').first().waitFor({ state: 'hidden' });
 };

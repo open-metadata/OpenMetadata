@@ -127,12 +127,11 @@ test.describe(
 
         await endTestConnection1;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
 
         // Fill superset form details - 2
         await fillSupersetFormDetails({ page, ...supersetFormDetails2 });
@@ -167,12 +166,11 @@ test.describe(
 
         await endTestConnection2;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
 
         // Fill superset form details - 3
         await fillSupersetFormDetails({ page, ...supersetFormDetails3 });
@@ -213,12 +211,11 @@ test.describe(
 
         await endTestConnection3;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
 
         // Fill superset form details - 4
         await fillSupersetFormDetails({ page, ...supersetFormDetails4 });
@@ -270,7 +267,7 @@ test.describe(
         await fileInput1.setInputFiles(testCertPath);
 
         // Wait for file upload to complete
-        await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
           state: 'visible',
         });
 
@@ -280,7 +277,7 @@ test.describe(
           .click();
 
         // Wait for file removal to complete
-        await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
           state: 'hidden',
         });
 
@@ -295,7 +292,7 @@ test.describe(
         await fileInput2.setInputFiles(testCertPath);
 
         // Wait for file upload to complete
-        await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
           state: 'visible',
         });
 
@@ -324,12 +321,11 @@ test.describe(
 
         await endTestConnection1;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
       });
     });
 
@@ -429,7 +425,7 @@ test.describe(
           .click();
         await page.click(`.ant-select-dropdown:visible [title="Local Path"]`);
 
-        await page.waitForSelector('#root\\/gitCredentials', {
+        await page.locator('#root\\/gitCredentials').waitFor({
           state: 'visible',
         });
 

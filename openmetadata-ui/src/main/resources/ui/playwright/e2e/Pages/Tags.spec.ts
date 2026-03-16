@@ -24,7 +24,9 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { addMultiOwner, removeOwner } from '../../utils/entity';
+import { addMultiOwner, removeOwner,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
   addTagToTableColumn,
@@ -49,7 +51,7 @@ const NEW_TAG = {
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
 
 const permanentDeleteModal = async (page: Page, entity: string) => {
-  await page.waitForSelector('.ant-modal-content', {
+  await page.locator('.ant-modal-content').waitFor({
     state: 'visible',
   });
 
@@ -126,11 +128,9 @@ test('Classification Page', async ({ page }) => {
     ).toBeVisible();
     await expect(page.locator('[data-testid="table"]')).toBeVisible();
 
-    const headers = await page
-      .locator('.ant-table-thead > tr > .ant-table-cell')
-      .allTextContents();
-
-    expect(headers).toEqual([
+    await expect(
+      page.locator('.ant-table-thead > tr > .ant-table-cell')
+    ).toHaveText([
       'Enabled',
       'Tag',
       'Display Name',
@@ -172,9 +172,7 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
     await page.getByTestId(tag.responseData.name).click();
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('disabled')).toBeVisible();
     await expect(page.getByTestId('add-domain')).not.toBeVisible();
@@ -237,9 +235,7 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-owner')).toBeVisible();
 
     await page.getByTestId(tag.responseData.name).click();
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('disabled')).not.toBeVisible();
     await expect(page.getByTestId('add-domain')).toBeVisible();
@@ -427,9 +423,7 @@ test('Classification Page', async ({ page }) => {
     await databaseSchemasPage;
 
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.locator('[data-testid="tags-container"]')).toContainText(
       tag
@@ -470,7 +464,7 @@ test('Classification Page', async ({ page }) => {
     );
 
     await page.click('[data-testid="table"] [data-testid="delete-tag"]');
-    await page.waitForTimeout(500); // adding manual wait to open modal, as it depends on click not an api.
+    await page.locator('.ant-modal-content').waitFor({ state: 'visible' });
     const deleteTag = page.waitForResponse(
       (response) =>
         response.request().method() === 'DELETE' &&
@@ -478,7 +472,6 @@ test('Classification Page', async ({ page }) => {
     );
     await permanentDeleteModal(page, NEW_TAG.name);
     await deleteTag;
-    await page.waitForTimeout(500);
 
     await expect(page.locator('[data-testid="table"]')).not.toContainText(
       NEW_TAG.name
@@ -487,11 +480,9 @@ test('Classification Page', async ({ page }) => {
     // Verify term count is now 0 after deleting the tag
     await page.reload();
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
-    await page.waitForSelector('[data-testid="side-panel-classification"]', {
+    await page.getByTestId('side-panel-classification').first().waitFor({
       state: 'visible',
     });
 
@@ -596,7 +587,7 @@ test('Verify system classification term counts', async ({ page }) => {
 
   await classificationsResponse;
 
-  await page.waitForSelector('[data-testid="side-panel-classification"]', {
+  await page.getByTestId('side-panel-classification').first().waitFor({
     state: 'visible',
   });
 
@@ -695,8 +686,7 @@ test('Disabled tag should not allow adding assets from Assets tab', async ({
     // Visit the disabled tag page
     await tag1.visitPage(page);
 
-    await page.waitForSelector(
-      '[data-testid="tags-container"] [data-testid="loader"]',
+    await page.getByTestId('tags-container').getByTestId('loader').first().waitFor(
       { state: 'detached' }
     );
 

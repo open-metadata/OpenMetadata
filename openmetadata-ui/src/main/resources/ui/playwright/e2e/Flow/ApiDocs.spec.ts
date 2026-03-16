@@ -29,7 +29,7 @@ test.describe('API docs should work properly', () => {
       .getByTestId('fluid-container')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
-    await page.waitForSelector('[data-content-id="overview"]', {
+    await page.locator('[data-content-id="overview"]').waitFor({
       state: 'visible',
     });
 

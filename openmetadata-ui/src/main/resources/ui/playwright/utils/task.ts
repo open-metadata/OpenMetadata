@@ -33,7 +33,7 @@ export const createDescriptionTask = async (
   addDescription = true,
   assigneeDisabled?: boolean
 ) => {
-  expect(await page.locator('#title').inputValue()).toBe(
+  await expect(page.locator('#title')).toHaveValue(
     `${addDescription ? 'Update' : 'Request'} description for table ${
       value.columnName
         ? `${value.term} columns/${value.columnName}`
@@ -42,17 +42,15 @@ export const createDescriptionTask = async (
   );
 
   if (isUndefined(value.assignee) || assigneeDisabled) {
-    expect(
-      await page
-        .locator('[data-testid="select-assignee"] > .ant-select-selector')
-        .innerText()
-    ).toBe(value.assignee);
+    await expect(
+      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
+    ).toHaveText(value.assignee);
 
-    expect(
-      await page
-        .locator('[data-testid="select-assignee"] > .ant-select-selector input')
-        .isDisabled()
-    );
+    await expect(
+      page.locator(
+        '[data-testid="select-assignee"] > .ant-select-selector input'
+      )
+    ).toBeDisabled();
   } else {
     const assigneeField = page.locator(
       '[data-testid="select-assignee"] > .ant-select-selector #assignees'
@@ -89,22 +87,20 @@ export const createTagTask = async (
   addTag = true,
   assigneeDisabled?: boolean
 ) => {
-  expect(await page.locator('#title').inputValue()).toBe(
+  await expect(page.locator('#title')).toHaveValue(
     `Request tags for table ${value.term}`
   );
 
   if (isUndefined(value.assignee) || assigneeDisabled) {
-    expect(
-      await page
-        .locator('[data-testid="select-assignee"] > .ant-select-selector')
-        .innerText()
-    ).toBe(value.assignee);
+    await expect(
+      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
+    ).toHaveText(value.assignee);
 
-    expect(
-      await page
-        .locator('[data-testid="select-assignee"] > .ant-select-selector input')
-        .isDisabled()
-    );
+    await expect(
+      page.locator(
+        '[data-testid="select-assignee"] > .ant-select-selector input'
+      )
+    ).toBeDisabled();
   } else {
     // select assignee
     const assigneeField = page.locator(
@@ -158,7 +154,7 @@ export const checkTaskCountInActivityFeed = async (
   openTask = 0,
   closedTask = 0
 ) => {
-  await page.waitForSelector('.ant-skeleton-element ', {
+  await page.locator('.ant-skeleton-element').first().waitFor({
     state: 'detached',
   });
   await page.getByTestId('user-profile-page-task-filter-icon').click();
@@ -166,11 +162,11 @@ export const checkTaskCountInActivityFeed = async (
     .locator('.task-tab-custom-dropdown .task-count-text')
     .first();
 
-  expect(await openTaskItem.textContent()).toBe(String(openTask));
+  await expect(openTaskItem).toHaveText(String(openTask));
 
   const closedTaskItem = page
     .locator('.task-tab-custom-dropdown .task-count-text')
     .last();
 
-  expect(await closedTaskItem.textContent()).toBe(String(closedTask));
+  await expect(closedTaskItem).toHaveText(String(closedTask));
 };

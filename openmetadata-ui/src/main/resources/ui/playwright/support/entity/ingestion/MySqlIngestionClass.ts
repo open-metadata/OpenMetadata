@@ -25,7 +25,9 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entity';
+import { visitEntityPage,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -126,7 +128,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
       );
 
       await page.click('[data-testid="agents"]');
-      await page.waitForSelector('[data-testid="ingestion-details-container"]');
+      await page.getByTestId('ingestion-details-container').waitFor();
 
       const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
       if (await metadataTab.isVisible()) {
@@ -134,13 +136,13 @@ class MysqlIngestionClass extends ServiceBaseClass {
       }
       await page.click('[data-testid="add-new-ingestion-button"]');
 
-      await page.waitForSelector(
-        '.ant-dropdown:visible [data-menu-id*="profiler"]'
-      );
+      await page
+        .locator('.ant-dropdown:visible [data-menu-id*="profiler"]')
+        .waitFor();
 
       await page.click('[data-menu-id*="profiler"]');
 
-      await page.waitForSelector('#root\\/profileSample');
+      await page.locator('#root\\/profileSample').waitFor();
       await page.fill('#root\\/profileSample', '10');
       await page.click('[data-testid="submit-btn"]');
       // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
@@ -149,8 +151,8 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await page.click('[data-testid="view-service-button"]');
 
       // Header available once page loads
-      await page.waitForSelector('[data-testid="data-assets-header"]');
-      await page.getByTestId('loader').waitFor({ state: 'detached' });
+      await page.getByTestId('data-assets-header').waitFor();
+      await waitForAllLoadersToDisappear(page);
       await page.getByTestId('agents').click();
       const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
       if (await metadataTab2.isVisible()) {
@@ -170,7 +172,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
         )
         .then((res) => res.json());
 
-      // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
       await page.waitForTimeout(3000);
 
       await page.click(
@@ -180,7 +182,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
       await toastNotification(page, `Pipeline triggered successfully!`);
 
-      // need manual wait to make sure we are awaiting on latest run results
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
       await page.waitForTimeout(2000);
 
       await this.handleIngestionRetry('profiler', page);
@@ -203,7 +205,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   async validateIngestionDetails(page: Page) {
-    await page.waitForSelector('.ant-select-selection-item-content');
+    await page.locator('.ant-select-selection-item-content').waitFor();
 
     await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
       this.defaultFilters.concat([...this.excludeSchemas, ...this.tableFilter])

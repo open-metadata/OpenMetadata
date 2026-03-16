@@ -49,6 +49,7 @@ import {
   navigateToContractTab,
   openODCSImportDropdown,
 } from '../../utils/odcsImportExport';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.describe('ODCS Import/Export', () => {
   test.slow(true);
@@ -657,9 +658,6 @@ test.describe('ODCS Import/Export', () => {
         timeout: 10000,
       });
 
-      // Wait for page to fully settle before replace operation
-      await page.waitForTimeout(2000);
-
       // Now REPLACE with basic contract (no SLA, name: "Orders Basic Contract")
       await openODCSImportDropdown(page);
       await importODCSYaml(
@@ -792,7 +790,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Wait for preview
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
+      await page.locator('.file-info-card, .contract-preview-card').waitFor({
         state: 'visible',
       });
 
@@ -1743,7 +1741,7 @@ version: "1.0.0"`;
 
       // Step 2: Edit the contract via UI - add SLA
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -1833,7 +1831,7 @@ version: "1.0.0"`;
 
       // Step 2: Edit the contract via UI - modify SLA values
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -2005,9 +2003,7 @@ version: "1.0.0"`;
         await page.getByTestId('save-contract-btn').click();
         await saveContractResponse;
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('contract-title')).toBeVisible();
         await expect(page.getByTestId('contract-title')).toContainText(
@@ -2025,7 +2021,7 @@ version: "1.0.0"`;
       await test.step('Export as OM format and modify description', async () => {
         const downloadPromise = page.waitForEvent('download');
         await page.getByTestId('manage-contract-actions').click();
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('export-contract-button').click();
@@ -2047,7 +2043,7 @@ version: "1.0.0"`;
 
       await test.step('Import modified OM YAML with merge option', async () => {
         await page.getByTestId('manage-contract-actions').click();
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('import-openmetadata-contract-button').click();
@@ -2154,7 +2150,7 @@ version: "1.0.0"`;
       // Step 2: Export as OpenMetadata (OM) format
       const omDownloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('export-contract-button').click();

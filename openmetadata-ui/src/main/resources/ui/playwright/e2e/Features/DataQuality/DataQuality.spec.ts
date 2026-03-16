@@ -44,6 +44,7 @@ import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 const table1 = new TableClass();
 const table2 = new TableClass();
@@ -190,7 +191,7 @@ test.describe(
           NEW_TABLE_TEST_CASE.name
         );
         await page.click('[id="root\\/testType"]');
-        await page.waitForSelector(`text=${NEW_TABLE_TEST_CASE.label}`);
+        await page.locator(`text=${NEW_TABLE_TEST_CASE.label}`).first().waitFor();
         await page.click(`[data-testid="${NEW_TABLE_TEST_CASE.type}"]`);
         await page.fill(
           '#testCaseFormV1_params_columnName',
@@ -314,7 +315,7 @@ test.describe(
         await page.getByTestId('update-btn').click();
         await updateTestCaseResponse;
         await toastNotification(page, 'Test case updated successfully.');
-        await page.waitForSelector('[data-testid="alert-bar"]', {
+        await page.getByTestId('alert-bar').waitFor({
           state: 'detached',
         });
 
@@ -328,7 +329,7 @@ test.describe(
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
         await testDefinitionResponse;
 
-        await page.waitForSelector('#tableTestForm_params_columnName');
+        await page.locator('#tableTestForm_params_columnName').waitFor();
 
         await expect(
           page.locator('#tableTestForm_params_columnName')
@@ -453,12 +454,10 @@ test.describe(
         await page.click('[data-testid="create-btn"]');
         await toastNotification(page, 'Test case created successfully.');
 
-        await page.waitForSelector(
-          `[data-testid="${NEW_COLUMN_TEST_CASE.name}"]`
-        );
+        await page.getByTestId(NEW_COLUMN_TEST_CASE.name).waitFor();
 
         await expect(
-          page.locator(`[data-testid="${NEW_COLUMN_TEST_CASE.name}"]`)
+          page.getByTestId(NEW_COLUMN_TEST_CASE.name)
         ).toBeVisible();
       });
 
@@ -467,7 +466,7 @@ test.describe(
           .getByTestId(`action-dropdown-${NEW_COLUMN_TEST_CASE.name}`)
           .click();
         await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
-        await page.waitForSelector('#tableTestForm_params_minLength');
+        await page.locator('#tableTestForm_params_minLength').waitFor();
         await page.locator('#tableTestForm_params_minLength').clear();
         await page.fill('#tableTestForm_params_minLength', '4');
 
@@ -528,12 +527,10 @@ test.describe(
         );
         await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
         await testDefinitionResponse;
-        await page.waitForSelector('#tableTestForm_params_minLength');
-        const minLengthValue = await page
-          .locator('#tableTestForm_params_minLength')
-          .inputValue();
-
-        expect(minLengthValue).toBe('4');
+        await page.locator('#tableTestForm_params_minLength').waitFor();
+        await expect(
+          page.locator('#tableTestForm_params_minLength')
+        ).toHaveValue('4');
 
         await page.locator('button').getByText('Cancel').click();
       });
@@ -710,7 +707,7 @@ test.describe(
           testCaseName
         );
         await searchTestCaseResponse;
-        await page.waitForSelector('.ant-spin', {
+        await page.locator('.ant-spin').waitFor({
           state: 'detached',
         });
 
@@ -855,9 +852,7 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
         await page.click('[data-testid="test-cases"]');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // get all the filters
         await page.click('[data-testid="advanced-filter"]');
@@ -1085,11 +1080,10 @@ test.describe(
         const url = page.url();
         await page.reload();
 
-        await expect(page.url()).toBe(url);
+        expect(page.url()).toBe(url);
 
         await page.getByTestId('advanced-filter').click();
         await page.click('[value="testPlatforms"]');
-        await page.waitForTimeout(200);
 
         await expect(
           page.getByTestId('platform-select-filter')
@@ -1103,7 +1097,7 @@ test.describe(
         await page.getByTestId('domain-dropdown').click();
 
         // Wait for the domain select dropdown to be visible
-        await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        await page.getByTestId('domain-selectable-tree').waitFor({
           state: 'visible',
         });
 
@@ -1128,9 +1122,7 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
         await page.click('[data-testid="test-cases"]');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
         await visitDataQualityTab(page, filterTable1);
@@ -1188,9 +1180,7 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
         await page.click('[data-testid="test-cases"]');
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await test.step('Verify pagination controls are visible', async () => {
           await expect(
@@ -1247,7 +1237,7 @@ test.describe(
           await page.click('[data-testid="page-size-selection-dropdown"]');
 
           // Wait for dropdown menu to be visible
-          await page.waitForSelector('.ant-dropdown-menu', {
+          await page.locator('.ant-dropdown-menu').waitFor({
             state: 'visible',
             timeout: 5000,
           });

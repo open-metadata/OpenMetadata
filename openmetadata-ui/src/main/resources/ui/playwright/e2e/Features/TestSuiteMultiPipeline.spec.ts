@@ -18,6 +18,7 @@ import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -69,9 +70,7 @@ test(
       await createTestCaseResponse;
 
       await page.reload();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByRole('tab', { name: 'Data Quality' }).click();
       await page.getByRole('tab', { name: 'Pipeline' }).click();
@@ -92,7 +91,7 @@ test(
       await page.getByTestId('deploy-button').click();
       await deployResponse;
 
-      await page.waitForSelector('[data-testid="body-text"]', {
+      await page.getByTestId('body-text').waitFor({
         state: 'detached',
       });
 
@@ -158,7 +157,7 @@ test(
       await page.getByTestId('deploy-button').click();
       await updateDeployResponse;
 
-      await page.waitForSelector('[data-testid="body-text"]', {
+      await page.getByTestId('body-text').waitFor({
         state: 'detached',
       });
 
@@ -268,6 +267,7 @@ test(
         name: new RegExp(pipeline?.['name']),
       })
       .getByTestId('more-actions')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
       .click({ force: true });
 
     await page
@@ -292,7 +292,7 @@ test(
     await page.getByTestId('deploy-button').click();
     await editDeployResponse;
 
-    await page.waitForSelector('[data-testid="body-text"]', {
+    await page.getByTestId('body-text').waitFor({
       state: 'detached',
     });
 
