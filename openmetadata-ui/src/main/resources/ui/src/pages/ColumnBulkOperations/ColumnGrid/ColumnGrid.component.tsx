@@ -114,6 +114,12 @@ const COLUMN_WIDTH_PERCENT: Record<string, string> = {
   glossaryTerms: '18%',
 };
 
+const EmptyCellContent = () => (
+  <Typography as="span" className="tw:text-tertiary">
+    --
+  </Typography>
+);
+
 const hasEditedValues = (r: ColumnGridRowData): boolean =>
   some(EDITED_ROW_KEYS, (key) => !isUndefined(r[key]));
 
@@ -698,28 +704,16 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const renderPathCellAdapter = useCallback(
     (entity: ColumnGridRowData) => {
       if (entity.isGroup) {
-        return (
-          <Typography as="span" className="tw:text-tertiary">
-            --
-          </Typography>
-        );
+        return <EmptyCellContent />;
       }
 
       if (!entity.occurrence) {
-        return (
-          <Typography as="span" className="tw:text-tertiary">
-            -
-          </Typography>
-        );
+        return <EmptyCellContent />;
       }
 
       const entityInfo = getEntityLink(entity.occurrence);
       if (!entityInfo) {
-        return (
-          <Typography as="span" className="tw:text-tertiary">
-            -
-          </Typography>
-        );
+        return <EmptyCellContent />;
       }
 
       return (

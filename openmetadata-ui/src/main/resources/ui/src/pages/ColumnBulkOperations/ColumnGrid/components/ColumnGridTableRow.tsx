@@ -26,7 +26,7 @@ interface ColumnGridTableRowProps {
   isPendingRefetch?: boolean;
   /** When true, row shows highlighted (theme warning) background for recently bulk-updated columns */
   isRecentlyUpdated?: boolean;
-  /** When true, parent/child row colors are shown (only when group/struct is expanded) */
+  /** When true, parent (grey) vs child (light grey) backgrounds and child row indent are applied */
   showParentChildColors?: boolean;
   /** Column definitions for Table.Row (id only), used for core Table layout */
   tableColumns: { id: string }[];
@@ -38,6 +38,11 @@ interface ColumnGridTableRowProps {
 }
 
 const CELL_ELLIPSIS_CLASS = 'tw:min-w-0 tw:w-full tw:overflow-hidden';
+
+const CHILD_ROW_INDENT_PX = 24;
+const BASE_CELL_PADDING_PX = 24;
+const PARENT_ROW_BG_CLASS = 'tw:bg-gray-100';
+const CHILD_ROW_BG_CLASS = 'tw:bg-gray-50';
 
 export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   columnWidthPercent = {},
@@ -53,8 +58,9 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   renderTagsCell,
   renderGlossaryTermsCell,
 }) => {
+  const isChildRow = Boolean(entity.parentId || entity.isStructChild);
+
   const { rowClassName, cellClassName, rowType } = useMemo(() => {
-    const isChildRow = Boolean(entity.parentId || entity.isStructChild);
     const type = isChildRow ? 'child' : 'parent';
 
     if (isRecentlyUpdated) {
@@ -79,7 +85,7 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
       };
     }
 
-    const bgClass = isChildRow ? 'tw:bg-primary' : 'tw:bg-secondary';
+    const bgClass = isChildRow ? CHILD_ROW_BG_CLASS : PARENT_ROW_BG_CLASS;
 
     return {
       rowType: type,
@@ -139,8 +145,19 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
 
   const getCellStyle = (columnId: string): React.CSSProperties | undefined => {
     const width = columnWidthPercent[columnId];
+    const base = width ? { width, minWidth: 0, maxWidth: width } : undefined;
+    const isFirstCell = columnId === 'columnName';
+    const shouldIndent = showParentChildColors && isChildRow && isFirstCell;
+    const level = entity.nestingLevel ?? (entity.parentId ? 1 : 0);
+    const indentPx = shouldIndent
+      ? BASE_CELL_PADDING_PX + level * CHILD_ROW_INDENT_PX
+      : 0;
 
-    return width ? { width, minWidth: 0, maxWidth: width } : undefined;
+    if (indentPx === 0) {
+      return base;
+    }
+
+    return { ...base, paddingLeft: indentPx };
   };
 
   const cellTestIdMap: Record<string, string | undefined> = {
