@@ -1162,6 +1162,7 @@ def _process_sequence(
 
             if current_fqns:
                 from_node = graph.nodes[node]
+                table_chain = [str(node).replace(f"{DEFAULT_SCHEMA_NAME}.", "")]
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error creating lineage for node [{node}]: {exc}")
@@ -1230,6 +1231,7 @@ def _collect_temp_lineage_hops(
                     hops_map.setdefault(key, []).extend(temp_hops)
             if current_fqns:
                 from_node = graph.nodes[node]
+                table_chain = [str(node).replace(f"{DEFAULT_SCHEMA_NAME}.", "")]
     return hops_map
 
 

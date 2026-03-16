@@ -861,6 +861,58 @@ class TestCollectTempLineageHops:
         # 3 paths x 2 hops each = 6 total
         assert len(hops) == 6
 
+    def test_multi_real_entity_chain_resets_table_chain(self):
+        """
+        Path with 3 real entities: realA -> tmp1 -> realB -> tmp2 -> realC
+        The chain must reset at each real entity so that the (realB, realC) pair
+        only contains hops from realB onward, not the full accumulated chain.
+        """
+        graph = nx.DiGraph()
+        graph.add_node("realA", fqns=["svc.db.sch.realA"])
+        graph.add_node("tmp1", fqns=[])
+        graph.add_node("realB", fqns=["svc.db.sch.realB"])
+        graph.add_node("tmp2", fqns=[])
+        graph.add_node("realC", fqns=["svc.db.sch.realC"])
+        graph.add_edges_from(
+            [
+                ("realA", "tmp1"),
+                ("tmp1", "realB"),
+                ("realB", "tmp2"),
+                ("tmp2", "realC"),
+            ]
+        )
+
+        paths = [["realA", "tmp1", "realB", "tmp2", "realC"]]
+        hops_map = _collect_temp_lineage_hops(paths, graph)
+
+        # Should have two separate pairs
+        assert len(hops_map) == 2
+
+        # (realA, realB) should have hops: realA -> tmp1, tmp1 -> realB
+        key_ab = ("svc.db.sch.realA", "svc.db.sch.realB")
+        assert key_ab in hops_map
+        hops_ab = hops_map[key_ab]
+        assert len(hops_ab) == 2
+        assert (
+            TempLineageTable(fromEntity="svc.db.sch.realA", toEntity="tmp1") in hops_ab
+        )
+        assert (
+            TempLineageTable(fromEntity="tmp1", toEntity="svc.db.sch.realB") in hops_ab
+        )
+
+        # (realB, realC) should have hops: realB -> tmp2, tmp2 -> realC
+        # NOT the full chain from realA
+        key_bc = ("svc.db.sch.realB", "svc.db.sch.realC")
+        assert key_bc in hops_map
+        hops_bc = hops_map[key_bc]
+        assert len(hops_bc) == 2
+        assert (
+            TempLineageTable(fromEntity="svc.db.sch.realB", toEntity="tmp2") in hops_bc
+        )
+        assert (
+            TempLineageTable(fromEntity="tmp2", toEntity="svc.db.sch.realC") in hops_bc
+        )
+
 
 class TestMergedLineageByGraph:
     """Tests that get_lineage_by_graph merges temp lineage across converging paths"""
