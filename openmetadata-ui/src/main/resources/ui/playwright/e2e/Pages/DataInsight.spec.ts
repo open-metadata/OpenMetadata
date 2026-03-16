@@ -17,6 +17,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -32,20 +33,17 @@ const navigateToDataInsightPage = async (
   page: Page,
   waitOnLatestKPI = false
 ) => {
-  const promises = [
-    page.waitForResponse(
-      '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
-    ),
-  ];
-  if (waitOnLatestKPI) {
-    promises.push(
-      page.waitForResponse(
+  const descriptionChartPromise = page.waitForResponse(
+    '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
+  );
+  const latestKpiPromise = waitOnLatestKPI
+    ? page.waitForResponse(
         '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
       )
-    );
-  }
+    : undefined;
   await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-  await Promise.all(promises);
+  await descriptionChartPromise;
+  if (latestKpiPromise) await latestKpiPromise;
 };
 
 test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
@@ -133,10 +131,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       await expect(
         metricEntityContainer.getByTestId('entity-value')
       ).toBeVisible();
-      const percentageValue = await metricEntityContainer
-        .getByTestId('entity-value')
-        .textContent();
-      expect(percentageValue).toBeTruthy();
+      await expect(
+        metricEntityContainer.getByTestId('entity-value')
+      ).not.toHaveText('');
     });
   });
 
@@ -278,10 +275,10 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await kpiResponse;
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
 
-    expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
+    await expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {

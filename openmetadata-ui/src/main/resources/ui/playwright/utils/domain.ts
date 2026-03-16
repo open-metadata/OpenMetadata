@@ -51,13 +51,11 @@ const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
   try {
-    await page.waitForSelector('[data-testid="loader"]', {
+    await page.getByTestId('loader').first().waitFor({
       state: 'attached',
       timeout: 999,
     });
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
   } catch (e) {
     // Loader never appeared - search was instant, which is fine
     // Just continue without waiting
@@ -71,10 +69,10 @@ export const assignCertificationForWidget = async (
 ) => {
   await page.getByTestId('edit-certification').click();
 
-  await page.waitForSelector('.certification-card-popover', {
+  await page.locator('.certification-card-popover').waitFor({
     state: 'visible',
   });
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await readElementInListWithScroll(
     page,
@@ -98,7 +96,7 @@ export const assignCertificationForWidget = async (
   const patchResponse = await patchRequest;
   expect(patchResponse.status()).toBe(200);
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 
   await expect(page.getByTestId('certification-label')).toContainText(
@@ -108,7 +106,7 @@ export const assignCertificationForWidget = async (
 
 export const removeTierFromWidget = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-tier').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -120,7 +118,7 @@ export const removeTierFromWidget = async (page: Page, endpoint: string) => {
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 
   await expect(
@@ -133,10 +131,10 @@ export const removeCertificationFromWidget = async (
   endpoint: string
 ) => {
   await page.getByTestId('edit-certification').click();
-  await page.waitForSelector('.certification-card-popover', {
+  await page.locator('.certification-card-popover').waitFor({
     state: 'visible',
   });
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -148,7 +146,7 @@ export const removeCertificationFromWidget = async (
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 
   await expect(
@@ -158,7 +156,7 @@ export const removeCertificationFromWidget = async (
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
@@ -175,7 +173,7 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
 
   await page.getByTestId('saveAssociatedTag').click();
   await patchReq;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -184,7 +182,7 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
 
 export const updateDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
@@ -203,7 +201,7 @@ export const updateDomain = async (page: Page, domain: Domain['data']) => {
 
 export const removeDomain = async (page: Page) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('remove-owner').locator('path')).toBeVisible();
 
@@ -240,9 +238,7 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     .getByTestId('page-layout-v1')
     .getByPlaceholder('Search');
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await Promise.all([
     searchBox.fill(domain.name),
@@ -256,9 +252,7 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const selectSubDomain = async (
@@ -285,9 +279,7 @@ export const selectSubDomain = async (
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
   await subDomainRes;
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId(subDomain.name).click();
 };
@@ -311,7 +303,7 @@ export const selectDataProductFromTab = async (
 
   await dpRes;
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await Promise.all([
     page
@@ -336,9 +328,7 @@ export const selectDataProduct = async (
     .getByTestId('page-layout-v1')
     .getByPlaceholder('Search');
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await Promise.all([
     searchBox.fill(dataProduct.name),
@@ -354,9 +344,7 @@ export const selectDataProduct = async (
     page.waitForResponse('/api/v1/dataProducts/name/*'),
   ]);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const goToAssetsTab = async (
@@ -375,7 +363,7 @@ export const goToAssetsTab = async (
     page.waitForResponse('/api/v1/search/query?q=&index=all*'),
   ]);
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const verifyAssetsInDomain = async (
@@ -535,7 +523,7 @@ export const createDomain = async (
 ) => {
   await page.click('[data-testid="add-domain"]');
 
-  await page.waitForSelector('h6:has-text("Add Domain")', { timeout: 5000 });
+  await page.locator('h6:has-text("Add Domain")').waitFor({ timeout: 5000 });
 
   await expect(page.locator('h6:has-text("Add Domain")')).toBeVisible();
 
@@ -1383,9 +1371,7 @@ export const navigateToSubDomain = async (
   subDomainData: { name: string }
 ) => {
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await Promise.all([
     page.getByTestId(subDomainData.name).click(),
@@ -1484,7 +1470,7 @@ export const addInputPortToDataProduct = async (
 
   await page.getByTestId('add-input-port-button').click();
 
-  await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+  await page.getByTestId('asset-selection-modal').waitFor({
     state: 'visible',
   });
 
@@ -1527,7 +1513,7 @@ export const addOutputPortToDataProduct = async (
 
   await page.getByTestId('add-output-port-button').click();
 
-  await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+  await page.getByTestId('asset-selection-modal').waitFor({
     state: 'visible',
   });
 
@@ -1604,7 +1590,7 @@ export const selectDomainFromNavbar = async (
   domain: Domain['responseData']
 ) => {
   await page.getByTestId('domain-dropdown').click();
-  await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+  await page.getByTestId('domain-selectable-tree').waitFor({
     state: 'visible',
   });
 
@@ -1701,7 +1687,6 @@ export const searchAndExpectEntityNotVisible = async (
  */
 export const assignDomainToEntity = async (
   apiContext: APIRequestContext,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   entity: {
     patch: (options: {
       apiContext: APIRequestContext;
@@ -1735,6 +1720,7 @@ export const verifyDescriptionRequiresScroll = async (
   await expect(lateContent).not.toBeInViewport();
 
   await lateContent.scrollIntoViewIfNeeded();
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- scroll animation settling time
   await page.waitForTimeout(300);
 
   await expect(lateContent).toBeInViewport();
@@ -1749,6 +1735,7 @@ export const verifyEndOfDescriptionReachable = async (
   await expect(lateContent).toBeAttached();
 
   await lateContent.scrollIntoViewIfNeeded();
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- scroll animation settling time
   await page.waitForTimeout(300);
 
   await expect(lateContent).toBeInViewport();

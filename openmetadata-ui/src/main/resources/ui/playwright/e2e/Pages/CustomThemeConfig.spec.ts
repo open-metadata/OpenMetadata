@@ -204,7 +204,7 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.locator('[data-testid="save-btn"]').click();
     await saveResponse;
 
-    // Wait a bit more to catch any additional requests
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait to catch any additional monogram requests after save
     await page.waitForTimeout(2000);
 
     // Assert monogram URL was called at most once after save

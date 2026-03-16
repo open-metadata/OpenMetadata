@@ -13,6 +13,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { descriptionBox, removeLandingBanner } from './common';
 import { TaskDetails } from './task';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const REACTION_EMOJIS = ['🚀', '😕', '👀', '❤️', '🎉', '😄', '👎', '👍'];
 
@@ -39,7 +40,7 @@ export const checkDescriptionInEditModal = async (
   expect(taskContent).toContain(`Request to update description for`);
 
   await page.getByRole('button', { name: 'down' }).click();
-  await page.waitForSelector('.ant-dropdown', {
+  await page.locator('.ant-dropdown').waitFor({
     state: 'visible',
   });
 
@@ -71,13 +72,13 @@ export const checkDescriptionInEditModal = async (
 export const deleteFeedComments = async (page: Page, feed: Locator) => {
   await feed.locator('.feed-reply-card-v2').click();
 
-  await page.waitForSelector('[data-testid="feed-actions"]', {
+  await page.getByTestId('feed-actions').waitFor({
     state: 'visible',
   });
 
   await page.locator('[data-testid="delete-message"]').click();
 
-  await page.waitForSelector('[role="dialog"].ant-modal');
+  await page.locator('[role="dialog"].ant-modal').waitFor();
 
   const deleteResponse = page.waitForResponse('/api/v1/feed/*/posts/*');
 
@@ -126,7 +127,7 @@ export const addMentionCommentInFeed = async (
     await fetchFeedResponse;
   }
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId('comments-input-field').click();
 

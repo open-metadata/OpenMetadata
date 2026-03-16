@@ -62,7 +62,7 @@ test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await applicationResponse;
 
     await page.click('[data-testid="edit-button"]');
-    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page.getByTestId('schedular-card-container').waitFor();
     await page
       .getByTestId('schedular-card-container')
       .getByText('Schedule', { exact: true })
@@ -75,9 +75,9 @@ test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await page.click('.ant-select-dropdown:visible [title="Custom"]');
 
-    await page.waitForSelector(
-      '[data-testid="cron-container"] #schedular-form_cron'
-    );
+    await page
+      .locator('[data-testid="cron-container"] #schedular-form_cron')
+      .waitFor();
 
     // Check Valid Crons
 

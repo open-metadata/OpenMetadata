@@ -21,6 +21,7 @@ import {
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
+import { waitForAllLoadersToDisappear } from './entity';
 
 const botName = `a-bot-pw%test-${uuid()}`;
 
@@ -303,7 +304,7 @@ export const redirectToBotPage = async (page: Page) => {
 
 export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await page.goto(`/bots/${botName}`);
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   const isRevokeButtonVisible = await page
     .getByTestId('revoke-button')
@@ -319,7 +320,7 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
 
     await page.getByTestId('save-button').click();
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
   } else if (isAuthMechanismVisible) {
     await page.getByTestId('auth-mechanism').click();
   }

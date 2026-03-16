@@ -29,12 +29,12 @@ export const columnPaginationTable = async (page: Page) => {
   await page.getByTestId('next').click();
 
   await columnsResponse1;
-  await page.waitForSelector(
-    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-    {
+  await page
+    .locator('#KnowledgePanel\\.TableSchema')
+    .getByTestId('loader')
+    .waitFor({
       state: 'detached',
-    }
-  );
+    });
 
   await expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
 
@@ -49,12 +49,12 @@ export const columnPaginationTable = async (page: Page) => {
   await page.getByTestId('previous').click();
 
   await columnsResponse2;
-  await page.waitForSelector(
-    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-    {
+  await page
+    .locator('#KnowledgePanel\\.TableSchema')
+    .getByTestId('loader')
+    .waitFor({
       state: 'detached',
-    }
-  );
+    });
 
   await expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
 
@@ -68,12 +68,12 @@ export const columnPaginationTable = async (page: Page) => {
   await page.getByRole('menuitem', { name: '15 / Page' }).click();
 
   await columnsResponse3;
-  await page.waitForSelector(
-    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-    {
+  await page
+    .locator('#KnowledgePanel\\.TableSchema')
+    .getByTestId('loader')
+    .waitFor({
       state: 'detached',
-    }
-  );
+    });
 
   // 15 Row + 1 Header row
   await expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(
@@ -90,12 +90,12 @@ export const columnPaginationTable = async (page: Page) => {
   await page.getByRole('menuitem', { name: '25 / Page' }).click();
 
   await columnsResponse4;
-  await page.waitForSelector(
-    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-    {
+  await page
+    .locator('#KnowledgePanel\\.TableSchema')
+    .getByTestId('loader')
+    .waitFor({
       state: 'detached',
-    }
-  );
+    });
 
   // 25 Row + 1 Header row
   await expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(

@@ -138,7 +138,7 @@ test.describe(
 
         await openAddCustomizeWidgetModal(adminPage);
 
-        await adminPage.locator('[data-testid="loader"]').waitFor({
+        await adminPage.locator('[data-testid="loader"]').first().waitFor({
           state: 'detached',
         });
 

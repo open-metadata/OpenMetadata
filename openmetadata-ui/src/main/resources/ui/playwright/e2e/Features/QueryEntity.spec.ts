@@ -20,6 +20,7 @@ import {
   redirectToHomePage,
 } from '../../utils/common';
 import { createQueryByTableName, queryFilters } from '../../utils/query';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -106,7 +107,7 @@ test('Query Entity', async ({ page }) => {
     await createQueryResponse;
     await page.waitForURL('**/table_queries**');
 
-    await page.waitForSelector(`text=${queryData.query}`, {
+    await page.locator(`text=${queryData.query}`).waitFor({
       state: 'visible',
       timeout: 10000,
     });
@@ -124,9 +125,7 @@ test('Query Entity', async ({ page }) => {
       .click();
     await ownerListResponse;
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await page
       .locator("[data-testid='select-owner-tabs']")
@@ -145,9 +144,8 @@ test('Query Entity', async ({ page }) => {
         response.url().includes('/api/v1/queries/') &&
         response.request().method() === 'PATCH'
     );
-    await page.getByRole('button', { name: 'Update' }).click({
-      force: true,
-    });
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+    await page.getByRole('button', { name: 'Update' }).click({ force: true });
     await updateOwnerResponse;
 
     await expect(page.getByTestId('admin')).toBeVisible();
@@ -163,7 +161,7 @@ test('Query Entity', async ({ page }) => {
     );
     await page.click(`[data-testid="save"]`);
     await updateDescriptionResponse;
-    await page.waitForSelector('.ant-modal-body', {
+    await page.locator('.ant-modal-body').waitFor({
       state: 'detached',
     });
 
@@ -275,16 +273,11 @@ test('Query Entity', async ({ page }) => {
     expect(upVoteResponse.status()).toBe(200);
 
     await page.reload();
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
-    const upVoteCount = await page
-      .getByTestId('extra-option-container')
-      .getByTestId('up-vote-btn')
-      .textContent();
-
-    expect(upVoteCount).toBe('1');
+    await expect(
+      page.getByTestId('extra-option-container').getByTestId('up-vote-btn')
+    ).toHaveText('1');
 
     await page
       .getByTestId('extra-option-container')
@@ -292,23 +285,15 @@ test('Query Entity', async ({ page }) => {
       .click();
 
     await page.reload();
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
-    const downVoteCount = await page
-      .getByTestId('extra-option-container')
-      .getByTestId('down-vote-btn')
-      .textContent();
+    await expect(
+      page.getByTestId('extra-option-container').getByTestId('down-vote-btn')
+    ).toHaveText('1');
 
-    expect(downVoteCount).toBe('1');
-
-    const upVoteCount2 = await page
-      .getByTestId('extra-option-container')
-      .getByTestId('up-vote-btn')
-      .textContent();
-
-    expect(upVoteCount2).toBe('0');
+    await expect(
+      page.getByTestId('extra-option-container').getByTestId('up-vote-btn')
+    ).toHaveText('0');
   });
 
   await test.step('Visit full screen view of query and Delete', async () => {
@@ -317,7 +302,7 @@ test('Query Entity', async ({ page }) => {
     await queryResponse;
 
     await page.click(`[data-testid="query-btn"]`);
-    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
     await page.click(`[data-menu-id*="delete-query"]`);
     const deleteQueryResponse = page.waitForResponse('/api/v1/queries/*');
     await page.click(`[data-testid="save-button"]`);
@@ -333,7 +318,7 @@ test('Verify query duration', async ({ page }) => {
   );
   await page.click(`[data-testid="table_queries"]`);
   await queryResponse;
-  await page.waitForSelector('[data-testid="query-run-duration"]', {
+  await page.getByTestId('query-run-duration').waitFor({
     state: 'visible',
   });
   const durationText = await page.textContent(
@@ -363,9 +348,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   await page.click(`[data-testid="table_queries"]`);
   await queryResponse;
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('previous')).toBeDisabled();
 
@@ -375,9 +358,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   await page.click('[data-testid="next"]');
   await nextResponse;
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('next')).toBeDisabled();
 
@@ -387,9 +368,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   await page.click('[data-testid="previous"]');
   await previousResponse;
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('previous')).toBeDisabled();
 
@@ -403,9 +382,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   await page.getByTitle('25 / Page').click();
   await pageSizeResponse;
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByText('25 / page')).toBeVisible();
 

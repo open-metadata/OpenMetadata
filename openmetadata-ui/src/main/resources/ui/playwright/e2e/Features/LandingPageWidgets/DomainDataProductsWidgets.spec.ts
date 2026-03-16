@@ -342,7 +342,8 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await page.getByTestId('assets').click();
 
     await page
-      .waitForSelector('[data-testid="loader"]', {
+      .getByTestId('loader')
+      .waitFor({
         state: 'detached',
         timeout: 10000,
       })
@@ -371,11 +372,22 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
         }
       }
 
+      const previousCount = count;
       const removeRes = page.waitForResponse('**/assets/remove');
       await page.getByTestId('delete-all-button').click();
       await removeRes;
 
-      await page.waitForTimeout(500);
+      await expect
+        .poll(
+          async () =>
+            page
+              .locator(
+                '[data-testid^="table-data-card_"] input[type="checkbox"]'
+              )
+              .count(),
+          { timeout: 10_000 }
+        )
+        .toBeLessThan(previousCount);
     }
 
     await page.reload();

@@ -75,7 +75,7 @@ export async function navigateToGlossaryTermAssetsAndOpenPanel(
   // dispatchEvent fires the click on the outer card div directly, so the entity-link
   // child is never the event target and React Router never triggers navigation.
   await card.dispatchEvent('click');
-  await page.waitForSelector(PANEL_SELECTOR, { state: 'visible' });
+  await page.locator(PANEL_SELECTOR).waitFor({ state: 'visible' });
 }
 
 /**
@@ -100,7 +100,7 @@ export async function navigateToTagAssetsAndOpenPanel(
   const tagCard = page.getByTestId(tagCardTestId);
   await tagCard.waitFor({ state: 'visible' });
   await tagCard.dispatchEvent('click');
-  await page.waitForSelector(PANEL_SELECTOR, { state: 'visible' });
+  await page.locator(PANEL_SELECTOR).waitFor({ state: 'visible' });
 }
 
 /**
@@ -129,7 +129,7 @@ export async function navigateToDomainDataProductsAndOpenPanel(
     .getByText('Data Products')
     .click();
   await dpRes;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   // dispatchEvent fires the click on the card's outer div directly; the entity-link child
   // never becomes the event target, so React Router does not navigate away.
@@ -137,7 +137,7 @@ export async function navigateToDomainDataProductsAndOpenPanel(
   await card.waitFor({ state: 'visible' });
   await card.dispatchEvent('click');
 
-  await page.waitForSelector(PANEL_SELECTOR, { state: 'visible' });
+  await page.locator(PANEL_SELECTOR).waitFor({ state: 'visible' });
 }
 
 /**
@@ -161,7 +161,7 @@ export async function navigateToTeamAssetsAndOpenPanel(
   const teamCard = page.getByTestId(`table-data-card_${entityFqn}`);
   await teamCard.waitFor({ state: 'visible' });
   await teamCard.dispatchEvent('click');
-  await page.waitForSelector(PANEL_SELECTOR, { state: 'visible' });
+  await page.locator(PANEL_SELECTOR).waitFor({ state: 'visible' });
 }
 
 /**
@@ -179,5 +179,5 @@ export async function navigateToUserAssetsAndOpenPanel(
   const userCard = page.getByTestId(`table-data-card_${entityFqn}`);
   await userCard.waitFor({ state: 'visible' });
   await userCard.dispatchEvent('click');
-  await page.waitForSelector(PANEL_SELECTOR, { state: 'visible' });
+  await page.locator(PANEL_SELECTOR).waitFor({ state: 'visible' });
 }

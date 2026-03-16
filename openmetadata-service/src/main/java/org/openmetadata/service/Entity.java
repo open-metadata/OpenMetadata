@@ -634,7 +634,11 @@ public final class Entity {
   public static <T> T getEntityOrNull(
       EntityReference entityReference, String field, Include include) {
     if (entityReference == null) return null;
-    return Entity.getEntity(entityReference, field, include);
+    try {
+      return Entity.getEntity(entityReference, field, include);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
   }
 
   public static <T> T getEntity(EntityLink link, String fields, Include include) {

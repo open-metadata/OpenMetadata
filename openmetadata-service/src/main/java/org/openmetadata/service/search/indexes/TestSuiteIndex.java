@@ -9,6 +9,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 
@@ -57,11 +58,18 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
   static void addTestSuiteParentEntityRelations(
       EntityReference testSuiteRef, Map<String, Object> doc) {
     if (testSuiteRef.getType().equals(Entity.TABLE)) {
-      Table table = Entity.getEntity(testSuiteRef, "", Include.ALL);
-      doc.put("table", table.getEntityReference());
-      doc.put("database", table.getDatabase());
-      doc.put("databaseSchema", table.getDatabaseSchema());
-      doc.put("service", table.getService());
+      try {
+        Table table = Entity.getEntity(testSuiteRef, "", Include.ALL);
+        doc.put("table", table.getEntityReference());
+        doc.put("database", table.getDatabase());
+        doc.put("databaseSchema", table.getDatabaseSchema());
+        doc.put("service", table.getService());
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "Table [{}] not found during search indexing: {}",
+            testSuiteRef.getId(),
+            ex.getMessage());
+      }
     }
   }
 }

@@ -261,7 +261,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       // Select SubDomain from navbar (requires expanding parent domain tree)
       await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+      await page.getByTestId('domain-selectable-tree').waitFor({
         state: 'visible',
       });
 
@@ -490,7 +490,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       // Step 3: Clear domain filter by selecting "All Domains"
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+      await page.getByTestId('domain-selectable-tree').waitFor({
         state: 'visible',
       });
       await page.getByTestId('all-domains-selector').click();
@@ -619,11 +619,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify the Data Products count is 2 (domainA + subDomainA)
-      const dataProductsCount = await page
-        .getByTestId('data_products')
-        .getByTestId('count')
-        .textContent();
-      expect(dataProductsCount).toBe('2');
+      await expect(
+        page.getByTestId('data_products').getByTestId('count')
+      ).toHaveText('2');
 
       // Verify domainA's data product IS visible (use first link to avoid summary panel duplicate)
       await expect(
@@ -717,7 +715,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.locator('.filters-row button').first().click();
       await page.getByRole('menuitem', { name: /Tier/i }).click();
       await page.click('[data-testid="search-dropdown-Tier"]');
-      await page.waitForSelector('[data-testid="drop-down-menu"]', {
+      await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
       const checkbox = page.getByTestId(`${tier}-checkbox`);
@@ -736,7 +734,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.locator('.filters-row button').first().click();
       await page.getByRole('menuitem', { name: /Tag/i }).click();
       await page.click('[data-testid="search-dropdown-Tag"]');
-      await page.waitForSelector('[data-testid="drop-down-menu"]', {
+      await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
       await page
@@ -757,7 +755,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.locator('.filters-row button').first().click();
       await page.getByRole('menuitem', { name: /Entity Type/i }).click();
       await page.click('[data-testid="search-dropdown-Entity Type"]');
-      await page.waitForSelector('[data-testid="drop-down-menu"]', {
+      await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
       const checkbox = page.getByTestId(`${entityType}-checkbox`);
