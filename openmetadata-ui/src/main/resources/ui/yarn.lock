@@ -11734,7 +11734,7 @@ react-antd-column-resize@1.0.3:
     rc-util "^5.31.1"
     react-resizable "^3.0.5"
 
-react-aria-components@^1.15.1:
+react-aria-components@^1.16.0:
   version "1.16.0"
   resolved "https://registry.yarnpkg.com/react-aria-components/-/react-aria-components-1.16.0.tgz#6a5d4c75d5e9bf2c83ef8837ac19fb0a50abb698"
   integrity sha512-MjHbTLpMFzzD2Tv5KbeXoZwPczuUWZcRavVvQQlNHRtXHH38D+sToMEYpNeir7Wh3K/XWtzeX3EujfJW6QNkrw==
@@ -11769,7 +11769,7 @@ react-aria-components@^1.15.1:
     react-stately "^3.45.0"
     use-sync-external-store "^1.6.0"
 
-react-aria@^3.46.0, react-aria@^3.47.0:
+react-aria@^3.47.0:
   version "3.47.0"
   resolved "https://registry.yarnpkg.com/react-aria/-/react-aria-3.47.0.tgz#f16a9f8c41dc6b2c32bd71629119e08f0e2dbe27"
   integrity sha512-nvahimIqdByl/PXk/xPkG30LPRzcin+/Uk0uFfwbbKRRFC9aa22a6BRULZLqVHwa9GaNyKe6CDUxO1Dde4v0kA==
