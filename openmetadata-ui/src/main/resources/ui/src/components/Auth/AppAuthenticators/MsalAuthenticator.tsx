@@ -23,6 +23,7 @@ import {
   useEffect,
   useImperativeHandle,
 } from 'react';
+import { ROUTES } from '../../../constants/constants';
 import {
   msalLoginRequest,
   parseMSALResponse,
@@ -49,7 +50,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const login = async () => {
       try {
-        const isInIframe = window.self !== window.top;
+        const isInIframe = globalThis.self !== window.top;
 
         if (isInIframe) {
           // Use popup login when in iframe to avoid redirect issues
@@ -68,14 +69,14 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const logout = async () => {
       try {
-        for (const key in localStorage) {
-          if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
-            localStorage.removeItem(key);
-          }
-        }
-      } finally {
-        // Cleanup application state
         handleSuccessfulLogout();
+        await instance.logoutRedirect({
+          account: account ?? accounts[0],
+          logoutHint: (account ?? accounts[0])?.username,
+          postLogoutRedirectUri: globalThis.location.origin + ROUTES.SIGNIN,
+        });
+      } catch {
+        // logoutRedirect failed; app state already cleaned up above
       }
     };
 

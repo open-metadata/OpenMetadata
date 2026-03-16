@@ -46,72 +46,87 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-test.describe('Metric Entity Special Test Cases', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.slow(true);
+test.describe(
+  'Metric Entity Special Test Cases',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.slow(true);
 
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
+    test.beforeAll('Setup pre-requests', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
 
-    await Promise.all([
-      metric1.create(apiContext),
-      metric2.create(apiContext),
-      metric3.create(apiContext),
-    ]);
+      await Promise.all([
+        metric1.create(apiContext),
+        metric2.create(apiContext),
+        metric3.create(apiContext),
+      ]);
 
-    await afterAction();
-  });
+      await afterAction();
+    });
 
-  test.beforeEach('Visit entity details page', async ({ page }) => {
-    await redirectToHomePage(page);
-    await metric1.visitEntityPage(page);
-  });
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await Promise.all([
+        metric1.delete(apiContext),
+        metric2.delete(apiContext),
+        metric3.delete(apiContext),
+      ]);
+      await adminUser.delete(apiContext);
+      await afterAction();
+    });
 
-  test('Metric creation flow should work', async ({ page }) => {
-    const listAPIPromise = page.waitForResponse(
-      '/api/v1/metrics?fields=owners%2Ctags&limit=15&include=all'
-    );
+    test.beforeEach('Visit entity details page', async ({ page }) => {
+      await redirectToHomePage(page);
+      await metric1.visitEntityPage(page);
+    });
 
-    await sidebarClick(page, SidebarItem.METRICS);
+    test('Metric creation flow should work', async ({ page }) => {
+      const listAPIPromise = page.waitForResponse(
+        '/api/v1/metrics?fields=owners%2Ctags&limit=15&include=all'
+      );
 
-    await listAPIPromise;
+      await sidebarClick(page, SidebarItem.METRICS);
 
-    await expect(page.getByTestId('heading')).toHaveText('Metrics');
-    await expect(page.getByTestId('sub-heading')).toHaveText(
-      'Define and catalog standardized metrics across your organization.'
-    );
+      await listAPIPromise;
 
-    await page.getByTestId('create-metric').click();
+      await expect(page.getByTestId('heading')).toHaveText('Metrics');
+      await expect(page.getByTestId('sub-heading')).toHaveText(
+        'Define and catalog standardized metrics across your organization.'
+      );
 
-    await addMetric(page);
-  });
+      await page.getByTestId('create-metric').click();
 
-  test('Verify Metric Type Update', async ({ page }) => {
-    await updateMetricType(page, 'Count');
-    await removeMetricType(page);
-    await updateMetricType(page, 'Count');
-  });
+      await addMetric(page);
+    });
 
-  test('Verify Unit of Measurement Update', async ({ page }) => {
-    await updateUnitOfMeasurement(page, 'Dollars');
-    await removeUnitOfMeasurement(page);
-    await updateUnitOfMeasurement(page, 'Dollars');
-  });
+    test('Verify Metric Type Update', async ({ page }) => {
+      await updateMetricType(page, 'Count');
+      await removeMetricType(page);
+      await updateMetricType(page, 'Count');
+    });
 
-  test('Verify Granularity Update', async ({ page }) => {
-    await updateGranularity(page, 'Quarter');
-    await removeGranularity(page);
-    await updateGranularity(page, 'Month');
-  });
+    test('Verify Unit of Measurement Update', async ({ page }) => {
+      await updateUnitOfMeasurement(page, 'Dollars');
+      await removeUnitOfMeasurement(page);
+      await updateUnitOfMeasurement(page, 'Dollars');
+    });
 
-  test('verify metric expression update', async ({ page }) => {
-    await updateExpression(page, 'JavaScript', 'SUM(sales)');
-    await updateExpression(page, 'SQL', 'SUM(sales)');
-  });
+    test('Verify Granularity Update', async ({ page }) => {
+      await updateGranularity(page, 'Quarter');
+      await removeGranularity(page);
+      await updateGranularity(page, 'Month');
+    });
 
-  test('Verify Related Metrics Update', async ({ page }) => {
-    await updateRelatedMetric(page, metric2, metric1.entity.name, 'add');
-    await updateRelatedMetric(page, metric3, metric1.entity.name, 'update');
-  });
-});
+    test('verify metric expression update', async ({ page }) => {
+      await updateExpression(page, 'JavaScript', 'SUM(sales)');
+      await updateExpression(page, 'SQL', 'SUM(sales)');
+    });
+
+    test('Verify Related Metrics Update', async ({ page }) => {
+      await updateRelatedMetric(page, metric2, metric1.entity.name, 'add');
+      await updateRelatedMetric(page, metric3, metric1.entity.name, 'update');
+    });
+  }
+);

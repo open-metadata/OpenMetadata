@@ -41,7 +41,6 @@ import { sidebarClick } from './sidebar';
 
 export const visitObservabilityAlertPage = async (page: Page) => {
   await redirectToHomePage(page);
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -52,9 +51,7 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   );
 
   // Set up navigation promise before clicking
-  const navigationPromise = page.waitForURL('**/observability/alerts', {
-    waitUntil: 'networkidle',
-  });
+  const navigationPromise = page.waitForURL('**/observability/alerts');
 
   await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
 
@@ -121,6 +118,15 @@ export const addExternalDestination = async ({
       .getByTestId(`destination-${destinationNumber}`)
       .getByText('Advanced Configuration')
       .click();
+
+    const authTypeSelect = page.getByTestId(
+      `auth-type-select-${destinationNumber}`
+    );
+    await expect(authTypeSelect).toBeVisible();
+    await authTypeSelect.click();
+    await page.click(
+      `.ant-select-dropdown:visible [title="Bearer (HMAC Signature)"]:visible`
+    );
 
     await expect(
       page.getByTestId(`secret-key-input-${destinationNumber}`)
@@ -646,7 +652,6 @@ export const createCommonObservabilityAlert = async ({
         }
         await page.click(`[title="${input.inputValue}"]:visible`);
 
-        // eslint-disable-next-line jest/no-conditional-expect
         await expect(page.getByTestId(input.inputSelector)).toHaveText(
           input.inputValue
         );

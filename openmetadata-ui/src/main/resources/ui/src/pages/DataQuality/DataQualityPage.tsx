@@ -130,8 +130,7 @@ const DataQualityPage = () => {
       <Row
         className="data-quality-page m-b-md"
         data-testid="data-insight-container"
-        gutter={[0, 16]}
-      >
+        gutter={[0, 16]}>
         <Col span={24}>
           <Card>
             <Row>
@@ -151,8 +150,7 @@ const DataQualityPage = () => {
                     <Button
                       data-testid="add-test-suite-btn"
                       type="primary"
-                      onClick={handleOpenBundleSuiteModal}
-                    >
+                      onClick={handleOpenBundleSuiteModal}>
                       {t('label.add-a-entity', {
                         entity: t('label.bundle-suite'),
                       })}
@@ -162,8 +160,7 @@ const DataQualityPage = () => {
                   <Button
                     data-testid="add-test-case-btn"
                     type="primary"
-                    onClick={handleOpenTestCaseModal}
-                  >
+                    onClick={handleOpenTestCaseModal}>
                     {t('label.add-a-entity', {
                       entity: t('label.test-case'),
                     })}
@@ -179,12 +176,10 @@ const DataQualityPage = () => {
                         items: addButtonContent,
                       }}
                       placement="bottomRight"
-                      trigger={['click']}
-                    >
+                      trigger={['click']}>
                       <Button
                         data-testid="data-quality-add-button-menu"
-                        type="primary"
-                      >
+                        type="primary">
                         <Space>
                           {t('label.add')}
                           <DownOutlined />

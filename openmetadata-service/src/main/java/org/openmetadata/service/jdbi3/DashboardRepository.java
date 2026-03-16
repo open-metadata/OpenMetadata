@@ -21,10 +21,10 @@ import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -146,8 +146,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void setFieldsInBulk(Fields fields, List<Dashboard> entities) {
-    // Set default service field for all dashboards
-    fetchAndSetDefaultService(entities);
+    // Service reference (incl. FQN/name) is part of default response contract for list/get.
+    fetchAndSetDefaultService(entities, true);
 
     fetchAndSetFields(entities, fields);
     fetchAndSetDashboardSpecificFields(entities, fields);
@@ -355,7 +355,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   private void populateService(Dashboard dashboard) {
-    DashboardService service = Entity.getEntity(dashboard.getService(), "", Include.NON_DELETED);
+    var service =
+        (DashboardService) getCachedParentOrLoad(dashboard.getService(), "", Include.NON_DELETED);
     dashboard.setService(service.getEntityReference());
     dashboard.setServiceType(service.getServiceType());
   }
@@ -369,36 +370,18 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void storeEntity(Dashboard dashboard, boolean update) {
-    // Relationships and fields such as service are not stored as part of json
-    EntityReference service = dashboard.getService();
-    List<EntityReference> charts = dashboard.getCharts();
-    List<EntityReference> dataModels = dashboard.getDataModels();
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service", "charts", "dataModels");
+  }
 
-    dashboard.withService(null).withCharts(null).withDataModels(null);
+  @Override
+  public void storeEntity(Dashboard dashboard, boolean update) {
     store(dashboard, update);
-    dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
   }
 
   @Override
   public void storeEntities(List<Dashboard> dashboards) {
-    List<Dashboard> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Dashboard dashboard : dashboards) {
-      EntityReference service = dashboard.getService();
-      List<EntityReference> charts = dashboard.getCharts();
-      List<EntityReference> dataModels = dashboard.getDataModels();
-
-      dashboard.withService(null).withCharts(null).withDataModels(null);
-
-      String jsonCopy = gson.toJson(dashboard);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Dashboard.class));
-
-      dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(dashboards);
   }
 
   @Override
@@ -432,9 +415,56 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
+  protected void storeEntitySpecificRelationshipsForMany(List<Dashboard> entities) {
+    List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
+    for (Dashboard dashboard : entities) {
+      EntityReference service = dashboard.getService();
+      if (service != null && service.getId() != null) {
+        relationships.add(
+            newRelationship(
+                service.getId(),
+                dashboard.getId(),
+                service.getType(),
+                entityType,
+                Relationship.CONTAINS));
+      }
+      for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
+        if (chart.getId() == null) {
+          continue;
+        }
+        relationships.add(
+            newRelationship(
+                dashboard.getId(),
+                chart.getId(),
+                Entity.DASHBOARD,
+                Entity.CHART,
+                Relationship.HAS));
+      }
+      for (EntityReference dataModel : listOrEmpty(dashboard.getDataModels())) {
+        if (dataModel.getId() == null) {
+          continue;
+        }
+        relationships.add(
+            newRelationship(
+                dashboard.getId(),
+                dataModel.getId(),
+                Entity.DASHBOARD,
+                Entity.DASHBOARD_DATA_MODEL,
+                Relationship.HAS));
+      }
+    }
+    bulkInsertRelationships(relationships);
+  }
+
+  @Override
   public EntityRepository<Dashboard>.EntityUpdater getUpdater(
       Dashboard original, Dashboard updated, Operation operation, ChangeSource changeSource) {
     return new DashboardUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected EntityReference getParentReference(Dashboard entity) {
+    return entity.getService();
   }
 
   @Override
@@ -469,13 +499,20 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             .relationshipDAO()
             .findToBatch(entityListToStrings(dashboards), Relationship.HAS.ordinal(), Entity.CHART);
 
+    Set<UUID> chartIds = new HashSet<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      chartIds.add(UUID.fromString(record.getToId()));
+    }
+    Map<UUID, EntityReference> chartRefs =
+        batchFetchReferencesById(Entity.CHART, chartIds, NON_DELETED);
+
     // Group charts by dashboard ID
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID dashboardId = UUID.fromString(record.getFromId());
-      EntityReference chartRef =
-          Entity.getEntityReferenceById(
-              Entity.CHART, UUID.fromString(record.getToId()), NON_DELETED);
-      chartsMap.get(dashboardId).add(chartRef);
+      EntityReference chartRef = chartRefs.get(UUID.fromString(record.getToId()));
+      if (chartRef != null) {
+        chartsMap.get(dashboardId).add(chartRef);
+      }
     }
 
     return chartsMap;
@@ -501,33 +538,60 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                 Relationship.HAS.ordinal(),
                 Entity.DASHBOARD_DATA_MODEL);
 
+    Set<UUID> dataModelIds = new HashSet<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      dataModelIds.add(UUID.fromString(record.getToId()));
+    }
+    Map<UUID, EntityReference> dataModelRefs =
+        batchFetchReferencesById(Entity.DASHBOARD_DATA_MODEL, dataModelIds, NON_DELETED);
+
     // Group data models by dashboard ID
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID dashboardId = UUID.fromString(record.getFromId());
-      EntityReference dataModelRef =
-          Entity.getEntityReferenceById(
-              Entity.DASHBOARD_DATA_MODEL, UUID.fromString(record.getToId()), NON_DELETED);
-      dataModelsMap.get(dashboardId).add(dataModelRef);
+      EntityReference dataModelRef = dataModelRefs.get(UUID.fromString(record.getToId()));
+      if (dataModelRef != null) {
+        dataModelsMap.get(dashboardId).add(dataModelRef);
+      }
     }
 
     return dataModelsMap;
   }
 
-  private void fetchAndSetDefaultService(List<Dashboard> dashboards) {
+  private void fetchAndSetDefaultService(List<Dashboard> dashboards, boolean includeDetails) {
     if (dashboards == null || dashboards.isEmpty()) {
       return;
     }
 
-    // Batch fetch service references for all dashboards
-    Map<UUID, EntityReference> serviceMap = batchFetchServices(dashboards);
+    List<Dashboard> dashboardsMissingService =
+        dashboards.stream()
+            .filter(
+                dashboard -> {
+                  EntityReference service = dashboard.getService();
+                  if (service == null || service.getId() == null) {
+                    return true;
+                  }
+                  return includeDetails
+                      && (service.getFullyQualifiedName() == null || service.getName() == null);
+                })
+            .toList();
+    if (dashboardsMissingService.isEmpty()) {
+      return;
+    }
 
-    // Set service for all dashboards
-    for (Dashboard dashboard : dashboards) {
-      dashboard.setService(serviceMap.get(dashboard.getId()));
+    // Batch fetch service references for dashboards missing parent refs.
+    Map<UUID, EntityReference> serviceMap =
+        batchFetchServices(dashboardsMissingService, includeDetails);
+
+    for (Dashboard dashboard : dashboardsMissingService) {
+      EntityReference serviceRef = serviceMap.get(dashboard.getId());
+      if (serviceRef != null) {
+        dashboard.setService(serviceRef);
+      }
     }
   }
 
-  private Map<UUID, EntityReference> batchFetchServices(List<Dashboard> dashboards) {
+  private Map<UUID, EntityReference> batchFetchServices(
+      List<Dashboard> dashboards, boolean includeDetails) {
     Map<UUID, EntityReference> serviceMap = new HashMap<>();
     if (dashboards == null || dashboards.isEmpty()) {
       return serviceMap;
@@ -540,14 +604,75 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             .findFromBatch(entityListToStrings(dashboards), Relationship.CONTAINS.ordinal());
 
     for (CollectionDAO.EntityRelationshipObject record : records) {
+      if (record.getFromId() == null
+          || record.getFromEntity() == null
+          || record.getToId() == null) {
+        continue;
+      }
       UUID dashboardId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.DASHBOARD_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(dashboardId, serviceRef);
+      EntityReference serviceRef;
+      if (includeDetails) {
+        serviceRef = null;
+      } else {
+        serviceRef =
+            new EntityReference()
+                .withId(UUID.fromString(record.getFromId()))
+                .withType(record.getFromEntity());
+      }
+      if (serviceRef != null) {
+        serviceMap.put(dashboardId, serviceRef);
+      }
+    }
+
+    if (includeDetails) {
+      Map<String, Set<UUID>> serviceIdsByType = new HashMap<>();
+      for (CollectionDAO.EntityRelationshipObject record : records) {
+        if (record.getFromEntity() == null || record.getFromId() == null) {
+          continue;
+        }
+        serviceIdsByType
+            .computeIfAbsent(record.getFromEntity(), ignored -> new HashSet<>())
+            .add(UUID.fromString(record.getFromId()));
+      }
+      Map<String, Map<UUID, EntityReference>> serviceRefsByType =
+          batchFetchReferencesByType(serviceIdsByType, NON_DELETED);
+      for (CollectionDAO.EntityRelationshipObject record : records) {
+        Map<UUID, EntityReference> refsForType = serviceRefsByType.get(record.getFromEntity());
+        if (refsForType == null) {
+          continue;
+        }
+        EntityReference serviceRef = refsForType.get(UUID.fromString(record.getFromId()));
+        if (serviceRef != null) {
+          serviceMap.put(UUID.fromString(record.getToId()), serviceRef);
+        }
+      }
     }
 
     return serviceMap;
+  }
+
+  private Map<UUID, EntityReference> batchFetchReferencesById(
+      String referenceType, Set<UUID> ids, Include include) {
+    if (ids == null || ids.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    List<EntityReference> refs =
+        Entity.getEntityReferencesByIds(referenceType, new ArrayList<>(ids), include);
+    return refs.stream()
+        .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (left, right) -> left));
+  }
+
+  private Map<String, Map<UUID, EntityReference>> batchFetchReferencesByType(
+      Map<String, Set<UUID>> idsByType, Include include) {
+    if (idsByType == null || idsByType.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Map<String, Map<UUID, EntityReference>> refsByType = new HashMap<>();
+    for (Map.Entry<String, Set<UUID>> entry : idsByType.entrySet()) {
+      refsByType.put(
+          entry.getKey(), batchFetchReferencesById(entry.getKey(), entry.getValue(), include));
+    }
+    return refsByType;
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -559,24 +684,40 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      update(
-          Entity.CHART,
+      compareAndUpdate(
           "charts",
-          listOrEmpty(updated.getCharts()),
-          listOrEmpty(original.getCharts()));
-      update(
-          Entity.DASHBOARD_DATA_MODEL,
+          () -> {
+            update(
+                Entity.CHART,
+                "charts",
+                listOrEmpty(updated.getCharts()),
+                listOrEmpty(original.getCharts()));
+          });
+      compareAndUpdate(
           "dataModels",
-          listOrEmpty(updated.getDataModels()),
-          listOrEmpty(original.getDataModels()));
-      updateDashboardUrl(original, updated);
-      recordChange(
+          () -> {
+            update(
+                Entity.DASHBOARD_DATA_MODEL,
+                "dataModels",
+                listOrEmpty(updated.getDataModels()),
+                listOrEmpty(original.getDataModels()));
+          });
+      compareAndUpdate(
+          "sourceUrl",
+          () -> {
+            updateDashboardUrl(original, updated);
+          });
+      compareAndUpdate(
           "sourceHash",
-          original.getSourceHash(),
-          updated.getSourceHash(),
-          false,
-          EntityUtil.objectMatch,
-          false);
+          () -> {
+            recordChange(
+                "sourceHash",
+                original.getSourceHash(),
+                updated.getSourceHash(),
+                false,
+                EntityUtil.objectMatch,
+                false);
+          });
     }
 
     private void update(

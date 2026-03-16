@@ -367,12 +367,27 @@ const handlePropertyValueInput = async (
   propertyType?: string
 ) => {
   const inputElement = ruleLocator.locator('.rule--widget input');
+  const entityRefProperties = ['entityReference', 'entityReferenceList'];
+  const isEntityRefProperty = entityRefProperties.includes(propertyType || '');
+  let apiResponsePromise;
 
   // Fill the input only if it's visible
   if (await inputElement.isVisible()) {
     // Convert object values to JSON strings
     const stringValue = isObject(value) ? JSON.stringify(value) : String(value);
+
+    if (isEntityRefProperty) {
+      apiResponsePromise = page.waitForResponse(
+        '/api/v1/search/aggregate?*value=.%2A*'
+      );
+    }
+
     await inputElement.click();
+
+    if (isEntityRefProperty) {
+      await apiResponsePromise;
+    }
+
     await inputElement.fill(stringValue);
 
     // Press Enter for multiselect operators and date types
@@ -386,10 +401,7 @@ const handlePropertyValueInput = async (
     }
 
     // Handle entity reference selection
-    if (
-      propertyType === 'entityReference' ||
-      propertyType === 'entityReferenceList'
-    ) {
+    if (isEntityRefProperty) {
       await page
         .locator(`.ant-select-dropdown:visible [title*="${value as string}"]`)
         .first()

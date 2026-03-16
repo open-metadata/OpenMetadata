@@ -100,6 +100,14 @@ export class DataProduct extends EntityClass {
     const response = await apiContext.post('/api/v1/dataProducts', {
       data: this.data,
     });
+
+    if (!response.ok()) {
+      const text = await response.text();
+      throw new Error(
+        `DataProduct.create() failed with status ${response.status()}: ${text}`
+      );
+    }
+
     const data = await response.json();
     this.responseData = data;
 
@@ -124,19 +132,14 @@ export class DataProduct extends EntityClass {
 
     return response.body;
   }
-  
+
   private getFqn() {
     return this.data?.fullyQualifiedName ?? this.data.name;
   }
 
-  async addAssets(
-    apiContext: APIRequestContext,
-    assets: AssetReference[]
-  ) {
+  async addAssets(apiContext: APIRequestContext, assets: AssetReference[]) {
     const response = await apiContext.put(
-      `/api/v1/dataProducts/${encodeURIComponent(
-        this.getFqn()
-      )}/assets/add`,
+      `/api/v1/dataProducts/${encodeURIComponent(this.getFqn())}/assets/add`,
       {
         data: { assets },
       }

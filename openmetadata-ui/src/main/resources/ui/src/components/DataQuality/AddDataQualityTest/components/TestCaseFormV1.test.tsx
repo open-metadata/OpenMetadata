@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { act, forwardRef } from 'react';
+import React, { act, forwardRef } from 'react';
 import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
@@ -298,11 +298,20 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock AlertBar component
-jest.mock('../../../AlertBar/AlertBar', () => ({
-  __esModule: true,
-  default: ({ message }: { message: string }) => (
-    <div role="alert">{message}</div>
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Alert: ({
+    title,
+    children,
+    ...props
+  }: {
+    title: string;
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <div data-testid="core-alert" role="alert" {...props}>
+      <span>{title}</span>
+      {children}
+    </div>
   ),
 }));
 

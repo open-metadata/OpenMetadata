@@ -26,7 +26,6 @@
 
 import {
   Box,
-  CircularProgress,
   FormControl,
   FormLabel,
   Typography,
@@ -38,6 +37,7 @@ import { useSnackbar } from 'notistack';
 import { FC, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showNotistackError } from '../../../utils/NotistackUtils';
+import Loader from '../Loader/Loader';
 import { MUIFileUploadProps } from './MUIFileUpload.interface';
 
 const DEFAULT_MAX_SIZE_MB = 5;
@@ -314,7 +314,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
                   alignItems: 'center',
                   gap: 2,
                 }}>
-                <CircularProgress size={40} />
+                <Loader />
                 <Typography
                   sx={{ color: theme.palette.grey?.[600] }}
                   variant="body2">

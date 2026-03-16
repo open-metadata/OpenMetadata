@@ -31,6 +31,7 @@ import {
   getCustomizeDetailsDefaultTabs,
   getCustomizeDetailsEntity,
 } from '../../utils/customizeDetails';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
@@ -121,53 +122,45 @@ test.describe('Data Product Persona customization', () => {
       await entity.create(apiContext);
     });
 
-    await test.step(
-      'should show all the tabs & widget as default when no customization is done',
-      async () => {
-        const personaListResponse =
-          adminPage.waitForResponse(`/api/v1/personas?*`);
-        await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-        await personaListResponse;
+    await test.step('should show all the tabs & widget as default when no customization is done', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await personaListResponse;
 
-        // Need to find persona card and click as the list might get paginated
-        await navigateToPersonaWithPagination(
-          adminPage,
-          persona.data.name,
-          true
-        );
+      // Need to find persona card and click as the list might get paginated
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
 
-        await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-        await adminPage.waitForLoadState('networkidle');
-        await adminPage.getByText('Governance').click();
-        await adminPage.getByText('Data Product', { exact: true }).click();
+      await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+      await adminPage.getByText('Governance').click();
+      await adminPage.getByText('Data Product', { exact: true }).click();
 
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        const expectedTabs = getCustomizeDetailsDefaultTabs(
-          ECustomizedGovernance.DATA_PRODUCT
-        );
+      const expectedTabs = getCustomizeDetailsDefaultTabs(
+        ECustomizedGovernance.DATA_PRODUCT
+      );
 
-        const tabs = adminPage
-          .getByTestId('customize-tab-card')
-          .getByRole('button')
-          .filter({ hasNotText: 'Add Tab' });
+      const tabs = adminPage
+        .getByTestId('customize-tab-card')
+        .getByRole('button')
+        .filter({ hasNotText: 'Add Tab' });
 
-        await expect(tabs).toHaveCount(expectedTabs.length);
+      await expect(tabs).toHaveCount(expectedTabs.length);
 
-        for (const tabName of expectedTabs) {
-          await expect(
-            adminPage
-              .getByTestId('customize-tab-card')
-              .getByTestId(`tab-${tabName}`)
-          ).toBeVisible();
-        }
+      for (const tabName of expectedTabs) {
+        await expect(
+          adminPage
+            .getByTestId('customize-tab-card')
+            .getByTestId(`tab-${tabName}`)
+        ).toBeVisible();
       }
-    );
+    });
 
     await test.step('apply customization', async () => {
-      expect(adminPage.locator('#KnowledgePanel\\.Description')).toBeVisible();
+      await expect(adminPage.locator('#KnowledgePanel\\.Description')).toBeVisible();
 
       await adminPage
         .locator('#KnowledgePanel\\.Description')
@@ -191,7 +184,20 @@ test.describe('Data Product Persona customization', () => {
         .getByRole('button', { name: 'Add' })
         .click();
 
-      await adminPage.getByTestId('add-widget-button').click();
+      // Wait for "Add tab" dialog to fully close before interacting with grid
+      await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
+      await adminPage
+        .locator('.ant-modal-wrap')
+        .waitFor({ state: 'detached' });
+
+      const addWidgetButton = adminPage.getByTestId('add-widget-button');
+      await addWidgetButton.waitFor({ state: 'visible' });
+      await addWidgetButton.click();
+
+      await adminPage
+        .getByTestId('widget-info-tabs')
+        .waitFor({ state: 'visible' });
+
       await adminPage.getByTestId('Description-widget').click();
       await adminPage
         .getByTestId('add-widget-modal')
@@ -209,12 +215,11 @@ test.describe('Data Product Persona customization', () => {
       await redirectToHomePage(userPage);
 
       await entity?.visitEntityPage(userPage);
-      await userPage.waitForLoadState('networkidle');
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
-      expect(userPage.getByRole('tab', { name: 'Custom Tab' })).toBeVisible();
+      await expect(userPage.getByRole('tab', { name: 'Custom Tab' })).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Custom Tab' }).click();
 
@@ -244,96 +249,85 @@ test.describe('Data Product Persona customization', () => {
       await entity.create(apiContext);
     });
 
-    await test.step(
-      'apply tab label customization for Data Product',
-      async () => {
-        const personaListResponse =
-          adminPage.waitForResponse(`/api/v1/personas?*`);
-        await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-        await personaListResponse;
+    await test.step('apply tab label customization for Data Product', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await personaListResponse;
 
-        // Need to find persona card and click as the list might get paginated
-        await navigateToPersonaWithPagination(
-          adminPage,
-          persona.data.name,
-          true
-        );
+      // Need to find persona card and click as the list might get paginated
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
 
-        await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+      await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
-        await adminPage.getByText('Governance').click();
-        await adminPage.getByText('Data Product', { exact: true }).click();
+      await adminPage.getByText('Governance').click();
+      await adminPage.getByText('Data Product', { exact: true }).click();
 
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        await expect(
-          adminPage
-            .getByTestId('customize-tab-card')
-            .getByTestId(`tab-documentation`)
-        ).toBeVisible();
-
-        await adminPage
+      await expect(
+        adminPage
           .getByTestId('customize-tab-card')
           .getByTestId(`tab-documentation`)
-          .click();
+      ).toBeVisible();
 
-        await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
+      await adminPage
+        .getByTestId('customize-tab-card')
+        .getByTestId(`tab-documentation`)
+        .click();
 
-        await expect(adminPage.getByRole('dialog')).toBeVisible();
+      await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-        await adminPage.getByRole('dialog').getByRole('textbox').clear();
-        await adminPage
-          .getByRole('dialog')
-          .getByRole('textbox')
-          .fill('Product Details');
+      await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-        await adminPage
-          .getByRole('dialog')
-          .getByRole('button', { name: 'Ok' })
-          .click();
+      await adminPage.getByRole('dialog').getByRole('textbox').clear();
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('textbox')
+        .fill('Product Details');
 
-        await expect(
-          adminPage
-            .getByTestId('customize-tab-card')
-            .getByTestId(`tab-documentation`)
-        ).toHaveText('Product Details');
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Ok' })
+        .click();
 
-        await adminPage.getByTestId('save-button').click();
+      await expect(
+        adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-documentation`)
+      ).toHaveText('Product Details');
 
-        await toastNotification(
-          adminPage,
-          /^Page layout (created|updated) successfully\.$/
-        );
-      }
-    );
+      await adminPage.getByTestId('save-button').click();
 
-    await test.step(
-      'validate applied label change for Data Product Documentation tab',
-      async () => {
-        await redirectToHomePage(userPage);
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
+    });
 
-        await entity?.visitEntityPage(userPage);
+    await test.step('validate applied label change for Data Product Documentation tab', async () => {
+      await redirectToHomePage(userPage);
 
-        await userPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      await entity?.visitEntityPage(userPage);
 
-        // Verify the custom tab name is displayed
-        await expect(
-          userPage.getByRole('tab', { name: 'Product Details' })
-        ).toBeVisible();
+      await userPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      await waitForAllLoadersToDisappear(userPage);
 
-        // Verify other tabs still show default names
-        await expect(
-          userPage.getByRole('tab', { name: 'Assets' })
-        ).toBeVisible();
+      // Verify the custom tab name is displayed
+      await expect(
+        userPage.getByRole('tab', { name: 'Product Details' })
+      ).toBeVisible();
 
-        await expect(
-          userPage.getByRole('tab', { name: 'Activity Feeds & Tasks' })
-        ).toBeVisible();
-      }
-    );
+      // Verify other tabs still show default names
+      await expect(userPage.getByRole('tab', { name: 'Assets' })).toBeVisible();
+
+      await expect(
+        userPage.getByRole('tab', { name: 'Activity Feeds & Tasks' })
+      ).toBeVisible();
+    });
   });
 });

@@ -143,7 +143,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       await sidebarClick(page, SidebarItem.EXPLORE);
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await searchAndExpectEntityVisible(page, domainTable);
       await searchAndExpectEntityNotVisible(page, nonDomainTable);
@@ -215,7 +214,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       await page.getByTestId('assets').click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.locator(
@@ -286,7 +284,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await parentDomainNode.locator('.ant-tree-switcher').click();
 
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       const tagSelector6 = page.getByTestId(
         `tag-${subDomain.responseData.fullyQualifiedName}`
@@ -294,7 +291,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await tagSelector6.waitFor({ state: 'visible' });
       await tagSelector6.click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await searchAndExpectEntityVisible(page, subDomainTable);
       await searchAndExpectEntityVisible(page, subSubDomainTable);
@@ -359,7 +355,10 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByText(nonDomainTable.entityResponseData.fullyQualifiedName ?? '', { exact: true })
+        page.getByText(
+          nonDomainTable.entityResponseData.fullyQualifiedName ?? '',
+          { exact: true }
+        )
       ).not.toBeVisible();
     } finally {
       await domainTable.delete(apiContext);
@@ -394,9 +393,21 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await engineering123Table.create(apiContext);
       await engineeringDataTable.create(apiContext);
 
-      await assignDomainToEntity(apiContext, engineeringTable, engineeringDomain);
-      await assignDomainToEntity(apiContext, engineering123Table, engineering123Domain);
-      await assignDomainToEntity(apiContext, engineeringDataTable, engineeringDataSubDomain);
+      await assignDomainToEntity(
+        apiContext,
+        engineeringTable,
+        engineeringDomain
+      );
+      await assignDomainToEntity(
+        apiContext,
+        engineering123Table,
+        engineering123Domain
+      );
+      await assignDomainToEntity(
+        apiContext,
+        engineeringDataTable,
+        engineeringDataSubDomain
+      );
 
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
@@ -438,15 +449,12 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await assignDomainToEntity(apiContext, domainTable2, domain);
 
       await domainTable1.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
       await assignTier(page, 'Tier1', domainTable1.endpoint);
 
       await domainTable2.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
       await assignTier(page, 'Tier1', domainTable2.endpoint);
 
       await nonDomainTable.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
       await assignTier(page, 'Tier1', nonDomainTable.endpoint);
 
       await redirectToExplorePage(page);
@@ -465,7 +473,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('update-btn').click();
       await quickFilterApplyRes;
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       // Verify all 3 tables are visible with tier filter applied
       await searchAndExpectEntityVisible(page, domainTable1);
@@ -481,13 +488,13 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await searchAndExpectEntityNotVisible(page, nonDomainTable);
 
       // Step 3: Clear domain filter by selecting "All Domains"
+      await waitForAllLoadersToDisappear(page);
       await page.getByTestId('domain-dropdown').click();
       await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
         state: 'visible',
       });
       await page.getByTestId('all-domains-selector').click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await verifyActiveDomainIsDefault(page);
 
@@ -538,7 +545,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       await page.getByTestId('assets').click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.locator(
@@ -611,7 +617,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       // Go to Data Products tab
       await page.getByTestId('data_products').click();
       await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
 
       // Verify the Data Products count is 2 (domainA + subDomainA)
       const dataProductsCount = await page
@@ -700,15 +705,11 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
     // Helper to verify asset visibility
     const expectVisible = async (fqn: string | undefined) => {
-      await expect(
-        page.locator(`a[href*="${fqn}"]`).first()
-      ).toBeVisible();
+      await expect(page.locator(`a[href*="${fqn}"]`).first()).toBeVisible();
     };
 
     const expectNotVisible = async (fqn: string | undefined) => {
-      await expect(
-        page.locator(`a[href*="${fqn}"]`).first()
-      ).not.toBeVisible();
+      await expect(page.locator(`a[href*="${fqn}"]`).first()).not.toBeVisible();
     };
 
     // Helper to apply Tier filter
@@ -722,7 +723,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       const checkbox = page.getByTestId(`${tier}-checkbox`);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
-      const filterRes = page.waitForResponse('/api/v1/search/query?*index=all*');
+      const filterRes = page.waitForResponse(
+        '/api/v1/search/query?*index=all*'
+      );
       await page.click('[data-testid="update-btn"]');
       await filterRes;
       await waitForAllLoadersToDisappear(page);
@@ -740,9 +743,10 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('search-input')
         .fill(searchTerm);
-      await page.waitForLoadState('networkidle');
       await page.getByRole('menuitem', { name: tagPattern }).click();
-      const filterRes = page.waitForResponse('/api/v1/search/query?*index=all*');
+      const filterRes = page.waitForResponse(
+        '/api/v1/search/query?*index=all*'
+      );
       await page.click('[data-testid="update-btn"]');
       await filterRes;
       await waitForAllLoadersToDisappear(page);
@@ -759,7 +763,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       const checkbox = page.getByTestId(`${entityType}-checkbox`);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
-      const filterRes = page.waitForResponse('/api/v1/search/query?*index=all*');
+      const filterRes = page.waitForResponse(
+        '/api/v1/search/query?*index=all*'
+      );
       await page.click('[data-testid="update-btn"]');
       await filterRes;
       await waitForAllLoadersToDisappear(page);
@@ -768,292 +774,476 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     // Helper to clear filters
     const clearFilters = async () => {
       await page.locator('.text-primary').filter({ hasText: /Clear/i }).click();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     };
 
     // Helper to navigate to a subdomain's assets tab
-    const goToSubDomainAssets = async (subDomainData: { displayName: string; name: string }) => {
+    const goToSubDomainAssets = async (subDomainData: {
+      displayName: string;
+      name: string;
+    }) => {
       await page.getByTestId('subdomains').click();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId(subDomainData.name).click();
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('assets').click();
       await waitForAllLoadersToDisappear(page);
     };
 
-      // === SETUP: Create domain hierarchy ===
-      await rootDomain.create(apiContext);
+    // === SETUP: Create domain hierarchy ===
+    await rootDomain.create(apiContext);
 
-      subDomain1 = new SubDomain(rootDomain);
-      await subDomain1.create(apiContext);
+    subDomain1 = new SubDomain(rootDomain);
+    await subDomain1.create(apiContext);
 
-      subDomain2 = new SubDomain(rootDomain);
-      await subDomain2.create(apiContext);
+    subDomain2 = new SubDomain(rootDomain);
+    await subDomain2.create(apiContext);
 
-      subSubDomain = new SubDomain(subDomain1);
-      await subSubDomain.create(apiContext);
+    subSubDomain = new SubDomain(subDomain1);
+    await subSubDomain.create(apiContext);
 
-      await rootTable.create(apiContext);
-      await subDomain1Table1.create(apiContext);
-      await subDomain1Table2.create(apiContext);
-      await subSubDomainTable1.create(apiContext);
-      await subSubDomainTable2.create(apiContext);
-      await subDomain2Table.create(apiContext);
+    await rootTable.create(apiContext);
+    await subDomain1Table1.create(apiContext);
+    await subDomain1Table2.create(apiContext);
+    await subSubDomainTable1.create(apiContext);
+    await subSubDomainTable2.create(apiContext);
+    await subDomain2Table.create(apiContext);
 
-      // === SETUP: Assign tables to domains ===
-      await assignDomainToEntity(apiContext, rootTable, rootDomain);
-      await assignDomainToEntity(apiContext, subDomain1Table1, subDomain1);
-      await assignDomainToEntity(apiContext, subDomain1Table2, subDomain1);
-      await assignDomainToEntity(apiContext, subSubDomainTable1, subSubDomain);
-      await assignDomainToEntity(apiContext, subSubDomainTable2, subSubDomain);
-      await assignDomainToEntity(apiContext, subDomain2Table, subDomain2);
+    // === SETUP: Assign tables to domains ===
+    await assignDomainToEntity(apiContext, rootTable, rootDomain);
+    await assignDomainToEntity(apiContext, subDomain1Table1, subDomain1);
+    await assignDomainToEntity(apiContext, subDomain1Table2, subDomain1);
+    await assignDomainToEntity(apiContext, subSubDomainTable1, subSubDomain);
+    await assignDomainToEntity(apiContext, subSubDomainTable2, subSubDomain);
+    await assignDomainToEntity(apiContext, subDomain2Table, subDomain2);
 
-      // === SETUP: Assign tags ===
-      // rootTable: Tier1
-      await rootTable.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/tags/0', value: { tagFQN: 'Tier.Tier1', source: 'Classification', labelType: 'Manual' } },
-        ],
-      });
+    // === SETUP: Assign tags ===
+    // rootTable: Tier1
+    await rootTable.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            tagFQN: 'Tier.Tier1',
+            source: 'Classification',
+            labelType: 'Manual',
+          },
+        },
+      ],
+    });
 
-      // subDomain1Table1: Tier5
-      await subDomain1Table1.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/tags/0', value: { tagFQN: 'Tier.Tier5', source: 'Classification', labelType: 'Manual' } },
-        ],
-      });
+    // subDomain1Table1: Tier5
+    await subDomain1Table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            tagFQN: 'Tier.Tier5',
+            source: 'Classification',
+            labelType: 'Manual',
+          },
+        },
+      ],
+    });
 
-      // subDomain1Table2: PersonalData.Personal
-      await subDomain1Table2.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/tags/0', value: { tagFQN: 'PersonalData.Personal', source: 'Classification', labelType: 'Manual' } },
-        ],
-      });
+    // subDomain1Table2: PersonalData.Personal
+    await subDomain1Table2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            tagFQN: 'PersonalData.Personal',
+            source: 'Classification',
+            labelType: 'Manual',
+          },
+        },
+      ],
+    });
 
-      // subSubDomainTable1: Tier5 + PII.Sensitive
-      await subSubDomainTable1.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/tags/0', value: { tagFQN: 'Tier.Tier5', source: 'Classification', labelType: 'Manual' } },
-          { op: 'add', path: '/tags/1', value: { tagFQN: 'PII.Sensitive', source: 'Classification', labelType: 'Manual' } },
-        ],
-      });
+    // subSubDomainTable1: Tier5 + PII.Sensitive
+    await subSubDomainTable1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            tagFQN: 'Tier.Tier5',
+            source: 'Classification',
+            labelType: 'Manual',
+          },
+        },
+        {
+          op: 'add',
+          path: '/tags/1',
+          value: {
+            tagFQN: 'PII.Sensitive',
+            source: 'Classification',
+            labelType: 'Manual',
+          },
+        },
+      ],
+    });
 
-      // subSubDomainTable2: PersonalData.Personal
-      await subSubDomainTable2.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/tags/0', value: { tagFQN: 'PersonalData.Personal', source: 'Classification', labelType: 'Manual' } },
-        ],
-      });
+    // subSubDomainTable2: PersonalData.Personal
+    await subSubDomainTable2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            tagFQN: 'PersonalData.Personal',
+            source: 'Classification',
+            labelType: 'Manual',
+          },
+        },
+      ],
+    });
 
-      // subDomain2Table: Tier5
-      await subDomain2Table.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/tags/0', value: { tagFQN: 'Tier.Tier5', source: 'Classification', labelType: 'Manual' } },
-        ],
-      });
+    // subDomain2Table: Tier5
+    await subDomain2Table.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            tagFQN: 'Tier.Tier5',
+            source: 'Classification',
+            labelType: 'Manual',
+          },
+        },
+      ],
+    });
 
-      // === NAVIGATE TO DOMAIN PAGE ===
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-      await selectDomain(page, rootDomain.responseData);
+    // === NAVIGATE TO DOMAIN PAGE ===
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await waitForAllLoadersToDisappear(page);
+    await selectDomain(page, rootDomain.responseData);
 
-      // ==========================================
-      // TEST LEVEL 1: SubDomain1 Assets
-      // Should see: subDomain1Table1, subDomain1Table2, subSubDomainTable1, subSubDomainTable2
-      // Should NOT see: rootTable, subDomain2Table
-      // ==========================================
-      await navigateToSubDomain(page, subDomain1.data);
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('assets').click();
-      await waitForAllLoadersToDisappear(page);
+    // ==========================================
+    // TEST LEVEL 1: SubDomain1 Assets
+    // Should see: subDomain1Table1, subDomain1Table2, subSubDomainTable1, subSubDomainTable2
+    // Should NOT see: rootTable, subDomain2Table
+    // ==========================================
+    await navigateToSubDomain(page, subDomain1.data);
+    await waitForAllLoadersToDisappear(page);
+    await page.getByTestId('assets').click();
+    await waitForAllLoadersToDisappear(page);
 
-      // Verify initial scoping at SubDomain1
-      await expectVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
+    // Verify initial scoping at SubDomain1
+    await expectVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
 
-      // --- SubDomain1: Tier5 Filter ---
-      await applyTierFilter('Tier.Tier5');
-      await expectVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubDomain1: Tier5 Filter ---
+    await applyTierFilter('Tier.Tier5');
+    await expectVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
+    await clearFilters();
 
-      // --- SubDomain1: PersonalData Filter ---
-      await applyTagFilter('PersonalData', /personaldata\.personal/i);
-      await expectVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubDomain1: PersonalData Filter ---
+    await applyTagFilter('PersonalData', /personaldata\.personal/i);
+    await expectVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
+    await clearFilters();
 
-      // --- SubDomain1: PII.Sensitive Filter (only subSubDomainTable1 has this) ---
-      await applyTagFilter('PII', /pii\.sensitive/i);
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubDomain1: PII.Sensitive Filter (only subSubDomainTable1 has this) ---
+    await applyTagFilter('PII', /pii\.sensitive/i);
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
+    await clearFilters();
 
-      // --- SubDomain1: Entity Type Filter ---
-      await applyEntityTypeFilter('table');
-      await expectVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubDomain1: Entity Type Filter ---
+    await applyEntityTypeFilter('table');
+    await expectVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
+    await clearFilters();
 
-      // ==========================================
-      // TEST LEVEL 2: SubSubDomain Assets
-      // Should see: subSubDomainTable1, subSubDomainTable2 only
-      // Should NOT see: rootTable, subDomain1Table1, subDomain1Table2, subDomain2Table
-      // ==========================================
-      await goToSubDomainAssets(subSubDomain.data);
+    // ==========================================
+    // TEST LEVEL 2: SubSubDomain Assets
+    // Should see: subSubDomainTable1, subSubDomainTable2 only
+    // Should NOT see: rootTable, subDomain1Table1, subDomain1Table2, subDomain2Table
+    // ==========================================
+    await goToSubDomainAssets(subSubDomain.data);
 
-      // Verify initial scoping at SubSubDomain
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
+    // Verify initial scoping at SubSubDomain
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
 
-      // --- SubSubDomain: Tier5 Filter ---
-      await applyTierFilter('Tier.Tier5');
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubSubDomain: Tier5 Filter ---
+    await applyTierFilter('Tier.Tier5');
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
+    await clearFilters();
 
-      // --- SubSubDomain: PersonalData Filter ---
-      await applyTagFilter('PersonalData', /personaldata\.personal/i);
-      await expectVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubSubDomain: PersonalData Filter ---
+    await applyTagFilter('PersonalData', /personaldata\.personal/i);
+    await expectVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
+    await clearFilters();
 
-      // --- SubSubDomain: PII.Sensitive Filter ---
-      await applyTagFilter('PII', /pii\.sensitive/i);
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubSubDomain: PII.Sensitive Filter ---
+    await applyTagFilter('PII', /pii\.sensitive/i);
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await clearFilters();
 
-      // --- SubSubDomain: Entity Type Filter ---
-      await applyEntityTypeFilter('table');
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubSubDomain: Entity Type Filter ---
+    await applyEntityTypeFilter('table');
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
+    await clearFilters();
 
-      // ==========================================
-      // TEST LEVEL 3: SubDomain2 Assets (sibling isolation test)
-      // Should see: subDomain2Table only
-      // Should NOT see: anything from SubDomain1 tree or RootDomain
-      // ==========================================
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-      await selectDomain(page, rootDomain.responseData);
-      await navigateToSubDomain(page, subDomain2.data);
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('assets').click();
-      await waitForAllLoadersToDisappear(page);
+    // ==========================================
+    // TEST LEVEL 3: SubDomain2 Assets (sibling isolation test)
+    // Should see: subDomain2Table only
+    // Should NOT see: anything from SubDomain1 tree or RootDomain
+    // ==========================================
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await waitForAllLoadersToDisappear(page);
+    await selectDomain(page, rootDomain.responseData);
+    await navigateToSubDomain(page, subDomain2.data);
+    await waitForAllLoadersToDisappear(page);
+    await page.getByTestId('assets').click();
+    await waitForAllLoadersToDisappear(page);
 
-      // Verify initial scoping at SubDomain2
-      await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    // Verify initial scoping at SubDomain2
+    await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
 
-      // --- SubDomain2: Tier5 Filter ---
-      await applyTierFilter('Tier.Tier5');
-      await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubDomain2: Tier5 Filter ---
+    await applyTierFilter('Tier.Tier5');
+    await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await clearFilters();
 
-      // --- SubDomain2: Entity Type Filter ---
-      await applyEntityTypeFilter('table');
-      await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- SubDomain2: Entity Type Filter ---
+    await applyEntityTypeFilter('table');
+    await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await clearFilters();
 
-      // ==========================================
-      // TEST LEVEL 4: RootDomain Assets (parent level)
-      // Should see: ALL tables (root + all children)
-      // ==========================================
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-      await selectDomain(page, rootDomain.responseData);
-      await page.getByTestId('assets').click();
-      await waitForAllLoadersToDisappear(page);
+    // ==========================================
+    // TEST LEVEL 4: RootDomain Assets (parent level)
+    // Should see: ALL tables (root + all children)
+    // ==========================================
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await waitForAllLoadersToDisappear(page);
+    await selectDomain(page, rootDomain.responseData);
+    await page.getByTestId('assets').click();
+    await waitForAllLoadersToDisappear(page);
 
-      // At root level, all tables should be visible
-      await expectVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
+    // At root level, all tables should be visible
+    await expectVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
 
-      // --- RootDomain: Tier1 Filter (only rootTable has Tier1) ---
-      await applyTierFilter('Tier.Tier1');
-      await expectVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
+    // --- RootDomain: Tier1 Filter (only rootTable has Tier1) ---
+    await applyTierFilter('Tier.Tier1');
+    await expectVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subDomain2Table.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await clearFilters();
 
-      // --- RootDomain: Tier5 Filter (multiple tables have Tier5) ---
-      await applyTierFilter('Tier.Tier5');
-      await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subDomain1Table1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subSubDomainTable1.entityResponseData?.fullyQualifiedName);
-      await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subDomain1Table2.entityResponseData?.fullyQualifiedName);
-      await expectNotVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
-      await clearFilters();
-
+    // --- RootDomain: Tier5 Filter (multiple tables have Tier5) ---
+    await applyTierFilter('Tier.Tier5');
+    await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
+    await expectVisible(
+      subDomain1Table1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(
+      subSubDomainTable1.entityResponseData?.fullyQualifiedName
+    );
+    await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
+    await expectNotVisible(
+      subDomain1Table2.entityResponseData?.fullyQualifiedName
+    );
+    await expectNotVisible(
+      subSubDomainTable2.entityResponseData?.fullyQualifiedName
+    );
+    await clearFilters();
   });
 });

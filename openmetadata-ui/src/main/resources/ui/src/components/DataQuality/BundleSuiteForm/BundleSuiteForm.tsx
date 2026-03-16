@@ -338,7 +338,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         form="bundle-suite-form"
         htmlType="submit"
         loading={isSubmitting}
-        type="primary">
+        type="primary"
+      >
         {t('label.create')}
       </Button>
     </Space>
@@ -359,7 +360,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
       )}
 
       <Form
-        className="new-form-style"
+        className="new-form-style bundle-suite-form"
         form={form}
         id="bundle-suite-form"
         initialValues={{
@@ -371,7 +372,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
         }}
         layout="vertical"
         onFinish={handleFormSubmit}
-        onFinishFailed={scrollToError}>
+        onFinishFailed={scrollToError}
+      >
         {/* Basic Information */}
         <Card className="form-card-section" data-testid="basic-info-card">
           {generateFormFields(basicInfoFormFields)}
@@ -379,8 +381,9 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
 
         {/* Test Case Selection */}
         <Card
-          className="form-card-section"
-          data-testid="test-case-selection-card">
+          className="form-card-section bundle-suite-form-test-case-selection-card"
+          data-testid="test-case-selection-card"
+        >
           <Form.Item
             label={t('label.test-case-plural')}
             name="testCases"
@@ -391,8 +394,10 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
                   field: t('label.test-case-plural'),
                 }),
               },
-            ]}>
+            ]}
+          >
             <AddTestCaseList
+              showSelectAll
               selectedTest={selectedTestCases.map((tc) => tc.name)}
               showButton={false}
               onChange={handleTestCaseSelection}
@@ -408,7 +413,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
                 noStyle
                 className="m-b-0"
                 name="enableScheduler"
-                valuePropName="checked">
+                valuePropName="checked"
+              >
                 <Switch data-testid="scheduler-toggle" />
               </Form.Item>
               <div>
@@ -445,7 +451,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
                         <Form.Item
                           className="m-b-0"
                           name="enableDebugLog"
-                          valuePropName="checked">
+                          valuePropName="checked"
+                        >
                           <Switch />
                         </Form.Item>
                         <Typography.Paragraph className="font-medium m-0">
@@ -458,7 +465,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
                         <Form.Item
                           className="m-b-0"
                           name="raiseOnError"
-                          valuePropName="checked">
+                          valuePropName="checked"
+                        >
                           <Switch />
                         </Form.Item>
                         <Typography.Paragraph className="font-medium m-0">
@@ -501,7 +509,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           onClick={onCancel}
         />
       }
-      onClose={onCancel}>
+      onClose={onCancel}
+    >
       <div className="drawer-form-content">{formContent}</div>
     </Drawer>
   );

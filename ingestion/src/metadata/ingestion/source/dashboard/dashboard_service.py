@@ -524,7 +524,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _get_add_lineage_request(
-        to_entity: Union[Dashboard, DashboardDataModel],
+        to_entity: Union[Dashboard, DashboardDataModel, Chart],
         from_entity: Union[Table, DashboardDataModel, Dashboard],
         column_lineage: List[ColumnLineage] = None,
         sql: Optional[str] = None,

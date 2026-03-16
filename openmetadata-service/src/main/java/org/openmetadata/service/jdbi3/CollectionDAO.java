@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
@@ -181,6 +182,8 @@ import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJsonContains;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -1775,12 +1778,30 @@ public interface CollectionDAO {
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND fromEntity = :fromEntity "
-            + "AND relation IN (<relations>)")
+            + "AND relation IN (<relations>) "
+            + "<cond>")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findToBatchWithRelations(
+    List<EntityRelationshipObject> findToBatchWithRelationsAndCondition(
         @BindList("fromIds") List<String> fromIds,
         @Bind("fromEntity") String fromEntity,
-        @BindList("relations") List<Integer> relations);
+        @BindList("relations") List<Integer> relations,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findToBatchWithRelations(
+        List<String> fromIds, String fromEntity, List<Integer> relations, Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findToBatchWithRelationsAndCondition(fromIds, fromEntity, relations, condition);
+    }
+
+    default List<EntityRelationshipObject> findToBatchWithRelations(
+        List<String> fromIds, String fromEntity, List<Integer> relations) {
+      return findToBatchWithRelations(fromIds, fromEntity, relations, Include.ALL);
+    }
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
@@ -1934,6 +1955,36 @@ public interface CollectionDAO {
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
+            + "AND toEntity = :toEntityType "
+            + "AND relation IN (<relations>) "
+            + "<cond>")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromBatchWithRelationsAndCondition(
+        @BindList("toIds") List<String> toIds,
+        @Bind("toEntityType") String toEntityType,
+        @BindList("relations") List<Integer> relations,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findFromBatchWithRelations(
+        List<String> toIds, String toEntityType, List<Integer> relations, Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findFromBatchWithRelationsAndCondition(toIds, toEntityType, relations, condition);
+    }
+
+    default List<EntityRelationshipObject> findFromBatchWithRelations(
+        List<String> toIds, String toEntityType, List<Integer> relations) {
+      return findFromBatchWithRelations(toIds, toEntityType, relations, Include.ALL);
+    }
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
             + "AND fromEntity = :fromEntityType  "
             + "AND deleted = FALSE")
@@ -1971,12 +2022,30 @@ public interface CollectionDAO {
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId = :entityId AND toEntity = :entityType "
-            + "AND relation IN (<relations>)")
+            + "AND relation IN (<relations>) "
+            + "<cond>")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findToRelationshipsForEntity(
+    List<EntityRelationshipObject> findToRelationshipsForEntityWithCondition(
         @BindUUID("entityId") UUID entityId,
         @Bind("entityType") String entityType,
-        @BindList("relations") List<Integer> relations);
+        @BindList("relations") List<Integer> relations,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findToRelationshipsForEntity(
+        UUID entityId, String entityType, List<Integer> relations, Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findToRelationshipsForEntityWithCondition(entityId, entityType, relations, condition);
+    }
+
+    default List<EntityRelationshipObject> findToRelationshipsForEntity(
+        UUID entityId, String entityType, List<Integer> relations) {
+      return findToRelationshipsForEntity(entityId, entityType, relations, Include.ALL);
+    }
 
     // Fetch relationships for specific relation types (FROM direction: entity -> others)
     // Used for children, experts
@@ -1984,12 +2053,31 @@ public interface CollectionDAO {
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId = :entityId AND fromEntity = :entityType "
-            + "AND relation IN (<relations>)")
+            + "AND relation IN (<relations>) "
+            + "<cond>")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findFromRelationshipsForEntity(
+    List<EntityRelationshipObject> findFromRelationshipsForEntityWithCondition(
         @BindUUID("entityId") UUID entityId,
         @Bind("entityType") String entityType,
-        @BindList("relations") List<Integer> relations);
+        @BindList("relations") List<Integer> relations,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findFromRelationshipsForEntity(
+        UUID entityId, String entityType, List<Integer> relations, Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findFromRelationshipsForEntityWithCondition(
+          entityId, entityType, relations, condition);
+    }
+
+    default List<EntityRelationshipObject> findFromRelationshipsForEntity(
+        UUID entityId, String entityType, List<Integer> relations) {
+      return findFromRelationshipsForEntity(entityId, entityType, relations, Include.ALL);
+    }
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -5272,6 +5360,70 @@ public interface CollectionDAO {
       }
     }
 
+    record TagUsageBatchRow(
+        int source,
+        String tagFQN,
+        String tagFQNHash,
+        String targetFQNHash,
+        int labelType,
+        int state,
+        String reason,
+        String appliedBy,
+        String metadata) {}
+
+    record TagUsageDeleteRow(int source, String tagFQNHash, String targetFQNHash) {}
+
+    private static String buildTagUsageKey(int source, String tagFQNHash, String targetFQNHash) {
+      return source + "|" + tagFQNHash + "|" + targetFQNHash;
+    }
+
+    private static String buildTagUsageKey(TagUsageBatchRow row) {
+      return buildTagUsageKey(row.source(), row.tagFQNHash(), row.targetFQNHash());
+    }
+
+    private static String buildTagUsageKey(TagUsageDeleteRow row) {
+      return buildTagUsageKey(row.source(), row.tagFQNHash(), row.targetFQNHash());
+    }
+
+    Logger TAG_USAGE_LOG = LoggerFactory.getLogger(TagUsageDAO.class);
+    int TAG_USAGE_MAX_ATTEMPTS = 2;
+    AtomicLong TAG_USAGE_DEADLOCK_RETRY_COUNT = new AtomicLong(0);
+
+    private static boolean isTransientDeadlock(Throwable throwable) {
+      for (Throwable current = throwable; current != null; current = current.getCause()) {
+        if (current instanceof SQLException sqlException) {
+          int errorCode = sqlException.getErrorCode();
+          String sqlState = sqlException.getSQLState();
+          if (errorCode == 1213
+              || errorCode == 1205
+              || "40001".equals(sqlState)
+              || "40P01".equals(sqlState)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    default void executeWithDeadlockRetry(Runnable operation) {
+      for (int attempt = 1; attempt <= TAG_USAGE_MAX_ATTEMPTS; attempt++) {
+        try {
+          operation.run();
+          return;
+        } catch (RuntimeException ex) {
+          if (!isTransientDeadlock(ex) || attempt == TAG_USAGE_MAX_ATTEMPTS) {
+            throw ex;
+          }
+          long retryCount = TAG_USAGE_DEADLOCK_RETRY_COUNT.incrementAndGet();
+          TAG_USAGE_LOG.debug(
+              "Retrying tag_usage batch after transient deadlock (attempt {}/{}), total retries={}",
+              attempt + 1,
+              TAG_USAGE_MAX_ATTEMPTS,
+              retryCount);
+        }
+      }
+    }
+
     /**
      * Apply multiple tags in batch to improve performance
      */
@@ -5281,38 +5433,68 @@ public interface CollectionDAO {
       }
 
       String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
-      List<Integer> sources = new ArrayList<>();
-      List<String> tagFQNs = new ArrayList<>();
-      List<String> tagFQNHashes = new ArrayList<>();
-      List<String> targetFQNHashes = new ArrayList<>();
-      List<Integer> labelTypes = new ArrayList<>();
-      List<Integer> states = new ArrayList<>();
-      List<String> reasons = new ArrayList<>();
-      List<String> appliedBys = new ArrayList<>();
-      List<String> metadataList = new ArrayList<>();
+      List<TagUsageBatchRow> rows = new ArrayList<>(tagLabels.size());
 
       for (TagLabel tagLabel : tagLabels) {
-        sources.add(tagLabel.getSource().ordinal());
-        tagFQNs.add(tagLabel.getTagFQN());
-        tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
-        targetFQNHashes.add(targetFQNHash);
-        labelTypes.add(tagLabel.getLabelType().ordinal());
-        states.add(tagLabel.getState().ordinal());
-        reasons.add(tagLabel.getReason());
-        appliedBys.add(tagLabel.getAppliedBy());
-        metadataList.add(JsonUtils.pojoToJson(tagLabel.getMetadata()));
+        rows.add(
+            new TagUsageBatchRow(
+                tagLabel.getSource().ordinal(),
+                tagLabel.getTagFQN(),
+                FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
+                targetFQNHash,
+                tagLabel.getLabelType().ordinal(),
+                tagLabel.getState().ordinal(),
+                tagLabel.getReason(),
+                tagLabel.getAppliedBy(),
+                JsonUtils.pojoToJson(tagLabel.getMetadata())));
       }
 
-      applyTagsBatchInternal(
-          sources,
-          tagFQNs,
-          tagFQNHashes,
-          targetFQNHashes,
-          labelTypes,
-          states,
-          reasons,
-          appliedBys,
-          metadataList);
+      // De-duplicate duplicate tag applications within the same batch.
+      LinkedHashMap<String, TagUsageBatchRow> uniqueRows = new LinkedHashMap<>(rows.size());
+      for (TagUsageBatchRow row : rows) {
+        uniqueRows.put(buildTagUsageKey(row), row);
+      }
+      rows = new ArrayList<>(uniqueRows.values());
+
+      // Deterministic lock acquisition order reduces deadlocks under concurrent upserts.
+      rows.sort(
+          java.util.Comparator.comparing(TagUsageBatchRow::targetFQNHash)
+              .thenComparing(TagUsageBatchRow::tagFQNHash)
+              .thenComparingInt(TagUsageBatchRow::source));
+
+      List<Integer> sources = new ArrayList<>(rows.size());
+      List<String> tagFQNs = new ArrayList<>(rows.size());
+      List<String> tagFQNHashes = new ArrayList<>(rows.size());
+      List<String> targetFQNHashes = new ArrayList<>(rows.size());
+      List<Integer> labelTypes = new ArrayList<>(rows.size());
+      List<Integer> states = new ArrayList<>(rows.size());
+      List<String> reasons = new ArrayList<>(rows.size());
+      List<String> appliedBys = new ArrayList<>(rows.size());
+      List<String> metadataList = new ArrayList<>(rows.size());
+      for (TagUsageBatchRow row : rows) {
+        sources.add(row.source());
+        tagFQNs.add(row.tagFQN());
+        tagFQNHashes.add(row.tagFQNHash());
+        targetFQNHashes.add(row.targetFQNHash());
+        labelTypes.add(row.labelType());
+        states.add(row.state());
+        reasons.add(row.reason());
+        appliedBys.add(row.appliedBy());
+        metadataList.add(row.metadata());
+      }
+
+      executeWithDeadlockRetry(
+          () ->
+              applyTagsBatchInternal(
+                  sources,
+                  tagFQNs,
+                  tagFQNHashes,
+                  targetFQNHashes,
+                  labelTypes,
+                  states,
+                  reasons,
+                  appliedBys,
+                  metadataList));
     }
 
     /**
@@ -5324,15 +5506,7 @@ public interface CollectionDAO {
         return;
       }
 
-      List<Integer> sources = new ArrayList<>();
-      List<String> tagFQNs = new ArrayList<>();
-      List<String> tagFQNHashes = new ArrayList<>();
-      List<String> targetFQNHashes = new ArrayList<>();
-      List<Integer> labelTypes = new ArrayList<>();
-      List<Integer> states = new ArrayList<>();
-      List<String> reasons = new ArrayList<>();
-      List<String> appliedBys = new ArrayList<>();
-      List<String> metadataList = new ArrayList<>();
+      List<TagUsageBatchRow> rows = new ArrayList<>();
 
       for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
         String targetFQN = entry.getKey();
@@ -5346,29 +5520,67 @@ public interface CollectionDAO {
           if (tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
             continue;
           }
-          sources.add(tagLabel.getSource().ordinal());
-          tagFQNs.add(tagLabel.getTagFQN());
-          tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
-          targetFQNHashes.add(targetFQNHash);
-          labelTypes.add(tagLabel.getLabelType().ordinal());
-          states.add(tagLabel.getState().ordinal());
-          reasons.add(tagLabel.getReason());
-          appliedBys.add(tagLabel.getAppliedBy());
-          metadataList.add(JsonUtils.pojoToJson(tagLabel.getMetadata()));
+          rows.add(
+              new TagUsageBatchRow(
+                  tagLabel.getSource().ordinal(),
+                  tagLabel.getTagFQN(),
+                  FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
+                  targetFQNHash,
+                  tagLabel.getLabelType().ordinal(),
+                  tagLabel.getState().ordinal(),
+                  tagLabel.getReason(),
+                  tagLabel.getAppliedBy(),
+                  JsonUtils.pojoToJson(tagLabel.getMetadata())));
         }
       }
 
-      if (!sources.isEmpty()) {
-        applyTagsBatchInternal(
-            sources,
-            tagFQNs,
-            tagFQNHashes,
-            targetFQNHashes,
-            labelTypes,
-            states,
-            reasons,
-            appliedBys,
-            metadataList);
+      if (!rows.isEmpty()) {
+        // De-duplicate duplicate tag applications within the same batch.
+        LinkedHashMap<String, TagUsageBatchRow> uniqueRows = new LinkedHashMap<>(rows.size());
+        for (TagUsageBatchRow row : rows) {
+          uniqueRows.put(buildTagUsageKey(row), row);
+        }
+        rows = new ArrayList<>(uniqueRows.values());
+
+        // Deterministic lock acquisition order reduces deadlocks under concurrent upserts.
+        rows.sort(
+            java.util.Comparator.comparing(TagUsageBatchRow::targetFQNHash)
+                .thenComparing(TagUsageBatchRow::tagFQNHash)
+                .thenComparingInt(TagUsageBatchRow::source));
+
+        List<Integer> sources = new ArrayList<>(rows.size());
+        List<String> tagFQNs = new ArrayList<>(rows.size());
+        List<String> tagFQNHashes = new ArrayList<>(rows.size());
+        List<String> targetFQNHashes = new ArrayList<>(rows.size());
+        List<Integer> labelTypes = new ArrayList<>(rows.size());
+        List<Integer> states = new ArrayList<>(rows.size());
+        List<String> reasons = new ArrayList<>(rows.size());
+        List<String> appliedBys = new ArrayList<>(rows.size());
+        List<String> metadataList = new ArrayList<>(rows.size());
+        for (TagUsageBatchRow row : rows) {
+          sources.add(row.source());
+          tagFQNs.add(row.tagFQN());
+          tagFQNHashes.add(row.tagFQNHash());
+          targetFQNHashes.add(row.targetFQNHash());
+          labelTypes.add(row.labelType());
+          states.add(row.state());
+          reasons.add(row.reason());
+          appliedBys.add(row.appliedBy());
+          metadataList.add(row.metadata());
+        }
+
+        executeWithDeadlockRetry(
+            () ->
+                applyTagsBatchInternal(
+                    sources,
+                    tagFQNs,
+                    tagFQNHashes,
+                    targetFQNHashes,
+                    labelTypes,
+                    states,
+                    reasons,
+                    appliedBys,
+                    metadataList));
       }
     }
 
@@ -5406,17 +5618,38 @@ public interface CollectionDAO {
       }
 
       String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
-      List<Integer> sources = new ArrayList<>();
-      List<String> tagFQNHashes = new ArrayList<>();
-      List<String> targetFQNHashes = new ArrayList<>();
+      List<TagUsageDeleteRow> rows = new ArrayList<>(tagLabels.size());
 
       for (TagLabel tagLabel : tagLabels) {
-        sources.add(tagLabel.getSource().ordinal());
-        tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
-        targetFQNHashes.add(targetFQNHash);
+        rows.add(
+            new TagUsageDeleteRow(
+                tagLabel.getSource().ordinal(),
+                FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
+                targetFQNHash));
       }
 
-      deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes);
+      LinkedHashMap<String, TagUsageDeleteRow> uniqueRows = new LinkedHashMap<>(rows.size());
+      for (TagUsageDeleteRow row : rows) {
+        uniqueRows.put(buildTagUsageKey(row), row);
+      }
+      rows = new ArrayList<>(uniqueRows.values());
+
+      rows.sort(
+          java.util.Comparator.comparing(TagUsageDeleteRow::targetFQNHash)
+              .thenComparing(TagUsageDeleteRow::tagFQNHash)
+              .thenComparingInt(TagUsageDeleteRow::source));
+
+      List<Integer> sources = new ArrayList<>(rows.size());
+      List<String> tagFQNHashes = new ArrayList<>(rows.size());
+      List<String> targetFQNHashes = new ArrayList<>(rows.size());
+      for (TagUsageDeleteRow row : rows) {
+        sources.add(row.source());
+        tagFQNHashes.add(row.tagFQNHash());
+        targetFQNHashes.add(row.targetFQNHash());
+      }
+
+      executeWithDeadlockRetry(
+          () -> deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes));
     }
 
     @Transaction
@@ -6441,9 +6674,16 @@ public interface CollectionDAO {
         value = "INSERT INTO change_event (json) VALUES (:json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
-        value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
+        value = "INSERT INTO change_event (json) VALUES (CAST(:json AS jsonb))",
         connectionType = POSTGRES)
-    void insertBatch(@Bind("json") List<String> jsons);
+    void insertBatchRows(@Bind("json") List<String> jsons);
+
+    default void insertBatch(List<String> jsons) {
+      if (nullOrEmpty(jsons)) {
+        return;
+      }
+      insertBatchRows(jsons);
+    }
 
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
@@ -7710,6 +7950,31 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
+        "SELECT p.entityFQNHash, p.json "
+            + "FROM <table> p "
+            + "JOIN ("
+            + "  SELECT entityFQNHash, MAX(timestamp) AS latestTs "
+            + "  FROM <table> "
+            + "  WHERE entityFQNHash IN (<entityFQNHashes>) AND extension = :extension "
+            + "  GROUP BY entityFQNHash"
+            + ") latest "
+            + "ON p.entityFQNHash = latest.entityFQNHash AND p.timestamp = latest.latestTs "
+            + "WHERE p.extension = :extension")
+    @RegisterRowMapper(LatestExtensionRecordMapper.class)
+    List<LatestExtensionRecord> getLatestExtensionsBatch(
+        @Define("table") String table,
+        @BindListFQN("entityFQNHashes") List<String> entityFQNHashes,
+        @Bind("extension") String extension);
+
+    default List<LatestExtensionRecord> getLatestExtensionsBatch(
+        List<String> entityFQNHashes, String extension) {
+      if (entityFQNHashes == null || entityFQNHashes.isEmpty()) {
+        return Collections.emptyList();
+      }
+      return getLatestExtensionsBatch(getTimeSeriesTableName(), entityFQNHashes, extension);
+    }
+
+    @SqlQuery(
         "SELECT json FROM <table> <cond> "
             + "AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
     List<String> listEntityProfileAtTimestamp(
@@ -7735,6 +8000,15 @@ public interface CollectionDAO {
       deleteEntityProfileData(
           getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
+
+    record LatestExtensionRecord(String entityFQNHash, String json) {}
+
+    class LatestExtensionRecordMapper implements RowMapper<LatestExtensionRecord> {
+      @Override
+      public LatestExtensionRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new LatestExtensionRecord(rs.getString("entityFQNHash"), rs.getString("json"));
+      }
+    }
   }
 
   interface DataQualityDataTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -7742,6 +8016,16 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "data_quality_data_time_series";
     }
+
+    @RegisterRowMapper(LatestRecordWithFQNHashMapper.class)
+    @SqlQuery(
+        "SELECT t1.entityFQNHash, t1.json FROM data_quality_data_time_series t1 "
+            + "INNER JOIN (SELECT entityFQNHash, MAX(timestamp) as maxTs "
+            + "FROM data_quality_data_time_series WHERE entityFQNHash IN (<entityFQNHashes>) "
+            + "GROUP BY entityFQNHash) t2 "
+            + "ON t1.entityFQNHash = t2.entityFQNHash AND t1.timestamp = t2.maxTs")
+    List<LatestRecordWithFQNHash> getLatestRecordBatch(
+        @BindListFQN("entityFQNHashes") List<String> entityFQNs);
 
     @SqlUpdate(
         "DELETE FROM data_quality_data_time_series WHERE entityFQNHash = :testCaseFQNHash AND extension = 'testCase.testCaseResult'")
@@ -7772,6 +8056,31 @@ public interface CollectionDAO {
         String json,
         String incidentStateId) {
       insert(getTimeSeriesTableName(), entityFQNHash, extension, jsonSchema, json, incidentStateId);
+    }
+  }
+
+  class LatestRecordWithFQNHash {
+    private final String entityFQNHash;
+    private final String json;
+
+    public LatestRecordWithFQNHash(String entityFQNHash, String json) {
+      this.entityFQNHash = entityFQNHash;
+      this.json = json;
+    }
+
+    public String getEntityFQNHash() {
+      return entityFQNHash;
+    }
+
+    public String getJson() {
+      return json;
+    }
+  }
+
+  class LatestRecordWithFQNHashMapper implements RowMapper<LatestRecordWithFQNHash> {
+    @Override
+    public LatestRecordWithFQNHash map(ResultSet r, StatementContext ctx) throws SQLException {
+      return new LatestRecordWithFQNHash(r.getString("entityFQNHash"), r.getString("json"));
     }
   }
 

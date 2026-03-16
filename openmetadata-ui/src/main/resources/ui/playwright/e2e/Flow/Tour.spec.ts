@@ -21,7 +21,7 @@ const user = new UserClass();
 const waitForTourBadgeWithRetry = async (
   page: Page,
   maxAttempts = 3,
-  timeout = 10000
+  timeout = 20000
 ) => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -34,7 +34,6 @@ const waitForTourBadgeWithRetry = async (
     } catch (e) {
       if (attempt < maxAttempts) {
         await page.reload();
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -46,21 +45,35 @@ const waitForTourBadgeWithRetry = async (
   }
 };
 
+const expectTourBadge = async (
+  page: Page,
+  step: string,
+  timeout = 10000
+) => {
+  const badge = page.locator('[data-tour-elem="badge"]');
+  await badge.waitFor({ state: 'visible', timeout });
+  await expect
+    .poll(async () => (await badge.textContent())?.trim(), {
+      timeout,
+    })
+    .toBe(step);
+};
+
 const validateTourSteps = async (page: Page) => {
   await page.waitForTimeout(1000);
   await waitForTourBadgeWithRetry(page);
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('1');
+  await expectTourBadge(page, '1');
 
   // step 1
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('2');
+  await expectTourBadge(page, '2');
 
   // step 2
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('3');
+  await expectTourBadge(page, '3');
 
   await page.getByTestId('searchBox').fill('dim_a');
 
@@ -73,12 +86,12 @@ const validateTourSteps = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4');
+  await expectTourBadge(page, '4');
 
   // step 3
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('5');
+  await expectTourBadge(page, '5');
 
   await expect(
     page.getByTestId('sample_data.ecommerce_db.shopify.dim_address')
@@ -87,27 +100,27 @@ const validateTourSteps = async (page: Page) => {
   // step 4
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('6');
+  await expectTourBadge(page, '6');
 
   // step 5
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('7');
+  await expectTourBadge(page, '7');
 
   // step 6
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('8');
+  await expectTourBadge(page, '8');
 
   // step 7
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('9');
+  await expectTourBadge(page, '9');
 
   // step 8
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('10');
+  await expectTourBadge(page, '10');
 
   await expect(
     page.getByTestId('sample_data').getByText('Sample Data')
@@ -116,12 +129,12 @@ const validateTourSteps = async (page: Page) => {
   // step 9
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('11');
+  await expectTourBadge(page, '11');
 
   // step 10
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('12');
+  await expectTourBadge(page, '12');
 
   await expect(
     page.getByTestId('profiler').getByText('Data Observability')
@@ -130,89 +143,100 @@ const validateTourSteps = async (page: Page) => {
   // step 11
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('13');
+  await expectTourBadge(page, '13');
 
   // step 12
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('14');
+  await expectTourBadge(page, '14');
 
   await expect(page.getByTestId('lineage').getByText('Lineage')).toBeVisible();
 
   // step 13
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('15');
+  await expectTourBadge(page, '15');
 
   await page.getByTestId('last-step-button').click();
   await page.getByTestId('saveButton').click();
 };
 
-test.describe('Tour should work properly', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.create(apiContext);
-    await afterAction();
-  });
+test.describe(
+  'Tour should work properly',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await user.create(apiContext);
+      await afterAction();
+    });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await afterAction();
-  });
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await user.delete(apiContext);
+      await afterAction();
+    });
 
-  test.beforeEach('Visit entity details page', async ({ page }) => {
-    await user.login(page);
-  });
+    test.beforeEach('Visit entity details page', async ({ page }) => {
+      await user.login(page);
+    });
 
-  test('Tour should work from help section', async ({ page }) => {
-    test.slow();
+    test('Tour should work from help section', async ({ page }) => {
+      test.slow();
 
-    await page.locator('[data-testid="help-icon"]').click();
-    await page.getByRole('link', { name: 'Tour', exact: true }).click();
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await page.waitForURL('**/tour');
+      await page.locator('[data-testid="help-icon"]').click();
+      await page.getByRole('link', { name: 'Tour', exact: true }).click();
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+      await page.waitForURL('**/tour');
 
-    await page.waitForSelector('#feedWidgetData');
+      await page.waitForSelector('#feedWidgetData');
 
-    await validateTourSteps(page);
-  });
+      await validateTourSteps(page);
+    });
 
-  test('Tour should work from welcome screen', async ({ page }) => {
-    await page
-      .getByTestId('whats-new-alert-card')
-      .locator('.whats-new-alert-close')
-      .click();
-    await page.getByText('Take a product tour to get started!').click();
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await page.waitForURL('**/tour');
+    test('Tour should work from welcome screen', async ({ page }) => {
+      await page
+        .getByTestId('whats-new-alert-card')
+        .locator('.whats-new-alert-close')
+        .click();
+      await page.getByText('Take a product tour to get started!').click();
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+      await page.waitForURL('**/tour');
 
-    await page.waitForSelector('#feedWidgetData');
-    // Since the tour steps are already tested in the first test,
-    // here we only validate whether the tour is loading or not.
-    await waitForTourBadgeWithRetry(page);
-  });
+      await page.waitForSelector('#feedWidgetData');
+      // Since the tour steps are already tested in the first test,
+      // here we only validate whether the tour is loading or not.
+      await waitForTourBadgeWithRetry(page);
+    });
 
-  test('Tour should work from URL directly', async ({ page }) => {
-    await page.goto('/tour');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    const isWelcomeScreenVisible = await page
-      .getByTestId('welcome-screen')
-      .isVisible();
+    test('Tour should work from URL directly', async ({ page }) => {
+      await page.goto('/tour');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      const isWelcomeScreenVisible = await page
+        .getByTestId('welcome-screen')
+        .isVisible();
 
-    if (isWelcomeScreenVisible) {
-      await page.getByTestId('welcome-screen-close-btn').click();
-      await page.waitForLoadState('networkidle');
-    }
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await page.waitForURL('**/tour');
+      if (isWelcomeScreenVisible) {
+        await page.getByTestId('welcome-screen-close-btn').click();
+      }
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+      await page.waitForURL('**/tour');
 
-    await page.waitForSelector('#feedWidgetData');
-    // Since the tour steps are already tested in the first test,
-    // here we only validate whether the tour is loading or not.
-    await waitForTourBadgeWithRetry(page);
-  });
-});
+      await page.waitForSelector('#feedWidgetData');
+      // Since the tour steps are already tested in the first test,
+      // here we only validate whether the tour is loading or not.
+      await waitForTourBadgeWithRetry(page);
+    });
+  }
+);

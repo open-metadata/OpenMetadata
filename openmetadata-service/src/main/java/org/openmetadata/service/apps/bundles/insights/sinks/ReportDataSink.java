@@ -1,11 +1,9 @@
 package org.openmetadata.service.apps.bundles.insights.sinks;
 
-import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.REPORT_DATA_TYPE_KEY;
 import static org.openmetadata.service.jdbi3.ReportDataRepository.REPORT_DATA_EXTENSION;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import java.util.List;
-import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
@@ -22,21 +20,19 @@ import org.openmetadata.service.workflows.interfaces.Sink;
 public class ReportDataSink implements Sink<List<ReportData>, Boolean> {
   @Getter private final String name;
   private final StepStats stats = new StepStats();
+  private final ReportData.ReportDataType reportDataType;
 
-  public ReportDataSink(int total, String name) {
+  public ReportDataSink(int total, String name, ReportData.ReportDataType reportDataType) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
     this.name = name;
+    this.reportDataType = reportDataType;
   }
 
   @Override
-  public Boolean write(List<ReportData> data, Map<String, Object> contextData)
-      throws SearchIndexException {
-    // TODO: Understand better how the deleteReportDataRecords and createReportDataRecords might
-    // fail.
+  // TODO: Understand better how the deleteReportDataRecords and createReportDataRecords might
+  // fail.
+  public Boolean write(List<ReportData> data) throws SearchIndexException {
     try {
-      ReportData.ReportDataType reportDataType =
-          (ReportData.ReportDataType) contextData.get(REPORT_DATA_TYPE_KEY);
-
       createReportDataRecords(data, reportDataType);
       updateStats(data.size(), 0);
     } catch (Exception e) {

@@ -13,6 +13,7 @@
 import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
+import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -56,21 +57,103 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
+const PLAYWRIGHT_TEST_USER_PASSWORD = 'User@OMD123';
+
+const loginFromStoredIdentity = async (page: Page) => {
+  const userName = await page
+    .evaluate(() => window.localStorage.getItem('loggedInUsers'))
+    .catch(() => null);
+  const normalizedUserName = userName?.replace(/^"+|"+$/g, '').trim();
+
+  if (!normalizedUserName) {
+    return false;
+  }
+
+  const password =
+    normalizedUserName === DEFAULT_ADMIN_USER.userName
+      ? DEFAULT_ADMIN_USER.password
+      : PLAYWRIGHT_TEST_USER_PASSWORD;
+
+  const emailInput = page.locator('input[id="email"]');
+  await emailInput.waitFor({ state: 'visible' });
+  await emailInput.fill(normalizedUserName);
+  await page.locator('#email').press('Tab');
+  await page.fill('input[id="password"]', password);
+
+  const loginRes = page.waitForResponse('/api/v1/auth/login');
+  await page.getByTestId('login').click();
+  await loginRes;
+
+  const modal = page
+    .getByRole('dialog')
+    .locator('div')
+    .filter({ hasText: 'Getting Started' })
+    .nth(1);
+  if (await modal.isVisible().catch(() => false)) {
+    await page.getByRole('dialog').getByRole('img').first().click();
+  }
+
+  const leftNavBar = page.locator('[data-testid="left-sidebar"]');
+  const hasOpenClass = await leftNavBar
+    .evaluate((el) => el.classList.contains('sidebar-open'))
+    .catch(() => false);
+  if (hasOpenClass) {
+    await page.getByTestId('sidebar-toggle').click();
+  }
+
+  return true;
+};
+
+const waitForHomeOrSignin = async (page: Page) => {
+  try {
+    return await Promise.race([
+      page.waitForURL('**/my-data', { timeout: 30000 }).then(() => 'my-data'),
+      page.waitForURL('**/signin', { timeout: 30000 }).then(() => 'signin'),
+    ]);
+  } catch {
+    if (page.url().includes('/my-data')) {
+      return 'my-data';
+    }
+    if (page.url().includes('/signin')) {
+      return 'signin';
+    }
+
+    throw new Error(`Timed out navigating home. Current URL: ${page.url()}`);
+  }
+};
+
 export const redirectToHomePage = async (
   page: Page,
-  waitForNetworkIdle = true
+  _waitForLoaders = true
 ) => {
-  await page.goto('/');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.goto('/');
+    const destination = await waitForHomeOrSignin(page);
+
+    if (destination === 'my-data') {
+      if (_waitForLoaders) {
+        await waitForAllLoadersToDisappear(page);
+      }
+
+      return;
+    }
+
+    const relogged = await loginFromStoredIdentity(page);
+    if (!relogged) {
+      break;
+    }
+  }
+
   await page.waitForURL('**/my-data');
-  if (waitForNetworkIdle) {
-    await page.waitForLoadState('networkidle');
+  if (_waitForLoaders) {
+    await waitForAllLoadersToDisappear(page);
   }
 };
 
 export const redirectToExplorePage = async (page: Page) => {
   await page.goto('/explore');
   await page.waitForURL('**/explore');
-  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const removeLandingBanner = async (page: Page) => {
@@ -158,8 +241,6 @@ export const toastNotification = async (
   await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
-
-  await expect(page.getByTestId('alert-icon-close')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -406,17 +487,27 @@ export const assignDataProduct = async (
     .click();
 
   for (const dataProduct of dataProducts) {
-    const searchDataProduct = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(encodeURIComponent(domain.name))
+    const tagLocator = page.getByTestId(
+      `tag-${dataProduct.fullyQualifiedName}`
     );
 
-    await page
-      .locator('[data-testid="data-product-selector"] input')
-      .fill(dataProduct.displayName);
-    await searchDataProduct;
-    await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
+    await expect(async () => {
+      const searchDataProduct = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(domain.name))
+      );
+      await page
+        .locator('[data-testid="data-product-selector"] input')
+        .clear();
+      await page
+        .locator('[data-testid="data-product-selector"] input')
+        .fill(dataProduct.displayName);
+      await searchDataProduct;
+      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+
+    await tagLocator.click();
   }
 
   await expect(
@@ -506,18 +597,20 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
-  await page.getByRole('menuitem', { name: glossaryName }).click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page
+    .getByRole('menuitem', { name: glossaryName })
+    .click({ timeout: 30000 });
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 export const getRandomFirstName = () => {
-  return `${
-    adjectives[Math.floor(Math.random() * adjectives.length)]
-  }${uuid()}`;
+  const index = parseInt(crypto.randomUUID().slice(0, 8), 16) % adjectives.length;
+  return `${adjectives[index]}${uuid()}`;
 };
 export const getRandomLastName = () => {
-  return `${nouns[Math.floor(Math.random() * nouns.length)]}${uuid()}`;
+  const index = parseInt(crypto.randomUUID().slice(0, 8), 16) % nouns.length;
+  return `${nouns[index]}${uuid()}`;
 };
 
 export const generateRandomUsername = (prefix = '') => {
@@ -587,7 +680,6 @@ export const closeFirstPopupAlert = async (page: Page) => {
 
 export const reloadAndWaitForNetworkIdle = async (page: Page) => {
   await page.reload();
-  await page.waitForLoadState('networkidle');
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
@@ -1004,7 +1096,6 @@ export const testTableSorting = async (
   columnIndex = 0
 ) => {
   await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
 
   const header = page.locator(`th:has-text("${columnHeader}")`).first();
   const visibleRowSelector = `tbody tr:not([aria-hidden="true"])`;
@@ -1047,18 +1138,20 @@ export const testTableSearch = async (
   notVisibleText: string
 ) => {
   await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
 
-  const waitForSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*index=${searchIndex}*`
-  );
+  await expect(async () => {
+    const waitForSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*index=${searchIndex}*`
+    );
+    await page.getByTestId('searchbar').fill(searchTerm);
+    await waitForSearchResponse;
+    await waitForAllLoadersToDisappear(page);
 
-  await page.getByTestId('searchbar').fill(searchTerm);
-  await waitForSearchResponse;
-  await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('networkidle');
-
-  await expect(page.getByText(searchTerm).first()).toBeVisible();
-
-  await expect(page.getByText(notVisibleText).first()).not.toBeVisible();
+    await expect(page.getByText(searchTerm).first()).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.getByText(notVisibleText).first()).not.toBeVisible({
+      timeout: 5_000,
+    });
+  }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 };

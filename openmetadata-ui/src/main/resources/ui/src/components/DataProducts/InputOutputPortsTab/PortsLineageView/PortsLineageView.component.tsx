@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import {
+  Button,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Maximize01, Minimize01 } from '@untitledui/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -210,90 +215,60 @@ const PortsLineageView = ({
 
   if (!hasAnyPorts) {
     return (
-      <Box
-        className="ports-lineage-view-empty"
-        sx={{
-          height: 200,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'grey.50',
-          borderRadius: '8px',
-          border: '1px solid',
-          borderColor: 'grey.200',
-        }}>
+      <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-gray-50 tw:rounded-lg tw:border tw:border-gray-200">
         <ErrorPlaceHolder
           className="m-t-0"
           icon={
             <AddPlaceHolderIcon
-              className="w-12 h-12"
+              className="tw:w-12 tw:h-12"
               data-testid="no-ports-placeholder"
             />
           }
           size={SIZE.SMALL}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography className="text-center" variant="body2">
+          <Typography as="p" className="text-center">
             {assetCount === 0
               ? t('message.no-assets-for-ports-lineage')
               : t('message.no-ports-to-display-lineage')}
           </Typography>
         </ErrorPlaceHolder>
-      </Box>
+      </div>
     );
   }
 
   return (
-    <Box
-      className="ports-lineage-view"
+    <div
+      className={`ports-lineage-view w-full bg-gray-50 ${
+        isFullScreen
+          ? 'tw:fixed tw:top-0 tw:left-0 tw:right-0 tw:bottom-0 tw:z-1300 tw:rounded-none tw:border-none'
+          : 'tw:relative tw:rounded-lg tw:border tw:border-gray-200'
+      }`}
       data-testid="ports-lineage-view"
-      sx={{
-        height: containerHeight,
-        width: '100%',
-        backgroundColor: 'grey.50',
-        borderRadius: isFullScreen ? 0 : '8px',
-        border: isFullScreen ? 'none' : '1px solid',
-        borderColor: 'grey.200',
-        position: isFullScreen ? 'fixed' : 'relative',
-        top: isFullScreen ? 0 : 'auto',
-        left: isFullScreen ? 0 : 'auto',
-        right: isFullScreen ? 0 : 'auto',
-        bottom: isFullScreen ? 0 : 'auto',
-        zIndex: isFullScreen ? 1300 : 'auto',
-      }}>
+      style={{ height: containerHeight }}>
       {onToggleFullScreen && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            zIndex: 10,
-          }}>
+        <div className="tw:absolute tw:top-2 tw:right-2 tw:z-10">
           <Tooltip
             title={
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen')
             }>
-            <IconButton
-              data-testid="toggle-fullscreen-btn"
-              size="small"
-              sx={{
-                backgroundColor: 'white',
-                border: '1px solid',
-                borderColor: '#414651',
-                '&:hover': {
-                  backgroundColor: 'grey.100',
-                },
-              }}
-              onClick={handleToggleFullScreen}>
-              {isFullScreen ? (
-                <Minimize01 fill="#414651" height={18} width={18} />
-              ) : (
-                <Maximize01 fill="#414651" height={18} width={18} />
-              )}
-            </IconButton>
+            <TooltipTrigger>
+              <Button
+                color="secondary"
+                data-testid="toggle-fullscreen-btn"
+                iconLeading={
+                  isFullScreen ? (
+                    <Minimize01 fill="#414651" height={18} width={18} />
+                  ) : (
+                    <Maximize01 fill="#414651" height={18} width={18} />
+                  )
+                }
+                onClick={handleToggleFullScreen}
+              />
+            </TooltipTrigger>
           </Tooltip>
-        </Box>
+        </div>
       )}
 
       <ReactFlow
@@ -315,7 +290,7 @@ const PortsLineageView = ({
           showInteractive={false}
         />
       </ReactFlow>
-    </Box>
+    </div>
   );
 };
 

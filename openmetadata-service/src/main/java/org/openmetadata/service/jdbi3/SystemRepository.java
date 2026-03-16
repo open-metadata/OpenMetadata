@@ -703,10 +703,7 @@ public class SystemRepository {
 
   private StepValidation getSearchValidation(OpenMetadataApplicationConfig applicationConfig) {
     SearchRepository searchRepository = Entity.getSearchRepository();
-    if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
-        && searchRepository
-            .getSearchClient()
-            .indexExists(Entity.getSearchRepository().getIndexOrAliasName(INDEX_NAME))) {
+    if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())) {
       if (validateDataInsights()) {
         List<String> missingIndexes = findMissingIndexes(searchRepository);
         String message =

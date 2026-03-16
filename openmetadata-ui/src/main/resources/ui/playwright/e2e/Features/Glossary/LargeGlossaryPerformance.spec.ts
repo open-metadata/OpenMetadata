@@ -19,6 +19,7 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
   dragAndDropTerm,
@@ -125,6 +126,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await searchInput.fill('Term_5');
 
     await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    await waitForAllLoadersToDisappear(page);
     // Verify filtered results
 
     const filteredTerms = await page.locator('tbody .ant-table-row').count();

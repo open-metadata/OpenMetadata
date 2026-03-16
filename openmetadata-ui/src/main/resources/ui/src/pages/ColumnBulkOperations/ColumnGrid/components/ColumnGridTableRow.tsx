@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  Checkbox,
-  CircularProgress,
-  TableCell,
-  TableRow,
-  useTheme,
-} from '@mui/material';
+import { Checkbox, TableCell, TableRow, useTheme } from '@mui/material';
 import React, { useMemo } from 'react';
+import Loader from '../../../../components/common/Loader/Loader';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
 
 interface ColumnGridTableRowProps {
@@ -133,12 +128,16 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
       sx={rowSx}>
       <TableCell padding="checkbox" sx={cellSx}>
         {isPendingRefetch ? (
-          <CircularProgress size={20} sx={{ display: 'block' }} />
+          <Loader size="small" />
         ) : (
           <Checkbox
             checked={isSelected}
             data-testid={`column-checkbox-${entity.columnName}`}
             indeterminate={isIndeterminate}
+            inputProps={{
+              'aria-label': entity.columnName,
+              'data-testid': `column-checkbox-input-${entity.columnName}`,
+            }}
             onChange={handleCheckboxChange}
           />
         )}

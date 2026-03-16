@@ -56,7 +56,6 @@ export class Domain extends EntityClass {
 
   async visitEntityPage(page: Page) {
     await sidebarClick(page, SidebarItem.DOMAIN);
-    await page.waitForLoadState('networkidle');
     await selectDomain(page, this.responseData);
   }
 
@@ -64,6 +63,13 @@ export class Domain extends EntityClass {
     const response = await apiContext.post('/api/v1/domains', {
       data: this.data,
     });
+
+    if (!response.ok()) {
+      throw new Error(
+        `Domain.create() failed with status ${response.status()}: ${await response.text()}`
+      );
+    }
+
     const data = await response.json();
     this.responseData = data;
 

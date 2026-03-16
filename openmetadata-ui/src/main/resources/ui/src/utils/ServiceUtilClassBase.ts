@@ -148,6 +148,7 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import {
   ConfigData,
   ExtraInfoType,
@@ -163,6 +164,7 @@ import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
+import { getSearchIndexFromService } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
@@ -188,6 +190,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Snowplow,
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
+    DatabaseServiceType.Informix,
     DatabaseServiceType.ServiceNow,
     DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
@@ -779,41 +782,41 @@ class ServiceUtilClassBase {
 
     switch (true) {
       case Object.values(database).includes(
-        serviceType as typeof database[keyof typeof database]
+        serviceType as (typeof database)[keyof typeof database]
       ):
         return ExplorePageTabs.TABLES;
       case Object.values(messaging).includes(
-        serviceType as typeof messaging[keyof typeof messaging]
+        serviceType as (typeof messaging)[keyof typeof messaging]
       ):
         return ExplorePageTabs.TOPICS;
       case Object.values(dashboard).includes(
-        serviceType as typeof dashboard[keyof typeof dashboard]
+        serviceType as (typeof dashboard)[keyof typeof dashboard]
       ):
         return ExplorePageTabs.DASHBOARDS;
       case Object.values(mlmodel).includes(
-        serviceType as typeof mlmodel[keyof typeof mlmodel]
+        serviceType as (typeof mlmodel)[keyof typeof mlmodel]
       ):
         return ExplorePageTabs.MLMODELS;
       case Object.values(pipeline).includes(
-        serviceType as typeof pipeline[keyof typeof pipeline]
+        serviceType as (typeof pipeline)[keyof typeof pipeline]
       ):
         return ExplorePageTabs.PIPELINES;
       case Object.values(storage).includes(
-        serviceType as typeof storage[keyof typeof storage]
+        serviceType as (typeof storage)[keyof typeof storage]
       ):
         return ExplorePageTabs.CONTAINERS;
       case Object.values(search).includes(
-        serviceType as typeof search[keyof typeof search]
+        serviceType as (typeof search)[keyof typeof search]
       ):
         return ExplorePageTabs.SEARCH_INDEX;
 
       case Object.values(api).includes(
-        serviceType as typeof api[keyof typeof api]
+        serviceType as (typeof api)[keyof typeof api]
       ):
         return ExplorePageTabs.API_ENDPOINT;
 
       case Object.values(security).includes(
-        serviceType as typeof security[keyof typeof security]
+        serviceType as (typeof security)[keyof typeof security]
       ):
         return ExplorePageTabs.TABLES; // Security services don't have a specific tab, default to tables
 
@@ -919,6 +922,10 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getSearchIndexFromEntityType(entityType: EntityType | string) {
+    return getSearchIndexFromService(entityType);
   }
 
   /**

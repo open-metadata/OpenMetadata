@@ -18,6 +18,7 @@ from typing import Dict, Optional, Tuple
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine, reflection
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.schema import CreateTable, MetaData
 
 from metadata.utils.logger import ingestion_logger
@@ -158,6 +159,18 @@ def get_all_table_ddls(
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.debug(f"Failed to get table ddls for {schema_name}: {exc}")
+        # Roll back the aborted transaction so the connection remains usable
+        # for subsequent queries (e.g. get_table_comment). Without this,
+        # psycopg2 raises InFailedSqlTransaction on every query that follows.
+        if isinstance(exc, ProgrammingError):
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+        try:
+            connection.rollback()
+        except Exception:
+            pass
 
 
 def get_table_ddl_wrapper(

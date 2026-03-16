@@ -98,10 +98,26 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateTrigger();
-      updateConfig();
-      updateNodes();
-      updateEdges();
+      compareAndUpdate(
+          "trigger",
+          () -> {
+            updateTrigger();
+          });
+      compareAndUpdate(
+          "config",
+          () -> {
+            updateConfig();
+          });
+      compareAndUpdate(
+          "nodes",
+          () -> {
+            updateNodes();
+          });
+      compareAndUpdate(
+          "edges",
+          () -> {
+            updateEdges();
+          });
     }
 
     private void updateTrigger() {
@@ -715,6 +731,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
    */
   private boolean isConditionalTask(WorkflowNodeDefinitionInterface node) {
     String nodeType = node.getSubType();
-    return "checkEntityAttributesTask".equals(nodeType) || "userApprovalTask".equals(nodeType);
+    return "checkEntityAttributesTask".equals(nodeType)
+        || "userApprovalTask".equals(nodeType)
+        || "checkChangeDescriptionTask".equals(nodeType);
   }
 }

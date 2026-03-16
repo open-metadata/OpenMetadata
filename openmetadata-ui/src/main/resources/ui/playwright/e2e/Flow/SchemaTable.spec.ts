@@ -117,7 +117,6 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
     await redirectToHomePage(page);
 
     await table.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await addOwner({
@@ -143,7 +142,6 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
       await redirectToHomePage(currentPage);
 
       await table.visitEntityPage(currentPage);
-      await currentPage.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -157,34 +155,38 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
   });
 });
 
-test('Schema Table Pagination should work Properly', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
-  const tableResponse = page.waitForResponse(`/api/v1/tables?limit=15**`);
+test(
+  'Schema Table Pagination should work Properly',
+  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+  async ({ page }) => {
+    const tableResponse = page.waitForResponse(`/api/v1/tables?limit=15**`);
 
-  await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
-  await tableResponse;
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await tableResponse;
 
-  await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-    '15 / Page'
-  );
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+      '15 / Page'
+    );
 
-  await expect(page.getByTestId('previous')).toBeDisabled();
+    await expect(page.getByTestId('previous')).toBeDisabled();
 
-  await expect(page.getByTestId('next')).not.toBeDisabled();
+    await expect(page.getByTestId('next')).not.toBeDisabled();
 
-  const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
-  await page.getByTestId('next').click();
-  await tableResponse2;
+    const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
+    await page.getByTestId('next').click();
+    await tableResponse2;
 
-  await expect(page.getByTestId('previous')).not.toBeDisabled();
+    await expect(page.getByTestId('previous')).not.toBeDisabled();
 
-  await expect(page.getByTestId('page-indicator')).toContainText('2');
+    await expect(page.getByTestId('page-indicator')).toContainText('2');
 
-  const tableResponse3 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
-  await page.getByTestId('previous').click();
-  await tableResponse3;
+    const tableResponse3 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
+    await page.getByTestId('previous').click();
+    await tableResponse3;
 
-  await expect(page.getByTestId('page-indicator')).toContainText('1');
-});
+    await expect(page.getByTestId('page-indicator')).toContainText('1');
+  }
+);
 
 test('Copy column link button should copy the column URL to clipboard', async ({
   page,

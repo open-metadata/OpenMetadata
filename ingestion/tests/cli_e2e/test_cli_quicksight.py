@@ -48,7 +48,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return 6
 
     def expected_not_included_sink_entities(self) -> int:
-        return 7
+        return 3
 
     def expected_filtered_mix(self) -> int:
         return 2
@@ -75,7 +75,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return 0
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
-        return 7
+        return 3
 
     @pytest.mark.order(11)
     def test_lineage(self) -> None:

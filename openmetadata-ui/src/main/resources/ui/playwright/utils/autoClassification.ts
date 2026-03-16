@@ -39,7 +39,6 @@ export const addAndTriggerAutoClassificationPipeline = async (
   if (await metadataTab.isVisible()) {
     await metadataTab.click();
   }
-  await page.waitForLoadState('networkidle');
 
   await page.click('[data-testid="add-new-ingestion-button"]');
 
@@ -70,7 +69,6 @@ export const addAndTriggerAutoClassificationPipeline = async (
   if (await metadataTab2.isVisible()) {
     await metadataTab2.click();
   }
-  await page.waitForLoadState('networkidle');
   await page
     .getByLabel('agents')
     .getByTestId('loader')

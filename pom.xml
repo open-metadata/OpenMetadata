@@ -73,7 +73,7 @@
     <mockito.version>5.14.2</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
-    <jackson.version>2.17.2</jackson.version>
+    <jackson.version>2.18.6</jackson.version>
     <dropwizard.version>5.0.0</dropwizard.version>
     <dropwizard-jdbi3.version>5.0.0</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
@@ -109,7 +109,7 @@
     <httpclient.version>4.5.14</httpclient.version>
     <spring.version>6.2.11</spring.version>
     <log4j.version>2.25.3</log4j.version>
-    <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
+    <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
     <dropwizard-health.version>5.0.0</dropwizard-health.version>
     <handlebars.version>4.5.0</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
@@ -149,7 +149,7 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty.version>12.1.1</jetty.version>
+    <jetty.version>12.1.6</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>0.17.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
@@ -162,6 +162,13 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${org.junit.jupiter.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <!-- Security: Force newer versions to fix vulnerabilities -->
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -213,6 +220,11 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.module</groupId>
+        <artifactId>jackson-module-blackbird</artifactId>
         <version>${jackson.version}</version>
       </dependency>
       <dependency>

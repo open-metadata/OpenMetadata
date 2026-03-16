@@ -183,8 +183,7 @@ const TeamsInfo = ({
             <Tooltip
               title={t('label.edit-entity', {
                 entity: t('label.email'),
-              })}
-            >
+              })}>
               <Button
                 className="flex-center teams-info-email-edit-button p-0"
                 data-testid="edit-email"
@@ -212,8 +211,7 @@ const TeamsInfo = ({
             //  Used onClick stop click propagation event anywhere in the form to parent
             //  TeamsDetailV1 collapsible panel
             onClick={(e) => e.stopPropagation()}
-            onFinish={onEmailSave}
-          >
+            onFinish={onEmailSave}>
             <Space align="baseline">
               <Form.Item
                 className="m-b-0"
@@ -226,8 +224,7 @@ const TeamsInfo = ({
                       fieldText: t('label.email'),
                     }),
                   },
-                ]}
-              >
+                ]}>
                 <Input
                   className="w-48"
                   data-testid="email-input"
@@ -243,8 +240,7 @@ const TeamsInfo = ({
                   disabled={isLoading}
                   size="small"
                   type="primary"
-                  onClick={() => setIsEmailEdit(false)}
-                >
+                  onClick={() => setIsEmailEdit(false)}>
                   <CloseOutlined />
                 </Button>
                 <Button
@@ -253,8 +249,7 @@ const TeamsInfo = ({
                   htmlType="submit"
                   loading={isLoading}
                   size="small"
-                  type="primary"
-                >
+                  type="primary">
                   <CheckOutlined />
                 </Button>
               </Space>
@@ -264,8 +259,7 @@ const TeamsInfo = ({
           <Space align="center">
             <Typography.Text
               className="font-medium text-sm teams-info-value"
-              data-testid="email-value"
-            >
+              data-testid="email-value">
               {email ?? NO_DATA_PLACEHOLDER}
             </Typography.Text>
           </Space>
@@ -292,8 +286,7 @@ const TeamsInfo = ({
               <Tooltip
                 title={t('label.edit-entity', {
                   entity: t('label.team-type'),
-                })}
-              >
+                })}>
                 <Button
                   className="flex-center edit-team-type-icon p-0"
                   data-testid="edit-team-type-icon"
@@ -375,15 +368,13 @@ const TeamsInfo = ({
                 to={entityUtilClassBase.getEntityLink(
                   EntityType.PERSONA,
                   currentTeam.defaultPersona.fullyQualifiedName ?? ''
-                )}
-              >
+                )}>
                 {getEntityName(currentTeam.defaultPersona)}
               </Link>
             ) : (
               <Typography.Text
                 className="text-sm font-medium"
-                color={theme.palette.grey['700']}
-              >
+                color={theme.palette.grey['700']}>
                 {t('message.no-persona-assigned')}
               </Typography.Text>
             )}
@@ -403,8 +394,7 @@ const TeamsInfo = ({
     <Space
       className="teams-info-header-container"
       data-testid="teams-info-header"
-      size={0}
-    >
+      size={0}>
       <DomainLabel
         headerLayout
         multiple
@@ -445,8 +435,7 @@ const TeamsInfo = ({
           {t('label.total-user-plural')}
           <Tooltip
             destroyTooltipOnHide
-            title={t('message.team-distinct-user-description')}
-          >
+            title={t('message.team-distinct-user-description')}>
             <InfoCircleOutlined
               className="m-x-xss"
               data-testid="helper-icon"
@@ -457,8 +446,7 @@ const TeamsInfo = ({
 
         <Typography.Text
           className="teams-info-value text-sm font-medium text-secondary-new"
-          data-testid="team-user-count"
-        >
+          data-testid="team-user-count">
           {currentTeam.userCount}
         </Typography.Text>
       </Space>

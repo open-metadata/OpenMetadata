@@ -74,6 +74,16 @@ def _load_domains(self, connection, **kw):
     return {}
 
 
+def get_temp_table_names(self, connection, schema=None, **kw):
+    """
+    Override PGDialect's get_temp_table_names to avoid querying
+    pg_catalog.pg_class.relpersistence which does not exist in Redshift,
+    causing a ProgrammingError that aborts the transaction and breaks all
+    subsequent queries.
+    """
+    return []
+
+
 def get_multi_columns(self, connection, **kw):
     """
     Override PGDialect's get_multi_columns to avoid querying

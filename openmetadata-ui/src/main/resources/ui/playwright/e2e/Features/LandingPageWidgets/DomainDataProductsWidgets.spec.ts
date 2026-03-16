@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -20,7 +20,10 @@ import { TopicClass } from '../../../support/entity/TopicClass';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  redirectToHomePage,
+  removeLandingBanner,
+} from '../../../utils/common';
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
@@ -40,9 +43,18 @@ import { sidebarClick } from '../../../utils/sidebar';
 const adminUser = new UserClass();
 
 const persona = new PersonaClass();
-const domain = new Domain();
+const widgetEntityId = Date.now().toString(36);
+const domain = new Domain({
+  name: `0000-pw-domain-${widgetEntityId}`,
+  displayName: `0000 PW Domain ${widgetEntityId}`,
+  description: 'playwright domain description',
+  domainType: 'Aggregate',
+});
 const subDomain = new SubDomain(domain);
-const dataProduct = new DataProduct([domain]);
+const dataProduct = new DataProduct(
+  [domain],
+  `0000-pw-data-product-${widgetEntityId}`
+);
 const table = new TableClass();
 const topic = new TopicClass();
 
@@ -54,6 +66,111 @@ const test = base.extend<{ page: Page }>({
     await page.close();
   },
 });
+
+const waitForEntitySearchable = async (
+  page: Page,
+  index: string,
+  query: string,
+  expectedId: string
+) => {
+  const browser = page.context().browser();
+  if (!browser) {
+    throw new Error('Browser instance is not available for admin API search');
+  }
+
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            `/api/v1/search/query?q=${encodeURIComponent(query)}`,
+            {
+              params: {
+                index,
+                from: 0,
+                size: 10,
+                deleted: false,
+              },
+            }
+          );
+
+          if (!response.ok()) {
+            return false;
+          }
+
+          const payload = await response.json();
+
+          return (
+            payload?.hits?.hits?.some(
+              (hit: { _source?: { id?: string } }) =>
+                hit._source?.id === expectedId
+            ) ?? false
+          );
+        },
+        {
+          timeout: 60_000,
+          intervals: [1_000, 2_000, 5_000],
+        }
+      )
+      .toBe(true);
+  } finally {
+    await afterAction();
+  }
+};
+
+const setWidgetSortOnCurrentPage = async (
+  page: Page,
+  widgetKey: string,
+  label: string
+) => {
+  const widget = page.getByTestId(widgetKey);
+  await expect(widget).toBeVisible();
+  await widget.scrollIntoViewIfNeeded().catch(() => undefined);
+
+  const dropdown = widget.getByTestId('widget-sort-by-dropdown');
+  await expect(dropdown).toBeVisible();
+
+  if (((await dropdown.textContent()) ?? '').includes(label)) {
+    return;
+  }
+
+  await dropdown.click();
+  const option = widget.locator('.widget-sort-filter-menu').getByText(label, {
+    exact: true,
+  });
+  await expect(option).toBeVisible();
+  await option.click();
+  await expect(dropdown).toContainText(label);
+};
+
+const verifyWidgetCountOnCurrentPage = async (
+  page: Page,
+  widgetKey: string,
+  selector: string,
+  expectedCount: number
+) => {
+  const widget = page.getByTestId(widgetKey);
+  await expect(widget).toBeVisible();
+  await widget.scrollIntoViewIfNeeded().catch(() => undefined);
+
+  await expect
+    .poll(
+      async () => {
+        const element = widget.locator(selector).first();
+        const isVisible = await element.isVisible().catch(() => false);
+
+        if (!isVisible) {
+          return null;
+        }
+
+        return (await element.textContent())?.trim() ?? null;
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toContain(expectedCount.toString());
+};
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
@@ -81,12 +198,32 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe.serial('Domain and Data Product Asset Counts', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await waitForAllLoadersToDisappear(page);
+  test.beforeEach(async ({ page }, testInfo) => {
+    await redirectToHomePage(page, false);
+    await removeLandingBanner(page);
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
+    if (testInfo.title !== 'Assign Widgets') {
+      await waitForEntitySearchable(
+        page,
+        'domain',
+        domain.responseData.name ?? domain.data.name,
+        domain.responseData.id ?? ''
+      );
+      await waitForEntitySearchable(
+        page,
+        'dataProduct',
+        dataProduct.responseData.name ?? dataProduct.data.name,
+        dataProduct.responseData.id ?? ''
+      );
+      await redirectToHomePage(page, false);
+      await removeLandingBanner(page);
+      await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    }
   });
 
   test('Assign Widgets', async ({ page }) => {
+    test.slow(true);
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await addAndVerifyWidget(
       page,
@@ -101,14 +238,23 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   });
 
   test('Verify Widgets are having 0 count initially', async ({ page }) => {
-    await verifyDomainCountInDomainWidget(
+    await redirectToHomePage(page, false);
+    await removeLandingBanner(page);
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
+    await verifyWidgetCountOnCurrentPage(
       page,
-      domain.responseData.id ?? '',
+      'KnowledgePanel.Domains',
+      [
+        `[data-testid="domain-card-${domain.responseData.id ?? ''}"] .domain-card-count`,
+        `[data-testid="domain-card-${domain.responseData.id ?? ''}"] .domain-card-full-count`,
+      ].join(', '),
       0
     );
-    await verifyDataProductCountInDataProductWidget(
+    await verifyWidgetCountOnCurrentPage(
       page,
-      dataProduct.responseData.id ?? '',
+      'KnowledgePanel.DataProducts',
+      `[data-testid="data-product-card-${dataProduct.responseData.id ?? ''}"] [data-testid="data-product-asset-count"]`,
       0
     );
   });
@@ -116,15 +262,11 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Domain asset count should update when assets are added', async ({
     page,
   }) => {
-    // Navigate to domain page and add assets via UI
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
 
-    // addAssetsToDomain navigates to assets tab, adds assets, and verifies count
     await addAssetsToDomain(page, domain, [table, topic]);
-
-    // After addAssetsToDomain, count should be 2
     await checkAssetsCount(page, 2);
 
     await redirectToHomePage(page);
@@ -138,14 +280,12 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Data Product asset count should update when assets are added', async ({
     page,
   }) => {
-    // Navigate to data product page
+    test.slow(true);
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProduct.data);
 
-    // Add assets to data product using UI
-    // addAssetsToDataProduct clicks assets tab and verifies 0 count first
     await addAssetsToDataProduct(
       page,
       dataProduct.responseData.fullyQualifiedName ?? '',
@@ -163,18 +303,14 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Domain asset count should update when assets are removed', async ({
     page,
   }) => {
-    // Current state: domain has 2 assets (table, topic)
-    // Navigate to domain page
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
 
-    // Click assets tab and verify count is 2
     await page.getByTestId('assets').click();
     await checkAssetsCount(page, 2);
 
-    // Select topic and remove it
     const topicFqn = topic.entityResponseData.fullyQualifiedName;
     await page
       .locator(`[data-testid="table-data-card_${topicFqn}"] input`)
@@ -184,9 +320,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await page.getByTestId('delete-all-button').click();
     await removeRes;
 
-    // Check assets count is now 1
     await page.reload();
-    await page.waitForLoadState('networkidle');
     await checkAssetsCount(page, 1);
 
     await redirectToHomePage(page);
@@ -200,17 +334,13 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Data Product asset count should update when assets are removed', async ({
     page,
   }) => {
-    // Navigate to data product page
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProduct.data);
 
-    // Click assets tab - data product should have some assets from previous test
     await page.getByTestId('assets').click();
-    await page.waitForLoadState('networkidle');
 
-    // Wait for assets to load
     await page
       .waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -220,7 +350,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
         /* ignore if loader not found */
       });
 
-    // Keep removing assets until no more are left
     let hasAssets = true;
     while (hasAssets) {
       const checkboxes = page.locator(
@@ -230,16 +359,13 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
       if (count === 0) {
         hasAssets = false;
-
         break;
       }
 
-      // Try to use Select All if available, otherwise select individually
       const selectAll = page.getByRole('checkbox', { name: 'Select All' });
       if (await selectAll.isVisible()) {
         await selectAll.check();
       } else {
-        // Select all visible assets individually
         for (let i = 0; i < count; i++) {
           await checkboxes.nth(i).check();
         }
@@ -249,14 +375,10 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       await page.getByTestId('delete-all-button').click();
       await removeRes;
 
-      // Wait for search to refresh
-      await page.waitForLoadState('networkidle');
       await page.waitForTimeout(500);
     }
 
-    // Refresh and check the assets tab shows 0
     await page.reload();
-    await page.waitForLoadState('networkidle');
     await checkAssetsCount(page, 0);
 
     await redirectToHomePage(page);

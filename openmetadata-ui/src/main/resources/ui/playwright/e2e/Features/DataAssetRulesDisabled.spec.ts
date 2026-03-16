@@ -210,7 +210,9 @@ test.describe(
           { state: 'detached' }
         );
 
-        const teamsSearchBar = page.getByTestId('owner-select-teams-search-bar');
+        const teamsSearchBar = page.getByTestId(
+          'owner-select-teams-search-bar'
+        );
         await teamsSearchBar.waitFor({ state: 'visible' });
 
         const searchUser = page.waitForResponse(
@@ -394,7 +396,6 @@ test.describe(
 
         await page.click('[data-testid="databases"]');
 
-        await page.waitForLoadState('networkidle');
 
         // Verify Details updated
         await expect(page.getByTestId('column-name')).toHaveText(
@@ -554,7 +555,6 @@ test.describe(
 
         await page.getByTestId('column-display-name').click();
 
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('loader', { state: 'hidden' });
 
         // Verify Tags
@@ -672,7 +672,6 @@ test.describe(
           .getByTestId('column-display-name')
           .getByTestId(table.entity.name)
           .click();
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('loader', { state: 'hidden' });
 
         // Verify Domain
@@ -745,7 +744,9 @@ test.describe(
 
         // Navigate to glossary term page with full page load
         await page.goto(
-          `/glossary/${encodeURIComponent(testGlossaryTerm.responseData.fullyQualifiedName)}`
+          `/glossary/${encodeURIComponent(
+            testGlossaryTerm.responseData.fullyQualifiedName
+          )}`
         );
 
         // Wait for page to be fully loaded

@@ -78,6 +78,7 @@ import {
   replyAnnouncement,
   unFollowEntity,
   waitForAllLoadersToDisappear,
+  getEncodedFqn,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
@@ -85,7 +86,7 @@ import {
   SettingOptionsType,
   sidebarClick,
 } from '../../utils/sidebar';
-import { selectTagInMUITagSuggestion } from '../../utils/tag';
+import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 const user = new UserClass();
 
@@ -292,39 +293,36 @@ test.describe('Domains', () => {
       ).not.toContainText(dataProduct1.data.displayName);
     });
 
-    await test.step(
-      'Verify empty assets message and Add Asset button',
-      async () => {
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-        await selectDataProduct(page, dataProduct1.data);
-        await waitForAllLoadersToDisappear(page);
+    await test.step('Verify empty assets message and Add Asset button', async () => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct1.data);
+      await waitForAllLoadersToDisappear(page);
 
-        const assetsTab = page.getByTestId('assets').getByText('Assets');
-        await expect(assetsTab).toBeVisible();
-        await assetsTab.click();
-        await waitForAllLoadersToDisappear(page);
+      const assetsTab = page.getByTestId('assets').getByText('Assets');
+      await expect(assetsTab).toBeVisible();
+      await assetsTab.click();
+      await waitForAllLoadersToDisappear(page);
 
-        // Verify empty state message
-        await expect(page.getByTestId('no-data-placeholder')).toContainText(
-          "Looks like you haven't added any data assets yet."
-        );
+      // Verify empty state message
+      await expect(page.getByTestId('no-data-placeholder')).toContainText(
+        "Looks like you haven't added any data assets yet."
+      );
 
-        const addButton = page.getByTestId('data-assets-add-button');
-        await expect(addButton).toBeVisible();
-        await addButton.click();
+      const addButton = page.getByTestId('data-assets-add-button');
+      await expect(addButton).toBeVisible();
+      await addButton.click();
 
-        await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page);
 
-        // Verify Add Assets form is displayed
-        await expect(page.getByTestId('form-heading')).toContainText(
-          'Add Assets'
-        );
+      // Verify Add Assets form is displayed
+      await expect(page.getByTestId('form-heading')).toContainText(
+        'Add Assets'
+      );
 
-        await expect(page.getByTestId('cancel-btn')).toBeVisible();
-        await expect(page.getByTestId('save-btn')).toBeDisabled();
-      }
-    );
+      await expect(page.getByTestId('cancel-btn')).toBeVisible();
+      await expect(page.getByTestId('save-btn')).toBeDisabled();
+    });
 
     await test.step('Add assets to DataProducts', async () => {
       await redirectToHomePage(page);
@@ -401,14 +399,11 @@ test.describe('Domains', () => {
     await domain.create(apiContext);
     await sidebarClick(page, SidebarItem.DOMAIN);
 
-    await test.step(
-      'Create DataProduct and custom properties for it',
-      async () => {
-        await selectDomain(page, domain.data);
-        await createDataProduct(page, dataProduct1.data);
-        await dataProduct1.prepareCustomProperty(apiContext);
-      }
-    );
+    await test.step('Create DataProduct and custom properties for it', async () => {
+      await selectDomain(page, domain.data);
+      await createDataProduct(page, dataProduct1.data);
+      await dataProduct1.prepareCustomProperty(apiContext);
+    });
 
     await test.step(`Set ${titleText} Custom Property`, async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -625,23 +620,20 @@ test.describe('Domains', () => {
         assets,
       });
 
-      await test.step(
-        'Delete domain & recreate the same domain and data product',
-        async () => {
-          await domain.delete(apiContext);
-          await domain1.create(apiContext);
-          await newDomainDP1.create(apiContext);
-          await newDomainDP2.create(apiContext);
-          await page.reload();
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-          await selectDataProduct(page, newDomainDP1.data);
-          await checkAssetsCount(page, 0);
-          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-          await selectDataProduct(page, newDomainDP2.data);
-          await checkAssetsCount(page, 0);
-        }
-      );
+      await test.step('Delete domain & recreate the same domain and data product', async () => {
+        await domain.delete(apiContext);
+        await domain1.create(apiContext);
+        await newDomainDP1.create(apiContext);
+        await newDomainDP2.create(apiContext);
+        await page.reload();
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, newDomainDP1.data);
+        await checkAssetsCount(page, 0);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, newDomainDP2.data);
+        await checkAssetsCount(page, 0);
+      });
     } finally {
       await newDomainDP1.delete(apiContext);
       await newDomainDP2.delete(apiContext);
@@ -685,9 +677,33 @@ test.describe('Domains', () => {
 
       await page.reload();
       await redirectToHomePage(page);
+      const dataProductFqn =
+        dataProduct.responseData.fullyQualifiedName ?? dataProduct.data.name;
+      await expect
+        .poll(async () => {
+          const response = await apiContext.get(
+            `/api/v1/dataProducts/name/${getEncodedFqn(
+              dataProductFqn
+            )}?fields=owners,experts`
+          );
 
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct.data);
+          if (!response.ok()) {
+            return { owners: 0, experts: 0 };
+          }
+
+          const body = await response.json();
+
+          return {
+            owners: body.owners?.length ?? 0,
+            experts: body.experts?.length ?? 0,
+          };
+        })
+        .toEqual({ owners: 1, experts: 1 });
+
+      await page.goto(`/dataProduct/${encodeURIComponent(dataProductFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId(user1.responseData.displayName)
@@ -809,76 +825,70 @@ test.describe('Domains', () => {
         );
       });
 
-      await test.step(
-        'Verify domain asset count matches displayed cards',
-        async () => {
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectDomain(page, domain.data);
+      await test.step('Verify domain asset count matches displayed cards', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
 
-          const assetsTab = page.getByTestId('assets');
-          await expect(assetsTab).toBeVisible();
-          await assetsTab.click();
+        const assetsTab = page.getByTestId('assets');
+        await expect(assetsTab).toBeVisible();
+        await assetsTab.click();
 
-          await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-          const assetCountElement = page
-            .getByTestId('assets')
-            .getByTestId('count');
-          const countText = await assetCountElement.textContent();
-          const displayedCount = Number.parseInt(countText ?? '0', 10);
-          const totalCount = domainAssets.length + subDomainAssets.length;
-          const assetCards = await page
-            .locator('[data-testid*="table-data-card_"]')
-            .count();
+        const assetCountElement = page
+          .getByTestId('assets')
+          .getByTestId('count');
+        const countText = await assetCountElement.textContent();
+        const displayedCount = Number.parseInt(countText ?? '0', 10);
+        const totalCount = domainAssets.length + subDomainAssets.length;
+        const assetCards = await page
+          .locator('[data-testid*="table-data-card_"]')
+          .count();
 
-          expect(displayedCount).toBe(totalCount);
-          expect(assetCards).toBe(totalCount);
-        }
-      );
+        expect(displayedCount).toBe(totalCount);
+        expect(assetCards).toBe(totalCount);
+      });
 
-      await test.step(
-        'Verify subdomain asset count matches displayed cards',
-        async () => {
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectDomain(page, domain.data);
+      await test.step('Verify subdomain asset count matches displayed cards', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
 
-          const subDomainsTab = page
-            .getByTestId('subdomains')
-            .getByText('Sub Domains');
-          await expect(subDomainsTab).toBeVisible();
-          await subDomainsTab.click();
-          await waitForAllLoadersToDisappear(page);
+        const subDomainsTab = page
+          .getByTestId('subdomains')
+          .getByText('Sub Domains');
+        await expect(subDomainsTab).toBeVisible();
+        await subDomainsTab.click();
+        await waitForAllLoadersToDisappear(page);
 
-          const subDomainCard = page.getByTestId(subDomain.data.name);
-          await expect(subDomainCard).toBeVisible();
+        const subDomainCard = page.getByTestId(subDomain.data.name);
+        await expect(subDomainCard).toBeVisible();
 
-          await Promise.all([
-            subDomainCard.click(),
-            page.waitForResponse('/api/v1/domains/name/*'),
-          ]);
+        await Promise.all([
+          subDomainCard.click(),
+          page.waitForResponse('/api/v1/domains/name/*'),
+        ]);
 
-          const assetsTab = page.getByTestId('assets');
-          await expect(assetsTab).toBeVisible();
-          await assetsTab.click();
+        const assetsTab = page.getByTestId('assets');
+        await expect(assetsTab).toBeVisible();
+        await assetsTab.click();
 
-          await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-          const assetCountElement = page
-            .getByTestId('assets')
-            .getByTestId('count');
-          const countText = await assetCountElement.textContent();
-          const displayedCount = Number.parseInt(countText ?? '0', 10);
+        const assetCountElement = page
+          .getByTestId('assets')
+          .getByTestId('count');
+        const countText = await assetCountElement.textContent();
+        const displayedCount = Number.parseInt(countText ?? '0', 10);
 
-          const assetCards = await page
-            .locator('[data-testid*="table-data-card_"]')
-            .count();
+        const assetCards = await page
+          .locator('[data-testid*="table-data-card_"]')
+          .count();
 
-          expect(displayedCount).toBe(subDomainAssets.length);
-          expect(assetCards).toBe(subDomainAssets.length);
-        }
-      );
+        expect(displayedCount).toBe(subDomainAssets.length);
+        expect(assetCards).toBe(subDomainAssets.length);
+      });
     } finally {
       await subDomain?.delete(apiContext);
       await domain.delete(apiContext);
@@ -901,261 +911,246 @@ test.describe('Domains', () => {
     >;
 
     try {
-      await test.step(
-        'Create domain, subdomain, and data products via API',
-        async () => {
-          await domain.create(apiContext);
-          subDomain = new SubDomain(domain);
-          await subDomain.create(apiContext);
+      await test.step('Create domain, subdomain, and data products via API', async () => {
+        await domain.create(apiContext);
+        subDomain = new SubDomain(domain);
+        await subDomain.create(apiContext);
 
-          // Create data product in parent domain
-          await domainDataProduct.create(apiContext);
+        // Create data product in parent domain
+        await domainDataProduct.create(apiContext);
 
-          // Create data product in subdomain
-          subDomainDataProduct = await createDataProductForSubDomain(
-            apiContext,
-            subDomain
-          );
-        }
-      );
+        // Create data product in subdomain
+        subDomainDataProduct = await createDataProductForSubDomain(
+          apiContext,
+          subDomain
+        );
+      });
 
-      await test.step(
-        'Verify domain data products tab shows both domain and subdomain data products',
-        async () => {
-          await page.reload();
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectDomain(page, domain.data);
+      await test.step('Verify domain data products tab shows both domain and subdomain data products', async () => {
+        await page.reload();
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
 
-          // Click on Data Products tab
-          const dataProductsTab = page.getByTestId('data_products');
-          await expect(dataProductsTab).toBeVisible();
-          await dataProductsTab.click();
+        // Click on Data Products tab
+        const dataProductsTab = page.getByTestId('data_products');
+        await expect(dataProductsTab).toBeVisible();
+        await dataProductsTab.click();
 
-          await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-          // Verify data products count is 2 (one from domain + one from subdomain)
-          const dataProductCountElement = page
-            .getByTestId('data_products')
-            .getByTestId('count');
-          const countText = await dataProductCountElement.textContent();
-          const displayedCount = Number.parseInt(countText ?? '0', 10);
+        // Verify data products count is 2 (one from domain + one from subdomain)
+        const dataProductCountElement = page
+          .getByTestId('data_products')
+          .getByTestId('count');
+        const countText = await dataProductCountElement.textContent();
+        const displayedCount = Number.parseInt(countText ?? '0', 10);
 
-          expect(displayedCount).toBe(2);
+        expect(displayedCount).toBe(2);
 
-          // Verify both data product cards are visible (scope to data products container)
-          const dataProductsContainer = page.locator('.explore-search-card');
-          await expect(
-            dataProductsContainer.filter({
-              hasText: domainDataProduct.data.displayName,
-            })
-          ).toBeVisible();
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomainDataProduct.displayName,
-            })
-          ).toBeVisible();
-        }
-      );
+        // Verify both data product cards are visible (scope to data products container)
+        const dataProductsContainer = page.locator('.explore-search-card');
+        await expect(
+          dataProductsContainer.filter({
+            hasText: domainDataProduct.data.displayName,
+          })
+        ).toBeVisible();
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomainDataProduct.displayName,
+          })
+        ).toBeVisible();
+      });
 
-      await test.step(
-        'Verify subdomain data products tab shows only its own data products',
-        async () => {
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectDomain(page, domain.data);
+      await test.step('Verify subdomain data products tab shows only its own data products', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
 
-          // Navigate to subdomain
-          const subDomainsTab = page
-            .getByTestId('subdomains')
-            .getByText('Sub Domains');
-          await expect(subDomainsTab).toBeVisible();
-          await subDomainsTab.click();
-          await waitForAllLoadersToDisappear(page);
+        // Navigate to subdomain
+        const subDomainsTab = page
+          .getByTestId('subdomains')
+          .getByText('Sub Domains');
+        await expect(subDomainsTab).toBeVisible();
+        await subDomainsTab.click();
+        await waitForAllLoadersToDisappear(page);
 
-          const subDomainCard = page.getByTestId(subDomain.data.name);
-          await expect(subDomainCard).toBeVisible();
+        const subDomainCard = page.getByTestId(subDomain.data.name);
+        await expect(subDomainCard).toBeVisible();
 
-          await Promise.all([
-            subDomainCard.click(),
-            page.waitForResponse('/api/v1/domains/name/*'),
-          ]);
+        await Promise.all([
+          subDomainCard.click(),
+          page.waitForResponse('/api/v1/domains/name/*'),
+        ]);
 
-          // Click on Data Products tab
-          const dataProductsTab = page.getByTestId('data_products');
-          await expect(dataProductsTab).toBeVisible();
-          await dataProductsTab.click();
+        // Click on Data Products tab
+        const dataProductsTab = page.getByTestId('data_products');
+        await expect(dataProductsTab).toBeVisible();
+        await dataProductsTab.click();
 
-          await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-          // Verify data products count is 1 (only subdomain's own data product)
-          const dataProductCountElement = page
-            .getByTestId('data_products')
-            .getByTestId('count');
-          const countText = await dataProductCountElement.textContent();
-          const displayedCount = Number.parseInt(countText ?? '0', 10);
+        // Verify data products count is 1 (only subdomain's own data product)
+        const dataProductCountElement = page
+          .getByTestId('data_products')
+          .getByTestId('count');
+        const countText = await dataProductCountElement.textContent();
+        const displayedCount = Number.parseInt(countText ?? '0', 10);
 
-          expect(displayedCount).toBe(1);
+        expect(displayedCount).toBe(1);
 
-          // Verify only subdomain data product card is visible
-          const dataProductsContainer = page.locator('.explore-search-card');
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomainDataProduct.displayName,
-            })
-          ).toBeVisible();
-        }
-      );
+        // Verify only subdomain data product card is visible
+        const dataProductsContainer = page.locator('.explore-search-card');
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomainDataProduct.displayName,
+          })
+        ).toBeVisible();
+      });
 
-      await test.step(
-        'Delete subdomain and verify its data products are not visible in domain',
-        async () => {
-          // Delete subdomain (this should cascade delete its data product)
-          await subDomain.delete(apiContext);
-          // Mark as deleted to prevent double-delete in finally block
-          subDomainDataProduct =
-            undefined as unknown as typeof subDomainDataProduct;
-          subDomain = undefined as unknown as typeof subDomain;
+      await test.step('Delete subdomain and verify its data products are not visible in domain', async () => {
+        // Delete subdomain (this should cascade delete its data product)
+        await subDomain.delete(apiContext);
+        // Mark as deleted to prevent double-delete in finally block
+        subDomainDataProduct =
+          undefined as unknown as typeof subDomainDataProduct;
+        subDomain = undefined as unknown as typeof subDomain;
 
-          // Navigate to domain and verify
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectDomain(page, domain.data);
+        // Navigate to domain and verify
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
 
-          // Click on Data Products tab
-          const dataProductsTab = page.getByTestId('data_products');
-          await expect(dataProductsTab).toBeVisible();
-          await dataProductsTab.click();
+        // Click on Data Products tab
+        const dataProductsTab = page.getByTestId('data_products');
+        await expect(dataProductsTab).toBeVisible();
+        await dataProductsTab.click();
 
-          await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-          // Verify data products count is now 1 (only domain's own data product)
-          const dataProductCountElement = page
-            .getByTestId('data_products')
-            .getByTestId('count');
-          const countText = await dataProductCountElement.textContent();
-          const displayedCount = Number.parseInt(countText ?? '0', 10);
+        // Verify data products count is now 1 (only domain's own data product)
+        const dataProductCountElement = page
+          .getByTestId('data_products')
+          .getByTestId('count');
+        const countText = await dataProductCountElement.textContent();
+        const displayedCount = Number.parseInt(countText ?? '0', 10);
 
-          expect(displayedCount).toBe(1);
+        expect(displayedCount).toBe(1);
 
-          // Verify only domain data product is visible
-          const dataProductsContainer = page.locator('.explore-search-card');
-          await expect(
-            dataProductsContainer.filter({
-              hasText: domainDataProduct.data.displayName,
-            })
-          ).toBeVisible();
-        }
-      );
+        // Verify only domain data product is visible
+        const dataProductsContainer = page.locator('.explore-search-card');
+        await expect(
+          dataProductsContainer.filter({
+            hasText: domainDataProduct.data.displayName,
+          })
+        ).toBeVisible();
+      });
 
-      await test.step(
-        'Verify deeply nested subdomain data products are visible at each level',
-        async () => {
-          // Create nested structure: domain -> nestedSubDomain1 -> nestedSubDomain2 -> nestedSubDomain3
-          const nestedSubDomain1 = new SubDomain(domain);
-          await nestedSubDomain1.create(apiContext);
+      await test.step('Verify deeply nested subdomain data products are visible at each level', async () => {
+        // Create nested structure: domain -> nestedSubDomain1 -> nestedSubDomain2 -> nestedSubDomain3
+        const nestedSubDomain1 = new SubDomain(domain);
+        await nestedSubDomain1.create(apiContext);
 
-          const nestedSubDomain2 = new SubDomain(nestedSubDomain1);
-          await nestedSubDomain2.create(apiContext);
+        const nestedSubDomain2 = new SubDomain(nestedSubDomain1);
+        await nestedSubDomain2.create(apiContext);
 
-          const nestedSubDomain3 = new SubDomain(nestedSubDomain2);
-          await nestedSubDomain3.create(apiContext);
+        const nestedSubDomain3 = new SubDomain(nestedSubDomain2);
+        await nestedSubDomain3.create(apiContext);
 
-          // Create data products at each subdomain level
-          const subDomain1DataProduct = await createDataProductForSubDomain(
-            apiContext,
-            nestedSubDomain1
-          );
-          const subDomain2DataProduct = await createDataProductForSubDomain(
-            apiContext,
-            nestedSubDomain2
-          );
-          const subDomain3DataProduct = await createDataProductForSubDomain(
-            apiContext,
-            nestedSubDomain3
-          );
+        // Create data products at each subdomain level
+        const subDomain1DataProduct = await createDataProductForSubDomain(
+          apiContext,
+          nestedSubDomain1
+        );
+        const subDomain2DataProduct = await createDataProductForSubDomain(
+          apiContext,
+          nestedSubDomain2
+        );
+        const subDomain3DataProduct = await createDataProductForSubDomain(
+          apiContext,
+          nestedSubDomain3
+        );
 
-          // 1. Verify at domain level: should see 4 data products (domain's own + all nested)
-          await page.reload();
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectDomain(page, domain.data);
-          await verifyDataProductsCount(page, 4);
+        // 1. Verify at domain level: should see 4 data products (domain's own + all nested)
+        await page.reload();
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
+        await verifyDataProductsCount(page, 4);
 
-          // Verify all data products are visible at domain level (scope to container)
-          const dataProductsContainer = page.locator('.explore-search-card');
-          await expect(
-            dataProductsContainer.filter({
-              hasText: domainDataProduct.data.displayName,
-            })
-          ).toBeVisible();
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomain1DataProduct.displayName,
-            })
-          ).toBeVisible();
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomain2DataProduct.displayName,
-            })
-          ).toBeVisible();
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomain3DataProduct.displayName,
-            })
-          ).toBeVisible();
+        // Verify all data products are visible at domain level (scope to container)
+        const dataProductsContainer = page.locator('.explore-search-card');
+        await expect(
+          dataProductsContainer.filter({
+            hasText: domainDataProduct.data.displayName,
+          })
+        ).toBeVisible();
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomain1DataProduct.displayName,
+          })
+        ).toBeVisible();
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomain2DataProduct.displayName,
+          })
+        ).toBeVisible();
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomain3DataProduct.displayName,
+          })
+        ).toBeVisible();
 
-          // 2. Navigate to nestedSubDomain1 and verify: should see 3 data products (its own + subdomain2's + subdomain3's)
-          await navigateToSubDomain(page, nestedSubDomain1.data);
-          await verifyDataProductsCount(page, 3);
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomain1DataProduct.displayName,
-            })
-          ).toBeVisible();
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomain2DataProduct.displayName,
-            })
-          ).toBeVisible();
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomain3DataProduct.displayName,
-            })
-          ).toBeVisible();
+        // 2. Navigate to nestedSubDomain1 and verify: should see 3 data products (its own + subdomain2's + subdomain3's)
+        await navigateToSubDomain(page, nestedSubDomain1.data);
+        await verifyDataProductsCount(page, 3);
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomain1DataProduct.displayName,
+          })
+        ).toBeVisible();
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomain2DataProduct.displayName,
+          })
+        ).toBeVisible();
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomain3DataProduct.displayName,
+          })
+        ).toBeVisible();
 
-          // 3. Navigate to nestedSubDomain2 and verify: should see 2 data products (its own + subdomain3's)
-          await navigateToSubDomain(page, nestedSubDomain2.data);
-          await verifyDataProductsCount(page, 2);
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomain2DataProduct.displayName,
-            })
-          ).toBeVisible();
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomain3DataProduct.displayName,
-            })
-          ).toBeVisible();
+        // 3. Navigate to nestedSubDomain2 and verify: should see 2 data products (its own + subdomain3's)
+        await navigateToSubDomain(page, nestedSubDomain2.data);
+        await verifyDataProductsCount(page, 2);
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomain2DataProduct.displayName,
+          })
+        ).toBeVisible();
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomain3DataProduct.displayName,
+          })
+        ).toBeVisible();
 
-          // 4. Navigate to nestedSubDomain3 and verify: should see 1 data product (its own)
-          await navigateToSubDomain(page, nestedSubDomain3.data);
-          await verifyDataProductsCount(page, 1);
-          await expect(
-            dataProductsContainer.filter({
-              hasText: subDomain3DataProduct.displayName,
-            })
-          ).toBeVisible();
+        // 4. Navigate to nestedSubDomain3 and verify: should see 1 data product (its own)
+        await navigateToSubDomain(page, nestedSubDomain3.data);
+        await verifyDataProductsCount(page, 1);
+        await expect(
+          dataProductsContainer.filter({
+            hasText: subDomain3DataProduct.displayName,
+          })
+        ).toBeVisible();
 
-          // Cleanup nested structure (delete data products first, then subdomains from deepest level)
-          await subDomain3DataProduct.delete(apiContext);
-          await subDomain2DataProduct.delete(apiContext);
-          await subDomain1DataProduct.delete(apiContext);
-          await nestedSubDomain3.delete(apiContext);
-          await nestedSubDomain2.delete(apiContext);
-          await nestedSubDomain1.delete(apiContext);
-        }
-      );
+        // Cleanup nested structure (delete data products first, then subdomains from deepest level)
+        await subDomain3DataProduct.delete(apiContext);
+        await subDomain2DataProduct.delete(apiContext);
+        await subDomain1DataProduct.delete(apiContext);
+        await nestedSubDomain3.delete(apiContext);
+        await nestedSubDomain2.delete(apiContext);
+        await nestedSubDomain1.delete(apiContext);
+      });
     } finally {
       await subDomainDataProduct?.delete(apiContext);
       await domainDataProduct.delete(apiContext);
@@ -1174,6 +1169,7 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain.data);
+      await waitForAllLoadersToDisappear(page);
 
       await addTagsAndGlossaryToDomain(page, {
         tagFqn: tag.responseData.fullyQualifiedName,
@@ -1197,7 +1193,7 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Create domain with tags using MUITagSuggestion', async ({ page }) => {
+  test('Create domain with tags using TagSuggestion', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const testDomain = new Domain();
 
@@ -1206,22 +1202,24 @@ test.describe('Domains', () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
         await waitForAllLoadersToDisappear(page);
         await page.click('[data-testid="add-domain"]');
-        await page.waitForSelector('h6:has-text("Add Domain")', { state: 'visible' });
+        await page.waitForSelector('h6:has-text("Add Domain")', {
+          state: 'visible',
+        });
       });
 
       await test.step('Fill domain form', async () => {
         await fillDomainForm(page, testDomain.data);
       });
 
-      await test.step('Search and select tag via MUITagSuggestion', async () => {
-        await selectTagInMUITagSuggestion(page, {
+      await test.step('Search and select tag via TagSuggestion', async () => {
+        await selectTagInTagSuggestion(page, {
           searchTerm: tag.data.displayName,
           tagFqn: tag.responseData.fullyQualifiedName,
         });
 
-        await expect(page.locator('[data-testid="tag-suggestion"]')).toContainText(
-          tag.data.displayName
-        );
+        await expect(
+          page.locator('[data-testid="tag-suggestion"]')
+        ).toContainText(tag.data.displayName);
       });
 
       await test.step('Save domain and verify tag is applied', async () => {
@@ -1242,7 +1240,7 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Create subdomain with tags using MUITagSuggestion', async ({ page }) => {
+  test('Create subdomain with tags using TagSuggestion', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const parentDomain = new Domain();
     const subDomain = new SubDomain(parentDomain);
@@ -1265,8 +1263,8 @@ test.describe('Domains', () => {
         await fillDomainForm(page, subDomain.data, false);
       });
 
-      await test.step('Search and select tag via MUITagSuggestion', async () => {
-        await selectTagInMUITagSuggestion(page, {
+      await test.step('Search and select tag via TagSuggestion', async () => {
+        await selectTagInTagSuggestion(page, {
           searchTerm: tag.data.displayName,
           tagFqn: tag.responseData.fullyQualifiedName,
         });
@@ -1462,73 +1460,67 @@ test.describe('Domains', () => {
         });
       });
 
-      await test.step(
-        'Navigate to domain and assign custom property value',
-        async () => {
-          // Navigate to domain page
-          await sidebarClick(page, SidebarItem.DOMAIN);
+      await test.step('Navigate to domain and assign custom property value', async () => {
+        // Navigate to domain page
+        await sidebarClick(page, SidebarItem.DOMAIN);
 
-          await selectDomain(page, domain.data);
+        await selectDomain(page, domain.data);
 
-          // Click on custom properties tab
-          const customPropertiesTab = page.getByTestId('custom_properties');
-          await expect(customPropertiesTab).toBeVisible();
-          await customPropertiesTab.click();
+        // Click on custom properties tab
+        const customPropertiesTab = page.getByTestId('custom_properties');
+        await expect(customPropertiesTab).toBeVisible();
+        await customPropertiesTab.click();
 
-          // Wait for custom properties to load
-          await waitForAllLoadersToDisappear(page);
+        // Wait for custom properties to load
+        await waitForAllLoadersToDisappear(page);
 
-          // Add custom property value
-          const propertyCard = page.getByTestId(
-            `custom-property-${propertyName}-card`
-          );
-          await expect(propertyCard).toBeVisible();
+        // Add custom property value
+        const propertyCard = page.getByTestId(
+          `custom-property-${propertyName}-card`
+        );
+        await expect(propertyCard).toBeVisible();
 
-          const editIcon = propertyCard.getByTestId('edit-icon');
-          await expect(editIcon).toBeVisible();
-          await editIcon.click();
+        const editIcon = propertyCard.getByTestId('edit-icon');
+        await expect(editIcon).toBeVisible();
+        await editIcon.click();
 
-          const valueInput = page.getByTestId('value-input');
-          await expect(valueInput).toBeVisible();
-          await valueInput.fill(customPropertyValue);
+        const valueInput = page.getByTestId('value-input');
+        await expect(valueInput).toBeVisible();
+        await valueInput.fill(customPropertyValue);
 
-          // Save the custom property value
-          const saveResponse = page.waitForResponse('/api/v1/domains/*');
-          const saveButton = page.getByTestId('inline-save-btn');
-          await expect(saveButton).toBeVisible();
-          await expect(saveButton).toBeEnabled();
-          await saveButton.click();
-          await saveResponse;
+        // Save the custom property value
+        const saveResponse = page.waitForResponse('/api/v1/domains/*');
+        const saveButton = page.getByTestId('inline-save-btn');
+        await expect(saveButton).toBeVisible();
+        await expect(saveButton).toBeEnabled();
+        await saveButton.click();
+        await saveResponse;
 
-          // Verify the value is displayed
-          await expect(
-            page.getByTestId(`custom-property-${propertyName}-card`)
-          ).toContainText(customPropertyValue);
-        }
-      );
+        // Verify the value is displayed
+        await expect(
+          page.getByTestId(`custom-property-${propertyName}-card`)
+        ).toContainText(customPropertyValue);
+      });
 
-      await test.step(
-        'Reload and verify custom property value persists',
-        async () => {
-          // Reload the page
-          await page.reload();
+      await test.step('Reload and verify custom property value persists', async () => {
+        // Reload the page
+        await page.reload();
 
-          // Navigate back to the domain and custom properties
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectDomain(page, domain.data);
+        // Navigate back to the domain and custom properties
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
 
-          const customPropertiesTab = page.getByTestId('custom_properties');
-          await expect(customPropertiesTab).toBeVisible();
-          await customPropertiesTab.click();
+        const customPropertiesTab = page.getByTestId('custom_properties');
+        await expect(customPropertiesTab).toBeVisible();
+        await customPropertiesTab.click();
 
-          await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-          // Verify the custom property value persists after reload
-          await expect(
-            page.getByTestId(`custom-property-${propertyName}-card`)
-          ).toContainText(customPropertyValue);
-        }
-      );
+        // Verify the custom property value persists after reload
+        await expect(
+          page.getByTestId(`custom-property-${propertyName}-card`)
+        ).toContainText(customPropertyValue);
+      });
 
       await test.step('Cleanup custom property', async () => {
         // Navigate back to domain settings to delete the custom property
@@ -1768,7 +1760,6 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
       await subdomainSearchResponse;
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -1890,6 +1881,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await subdomainSearchResponse1;
 
       await waitForAllLoadersToDisappear(page);
+      await page.waitForTimeout(500);
 
       const subDomain1Card = page.getByTestId(subDomain1.data.name);
       await expect(subDomain1Card).toBeVisible();
@@ -1920,6 +1912,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await subdomainSearchResponse2;
 
       await waitForAllLoadersToDisappear(page);
+      await page.waitForTimeout(500);
 
       const subDomain2Card = page.getByTestId(subDomain2.data.name);
       await expect(subDomain2Card).toBeVisible();
@@ -1950,6 +1943,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await subdomainSearchResponse3;
 
       await waitForAllLoadersToDisappear(page);
+      await page.waitForTimeout(500);
 
       const subDomain3Card = page.getByTestId(subDomain3.data.name);
       await expect(subDomain3Card).toBeVisible();
@@ -2951,55 +2945,50 @@ test.describe('Data Consumer Domain Ownership', () => {
     const { page: dataConsumerPage, afterAction: consumerAfterAction } =
       await performUserLogin(browser, testResources.dataConsumerUser);
 
-    await test.step(
-      'Check domain management permissions for data consumer owner',
-      async () => {
-        await sidebarClick(dataConsumerPage, SidebarItem.DOMAIN);
-        await selectDomain(dataConsumerPage, testResources.domainForTest.data);
-        await dataConsumerPage.getByTestId('domain-details-add-button').click();
+    await test.step('Check domain management permissions for data consumer owner', async () => {
+      await sidebarClick(dataConsumerPage, SidebarItem.DOMAIN);
+      await selectDomain(dataConsumerPage, testResources.domainForTest.data);
+      await dataConsumerPage.getByTestId('domain-details-add-button').click();
 
-        // check Data Products menu item is visible
-        await expect(
-          dataConsumerPage.getByRole('menuitem', {
-            name: 'Data Products',
-            exact: true,
-          })
-        ).toBeVisible();
+      // check Data Products menu item is visible
+      await expect(
+        dataConsumerPage.getByRole('menuitem', {
+          name: 'Data Products',
+          exact: true,
+        })
+      ).toBeVisible();
 
-        await clickOutside(dataConsumerPage);
+      await clickOutside(dataConsumerPage);
 
-        await selectDataProductFromTab(
-          dataConsumerPage,
-          testResources.dataProductForTest.data
-        );
+      await selectDataProductFromTab(
+        dataConsumerPage,
+        testResources.dataProductForTest.data
+      );
 
-        // Verify the user can edit owner, tags, glossary and domain experts
-        await expect(dataConsumerPage.getByTestId('edit-owner')).toBeVisible();
-        await expect(
-          dataConsumerPage.getByTestId('tags-container').getByTestId('add-tag')
-        ).toBeVisible();
+      // Verify the user can edit owner, tags, glossary and domain experts
+      await expect(dataConsumerPage.getByTestId('edit-owner')).toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('tags-container').getByTestId('add-tag')
+      ).toBeVisible();
 
-        await expect(
-          dataConsumerPage
-            .getByTestId('glossary-container')
-            .getByTestId('add-tag')
-        ).toBeVisible();
+      await expect(
+        dataConsumerPage
+          .getByTestId('glossary-container')
+          .getByTestId('add-tag')
+      ).toBeVisible();
 
-        await expect(
-          dataConsumerPage.getByTestId('domain-expert-name').getByTestId('Add')
-        ).toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('domain-expert-name').getByTestId('Add')
+      ).toBeVisible();
 
-        await expect(
-          dataConsumerPage.getByTestId('manage-button')
-        ).toBeVisible();
+      await expect(dataConsumerPage.getByTestId('manage-button')).toBeVisible();
 
-        await addTagsAndGlossaryToDomain(dataConsumerPage, {
-          tagFqn: tag.responseData.fullyQualifiedName,
-          glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
-          isDomain: false,
-        });
-      }
-    );
+      await addTagsAndGlossaryToDomain(dataConsumerPage, {
+        tagFqn: tag.responseData.fullyQualifiedName,
+        glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+        isDomain: false,
+      });
+    });
 
     await consumerAfterAction();
   });
@@ -3044,7 +3033,6 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
-      await userPage.waitForLoadState('networkidle');
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -3063,7 +3051,6 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       const subDomainTableFqn =
         testResources.subDomainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(subDomainTableFqn)}`);
-      await userPage.waitForLoadState('networkidle');
 
       // Verify no permission error
       await expect(
@@ -3110,55 +3097,47 @@ test.describe('Domain Access with noDomain() Rule', () => {
     const { page: userPage, afterAction: userAfterAction } =
       await performUserLogin(browser, testResources.testUser);
 
-    await test.step(
-      'Verify user can access domain-assigned table',
-      async () => {
-        const domainTableFqn =
-          testResources.domainTable.entityResponseData.fullyQualifiedName;
-        await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
-        await userPage.waitForLoadState('networkidle');
-        await userPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+    await test.step('Verify user can access domain-assigned table', async () => {
+      const domainTableFqn =
+        testResources.domainTable.entityResponseData.fullyQualifiedName;
+      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+      await userPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        // Verify no permission error
-        await expect(
-          userPage.getByTestId('permission-error-placeholder')
-        ).not.toBeVisible();
+      // Verify no permission error
+      await expect(
+        userPage.getByTestId('permission-error-placeholder')
+      ).not.toBeVisible();
 
-        // Verify table details are visible
-        await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
-      }
-    );
+      // Verify table details are visible
+      await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
+    });
 
-    await test.step(
-      'Verify user gets permission error for table without domain',
-      async () => {
-        const noDomainTableFqn =
-          testResources.noDomainTable.entityResponseData.fullyQualifiedName;
-        await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
-        await userPage.waitForLoadState('networkidle');
-        await userPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+    await test.step('Verify user gets permission error for table without domain', async () => {
+      const noDomainTableFqn =
+        testResources.noDomainTable.entityResponseData.fullyQualifiedName;
+      await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
+      await userPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        // Verify permission error is shown
-        await expect(
-          userPage.getByTestId('permission-error-placeholder')
-        ).toBeVisible();
+      // Verify permission error is shown
+      await expect(
+        userPage.getByTestId('permission-error-placeholder')
+      ).toBeVisible();
 
-        await expect(
-          userPage.getByTestId('permission-error-placeholder')
-        ).toContainText(
-          "You don't have necessary permissions. Please check with the admin to get the View Table Details permission."
-        );
+      await expect(
+        userPage.getByTestId('permission-error-placeholder')
+      ).toContainText(
+        "You don't have necessary permissions. Please check with the admin to get the View Table Details permission."
+      );
 
-        // Verify table details are not visible
-        await expect(
-          userPage.getByTestId('entity-header-title')
-        ).not.toBeVisible();
-      }
-    );
+      // Verify table details are not visible
+      await expect(
+        userPage.getByTestId('entity-header-title')
+      ).not.toBeVisible();
+    });
 
     await userAfterAction();
   });
@@ -3275,7 +3254,6 @@ test.describe('Domain Tree View Functionality', () => {
     ).toContainText('1');
 
     await page.getByTestId('subdomains').getByText('Sub Domains').click();
-    await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -3300,10 +3278,8 @@ test.describe('Domain Tree View Functionality', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
       await selectDomain(page, testDomain.data);
-      await page.waitForLoadState('networkidle');
 
       await page.waitForSelector('[data-testid="glossary-container"]', {
         state: 'visible',
@@ -3377,10 +3353,8 @@ test.describe('Domain Tree View Functionality', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
       await selectDomain(page, testDomain.data);
-      await page.waitForLoadState('networkidle');
 
       await page.waitForSelector('[data-testid="tags-container"]', {
         state: 'visible',

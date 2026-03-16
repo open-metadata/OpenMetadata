@@ -303,7 +303,6 @@ export const redirectToBotPage = async (page: Page) => {
 
 export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await page.goto(`/bots/${botName}`);
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const isRevokeButtonVisible = await page
@@ -320,7 +319,6 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
 
     await page.getByTestId('save-button').click();
 
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   } else if (isAuthMechanismVisible) {
     await page.getByTestId('auth-mechanism').click();

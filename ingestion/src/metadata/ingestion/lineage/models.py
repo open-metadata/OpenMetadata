@@ -52,6 +52,9 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
     ImpalaType,
 )
+from metadata.generated.schema.entity.services.connections.database.informixConnection import (
+    InformixType,
+)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBType,
 )
@@ -159,6 +162,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(DorisType.Doris.value): Dialect.MYSQL,
     str(StarrocksType.StarRocks.value): Dialect.MYSQL,
     str(MicrosoftFabricType.MicrosoftFabric.value): Dialect.TSQL,
+    str(InformixType.Informix.value): Dialect.ANSI,
 }
 
 

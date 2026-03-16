@@ -44,7 +44,13 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   test.describe.configure({ mode: 'serial' });
 
   // Create terms with specific statuses to test filtering
-  const STATUSES_TO_TEST = ['Approved', 'Draft', 'In Review', 'Deprecated', 'Rejected'];
+  const STATUSES_TO_TEST = [
+    'Approved',
+    'Draft',
+    'In Review',
+    'Deprecated',
+    'Rejected',
+  ];
 
   const glossary = new Glossary();
   const createdTerms: { term: GlossaryTerm; status: string }[] = [];
@@ -184,7 +190,11 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     // Create 2 terms per status (10 terms total)
     for (const status of STATUSES_TO_TEST) {
       for (let i = 0; i < 2; i++) {
-        const term = new GlossaryTerm(glossary, undefined, `Term_${status}_${i}`);
+        const term = new GlossaryTerm(
+          glossary,
+          undefined,
+          `Term_${status}_${i}`
+        );
         await term.create(apiContext);
         if (status !== 'Approved') {
           await setTermStatus(apiContext, term, status);
@@ -218,7 +228,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
   test.describe('Status Filter', () => {
     test('should display only Draft terms when filtered', async ({ page }) => {
-
       await applyStatusFilter(page, ['Draft']);
 
       const rowCount = await verifyRowStatuses(page, ['Draft']);
@@ -228,7 +237,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should display only Approved terms when filtered', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Approved']);
 
       const rowCount = await verifyRowStatuses(page, ['Approved']);
@@ -238,7 +246,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should display only In Review terms when filtered', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['In Review']);
 
       const rowCount = await verifyRowStatuses(page, ['In Review']);
@@ -248,7 +255,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should display only Deprecated terms when filtered', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Deprecated']);
 
       const rowCount = await verifyRowStatuses(page, ['Deprecated']);
@@ -258,18 +264,15 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should display only Rejected terms when filtered', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Rejected']);
 
       const rowCount = await verifyRowStatuses(page, ['Rejected']);
       expect(rowCount).toBeGreaterThan(0);
     });
 
-
     test('should display terms matching multiple selected statuses', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Draft', 'In Review']);
 
       const rowCount = await verifyRowStatuses(page, ['Draft', 'In Review']);
@@ -277,7 +280,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should display all terms when All is selected', async ({ page }) => {
-
       // First apply a filter
       await applyStatusFilter(page, ['Draft']);
       const filteredCount = await getRowCount(page);
@@ -300,7 +302,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should maintain filter state across pagination', async ({ page }) => {
-
       const expectedCount = createdTerms.filter(
         (t) => t.status === 'Approved'
       ).length;
@@ -338,7 +339,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
   test.describe('Search', () => {
     test('should return matching terms for search query', async ({ page }) => {
-
       await performSearch(page, 'Term_');
 
       const rows = page.locator(
@@ -354,7 +354,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should show no results for non-matching query', async ({ page }) => {
-
       await performSearch(page, 'NonExistentTermXYZ123');
 
       await page.waitForTimeout(1000);
@@ -367,7 +366,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should restore all terms when search is cleared', async ({
       page,
     }) => {
-
       const initialCount = await getRowCount(page);
 
       await performSearch(page, 'Term_Draft');
@@ -382,7 +380,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should paginate through search results', async ({ page }) => {
-
       // Search for a common pattern that returns many results
       await performSearch(page, 'Term_');
 
@@ -406,7 +403,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should filter search results by selected status', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Draft']);
 
       await performSearch(page, 'Term_');
@@ -423,7 +419,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should paginate combined search and status results', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Approved']);
 
       await performSearch(page, 'Term_');
@@ -455,7 +450,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should maintain status filter when search is cleared', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Draft']);
 
       await performSearch(page, 'Term_Draft');
@@ -470,7 +464,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should maintain search when status filter is changed', async ({
       page,
     }) => {
-
       await performSearch(page, 'Term_');
 
       const initialCount = await getRowCount(page);
@@ -490,7 +483,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
   test.describe('Filter State Management', () => {
     test('should revert changes when Cancel is clicked', async ({ page }) => {
-
       const initialCount = await getRowCount(page);
 
       // Open dropdown and make changes
@@ -524,7 +516,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should reset pagination when filter changes', async ({ page }) => {
-
       // Scroll to load more data
       await scrollToLoadMore(page);
       await scrollToLoadMore(page);
@@ -552,7 +543,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should apply status filter within acceptable time', async ({
       page,
     }) => {
-
       const startTime = Date.now();
 
       const statusDropdown = page.getByTestId('glossary-status-dropdown');

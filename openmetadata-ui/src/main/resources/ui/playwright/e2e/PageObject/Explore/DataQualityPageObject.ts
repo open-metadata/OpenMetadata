@@ -154,7 +154,6 @@ export class DataQualityPageObject extends RightPanelBase {
       .first();
     await testCaseLink.waitFor({ state: 'visible' });
     await testCaseLink.click();
-    await this.page.waitForLoadState('networkidle');
     return this;
   }
 

@@ -341,16 +341,13 @@ test.describe(
        * Step: Incident page redirect
        * @description Navigates to incident page via test case menu and verifies breadcrumb navigation.
        */
-      await test.step(
-        'Redirect to IncidentPage and verify breadcrumb',
-        async () => {
-          await verifyIncidentBreadcrumbsFromTablePageRedirect(
-            page,
-            table1,
-            NEW_TABLE_TEST_CASE.name
-          );
-        }
-      );
+      await test.step('Redirect to IncidentPage and verify breadcrumb', async () => {
+        await verifyIncidentBreadcrumbsFromTablePageRedirect(
+          page,
+          table1,
+          NEW_TABLE_TEST_CASE.name
+        );
+      });
 
       /**
        * Step: Delete test case
@@ -545,16 +542,13 @@ test.describe(
        * Step: Incident page redirect
        * @description Navigates to incident page for the column test case and verifies breadcrumb.
        */
-      await test.step(
-        'Redirect to IncidentPage and verify breadcrumb',
-        async () => {
-          await verifyIncidentBreadcrumbsFromTablePageRedirect(
-            page,
-            table1,
-            NEW_COLUMN_TEST_CASE.name
-          );
-        }
-      );
+      await test.step('Redirect to IncidentPage and verify breadcrumb', async () => {
+        await verifyIncidentBreadcrumbsFromTablePageRedirect(
+          page,
+          table1,
+          NEW_COLUMN_TEST_CASE.name
+        );
+      });
 
       /**
        * Step: Delete column test case
@@ -572,32 +566,29 @@ test.describe(
       const testCaseName = testCase?.['name'];
       await visitDataQualityTab(page, table2);
 
-      await test.step(
-        'Array params value should be visible while editing the test case',
-        async () => {
-          await expect(
-            page.locator(`[data-testid="${testCaseName}"]`)
-          ).toBeVisible();
+      await test.step('Array params value should be visible while editing the test case', async () => {
+        await expect(
+          page.locator(`[data-testid="${testCaseName}"]`)
+        ).toBeVisible();
 
-          await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
 
-          await expect(
-            page.locator(`[data-testid="edit-${testCaseName}"]`)
-          ).toBeVisible();
+        await expect(
+          page.locator(`[data-testid="edit-${testCaseName}"]`)
+        ).toBeVisible();
 
-          await page.click(`[data-testid="edit-${testCaseName}"]`);
+        await page.click(`[data-testid="edit-${testCaseName}"]`);
 
-          await expect(
-            page.locator('#tableTestForm_params_allowedValues_0_value')
-          ).toHaveValue('gmail');
-          await expect(
-            page.locator('#tableTestForm_params_allowedValues_1_value')
-          ).toHaveValue('yahoo');
-          await expect(
-            page.locator('#tableTestForm_params_allowedValues_2_value')
-          ).toHaveValue('collate');
-        }
-      );
+        await expect(
+          page.locator('#tableTestForm_params_allowedValues_0_value')
+        ).toHaveValue('gmail');
+        await expect(
+          page.locator('#tableTestForm_params_allowedValues_1_value')
+        ).toHaveValue('yahoo');
+        await expect(
+          page.locator('#tableTestForm_params_allowedValues_2_value')
+        ).toHaveValue('collate');
+      });
 
       await test.step('Validate patch request for edit test case', async () => {
         await page.fill(
@@ -704,50 +695,47 @@ test.describe(
         );
       });
 
-      await test.step(
-        'Update test case display name from Data Quality page',
-        async () => {
-          const getTestCase = page.waitForResponse(
-            '/api/v1/dataQuality/testCases/search/list?*'
-          );
-          await sidebarClick(page, SidebarItem.DATA_QUALITY);
-          await page.click('[data-testid="test-cases"]');
-          await getTestCase;
-          const searchTestCaseResponse = page.waitForResponse(
-            `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
-          );
-          await page.fill(
-            '[data-testid="test-case-container"] [data-testid="searchbar"]',
-            testCaseName
-          );
-          await searchTestCaseResponse;
-          await page.waitForSelector('.ant-spin', {
-            state: 'detached',
-          });
+      await test.step('Update test case display name from Data Quality page', async () => {
+        const getTestCase = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list?*'
+        );
+        await sidebarClick(page, SidebarItem.DATA_QUALITY);
+        await page.click('[data-testid="test-cases"]');
+        await getTestCase;
+        const searchTestCaseResponse = page.waitForResponse(
+          `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
+        );
+        await page.fill(
+          '[data-testid="test-case-container"] [data-testid="searchbar"]',
+          testCaseName
+        );
+        await searchTestCaseResponse;
+        await page.waitForSelector('.ant-spin', {
+          state: 'detached',
+        });
 
-          await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
 
-          await page.click(`[data-testid="edit-${testCaseName}"]`);
+        await page.click(`[data-testid="edit-${testCaseName}"]`);
 
-          await expect(
-            page.getByTestId('edit-test-case-drawer-title')
-          ).toBeVisible();
+        await expect(
+          page.getByTestId('edit-test-case-drawer-title')
+        ).toBeVisible();
 
-          await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
-            'Table test case display name'
-          );
+        await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
+          'Table test case display name'
+        );
 
-          await page.locator('[id="root\\/displayName"]').clear();
-          await page.fill('[id="root\\/displayName"]', 'Updated display name');
+        await page.locator('[id="root\\/displayName"]').clear();
+        await page.fill('[id="root\\/displayName"]', 'Updated display name');
 
-          await page.getByTestId('update-btn').click();
-          await toastNotification(page, 'Test case updated successfully.');
+        await page.getByTestId('update-btn').click();
+        await toastNotification(page, 'Test case updated successfully.');
 
-          await expect(
-            page.locator(`[data-testid="${testCaseName}"]`)
-          ).toHaveText('Updated display name');
-        }
-      );
+        await expect(
+          page.locator(`[data-testid="${testCaseName}"]`)
+        ).toHaveText('Updated display name');
+      });
     });
 
     test('TestCase filters', async ({ page }) => {
@@ -867,7 +855,6 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
         await page.click('[data-testid="test-cases"]');
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1141,7 +1128,6 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
         await page.click('[data-testid="test-cases"]');
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1202,7 +1188,6 @@ test.describe(
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
         await page.click('[data-testid="test-cases"]');
 
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });

@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { GlobalSettingOptions } from '../constant/settings';
 import {
   redirectToHomePage,
+  removeLandingBanner,
   toastNotification,
   visitOwnProfilePage,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { navigateToPersonaWithPagination } from './persona';
-import { settingClick } from './sidebar';
 
 // Entity types mapping from CURATED_ASSETS_LIST
 export const ENTITY_TYPE_CONFIGS = [
@@ -137,14 +135,8 @@ export const navigateToCustomizeLandingPage = async (
   page: Page,
   { personaName }: { personaName: string }
 ) => {
-  const getPersonas = page.waitForResponse('/api/v1/personas*');
-
-  await settingClick(page, GlobalSettingOptions.PERSONA);
-
-  await getPersonas;
-
-  // Need to find persona card and click as the list might get paginated
-  await navigateToPersonaWithPagination(page, personaName, true);
+  await page.goto(`/settings/persona/${encodeURIComponent(personaName)}`);
+  await waitForAllLoadersToDisappear(page);
 
   // Navigate to the customize landing page
   await page.getByRole('tab', { name: 'Customize UI' }).click();
@@ -155,8 +147,10 @@ export const navigateToCustomizeLandingPage = async (
 
   await page.getByTestId('LandingPage').click();
   await getCustomPageDataResponse;
-
-  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
+  await page
+    .getByTestId('customize-landing-page-header')
+    .waitFor({ state: 'visible' });
 };
 
 export const removeAndCheckWidget = async (
@@ -174,6 +168,11 @@ export const removeAndCheckWidget = async (
 };
 
 export const checkAllDefaultWidgets = async (page: Page) => {
+  await removeLandingBanner(page);
+  await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+  await expect(page.getByTestId('page-layout-v1')).toBeVisible();
   await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
   await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
   await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
@@ -223,19 +222,16 @@ export const openAddCustomizeWidgetModal = async (page: Page) => {
   await fetchResponse;
 };
 
-export const saveCustomizeLayoutPage = async (
-  page: Page,
-  isCreated?: boolean
-) => {
-  const saveResponse = page.waitForResponse(
-    isCreated ? '/api/v1/docStore' : '/api/v1/docStore/*'
+export const saveCustomizeLayoutPage = async (page: Page) => {
+  const saveResponse = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/docStore')
   );
   await page.locator('[data-testid="save-button"]').click();
   await saveResponse;
 
   await toastNotification(
     page,
-    `Page layout ${isCreated ? 'created' : 'updated'} successfully.`
+    /Page layout (created|updated) successfully\./
   );
 };
 
@@ -295,15 +291,29 @@ export const addAndVerifyWidget = async (
   );
   await page.locator('[data-testid="save-button"]').click();
   await saveLayout;
+  await toastNotification(page, /Page layout (created|updated) successfully\./);
 
-  await redirectToHomePage(page);
+  await redirectToHomePage(page, false);
 
-  await waitForAllLoadersToDisappear(page);
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+  await waitForAllLoadersToDisappear(page).catch(() => undefined);
+  await removeLandingBanner(page);
 
-  await expect(
-    page.getByTestId('page-layout-v1').getByTestId(widgetKey)
-  ).toBeVisible();
+  await expect
+    .poll(
+      async () => {
+        await redirectToHomePage(page, false);
+        await removeLandingBanner(page);
+        await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
+        return page
+          .getByTestId('page-layout-v1')
+          .getByTestId(widgetKey)
+          .isVisible()
+          .catch(() => false);
+      },
+      { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
 };
 
 export const addCuratedAssetPlaceholder = async ({
@@ -528,7 +538,6 @@ export const verifyWidgetEntityNavigation = async (
     }
 
     // Wait for navigation
-    await page.waitForLoadState('networkidle');
 
     // Verify we're on the correct page
     const currentUrl = page.url();
@@ -590,8 +599,12 @@ export const verifyWidgetHeaderNavigation = async (
   // Wait for navigation
   expect(currentUrl).toContain(navigationUrl);
 
-  // Navigate back to home page for next tests
-  await redirectToHomePage(page);
+  // Home keeps background requests alive on some persona routes; use the lighter
+  // redirect path and wait on rendered state instead of networkidle.
+  await redirectToHomePage(page, false);
+  await removeLandingBanner(page);
+  await waitForAllLoadersToDisappear(page).catch(() => undefined);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(() => undefined);
 };
 
 export const verifyDomainCountInDomainWidget = async (
@@ -599,16 +612,39 @@ export const verifyDomainCountInDomainWidget = async (
   domainId: string,
   expectedCount: number
 ) => {
-  const domainWidget = page.getByTestId('KnowledgePanel.Domains');
+  const widgetCardSelector = [
+    `[data-testid="domain-card-${domainId}"] .domain-card-count`,
+    `[data-testid="domain-card-${domainId}"] .domain-card-full-count`,
+  ].join(', ');
 
-  await expect(domainWidget).toBeVisible();
+  await redirectToHomePage(page, false);
+  await removeLandingBanner(page);
 
-  const domainCountElement = domainWidget.locator(
-    `[data-testid="domain-card-${domainId}"] .domain-card-count`
-  );
+  await expect
+    .poll(
+      async () => {
+        const domainWidget = page.getByTestId('KnowledgePanel.Domains');
+        await domainWidget.scrollIntoViewIfNeeded().catch(() => undefined);
+        const isWidgetVisible = await domainWidget.isVisible().catch(() => false);
 
-  await expect(domainCountElement).toBeVisible();
-  await expect(domainCountElement).toContainText(expectedCount.toString());
+        if (!isWidgetVisible) {
+          return null;
+        }
+
+        const card = domainWidget.locator(widgetCardSelector).first();
+        const isCardVisible = await card.isVisible().catch(() => false);
+
+        if (!isCardVisible) {
+          return null;
+        }
+
+        const text = await card.textContent();
+
+        return text?.trim() ?? null;
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toContain(expectedCount.toString());
 };
 
 export const verifyDataProductCountInDataProductWidget = async (
@@ -616,14 +652,36 @@ export const verifyDataProductCountInDataProductWidget = async (
   dataProductId: string,
   expectedCount: number
 ) => {
-  const dataProductWidget = page.getByTestId('KnowledgePanel.DataProducts');
+  const widgetCardSelector = `[data-testid="data-product-card-${dataProductId}"] [data-testid="data-product-asset-count"]`;
 
-  await expect(dataProductWidget).toBeVisible();
+  await redirectToHomePage(page, false);
+  await removeLandingBanner(page);
 
-  const dataProductCountElement = dataProductWidget.locator(
-    `[data-testid="data-product-card-${dataProductId}"] [data-testid="data-product-asset-count"]`
-  );
+  await expect
+    .poll(
+      async () => {
+        const dataProductWidget = page.getByTestId('KnowledgePanel.DataProducts');
+        await dataProductWidget.scrollIntoViewIfNeeded().catch(() => undefined);
+        const isWidgetVisible = await dataProductWidget
+          .isVisible()
+          .catch(() => false);
 
-  await expect(dataProductCountElement).toBeVisible();
-  await expect(dataProductCountElement).toContainText(expectedCount.toString());
+        if (!isWidgetVisible) {
+          return null;
+        }
+
+        const card = dataProductWidget.locator(widgetCardSelector).first();
+        const isCardVisible = await card.isVisible().catch(() => false);
+
+        if (!isCardVisible) {
+          return null;
+        }
+
+        const text = await card.textContent();
+
+        return text?.trim() ?? null;
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toContain(expectedCount.toString());
 };

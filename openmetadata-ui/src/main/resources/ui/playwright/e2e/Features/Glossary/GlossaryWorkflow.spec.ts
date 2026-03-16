@@ -137,7 +137,6 @@ test.describe('Term Status Transitions', () => {
     ).not.toBeVisible();
 
     // Wait for the table to update
-    await page.waitForLoadState('networkidle');
 
     // Check the term shows in the table with Approved status
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
@@ -175,7 +174,6 @@ test.describe('Term Status Transitions', () => {
     ).not.toBeVisible();
 
     // Wait for the table to update
-    await page.waitForLoadState('networkidle');
 
     // Check the term shows in the table with Draft status
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
@@ -215,11 +213,9 @@ test.describe('Term Status Transitions', () => {
       page.locator('[role="dialog"].edit-glossary-modal')
     ).not.toBeVisible();
 
-    await page.waitForLoadState('networkidle');
 
     // Click on the term name to navigate to term details
     await page.click(`[data-testid="${termName}"]`);
-    await page.waitForLoadState('networkidle');
 
     // Verify the reviewer section shows the inherited reviewer
     const reviewerSection = page.getByTestId('glossary-reviewer');
@@ -278,7 +274,6 @@ test('non-reviewer should not see approve/reject buttons', async ({
     await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(reviewer2Page, glossary.data.displayName);
 
-    await reviewer2Page.waitForLoadState('networkidle');
 
     const termRow = reviewer2Page.locator(`[data-row-key*="${termName}"]`);
 
@@ -333,7 +328,6 @@ test('should display correct status badge color and icon', async ({ page }) => {
       page.locator('[role="dialog"].edit-glossary-modal')
     ).not.toBeVisible();
 
-    await page.waitForLoadState('networkidle');
 
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
 
@@ -405,7 +399,6 @@ test('owner should not see approve/reject buttons if not a reviewer', async ({
     await redirectToHomePage(reviewer2Page);
     await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(reviewer2Page, glossary.data.displayName);
-    await reviewer2Page.waitForLoadState('networkidle');
 
     const termRow = reviewer2Page.locator(`[data-row-key*="${termName}"]`);
 
@@ -471,7 +464,6 @@ test('should change status when non-reviewer edits approved term', async ({
     await redirectToHomePage(reviewer2Page);
     await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(reviewer2Page, glossary.data.displayName);
-    await reviewer2Page.waitForLoadState('networkidle');
 
     const termRow = reviewer2Page.locator(
       `[data-row-key*="${glossaryTerm.responseData.name}"]`
@@ -482,7 +474,6 @@ test('should change status when non-reviewer edits approved term', async ({
     await reviewer2Page.click(
       `[data-testid="${glossaryTerm.responseData.name}"]`
     );
-    await reviewer2Page.waitForLoadState('networkidle');
 
     const editDescBtn = reviewer2Page.getByTestId('edit-description');
 
@@ -496,7 +487,6 @@ test('should change status when non-reviewer edits approved term', async ({
       await reviewer2Page.getByTestId('save').click();
       await saveRes;
 
-      await reviewer2Page.waitForLoadState('networkidle');
     }
   } finally {
     await glossary.delete(apiContext);
@@ -561,7 +551,6 @@ test.describe('Workflow History', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
-    await page.waitForLoadState('networkidle');
 
     // Find the term row
     const termRow = page.locator(
@@ -598,18 +587,15 @@ test.describe('Workflow History', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
-    await page.waitForLoadState('networkidle');
 
     // Click on term to go to details
     await page.click(`[data-testid="${glossaryTerm.responseData.name}"]`);
-    await page.waitForLoadState('networkidle');
 
     // Look for Activity Feed tab or task history
     const activityTab = page.getByText(/Activity/i);
 
     if (await activityTab.isVisible()) {
       await activityTab.click();
-      await page.waitForLoadState('networkidle');
 
       // Verify activity feed shows the approval action
       const activityFeed = page.getByTestId('activity-feed');
@@ -648,7 +634,6 @@ test('should delete parent term and cascade delete children', async ({
     await selectActiveGlossary(page, glossary.data.displayName);
 
     await performExpandAll(page);
-    await page.waitForLoadState('networkidle');
 
     const parentRow = page
       .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
@@ -663,7 +648,6 @@ test('should delete parent term and cascade delete children', async ({
     await expect(childRow).toBeVisible();
 
     await page.click(`[data-testid="${parentTerm.responseData.name}"]`);
-    await page.waitForLoadState('networkidle');
 
     await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-button').click();
@@ -676,11 +660,9 @@ test('should delete parent term and cascade delete children', async ({
     await page.getByTestId('confirm-button').click();
     await deleteRes;
 
-    await page.waitForLoadState('networkidle');
 
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
-    await page.waitForLoadState('networkidle');
 
     await expect(
       page.locator(`[data-row-key*="${parentTerm.responseData.name}"]`)

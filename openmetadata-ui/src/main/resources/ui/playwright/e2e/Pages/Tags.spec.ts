@@ -172,7 +172,6 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
     await page.getByTestId(tag.responseData.name).click();
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -238,7 +237,6 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-owner')).toBeVisible();
 
     await page.getByTestId(tag.responseData.name).click();
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -360,99 +358,95 @@ test('Classification Page', async ({ page }) => {
     });
   });
 
-  await test.step(
-    'Assign tag using Task & Suggestion flow to DatabaseSchema',
-    async () => {
-      const entity = table.schema;
-      const tag = 'Personal';
-      const assignee = 'admin';
+  await test.step('Assign tag using Task & Suggestion flow to DatabaseSchema', async () => {
+    const entity = table.schema;
+    const tag = 'Personal';
+    const assignee = 'admin';
 
-      const databaseSchemaPage = page.waitForResponse(
-        'api/v1/databaseSchemas/name/*'
-      );
-      const permissions = page.waitForResponse(
-        'api/v1/permissions/databaseSchema/name/*'
-      );
-      await page.click(
-        `[data-testid="breadcrumb-link"]:has-text("${entity.name}")`
-      );
+    const databaseSchemaPage = page.waitForResponse(
+      'api/v1/databaseSchemas/name/*'
+    );
+    const permissions = page.waitForResponse(
+      'api/v1/permissions/databaseSchema/name/*'
+    );
+    await page.click(
+      `[data-testid="breadcrumb-link"]:has-text("${entity.name}")`
+    );
 
-      await databaseSchemaPage;
-      await permissions;
+    await databaseSchemaPage;
+    await permissions;
 
-      await page.click('[data-testid="request-entity-tags"]');
+    await page.click('[data-testid="request-entity-tags"]');
 
-      await page.click('[data-testid="select-assignee"]');
-      const assigneeResponse = page.waitForResponse(
-        '/api/v1/search/query?q=*&index=user_search_index*team_search_index*'
-      );
-      await page.keyboard.type(assignee);
-      await page.click(`[data-testid="${assignee}"]`);
-      await assigneeResponse;
+    await page.click('[data-testid="select-assignee"]');
+    const assigneeResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*&index=user_search_index*team_search_index*'
+    );
+    await page.keyboard.type(assignee);
+    await page.click(`[data-testid="${assignee}"]`);
+    await assigneeResponse;
 
-      await clickOutside(page);
+    await clickOutside(page);
 
-      const suggestTag = page.waitForResponse(
-        'api/v1/search/query?q=*&index=tag_search_index*'
-      );
-      await page.click('[data-testid="tag-selector"]');
-      await page.keyboard.type(tag);
-      await suggestTag;
-      await page.click('[data-testid="tag-PersonalData.Personal"]');
+    const suggestTag = page.waitForResponse(
+      'api/v1/search/query?q=*&index=tag_search_index*'
+    );
+    await page.click('[data-testid="tag-selector"]');
+    await page.keyboard.type(tag);
+    await suggestTag;
+    await page.click('[data-testid="tag-PersonalData.Personal"]');
 
-      await page.click('[data-testid="tags-label"]');
-      const taskCreated = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'POST' &&
-          response.url().includes('api/v1/feed')
-      );
-      await page.click('[data-testid="submit-tag-request"]');
-      await taskCreated;
+    await page.click('[data-testid="tags-label"]');
+    const taskCreated = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().includes('api/v1/feed')
+    );
+    await page.click('[data-testid="submit-tag-request"]');
+    await taskCreated;
 
-      const acceptSuggestion = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'PUT' &&
-          response.url().includes('/api/v1/feed/tasks/') &&
-          response.url().includes('/resolve')
-      );
+    const acceptSuggestion = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PUT' &&
+        response.url().includes('/api/v1/feed/tasks/') &&
+        response.url().includes('/resolve')
+    );
 
-      const acceptButton = page.locator(
-        '.ant-btn-compact-first-item:has-text("Accept Suggestion")'
-      );
-      await acceptButton.waitFor({ state: 'visible' });
-      await acceptButton.click();
-      await acceptSuggestion;
-      await page.click('[data-testid="table"]');
+    const acceptButton = page.locator(
+      '.ant-btn-compact-first-item:has-text("Accept Suggestion")'
+    );
+    await acceptButton.waitFor({ state: 'visible' });
+    await acceptButton.click();
+    await acceptSuggestion;
+    await page.click('[data-testid="table"]');
 
-      const databaseSchemasPage = page.waitForResponse(
-        'api/v1/databaseSchemas/name/*'
-      );
-      await page.reload();
-      await databaseSchemasPage;
+    const databaseSchemasPage = page.waitForResponse(
+      'api/v1/databaseSchemas/name/*'
+    );
+    await page.reload();
+    await databaseSchemasPage;
 
-      await page.waitForLoadState('networkidle');
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
-      await expect(
-        page.locator('[data-testid="tags-container"]')
-      ).toContainText(tag);
+    await expect(page.locator('[data-testid="tags-container"]')).toContainText(
+      tag
+    );
 
-      await page.click('[data-testid="edit-button"]');
+    await page.click('[data-testid="edit-button"]');
 
-      await page.click('[data-testid="remove-tags"]');
+    await page.click('[data-testid="remove-tags"]');
 
-      const removeTags = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'PATCH' &&
-          response.url().includes('/api/v1/databaseSchemas/')
-      );
-      await page.click('[data-testid="saveAssociatedTag"]');
-      await removeTags;
-    }
-  );
+    const removeTags = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes('/api/v1/databaseSchemas/')
+    );
+    await page.click('[data-testid="saveAssociatedTag"]');
+    await removeTags;
+  });
 
   await test.step('Delete tag', async () => {
     const getTags = page.waitForResponse('/api/v1/tags*');
@@ -492,7 +486,6 @@ test('Classification Page', async ({ page }) => {
 
     // Verify term count is now 0 after deleting the tag
     await page.reload();
-    await page.waitForLoadState('networkidle');
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -533,7 +526,6 @@ test('Classification Page', async ({ page }) => {
     await page.click('[data-testid="confirm-button"]');
     await deleteClassification;
 
-    await page.waitForLoadState('networkidle');
 
     await expect(
       page
@@ -550,7 +542,6 @@ test('Search tag using classification display name should work', async ({
 
   await table.visitEntityPage(page);
 
-  await page.waitForLoadState('networkidle');
 
   const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
 
@@ -674,7 +665,6 @@ test('Verify Owner Add Delete', async ({ page }) => {
   });
 
   await page.getByTestId(tag1.data.name).click();
-  await page.waitForLoadState('networkidle');
 
   await expect(
     page.locator(`[data-testid="owner-link"]`).getByTestId(OWNER1)
@@ -682,7 +672,6 @@ test('Verify Owner Add Delete', async ({ page }) => {
 
   await classification1.visitPage(page);
 
-  await page.waitForLoadState('networkidle');
 
   await removeOwner({
     page,

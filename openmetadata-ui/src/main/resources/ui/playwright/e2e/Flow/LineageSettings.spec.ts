@@ -134,151 +134,133 @@ test.describe.serial('Lineage Settings Tests', () => {
   test('Verify global lineage config', async ({ page }) => {
     test.slow(true);
 
-    await test.step(
-      'Lineage config should throw error if upstream depth is less than 0',
-      async () => {
-        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+    await test.step('Lineage config should throw error if upstream depth is less than 0', async () => {
+      await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
 
-        await page.getByTestId('field-upstream').fill('-1');
-        await page.getByTestId('field-downstream').fill('-1');
-        await page.getByTestId('save-button').click();
+      await page.getByTestId('field-upstream').fill('-1');
+      await page.getByTestId('field-downstream').fill('-1');
+      await page.getByTestId('save-button').click();
 
-        await expect(
-          page.getByText('Upstream Depth size cannot be less than 0')
-        ).toBeVisible();
-        await expect(
-          page.getByText('Downstream Depth size cannot be less than 0')
-        ).toBeVisible();
+      await expect(
+        page.getByText('Upstream Depth size cannot be less than 0')
+      ).toBeVisible();
+      await expect(
+        page.getByText('Downstream Depth size cannot be less than 0')
+      ).toBeVisible();
 
-        await page.getByTestId('field-upstream').fill('0');
-        await page.getByTestId('field-downstream').fill('0');
+      await page.getByTestId('field-upstream').fill('0');
+      await page.getByTestId('field-downstream').fill('0');
 
-        const saveRes = page.waitForResponse('/api/v1/system/settings');
-        await page.getByTestId('save-button').click();
-        await saveRes;
+      const saveRes = page.waitForResponse('/api/v1/system/settings');
+      await page.getByTestId('save-button').click();
+      await saveRes;
 
-        await toastNotification(page, /Lineage Config updated successfully/);
-      }
-    );
+      await toastNotification(page, /Lineage Config updated successfully/);
+    });
 
-    await test.step(
-      'Update global lineage config and verify lineage for column layer',
-      async () => {
-        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-        await fillLineageConfigForm(page, {
-          upstreamDepth: 1,
-          downstreamDepth: 1,
-          layer: 'Column Level Lineage',
-        });
+    await test.step('Update global lineage config and verify lineage for column layer', async () => {
+      await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+      await fillLineageConfigForm(page, {
+        upstreamDepth: 1,
+        downstreamDepth: 1,
+        layer: 'Column Level Lineage',
+      });
 
-        await topic.visitEntityPage(page);
-        await visitLineageTab(page);
-        await performZoomOut(page);
-        await verifyNodePresent(page, table);
-        await verifyNodePresent(page, dashboard);
-        const mlModelFqn = get(
-          mlModel,
+      await topic.visitEntityPage(page);
+      await visitLineageTab(page);
+      await performZoomOut(page);
+      await verifyNodePresent(page, table);
+      await verifyNodePresent(page, dashboard);
+      const mlModelFqn = get(mlModel, 'entityResponseData.fullyQualifiedName');
+      const mlModelNode = page.locator(
+        `[data-testid="lineage-node-${mlModelFqn}"]`
+      );
+
+      await expect(mlModelNode).not.toBeVisible();
+
+      await verifyColumnLayerActive(page);
+    });
+
+    await test.step('Update global lineage config and verify lineage for entity layer', async () => {
+      await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+      await fillLineageConfigForm(page, {
+        upstreamDepth: 1,
+        downstreamDepth: 1,
+        layer: 'Entity Lineage',
+      });
+
+      await dashboard.visitEntityPage(page);
+      await visitLineageTab(page);
+      await performZoomOut(page);
+      await verifyNodePresent(page, dashboard);
+      await verifyNodePresent(page, mlModel);
+      await verifyNodePresent(page, topic);
+
+      const tableNode = page.locator(
+        `[data-testid="lineage-node-${get(
+          table,
           'entityResponseData.fullyQualifiedName'
-        );
-        const mlModelNode = page.locator(
-          `[data-testid="lineage-node-${mlModelFqn}"]`
-        );
+        )}"]`
+      );
 
-        await expect(mlModelNode).not.toBeVisible();
-
-        await verifyColumnLayerActive(page);
-      }
-    );
-
-    await test.step(
-      'Update global lineage config and verify lineage for entity layer',
-      async () => {
-        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-        await fillLineageConfigForm(page, {
-          upstreamDepth: 1,
-          downstreamDepth: 1,
-          layer: 'Entity Lineage',
-        });
-
-        await dashboard.visitEntityPage(page);
-        await visitLineageTab(page);
-        await performZoomOut(page);
-        await verifyNodePresent(page, dashboard);
-        await verifyNodePresent(page, mlModel);
-        await verifyNodePresent(page, topic);
-
-        const tableNode = page.locator(
-          `[data-testid="lineage-node-${get(
-            table,
-            'entityResponseData.fullyQualifiedName'
-          )}"]`
-        );
-
-        const searchIndexNode = page.locator(
-          `[data-testid="lineage-node-${get(
-            searchIndex,
-            'entityResponseData.fullyQualifiedName'
-          )}"]`
-        );
-
-        await expect(tableNode).not.toBeVisible();
-        await expect(searchIndexNode).not.toBeVisible();
-      }
-    );
-
-    await test.step(
-      'Verify Upstream and Downstream expand collapse buttons',
-      async () => {
-        await redirectToHomePage(page);
-        await dashboard.visitEntityPage(page);
-        await visitLineageTab(page);
-        const closeIcon = page.getByTestId('entity-panel-close-icon');
-        if (await closeIcon.isVisible()) {
-          await closeIcon.click();
-        }
-        await performZoomOut(page);
-        await verifyNodePresent(page, topic);
-        await verifyNodePresent(page, mlModel);
-
-        await verifyExpandHandleHover(page, mlModel, false);
-        await clickOutside(page);
-        await verifyExpandHandleHover(page, topic, true);
-
-        await performExpand(page, mlModel, false, searchIndex);
-        await performExpand(page, searchIndex, false, container);
-        await performExpand(page, container, false, metric);
-        await performExpand(page, topic, true, table);
-
-        await performCollapse(page, mlModel, false, [
+      const searchIndexNode = page.locator(
+        `[data-testid="lineage-node-${get(
           searchIndex,
-          container,
-          metric,
-        ]);
-        await performCollapse(page, dashboard, true, [table, topic]);
+          'entityResponseData.fullyQualifiedName'
+        )}"]`
+      );
+
+      await expect(tableNode).not.toBeVisible();
+      await expect(searchIndexNode).not.toBeVisible();
+    });
+
+    await test.step('Verify Upstream and Downstream expand collapse buttons', async () => {
+      await redirectToHomePage(page);
+      await dashboard.visitEntityPage(page);
+      await visitLineageTab(page);
+      const closeIcon = page.getByTestId('entity-panel-close-icon');
+      if (await closeIcon.isVisible()) {
+        await closeIcon.click();
       }
-    );
+      await performZoomOut(page);
+      await verifyNodePresent(page, topic);
+      await verifyNodePresent(page, mlModel);
 
-    await test.step(
-      'Reset global lineage config and verify lineage',
-      async () => {
-        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-        await fillLineageConfigForm(page, {
-          upstreamDepth: 2,
-          downstreamDepth: 2,
-          layer: 'Entity Lineage',
-        });
+      await verifyExpandHandleHover(page, mlModel, false);
+      await clickOutside(page);
+      await verifyExpandHandleHover(page, topic, true);
 
-        await dashboard.visitEntityPage(page);
-        await visitLineageTab(page);
-        await performZoomOut(page);
+      await performExpand(page, mlModel, false, searchIndex);
+      await performExpand(page, searchIndex, false, container);
+      await performExpand(page, container, false, metric);
+      await performExpand(page, topic, true, table);
 
-        await verifyNodePresent(page, table);
-        await verifyNodePresent(page, dashboard);
-        await verifyNodePresent(page, mlModel);
-        await verifyNodePresent(page, searchIndex);
-        await verifyNodePresent(page, topic);
-      }
-    );
+      await performCollapse(page, mlModel, false, [
+        searchIndex,
+        container,
+        metric,
+      ]);
+      await performCollapse(page, dashboard, true, [table, topic]);
+    });
+
+    await test.step('Reset global lineage config and verify lineage', async () => {
+      await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+      await fillLineageConfigForm(page, {
+        upstreamDepth: 2,
+        downstreamDepth: 2,
+        layer: 'Entity Lineage',
+      });
+
+      await dashboard.visitEntityPage(page);
+      await visitLineageTab(page);
+      await performZoomOut(page);
+
+      await verifyNodePresent(page, table);
+      await verifyNodePresent(page, dashboard);
+      await verifyNodePresent(page, mlModel);
+      await verifyNodePresent(page, searchIndex);
+      await verifyNodePresent(page, topic);
+    });
   });
 
   test('Verify lineage settings for PipelineViewMode as Edge', async ({
@@ -339,7 +321,6 @@ test.describe.serial('Lineage Settings Tests', () => {
     await settingsUpdate;
 
     await dataStewardPage.reload();
-    await dataStewardPage.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(dataStewardPage);
 
     // Pipeline should be shown as Node and not as Edge

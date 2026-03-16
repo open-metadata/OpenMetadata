@@ -19,6 +19,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -2423,6 +2424,37 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Change source tracking verified by the API
   }
 
+  @Test
+  void patch_removeTagAppliedBy_200_ok(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest = createRequest(ns.prefix("patch_remove_applied_by"), ns);
+    Table table = client.tables().create(createRequest);
+
+    // First add a tag through the regular update flow so appliedBy is populated by server logic.
+    Table toTag = client.tables().get(table.getId().toString());
+    toTag.setTags(List.of(personalDataTagLabel()));
+    client.tables().update(toTag.getId(), toTag);
+
+    Table withTags = client.tables().get(table.getId().toString(), "tags");
+    assertNotNull(withTags.getTags());
+    assertFalse(withTags.getTags().isEmpty());
+
+    String patchJson =
+        """
+        [
+          {"op": "remove", "path": "/tags/0/appliedBy"}
+        ]
+        """;
+    com.fasterxml.jackson.databind.JsonNode patch =
+        new com.fasterxml.jackson.databind.ObjectMapper().readTree(patchJson);
+
+    Table patched = client.tables().patch(withTags.getId(), patch);
+    assertNotNull(patched.getTags());
+    assertFalse(patched.getTags().isEmpty());
+    assertEquals(withTags.getTags().get(0).getTagFQN(), patched.getTags().get(0).getTagFQN());
+  }
+
   // ===================================================================
   // DOMAIN TESTS
   // ===================================================================
@@ -3831,6 +3863,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // ===================================================================
 
   @Test
+  @ResourceLock("MULTI_DOMAIN_RULE")
   void test_multipleDomainInheritance(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 

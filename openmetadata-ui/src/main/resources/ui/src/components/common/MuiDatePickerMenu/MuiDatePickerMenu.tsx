@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { CloseCircleOutlined } from '@ant-design/icons';
-import { Close, KeyboardArrowDown } from '@mui/icons-material';
 import {
   Box,
   Button,
@@ -21,6 +20,7 @@ import {
   MenuItem,
   useTheme,
 } from '@mui/material';
+import { ChevronDown, XClose } from '@untitledui/icons';
 import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -245,10 +245,10 @@ const MuiDatePickerMenu = ({
                 size="small"
                 sx={{ p: 0.25, ml: -0.5 }}
                 onClick={handleClear}>
-                <Close sx={{ fontSize: 16 }} />
+                <XClose size={16} />
               </IconButton>
             )}
-            <KeyboardArrowDown />
+            <ChevronDown />
           </>
         }
         size={size}

@@ -14,12 +14,15 @@ import { APIRequestContext, expect, test } from '@playwright/test';
 
 import { SERVICE_TYPE } from '../../constant/service';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage,
-    uuid,
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
-import { fillDescriptionDetails, performBulkDownload } from '../../utils/importUtils';
+import {
+  fillDescriptionDetails,
+  performBulkDownload,
+} from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 // use the admin user to login
@@ -126,7 +129,9 @@ async function deleteDatabaseService(
   fqn: string
 ) {
   return apiContext.delete(
-    `/api/v1/services/databaseServices/name/${encodeURIComponent(fqn)}?recursive=true&hardDelete=true`
+    `/api/v1/services/databaseServices/name/${encodeURIComponent(
+      fqn
+    )}?recursive=true&hardDelete=true`
   );
 }
 
@@ -213,9 +218,12 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         false
       );
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -318,9 +326,12 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Re-open import dialog
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -373,13 +384,18 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       `testschema${uid}`,
       database.fullyQualifiedName
     );
-    await createTable(apiContext, `testtable${uid}`, schema.fullyQualifiedName, [
-      {
-        name: 'col1',
-        dataType: 'INT',
-        dataTypeDisplay: 'int',
-      },
-    ]);
+    await createTable(
+      apiContext,
+      `testtable${uid}`,
+      schema.fullyQualifiedName,
+      [
+        {
+          name: 'col1',
+          dataType: 'INT',
+          dataTypeDisplay: 'int',
+        },
+      ]
+    );
 
     await redirectToHomePage(page);
 
@@ -394,9 +410,12 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -487,9 +506,12 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await performBulkDownload(page, serviceNameWithDot);
 
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -525,7 +547,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
    * This tests double quoting scenario where both service and column have dots.
    * Column FQN: """service.name"".db.schema.table.""column.name"""
    */
-  test('Column with dot in name under service with dot', async ({ browser }) => {
+  test('Column with dot in name under service with dot', async ({
+    browser,
+  }) => {
     test.setTimeout(240_000);
 
     const { page, afterAction } = await createNewPage(browser);
@@ -579,9 +603,12 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import the exported CSV
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -655,9 +682,12 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -670,7 +700,10 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       // Click on a cell to edit - find the first row's description cell
       // Navigate to description column (3rd column) and edit
       await page.locator('.rdg-row').nth(0).click();
-      const descriptionCell1 = page.locator('.rdg-row').nth(0).locator('[aria-colindex="3"]');
+      const descriptionCell1 = page
+        .locator('.rdg-row')
+        .nth(0)
+        .locator('[aria-colindex="3"]');
       await descriptionCell1.dblclick();
 
       // Type new description
@@ -742,13 +775,18 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       `levelschema${uid}`,
       database.fullyQualifiedName
     );
-    await createTable(apiContext, `leveltable${uid}`, schema.fullyQualifiedName, [
-      {
-        name: 'id',
-        dataType: 'INT',
-        dataTypeDisplay: 'int',
-      },
-    ]);
+    await createTable(
+      apiContext,
+      `leveltable${uid}`,
+      schema.fullyQualifiedName,
+      [
+        {
+          name: 'id',
+          dataType: 'INT',
+          dataTypeDisplay: 'int',
+        },
+      ]
+    );
 
     await redirectToHomePage(page);
 
@@ -760,16 +798,18 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         false
       );
       await page.getByTestId(databaseName).click();
-      await page.waitForLoadState('networkidle');
 
       // Export from database level
       await performBulkDownload(page, databaseName);
 
       // Import at database level
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -846,13 +886,18 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       schemaName,
       database.fullyQualifiedName
     );
-    await createTable(apiContext, `schematable${uid}`, schema.fullyQualifiedName, [
-      {
-        name: 'col1',
-        dataType: 'INT',
-        dataTypeDisplay: 'int',
-      },
-    ]);
+    await createTable(
+      apiContext,
+      `schematable${uid}`,
+      schema.fullyQualifiedName,
+      [
+        {
+          name: 'col1',
+          dataType: 'INT',
+          dataTypeDisplay: 'int',
+        },
+      ]
+    );
 
     await redirectToHomePage(page);
 
@@ -864,18 +909,19 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         false
       );
       await page.getByTestId(databaseName).click();
-      await page.waitForLoadState('networkidle');
       await page.getByTestId(schemaName).click();
-      await page.waitForLoadState('networkidle');
 
       // Export from schema level
       await performBulkDownload(page, schemaName);
 
       // Import at schema level
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');

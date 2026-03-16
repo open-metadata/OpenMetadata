@@ -28,14 +28,14 @@ export type SearchSourceDetails =
   };
 
 export interface EntitySummaryPanelProps {
-  entityDetails: EntityDetailsObjectInterface;
-  handleClosePanel: () => void;
-  highlights?: SearchedDataProps['data'][number]['highlight'];
-  panelPath?: string;
-  isSideDrawer?: boolean;
-  upstreamDepth?: number;
-  pipelineViewMode?: PipelineViewMode;
-  downstreamDepth?: number;
-  nodesPerLayer?: number;
-  onEntityUpdate?: (updatedEntity: Partial<EntityData>) => void;
+  readonly entityDetails: EntityDetailsObjectInterface;
+  readonly handleClosePanel: () => void;
+  readonly highlights?: SearchedDataProps['data'][number]['highlight'];
+  readonly panelPath?: string;
+  readonly isSideDrawer?: boolean;
+  readonly upstreamDepth?: number;
+  readonly pipelineViewMode?: PipelineViewMode;
+  readonly downstreamDepth?: number;
+  readonly nodesPerLayer?: number;
+  readonly onEntityUpdate?: (updatedEntity: Partial<EntityData>) => void;
 }

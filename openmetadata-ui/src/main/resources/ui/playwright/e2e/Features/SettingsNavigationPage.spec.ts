@@ -50,13 +50,11 @@ base.afterAll('Cleanup', async ({ browser }) => {
 const navigateToPersonaNavigation = async (page: Page) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
   await settingClick(page, GlobalSettingOptions.PERSONA);
-  await page.waitForLoadState('networkidle');
   await getPersonas;
 
   await navigateToPersonaWithPagination(page, persona.data.name, true);
 
   await page.getByTestId('navigation').click();
-  await page.waitForLoadState('networkidle');
 };
 
 test.describe.serial('Settings Navigation Page Tests', () => {
@@ -145,7 +143,6 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     // Test discard changes
     await page.getByTestId('unsaved-changes-modal-discard').click();
-    await page.waitForLoadState('networkidle');
 
     // Should navigate away and changes should be discarded
     await expect(page).toHaveURL(/.*settings.*/);
@@ -179,7 +176,6 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     const saveResponse = page.waitForResponse('**/api/v1/docStore/**');
     await page.getByTestId('unsaved-changes-modal-save').click();
     await saveResponse;
-    await page.waitForLoadState('networkidle');
 
     // Should navigate to settings page
     await expect(page).toHaveURL(/.*settings.*/);
@@ -244,7 +240,6 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     // Test discard changes
     await page.getByTestId('unsaved-changes-modal-save').click();
-    await page.waitForLoadState('networkidle');
 
     // Verify reset worked - save button disabled and state reverted
     expect(await domainSwitch.isChecked()).toBeTruthy();

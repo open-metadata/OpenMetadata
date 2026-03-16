@@ -33,15 +33,71 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: playwright-ci-pr-postgresql-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  playwright-ci-postgresql:
+  build:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install antlr cli
+        run: sudo make install_antlr_cli
+
+      - name: Build with Maven
+        run: mvn -DskipTests clean package
+
+      - name: Upload Maven build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmetadata-build
+          path: openmetadata-dist/target/openmetadata-*.tar.gz
+          retention-days: 1
+
+  playwright-ci-postgresql:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     environment: test
     strategy:
       fail-fast: false
@@ -59,46 +115,23 @@ jobs:
           large-packages: false
           swap-storage: true
           docker-images: false
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Cache Maven Dependencies
-        id: cache-output
-        uses: actions/cache@v4
+      - name: Download Maven build artifact
+        uses: actions/download-artifact@v4
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          name: openmetadata-build
+          path: openmetadata-dist/target
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
-          # Pass different args depending on the shardIndex:
-          # - shard 2: run with ingestion setup
-          # - other shards: skip ingestion setup
-          args: ${{ matrix.shardIndex == 2 && '-d postgresql' || '-d postgresql -i false' }}
+          args: ${{ matrix.shardIndex == 2 && '-d postgresql -s true' || '-d postgresql -i false -s true' }}
           ingestion_dependency: "all"
 
       - name: Setup Node.js
@@ -112,6 +145,7 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright@1.57.0 install --with-deps
       - name: Run Playwright tests
+        id: run-tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
@@ -123,10 +157,10 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
               --project=Basic \
-          
+
           elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
             echo "🔹 Running ingestion tests on shard 2"
-            
+
             # run ingestion framework tests
             npx playwright test \
               --project=ingestion \
@@ -200,8 +234,210 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
+      - name: Upload test results (screenshots, traces)
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-test-results-${{ matrix.shardIndex }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results
+          retention-days: 5
+
+      - name: Upload results JSON for summary
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-results-json-${{ matrix.shardIndex }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/results.json
+          retention-days: 1
+          if-no-files-found: ignore
+
       - name: Clean Up
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
+
+  playwright-summary:
+    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
+    needs: playwright-ci-postgresql
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all results JSON
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-results-json-*
+          path: results
+
+      - name: Post consolidated PR comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const runId = '${{ github.run_id }}';
+            const repo = context.repo;
+            const prNumber = context.payload.pull_request?.number;
+            if (!prNumber) return;
+
+            const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
+            const commentMarker = '<!-- playwright-summary -->';
+
+            // Collect results from all shards
+            const shardResults = [];
+            const resultsDir = 'results';
+            if (fs.existsSync(resultsDir)) {
+              for (const dir of fs.readdirSync(resultsDir).sort()) {
+                const jsonPath = path.join(resultsDir, dir, 'results.json');
+                if (!fs.existsSync(jsonPath)) continue;
+
+                const shardNum = dir.replace('playwright-results-json-', '');
+                const report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+
+                const allTests = [];
+                function collectTests(suite, filePath) {
+                  const file = suite.file || filePath || '';
+                  for (const spec of (suite.specs || [])) {
+                    for (const test of (spec.tests || [])) {
+                      const results = test.results || [];
+                      const lastResult = results[results.length - 1] || {};
+                      const firstResult = results[0] || {};
+                      allTests.push({
+                        title: spec.title,
+                        file: file,
+                        status: test.status,
+                        retries: results.length - 1,
+                        error: lastResult.error?.message || firstResult.error?.message || '',
+                      });
+                    }
+                  }
+                  for (const child of (suite.suites || [])) {
+                    collectTests(child, file);
+                  }
+                }
+                for (const suite of (report.suites || [])) {
+                  collectTests(suite, '');
+                }
+
+                shardResults.push({
+                  shard: shardNum,
+                  genuine: allTests.filter(t => t.status === 'unexpected'),
+                  flaky: allTests.filter(t => t.status === 'flaky'),
+                  passed: allTests.filter(t => t.status === 'expected'),
+                  skipped: allTests.filter(t => t.status === 'skipped'),
+                });
+              }
+            }
+
+            if (shardResults.length === 0) {
+              console.log('No shard results found');
+              return;
+            }
+
+            // Aggregate totals
+            const totalPassed = shardResults.reduce((s, r) => s + r.passed.length, 0);
+            const totalFailed = shardResults.reduce((s, r) => s + r.genuine.length, 0);
+            const totalFlaky = shardResults.reduce((s, r) => s + r.flaky.length, 0);
+            const totalSkipped = shardResults.reduce((s, r) => s + r.skipped.length, 0);
+
+            const lines = [commentMarker];
+
+            if (totalFailed > 0) {
+              lines.push(`## 🔴 Playwright Results — ${totalFailed} failure(s)${totalFlaky > 0 ? `, ${totalFlaky} flaky` : ''}`);
+            } else if (totalFlaky > 0) {
+              lines.push(`## 🟡 Playwright Results — all passed (${totalFlaky} flaky)`);
+            } else {
+              lines.push(`## ✅ Playwright Results — all ${totalPassed} tests passed`);
+            }
+            lines.push('');
+            lines.push(`✅ ${totalPassed} passed · ❌ ${totalFailed} failed · 🟡 ${totalFlaky} flaky · ⏭️ ${totalSkipped} skipped`);
+            lines.push('');
+
+            // Per-shard summary table
+            lines.push('| Shard | Passed | Failed | Flaky | Skipped |');
+            lines.push('|-------|--------|--------|-------|---------|');
+            for (const r of shardResults) {
+              const status = r.genuine.length > 0 ? '🔴' : r.flaky.length > 0 ? '🟡' : '✅';
+              lines.push(`| ${status} Shard ${r.shard} | ${r.passed.length} | ${r.genuine.length} | ${r.flaky.length} | ${r.skipped.length} |`);
+            }
+            lines.push('');
+
+            // Genuine failures detail
+            const allGenuine = shardResults.flatMap(r => r.genuine.map(t => ({ ...t, shard: r.shard })));
+            if (allGenuine.length > 0) {
+              lines.push('### Genuine Failures (failed on all attempts)');
+              lines.push('');
+              for (const t of allGenuine.slice(0, 30)) {
+                const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
+                lines.push(`<details><summary>❌ <code>${shortFile}</code> › ${t.title} (shard ${t.shard})</summary>`);
+                lines.push('');
+                lines.push('```');
+                lines.push(t.error.substring(0, 1000));
+                lines.push('```');
+                lines.push('</details>');
+                lines.push('');
+              }
+              if (allGenuine.length > 30) {
+                lines.push(`... and ${allGenuine.length - 30} more failures`);
+                lines.push('');
+              }
+            }
+
+            // Flaky tests
+            const allFlaky = shardResults.flatMap(r => r.flaky.map(t => ({ ...t, shard: r.shard })));
+            if (allFlaky.length > 0) {
+              lines.push(`<details><summary>🟡 ${allFlaky.length} flaky test(s) (passed on retry)</summary>`);
+              lines.push('');
+              for (const t of allFlaky.slice(0, 30)) {
+                const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
+                lines.push(`- \`${shortFile}\` › ${t.title} (shard ${t.shard}, ${t.retries} ${t.retries === 1 ? 'retry' : 'retries'})`);
+              }
+              if (allFlaky.length > 30) {
+                lines.push(`- ... and ${allFlaky.length - 30} more`);
+              }
+              lines.push('');
+              lines.push('</details>');
+              lines.push('');
+            }
+
+            lines.push(`📦 [Download artifacts](${artifactUrl})`);
+            lines.push('');
+            lines.push('<details><summary>How to debug locally</summary>');
+            lines.push('');
+            lines.push('```bash');
+            lines.push('# Download playwright-test-results-<shard> artifact and unzip');
+            lines.push('npx playwright show-trace path/to/trace.zip    # view trace');
+            lines.push('```');
+            lines.push('</details>');
+
+            const body = lines.join('\n');
+
+            // Find existing consolidated comment
+            let existingComment = null;
+            for await (const response of github.paginate.iterator(
+              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+            )) {
+              const found = response.data.find(c =>
+                c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
+              );
+              if (found) { existingComment = found; break; }
+            }
+
+            // Also clean up any old per-shard comments from previous runs
+            for await (const response of github.paginate.iterator(
+              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+            )) {
+              for (const c of response.data) {
+                if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
+                  await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
+                  console.log(`Deleted old per-shard comment ${c.id}`);
+                }
+              }
+            }
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
+            }

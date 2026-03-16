@@ -57,54 +57,88 @@ public class TagLabelUtil {
 
   public static Map<String, List<TagLabel>> populateTagLabel(
       List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tagUsages) {
-    Map<String, List<String>> tagFqnMap = new HashMap<>();
-    Map<String, List<String>> termFqnMap = new HashMap<>();
+    Map<String, List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash>> usagesByTarget =
+        new HashMap<>();
+    Set<String> allTagFqns = new HashSet<>();
+    Set<String> allTermFqns = new HashSet<>();
 
     for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash usage : tagUsages) {
-      String targetHash = usage.getTargetFQNHash();
-      String tagFQN = usage.getTagFQN();
-
+      usagesByTarget.computeIfAbsent(usage.getTargetFQNHash(), k -> new ArrayList<>()).add(usage);
       if (usage.getSource() == TagSource.CLASSIFICATION.ordinal()) {
-        tagFqnMap.computeIfAbsent(targetHash, k -> new ArrayList<>()).add(tagFQN);
+        allTagFqns.add(usage.getTagFQN());
       } else if (usage.getSource() == TagSource.GLOSSARY.ordinal()) {
-        termFqnMap.computeIfAbsent(targetHash, k -> new ArrayList<>()).add(tagFQN);
+        allTermFqns.add(usage.getTagFQN());
       }
     }
 
-    Set<String> allTargetHashes = new HashSet<>();
-    allTargetHashes.addAll(tagFqnMap.keySet());
-    allTargetHashes.addAll(termFqnMap.keySet());
-
     Map<String, List<TagLabel>> result = new HashMap<>();
+    Map<String, TagLabel> tagLabelsByFqn = new HashMap<>();
+    Map<String, TagLabel> termLabelsByFqn = new HashMap<>();
 
-    for (String targetHash : allTargetHashes) {
-      List<TagLabel> tagLabels = new ArrayList<>();
-
-      List<String> tagFQNs = tagFqnMap.getOrDefault(targetHash, Collections.emptyList());
-      List<String> termFQNs = termFqnMap.getOrDefault(targetHash, Collections.emptyList());
-
+    if (!allTagFqns.isEmpty()) {
       try {
-        Tag[] tags = getTags(tagFQNs).toArray(new Tag[0]);
-        tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(tags)));
+        getTags(new ArrayList<>(allTagFqns))
+            .forEach(
+                tag -> {
+                  TagLabel label = EntityUtil.toTagLabel(tag);
+                  if (label != null) {
+                    tagLabelsByFqn.put(tag.getFullyQualifiedName(), label);
+                  }
+                });
       } catch (Exception ex) {
         LOG.warn(
-            "Failed to fetch classification tags for target {}. Skipping these tags. Error: {}",
-            targetHash,
+            "Failed to batch fetch classification tags for {} targets. Skipping classification tags. Error: {}",
+            usagesByTarget.size(),
             ex.getMessage());
       }
+    }
 
+    if (!allTermFqns.isEmpty()) {
       try {
-        GlossaryTerm[] terms = getGlossaryTerms(termFQNs).toArray(new GlossaryTerm[0]);
-        tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(terms)));
+        getGlossaryTerms(new ArrayList<>(allTermFqns))
+            .forEach(
+                term -> {
+                  TagLabel label = EntityUtil.toTagLabel(term);
+                  if (label != null) {
+                    termLabelsByFqn.put(term.getFullyQualifiedName(), label);
+                  }
+                });
       } catch (Exception ex) {
         LOG.warn(
-            "Failed to fetch glossary terms {} for target {}. Skipping these terms. Error: {}",
-            termFQNs,
-            targetHash,
+            "Failed to batch fetch glossary terms for {} targets. Skipping glossary tags. Error: {}",
+            usagesByTarget.size(),
             ex.getMessage());
       }
+    }
 
-      result.put(targetHash, tagLabels);
+    for (Map.Entry<String, List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash>> entry :
+        usagesByTarget.entrySet()) {
+      String targetHash = entry.getKey();
+      Set<TagLabel> tagLabels = new TreeSet<>(compareTagLabel);
+      for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash usage : entry.getValue()) {
+        TagLabel label =
+            new TagLabel()
+                .withSource(TagSource.values()[usage.getSource()])
+                .withTagFQN(usage.getTagFQN())
+                .withLabelType(TagLabel.LabelType.values()[usage.getLabelType()])
+                .withState(TagLabel.State.values()[usage.getState()])
+                .withReason(usage.getReason())
+                .withAppliedAt(usage.getAppliedAt())
+                .withAppliedBy(usage.getAppliedBy())
+                .withMetadata(usage.getMetadata());
+        TagLabel commonFields =
+            usage.getSource() == TagSource.CLASSIFICATION.ordinal()
+                ? tagLabelsByFqn.get(usage.getTagFQN())
+                : termLabelsByFqn.get(usage.getTagFQN());
+        if (commonFields != null) {
+          label.setName(commonFields.getName());
+          label.setDisplayName(commonFields.getDisplayName());
+          label.setDescription(commonFields.getDescription());
+          label.setStyle(commonFields.getStyle());
+        }
+        tagLabels.add(label);
+      }
+      result.put(targetHash, new ArrayList<>(tagLabels));
     }
 
     return result;

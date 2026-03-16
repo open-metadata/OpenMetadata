@@ -45,4 +45,5 @@ export type DataQualityDashboardChartFilters = {
   dataQualityDimension?: string;
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
+  domainFqn?: string;
 };

@@ -50,6 +50,20 @@ public interface GenericClient {
   }
 
   /**
+   * Create or update a composable index template.
+   *
+   * @param templateName the name of the template
+   * @param indexPattern the index pattern to match (e.g., "table_search_index*")
+   * @param mappingContent the JSON mapping content containing mappings and settings
+   * @throws IOException if the operation fails
+   */
+  default void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
    * Delete an index template.
    *
    * @param templateName the name of the template to delete

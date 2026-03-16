@@ -58,6 +58,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
+import { DataQualityTest } from '../../common/DataQualitySection/DataQualitySection.interface';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
@@ -81,7 +82,6 @@ import {
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
 import { NestedColumnsSection } from './NestedColumnsSection';
-import { DataQualityTest } from '../../common/DataQualitySection/DataQualitySection.interface';
 
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
@@ -298,7 +298,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         setIsColumnDataLoading(false);
       }
     }
-  }, [column?.fullyQualifiedName, isOpen, entityType, tableFqn, onColumnsUpdate]);
+  }, [
+    column?.fullyQualifiedName,
+    isOpen,
+    entityType,
+    tableFqn,
+    onColumnsUpdate,
+  ]);
 
   const handleNestedColumnClick = useCallback(
     (nestedColumn: Column) => {

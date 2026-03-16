@@ -54,6 +54,12 @@ export class UserClass {
       data: this.data,
     });
 
+    if (!response.ok()) {
+      throw new Error(
+        `UserClass.create() failed with status ${response.status()}: ${await response.text()}`
+      );
+    }
+
     this.responseData = await response.json();
     if (assignRole) {
       const { entity } = await this.patch({
@@ -198,10 +204,7 @@ export class UserClass {
   }
 
   getUserDisplayName() {
-    return (
-      this.responseData.displayName ??
-      this.responseData.name
-    );
+    return this.responseData.displayName ?? this.responseData.name;
   }
 
   async login(
@@ -210,8 +213,14 @@ export class UserClass {
     password = this.data.password
   ) {
     await page.goto('/');
-    await page.waitForURL('**/signin');
-    await page.waitForLoadState('networkidle');
+    try {
+      await page.waitForURL('**/signin', { timeout: 5000 });
+    } catch {
+      await page.context().clearCookies();
+      await page.goto('/signin');
+      await page.waitForURL('**/signin');
+    }
+    await page.waitForLoadState('domcontentloaded');
     const emailInput = page.locator('input[id="email"]');
     await emailInput.waitFor({ state: 'visible' });
     await emailInput.fill(userName);
@@ -220,6 +229,12 @@ export class UserClass {
     const loginRes = page.waitForResponse('/api/v1/auth/login');
     await page.getByTestId('login').click();
     await loginRes;
+    await page
+      .waitForURL((url) => !url.pathname.includes('/signin'), {
+        timeout: 60000,
+      })
+      .catch(() => undefined);
+    await page.waitForLoadState('domcontentloaded').catch(() => undefined);
 
     const modal = await page
       .getByRole('dialog')
@@ -234,10 +249,14 @@ export class UserClass {
 
     // Collapse the left side bar after logging in if it's open
     const leftNavBar = page.locator('[data-testid="left-sidebar"]');
+    const sidebarVisible = await leftNavBar.isVisible().catch(() => false);
+    if (!sidebarVisible) {
+      return;
+    }
 
-    const hasOpenClass = await leftNavBar.evaluate((el) =>
-      el.classList.contains('sidebar-open')
-    );
+    const hasOpenClass = await leftNavBar
+      .evaluate((el) => el.classList.contains('sidebar-open'))
+      .catch(() => false);
 
     if (hasOpenClass) {
       await page.getByTestId('sidebar-toggle').click();
@@ -272,7 +291,6 @@ export class UserClass {
     await Promise.all([waitLogout, waitSigninNavigation]);
 
     // Ensure all network requests complete
-    await page.waitForLoadState('networkidle');
 
     // Clean up the route interception
     await page.unroute('**/analytics/web/events/collect');

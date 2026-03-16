@@ -28,6 +28,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
+  closeFirstPopupAlert,
   descriptionBox,
   readElementInListWithScroll,
   redirectToHomePage,
@@ -59,9 +60,7 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
-  await page.waitForLoadState('networkidle');
 
-  // Unified loader handling
   await waitForAllLoadersToDisappear(page);
 
   // Dismiss welcome screen if visible
@@ -71,7 +70,6 @@ export const visitEntityPage = async (data: {
 
   if (isWelcomeScreenVisible) {
     await page.getByTestId('welcome-screen-close-btn').click();
-    await page.waitForLoadState('networkidle');
   }
 
   const waitForSearchResponse = page.waitForResponse(
@@ -81,7 +79,6 @@ export const visitEntityPage = async (data: {
   await waitForSearchResponse;
 
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -113,33 +110,72 @@ export const addOwner = async ({
   }
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  const ownerSearchBar = await page
-    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
-    .isVisible();
+  const ownerSearchInput = page.getByTestId(
+    `owner-select-${lowerCase(type)}-search-bar`
+  );
+  await expect
+    .poll(
+      async () => {
+        const searchBarVisible = await ownerSearchInput
+          .isVisible()
+          .catch(() => false);
+        if (!searchBarVisible) {
+          await page.getByRole('tab', { name: type }).click();
+        }
 
-  if (!ownerSearchBar) {
-    await page.getByRole('tab', { name: type }).click();
-  }
+        return await ownerSearchInput.isVisible().catch(() => false);
+      },
+      {
+        timeout: 60000,
+        intervals: [500, 1000, 2000],
+        message: `Timed out waiting for ${type} owner search input`,
+      }
+    )
+    .toBe(true);
+  await ownerSearchInput.scrollIntoViewIfNeeded();
 
   const searchUser = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
-  await page
-    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
-    .fill(owner);
+  await ownerSearchInput.fill(owner);
   await searchUser;
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await page.getByRole('listitem', { name: owner }).click();
     await patchRequest;
   } else {
-    const ownerItem = page.getByRole('listitem', {
-      name: owner,
-      exact: true,
-    });
+    const ownerItem = page.getByRole('listitem', { name: owner });
 
-    await ownerItem.waitFor({ state: 'visible' });
+    await expect
+      .poll(
+        async () => {
+          const visible = await ownerItem.isVisible().catch(() => false);
+          if (visible) {
+            return true;
+          }
+
+          const searchRetry = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.url().includes('user_search_index')
+          );
+          await ownerSearchInput.fill('');
+          await ownerSearchInput.fill(owner);
+          await searchRetry;
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          return await ownerItem.isVisible().catch(() => false);
+        },
+        {
+          timeout: 60000,
+          intervals: [2000, 3000, 5000],
+          message: `Timed out waiting for owner ${owner} to appear`,
+        }
+      )
+      .toBe(true);
     await ownerItem.click();
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
@@ -195,9 +231,9 @@ export const addOwnerWithoutValidation = async ({
   await searchUser;
 
   if (type === 'Teams') {
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await page.getByRole('listitem', { name: owner }).click();
   } else {
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await page.getByRole('listitem', { name: owner }).click();
     await page.getByTestId('selectable-list-update-btn').click();
   }
 };
@@ -229,10 +265,10 @@ export const updateOwner = async ({
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await page.getByRole('listitem', { name: owner }).click();
     await patchRequest;
   } else {
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await page.getByRole('listitem', { name: owner }).click();
 
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
@@ -1017,13 +1053,25 @@ export const openColumnDetailPanel = async ({
   columnId,
   columnNameTestId = 'column-name',
   entityType,
+  entityEndpoint,
 }: {
   page: Page;
   rowSelector?: string;
   columnId: string;
   columnNameTestId?: string;
   entityType?: EntityType;
+  entityEndpoint?: string;
 }) => {
+  // Register before click so the listener is in place before the response fires.
+  const apiResponsePromise = entityEndpoint
+    ? page.waitForResponse(
+        (response) =>
+          (response.url().includes(`/api/v1/${entityEndpoint}/name/`) ||
+            response.url().includes('/api/v1/columns/name/')) &&
+          response.request().method() === 'GET'
+      )
+    : null;
+
   if (entityType === 'MlModel') {
     const columnName = page
       .locator(`[${rowSelector}="${columnId}"]`)
@@ -1049,7 +1097,10 @@ export const openColumnDetailPanel = async ({
   }
   await expect(page.locator('.column-detail-panel')).toBeVisible();
 
-  await page.waitForLoadState('networkidle');
+  if (apiResponsePromise) {
+    const apiResponse = await apiResponsePromise;
+    expect(apiResponse.status()).toBe(200);
+  }
 
   const panelContainer = page.locator('.column-detail-panel');
 
@@ -1304,7 +1355,6 @@ export const unFollowEntity = async (
   page: Page,
   endpoint: EntityTypeEndpoint
 ) => {
-  await page.waitForLoadState('networkidle');
 
   const followButton = page.getByTestId('entity-follow-button');
 
@@ -1329,7 +1379,6 @@ export const validateFollowedEntityToWidget = async (
   isFollowing: boolean
 ) => {
   await redirectToHomePage(page);
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -1403,7 +1452,6 @@ export const createAnnouncement = async (
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
   await page.reload();
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -1493,7 +1541,6 @@ export const deleteAnnouncement = async (page: Page) => {
   await getFeed;
 
   await page.reload();
-  await page.waitForLoadState('networkidle');
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
@@ -1742,7 +1789,6 @@ export const checkForEditActions = async ({
     if (entityType.startsWith('services/')) {
       await page.getByRole('tab').nth(1).click();
 
-      await page.waitForLoadState('networkidle');
 
       continue;
     }
@@ -1939,6 +1985,9 @@ export const deletedEntityCommonChecks = async ({
 export const restoreEntity = async (page: Page) => {
   await expect(page.locator('[data-testid="deleted-badge"]')).toBeVisible();
 
+  // Dismiss any stale toast from previous operations (e.g., delete toast)
+  await closeFirstPopupAlert(page);
+
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="restore-button"]');
   await page.click('button:has-text("Restore")');
@@ -1981,7 +2030,6 @@ export const softDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
 
   await deleteResponse;
-  await page.waitForLoadState('networkidle');
 
   await toastNotification(
     page,
@@ -1990,7 +2038,6 @@ export const softDeleteEntity = async (
   );
 
   await page.reload();
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   // Retry mechanism for checking deleted badge
   let deletedBadge = page.locator('[data-testid="deleted-badge"]');
@@ -2006,7 +2053,6 @@ export const softDeleteEntity = async (
     attempts++;
     if (attempts < maxAttempts) {
       await page.reload();
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -2042,7 +2088,6 @@ export const softDeleteEntity = async (
 
   await restoreEntity(page);
   await page.reload();
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await deletedEntityCommonChecks({
     page,
@@ -2178,7 +2223,6 @@ export const checkItemNotExistsInQuickFilter = async (
   filterValue: string
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.waitForLoadState('networkidle');
   await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
   const testId = filterValue.toLowerCase();
 
@@ -2200,10 +2244,10 @@ export const checkExploreSearchFilter = async (
     const tierList = page.waitForResponse(
       `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN**`
     );
-    await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
     await tierList;
   } else {
-    await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
   }
   await searchAndClickOnOption(
     page,
@@ -2217,8 +2261,8 @@ export const checkExploreSearchFilter = async (
 
   const rawFilterValue = (filterValue ?? '').replace(/ /g, '+').toLowerCase();
 
-  // Escape double quotes before encoding
-  const escapedValue = rawFilterValue.replace(/"/g, '\\"');
+  // Use JSON.stringify to properly escape both backslashes and double quotes
+  const escapedValue = JSON.stringify(rawFilterValue).slice(1, -1);
 
   const filterValueForSearchURL =
     filterKey === 'tier.tagFQN'

@@ -45,13 +45,20 @@ export const visitUserListPage = async (page: Page) => {
 };
 
 export const performUserLogin = async (browser: Browser, user: UserClass) => {
-  const page = await browser.newPage();
+  const context = await browser.newContext({
+    storageState: {
+      cookies: [],
+      origins: [],
+    },
+  });
+  const page = await context.newPage();
   await user.login(page);
   const token = await getToken(page);
   const apiContext = await getAuthContext(token);
   const afterAction = async () => {
     await apiContext.dispose();
     await page.close();
+    await context.close();
   };
 
   return { page, apiContext, afterAction };
@@ -106,9 +113,28 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
       state: 'detached',
     }
   );
-  await page.getByTestId('searchbar').fill(userName);
-  await userResponse;
-  await loader;
+  const searchBar = page.getByTestId('searchbar');
+
+  await expect
+    .poll(
+      async () => {
+        const searchRequest = page.waitForResponse('/api/v1/search/query*');
+        await searchBar.fill('');
+        await searchBar.fill(userName);
+        await searchRequest;
+        await loader.catch(() => undefined);
+
+        return await page.getByTestId(userName).count();
+      },
+      {
+        timeout: 60000,
+        intervals: [1000, 2000, 5000],
+        message: `Timed out waiting for user ${userName} to become visible in the user list`,
+      }
+    )
+    .toBeGreaterThan(0);
+
+  await userResponse.catch(() => undefined);
   await page.getByTestId(userName).click();
 };
 
@@ -616,7 +642,6 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');
 
-  await page.waitForLoadState('networkidle');
 };
 
 export const checkStewardPermissions = async (page: Page) => {
@@ -626,7 +651,7 @@ export const checkStewardPermissions = async (page: Page) => {
   await page
     .getByRole('cell', { name: /user_id/i })
     .getByTestId('edit-displayName-button')
-    .waitFor({ state: 'attached'});
+    .waitFor({ state: 'attached' });
 
   // Check edit owner permission
   await expect(page.locator('[data-testid="edit-owner"]')).toBeVisible();
@@ -690,17 +715,18 @@ export const addUser = async (
   await page.fill('#password', password);
   await page.fill('#confirmPassword', password);
 
-  await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
-  await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
-  await page.waitForSelector('.ant-select-dropdown:visible', {
-    state: 'visible',
-  });
+  const rolesCombobox = page
+    .getByTestId('roles-dropdown')
+    .getByRole('combobox');
+  await expect(rolesCombobox).toBeVisible({ timeout: 120000 });
+  await rolesCombobox.click();
+  await rolesCombobox.fill(role);
   const roleOption = page
-    .locator('.ant-select-dropdown:visible')
-    .locator('.ant-select-item-option')
-    .filter({ hasText: role })
+    .locator('.ant-select-item-option-content')
+    .filter({ hasText: new RegExp(`^${role}$`) })
     .first();
-  await roleOption.waitFor({ state: 'visible' });
+  await expect(roleOption).toBeVisible({ timeout: 120000 });
+  await roleOption.click();
   await clickOutside(page);
 
   if (personas?.length) {

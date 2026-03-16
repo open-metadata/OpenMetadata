@@ -21,7 +21,6 @@ import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
-import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -227,7 +226,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // will be a Task created.
     // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
     // Data Contract goes back to DRAFT.
-    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
+    if (original.getEntityStatus() != EntityStatus.DRAFT
+        && updated.getEntityStatus() == EntityStatus.DRAFT) {
       try {
         closeApprovalTask(updated, "Closed due to data contract going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
@@ -1390,16 +1390,62 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
+    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
-      recordChange("status", original.getEntityStatus(), updated.getEntityStatus());
-      recordChange("testSuite", original.getTestSuite(), updated.getTestSuite());
-      recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse());
-      recordChange("security", original.getSecurity(), updated.getSecurity());
-      recordChange("sla", original.getSla(), updated.getSla());
-      updateSchema(original, updated);
-      updateQualityExpectations(original, updated);
-      updateSemantics(original, updated);
+      compareAndUpdate(
+          "latestResult",
+          () -> {
+            recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
+          });
+      compareAndUpdate(
+          "entityStatus",
+          () -> {
+            recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
+          });
+      compareAndUpdate(
+          "testSuite",
+          () -> {
+            recordChange("testSuite", original.getTestSuite(), updated.getTestSuite());
+          });
+      compareAndUpdate(
+          "termsOfUse",
+          () -> {
+            recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse());
+          });
+      compareAndUpdate(
+          "security",
+          () -> {
+            recordChange("security", original.getSecurity(), updated.getSecurity());
+          });
+      compareAndUpdate(
+          "sla",
+          () -> {
+            recordChange("sla", original.getSla(), updated.getSla());
+          });
+      compareAndUpdate(
+          "schema",
+          () -> {
+            updateSchema(original, updated);
+          });
+      compareAndUpdate(
+          "qualityExpectations",
+          () -> {
+            updateQualityExpectations(original, updated);
+          });
+      compareAndUpdate(
+          "semantics",
+          () -> {
+            updateSemantics(original, updated);
+          });
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
@@ -1647,13 +1693,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   @Override
   public void storeEntities(List<DataContract> entities) {
-    List<DataContract> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(entities.size());
+    List<String> jsons = new ArrayList<>(entities.size());
     for (DataContract entity : entities) {
-      String jsonCopy = gson.toJson(entity);
-      entitiesToStore.add(gson.fromJson(jsonCopy, DataContract.class));
+      fqns.add(entity.getFullyQualifiedName());
+      jsons.add(serializeForStorage(entity));
     }
-    storeMany(entitiesToStore);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   @Override
@@ -1710,6 +1756,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           "Cannot delete an inherited data contract. The contract is inherited from a Data Product "
               + "and can only be removed by removing the entity from the Data Product or by creating "
               + "an entity-specific contract that overrides the inherited one.");
+    }
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
     }
   }
 

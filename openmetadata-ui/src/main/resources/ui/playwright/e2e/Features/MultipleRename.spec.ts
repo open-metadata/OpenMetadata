@@ -64,7 +64,6 @@ async function performRename(
   await patchResponse;
 
   // Wait for the UI to update
-  await page.waitForLoadState('networkidle');
 }
 
 test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
@@ -326,7 +325,6 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await patchResponse;
 
         // Wait for the UI to update
-        await page.waitForLoadState('networkidle');
 
         // Verify the header shows the new name
         await expect(page.getByTestId('entity-header-name')).toContainText(

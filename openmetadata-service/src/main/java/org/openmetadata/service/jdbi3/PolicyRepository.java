@@ -246,10 +246,17 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
-      updateRules(original.getRules(), updated.getRules());
-      // Invalidate policy cache when policy rules change
-      SubjectCache.invalidateAll();
+      compareAndUpdate(
+          ENABLED,
+          () -> {
+            recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
+          });
+      compareAndUpdate(
+          "rules",
+          () -> {
+            updateRules(original.getRules(), updated.getRules());
+            SubjectCache.invalidateAll();
+          });
     }
 
     private void updateRules(List<Rule> origRules, List<Rule> updatedRules) {

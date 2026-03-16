@@ -59,7 +59,6 @@ test.describe(
       await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
       await page.click('[data-testid="test-cases"]');
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -68,7 +67,6 @@ test.describe(
 
       await page.getByTestId('next').click();
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -180,14 +178,11 @@ test.describe(
       await firstLinkInColumn.click();
 
       await page.waitForURL('**/table/**');
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
-      await page.goBack({
-        waitUntil: 'networkidle',
-      });
+      await page.goBack();
 
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -205,14 +200,11 @@ test.describe(
       await secondLinkInColumn.click();
 
       await page.waitForURL('**/table/**');
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
-      await page.goBack({
-        waitUntil: 'networkidle',
-      });
+      await page.goBack();
 
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -228,7 +220,6 @@ test.describe(
 
     test('should persist page size', async ({ dataConsumerPage: page }) => {
       await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
-      await page.waitForLoadState('networkidle');
 
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -258,13 +249,11 @@ test.describe(
       await linkInColumn.click();
 
       await entityApiResponse;
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
       await page.goBack();
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -286,9 +275,9 @@ test.describe(
     test('expand collapse should only visible for nested columns', async ({
       page,
     }) => {
+      test.slow();
       await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -377,7 +366,6 @@ test.describe(
         '/table/sample_data.ecommerce_db.shopify.performance_test_table'
       );
 
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -433,28 +421,40 @@ test.describe(
     test('Glossary term should be consistent for search', async ({
       dataConsumerPage: page,
     }) => {
-      const columnsResponse = page.waitForResponse(
-        '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
-      );
+      const tableRoute = '/table/sample_data.ecommerce_db.shopify.dim_customer';
+      const glossaryRowSelector =
+        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]';
 
-      // Go to tables page
-      await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+      await expect
+        .poll(
+          async () => {
+            await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
+            await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
-      // Wait for page to be fully loaded
-      await columnsResponse;
+            return await page.locator(glossaryRowSelector).count();
+          },
+          {
+            timeout: 60000,
+            intervals: [1000, 2000, 5000],
+          }
+        )
+        .toBeGreaterThan(0);
+
       await waitForAllLoadersToDisappear(page);
+      const glossaryTagsCell = page.locator(
+        `${glossaryRowSelector} [data-testid*="glossary-tags"]`
+      );
+      await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
 
       // Check if add button exists and is visible
       const rowSelector =
         '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid*="glossary-tags"]';
 
-      const addButton = await page.$(`${rowSelector} [data-testid="add-tag"]`);
-      if (addButton && (await addButton.isVisible())) {
+      const addButton = glossaryTagsCell.getByTestId('add-tag');
+      if (await addButton.isVisible().catch(() => false)) {
         await addButton.click();
       } else {
-        await page
-          .locator(`${rowSelector} [data-testid="edit-button"]`)
-          .click();
+        await glossaryTagsCell.getByTestId('edit-button').click();
       }
 
       await page.waitForSelector('.ant-select-dropdown', { state: 'visible' });
@@ -472,25 +472,27 @@ test.describe(
       await page
         .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
         .click();
-      const saveResponse = page.waitForResponse('api/v1/columns/name/*');
-      await page.getByTestId('saveAssociatedTag').click();
-
-      await saveResponse;
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/columns/name/') &&
+            ['PUT', 'PATCH'].includes(response.request().method()) &&
+            response.ok()
+        ),
+        page.getByTestId('saveAssociatedTag').click(),
+      ]);
+      await page.waitForSelector('.ant-select-dropdown', { state: 'hidden' });
+      await waitForAllLoadersToDisappear(page);
+      await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
 
       await expect(
         page.getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
       ).toBeVisible();
 
-      const searchRequest = page.waitForResponse(
-        'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
-      );
-
       await page
         .getByTestId('search-bar-container')
         .getByTestId('searchbar')
         .fill('customer_id');
-
-      await searchRequest;
       await page.waitForSelector(
         '[data-testid="entity-table"] [data-testid="loader"]',
         {
@@ -522,9 +524,17 @@ test.describe(
         .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
         .click();
 
-      await page.getByTestId('saveAssociatedTag').click();
-
-      await page.waitForResponse('api/v1/columns/name/*');
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/columns/name/') &&
+            ['PUT', 'PATCH'].includes(response.request().method()) &&
+            response.ok()
+        ),
+        page.getByTestId('saveAssociatedTag').click(),
+      ]);
+      await page.waitForSelector('.ant-select-dropdown', { state: 'hidden' });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
@@ -579,7 +589,6 @@ test.describe(
 
       page.reload();
       // Wait for page to be fully loaded
-      await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -694,6 +703,7 @@ test.describe(
     test('Search for column, copy link, and verify side panel behavior', async ({
       page,
     }) => {
+      test.slow();
       await redirectToHomePage(page);
 
       const columnsResponse = page.waitForResponse(
