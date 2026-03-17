@@ -191,7 +191,8 @@ export const getDataProductDetailTabs = ({
               <ResizablePanels
                 className="h-full domain-height-with-resizable-panel"
                 firstPanel={{
-                  className: 'domain-resizable-panel-container',
+                  className:
+                    'domain-resizable-panel-container tw:overflow-auto!',
                   wrapInCard: false,
                   children: (
                     <InputOutputPortsTab
