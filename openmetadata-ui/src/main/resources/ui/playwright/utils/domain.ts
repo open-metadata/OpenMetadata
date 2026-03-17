@@ -16,11 +16,11 @@ import test, {
   Locator,
   Page,
 } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { LONG_DESCRIPTION_END_TEXT } from '../constant/domain';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
-import { TagClass } from '../support/tag/TagClass';
 import { RolesClass } from '../support/access-control/RolesClass';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
@@ -30,6 +30,7 @@ import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
+import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
@@ -587,7 +588,7 @@ export const addAssetsToDomain = async (
     const name = get(asset, 'entityResponseData.name');
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
     const entityDisplayName = get(asset, 'entityResponseData.displayName');
-    const visibleName = entityDisplayName ?? name;
+    const visibleName = entityDisplayName ?? name ?? '';
 
     const searchRes = page.waitForResponse(
       `/api/v1/search/query?q=${encodeURIComponent(
@@ -648,7 +649,7 @@ export const addServicesToDomain = async (
   await assetRes;
 
   for (const asset of assets) {
-    const name = get(asset, 'name');
+    const name = get(asset, 'name') ?? '';
     const fqn = get(asset, 'fullyQualifiedName');
 
     const searchRes = page.waitForResponse(
@@ -994,7 +995,9 @@ export const verifyActiveDomainIsDefault = async (page: Page) => {
  * Creates user, policy, role, domain, data product and assigns ownership
  * Returns all created objects and a cleanup function
  */
-export const setupDomainOwnershipTest = async (apiContext: any) => {
+export const setupDomainOwnershipTest = async (
+  apiContext: APIRequestContext
+) => {
   // Create all necessary resources
   const dataConsumerUser = new UserClass();
   const id = uuid();
@@ -1466,13 +1469,9 @@ export const verifyPortCounts = async (
 ) => {
   const portsTab = page.getByTestId('input-output-ports-tab');
   const inputPortCount = portsTab
-    .locator('p', { hasText: 'Input Ports' })
-    .first()
-    .locator('xpath=following-sibling::*[1]');
+    .getByTestId('input-port-count')
   const outputPortCount = portsTab
-    .locator('p', { hasText: 'Output Ports' })
-    .first()
-    .locator('xpath=following-sibling::*[1]');
+     .getByTestId('output-port-count')
 
   await expect
     .poll(
@@ -1509,7 +1508,8 @@ export const addInputPortToDataProduct = async (
 ) => {
   const name = get(asset, 'entityResponseData.name');
   const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-  const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+  const displayName =
+    get(asset, 'entityResponseData.displayName') ?? name ?? '';
 
   await expect(page.getByTestId('add-input-port-button')).toBeEnabled({
     timeout: 10000,
@@ -1552,7 +1552,8 @@ export const addOutputPortToDataProduct = async (
 ) => {
   const name = get(asset, 'entityResponseData.name');
   const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-  const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+  const displayName =
+    get(asset, 'entityResponseData.displayName') ?? name ?? '';
 
   await expect(page.getByTestId('add-output-port-button')).toBeEnabled({
     timeout: 10000,
@@ -1737,8 +1738,8 @@ export const assignDomainToEntity = async (
   entity: {
     patch: (options: {
       apiContext: APIRequestContext;
-      patchData: any[];
-    }) => Promise<any>;
+      patchData: Operation[];
+    }) => Promise<void>;
   },
   domain: { responseData: { id?: string } }
 ) => {
