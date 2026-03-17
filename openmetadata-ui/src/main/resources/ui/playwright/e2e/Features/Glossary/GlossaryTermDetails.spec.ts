@@ -283,7 +283,7 @@ test.describe('Glossary Term Details Operations', () => {
       await editButton.click();
 
       // Wait for edit modal to open
-      await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       // Verify the modal has the term name pre-filled
       await expect(page.getByTestId('name')).toHaveValue(

@@ -17,7 +17,6 @@ import { SearchIndex } from '../enums/search.enum';
 import { Domain, DomainType } from '../generated/entity/domains/domain';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
-  getDomainOptions,
   getQueryFilterToIncludeDomain,
   isDomainExist,
   withDomainFilter,
@@ -26,30 +25,6 @@ import { getPathNameFromWindowLocation } from './RouterUtils';
 
 jest.mock('../hooks/useDomainStore');
 jest.mock('./RouterUtils');
-
-describe('getDomainOptions function', () => {
-  const domains = [
-    {
-      id: '1',
-      name: 'Domain 1',
-      fullyQualifiedName: 'domain1',
-      description: 'test',
-      domainType: DomainType.Aggregate,
-    },
-  ];
-
-  it('should return an array of ItemType objects', () => {
-    const result = getDomainOptions(domains);
-
-    expect(Array.isArray(result)).toBeTruthy();
-    expect(result).toHaveLength(2);
-
-    result.forEach((item) => {
-      expect(item).toHaveProperty('label');
-      expect(item).toHaveProperty('key');
-    });
-  });
-});
 
 describe('isDomainExist', () => {
   it('should return true if domain fqn matches directly', () => {
@@ -198,6 +173,7 @@ describe('isDomainExist', () => {
                           EntityType.TEST_SUITE,
                           EntityType.QUERY,
                           EntityType.TEST_CASE,
+                          EntityType.TABLE_COLUMN,
                         ],
                       },
                     },
@@ -254,7 +230,8 @@ describe('isDomainExist', () => {
       expect(excludedEntityTypes).toContain(EntityType.TEST_SUITE);
       expect(excludedEntityTypes).toContain(EntityType.QUERY);
       expect(excludedEntityTypes).toContain(EntityType.TEST_CASE);
-      expect(excludedEntityTypes).toHaveLength(4);
+      expect(excludedEntityTypes).toContain(EntityType.TABLE_COLUMN);
+      expect(excludedEntityTypes).toHaveLength(5);
     });
 
     it('should handle empty string parameters', () => {
@@ -459,9 +436,8 @@ describe('withDomainFilter', () => {
       const result = withDomainFilter(config);
       const queryFilter = JSON.parse(result.params?.query_filter as string);
       const shouldClauses =
-        queryFilter.query.bool.must[
-          queryFilter.query.bool.must.length - 1
-        ].bool.should;
+        queryFilter.query.bool.must[queryFilter.query.bool.must.length - 1].bool
+          .should;
 
       expect(shouldClauses).toEqual([
         { term: { fullyQualifiedName: 'engineering' } },

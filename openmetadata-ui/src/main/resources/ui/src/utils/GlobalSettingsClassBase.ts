@@ -582,6 +582,15 @@ class GlobalSettingsClassBase {
                 icon: DomainIcon,
               },
               {
+                label: t('label.metric-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.metric-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.METRICS}`,
+                icon: MetricIcon,
+              },
+              {
                 label: t('label.search-index-plural'),
                 description: t('message.search-settings-for-entity', {
                   entity: t('label.search-index-plural'),
@@ -625,6 +634,15 @@ class GlobalSettingsClassBase {
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.WORKSHEETS}`,
                 icon: WorksheetIcon,
+              },
+              {
+                label: t('label.column-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.column-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.COLUMN}`,
+                icon: ColumnIcon,
               },
             ].sort((a, b) => a.label.localeCompare(b.label)),
           },

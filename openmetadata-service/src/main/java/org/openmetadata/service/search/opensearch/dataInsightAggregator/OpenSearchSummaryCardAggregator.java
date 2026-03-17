@@ -22,6 +22,9 @@ import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 
 public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAggregatorInterface {
+  private static final String AGG_NAME = "1";
+
+  @Override
   public SearchRequest prepareSearchRequest(
       @NotNull DataInsightCustomChart diChart,
       long start,
@@ -40,7 +43,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
         summaryCard.getMetrics().getFirst().getField(),
         summaryCard.getMetrics().getFirst().getFilter(),
         subAggregations,
-        "1",
+        AGG_NAME,
         formulas);
 
     Aggregation dateHistogramAgg =
@@ -53,7 +56,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
                     .aggregations(subAggregations));
 
     Map<String, Aggregation> aggregationsMap = new HashMap<>();
-    aggregationsMap.put("1", dateHistogramAgg);
+    aggregationsMap.put(AGG_NAME, dateHistogramAgg);
 
     SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder().size(0);
 
@@ -66,6 +69,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
                           r.field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
                               .gte(JsonData.of(start))
                               .lte(JsonData.of(end))));
+
       searchRequestBuilder.query(rangeQuery);
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {

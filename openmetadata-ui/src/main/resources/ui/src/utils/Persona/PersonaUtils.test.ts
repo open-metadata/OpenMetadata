@@ -50,6 +50,7 @@ describe('PersonaUtils', () => {
     it('should return the correct options for governance category', () => {
       const options = getCustomizePageOptions('governance');
 
+      expect(options).toHaveLength(4);
       expect(options).toEqual([
         expect.objectContaining({
           key: PageType.DataProduct,
@@ -74,9 +75,22 @@ describe('PersonaUtils', () => {
       ]);
     });
 
+    it('should only include governance entities in governance category', () => {
+      const options = getCustomizePageOptions('governance');
+      const keys = options.map((option) => option.key);
+
+      expect(keys).toEqual([
+        PageType.DataProduct,
+        PageType.Domain,
+        PageType.Glossary,
+        PageType.GlossaryTerm,
+      ]);
+    });
+
     it('should return the correct options for data-assets category', () => {
       const options = getCustomizePageOptions('data-assets');
 
+      expect(options).toHaveLength(19);
       expect(options).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -108,9 +122,64 @@ describe('PersonaUtils', () => {
       );
     });
 
+    it('should exclude governance and special entities from data-assets category', () => {
+      const options = getCustomizePageOptions('data-assets');
+      const keys = options.map((option) => option.key);
+
+      expect(options).toHaveLength(19);
+      expect(keys).not.toContain(PageType.Glossary);
+      expect(keys).not.toContain(PageType.GlossaryTerm);
+      expect(keys).not.toContain(PageType.Domain);
+      expect(keys).not.toContain(PageType.DataProduct);
+      expect(keys).not.toContain(PageType.LandingPage);
+      expect(keys).not.toContain(PageType.Tag);
+      expect(keys).not.toContain(PageType.Classification);
+    });
+
+    it('should include all other entities in data-assets category', () => {
+      const options = getCustomizePageOptions('data-assets');
+      const keys = options.map((option) => option.key);
+
+      expect(options).toHaveLength(19);
+      expect(keys).toContain(PageType.APICollection);
+      expect(keys).toContain(PageType.APIEndpoint);
+      expect(keys).toContain(PageType.Chart);
+      expect(keys).toContain(PageType.Container);
+      expect(keys).toContain(PageType.Dashboard);
+      expect(keys).toContain(PageType.DashboardDataModel);
+      expect(keys).toContain(PageType.Database);
+      expect(keys).toContain(PageType.DatabaseSchema);
+      expect(keys).toContain(PageType.Directory);
+      expect(keys).toContain(PageType.File);
+      expect(keys).toContain(PageType.Metric);
+      expect(keys).toContain(PageType.MlModel);
+      expect(keys).toContain(PageType.Pipeline);
+      expect(keys).toContain(PageType.SearchIndex);
+      expect(keys).toContain(PageType.Spreadsheet);
+      expect(keys).toContain(PageType.StoredProcedure);
+      expect(keys).toContain(PageType.Table);
+      expect(keys).toContain(PageType.Topic);
+      expect(keys).toContain(PageType.Worksheet);
+    });
+
     it('should return an empty array for an unknown category', () => {
       const options = getCustomizePageOptions('unknown-category');
 
+      expect(options).toHaveLength(0);
+      expect(options).toEqual([]);
+    });
+
+    it('should return an empty array for empty string category', () => {
+      const options = getCustomizePageOptions('');
+
+      expect(options).toHaveLength(0);
+      expect(options).toEqual([]);
+    });
+
+    it('should return an empty array for null-like category', () => {
+      const options = getCustomizePageOptions('null');
+
+      expect(options).toHaveLength(0);
       expect(options).toEqual([]);
     });
   });

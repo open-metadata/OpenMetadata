@@ -26,6 +26,7 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
@@ -42,8 +43,10 @@ public class IndexingPipeline implements AutoCloseable {
 
   private static final String POISON_PILL = "__POISON_PILL__";
   private static final int DEFAULT_QUEUE_SIZE = 20000;
-  private static final int MAX_CONSUMER_THREADS = 20;
-  private static final int MAX_JOB_THREADS = 30;
+  private static final int MAX_CONSUMER_THREADS =
+      Math.min(20, Runtime.getRuntime().availableProcessors() * 2);
+  private static final int MAX_JOB_THREADS =
+      Math.min(30, Runtime.getRuntime().availableProcessors() * 4);
   private static final String ENTITY_TYPE_KEY = "entityType";
   private static final String RECREATE_INDEX = "recreateIndex";
 
@@ -109,17 +112,20 @@ public class IndexingPipeline implements AutoCloseable {
     int batchSize = config.batchSize();
 
     taskQueue = new LinkedBlockingQueue<>(queueSize);
+    String jobIdTag = MDC.get("reindexJobId");
+    String threadPrefix = "reindex-" + (jobIdTag != null ? jobIdTag + "-" : "");
     consumerExecutor =
         Executors.newFixedThreadPool(
-            numConsumers, Thread.ofPlatform().name("pipeline-consumer-", 0).factory());
+            numConsumers,
+            Thread.ofPlatform().name(threadPrefix + "pipeline-consumer-", 0).factory());
     producerExecutor =
         Executors.newFixedThreadPool(
             config.producerThreads() > 0 ? config.producerThreads() : 2,
-            Thread.ofPlatform().name("pipeline-producer-", 0).factory());
+            Thread.ofPlatform().name(threadPrefix + "pipeline-producer-", 0).factory());
     jobExecutor =
         Executors.newFixedThreadPool(
             Math.min(entities.size(), MAX_JOB_THREADS),
-            Thread.ofPlatform().name("pipeline-job-", 0).factory());
+            Thread.ofPlatform().name(threadPrefix + "pipeline-job-", 0).factory());
 
     entityReader = new EntityReader(producerExecutor, stopped);
 
@@ -239,6 +245,11 @@ public class IndexingPipeline implements AutoCloseable {
           entityStats.setSuccessRecords(readerSuccess);
           entityStats.setFailedRecords(readerFailed);
           updateEntityAndJobStats(entityType, entityStats);
+
+          if (Entity.TABLE.equals(entityType)) {
+            updateColumnStatsFromSink();
+          }
+
           listeners.onProgressUpdate(stats.get(), null);
         } catch (Exception e) {
           LOG.error("Sink error for {}", entityType, e);
@@ -332,6 +343,7 @@ public class IndexingPipeline implements AutoCloseable {
 
   private ExecutionResult buildResult(long startTime) {
     syncSinkStats();
+    updateColumnStatsFromSink();
     Stats currentStats = stats.get();
     if (currentStats != null) {
       StatsReconciler.reconcile(currentStats);
@@ -379,6 +391,15 @@ public class IndexingPipeline implements AutoCloseable {
       es.setFailedRecords(0);
       s.getEntityStats().getAdditionalProperties().put(entityType, es);
     }
+
+    if (entities.contains(Entity.TABLE) && !entities.contains(Entity.TABLE_COLUMN)) {
+      StepStats columnStats = new StepStats();
+      columnStats.setTotalRecords(0);
+      columnStats.setSuccessRecords(0);
+      columnStats.setFailedRecords(0);
+      s.getEntityStats().getAdditionalProperties().put(Entity.TABLE_COLUMN, columnStats);
+    }
+
     s.getJobStats().setTotalRecords(total);
     s.getJobStats().setSuccessRecords(0);
     s.getJobStats().setFailedRecords(0);
@@ -436,12 +457,14 @@ public class IndexingPipeline implements AutoCloseable {
     StepStats js = s.getJobStats();
     if (js != null) {
       int totalSuccess =
-          s.getEntityStats().getAdditionalProperties().values().stream()
-              .mapToInt(StepStats::getSuccessRecords)
+          s.getEntityStats().getAdditionalProperties().entrySet().stream()
+              .filter(e -> !Entity.TABLE_COLUMN.equals(e.getKey()))
+              .mapToInt(e -> e.getValue().getSuccessRecords())
               .sum();
       int totalFailed =
-          s.getEntityStats().getAdditionalProperties().values().stream()
-              .mapToInt(StepStats::getFailedRecords)
+          s.getEntityStats().getAdditionalProperties().entrySet().stream()
+              .filter(e -> !Entity.TABLE_COLUMN.equals(e.getKey()))
+              .mapToInt(e -> e.getValue().getFailedRecords())
               .sum();
       js.setSuccessRecords(totalSuccess);
       js.setFailedRecords(totalFailed);
@@ -478,6 +501,22 @@ public class IndexingPipeline implements AutoCloseable {
     StepStats processStats = searchIndexSink.getProcessStats();
     if (processStats != null) {
       s.setProcessStats(processStats);
+    }
+  }
+
+  private void updateColumnStatsFromSink() {
+    if (searchIndexSink == null) return;
+    Stats s = stats.get();
+    if (s == null || s.getEntityStats() == null) return;
+
+    StepStats columnStats = searchIndexSink.getColumnStats();
+    if (columnStats != null && columnStats.getTotalRecords() > 0) {
+      StepStats existing = s.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN);
+      if (existing != null) {
+        existing.setTotalRecords(columnStats.getTotalRecords());
+        existing.setSuccessRecords(columnStats.getSuccessRecords());
+        existing.setFailedRecords(columnStats.getFailedRecords());
+      }
     }
   }
 

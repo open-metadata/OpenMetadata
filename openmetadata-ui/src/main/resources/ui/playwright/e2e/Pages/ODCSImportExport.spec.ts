@@ -49,9 +49,10 @@ import {
   navigateToContractTab,
   openODCSImportDropdown,
 } from '../../utils/odcsImportExport';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.describe('ODCS Import/Export', () => {
-  test.slow(true)
+  test.slow(true);
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -66,11 +67,7 @@ test.describe('ODCS Import/Export', () => {
     try {
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_BASIC_YAML,
-        'valid-basic.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_BASIC_YAML, 'valid-basic.yaml');
 
       await expect(page.getByTestId('contract-title')).toBeVisible();
     } finally {
@@ -88,11 +85,7 @@ test.describe('ODCS Import/Export', () => {
     try {
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_FULL_YAML,
-        'valid-full.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'valid-full.yaml');
 
       await expect(page.getByTestId('contract-title')).toBeVisible();
       await expect(page.getByTestId('contract-sla-card')).toBeVisible();
@@ -504,11 +497,7 @@ test.describe('ODCS Import/Export', () => {
       // First import a contract
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_BASIC_YAML,
-        'export-test.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_BASIC_YAML, 'export-test.yaml');
 
       // Set up download listener before clicking export
       const downloadPromise = page.waitForEvent('download');
@@ -588,11 +577,7 @@ test.describe('ODCS Import/Export', () => {
       // First import a basic contract (no SLA, name: "Orders Basic Contract")
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_BASIC_YAML,
-        'initial.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_BASIC_YAML, 'initial.yaml');
 
       // Verify basic contract was created with correct name
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -605,15 +590,10 @@ test.describe('ODCS Import/Export', () => {
 
       // Now merge with full contract (has SLA and roles)
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_FULL_YAML,
-        'merge-with-sla.yaml',
-        {
-          hasExistingContract: true,
-          mode: 'merge',
-        }
-      );
+      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'merge-with-sla.yaml', {
+        hasExistingContract: true,
+        mode: 'merge',
+      });
 
       // Verify contract was updated with SLA from merged contract
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -649,7 +629,6 @@ test.describe('ODCS Import/Export', () => {
       // Verify original contract name is preserved (merge behavior)
       expect(exportedYaml).toContain('Orders Basic Contract');
 
-
       // Cleanup
       fsModule.unlinkSync(tempPath);
     } finally {
@@ -668,11 +647,7 @@ test.describe('ODCS Import/Export', () => {
       // First import a full contract (with SLA, name: "Customer Analytics Full Contract")
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_FULL_YAML,
-        'full-contract.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'full-contract.yaml');
 
       // Verify full contract was created with SLA
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -682,9 +657,6 @@ test.describe('ODCS Import/Export', () => {
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
         timeout: 10000,
       });
-
-      // Wait for page to fully settle before replace operation
-      await page.waitForTimeout(2000);
 
       // Now REPLACE with basic contract (no SLA, name: "Orders Basic Contract")
       await openODCSImportDropdown(page);
@@ -750,11 +722,7 @@ test.describe('ODCS Import/Export', () => {
       // First import a contract
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_BASIC_YAML,
-        'initial.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_BASIC_YAML, 'initial.yaml');
 
       await expect(page.getByTestId('contract-title')).toBeVisible();
 
@@ -777,9 +745,7 @@ test.describe('ODCS Import/Export', () => {
       await page.getByTestId('file-info-card').waitFor();
 
       // Verify merge/replace options are shown
-      await expect(
-        page.getByTestId('existing-contract-warning')
-      ).toBeVisible();
+      await expect(page.getByTestId('existing-contract-warning')).toBeVisible();
       await expect(
         page.locator('input[type="radio"][value="merge"]')
       ).toBeVisible();
@@ -824,7 +790,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Wait for preview
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
+      await page.locator('.file-info-card, .contract-preview-card').waitFor({
         state: 'visible',
       });
 
@@ -857,11 +823,7 @@ test.describe('ODCS Import/Export', () => {
       // Import an ODCS contract with SLA
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_FULL_YAML,
-        'odcs-to-om.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'odcs-to-om.yaml');
 
       // Verify contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -912,11 +874,7 @@ test.describe('ODCS Import/Export', () => {
       // Import an ODCS contract with description (schema removed due to dynamic test table columns)
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_FULL_YAML,
-        'odcs-schema.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'odcs-schema.yaml');
 
       // Verify contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -958,11 +916,7 @@ test.describe('ODCS Import/Export', () => {
       // Import a full ODCS contract
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_FULL_YAML,
-        'full-odcs.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'full-odcs.yaml');
 
       // Verify contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -1019,11 +973,7 @@ test.describe('ODCS Import/Export', () => {
       // Import ODCS with SLA properties
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_FULL_YAML,
-        'sla-mapping.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'sla-mapping.yaml');
 
       // Verify SLA card is visible (with extended timeout for rendering)
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -1236,11 +1186,7 @@ test.describe('ODCS Import/Export', () => {
     try {
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_WITH_TEAM_YAML,
-        'team-owner.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_WITH_TEAM_YAML, 'team-owner.yaml');
 
       // Verify contract was created successfully
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -1284,11 +1230,7 @@ test.describe('ODCS Import/Export', () => {
     try {
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_WITH_TEAM_YAML,
-        'team-roles.yaml'
-      );
+      await importODCSYaml(page, ODCS_VALID_WITH_TEAM_YAML, 'team-roles.yaml');
 
       // Verify contract was created successfully
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -1701,12 +1643,13 @@ version: "1.0.0"`;
         buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
       });
 
-      // Wait for object selector to appear
+      await page.getByTestId('file-info-card').waitFor({ timeout: 30000 });
       await expect(page.locator('.object-selector-section')).toBeVisible({
-        timeout: 10000,
+        timeout: 30000,
       });
 
       // Open the dropdown to see all options
+      await page.getByTestId('schema-object-select').waitFor({ state: 'visible' });
       await page.getByTestId('schema-object-select').click();
 
       // Verify all three objects from the multi-object YAML are listed
@@ -1782,7 +1725,11 @@ version: "1.0.0"`;
       // Step 1: Import a basic ODCS contract (no SLA)
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_VALID_BASIC_YAML, 'basic-for-modify.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_VALID_BASIC_YAML,
+        'basic-for-modify.yaml'
+      );
 
       await expect(page.getByTestId('contract-title')).toBeVisible();
       await expect(page.getByTestId('contract-title')).toContainText(
@@ -1794,7 +1741,7 @@ version: "1.0.0"`;
 
       // Step 2: Edit the contract via UI - add SLA
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -1822,7 +1769,6 @@ version: "1.0.0"`;
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      await page.waitForLoadState('networkidle');
 
       // Verify SLA card is now visible after adding SLA
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -1872,7 +1818,11 @@ version: "1.0.0"`;
       // Step 1: Import an ODCS contract with existing SLA (freshness: 12 hours)
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'full-for-sla-edit.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_VALID_FULL_YAML,
+        'full-for-sla-edit.yaml'
+      );
 
       await expect(page.getByTestId('contract-title')).toBeVisible();
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -1881,7 +1831,7 @@ version: "1.0.0"`;
 
       // Step 2: Edit the contract via UI - modify SLA values
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -1907,7 +1857,6 @@ version: "1.0.0"`;
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      await page.waitForLoadState('networkidle');
 
       // Step 3: Export as ODCS YAML
       const downloadPromise = page.waitForEvent('download');
@@ -2054,9 +2003,7 @@ version: "1.0.0"`;
         await page.getByTestId('save-contract-btn').click();
         await saveContractResponse;
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('contract-title')).toBeVisible();
         await expect(page.getByTestId('contract-title')).toContainText(
@@ -2074,7 +2021,7 @@ version: "1.0.0"`;
       await test.step('Export as OM format and modify description', async () => {
         const downloadPromise = page.waitForEvent('download');
         await page.getByTestId('manage-contract-actions').click();
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('export-contract-button').click();
@@ -2096,7 +2043,7 @@ version: "1.0.0"`;
 
       await test.step('Import modified OM YAML with merge option', async () => {
         await page.getByTestId('manage-contract-actions').click();
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('import-openmetadata-contract-button').click();
@@ -2141,9 +2088,7 @@ version: "1.0.0"`;
           timeout: 10000,
         });
 
-        const descriptionSection = page
-          .getByTestId('markdown-parser')
-          .first();
+        const descriptionSection = page.getByTestId('markdown-parser').first();
         await expect(descriptionSection).toContainText(
           'Description updated via OM merge import'
         );
@@ -2172,7 +2117,8 @@ version: "1.0.0"`;
           id: table.entityResponseData.id,
           type: 'table',
         },
-        termsOfUse: 'These are the terms of use for the data contract. Data must be used responsibly.',
+        termsOfUse:
+          'These are the terms of use for the data contract. Data must be used responsibly.',
         sla: {
           refreshFrequency: {
             interval: 24,
@@ -2204,7 +2150,7 @@ version: "1.0.0"`;
       // Step 2: Export as OpenMetadata (OM) format
       const omDownloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('export-contract-button').click();

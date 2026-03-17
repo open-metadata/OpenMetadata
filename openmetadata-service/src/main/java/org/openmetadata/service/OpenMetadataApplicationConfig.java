@@ -40,6 +40,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.config.BulkOperationConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
+import org.openmetadata.service.config.QoSConfiguration;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
@@ -175,6 +176,16 @@ public class OpenMetadataApplicationConfig extends Configuration {
       bulkOperationConfiguration = new BulkOperationConfiguration();
     }
     return bulkOperationConfiguration;
+  }
+
+  @JsonProperty("qos")
+  private QoSConfiguration qosConfiguration;
+
+  public QoSConfiguration getQosConfiguration() {
+    if (qosConfiguration == null) {
+      qosConfiguration = new QoSConfiguration();
+    }
+    return qosConfiguration;
   }
 
   public String getApiRootPath() {

@@ -32,12 +32,11 @@
       "import": "./dist/utils/index.es.js",
       "require": "./dist/utils/index.cjs.js"
     },
-    "./styles.css": "./dist/ui-core-components.css",
-    "./theme.css": "./src/styles/theme.css"
+    "./globals.css": "./src/styles/globals.css"
   },
   "files": [
     "dist",
-    "src/styles/theme.css",
+    "src/styles/globals.css",
     "README.md",
     "LICENSE"
   ],
@@ -86,8 +85,8 @@
     "input-otp": "^1.4.2",
     "notistack": ">=3.0.0",
     "react": ">=18.0.0",
-    "react-aria": "^3.46.0",
-    "react-aria-components": "^1.15.1",
+    "react-aria": "^3.47.0",
+    "react-aria-components": "^1.16.0",
     "react-dom": ">=18.0.0",
     "react-hook-form": "^7.71.1",
     "tailwind-merge": ">=3.0.0",
@@ -123,12 +122,12 @@
     "input-otp": "^1.4.2",
     "notistack": "^3.0.1",
     "react": "^18.2.0",
-    "react-aria": "^3.46.0",
-    "react-aria-components": "^1.15.1",
+    "react-aria": "^3.47.0",
+    "react-aria-components": "^1.16.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.71.1",
     "storybook": "^8.6.17",
-    "tailwind-merge": "^3.4.0",
+    "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "^1.0.7",
     "tailwindcss-react-aria-components": "^2.0.1",
@@ -136,6 +135,10 @@
     "typescript": "^5.0.0",
     "vite": "^7.1.11",
     "vite-plugin-dts": "^4.5.4"
+  },
+  "resolutions": {
+    "rollup": "4.59.0",
+    "minimatch": "10.2.3"
   },
   "publishConfig": {
     "access": "restricted",

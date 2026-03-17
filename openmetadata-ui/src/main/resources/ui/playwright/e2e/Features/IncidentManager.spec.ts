@@ -158,10 +158,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await redirectToHomePage(adminPage);
 
       await table1.visitEntityPage(adminPage);
-      await adminPage.waitForLoadState('networkidle');
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(adminPage);
 
       await addOwner({
         page: adminPage,
@@ -218,23 +215,19 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       );
       await page.click('[data-testid="incident"]');
       await incidentDetails;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
-      await page.waitForSelector('.ant-skeleton-content', {
+      await page.locator('.ant-skeleton-content').first().waitFor({
         state: 'detached',
       });
 
       await page.locator('role=button[name="down"]').scrollIntoViewIfNeeded();
-      await page.waitForSelector('role=button[name="down"]', {
+      await page.locator('role=button[name="down"]').waitFor({
         state: 'visible',
       });
 
       await page.getByRole('button', { name: 'down' }).click();
-      // there is no API call to wait for here, so adding a small timeout
-      await page.waitForTimeout(1000);
-      await page.waitForSelector('role=menuitem[name="Reassign"]', {
+      await page.locator('role=menuitem[name="Reassign"]').waitFor({
         state: 'visible',
       });
       await page.getByRole('menuitem', { name: 'Reassign' }).click();
@@ -260,50 +253,42 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      * Step: Notifications and mentions
      * @description Adds a mention in entity feed and verifies corresponding notification entry.
      */
-    await test.step(
-      'Verify that notifications correctly display mentions for the incident manager',
-      async () => {
-        const testcaseName = await page
-          .getByTestId('entity-header-name')
-          .innerText();
-        await addMentionCommentInFeed(page, 'admin', true);
+    await test.step('Verify that notifications correctly display mentions for the incident manager', async () => {
+      const testcaseName = await page
+        .getByTestId('entity-header-name')
+        .innerText();
+      await addMentionCommentInFeed(page, 'admin', true);
 
-        await adminPage.waitForLoadState('networkidle');
-        await waitForAllLoadersToDisappear(adminPage);
-        await adminPage.getByRole('button', { name: 'Notifications' }).click();
-        await adminPage.getByText('Mentions').click();
-        await adminPage.waitForLoadState('networkidle');
-        await waitForAllLoadersToDisappear(adminPage);
+      await waitForAllLoadersToDisappear(adminPage);
+      await adminPage.getByRole('button', { name: 'Notifications' }).click();
+      await adminPage.getByText('Mentions').click();
+      await waitForAllLoadersToDisappear(adminPage);
 
-        await expect(adminPage.getByLabel('Mentions')).toContainText(
-          `mentioned you on the testCase ${testcaseName}`
-        );
-      }
-    );
+      await expect(adminPage.getByLabel('Mentions')).toContainText(
+        `mentioned you on the testCase ${testcaseName}`
+      );
+    });
 
     /**
      * Step: Reassign from header
      * @description Uses popover assign widget to change assignee from the test case header.
      */
-    await test.step(
-      "Re-assign incident from test case page's header",
-      async () => {
-        const assignee2 = {
-          name: user3.data.email.split('@')[0],
-          displayName: user3.getUserDisplayName(),
-        };
-        const testCaseResponse = page.waitForResponse(
-          '/api/v1/dataQuality/testCases/name/*?fields=*'
-        );
-        await page.reload();
+    await test.step("Re-assign incident from test case page's header", async () => {
+      const assignee2 = {
+        name: user3.data.email.split('@')[0],
+        displayName: user3.getUserDisplayName(),
+      };
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/name/*?fields=*'
+      );
+      await page.reload();
 
-        await testCaseResponse;
+      await testCaseResponse;
 
-        await clickOutside(page);
+      await clickOutside(page);
 
-        await addAssigneeFromPopoverWidget({ page, user: assignee2 });
-      }
-    );
+      await addAssigneeFromPopoverWidget({ page, user: assignee2 });
+    });
 
     /**
      * Step: Resolve incident
@@ -413,7 +398,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       );
       await page.click('[data-testid="incident"]');
       await page.click('[data-testid="closed-task"]');
-      await page.waitForSelector('[data-testid="task-feed-card"]');
+      await page.getByTestId('task-feed-card').waitFor();
 
       await expect(page.locator('[data-testid="task-tab"]')).toContainText(
         'Resolved the Task.'

@@ -20,7 +20,6 @@ from sqlalchemy import Column
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
-    DIMENSION_VALUE_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeBetween import (
     BaseColumnValuesToBeBetweenValidator,
@@ -48,6 +47,18 @@ class ColumnValuesToBeBetweenValidator(
             column: column
         """
         return self.run_query_results(self.runner, metric, column)
+
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        min_value = row.get(Metrics.min.name)
+        max_value = row.get(Metrics.max.name)
+        if min_value is None or max_value is None:
+            return None
+        return {
+            Metrics.min.name: self._normalize_metric_value(min_value, is_min=True),
+            Metrics.max.name: self._normalize_metric_value(max_value, is_min=False),
+            DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
+            DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
+        }
 
     def _execute_dimensional_validation(
         self,
@@ -98,40 +109,9 @@ class ColumnValuesToBeBetweenValidator(
                 top_n=top_n,
             )
 
-            for row in result_rows:
-                min_value = row.get(Metrics.min.name)
-                max_value = row.get(Metrics.max.name)
-
-                if min_value is None or max_value is None:
-                    logger.warning(
-                        "Skipping '%s=%s' dimension since 'min' or 'max' are 'None'",
-                        dimension_col.name,
-                        row.get(DIMENSION_VALUE_KEY),
-                    )
-                    continue
-
-                # Normalize values (convert date to datetime if needed)
-                min_value = self._normalize_metric_value(min_value, is_min=True)
-                max_value = self._normalize_metric_value(max_value, is_min=False)
-
-                metric_values = {
-                    Metrics.min.name: min_value,
-                    Metrics.max.name: max_value,
-                    DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
-                    DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

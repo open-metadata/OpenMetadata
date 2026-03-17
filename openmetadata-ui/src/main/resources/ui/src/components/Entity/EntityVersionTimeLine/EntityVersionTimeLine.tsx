@@ -60,6 +60,7 @@ export const VersionButton = forwardRef<
         'timeline-content p-b-md cursor-pointer',
         className
       )}
+      data-testid={`version-entry-${versionText}`}
       ref={ref}
       onClick={() => onVersionSelect(toString(versionNumber))}>
       <div className="timeline-wrapper">
@@ -94,7 +95,8 @@ export const VersionButton = forwardRef<
         <div
           className={classNames('text-xs font-normal break-all', {
             'diff-description': selected,
-          })}>
+          })}
+          data-testid="version-change-description">
           {getSummary({
             changeDescription: changeDescription,
             isGlossaryTerm: !isEmpty(glossary),

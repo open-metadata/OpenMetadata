@@ -46,6 +46,12 @@ class ColumnValueMaxToBeBetweenValidator(
         """
         return self.run_query_results(self.runner, metric, column)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        max_value = row.get(Metrics.max.name)
+        if max_value is None:
+            return None
+        return {Metrics.max.name: max_value}
+
     def _execute_dimensional_validation(
         self,
         column: Column,
@@ -100,27 +106,9 @@ class ColumnValueMaxToBeBetweenValidator(
                 top_n=top_n,
             )
 
-            for row in result_rows:
-                max_value = row.get(Metrics.max.name)
-
-                if max_value is None:
-                    continue
-
-                metric_values = {
-                    Metrics.max.name: max_value,
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

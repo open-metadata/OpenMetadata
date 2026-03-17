@@ -18,7 +18,7 @@ import {
   descriptionBox,
   generateRandomUsername,
   redirectToHomePage,
-  uuid
+  uuid,
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';
@@ -47,7 +47,6 @@ test.describe.serial('Add role and assign it to the user', () => {
 
   test('Create role', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ROLES);
-    await page.waitForLoadState('networkidle');
 
     await page.click('[data-testid="add-role"]');
 
@@ -65,22 +64,21 @@ test.describe.serial('Add role and assign it to the user', () => {
 
     await page.waitForURL(`**/settings/access/roles/${roleName}`);
 
-    await page.waitForSelector('[data-testid="inactive-link"]');
+    await page.getByTestId('inactive-link').waitFor();
 
-    expect(await page.textContent('[data-testid="inactive-link"]')).toBe(
-      roleName
-    );
-    expect(
-      await page.textContent(
+    await expect(
+      page.locator('[data-testid="inactive-link"]')
+    ).toHaveText(roleName);
+    await expect(
+      page.locator(
         '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
       )
-    ).toContain(`description for ${roleName}`);
+    ).toContainText(`description for ${roleName}`);
   });
 
   test('Create new user and assign new role to him', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.USERS);
 
-    await page.waitForLoadState('networkidle');
 
     await page.click('[data-testid="add-user"]');
 
@@ -96,7 +94,7 @@ test.describe.serial('Add role and assign it to the user', () => {
     await expect(page.locator('#generatedPassword')).toHaveValue(/\S+/);
 
     await page.click('[data-testid="roles-dropdown"]');
-    await page.waitForSelector('.ant-select-dropdown', {
+    await page.locator('.ant-select-dropdown').waitFor({
       state: 'visible',
     });
     await page.fill('#roles', roleName);
@@ -104,7 +102,7 @@ test.describe.serial('Add role and assign it to the user', () => {
 
     await page.keyboard.press('Escape');
 
-    await page.waitForSelector('[data-testid="save-user"]', {
+    await page.getByTestId('save-user').waitFor({
       state: 'visible',
     });
 
@@ -116,7 +114,7 @@ test.describe.serial('Add role and assign it to the user', () => {
   test('Verify assigned role to new user', async ({ page }) => {
     await visitUserProfilePage(page, userName);
 
-    await page.waitForSelector('[data-testid="user-profile"]');
+    await page.getByTestId('user-profile').waitFor();
 
     await expect(page.getByTestId('user-profile-roles')).toContainText(
       roleName

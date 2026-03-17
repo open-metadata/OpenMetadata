@@ -228,16 +228,14 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    table_and_view_query = text(
-        REDSHIFT_GET_ALL_RELATIONS.format(
-            schema_clause="", table_clause="", limit_clause="LIMIT 1"
-        )
+    table_and_view_query = REDSHIFT_GET_ALL_RELATIONS.format(
+        schema_clause="", table_clause="", limit_clause="LIMIT 1"
     )
 
     def test_partition_details(engine_: Engine):
         """Check if we have the right permissions to get partition details"""
         with engine_.connect() as conn:
-            res = conn.execute(REDSHIFT_TEST_PARTITION_DETAILS).fetchone()
+            res = conn.execute(text(REDSHIFT_TEST_PARTITION_DETAILS)).fetchone()
             if not all(res):
                 raise SourceConnectionException(
                     f"We don't have the right permissions to get partition details - {res}"
@@ -249,7 +247,7 @@ def test_connection(
 
         with engine_.connect() as conn:
             res = conn.execute(
-                REDSHIFT_TEST_GET_QUERIES_MAP[redshift_instance_type]
+                text(REDSHIFT_TEST_GET_QUERIES_MAP[redshift_instance_type])
             ).fetchone()
             if not all(res):
                 raise SourceConnectionException(

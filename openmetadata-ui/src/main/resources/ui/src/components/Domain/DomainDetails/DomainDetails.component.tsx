@@ -104,13 +104,14 @@ import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 
+import { Avatar } from '@openmetadata/ui-core-components';
 import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
-import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -146,8 +147,11 @@ const DomainDetails = ({
   const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const routeParams =
-    useParams<{ fqn?: string; tab?: string; version?: string }>();
+  const routeParams = useParams<{
+    fqn?: string;
+    tab?: string;
+    version?: string;
+  }>();
   const reactNavigate = useNavigate();
   const navigate = useCallback(
     (path: string) => {
@@ -863,21 +867,10 @@ const DomainDetails = ({
 
   const iconData = useMemo(() => {
     return (
-      <EntityAvatar
+      <Avatar
         className="entity-header-avatar"
-        entity={{
-          ...domain,
-          entityType: 'domain',
-          parent: isSubDomain ? { type: 'domain' } : undefined,
-        }}
-        size={isTreeView ? 60 : 91}
-        sx={{
-          borderRadius: '5px',
-          border: '2px solid',
-          borderColor: theme.palette.allShades.white,
-          marginTop: isTreeView ? 0 : '-25px',
-          marginRight: 2,
-        }}
+        size={isTreeView ? 'md' : '2xl'}
+        {...getEntityAvatarProps({ ...domain, entityType: 'domain' })}
       />
     );
   }, [domain, isSubDomain, theme, isTreeView]);

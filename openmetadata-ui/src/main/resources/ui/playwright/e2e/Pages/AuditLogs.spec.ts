@@ -20,7 +20,7 @@ const navigateToAuditLogsPage = async (page: Page) => {
   const logRequest = page.waitForResponse('/api/v1/audit/logs?*');
   await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
   await logRequest;
-  await page.waitForSelector('.ant-skeleton', { state: 'detached' });
+  await page.locator('.ant-skeleton').first().waitFor({ state: 'detached' });
   await page.getByTestId('audit-log-list').waitFor({ state: 'visible' });
 };
 
@@ -46,13 +46,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('should apply and clear filters', async ({ page }) => {
-    await test.step(
-      'Clear button should not be visible initially',
-      async () => {
-        const clearButton = page.getByTestId('clear-filters');
-        await expect(clearButton).not.toBeVisible();
-      }
-    );
+    await test.step('Clear button should not be visible initially', async () => {
+      const clearButton = page.getByTestId('clear-filters');
+      await expect(clearButton).not.toBeVisible();
+    });
 
     await test.step('Select a Time filter', async () => {
       const timeFilter = page.getByTestId('date-picker-menu');
@@ -73,20 +70,17 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(response.status()).toBe(200);
     });
 
-    await test.step(
-      'Verify filter tag appears and Clear button shows',
-      async () => {
-        // Active filter tag should appear (Time filter updates the button text or adds a tag?
-        // Logic: AuditLogFilters renders tags if `hasActiveFilters` is true.
-        const filterTag = page.getByTestId('filter-chip-time');
-        await expect(filterTag).toBeVisible();
-        await expect(filterTag).toContainText('Yesterday');
+    await test.step('Verify filter tag appears and Clear button shows', async () => {
+      // Active filter tag should appear (Time filter updates the button text or adds a tag?
+      // Logic: AuditLogFilters renders tags if `hasActiveFilters` is true.
+      const filterTag = page.getByTestId('filter-chip-time');
+      await expect(filterTag).toBeVisible();
+      await expect(filterTag).toContainText('Yesterday');
 
-        // Clear button should now be visible
-        const clearButton = page.getByTestId('clear-filters');
-        await expect(clearButton).toBeVisible();
-      }
-    );
+      // Clear button should now be visible
+      const clearButton = page.getByTestId('clear-filters');
+      await expect(clearButton).toBeVisible();
+    });
 
     await test.step('Clear filters', async () => {
       const auditLogResponse = page.waitForResponse((response) =>
@@ -119,42 +113,37 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Verify Time filter is active
       const timeFilterTag = page.getByTestId('filter-chip-time');
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
       await expect(timeFilterTag).toBeVisible();
     });
 
-    await test.step(
-      'Add Entity Type filter (should add to existing filters)',
-      async () => {
-        const entityTypeFilter = page.getByTestId(
-          'search-dropdown-Entity Type'
-        );
-        await entityTypeFilter.click();
+    await test.step('Add Entity Type filter (should add to existing filters)', async () => {
+      const entityTypeFilter = page.getByTestId('search-dropdown-Entity Type');
+      await entityTypeFilter.click();
 
-        const tableOption = page
-          .locator('.ant-dropdown-menu')
-          .getByText('Table', { exact: true });
-        await expect(tableOption).toBeVisible();
+      const tableOption = page
+        .locator('.ant-dropdown-menu')
+        .getByText('Table', { exact: true });
+      await expect(tableOption).toBeVisible();
 
-        const auditLogResponse = page.waitForResponse((response) =>
-          response.url().includes('/api/v1/audit')
-        );
+      const auditLogResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/audit')
+      );
 
-        await tableOption.click();
-        await page.getByTestId('update-btn').click();
-        const response = await auditLogResponse;
-        expect(response.status()).toBe(200);
+      await tableOption.click();
+      await page.getByTestId('update-btn').click();
+      const response = await auditLogResponse;
+      expect(response.status()).toBe(200);
 
-        // Verify both filters are active (multi-filter behavior)
-        const timeFilterTag = page.getByTestId('filter-chip-time');
-        await expect(timeFilterTag).toBeVisible();
+      // Verify both filters are active (multi-filter behavior)
+      const timeFilterTag = page.getByTestId('filter-chip-time');
+      await expect(timeFilterTag).toBeVisible();
 
-        const entityTypeFilterTag = page.getByTestId('filter-chip-entityType');
-        await expect(entityTypeFilterTag).toBeVisible();
-      }
-    );
+      const entityTypeFilterTag = page.getByTestId('filter-chip-entityType');
+      await expect(entityTypeFilterTag).toBeVisible();
+    });
   });
 
   test('should allow searching within User filter', async ({ page }) => {
@@ -247,37 +236,31 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(filterTag).toContainText('Yesterday');
     });
 
-    await test.step(
-      'Select Last 7 Days filter (should replace Yesterday)',
-      async () => {
-        // Re-open time filter
-        const timeFilter = page.getByTestId('date-picker-menu');
-        await timeFilter.click();
+    await test.step('Select Last 7 Days filter (should replace Yesterday)', async () => {
+      // Re-open time filter
+      const timeFilter = page.getByTestId('date-picker-menu');
+      await timeFilter.click();
 
-        const last7DaysOption = page.getByText('Last 7 Days').first();
-        await expect(last7DaysOption).toBeVisible();
+      const last7DaysOption = page.getByText('Last 7 Days').first();
+      await expect(last7DaysOption).toBeVisible();
 
-        const auditLogResponse = page.waitForResponse((response) =>
-          response.url().includes('/api/v1/audit')
-        );
+      const auditLogResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/audit')
+      );
 
-        await last7DaysOption.click();
-        const response = await auditLogResponse;
-        expect(response.status()).toBe(200);
-      }
-    );
+      await last7DaysOption.click();
+      const response = await auditLogResponse;
+      expect(response.status()).toBe(200);
+    });
 
-    await test.step(
-      'Verify Last 7 Days filter replaced Yesterday',
-      async () => {
-        const filterTag = page.getByTestId('filter-chip-time');
-        await expect(filterTag).toContainText('Time: Last 7 days');
+    await test.step('Verify Last 7 Days filter replaced Yesterday', async () => {
+      const filterTag = page.getByTestId('filter-chip-time');
+      await expect(filterTag).toContainText('Time: Last 7 days');
 
-        // Should only have one time filter tag
-        const timeFilterTags = page.getByTestId('filter-chip-time');
-        await expect(timeFilterTags).toHaveCount(1);
-      }
-    );
+      // Should only have one time filter tag
+      const timeFilterTags = page.getByTestId('filter-chip-time');
+      await expect(timeFilterTags).toHaveCount(1);
+    });
   });
 
   test('should apply both User and EntityType filters simultaneously', async ({
@@ -322,79 +305,65 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(userFilterTag).toContainText('admin');
     });
 
-    await test.step(
-      'Add EntityType filter (should coexist with User filter)',
-      async () => {
-        const entityTypeFilter = page.getByTestId(
-          'search-dropdown-Entity Type'
-        );
-        await entityTypeFilter.click();
+    await test.step('Add EntityType filter (should coexist with User filter)', async () => {
+      const entityTypeFilter = page.getByTestId('search-dropdown-Entity Type');
+      await entityTypeFilter.click();
 
-        const auditLogResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/audit/logs') &&
-            response.url().includes('userName=admin') &&
-            response.url().includes('entityType=') &&
-            response.request().method() === 'GET'
-        );
+      const auditLogResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/audit/logs') &&
+          response.url().includes('userName=admin') &&
+          response.url().includes('entityType=') &&
+          response.request().method() === 'GET'
+      );
 
-        await page
-          .locator('.ant-dropdown-menu-item:visible')
-          .first()
-          .click();
-        await page.getByTestId('update-btn').click();
-        const response = await auditLogResponse;
-        expect(response.status()).toBe(200);
+      await page.locator('.ant-dropdown-menu-item:visible').first().click();
+      await page.getByTestId('update-btn').click();
+      const response = await auditLogResponse;
+      expect(response.status()).toBe(200);
 
-        const entityFilterTag = page.getByTestId('filter-chip-entityType');
-        await expect(entityFilterTag).toBeVisible();
+      const entityFilterTag = page.getByTestId('filter-chip-entityType');
+      await expect(entityFilterTag).toBeVisible();
 
-        const responseUrl = response.url();
-        expect(responseUrl).toContain('userName=');
-        expect(responseUrl).toContain('entityType=');
-      }
-    );
+      const responseUrl = response.url();
+      expect(responseUrl).toContain('userName=');
+      expect(responseUrl).toContain('entityType=');
+    });
 
-    await test.step(
-      'Verify both User and EntityType filters are active simultaneously',
-      async () => {
-        const userFilterTag = page.getByTestId('filter-chip-user');
-        await expect(userFilterTag).toBeVisible();
-        await expect(userFilterTag).toContainText('admin');
+    await test.step('Verify both User and EntityType filters are active simultaneously', async () => {
+      const userFilterTag = page.getByTestId('filter-chip-user');
+      await expect(userFilterTag).toBeVisible();
+      await expect(userFilterTag).toContainText('admin');
 
-        const entityFilterTag = page.getByTestId('filter-chip-entityType');
-        await expect(entityFilterTag).toBeVisible();
+      const entityFilterTag = page.getByTestId('filter-chip-entityType');
+      await expect(entityFilterTag).toBeVisible();
 
-        const clearButton = page.getByTestId('clear-filters');
-        await expect(clearButton).toBeVisible();
-      }
-    );
+      const clearButton = page.getByTestId('clear-filters');
+      await expect(clearButton).toBeVisible();
+    });
 
-    await test.step(
-      'Remove User filter and verify EntityType filter remains',
-      async () => {
-        const userFilterTag = page.getByTestId('filter-chip-user');
-        const removeUserButton = page.getByTestId('remove-filter-user');
+    await test.step('Remove User filter and verify EntityType filter remains', async () => {
+      const userFilterTag = page.getByTestId('filter-chip-user');
+      const removeUserButton = page.getByTestId('remove-filter-user');
 
-        const auditLogResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/audit/logs') &&
-            response.url().includes('entityType=') &&
-            !response.url().includes('userName=') &&
-            response.request().method() === 'GET'
-        );
+      const auditLogResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/audit/logs') &&
+          response.url().includes('entityType=') &&
+          !response.url().includes('userName=') &&
+          response.request().method() === 'GET'
+      );
 
-        await removeUserButton.click();
-        const response = await auditLogResponse;
-        expect(response.status()).toBe(200);
-        await page.waitForSelector('.ant-skeleton', { state: 'detached' });
+      await removeUserButton.click();
+      const response = await auditLogResponse;
+      expect(response.status()).toBe(200);
+      await page.locator('.ant-skeleton').first().waitFor({ state: 'detached' });
 
-        await expect(userFilterTag).not.toBeVisible();
+      await expect(userFilterTag).not.toBeVisible();
 
-        const entityFilterTag = page.getByTestId('filter-chip-entityType');
-        await expect(entityFilterTag).toBeVisible();
-      }
-    );
+      const entityFilterTag = page.getByTestId('filter-chip-entityType');
+      await expect(entityFilterTag).toBeVisible();
+    });
   });
 
   test('should search audit logs', async ({ page }) => {
@@ -411,7 +380,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
     });
@@ -428,7 +397,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const clearButton = page.getByTestId('clear-filters');
       await clearButton.click();
       await auditLogResponse;
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
 
@@ -451,7 +420,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
 
@@ -466,7 +435,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
 
       // Search with uppercase term - should return similar results
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
       await searchInput.fill('ADMIN');
@@ -480,7 +449,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response2 = await auditLogResponse2;
       expect(response2.status()).toBe(200);
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
     });
@@ -499,6 +468,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const itemCount = await listItems.count();
 
       if (itemCount === 0) {
+        // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when no audit log items available
         test.skip();
         return;
       }
@@ -573,6 +543,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const itemCount = await listItems.count();
 
       if (itemCount === 0) {
+        // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when no audit log items available
         test.skip();
 
         return;
@@ -589,19 +560,16 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(profilePic).toBeVisible();
     });
 
-    await test.step(
-      'Verify list item has user info and event type',
-      async () => {
-        const listItems = page.getByTestId('audit-log-list-item');
-        const firstItem = listItems.first();
+    await test.step('Verify list item has user info and event type', async () => {
+      const listItems = page.getByTestId('audit-log-list-item');
+      const firstItem = listItems.first();
 
-        const itemHeader = firstItem.getByTestId('item-header');
-        await expect(itemHeader).toBeVisible();
+      const itemHeader = firstItem.getByTestId('item-header');
+      await expect(itemHeader).toBeVisible();
 
-        const eventType = firstItem.getByTestId('event-type');
-        await expect(eventType).toBeVisible();
-      }
-    );
+      const eventType = firstItem.getByTestId('event-type');
+      await expect(eventType).toBeVisible();
+    });
 
     await test.step('Verify list item has metadata section', async () => {
       const listItems = page.getByTestId('audit-log-list-item');
@@ -657,6 +625,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const itemCount = await listItems.count();
 
       if (itemCount === 0) {
+        // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when no audit log items available
         test.skip();
 
         return;
@@ -695,37 +664,34 @@ test.describe(
       await redirectToHomePage(page);
       await navigateToAuditLogsPage(page);
 
-      await test.step(
-        'Perform search and validate response structure',
-        async () => {
-          const searchInput = page.getByPlaceholder('Search audit logs');
-          await searchInput.fill('table');
+      await test.step('Perform search and validate response structure', async () => {
+        const searchInput = page.getByPlaceholder('Search audit logs');
+        await searchInput.fill('table');
 
-          const auditLogResponse = page.waitForResponse((response) =>
-            response.url().includes('/api/v1/audit')
-          );
+        const auditLogResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/audit')
+        );
 
-          await searchInput.press('Enter');
-          const response = await auditLogResponse;
-          expect(response.status()).toBe(200);
-          await page.waitForSelector('.ant-skeleton', {
-            state: 'detached',
-          });
-          const responseData = await response.json();
+        await searchInput.press('Enter');
+        const response = await auditLogResponse;
+        expect(response.status()).toBe(200);
+        await page.locator('.ant-skeleton').first().waitFor({
+          state: 'detached',
+        });
+        const responseData = await response.json();
 
-          // Verify response has expected structure
-          expect(responseData).toHaveProperty('data');
-          expect(responseData).toHaveProperty('paging');
-          expect(Array.isArray(responseData.data)).toBe(true);
+        // Verify response has expected structure
+        expect(responseData).toHaveProperty('data');
+        expect(responseData).toHaveProperty('paging');
+        expect(Array.isArray(responseData.data)).toBe(true);
 
-          // If there are results, verify they have expected fields
-          if (responseData.data.length > 0) {
-            const firstEntry = responseData.data[0];
-            expect(firstEntry).toHaveProperty('eventType');
-            expect(firstEntry).toHaveProperty('eventTs');
-          }
+        // If there are results, verify they have expected fields
+        if (responseData.data.length > 0) {
+          const firstEntry = responseData.data[0];
+          expect(firstEntry).toHaveProperty('eventType');
+          expect(firstEntry).toHaveProperty('eventTs');
         }
-      );
+      });
     });
   }
 );
@@ -751,25 +717,22 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.waitForSelector('.ant-modal-content', {
+        await page.locator('.ant-modal-content').waitFor({
           state: 'visible',
         });
       });
 
-      await test.step(
-        'Verify modal displays description and date picker',
-        async () => {
-          await expect(
-            page.getByTestId('export-date-range-picker')
-          ).toBeVisible();
-        }
-      );
+      await test.step('Verify modal displays description and date picker', async () => {
+        await expect(
+          page.getByTestId('export-date-range-picker')
+        ).toBeVisible();
+      });
 
       await test.step('Select date range', async () => {
         const dateRangePicker = page.getByTestId('export-date-range-picker');
         await dateRangePicker.click();
 
-        await page.waitForSelector('.ant-picker-dropdown', {
+        await page.locator('.ant-picker-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -780,15 +743,12 @@ test.describe(
         await todayCell.click();
       });
 
-      await test.step(
-        'Verify Export button is enabled after date selection',
-        async () => {
-          const exportOkButton = page.locator(
-            '.ant-modal-footer button.ant-btn-primary'
-          );
-          await expect(exportOkButton).toBeEnabled();
-        }
-      );
+      await test.step('Verify Export button is enabled after date selection', async () => {
+        const exportOkButton = page.locator(
+          '.ant-modal-footer button.ant-btn-primary'
+        );
+        await expect(exportOkButton).toBeEnabled();
+      });
 
       await test.step('Trigger export and verify API call', async () => {
         const exportApiCall = page.waitForResponse((response) =>
@@ -827,7 +787,7 @@ test.describe(
         );
         await searchInput.press('Enter');
         await auditResponse;
-        await page.waitForSelector('.ant-skeleton', {
+        await page.locator('.ant-skeleton').first().waitFor({
           state: 'detached',
         });
       });
@@ -836,41 +796,38 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.waitForSelector('.ant-modal-content', {
+        await page.locator('.ant-modal-content').waitFor({
           state: 'visible',
         });
       });
 
-      await test.step(
-        'Select date range and verify export includes search term',
-        async () => {
-          const dateRangePicker = page.getByTestId('export-date-range-picker');
-          await dateRangePicker.click();
+      await test.step('Select date range and verify export includes search term', async () => {
+        const dateRangePicker = page.getByTestId('export-date-range-picker');
+        await dateRangePicker.click();
 
-          await page.waitForSelector('.ant-picker-dropdown', {
-            state: 'visible',
-          });
+        await page.locator('.ant-picker-dropdown').waitFor({
+          state: 'visible',
+        });
 
-            const todayCell = page
-              .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
-              .first();
-            await todayCell.click();
-            await todayCell.click();
+        const todayCell = page
+          .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
+          .first();
+        await todayCell.click();
+        await todayCell.click();
 
-          const exportApiCall = page.waitForRequest(
-            (request) =>
-              request.url().includes('/api/v1/audit/logs/export') &&
-              request.url().includes('q=admin')
-          );
+        const exportApiCall = page.waitForRequest(
+          (request) =>
+            request.url().includes('/api/v1/audit/logs/export') &&
+            request.url().includes('q=admin')
+        );
 
-          const exportOkButton = page.locator(
-            '.ant-modal-footer button.ant-btn-primary'
-          );
-          await exportOkButton.click();
+        const exportOkButton = page.locator(
+          '.ant-modal-footer button.ant-btn-primary'
+        );
+        await exportOkButton.click();
 
-          await exportApiCall;
-        }
-      );
+        await exportApiCall;
+      });
     });
 
     test('should validate export response structure', async ({ page }) => {
@@ -885,14 +842,14 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.waitForSelector('.ant-modal-content', {
+        await page.locator('.ant-modal-content').waitFor({
           state: 'visible',
         });
 
         const dateRangePicker = page.getByTestId('export-date-range-picker');
         await dateRangePicker.click();
 
-        await page.waitForSelector('.ant-picker-dropdown', {
+        await page.locator('.ant-picker-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -941,20 +898,17 @@ test.describe(
       await page.goto('/settings/audit-logs');
       await page.waitForLoadState('domcontentloaded');
 
-      await test.step(
-        'Verify non-admin cannot access export functionality',
-        async () => {
-          // Non-admin should either:
-          // 1. Not see the export button at all
-          // 2. See the page but export API returns 403
-          // 3. Be redirected away from the page
+      await test.step('Verify non-admin cannot access export functionality', async () => {
+        // Non-admin should either:
+        // 1. Not see the export button at all
+        // 2. See the page but export API returns 403
+        // 3. Be redirected away from the page
 
-          // If export button is not visible, the page correctly hides it from non-admins
-          // If it is visible, we would need to verify API returns 403
-          // Either behavior is acceptable for access control
-          expect(true).toBe(true); // Test passes if we get here without error
-        }
-      );
+        // If export button is not visible, the page correctly hides it from non-admins
+        // If it is visible, we would need to verify API returns 403
+        // Either behavior is acceptable for access control
+        expect(true).toBe(true); // Test passes if we get here without error
+      });
     });
   }
 );
@@ -986,8 +940,7 @@ test.describe(
         expect(status).toBeLessThan(500);
 
         // Also verify the page has some content (didn't completely fail to load)
-        const bodyContent = await page.locator('body').textContent();
-        expect(bodyContent).toBeTruthy();
+        await expect(page.locator('body')).not.toHaveText('');
       });
     });
   }
@@ -1003,38 +956,45 @@ test.describe(
   () => {
     test.use({ storageState: 'playwright/.auth/admin.json' });
 
-    const POLL_TIMEOUT = 30000;
-    const POLL_INTERVAL = 1000;
+    const POLL_TIMEOUT = 60000;
 
     // Helper function to wait for an audit log entry to appear
     const waitForAuditLogEntry = async (
       apiContext: APIRequestContext,
-      page: Page,
+      _page: Page,
       entityFqn: string,
       entityType: string,
       eventType: string
     ): Promise<Record<string, unknown> | null> => {
-      const startTime = Date.now();
+      let auditEntry: Record<string, unknown> | null = null;
 
-      while (Date.now() - startTime < POLL_TIMEOUT) {
-        const response = await apiContext.get(
-          `/api/v1/audit/logs?entityFQN=${encodeURIComponent(
-            entityFqn
-          )}&entityType=${entityType}&eventType=${eventType}&limit=1`
-        );
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(
+              `/api/v1/audit/logs?entityFQN=${encodeURIComponent(
+                entityFqn
+              )}&entityType=${entityType}&eventType=${eventType}&limit=10`
+            );
 
-        if (response.ok()) {
-          const data = await response.json();
+            if (!response.ok()) {
+              return false;
+            }
 
-          if (data.data && data.data.length > 0) {
-            return data.data[0];
+            const data = await response.json();
+            auditEntry = data.data?.[0] ?? null;
+
+            return Boolean(auditEntry);
+          },
+          {
+            timeout: POLL_TIMEOUT,
+            intervals: [1000, 2000],
+            message: `Timed out waiting for ${eventType} audit entry for ${entityType}:${entityFqn}`,
           }
-        }
+        )
+        .toBe(true);
 
-        await page.waitForTimeout(POLL_INTERVAL);
-      }
-
-      return null;
+      return auditEntry;
     };
 
     // Helper to verify audit entry has valid UUIDs
@@ -1076,25 +1036,22 @@ test.describe(
           glossaryId = glossary.id;
           const glossaryFqn = glossary.fullyQualifiedName;
 
-          await test.step(
-            'Wait for entityCreated audit log entry',
-            async () => {
-              const auditEntry = await waitForAuditLogEntry(
-                apiContext,
-                page,
-                glossaryFqn,
-                'glossary',
-                'entityCreated'
-              );
+          await test.step('Wait for entityCreated audit log entry', async () => {
+            const auditEntry = await waitForAuditLogEntry(
+              apiContext,
+              page,
+              glossaryFqn,
+              'glossary',
+              'entityCreated'
+            );
 
-              expect(auditEntry).not.toBeNull();
-              expect(auditEntry?.eventType).toBe('entityCreated');
-              verifyAuditEntryHasValidUUIDs(
-                auditEntry as Record<string, unknown>,
-                glossaryId
-              );
-            }
-          );
+            expect(auditEntry).not.toBeNull();
+            expect(auditEntry?.eventType).toBe('entityCreated');
+            verifyAuditEntryHasValidUUIDs(
+              auditEntry as Record<string, unknown>,
+              glossaryId
+            );
+          });
         });
       } finally {
         // Cleanup
@@ -1160,38 +1117,35 @@ test.describe(
           expect(patchResponse.ok()).toBe(true);
         });
 
-        await test.step(
-          'Wait for entityUpdated/entityFieldsChanged audit log entry',
-          async () => {
-            // Try both event types as update may generate either
-            let auditEntry = await waitForAuditLogEntry(
+        await test.step('Wait for entityUpdated/entityFieldsChanged audit log entry', async () => {
+          // Try both event types as update may generate either
+          let auditEntry = await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entityUpdated'
+          );
+
+          if (!auditEntry) {
+            auditEntry = await waitForAuditLogEntry(
               apiContext,
               page,
               glossaryFqn,
               'glossary',
-              'entityUpdated'
-            );
-
-            if (!auditEntry) {
-              auditEntry = await waitForAuditLogEntry(
-                apiContext,
-                page,
-                glossaryFqn,
-                'glossary',
-                'entityFieldsChanged'
-              );
-            }
-
-            expect(auditEntry).not.toBeNull();
-            expect(['entityUpdated', 'entityFieldsChanged']).toContain(
-              auditEntry?.eventType
-            );
-            verifyAuditEntryHasValidUUIDs(
-              auditEntry as Record<string, unknown>,
-              glossaryId
+              'entityFieldsChanged'
             );
           }
-        );
+
+          expect(auditEntry).not.toBeNull();
+          expect(['entityUpdated', 'entityFieldsChanged']).toContain(
+            auditEntry?.eventType
+          );
+          verifyAuditEntryHasValidUUIDs(
+            auditEntry as Record<string, unknown>,
+            glossaryId
+          );
+        });
       } finally {
         if (glossaryId) {
           await apiContext.delete(
@@ -1243,25 +1197,22 @@ test.describe(
           expect(deleteResponse.ok()).toBe(true);
         });
 
-        await test.step(
-          'Wait for entitySoftDeleted audit log entry',
-          async () => {
-            const auditEntry = await waitForAuditLogEntry(
-              apiContext,
-              page,
-              glossaryFqn,
-              'glossary',
-              'entitySoftDeleted'
-            );
+        await test.step('Wait for entitySoftDeleted audit log entry', async () => {
+          const auditEntry = await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entitySoftDeleted'
+          );
 
-            expect(auditEntry).not.toBeNull();
-            expect(auditEntry?.eventType).toBe('entitySoftDeleted');
-            verifyAuditEntryHasValidUUIDs(
-              auditEntry as Record<string, unknown>,
-              glossaryId
-            );
-          }
-        );
+          expect(auditEntry).not.toBeNull();
+          expect(auditEntry?.eventType).toBe('entitySoftDeleted');
+          verifyAuditEntryHasValidUUIDs(
+            auditEntry as Record<string, unknown>,
+            glossaryId
+          );
+        });
       } finally {
         if (glossaryId) {
           await apiContext.delete(
@@ -1469,34 +1420,31 @@ test.describe(
           headers: { 'Content-Type': 'application/json-patch+json' },
         });
 
-        await test.step(
-          'Verify entityUpdated/entityFieldsChanged event',
-          async () => {
-            let entry = await waitForAuditLogEntry(
+        await test.step('Verify entityUpdated/entityFieldsChanged event', async () => {
+          let entry = await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entityUpdated'
+          );
+
+          if (!entry) {
+            entry = await waitForAuditLogEntry(
               apiContext,
               page,
               glossaryFqn,
               'glossary',
-              'entityUpdated'
-            );
-
-            if (!entry) {
-              entry = await waitForAuditLogEntry(
-                apiContext,
-                page,
-                glossaryFqn,
-                'glossary',
-                'entityFieldsChanged'
-              );
-            }
-
-            expect(entry).not.toBeNull();
-            verifyAuditEntryHasValidUUIDs(
-              entry as Record<string, unknown>,
-              glossaryId
+              'entityFieldsChanged'
             );
           }
-        );
+
+          expect(entry).not.toBeNull();
+          verifyAuditEntryHasValidUUIDs(
+            entry as Record<string, unknown>,
+            glossaryId
+          );
+        });
 
         // 3. Soft Delete
         await apiContext.delete(`/api/v1/glossaries/${glossaryId}`);
@@ -1624,64 +1572,58 @@ test.describe(
           expect(response.status()).toBe(200);
         });
 
-        await test.step(
-          'Verify the created glossary appears in the list',
-          async () => {
-            // Search for the glossary name
-            const searchInput = page.getByTestId('audit-log-search');
-            await searchInput.fill(glossaryName);
+        await test.step('Verify the created glossary appears in the list', async () => {
+          // Search for the glossary name
+          const searchInput = page.getByTestId('audit-log-search');
+          await searchInput.fill(glossaryName);
 
-            const searchResponse = page.waitForResponse((response) =>
-              response.url().includes('/api/v1/audit')
-            );
+          const searchResponse = page.waitForResponse((response) =>
+            response.url().includes('/api/v1/audit')
+          );
 
-            await searchInput.press('Enter');
-            const response = await searchResponse;
-            expect(response.status()).toBe(200);
-            await page.waitForSelector('.ant-skeleton', {
-              state: 'detached',
-            });
-            const responseData = await response.json();
+          await searchInput.press('Enter');
+          const response = await searchResponse;
+          expect(response.status()).toBe(200);
+          await page.locator('.ant-skeleton').first().waitFor({
+            state: 'detached',
+          });
+          const responseData = await response.json();
 
-            // Should find at least one entry
-            expect(responseData.data.length).toBeGreaterThan(0);
+          // Should find at least one entry
+          expect(responseData.data.length).toBeGreaterThan(0);
 
-            // The first entry should be our entityCreated event
-            const firstEntry = responseData.data.find(
-              (e: Record<string, unknown>) =>
-                e.entityFQN === glossaryFqn && e.eventType === 'entityCreated'
-            );
+          // The first entry should be our entityCreated event
+          const firstEntry = responseData.data.find(
+            (e: Record<string, unknown>) =>
+              e.entityFQN === glossaryFqn && e.eventType === 'entityCreated'
+          );
 
-            expect(firstEntry).toBeDefined();
-          }
-        );
+          expect(firstEntry).toBeDefined();
+        });
 
-        await test.step(
-          'Verify the created glossary entry is visible in the UI list',
-          async () => {
-            const glossaryEntry = page
-              .getByTestId('audit-log-list-item')
-              .filter({ hasText: glossaryName });
+        await test.step('Verify the created glossary entry is visible in the UI list', async () => {
+          const glossaryEntry = page
+            .getByTestId('audit-log-list-item')
+            .filter({ hasText: glossaryName });
 
-            await expect(glossaryEntry.first()).toBeVisible();
+          await expect(glossaryEntry.first()).toBeVisible();
 
-            await expect(
-              glossaryEntry.first().getByTestId('event-type')
-            ).toContainText('Entity Created');
+          await expect(
+            glossaryEntry.first().getByTestId('event-type')
+          ).toContainText('Entity Created');
 
-            await expect(
-              glossaryEntry.first().getByTestId('entity-type-badge')
-            ).toContainText('Glossary');
+          await expect(
+            glossaryEntry.first().getByTestId('entity-type-badge')
+          ).toContainText('Glossary');
 
-            await expect(
-              glossaryEntry.first().locator('.description-content')
-            ).toContainText(glossaryName);
+          await expect(
+            glossaryEntry.first().locator('.description-content')
+          ).toContainText(glossaryName);
 
-            await expect(
-              glossaryEntry.first().getByTestId('timestamp')
-            ).toBeVisible();
-          }
-        );
+          await expect(
+            glossaryEntry.first().getByTestId('timestamp')
+          ).toBeVisible();
+        });
       } finally {
         if (glossaryId) {
           await apiContext.delete(

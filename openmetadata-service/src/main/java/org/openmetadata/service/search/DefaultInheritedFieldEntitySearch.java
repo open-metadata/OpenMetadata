@@ -252,16 +252,31 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
 
   @Override
   public Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter) {
+    return getAggregatedCountsByField(fieldPath, queryFilter, 100);
+  }
+
+  @Override
+  public Map<String, Integer> getAggregatedCountsByField(
+      String fieldPath, String queryFilter, int size) {
     try {
       if (isSearchUnavailable()) {
         LOG.warn("Search unavailable for aggregated counts");
         return Collections.emptyMap();
       }
 
-      LOG.info("Aggregation field: {}, query: {}", fieldPath, queryFilter);
+      LOG.info("Aggregation field: {}, query: {}, size: {}", fieldPath, queryFilter, size);
 
-      SearchAggregationNode aggregationNode =
-          SearchAggregation.terms("field_aggregation", fieldPath);
+      SearchAggregationNode termsNode =
+          SearchAggregation.terms("field_aggregation", fieldPath, size);
+
+      SearchAggregationNode aggregationNode;
+      String nestedPath = getNestedPath(fieldPath);
+      if (nestedPath != null) {
+        aggregationNode = SearchAggregation.nested("nested_wrapper", nestedPath);
+        aggregationNode.addChild(termsNode);
+      } else {
+        aggregationNode = termsNode;
+      }
       SearchAggregation searchAggregation = SearchAggregation.fromTree(aggregationNode);
 
       JsonObject response =
@@ -298,10 +313,20 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       return countsMap;
     }
 
-    JsonObject fieldAgg = null;
+    JsonObject container = response;
+
+    // If wrapped in a nested aggregation, traverse into it first
     for (String key : response.keySet()) {
+      if (key.equals("nested_wrapper") || key.endsWith("#nested_wrapper")) {
+        container = response.getJsonObject(key);
+        break;
+      }
+    }
+
+    JsonObject fieldAgg = null;
+    for (String key : container.keySet()) {
       if (key.equals("field_aggregation") || key.endsWith("#field_aggregation")) {
-        fieldAgg = response.getJsonObject(key);
+        fieldAgg = container.getJsonObject(key);
         break;
       }
     }
@@ -319,5 +344,16 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     }
 
     return countsMap;
+  }
+
+  private static final List<String> NESTED_FIELDS = List.of("owners");
+
+  private static String getNestedPath(String fieldPath) {
+    for (String nestedField : NESTED_FIELDS) {
+      if (fieldPath.startsWith(nestedField + ".")) {
+        return nestedField;
+      }
+    }
+    return null;
   }
 }

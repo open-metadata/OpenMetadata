@@ -53,62 +53,64 @@ export enum ServiceCategoryPlural {
 
 export type DatabaseServiceTypeSmallCaseType = {
   [K in keyof typeof DatabaseServiceType]: Lowercase<
-    typeof DatabaseServiceType[K]
+    (typeof DatabaseServiceType)[K]
   >;
 };
 
 export type MessagingServiceTypeSmallCaseType = {
   [K in keyof typeof MessagingServiceType]: Lowercase<
-    typeof MessagingServiceType[K]
+    (typeof MessagingServiceType)[K]
   >;
 };
 
 export type DashboardServiceTypeSmallCaseType = {
   [K in keyof typeof DashboardServiceType]: Lowercase<
-    typeof DashboardServiceType[K]
+    (typeof DashboardServiceType)[K]
   >;
 };
 
 export type PipelineServiceTypeSmallCaseType = {
   [K in keyof typeof PipelineServiceType]: Lowercase<
-    typeof PipelineServiceType[K]
+    (typeof PipelineServiceType)[K]
   >;
 };
 
 export type MlModelServiceTypeSmallCaseType = {
   [K in keyof typeof MlModelServiceType]: Lowercase<
-    typeof MlModelServiceType[K]
+    (typeof MlModelServiceType)[K]
   >;
 };
 
 export type StorageServiceTypeSmallCaseType = {
   [K in keyof typeof StorageServiceType]: Lowercase<
-    typeof StorageServiceType[K]
+    (typeof StorageServiceType)[K]
   >;
 };
 
 export type MetadataServiceTypeSmallCaseType = {
   [K in keyof typeof MetadataServiceType]: Lowercase<
-    typeof MetadataServiceType[K]
+    (typeof MetadataServiceType)[K]
   >;
 };
 
 export type SearchServiceTypeSmallCaseType = {
-  [K in keyof typeof SearchServiceType]: Lowercase<typeof SearchServiceType[K]>;
+  [K in keyof typeof SearchServiceType]: Lowercase<
+    (typeof SearchServiceType)[K]
+  >;
 };
 
 export type ApiServiceTypeSmallCaseType = {
-  [K in keyof typeof APIServiceType]: Lowercase<typeof APIServiceType[K]>;
+  [K in keyof typeof APIServiceType]: Lowercase<(typeof APIServiceType)[K]>;
 };
 
 export type SecurityServiceTypeSmallCaseType = {
   [K in keyof typeof SecurityServiceType]: Lowercase<
-    typeof SecurityServiceType[K]
+    (typeof SecurityServiceType)[K]
   >;
 };
 
 export type DriveServiceTypeSmallCaseType = {
-  [K in keyof typeof DriveServiceType]: Lowercase<typeof DriveServiceType[K]>;
+  [K in keyof typeof DriveServiceType]: Lowercase<(typeof DriveServiceType)[K]>;
 };
 
 export enum ServiceAgentSubTabs {

@@ -41,6 +41,7 @@ import {
 import { validateFormNameFieldInput } from '../../utils/form';
 import { getElementWithPagination } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -100,27 +101,22 @@ test.describe(
 
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.POLICIES);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
     });
 
     test('Add new policy with invalid condition', async ({ page }) => {
       test.slow(true);
 
-      await test.step(
-        'Default Policies and Roles should be displayed',
-        async () => {
-          // Verifying the default roles and policies are present
-          for (const policy of Object.values(DEFAULT_POLICIES)) {
-            const policyElement = page.locator('[data-testid="policy-name"]', {
-              hasText: policy,
-            });
+      await test.step('Default Policies and Roles should be displayed', async () => {
+        // Verifying the default roles and policies are present
+        for (const policy of Object.values(DEFAULT_POLICIES)) {
+          const policyElement = page.locator('[data-testid="policy-name"]', {
+            hasText: policy,
+          });
 
-            await getElementWithPagination(page, policyElement, false);
-          }
+          await getElementWithPagination(page, policyElement, false);
         }
-      );
+      });
 
       await test.step('Add new policy', async () => {
         // Click on add new policy
@@ -311,9 +307,7 @@ test.describe(
 
       await test.step('Delete created policy', async () => {
         await settingClick(page, GlobalSettingOptions.POLICIES);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
         const policyElement = page.locator('[data-testid="policy-name"]', {
           hasText: UPDATED_POLICY_NAME,
         });
@@ -412,11 +406,8 @@ test.describe(
 
       await page.reload();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
-      await page.waitForLoadState('networkidle');
 
       await getElementWithPagination(page, policyLocator);
 

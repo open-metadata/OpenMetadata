@@ -20,8 +20,10 @@ export interface AddTestCaseModalProps {
   existingTest?: EntityReference[];
   cancelText?: string;
   submitText?: string;
-  filters?: string;
+  testCaseFilters?: string;
+  columnFilters?: string;
   testCaseParams?: ListTestCaseParamsBySearch;
   selectedTest?: string[];
   showButton?: boolean;
+  hideTableFilter?: boolean;
 }

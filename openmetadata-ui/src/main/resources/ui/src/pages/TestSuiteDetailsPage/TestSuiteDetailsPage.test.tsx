@@ -47,23 +47,74 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
-    Dialog: ({
+    DialogTrigger: ({
       children,
-      className,
+      isOpen,
+      onOpenChange,
       ...props
     }: {
       children: React.ReactNode;
-      className?: string;
+      isOpen?: boolean;
+      onOpenChange?: (open: boolean) => void;
       [key: string]: unknown;
-    }) => (
-      <div
-        aria-modal="true"
-        className={className}
-        data-testid="dialog"
-        role="dialog"
-        {...props}>
-        {children}
-      </div>
+    }) => {
+      const childArray = React.Children.toArray(children);
+      const trigger = childArray[0];
+      const overlay = childArray.slice(1);
+
+      return (
+        <div data-testid="dialog-trigger" {...props}>
+          {React.isValidElement(trigger) &&
+            React.cloneElement(
+              trigger as React.ReactElement<{ onPress?: () => void }>,
+              {
+                onPress: () => onOpenChange?.(true),
+              }
+            )}
+          {isOpen &&
+            overlay.map((child) =>
+              React.isValidElement(child)
+                ? React.cloneElement(
+                    child as React.ReactElement<{ isOpen?: boolean }>,
+                    { isOpen: true }
+                  )
+                : child
+            )}
+        </div>
+      );
+    },
+    Dialog: Object.assign(
+      ({
+        children,
+        className,
+        ...props
+      }: {
+        children: React.ReactNode;
+        className?: string;
+        [key: string]: unknown;
+      }) => (
+        <div
+          aria-modal="true"
+          className={className}
+          data-testid="dialog"
+          role="dialog"
+          {...props}>
+          {children}
+        </div>
+      ),
+      {
+        Content: ({
+          children,
+          ...contentProps
+        }: {
+          children: React.ReactNode;
+          [key: string]: unknown;
+        }) => (
+          <div data-testid="dialog-content" {...contentProps}>
+            {children}
+          </div>
+        ),
+      }
     ),
     Modal: ({
       children,
@@ -1018,12 +1069,17 @@ describe('TestSuiteDetailsPage component', () => {
         fireEvent.click(addButton);
       });
 
-      // Mock the submit with test cases without IDs
+      await screen.findByTestId('add-test-case-list');
+
       const AddTestCaseList =
         require('../../components/DataQuality/AddTestCaseList/AddTestCaseList.component')
           .AddTestCaseList as jest.Mock;
+      const lastCall =
+        AddTestCaseList.mock.calls[AddTestCaseList.mock.calls.length - 1];
+      const onSubmit = lastCall?.[0]?.onSubmit;
 
-      const onSubmit = AddTestCaseList.mock.calls[0][0].onSubmit;
+      expect(onSubmit).toBeDefined();
+
       await act(async () => {
         onSubmit(testCasesWithoutIds);
       });

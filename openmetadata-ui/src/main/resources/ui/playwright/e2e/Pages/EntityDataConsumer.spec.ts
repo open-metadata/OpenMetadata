@@ -32,6 +32,7 @@ import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
 
@@ -99,9 +100,7 @@ entities.forEach((EntityClass) => {
 
       test('No edit owner permission', async ({ page }) => {
         await page.reload();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('edit-owner')).not.toBeAttached();
       });

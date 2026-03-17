@@ -17,6 +17,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
 import { makeRetryRequest } from './serviceIngestion';
 import { sidebarClick } from './sidebar';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await redirectToHomePage(page);
@@ -37,10 +38,9 @@ export const acknowledgeTask = async (data: {
     page.locator(`[data-testid="status-badge-${testCase}"]`)
   ).toContainText('Failed');
 
-  await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=New`);
+  await page.locator(`[data-testid="${testCase}-status"] >> text=New`).waitFor();
   await page.click(`[data-testid="${testCase}"] >> text=${testCase}`);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="edit-resolution-icon"]');
   await page.click('[data-testid="test-case-resolution-status-type"]');
   await page.click('[title="Ack"]');
@@ -49,8 +49,7 @@ export const acknowledgeTask = async (data: {
   );
   await page.click('#update-status-button');
   await statusChangeResponse;
-  await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=Ack`);
-  await page.waitForLoadState('networkidle');
+  await page.locator(`[data-testid="${testCase}-status"] >> text=Ack`).waitFor();
 
   await expect(
     page.locator(
@@ -67,21 +66,20 @@ export const addAssigneeFromPopoverWidget = async (data: {
   const { page, user, testCaseName } = data;
 
   if (testCaseName) {
-    await page.getByRole('row', { name: testCaseName }).getByTestId('edit-owner').click();
+    await page
+      .getByRole('row', { name: testCaseName })
+      .getByTestId('edit-owner')
+      .click();
   } else {
     // direct assignment from edit assignee icon
     await page.getByTestId('assignee').getByTestId('edit-owner').click();
   }
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await page.getByRole('tab', { name: 'Users' }).click();
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const searchUserResponse = page.waitForResponse('/api/v1/search/query?q=*');
   await page.fill(
@@ -96,9 +94,11 @@ export const addAssigneeFromPopoverWidget = async (data: {
   await page.click(`.ant-popover [title="${user.displayName}"]`);
   await updateIncident;
 
-  await page.waitForSelector(
-    '[data-testid="assignee"] [data-testid="owner-link"]'
-  );
+  await page
+    .getByTestId('assignee')
+    .getByTestId('owner-link')
+    .first()
+    .waitFor();
 
   await expect(page.locator(`[data-testid=${user.displayName}]`)).toBeVisible();
 };
@@ -111,17 +111,16 @@ export const assignIncident = async (data: {
 }) => {
   const { testCaseName, page, user, direct = false } = data;
   await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector(`[data-testid="test-case-${testCaseName}"]`);
+  await page.getByTestId(`test-case-${testCaseName}`).waitFor();
   if (direct) {
     // direct assignment from edit assignee icon
     await addAssigneeFromPopoverWidget({ page, user, testCaseName });
   } else {
     await page.click(`[data-testid="${testCaseName}-status"]`);
     await page.getByRole('menuitem', { name: 'Assigned' }).click();
-    await page.waitForSelector(
-      `[data-testid="${testCaseName}-assignee-popover"]`
-    );
+    await page
+      .getByTestId(`${testCaseName}-assignee-popover`)
+      .waitFor();
     await page.click('[data-testid="assignee-search-input"]');
 
     const searchUserResponse = page.waitForResponse(
@@ -139,9 +138,9 @@ export const assignIncident = async (data: {
     await page.click('[data-testid="submit-assignee-popover-button"]');
     await updateIncident;
   }
-  await page.waitForSelector(
-    `[data-testid="${testCaseName}-status"] >> text=Assigned`
-  );
+  await page
+    .locator(`[data-testid="${testCaseName}-status"] >> text=Assigned`)
+    .waitFor();
 
   await expect(
     page.locator(`[data-testid="${testCaseName}-status"]`)
@@ -154,7 +153,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   pipeline: ResponseDataType;
 }) => {
   const { page, apiContext, pipeline } = data;
-  // wait for 5s before the pipeline to be run
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
   await page.waitForTimeout(5000);
   const response = await apiContext.post(
     `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
@@ -170,7 +169,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
         ),
     });
 
-    // wait for 5s before the pipeline to be run
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
     await page.waitForTimeout(5000);
 
     await makeRetryRequest({
@@ -182,9 +181,8 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
     });
   }
 
-  // Wait for the run to complete
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for pipeline run to complete
   await page.waitForTimeout(2000);
-  const oneHourBefore = Date.now() - 86400000;
 
   await expect
     .poll(
@@ -193,11 +191,12 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
           .get(
             `/api/v1/services/ingestionPipelines/${encodeURIComponent(
               pipeline?.['fullyQualifiedName']
-            )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
+            )}/pipelineStatus?limit=1`
           )
           .then((res) => res.json());
+        const statuses = Array.isArray(response?.data) ? response.data : [];
 
-        return response.data[0]?.pipelineState;
+        return statuses[0]?.pipelineState ?? 'running';
       },
       {
         // Custom expect message for reporting, optional.

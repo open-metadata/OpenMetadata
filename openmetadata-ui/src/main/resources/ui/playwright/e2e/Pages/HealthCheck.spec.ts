@@ -19,31 +19,35 @@ import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Health Check for OpenMetadata', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
+test.describe(
+  'Health Check for OpenMetadata',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
 
-  test('All 5 checks should be successful', async ({ page }) => {
-    const healthResponse = page.waitForResponse('/api/v1/system/status');
-    await settingClick(page, GlobalSettingOptions.OM_HEALTH);
+    test('All 5 checks should be successful', async ({ page }) => {
+      const healthResponse = page.waitForResponse('/api/v1/system/status');
+      await settingClick(page, GlobalSettingOptions.OM_HEALTH);
 
-    await healthResponse;
+      await healthResponse;
 
-    await expect(
-      page.locator('[data-testid="database"] .success-status')
-    ).toHaveText('Success');
-    await expect(
-      page.locator('[data-testid="searchInstance"] .success-status')
-    ).toHaveText('Success');
-    await expect(
-      page.locator('[data-testid="pipelineServiceClient"] .success-status')
-    ).toHaveText('Success');
-    await expect(
-      page.locator('[data-testid="jwks"] .success-status')
-    ).toHaveText('Success');
-    await expect(
-      page.locator('[data-testid="migrations"] .success-status')
-    ).toHaveText('Success');
-  });
-});
+      await expect(
+        page.locator('[data-testid="database"] .success-status')
+      ).toHaveText('Success');
+      await expect(
+        page.locator('[data-testid="searchInstance"] .success-status')
+      ).toHaveText('Success');
+      await expect(
+        page.locator('[data-testid="pipelineServiceClient"] .success-status')
+      ).toHaveText('Success');
+      await expect(
+        page.locator('[data-testid="jwks"] .success-status')
+      ).toHaveText('Success');
+      await expect(
+        page.locator('[data-testid="migrations"] .success-status')
+      ).toHaveText('Success');
+    });
+  }
+);

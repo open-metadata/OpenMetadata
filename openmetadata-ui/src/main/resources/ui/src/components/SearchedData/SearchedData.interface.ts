@@ -31,6 +31,7 @@ import {
   SearchHitBody,
   SearchIndexSearchSource,
   StoredProcedureSearchSource,
+  TableColumnSearchSource,
   TableSearchSource,
   TagClassSearchSource,
   TeamSearchSource,
@@ -60,7 +61,8 @@ export type SourceType = (
   | Pick<PipelineSearchSource, Fields>
   | Pick<DashboardDataModelSearchSource, Fields>
   | Pick<StoredProcedureSearchSource, Fields | 'storedProcedureCode'>
-  | Pick<DashboardSearchSource | MlmodelSearchSource, Fields | 'usageSummary'>
+  | Pick<DashboardSearchSource, Fields | 'usageSummary' | 'charts'>
+  | Pick<MlmodelSearchSource, Fields | 'usageSummary'>
   | Pick<SearchIndexSearchSource, Fields>
   | Pick<APICollectionSearchSource, Fields>
   | Pick<APIEndpointSearchSource, Fields>
@@ -90,6 +92,7 @@ export type SourceType = (
         | APICollectionSearchSource
         | APIEndpointSearchSource
         | MetricSearchSource
+        | TableColumnSearchSource
       >,
       Fields
     >
@@ -100,6 +103,7 @@ export type SourceType = (
   entityType?: string;
   service?: EntityReference;
   style?: Style;
+  dataProducts?: EntityReference[];
   owners?: Partial<
     Pick<
       EntityReference,

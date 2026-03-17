@@ -53,6 +53,7 @@ import {
   assignTag,
   updateDescription,
   waitForAllLoadersToDisappear,
+
 } from '../../utils/entity';
 import {
   addAssetToGlossaryTerm,
@@ -151,47 +152,44 @@ test.describe('Glossary tests', () => {
       await createGlossaryTerms(page, glossary1.data);
     });
 
-    await test.step(
-      'Approve Glossary Term from Glossary Listing for reviewer user',
-      async () => {
-        await redirectToHomePage(page1);
-        await sidebarClick(page1, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page1, glossary1.data.name);
-        await verifyTaskCreated(
-          page1,
-          glossary1.data.fullyQualifiedName,
-          glossary1.data.terms[0].data.name
-        );
+    await test.step('Approve Glossary Term from Glossary Listing for reviewer user', async () => {
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
+      await verifyTaskCreated(
+        page1,
+        glossary1.data.fullyQualifiedName,
+        glossary1.data.terms[0].data.name
+      );
 
-        // Check reviewer's notifications before approval
-        await page1.getByTestId('task-notifications').click();
-        await page1.waitForSelector('.ant-dropdown');
-        const firstNotification = page1
-          .locator('.ant-list-items > .ant-list-item')
-          .first();
+      // Check reviewer's notifications before approval
+      await page1.getByTestId('task-notifications').click();
+      await page1.locator('.ant-dropdown').waitFor();
+      const firstNotification = page1
+        .locator('.ant-list-items > .ant-list-item')
+        .first();
 
-        await expect(firstNotification).toContainText(
-          `Approval required for ${glossary1.data.terms[0].data.name}`
-        );
-        await expect(firstNotification).toContainText(
-          glossary1.data.fullyQualifiedName
-        );
+      await expect(firstNotification).toContainText(
+        `Approval required for ${glossary1.data.terms[0].data.name}`
+      );
+      await expect(firstNotification).toContainText(
+        glossary1.data.fullyQualifiedName
+      );
 
-        await clickOutside(page1);
+      await clickOutside(page1);
 
-        await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
-        await redirectToHomePage(page1);
-        await sidebarClick(page1, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page1, glossary1.data.name);
-        await validateGlossaryTerm(
-          page1,
-          glossary1.data.terms[0].data,
-          'Approved'
-        );
+      await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
+      await validateGlossaryTerm(
+        page1,
+        glossary1.data.terms[0].data,
+        'Approved'
+      );
 
-        await afterActionUser1();
-      }
-    );
+      await afterActionUser1();
+    });
 
     await glossary1.delete(apiContext);
     await afterAction();
@@ -223,33 +221,30 @@ test.describe('Glossary tests', () => {
       await createGlossaryTerms(page, glossary2.data);
     });
 
-    await test.step(
-      'Approve Glossary Term from Glossary Listing for reviewer team',
-      async () => {
-        await redirectToHomePage(page1);
-        await sidebarClick(page1, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page1, glossary2.data.name);
+    await test.step('Approve Glossary Term from Glossary Listing for reviewer team', async () => {
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary2.data.name);
 
-        await verifyTaskCreated(
-          page1,
-          glossary2.data.fullyQualifiedName,
-          glossary2.data.terms[0].data.name
-        );
+      await verifyTaskCreated(
+        page1,
+        glossary2.data.fullyQualifiedName,
+        glossary2.data.terms[0].data.name
+      );
 
-        await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);
+      await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);
 
-        await redirectToHomePage(page1);
-        await sidebarClick(page1, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page1, glossary2.data.name);
-        await validateGlossaryTerm(
-          page1,
-          glossary2.data.terms[0].data,
-          'Approved'
-        );
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary2.data.name);
+      await validateGlossaryTerm(
+        page1,
+        glossary2.data.terms[0].data,
+        'Approved'
+      );
 
-        await afterActionUser1();
-      }
-    );
+      await afterActionUser1();
+    });
 
     await glossary2.delete(apiContext);
     await afterAction();
@@ -394,7 +389,7 @@ test.describe('Glossary tests', () => {
       await verifyColumnsVisibility(page, checkboxLabels, true);
 
       // Verify the Reviewer
-      expect(
+      await expect(
         page.getByTestId(reviewer1.responseData?.['displayName'])
       ).toBeVisible();
 
@@ -527,9 +522,7 @@ test.describe('Glossary tests', () => {
         await selectActiveGlossary(page, glossary2.data.displayName);
         await goToAssetsTab(page, glossaryTerm3.data.displayName);
 
-        await page.waitForSelector(
-          "text=Looks like you haven't added any data assets yet."
-        );
+        await page.getByText("Looks like you haven't added any data assets yet.").waitFor();
 
         await dashboardEntity.visitEntityPage(page);
 
@@ -551,11 +544,9 @@ test.describe('Glossary tests', () => {
         await glossaryRequest;
 
         await page.getByText(glossaryTerm1.data.displayName).click();
-        await page.waitForSelector(
-          '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm1.data.displayName +
-          '")'
-        );
+        await page.locator(
+          `[data-testid="tag-selector"]:has-text("${glossaryTerm1.data.displayName}")`
+        ).waitFor();
 
         // Select 2nd term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
@@ -571,11 +562,9 @@ test.describe('Glossary tests', () => {
 
         await page.getByText(glossaryTerm2.data.displayName).click();
 
-        await page.waitForSelector(
-          '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm2.data.displayName +
-          '")'
-        );
+        await page.locator(
+          `[data-testid="tag-selector"]:has-text("${glossaryTerm2.data.displayName}")`
+        ).waitFor();
 
         const patchRequest = page.waitForResponse(`/api/v1/dashboards/*`);
 
@@ -607,11 +596,9 @@ test.describe('Glossary tests', () => {
         await glossaryRequest3;
 
         await page.getByText(glossaryTerm3.data.displayName).click();
-        await page.waitForSelector(
-          '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm3.data.displayName +
-          '")'
-        );
+        await page.locator(
+          `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
+        ).waitFor();
 
         // Select 2nd term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
@@ -627,11 +614,9 @@ test.describe('Glossary tests', () => {
 
         await page.getByText(glossaryTerm4.data.displayName).click();
 
-        await page.waitForSelector(
-          '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm4.data.displayName +
-          '")'
-        );
+        await page.locator(
+          `[data-testid="tag-selector"]:has-text("${glossaryTerm4.data.displayName}")`
+        ).waitFor();
 
         const patchRequest2 = page.waitForResponse(`/api/v1/dashboards/*`);
 
@@ -684,11 +669,9 @@ test.describe('Glossary tests', () => {
           .getByTestId(`tag-${glossaryTerm3.data.fullyQualifiedName}`)
           .click();
 
-        await page.waitForSelector(
-          '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm3.data.displayName +
-          '")'
-        );
+        await page.locator(
+          `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
+        ).waitFor();
 
         const patchRequest3 = page.waitForResponse(`/api/v1/charts/*`);
 
@@ -711,7 +694,7 @@ test.describe('Glossary tests', () => {
           '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
-        expect(await icon.isVisible()).toBe(true);
+        await expect(icon).toBeVisible();
 
         await sidebarClick(page, SidebarItem.GLOSSARY);
 
@@ -763,7 +746,9 @@ test.describe('Glossary tests', () => {
     await glossaryTerm1.create(apiContext);
 
     const assetsToBeAddedViaUI = [table, topic, dashboard];
-    const allAssets = [...assetsToBeAddedViaUI, table1];
+    // Adding both table and its column as glossary term is assigned to both of them
+    // and table columns are also count as assets
+    const allAssets = [...assetsToBeAddedViaUI, table1, table1.children[0]];
 
     try {
       await test.step('Assign Glossary Term to table column', async () => {
@@ -799,69 +784,55 @@ test.describe('Glossary tests', () => {
         );
         await page.getByTestId('assets').click();
         await queryRes;
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-        await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+        await waitForAllLoadersToDisappear(page);
+        await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
         ).toContainText(`${allAssets.length}`);
       });
 
-      await test.step(
-        'Verify the entity page by clicking on asset',
-        async () => {
-          await redirectToHomePage(page);
-          await table.visitEntityPage(page);
+      await test.step('Verify the entity page by clicking on asset', async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
 
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.GlossaryTerms')
-              .getByTestId('glossary-container')
-              .getByTestId(
-                `tag-${glossaryTerm1.responseData.fullyQualifiedName}`
-              )
-          ).toBeVisible();
+        await expect(
+          page
+            .getByTestId('KnowledgePanel.GlossaryTerms')
+            .getByTestId('glossary-container')
+            .getByTestId(`tag-${glossaryTerm1.responseData.fullyQualifiedName}`)
+        ).toBeVisible();
 
-          await redirectToHomePage(page);
-          await topic.visitEntityPage(page);
+        await redirectToHomePage(page);
+        await topic.visitEntityPage(page);
 
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.GlossaryTerms')
-              .getByTestId('glossary-container')
-              .getByTestId(
-                `tag-${glossaryTerm1.responseData.fullyQualifiedName}`
-              )
-          ).toBeVisible();
+        await expect(
+          page
+            .getByTestId('KnowledgePanel.GlossaryTerms')
+            .getByTestId('glossary-container')
+            .getByTestId(`tag-${glossaryTerm1.responseData.fullyQualifiedName}`)
+        ).toBeVisible();
 
-          await redirectToHomePage(page);
-          await dashboard.visitEntityPage(page);
+        await redirectToHomePage(page);
+        await dashboard.visitEntityPage(page);
 
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.GlossaryTerms')
-              .getByTestId('glossary-container')
-              .getByTestId(
-                `tag-${glossaryTerm1.responseData.fullyQualifiedName}`
-              )
-          ).toBeVisible();
+        await expect(
+          page
+            .getByTestId('KnowledgePanel.GlossaryTerms')
+            .getByTestId('glossary-container')
+            .getByTestId(`tag-${glossaryTerm1.responseData.fullyQualifiedName}`)
+        ).toBeVisible();
 
-          await redirectToHomePage(page);
-          await table1.visitEntityPage(page);
+        await redirectToHomePage(page);
+        await table1.visitEntityPage(page);
 
-          await expect(
-            page
-              .locator(`[data-row-key="${table1.childrenSelectorId}"]`)
-              .getByTestId('glossary-container')
-              .getByTestId(
-                `tag-${glossaryTerm1.responseData.fullyQualifiedName}`
-              )
-          ).toBeVisible();
-        }
-      );
+        await expect(
+          page
+            .locator(`[data-row-key="${table1.childrenSelectorId}"]`)
+            .getByTestId('glossary-container')
+            .getByTestId(`tag-${glossaryTerm1.responseData.fullyQualifiedName}`)
+        ).toBeVisible();
+      });
 
       await test.step('Rename the same entity again', async () => {
         const newName = `PW Space.${uuid()}%${getRandomLastName()}`;
@@ -880,7 +851,7 @@ test.describe('Glossary tests', () => {
         );
         await page.getByTestId('assets').click();
         await queryRes;
-        await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+        await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
@@ -911,16 +882,13 @@ test.describe('Glossary tests', () => {
     await glossaryTerm1.create(apiContext);
 
     try {
-      await test.step(
-        'Verify filters are visible upfront and can be applied',
-        async () => {
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.GLOSSARY);
-          await selectActiveGlossary(page, glossary1.data.displayName);
-          await goToAssetsTab(page, glossaryTerm1.data.displayName);
-          await verifyAssetModalFilters(page);
-        }
-      );
+      await test.step('Verify filters are visible upfront and can be applied', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await goToAssetsTab(page, glossaryTerm1.data.displayName);
+        await verifyAssetModalFilters(page);
+      });
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);
@@ -970,35 +938,32 @@ test.describe('Glossary tests', () => {
         ).toBeVisible();
       });
 
-      await test.step(
-        'Drag and Drop Glossary Term back at parent level',
-        async () => {
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.GLOSSARY);
-          await selectActiveGlossary(page, glossary1.data.displayName);
-          await performExpandAll(page);
+      await test.step('Drag and Drop Glossary Term back at parent level', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await performExpandAll(page);
 
-          await dragAndDropTerm(
-            page,
-            glossaryTerm1.data.displayName,
-            'Terms' // Header Cell
-          );
+        await dragAndDropTerm(
+          page,
+          glossaryTerm1.data.displayName,
+          'Terms' // Header Cell
+        );
 
-          await confirmationDragAndDropGlossary(
-            page,
-            glossaryTerm1.data.name,
-            glossary1.responseData.displayName,
-            true
-          );
+        await confirmationDragAndDropGlossary(
+          page,
+          glossaryTerm1.data.name,
+          glossary1.responseData.displayName,
+          true
+        );
 
-          // verify the term is moved back at parent level
-          await expect(
-            page.getByRole('cell', {
-              name: glossaryTerm1.responseData.displayName,
-            })
-          ).toBeVisible();
-        }
-      );
+        // verify the term is moved back at parent level
+        await expect(
+          page.getByRole('cell', {
+            name: glossaryTerm1.responseData.displayName,
+          })
+        ).toBeVisible();
+      });
     } finally {
       await glossary1.delete(apiContext);
       await afterAction();
@@ -1534,11 +1499,8 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
-      await page.waitForLoadState('networkidle');
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await performExpandAll(page);
 
@@ -1573,33 +1535,27 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
-      await test.step(
-        'Open column dropdown and select columns and check if they are visible',
-        async () => {
-          await openColumnDropdown(page);
-          const checkboxLabels = ['Reviewer', 'Synonyms'];
-          await selectColumns(page, checkboxLabels);
-          await verifyColumnsVisibility(page, checkboxLabels, true);
+      await test.step('Open column dropdown and select columns and check if they are visible', async () => {
+        await openColumnDropdown(page);
+        const checkboxLabels = ['Reviewer', 'Synonyms'];
+        await selectColumns(page, checkboxLabels);
+        await verifyColumnsVisibility(page, checkboxLabels, true);
 
-          await page.reload();
-          await page.waitForLoadState('networkidle');
-          await verifyColumnsVisibility(page, checkboxLabels, true);
-        }
-      );
+        await page.reload();
+  
+        await verifyColumnsVisibility(page, checkboxLabels, true);
+      });
 
-      await test.step(
-        'Open column dropdown and deselect columns and check if they are hidden',
-        async () => {
-          await openColumnDropdown(page);
-          const checkboxLabels = ['Reviewer', 'Owners'];
-          await deselectColumns(page, checkboxLabels);
-          await verifyColumnsVisibility(page, checkboxLabels, false);
+      await test.step('Open column dropdown and deselect columns and check if they are hidden', async () => {
+        await openColumnDropdown(page);
+        const checkboxLabels = ['Reviewer', 'Owners'];
+        await deselectColumns(page, checkboxLabels);
+        await verifyColumnsVisibility(page, checkboxLabels, false);
 
-          await page.reload();
-          await page.waitForLoadState('networkidle');
-          await verifyColumnsVisibility(page, checkboxLabels, false);
-        }
-      );
+        await page.reload();
+  
+        await verifyColumnsVisibility(page, checkboxLabels, false);
+      });
 
       await test.step('View All columns selection', async () => {
         await toggleBulkActionColumnsSelection(page, false);
@@ -1615,7 +1571,7 @@ test.describe('Glossary tests', () => {
         await verifyAllColumns(page, tableColumns, true);
 
         await page.reload();
-        await page.waitForLoadState('networkidle');
+  
         await verifyAllColumns(page, tableColumns, true);
       });
 
@@ -1631,7 +1587,7 @@ test.describe('Glossary tests', () => {
         await verifyAllColumns(page, tableColumns, false);
 
         await page.reload();
-        await page.waitForLoadState('networkidle');
+  
         await verifyAllColumns(page, tableColumns, false);
       });
     } finally {
@@ -1656,19 +1612,13 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
-      await test.step(
-        'Deselect status and check if the table has filtered rows',
-        async () => {
-          await filterStatus(page, ['Draft'], ['Approved']);
-        }
-      );
+      await test.step('Deselect status and check if the table has filtered rows', async () => {
+        await filterStatus(page, ['Draft'], ['Approved']);
+      });
 
-      await test.step(
-        'Re-select the status and check if it appears again',
-        async () => {
-          await filterStatus(page, ['Draft'], ['Draft', 'Approved']);
-        }
-      );
+      await test.step('Re-select the status and check if it appears again', async () => {
+        await filterStatus(page, ['Draft'], ['Draft', 'Approved']);
+      });
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
@@ -1693,8 +1643,9 @@ test.describe('Glossary tests', () => {
       const dragColumn = 'Status';
       const dropColumn = 'Owners';
       await dragAndDropColumn(page, dragColumn, dropColumn);
-      await page.waitForSelector('thead th', { state: 'visible' });
+      await page.locator('thead th').first().waitFor({ state: 'visible' });
       const columnHeaders = page.locator('thead th');
+      // eslint-disable-next-line playwright/prefer-web-first-assertions
       const columnText = await columnHeaders.allTextContents();
 
       expect(columnText).toEqual(
@@ -1775,11 +1726,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
 
-      await page.waitForLoadState('networkidle');
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await createGlossaryTerm(
         page,
@@ -1951,6 +1898,7 @@ test.describe('Glossary tests', () => {
   });
 
   // Need to fix the workflow from BE end, as it constantly failing in the AUT's
+  // eslint-disable-next-line playwright/no-skipped-test -- skipped: backend workflow issue
   test.skip('Term should stay approved when changes made by reviewer', async ({
     browser,
   }) => {
@@ -1981,40 +1929,37 @@ test.describe('Glossary tests', () => {
 
       await glossaryTerm.create(apiContext);
 
-      await test.step(
-        'Navigate to glossary and verify workflow widget',
-        async () => {
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.GLOSSARY);
-          await selectActiveGlossary(page, glossary.data.displayName);
+      await test.step('Navigate to glossary and verify workflow widget', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary.data.displayName);
 
-          await verifyWorkflowInstanceExists(
-            page,
-            glossaryTerm.responseData.fullyQualifiedName
-          );
+        await verifyWorkflowInstanceExists(
+          page,
+          glossaryTerm.responseData.fullyQualifiedName
+        );
 
-          // Test workflow widget on hover
-          const escapedFqn = glossaryTerm.data.fullyQualifiedName.replace(
-            /"/g,
-            '\\"'
-          );
-          const statusSelector = `[data-testid="${escapedFqn}-status"]`;
-          await page.hover(statusSelector);
+        // Test workflow widget on hover
+        const escapedFqn = glossaryTerm.data.fullyQualifiedName.replace(
+          /"/g,
+          '\\"'
+        );
+        const statusSelector = `[data-testid="${escapedFqn}-status"]`;
+        await page.hover(statusSelector);
 
-          await expect(
-            page.locator('[data-testid="workflow-history-widget"]')
-          ).toBeVisible();
+        await expect(
+          page.locator('[data-testid="workflow-history-widget"]')
+        ).toBeVisible();
 
-          await clickOutside(page);
+        await clickOutside(page);
 
-          // Test workflow widget on term details page
-          await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
+        // Test workflow widget on term details page
+        await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
 
-          await expect(
-            page.locator('[data-testid="workflow-history-widget"]')
-          ).toBeVisible();
-        }
-      );
+        await expect(
+          page.locator('[data-testid="workflow-history-widget"]')
+        ).toBeVisible();
+      });
 
       await test.step('Perform Changes by reviewer', async () => {
         await redirectToHomePage(reviewerPage);
@@ -2088,15 +2033,12 @@ test.describe('Glossary tests', () => {
 
         await page1.getByTestId(`tag-"${domain.data.name}"`).click();
 
-        await page1.waitForLoadState('networkidle');
-        await page1.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page1);
       });
 
       await test.step('Open Add Glossary form', async () => {
         await page1.click('[data-testid="add-glossary"]');
-        await page1.waitForSelector('[data-testid="form-heading"]');
+        await page1.getByTestId('form-heading').waitFor();
 
         await expect(page1.locator('[data-testid="form-heading"]')).toHaveText(
           'Add Glossary'
@@ -2106,24 +2048,21 @@ test.describe('Glossary tests', () => {
         await page1.locator(descriptionBox).fill(glossary.data.description);
       });
 
-      await test.step(
-        'Save glossary and verify creation with domain',
-        async () => {
-          const glossaryResponse = page1.waitForResponse('/api/v1/glossaries');
-          await page1.click('[data-testid="save-glossary"]');
-          await glossaryResponse;
+      await test.step('Save glossary and verify creation with domain', async () => {
+        const glossaryResponse = page1.waitForResponse('/api/v1/glossaries');
+        await page1.click('[data-testid="save-glossary"]');
+        await glossaryResponse;
 
-          await expect(page1).toHaveURL(/\/glossary\//);
+        await expect(page1).toHaveURL(/\/glossary\//);
 
-          await expect(
-            page1.locator('[data-testid="entity-header-name"]')
-          ).toContainText(glossary.data.name);
+        await expect(
+          page1.locator('[data-testid="entity-header-name"]')
+        ).toContainText(glossary.data.name);
 
-          await expect(
-            page1.locator('[data-testid="domain-link"]')
-          ).toContainText(domain.data.displayName);
-        }
-      );
+        await expect(
+          page1.locator('[data-testid="domain-link"]')
+        ).toContainText(domain.data.displayName);
+      });
     } finally {
       await afterAction();
       await afterActionUser1();
@@ -2147,10 +2086,10 @@ test.describe('Glossary tests', () => {
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+  
         await selectActiveGlossary(page, glossary.data.displayName);
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+  
 
         await expect(page.getByTestId('entity-header-display-name')).toHaveText(
           glossary.data.displayName
@@ -2159,7 +2098,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Change application language to German', async () => {
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+  
         const languageDropdown = page
           .locator('.nav-bar-side-items button.ant-dropdown-trigger')
           .filter({ hasText: 'EN' })
@@ -2172,47 +2111,41 @@ test.describe('Glossary tests', () => {
         await germanOption.click();
 
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+  
       });
 
-      await test.step(
-        'Open delete modal and verify delete confirmation',
-        async () => {
-          await sidebarClick(page, SidebarItem.GLOSSARY);
-          await waitForAllLoadersToDisappear(page);
-          await page.waitForLoadState('networkidle');
-          await selectActiveGlossary(page, glossary.data.displayName);
-          await waitForAllLoadersToDisappear(page);
-          await page.waitForLoadState('networkidle');
+      await test.step('Open delete modal and verify delete confirmation', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await waitForAllLoadersToDisappear(page);
+  
+        await selectActiveGlossary(page, glossary.data.displayName);
+        await waitForAllLoadersToDisappear(page);
+  
 
-          await page.getByTestId('manage-button').click();
-          await page.getByTestId('delete-button').click();
+        await page.getByTestId('manage-button').click();
+        await page.getByTestId('delete-button').click();
 
-          await expect(page.locator('[role="dialog"]')).toBeVisible();
-          await expect(page.getByTestId('modal-header')).toContainText(
-            glossary.data.name
-          );
+        await expect(page.locator('[role="dialog"]')).toBeVisible();
+        await expect(page.getByTestId('modal-header')).toContainText(
+          glossary.data.name
+        );
 
-          await expect(page.getByTestId('body-text')).toContainText('DELETE');
+        await expect(page.getByTestId('body-text')).toContainText('DELETE');
 
-          const confirmationInput = page.getByTestId('confirmation-text-input');
+        const confirmationInput = page.getByTestId('confirmation-text-input');
 
-          await expect(confirmationInput).toBeVisible();
+        await expect(confirmationInput).toBeVisible();
 
-          await confirmationInput.fill('DELETE');
+        await confirmationInput.fill('DELETE');
 
-          await page.getByTestId('confirm-button').click();
+        await page.getByTestId('confirm-button').click();
 
-          await toastNotification(
-            page,
-            new RegExp(`.*${glossary.data.name}.*`)
-          );
-        }
-      );
+        await toastNotification(page, new RegExp(`.*${glossary.data.name}.*`));
+      });
 
       await test.step('Change language back to English', async () => {
         await waitForAllLoadersToDisappear(page);
-        await page.waitForLoadState('networkidle');
+  
         const languageDropdown = page
           .locator('.nav-bar-side-items button.ant-dropdown-trigger')
           .filter({ hasText: 'DE' })
@@ -2309,7 +2242,7 @@ test.describe('Glossary tests', () => {
       await visitGlossaryPage(page, glossary.responseData.displayName);
 
       // Wait for the table to load
-      await page.waitForSelector('[data-testid="glossary-terms-table"]');
+      await page.getByTestId('glossary-terms-table').waitFor();
 
       // Verify the table renders without crashing
       const table = page.getByTestId('glossary-terms-table');
@@ -2362,7 +2295,7 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
       await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+      await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossary.data.name);
       await page.locator(descriptionBox).fill(glossary.data.description);
@@ -2462,7 +2395,7 @@ test.describe('Glossary tests', () => {
       const parentRow = page.locator(`[data-row-key="${escapedParentFqn}"]`);
       await parentRow.getByTestId('add-classification').click();
 
-      await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       const childTermName = `ChildTerm_${uuid()}`;
       await page.getByTestId('name').fill(childTermName);
@@ -2507,12 +2440,10 @@ test.describe('Glossary tests', () => {
           glossary.responseData.fullyQualifiedName
         )}`
       );
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="add-new-tag-button-header"]');
-      await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       const termName = `P1TermSyn_${uuid()}`;
       const synonyms = [`Syn_${uuid()}`, `Syn_${uuid()}`];
@@ -2576,12 +2507,10 @@ test.describe('Glossary tests', () => {
           glossary.responseData.fullyQualifiedName
         )}`
       );
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="add-new-tag-button-header"]');
-      await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       const termName = `P1TermRef_${uuid()}`;
       const references = [
@@ -2670,12 +2599,10 @@ test.describe('Glossary tests', () => {
           glossary.responseData.fullyQualifiedName
         )}`
       );
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="add-new-tag-button-header"]');
-      await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       const termName = `P1Term_${uuid()}`;
       await page.getByTestId('name').fill(termName);
@@ -2796,7 +2723,7 @@ test.describe('Glossary tests', () => {
       );
       await termRow.getByTestId('edit-button').click();
       await glossaryTermRes;
-      await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       const updatedDisplayName = `${glossaryTerm.data.displayName}-updated`;
       await page.getByTestId('display-name').fill(updatedDisplayName);
@@ -2843,8 +2770,6 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="save-button"]');
       await updateNameResponse;
 
-      // Since rename updates left sidebar as well makes multiple requests, wait for network idle
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
       // Verify the name was updated in the header
@@ -2872,7 +2797,6 @@ test.describe('Glossary tests', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-      await page.waitForLoadState('networkidle');
 
       // Open delete modal
       await page.click('[data-testid="manage-button"]');
@@ -2914,7 +2838,6 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
-      await page.waitForLoadState('networkidle');
 
       // Open delete modal
       await page.click('[data-testid="manage-button"]');
@@ -2947,9 +2870,10 @@ test.describe('Glossary tests', () => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
-    await user3.create(apiContext);
+    await user3.delete(apiContext);
     await team.delete(apiContext);
     await user4.delete(apiContext);
+    await adminUser.delete(apiContext);
     await afterAction();
   });
 });

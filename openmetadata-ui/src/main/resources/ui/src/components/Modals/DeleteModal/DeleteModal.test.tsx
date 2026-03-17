@@ -88,7 +88,7 @@ describe('DeleteModal', () => {
     const confirmButton = screen.getByTestId('confirm-button');
 
     expect(
-      confirmButton.querySelector('.MuiCircularProgress-root')
+      confirmButton.querySelector('[data-testid="loader"]')
     ).toBeInTheDocument();
   });
 

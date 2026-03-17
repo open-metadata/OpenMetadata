@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@mui/icons-material';
-import { GitMerge } from '@untitledui/icons';
+import { GitMerge, X } from '@untitledui/icons';
 import { Button, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -357,7 +356,7 @@ const EdgeInfoDrawer = ({
               aria-label={t('label.close')}
               className="drawer-close-icon flex-center mr-2"
               data-testid="drawer-close-icon"
-              icon={<CloseOutlined />}
+              icon={<X height={16} width={16} />}
               size="small"
               onClick={onClose}
             />

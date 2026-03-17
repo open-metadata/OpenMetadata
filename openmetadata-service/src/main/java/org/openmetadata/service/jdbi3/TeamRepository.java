@@ -43,7 +43,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.service.util.EntityUtil.*;
 
-import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,6 +58,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -95,9 +95,11 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -422,7 +424,7 @@ public class TeamRepository extends EntityRepository<Team> {
     validateDefaultPersona(team);
   }
 
-  public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request) {
+  public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request, String userName) {
     Team team = getByName(null, teamName, getFields("id"));
 
     // Validate all to be users
@@ -434,16 +436,17 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
   }
 
-  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkRemoveAssets(
+      String domainName, BulkAssets request, String userName) {
     Team team = getByName(null, domainName, getFields("id"));
 
     // Validate all to be users
     validateAllRefUsers(request.getAssets());
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {
@@ -489,22 +492,29 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
-    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
 
+    // Build team ID -> FQN mapping
+    Map<String, String> teamIdToFqn = new HashMap<>();
     for (Team team : allTeams) {
-      InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), 0, 0);
+      teamIdToFqn.put(team.getId().toString(), team.getFullyQualifiedName());
+    }
 
-      Integer count =
-          inheritedFieldEntitySearch.getCountForField(
-              query,
-              () -> {
-                LOG.warn(
-                    "Search fallback for team {} asset count. Returning 0.",
-                    team.getFullyQualifiedName());
-                return 0;
-              });
+    // Single ES aggregation query filtered by owners.type=team (excludes users)
+    String queryFilter = QueryFilterBuilder.buildTeamAssetsCountFilter();
+    Map<String, Integer> ownerIdCounts =
+        inheritedFieldEntitySearch.getAggregatedCountsByField(
+            "owners.id", queryFilter, EntityBuilderConstant.MAX_AGGREGATE_SIZE);
 
-      teamAssetCounts.put(team.getFullyQualifiedName(), count);
+    // Map team IDs to FQNs
+    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
+    for (Team team : allTeams) {
+      teamAssetCounts.put(team.getFullyQualifiedName(), 0);
+    }
+    for (Map.Entry<String, Integer> entry : ownerIdCounts.entrySet()) {
+      String teamFqn = teamIdToFqn.get(entry.getKey());
+      if (teamFqn != null) {
+        teamAssetCounts.put(teamFqn, entry.getValue());
+      }
     }
 
     return teamAssetCounts;
@@ -512,58 +522,18 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeEntity(Team team, boolean update) {
-    List<EntityReference> users = team.getUsers();
-    List<EntityReference> defaultRoles = team.getDefaultRoles();
-    EntityReference defaultPersona = team.getDefaultPersona();
-    List<EntityReference> parents = team.getParents();
-    List<EntityReference> policies = team.getPolicies();
-
-    team.withUsers(null)
-        .withDefaultRoles(null)
-        .withDefaultPersona(null)
-        .withParents(null)
-        .withPolicies(null)
-        .withInheritedRoles(null);
-
     store(team, update);
+  }
 
-    team.withUsers(users)
-        .withDefaultRoles(defaultRoles)
-        .withDefaultPersona(defaultPersona)
-        .withParents(parents)
-        .withPolicies(policies);
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of(
+        "users", "defaultRoles", "defaultPersona", "parents", "policies", "inheritedRoles");
   }
 
   @Override
   public void storeEntities(List<Team> entities) {
-    List<Team> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Team team : entities) {
-      List<EntityReference> users = team.getUsers();
-      List<EntityReference> defaultRoles = team.getDefaultRoles();
-      EntityReference defaultPersona = team.getDefaultPersona();
-      List<EntityReference> parents = team.getParents();
-      List<EntityReference> policies = team.getPolicies();
-
-      team.withUsers(null)
-          .withDefaultRoles(null)
-          .withDefaultPersona(null)
-          .withParents(null)
-          .withPolicies(null)
-          .withInheritedRoles(null);
-
-      String jsonCopy = gson.toJson(team);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Team.class));
-
-      team.withUsers(users)
-          .withDefaultRoles(defaultRoles)
-          .withDefaultPersona(defaultPersona)
-          .withParents(parents)
-          .withPolicies(policies);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   /**
@@ -1297,22 +1267,70 @@ public class TeamRepository extends EntityRepository<Team> {
           throw new IllegalArgumentException(INVALID_GROUP_TEAM_CHILDREN_UPDATE);
         }
       }
-      recordChange("profile", original.getProfile(), updated.getProfile(), true);
-      recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
-      recordChange("teamType", original.getTeamType(), updated.getTeamType());
+      compareAndUpdate(
+          "profile",
+          () -> {
+            recordChange("profile", original.getProfile(), updated.getProfile(), true);
+          });
+      compareAndUpdate(
+          "isJoinable",
+          () -> {
+            recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
+          });
+      compareAndUpdate(
+          "teamType",
+          () -> {
+            recordChange("teamType", original.getTeamType(), updated.getTeamType());
+          });
       // If the team is empty then email should be null, not be empty
       if (CommonUtil.nullOrEmpty(updated.getEmail())) {
         updated.setEmail(null);
       }
-      recordChange("email", original.getEmail(), updated.getEmail());
-      updateUsers(original, updated);
-      updateDefaultRoles(original, updated);
-      updateDefaultPersona(original, updated);
-      updateParents(original, updated);
-      updateChildren(original, updated);
-      updatePolicies(original, updated);
-      // Invalidate policy cache when team roles/policies/hierarchy changes
-      SubjectCache.invalidateAll();
+      compareAndUpdate(
+          "email",
+          () -> {
+            recordChange("email", original.getEmail(), updated.getEmail());
+          });
+      AtomicBoolean hierarchyOrPolicyChanged = new AtomicBoolean(false);
+      compareAndUpdate(
+          "users",
+          () -> {
+            updateUsers(original, updated);
+            hierarchyOrPolicyChanged.set(true);
+          });
+      compareAndUpdate(
+          "defaultRoles",
+          () -> {
+            updateDefaultRoles(original, updated);
+            hierarchyOrPolicyChanged.set(true);
+          });
+      compareAndUpdate(
+          "defaultPersona",
+          () -> {
+            updateDefaultPersona(original, updated);
+            hierarchyOrPolicyChanged.set(true);
+          });
+      compareAndUpdate(
+          "parents",
+          () -> {
+            updateParents(original, updated);
+            hierarchyOrPolicyChanged.set(true);
+          });
+      compareAndUpdate(
+          "children",
+          () -> {
+            updateChildren(original, updated);
+            hierarchyOrPolicyChanged.set(true);
+          });
+      compareAndUpdate(
+          "policies",
+          () -> {
+            updatePolicies(original, updated);
+            hierarchyOrPolicyChanged.set(true);
+          });
+      if (hierarchyOrPolicyChanged.get()) {
+        SubjectCache.invalidateAll();
+      }
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) {

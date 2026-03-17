@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 public class FilterEntityImpl implements JavaDelegate {
   private static final Logger log = LoggerFactory.getLogger(FilterEntityImpl.class);
   private Expression excludedFieldsExpr;
+  private Expression includeFieldsExpr;
   private Expression filterExpr;
 
   @Override
@@ -43,6 +44,12 @@ public class FilterEntityImpl implements JavaDelegate {
     if (excludedFieldsExpr != null && excludedFieldsExpr.getValue(execution) != null) {
       excludedFilter =
           JsonUtils.readOrConvertValue(excludedFieldsExpr.getValue(execution), List.class);
+    }
+
+    List<String> includeFields = null;
+    if (includeFieldsExpr != null && includeFieldsExpr.getValue(execution) != null) {
+      includeFields =
+          JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), List.class);
     }
 
     String entityLinkStr =
@@ -62,7 +69,8 @@ public class FilterEntityImpl implements JavaDelegate {
       // We skip the entity filtering for this special case
       passesFilter = true;
     } else {
-      passesFilter = passesExcludedFilter(entityLinkStr, excludedFilter, filterLogic);
+      passesFilter =
+          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
     }
 
     if (passesFilter) {
@@ -178,7 +186,10 @@ public class FilterEntityImpl implements JavaDelegate {
   }
 
   private boolean passesExcludedFilter(
-      String entityLinkStr, List<String> excludedFilter, String filterLogic) {
+      String entityLinkStr,
+      List<String> excludedFilter,
+      List<String> includeFields,
+      String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
@@ -193,21 +204,9 @@ public class FilterEntityImpl implements JavaDelegate {
       ChangeDescription changeDescription = oChangeDescription.get();
       List<FieldChange> changedFields = getAllChangedFields(changeDescription);
 
-      // Check if ANY field is trigger-worthy AND not excluded
       fieldBasedFilter =
           changedFields.isEmpty()
-              || changedFields.stream()
-                  .anyMatch(
-                      field -> {
-                        String fieldName = field.getName();
-                        boolean isTriggerField =
-                            Arrays.stream(WorkflowTriggerFields.values())
-                                .map(WorkflowTriggerFields::value)
-                                .anyMatch(fieldName::equals);
-                        boolean isNotExcluded =
-                            excludedFilter == null || !excludedFilter.contains(fieldName);
-                        return isTriggerField && isNotExcluded;
-                      });
+              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
     }
 
     // Apply JSON filter
@@ -226,5 +225,30 @@ public class FilterEntityImpl implements JavaDelegate {
     allChanges.addAll(changeDescription.getFieldsDeleted());
     allChanges.addAll(changeDescription.getFieldsUpdated());
     return allChanges;
+  }
+
+  private boolean passesFieldBasedFilter(
+      List<FieldChange> changedFields, List<String> includeFields, List<String> excludedFilter) {
+    return changedFields.stream()
+        .anyMatch(
+            field -> {
+              String fieldName = field.getName();
+              boolean isTriggerField =
+                  Arrays.stream(WorkflowTriggerFields.values())
+                      .map(WorkflowTriggerFields::value)
+                      .anyMatch(fieldName::equals);
+              if (!isTriggerField) {
+                return false;
+              }
+
+              // Check include filter first (higher priority)
+              if (includeFields != null && !includeFields.isEmpty()) {
+                // If include fields are specified, ONLY those fields should trigger
+                return includeFields.contains(fieldName);
+              }
+
+              // If no include filter specified, check exclude filter
+              return excludedFilter == null || !excludedFilter.contains(fieldName);
+            });
   }
 }

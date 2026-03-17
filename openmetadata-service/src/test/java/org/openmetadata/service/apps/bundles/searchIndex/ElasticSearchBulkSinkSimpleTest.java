@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.lenient;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,17 +79,5 @@ class ElasticSearchBulkSinkSimpleTest {
     contextData.remove("recreateIndex");
     recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
     assertEquals(false, recreateIndex);
-  }
-
-  @Test
-  void testIsVectorEmbeddingEnabledForEntity() {
-    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("table"));
-    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("user"));
-    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard"));
-  }
-
-  @Test
-  void testAddEntitiesToVectorIndexBatch() {
-    elasticSearchBulkSink.addEntitiesToVectorIndexBatch(null, Collections.emptyList(), true);
   }
 }

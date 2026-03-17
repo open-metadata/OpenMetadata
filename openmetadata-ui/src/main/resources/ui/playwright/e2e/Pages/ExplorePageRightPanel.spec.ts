@@ -42,7 +42,11 @@ import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
-import { openColumnDetailPanel } from '../../utils/entity';
+import {
+  openColumnDetailPanel,
+  waitForAllLoadersToDisappear,
+
+} from '../../utils/entity';
 
 const domainEntity = new Domain();
 const user1 = new UserClass();
@@ -248,9 +252,7 @@ test.describe('Right Panel Test Suite', () => {
           // Removal operations
           await test.step('Remove tag', async () => {
             await overview.removeTag([tagToUpdate]);
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -270,9 +272,7 @@ test.describe('Right Panel Test Suite', () => {
 
           await test.step('Remove tier', async () => {
             await overview.removeTier();
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -292,9 +292,7 @@ test.describe('Right Panel Test Suite', () => {
 
           await test.step('Remove glossary term', async () => {
             await overview.removeGlossaryTerm([glossaryTermToUpdate]);
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -316,9 +314,7 @@ test.describe('Right Panel Test Suite', () => {
 
           await test.step('Remove domain', async () => {
             await overview.removeDomain(domainToUpdate);
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -338,9 +334,7 @@ test.describe('Right Panel Test Suite', () => {
 
           await test.step('Remove user owner', async () => {
             await overview.removeOwner([user1.getUserDisplayName()], 'Users');
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(adminPage);
 
             await navigateToExploreAndSelectEntity(
               adminPage,
@@ -426,6 +420,7 @@ test.describe('Right Panel Test Suite', () => {
             schema,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('schema'),
               `Schema tab not available for ${entityType}`
@@ -474,15 +469,14 @@ test.describe('Right Panel Test Suite', () => {
 
               if (firstField && secondField) {
                 // 1. Search for first field
-                let searchRes;
-                if (usesServerSideSearch) {
-                  searchRes = adminPage.waitForResponse(
-                    (res) =>
-                      res.url().includes('columns/search?offset=') &&
-                      res.url().includes('q=') &&
-                      res.status() === 200
-                  );
-                }
+                const searchRes = usesServerSideSearch
+                  ? adminPage.waitForResponse(
+                      (res) =>
+                        res.url().includes('columns/search?offset=') &&
+                        res.url().includes('q=') &&
+                        res.status() === 200
+                    )
+                  : undefined;
                 await schema.searchFor(firstField);
                 if (searchRes) await searchRes;
 
@@ -490,14 +484,13 @@ test.describe('Right Panel Test Suite', () => {
                 await schema.shouldNotShowFieldByName(secondField);
 
                 // 2. Clear search
-                let clearRes;
-                if (usesServerSideSearch) {
-                  clearRes = adminPage.waitForResponse(
-                    (res) =>
-                      res.url().includes('/columns?offset=') &&
-                      res.status() === 200
-                  );
-                }
+                const clearRes = usesServerSideSearch
+                  ? adminPage.waitForResponse(
+                      (res) =>
+                        res.url().includes('/columns?offset=') &&
+                        res.status() === 200
+                    )
+                  : undefined;
                 await schema.clearSearch();
                 if (clearRes) await clearRes;
 
@@ -505,15 +498,14 @@ test.describe('Right Panel Test Suite', () => {
                 await schema.shouldShowFieldByName(secondField);
 
                 // 3. Search for non-existent field
-                let noMatchRes;
-                if (usesServerSideSearch) {
-                  noMatchRes = adminPage.waitForResponse(
-                    (res) =>
-                      res.url().includes('columns/search?offset=') &&
-                      res.url().includes('q=') &&
-                      res.status() === 200
-                  );
-                }
+                const noMatchRes = usesServerSideSearch
+                  ? adminPage.waitForResponse(
+                      (res) =>
+                        res.url().includes('columns/search?offset=') &&
+                        res.url().includes('q=') &&
+                        res.status() === 200
+                    )
+                  : undefined;
                 await schema.searchFor('zzz_no_match_xyz');
                 if (noMatchRes) await noMatchRes;
 
@@ -552,6 +544,7 @@ test.describe('Right Panel Test Suite', () => {
             lineage,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('lineage'),
               `Lineage tab not available for ${entityType}`
@@ -576,6 +569,7 @@ test.describe('Right Panel Test Suite', () => {
             lineage,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('lineage'),
               `Lineage tab not available for ${entityType}`
@@ -693,6 +687,7 @@ test.describe('Right Panel Test Suite', () => {
             dataQuality,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('data quality'),
               `Data Quality tab not available for ${entityType}`
@@ -717,6 +712,7 @@ test.describe('Right Panel Test Suite', () => {
             dataQuality,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('data quality'),
               `Data Quality tab not available for ${entityType}`
@@ -743,6 +739,7 @@ test.describe('Right Panel Test Suite', () => {
             dataQuality,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('data quality'),
               `Data Quality tab not available for ${entityType}`
@@ -1038,6 +1035,7 @@ test.describe('Right Panel Test Suite', () => {
             customProperties,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('custom property'),
               `Custom Property tab not available for ${entityType}`
@@ -1061,6 +1059,7 @@ test.describe('Right Panel Test Suite', () => {
             customProperties,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('custom property'),
               `Custom Property tab not available for ${entityType}`
@@ -1089,6 +1088,7 @@ test.describe('Right Panel Test Suite', () => {
             customProperties,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('custom property'),
               `Custom Property tab not available for ${entityType}`
@@ -1118,6 +1118,7 @@ test.describe('Right Panel Test Suite', () => {
             customProperties,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('custom property'),
               `Custom Property tab not available for ${entityType}`
@@ -1144,6 +1145,7 @@ test.describe('Right Panel Test Suite', () => {
             }
           });
           // TODO: Remove skip once the we have search support for custom properties to avoid flakiness
+          // eslint-disable-next-line playwright/no-skipped-test -- requires search support for custom properties
           test.skip(`Should show no results for invalid search for ${entityType}`, async ({
             adminPage,
             rightPanel,
@@ -1176,6 +1178,7 @@ test.describe('Right Panel Test Suite', () => {
             customProperties,
           }) => {
             rightPanel.setEntityConfig(entityInstance);
+            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
             test.skip(
               !rightPanel.isTabAvailable('custom property'),
               `Custom Property tab not available for ${entityType}`
@@ -1436,8 +1439,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1465,8 +1467,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1493,8 +1494,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1519,8 +1519,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1545,8 +1544,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1571,8 +1569,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1619,8 +1616,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
               { state: 'visible' }
             );
 
@@ -1699,8 +1695,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1728,8 +1723,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1754,8 +1748,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1780,8 +1773,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1806,8 +1798,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
               {
                 state: 'visible',
               }
@@ -1858,8 +1849,7 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.waitForSelector(
-              '[data-testid="entity-summary-panel-container"]',
+            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
               { state: 'visible' }
             );
 
@@ -1899,8 +1889,7 @@ test.describe('Right Panel Test Suite', () => {
           dcOwnerTestTable.endpoint,
           fqn
         );
-        await adminPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
+        await adminPage.getByTestId('entity-summary-panel-container').waitFor(
           { state: 'visible' }
         );
         const adminRightPanel = new RightPanelPageObject(adminPage);
@@ -1920,8 +1909,7 @@ test.describe('Right Panel Test Suite', () => {
           dcOwnerTestTable.endpoint,
           fqn
         );
-        await dataConsumerPage.waitForSelector(
-          '[data-testid="entity-summary-panel-container"]',
+        await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
           { state: 'visible' }
         );
         const dcSummaryPanel = dataConsumerPage.locator(
@@ -2408,136 +2396,131 @@ test.describe('Right Panel Test Suite', () => {
       });
     });
 
-    test.describe(
-      'ViewBasic User - Column Detail Panel Permission Guard',
-      () => {
-        let viewBasicPolicy: PolicyClass;
-        let viewBasicRole: RolesClass;
+    test.describe('ViewBasic User - Column Detail Panel Permission Guard', () => {
+      let viewBasicPolicy: PolicyClass;
+      let viewBasicRole: RolesClass;
 
-        test.beforeAll(async ({ browser }) => {
-          const { apiContext, afterAction } = await performAdminLogin(browser);
-          try {
-            await viewBasicTable.create(apiContext);
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        try {
+          await viewBasicTable.create(apiContext);
 
-            viewBasicPolicy = new PolicyClass();
-            await viewBasicPolicy.create(apiContext, [
+          viewBasicPolicy = new PolicyClass();
+          await viewBasicPolicy.create(apiContext, [
+            {
+              name: 'ViewBasicOnly-Rule',
+              resources: ['All'],
+              operations: ['ViewBasic'],
+              effect: 'allow',
+            },
+          ]);
+
+          viewBasicRole = new RolesClass();
+          await viewBasicRole.create(apiContext, [
+            viewBasicPolicy.responseData.name,
+          ]);
+
+          // Create user WITHOUT the default DataConsumer role
+          await viewBasicUser.create(apiContext, false);
+
+          await viewBasicUser.patch({
+            apiContext,
+            patchData: [
               {
-                name: 'ViewBasicOnly-Rule',
-                resources: ['All'],
-                operations: ['ViewBasic'],
-                effect: 'allow',
+                op: 'replace',
+                path: '/roles',
+                value: [
+                  {
+                    id: viewBasicRole.responseData.id,
+                    type: 'role',
+                    name: viewBasicRole.responseData.name,
+                  },
+                ],
               },
-            ]);
+            ],
+          });
+        } finally {
+          await afterAction();
+        }
+      });
 
-            viewBasicRole = new RolesClass();
-            await viewBasicRole.create(apiContext, [
-              viewBasicPolicy.responseData.name,
-            ]);
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        try {
+          await viewBasicTable.delete(apiContext);
+          await viewBasicUser.delete(apiContext);
+          await viewBasicRole.delete(apiContext);
+          await viewBasicPolicy.delete(apiContext);
+        } finally {
+          await afterAction();
+        }
+      });
 
-            // Create user WITHOUT the default DataConsumer role
-            await viewBasicUser.create(apiContext, false);
+      test('Data Quality tab should show permission placeholder for ViewBasic-only user in column detail panel', async ({
+        browser,
+      }) => {
+        const context = await browser.newContext();
+        const page = await context.newPage();
 
-            await viewBasicUser.patch({
-              apiContext,
-              patchData: [
-                {
-                  op: 'replace',
-                  path: '/roles',
-                  value: [
-                    {
-                      id: viewBasicRole.responseData.id,
-                      type: 'role',
-                      name: viewBasicRole.responseData.name,
-                    },
-                  ],
-                },
-              ],
-            });
-          } finally {
-            await afterAction();
-          }
-        });
+        try {
+          await viewBasicUser.login(page);
+          await viewBasicTable.visitEntityPage(page);
 
-        test.afterAll(async ({ browser }) => {
-          const { apiContext, afterAction } = await performAdminLogin(browser);
-          try {
-            await viewBasicTable.delete(apiContext);
-            await viewBasicUser.delete(apiContext);
-            await viewBasicRole.delete(apiContext);
-            await viewBasicPolicy.delete(apiContext);
-          } finally {
-            await afterAction();
-          }
-        });
-
-        test('Data Quality tab should show permission placeholder for ViewBasic-only user in column detail panel', async ({
-          browser,
-        }) => {
-          const context = await browser.newContext();
-          const page = await context.newPage();
-
-          try {
-            await viewBasicUser.login(page);
-            await viewBasicTable.visitEntityPage(page);
-
-            const panelContainer = await openColumnDetailPanel({
-              page,
-              rowSelector: 'data-row-key',
-              columnId: viewBasicTable.childrenSelectorId ?? '',
-              columnNameTestId: 'column-name',
-              entityType: 'table',
-            });
-
-            await panelContainer.getByTestId('data-quality-tab').click();
-            await page.waitForLoadState('networkidle');
-
-            await expect(
-              panelContainer.locator(
-                '[data-testid="permission-error-placeholder"]'
-              )
-            ).toBeVisible();
-          } finally {
-            await context.close();
-          }
-        });
-
-        test('Should not make forbidden API calls when ViewBasic-only user opens column detail panel', async ({
-          browser,
-        }) => {
-          const context = await browser.newContext();
-          const page = await context.newPage();
-          const forbiddenUrls: string[] = [];
-
-          page.on('response', (response) => {
-            if (
-              response.status() === 403 &&
-              (response.url().includes('metadata/types/name/tableColumn') ||
-                response.url().includes('/testCases'))
-            ) {
-              forbiddenUrls.push(response.url());
-            }
+          const panelContainer = await openColumnDetailPanel({
+            page,
+            rowSelector: 'data-row-key',
+            columnId: viewBasicTable.childrenSelectorId ?? '',
+            columnNameTestId: 'column-name',
+            entityType: 'table',
           });
 
-          try {
-            await viewBasicUser.login(page);
-            await viewBasicTable.visitEntityPage(page);
+          await panelContainer.getByTestId('data-quality-tab').click();
 
-            await openColumnDetailPanel({
-              page,
-              rowSelector: 'data-row-key',
-              columnId: viewBasicTable.childrenSelectorId ?? '',
-              columnNameTestId: 'column-name',
-              entityType: 'table',
-            });
+          await expect(
+            panelContainer.locator(
+              '[data-testid="permission-error-placeholder"]'
+            )
+          ).toBeVisible();
+        } finally {
+          await context.close();
+        }
+      });
 
-            await page.waitForLoadState('networkidle');
+      test('Should not make forbidden API calls when ViewBasic-only user opens column detail panel', async ({
+        browser,
+      }) => {
+        const context = await browser.newContext();
+        const page = await context.newPage();
+        const forbiddenUrls: string[] = [];
 
-            expect(forbiddenUrls).toHaveLength(0);
-          } finally {
-            await context.close();
+        page.on('response', (response) => {
+          if (
+            response.status() === 403 &&
+            (response.url().includes('metadata/types/name/tableColumn') ||
+              response.url().includes('/testCases'))
+          ) {
+            forbiddenUrls.push(response.url());
           }
         });
-      }
-    );
+
+        try {
+          await viewBasicUser.login(page);
+          await viewBasicTable.visitEntityPage(page);
+
+          await openColumnDetailPanel({
+            page,
+            rowSelector: 'data-row-key',
+            columnId: viewBasicTable.childrenSelectorId ?? '',
+            columnNameTestId: 'column-name',
+            entityType: 'table',
+          });
+
+
+          expect(forbiddenUrls).toHaveLength(0);
+        } finally {
+          await context.close();
+        }
+      });
+    });
   });
 });

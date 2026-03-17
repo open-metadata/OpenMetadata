@@ -30,9 +30,9 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 4 : undefined,
+  workers: process.env.CI ? 3 : undefined,
   maxFailures: 500,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -46,15 +46,15 @@ export default defineConfig({
       },
     ],
     ['blob'],
+    ['json', { outputFile: './playwright/output/results.json' }],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    /* Collect trace and video on every failure (not just retries) for debugging */
     trace: 'on-first-retry',
-    /* Screenshot on failure. */
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
@@ -81,13 +81,20 @@ export default defineConfig({
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
       grepInvert: [/@data-insight/, /@ingestion/, /@sample-data/, /@basic/],
-      teardown: 'entity-data-teardown',
+      teardown: 'SearchRBAC',
       testIgnore: [
         '**/nightly/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
+        '**/SearchRBAC.spec.ts',
       ],
+    },
+    {
+      name: 'SearchRBAC',
+      testMatch: '**/SearchRBAC.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      teardown: 'entity-data-teardown',
     },
     {
       name: 'entity-data-teardown',
@@ -152,6 +159,7 @@ export default defineConfig({
 
   // Increase timeout for the test
   timeout: 60000,
+  expect: { timeout: 15_000 },
 
   /* Run your local dev server before starting the tests */
   // webServer: {

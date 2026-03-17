@@ -57,6 +57,7 @@ import {
   addOwner,
   assignGlossaryTerm,
   waitForAllLoadersToDisappear,
+
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -254,7 +255,9 @@ test.describe(
 
         // Navigate to glossary term page with full page load
         await page.goto(
-          `/glossary/${encodeURIComponent(testGlossaryTerm.responseData.fullyQualifiedName)}`
+          `/glossary/${encodeURIComponent(
+            testGlossaryTerm.responseData.fullyQualifiedName
+          )}`
         );
 
         await page.waitForLoadState('domcontentloaded');
@@ -262,9 +265,7 @@ test.describe(
 
         // Open domain selector to verify single-select mode (no checkboxes)
         await page.getByTestId('add-domain').click();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Verify checkboxes are NOT visible (single-select mode)
         await expect(
@@ -275,7 +276,7 @@ test.describe(
         await clickOutside(page);
 
         // Wait for domain selector to be fully closed
-        await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        await page.getByTestId('domain-selectable-tree').waitFor({
           state: 'detached',
         });
 
@@ -302,9 +303,7 @@ test.describe(
         );
 
         // Verify no domain count button (only single domain, not multiple)
-        await expect(
-          page.getByTestId('domain-count-button')
-        ).not.toBeVisible();
+        await expect(page.getByTestId('domain-count-button')).not.toBeVisible();
       } finally {
         await testGlossaryTerm.delete(apiContext);
         await testGlossary.delete(apiContext);

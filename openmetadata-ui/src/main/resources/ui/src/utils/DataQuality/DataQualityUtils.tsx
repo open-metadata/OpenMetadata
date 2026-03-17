@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Divider, Stack, Typography } from '@mui/material';
 import { t } from 'i18next';
 import {
   isArray,
@@ -36,11 +35,15 @@ import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
-import { TestCaseParameterValue } from '../../generated/tests/testCase';
+import {
+  TestCase,
+  TestCaseParameterValue,
+} from '../../generated/tests/testCase';
 import {
   DataQualityDimensions,
   TestDataType,
@@ -52,6 +55,9 @@ import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQu
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import { getEntryFormattedValue } from '../DataInsightUtils';
 import { formatDate } from '../date-time/DateTimeUtils';
+import EntityLink from '../EntityLink';
+import { getColumnNameFromEntityLink } from '../EntityUtils';
+import { getEntityFQN } from '../FeedUtils';
 import { generateEntityLink } from '../TableUtils';
 
 /**
@@ -191,9 +197,17 @@ export const buildMustEsFilterForOwner = (
   ownerFqn: string,
   isTestCaseResult = false
 ) => {
+  const path = isTestCaseResult ? 'testCase.owners' : 'owners';
+  const field = isTestCaseResult ? 'testCase.owners.name' : 'owners.name';
+
   return {
-    term: {
-      [isTestCaseResult ? 'testCase.owners.name' : 'owners.name']: ownerFqn,
+    nested: {
+      path,
+      query: {
+        term: {
+          [field]: ownerFqn,
+        },
+      },
     },
   };
 };
@@ -385,7 +399,7 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
     displayDateInHeader = true,
   } = props;
 
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     // we need to check if the xAxis is a date or not.
     const timestamp = displayDateInHeader
       ? dateTimeFormatter(payload[0].payload[timeStampKey] || 0)
@@ -394,63 +408,43 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
     const payloadValue = uniqBy(payload, 'dataKey');
 
     return (
-      <Card
-        sx={(theme) => ({
-          p: '10px',
-          bgcolor: theme.palette.allShades.white,
-        })}>
-        <Typography
-          sx={(theme) => ({
-            color: theme.palette.allShades.gray[900],
-            fontWeight: theme.typography.fontWeightMedium,
-            fontSize: theme.typography.pxToRem(12),
-          })}>
+      <div className="tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:shadow-md tw:p-2.5">
+        <p className="tw:m-0 tw:text-primary tw:font-medium tw:text-xs">
           {timestamp}
-        </Typography>
-        <Divider
-          sx={(theme) => ({
-            my: 2,
-            borderStyle: 'dashed',
-            borderColor: theme.palette.allShades.gray[300],
-          })}
-        />
-        <Stack spacing={1}>
+        </p>
+        <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
+        <div className="tw:flex tw:flex-col tw:gap-1">
           {payloadValue.map((entry, index) => {
             const value = entry.value;
 
             return (
-              <Box
-                className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+              <div
+                className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm"
                 key={`item-${index}`}>
-                <span className="flex items-center">
-                  <Surface className="mr-2" height={14} version="1.1" width={4}>
+                <span className="tw:flex tw:items-center">
+                  <Surface
+                    className="tw:mr-2"
+                    height={14}
+                    version="1.1"
+                    width={4}>
                     <rect fill={entry.color} height="14" rx="2" width="4" />
                   </Surface>
-                  <Typography
-                    sx={(theme) => ({
-                      color: theme.palette.allShades.gray[700],
-                      fontSize: theme.typography.pxToRem(11),
-                    })}>
+                  <span className="tw:text-tertiary tw:text-[11px]">
                     {transformLabel
                       ? startCase(entry.name ?? (entry.dataKey as string))
                       : entry.name ?? (entry.dataKey as string)}
-                  </Typography>
+                  </span>
                 </span>
-                <Typography
-                  sx={(theme) => ({
-                    color: theme.palette.allShades.gray[900],
-                    fontWeight: theme.typography.fontWeightMedium,
-                    fontSize: theme.typography.pxToRem(11),
-                  })}>
+                <span className="tw:font-medium tw:text-primary tw:text-[11px]">
                   {valueFormatter
                     ? valueFormatter(value, entry.name ?? entry.dataKey)
                     : getEntryFormattedValue(value, isPercentage)}
-                </Typography>
-              </Box>
+                </span>
+              </div>
             );
           })}
-        </Stack>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -560,3 +554,127 @@ export const getServiceTypeForTestDefinition = (
 ): string | undefined => {
   return table?.serviceType;
 };
+
+export function getColumnFilterOptions(
+  items: TestCase[]
+): SearchDropdownOption[] {
+  const withColumn = items.filter((tc) =>
+    tc.entityLink?.includes('::columns::')
+  );
+  const pairs = withColumn.map((tc) => {
+    const tableFqn = getEntityFQN(tc.entityLink);
+    const colName = getColumnNameFromEntityLink(tc.entityLink);
+
+    return {
+      key: `${tableFqn}::${colName ?? ''}`,
+      label: colName ?? '--',
+    };
+  });
+  const seen = new Set<string>();
+
+  return pairs.filter((p) => {
+    if (seen.has(p.key)) {
+      return false;
+    }
+
+    seen.add(p.key);
+
+    return true;
+  });
+}
+
+export function getSelectedOptionsFromKeys(
+  keys: string[],
+  options: SearchDropdownOption[],
+  getDefaultLabel: (key: string) => string
+): SearchDropdownOption[] {
+  return keys.map((key) => {
+    const opt = options.find((o) => o.key === key);
+
+    return opt ?? { key, label: getDefaultLabel(key) };
+  });
+}
+
+export function filterTestCasesByTableAndColumn(
+  items: TestCase[],
+  filterTables: string[],
+  filterColumns: string[]
+): TestCase[] {
+  let result = items;
+  if (filterTables.length > 0) {
+    const tableSet = new Set(filterTables);
+    result = result.filter((tc) => tableSet.has(getEntityFQN(tc.entityLink)));
+  }
+  if (filterColumns.length > 0) {
+    const columnSet = new Set(filterColumns);
+    result = result.filter((tc) => {
+      if (!tc.entityLink?.includes('::columns::')) {
+        return false;
+      }
+
+      const tableFqn = getEntityFQN(tc.entityLink);
+      const colName = getColumnNameFromEntityLink(tc.entityLink);
+
+      return columnSet.has(`${tableFqn}::${colName ?? ''}`);
+    });
+  }
+
+  return result;
+}
+
+export const COLUMN_AGGREGATE_FIELD = 'columns.name.keyword';
+
+export function getEntityLinkForColumnFilter(
+  tableFqn: string,
+  columnName: string
+): string {
+  return EntityLink.getTableEntityLink(tableFqn, columnName);
+}
+
+export function parseColumnAggregateBuckets(
+  buckets: { key?: string }[],
+  tableFqn?: string
+): SearchDropdownOption[] {
+  const seen = new Set<string>();
+
+  return (buckets ?? []).reduce<SearchDropdownOption[]>((acc, b) => {
+    const colKey = b.key ?? '';
+    const key = tableFqn ? `${tableFqn}::${colKey}` : colKey;
+    if (!key || seen.has(key)) {
+      return acc;
+    }
+    seen.add(key);
+    acc.push({ key, label: colKey });
+
+    return acc;
+  }, []);
+}
+
+export function getColumnFilterEntityLink(
+  columnFilterKey: string
+): string | undefined {
+  if (
+    !columnFilterKey.includes('::') ||
+    columnFilterKey.includes('::columns::') ||
+    columnFilterKey.startsWith('<#E')
+  ) {
+    return undefined;
+  }
+  const lastSep = columnFilterKey.lastIndexOf('::');
+  const tableFqn = columnFilterKey.slice(0, lastSep);
+  const columnName = columnFilterKey.slice(lastSep + 2);
+
+  return getEntityLinkForColumnFilter(tableFqn, columnName);
+}
+
+export function getColumnNameFromColumnFilterKey(
+  columnFilterKey: string
+): string | undefined {
+  if (!columnFilterKey?.trim()) {
+    return undefined;
+  }
+
+  return columnFilterKey.includes('::')
+    ? columnFilterKey.slice(columnFilterKey.lastIndexOf('::') + 2)
+    : columnFilterKey;
+}

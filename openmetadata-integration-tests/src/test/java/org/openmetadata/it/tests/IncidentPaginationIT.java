@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
@@ -76,21 +77,54 @@ public class IncidentPaginationIT {
       createIncidentStatus(testCase);
     }
 
+    waitForDataIndexed();
+  }
+
+  private void waitForDataIndexed() throws Exception {
+    String firstFqn = testCases.get(0).getFullyQualifiedName();
+    final Instant[] lastRecreation = {Instant.MIN};
+
     await()
         .atMost(Duration.ofMinutes(3))
         .pollInterval(Duration.ofSeconds(5))
         .until(
             () -> {
               try {
-                ListParams params =
-                    new ListParams().withLimit(TEST_DATA_SIZE + 10).withLatest(true);
-                ListResponse<TestCaseResolutionStatus> response =
-                    client.testCaseResolutionStatuses().searchList(params);
-                return response.getPaging().getTotal() >= TEST_DATA_SIZE;
+                ListParams filteredParams =
+                    new ListParams()
+                        .withLimit(PAGE_SIZE)
+                        .withOffset(0)
+                        .withLatest(true)
+                        .addFilter("testCaseFQN", firstFqn);
+                ListResponse<TestCaseResolutionStatus> filteredResponse =
+                    client.testCaseResolutionStatuses().searchList(filteredParams);
+                if (filteredResponse.getData().size() == 1) {
+                  ListParams globalParams =
+                      new ListParams().withLimit(TEST_DATA_SIZE + 10).withLatest(true);
+                  ListResponse<TestCaseResolutionStatus> globalResponse =
+                      client.testCaseResolutionStatuses().searchList(globalParams);
+                  return globalResponse.getPaging().getTotal() >= TEST_DATA_SIZE;
+                }
+                // Data not found — may have been lost during a concurrent search index rebuild.
+                // Re-create incident statuses at most once per minute to trigger re-indexing.
+                if (Duration.between(lastRecreation[0], Instant.now()).toSeconds() > 60) {
+                  recreateIncidentStatuses();
+                  lastRecreation[0] = Instant.now();
+                }
+                return false;
               } catch (Exception e) {
                 return false;
               }
             });
+  }
+
+  private void recreateIncidentStatuses() {
+    for (TestCase testCase : testCases) {
+      try {
+        createIncidentStatus(testCase);
+      } catch (Exception ignored) {
+      }
+    }
   }
 
   @Test
@@ -186,9 +220,9 @@ public class IncidentPaginationIT {
     String targetFqn = testCases.get(0).getFullyQualifiedName();
 
     await("Wait for filtered incident to be searchable by testCaseFQN")
-        .atMost(Duration.ofSeconds(30))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(3))
         .ignoreExceptions()
         .untilAsserted(
             () -> {

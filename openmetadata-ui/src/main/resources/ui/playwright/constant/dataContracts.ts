@@ -860,7 +860,7 @@ sla:
     period: 5
     unit: day
 owners: []
-reviewers: []`
+reviewers: []`;
 
 // Helper function to generate unique ODCS contract
 export const generateODCSContract = (

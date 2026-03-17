@@ -59,14 +59,14 @@ public class IngestionPipelineFormatter implements EntityFormatter {
       // In case of running
       String date =
           new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getTimestamp()));
-      String format =
-          String.format(
-              "Ingestion Pipeline %s %s at %s",
-              messageFormatter.getBold(), messageFormatter.getBold(), date);
-      return String.format(format, ingestionPipelineName, status.getPipelineState());
+      return String.format(
+          "Ingestion Pipeline %s %s at %s",
+          messageFormatter.bold(ingestionPipelineName),
+          messageFormatter.bold(String.valueOf(status.getPipelineState())),
+          date);
     }
-    String format = String.format("Ingestion Pipeline %s is updated", messageFormatter.getBold());
-    return String.format(format, ingestionPipelineName);
+    return String.format(
+        "Ingestion Pipeline %s is updated", messageFormatter.bold(ingestionPipelineName));
   }
 
   public static String getIngestionPipelineUrl(

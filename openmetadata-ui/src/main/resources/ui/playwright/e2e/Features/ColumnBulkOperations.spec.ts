@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
@@ -44,21 +44,80 @@ async function visitColumnBulkOperationsPage(page: Page) {
   await waitForAllLoadersToDisappear(page);
 }
 
-async function searchColumn(page: Page, columnName: string) {
+async function searchColumn(
+  page: Page,
+  columnName: string,
+  options: { expectResults?: boolean } = {}
+) {
+  const expectResults = options.expectResults ?? true;
   const searchInput = page.getByPlaceholder('Search columns');
-  await searchInput.clear();
+  const matchingRowLocator = page.getByTestId(`column-row-${columnName}`);
 
-  const responsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes(GRID_API_URL) &&
-      response.url().includes('columnNamePattern=') &&
-      response.status() === 200,
-    { timeout: 15000 }
-  );
+  const runSearch = async () => {
+    await searchInput.clear();
+    const encodedColumnName = encodeURIComponent(columnName);
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes(GRID_API_URL) &&
+        response.url().includes(`columnNamePattern=${encodedColumnName}`),
+      { timeout: 15000 }
+    );
+    await searchInput.fill(columnName);
+    const response = await responsePromise.catch(() => null);
 
-  await searchInput.fill(columnName);
-  await responsePromise;
-  await waitForAllLoadersToDisappear(page);
+    if (response && response.status() !== 200) {
+      return 0;
+    }
+
+    await waitForAllLoadersToDisappear(page);
+    return matchingRowLocator.count();
+  };
+
+  if (!expectResults) {
+    await runSearch();
+    await waitForAllLoadersToDisappear(page);
+
+    return;
+  }
+
+  await expect
+    .poll(
+      async () => {
+        return runSearch();
+      },
+      { timeout: 90000, intervals: [1000, 2000, 3000] }
+    )
+    .toBeGreaterThan(0);
+}
+
+async function waitForColumnInGridIndex(
+  apiContext: APIRequestContext,
+  columnName: string,
+  minOccurrences = 1
+) {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/columns/grid?size=1000&columnNamePattern=${encodeURIComponent(
+            columnName
+          )}`
+        );
+
+        if (!response.ok()) {
+          return 0;
+        }
+
+        const body = await response.json();
+        const match = body.columns?.find(
+          (column: { columnName?: string }) => column.columnName === columnName
+        );
+
+        return match?.totalOccurrences ?? 0;
+      },
+      { timeout: 90000, intervals: [1000, 2000, 3000] }
+    )
+    .toBeGreaterThanOrEqual(minOccurrences);
 }
 
 async function getPendingChangesValue(page: Page) {
@@ -66,6 +125,13 @@ async function getPendingChangesValue(page: Page) {
     (await page.getByTestId('pending-changes-value').textContent())?.trim() ??
     ''
   );
+}
+
+function getColumnRowCheckbox(page: Page, rowId: string) {
+  return page
+    .locator(`[data-row-id="${rowId}"]`)
+    .first()
+    .locator('[slot="selection"]');
 }
 
 function buildMockColumnGridResponse(columnName: string) {
@@ -124,31 +190,37 @@ test.describe(
         await expect(page.getByTestId('pending-changes-card')).toBeVisible();
       });
 
-      await test.step(
-        'Verify the grid table is visible with rows',
-        async () => {
-          await expect(page.getByTestId('column-grid-container')).toBeVisible();
-          await expect(page.getByRole('table')).toBeVisible();
-        }
-      );
+      await test.step('Verify the grid table is visible with rows', async () => {
+        await expect(page.getByTestId('column-grid-container')).toBeVisible();
+        await expect(page.getByTestId('table-view-container')).toBeVisible();
+      });
     });
 
     test('should show no results when searching for nonexistent column', async ({
       page,
     }) => {
       await test.step('Search for a nonexistent column name', async () => {
-        await searchColumn(page, 'zzz_nonexistent_column_xyz_12345');
+        await searchColumn(page, 'zzz_nonexistent_column_xyz_12345', {
+          expectResults: false,
+        });
       });
 
       await test.step('Verify empty state or zero rows', async () => {
-        const noRecordsText = page.getByText(
-          /no records found|no data|no results/i
-        );
-        const tableRows = page.locator('tbody tr');
-        const noResultsCount = await noRecordsText.count();
-        const rowCount = await tableRows.count();
+        await expect
+          .poll(
+            async () => {
+              const noRecordsText = page.getByText(
+                /no records found|no data|no results/i
+              );
+              const tableRows = page.locator('tbody tr');
+              const noResultsCount = await noRecordsText.count();
+              const rowCount = await tableRows.count();
 
-        expect(noResultsCount > 0 || rowCount === 0).toBe(true);
+              return noResultsCount > 0 || rowCount === 0;
+            },
+            { timeout: 10000, intervals: [500, 1000, 2000] }
+          )
+          .toBe(true);
       });
     });
   }
@@ -165,18 +237,15 @@ test.describe(
     test('should filter by metadata status and verify API param', async ({
       page,
     }) => {
-      await test.step(
-        'Open metadata status filter and select MISSING',
-        async () => {
-          await page.getByTestId(METADATA_STATUS_FILTER_TESTID).click();
-          await page.getByTestId('MISSING').click();
+      await test.step('Open metadata status filter and select MISSING', async () => {
+        await page.getByTestId(METADATA_STATUS_FILTER_TESTID).click();
+        await page.getByTestId('MISSING').click();
 
-          const gridRes = waitForGridResponse(page);
-          await page.getByTestId('update-btn').click();
-          await gridRes;
-          await waitForAllLoadersToDisappear(page);
-        }
-      );
+        const gridRes = waitForGridResponse(page);
+        await page.getByTestId('update-btn').click();
+        await gridRes;
+        await waitForAllLoadersToDisappear(page);
+      });
 
       await test.step('Verify filter chip is displayed', async () => {
         const metadataStatusChip = page
@@ -213,17 +282,14 @@ test.describe(
     });
 
     test('should restore filters from URL on page load', async ({ page }) => {
-      await test.step(
-        'Navigate to page with metadataStatus in URL',
-        async () => {
-          const dataRes = waitForGridResponse(page);
-          await page.goto(
-            `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`
-          );
-          await dataRes;
-          await waitForAllLoadersToDisappear(page);
-        }
-      );
+      await test.step('Navigate to page with metadataStatus in URL', async () => {
+        const dataRes = waitForGridResponse(page);
+        await page.goto(
+          `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`
+        );
+        await dataRes;
+        await waitForAllLoadersToDisappear(page);
+      });
 
       await test.step('Verify filter chip is restored', async () => {
         const metadataStatusChip = page
@@ -308,17 +374,12 @@ test.describe(
     });
 
     test('should clear individual filter and update URL', async ({ page }) => {
-      await test.step(
-        'Navigate with metadataStatus filter in URL',
-        async () => {
-          const dataRes = waitForGridResponse(page);
-          await page.goto(
-            `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`
-          );
-          await dataRes;
-          await waitForAllLoadersToDisappear(page);
-        }
-      );
+      await test.step('Navigate with metadataStatus filter in URL', async () => {
+        const dataRes = waitForGridResponse(page);
+        await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`);
+        await dataRes;
+        await waitForAllLoadersToDisappear(page);
+      });
 
       await test.step('Verify filter chip is present', async () => {
         const metadataStatusChip = page
@@ -342,21 +403,18 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
       });
 
-      await test.step(
-        'Verify filter chip removed and URL updated',
-        async () => {
-          const metadataStatusChip = page
-            .locator('.filter-selection-chip')
-            .filter({
-              has: page.locator('.filter-selection-value', {
-                hasText: /Missing|MISSING/,
-              }),
-            });
+      await test.step('Verify filter chip removed and URL updated', async () => {
+        const metadataStatusChip = page
+          .locator('.filter-selection-chip')
+          .filter({
+            has: page.locator('.filter-selection-value', {
+              hasText: /Missing|MISSING/,
+            }),
+          });
 
-          await expect(metadataStatusChip).not.toBeVisible();
-          expect(page.url()).not.toContain('metadataStatus=MISSING');
-        }
-      );
+        await expect(metadataStatusChip).not.toBeVisible();
+        expect(page.url()).not.toContain('metadataStatus=MISSING');
+      });
     });
 
     test('should keep latest search results when responses arrive out of order', async ({
@@ -471,6 +529,8 @@ test.describe(
   'Column Bulk Operations - Selection & Edit Drawer',
   PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
+    test.setTimeout(120000);
+
     const table = new TableClass();
     let sharedColumnName: string;
 
@@ -488,6 +548,8 @@ test.describe(
         },
         apiContext
       );
+
+      await waitForColumnInGridIndex(apiContext, sharedColumnName, 2);
       await afterAction();
     });
 
@@ -512,9 +574,7 @@ test.describe(
     }) => {
       await test.step('Search and select a shared column', async () => {
         await searchColumn(page, sharedColumnName);
-        const checkbox = page.getByTestId(
-          `column-checkbox-${sharedColumnName}`
-        );
+        const checkbox = getColumnRowCheckbox(page, sharedColumnName);
         await expect(checkbox).toBeVisible();
         await checkbox.click();
       });
@@ -533,16 +593,13 @@ test.describe(
         await displayNameInput.fill(`PendingCounter_${uuid()}`);
       });
 
-      await test.step(
-        'Verify pending changes value shows edited/selected count',
-        async () => {
-          const value = await getPendingChangesValue(page);
-          expect(value).toMatch(/^\d+\/\d+$/);
-          const [edited, selected] = value.split('/').map(Number);
-          expect(edited).toBeGreaterThan(0);
-          expect(selected).toBeGreaterThan(0);
-        }
-      );
+      await test.step('Verify pending changes value shows edited/selected count', async () => {
+        const value = await getPendingChangesValue(page);
+        expect(value).toMatch(/^\d+\/\d+$/);
+        const [edited, selected] = value.split('/').map(Number);
+        expect(edited).toBeGreaterThan(0);
+        expect(selected).toBeGreaterThan(0);
+      });
     });
 
     test('should not count aggregate parent row in drawer selected count', async ({
@@ -569,31 +626,28 @@ test.describe(
         expectedOccurrences = Number(match?.[1] ?? '0');
         expect(expectedOccurrences).toBeGreaterThan(1);
 
-        const checkbox = groupRow.locator('input[type="checkbox"]');
+        const checkbox = groupRow.locator('[slot="selection"]');
         await expect(checkbox).toBeVisible();
-        await checkbox.check();
+        await checkbox.click();
       });
 
-      await test.step(
-        'Open drawer and verify selected count matches occurrences',
-        async () => {
-          const editButton = page.getByTestId('edit-button');
-          await expect(editButton).toBeEnabled();
-          await editButton.click();
+      await test.step('Open drawer and verify selected count matches occurrences', async () => {
+        const editButton = page.getByTestId('edit-button');
+        await expect(editButton).toBeEnabled();
+        await editButton.click();
 
-          const drawer = page.getByTestId('column-bulk-operations-form-drawer');
-          await expect(drawer).toBeVisible();
+        const drawer = page.getByTestId('column-bulk-operations-form-drawer');
+        await expect(drawer).toBeVisible();
 
-          await expect(drawer.getByTestId('form-heading')).toContainText(
-            String(expectedOccurrences).padStart(2, '0')
-          );
-          await expect(
-            drawer.getByTestId('column-name-input').locator('input')
-          ).toHaveValue(
-            new RegExp(`${expectedOccurrences}\\s+columns selected`, 'i')
-          );
-        }
-      );
+        await expect(drawer.getByTestId('form-heading')).toContainText(
+          String(expectedOccurrences).padStart(2, '0')
+        );
+        await expect(
+          drawer.getByTestId('column-name-input').locator('input')
+        ).toHaveValue(
+          new RegExp(`${expectedOccurrences}\\s+columns selected`, 'i')
+        );
+      });
     });
 
     test('should show pending progress spinner after submitting bulk update', async ({
@@ -613,9 +667,7 @@ test.describe(
 
       await test.step('Search, select, and open edit drawer', async () => {
         await searchColumn(page, sharedColumnName);
-        const checkbox = page.getByTestId(
-          `column-checkbox-${sharedColumnName}`
-        );
+        const checkbox = getColumnRowCheckbox(page, sharedColumnName);
         await expect(checkbox).toBeVisible();
         await checkbox.click();
 
@@ -638,17 +690,17 @@ test.describe(
         await updateButton.click();
       });
 
-      await test.step(
-        'Verify pending progress indicator and counter are visible',
-        async () => {
-          await expect(
-            page.getByTestId('pending-changes-progress-spinner')
-          ).toBeVisible();
+      await test.step('Verify pending progress indicator and counter are visible', async () => {
+        await expect(
+          page.getByTestId('column-bulk-operations-form-drawer')
+        ).not.toBeVisible({ timeout: 10000 });
 
-          const value = await getPendingChangesValue(page);
-          expect(value).toMatch(/^\d+\/\d+$/);
-        }
-      );
+        const loaders = page.getByTestId('loader');
+        await expect(loaders.first()).toBeVisible();
+
+        const value = await getPendingChangesValue(page);
+        expect(value).toMatch(/^\d+\/\d+$/);
+      });
     });
 
     test('should select column, open drawer, and verify form fields', async ({
@@ -659,22 +711,17 @@ test.describe(
       });
 
       await test.step('Select the column checkbox', async () => {
-        const checkbox = page.getByTestId(
-          `column-checkbox-${sharedColumnName}`
-        );
+        const checkbox = getColumnRowCheckbox(page, sharedColumnName);
         await expect(checkbox).toBeVisible();
         await checkbox.click();
       });
 
-      await test.step(
-        'Verify edit button is enabled and click it',
-        async () => {
-          const editButton = page.getByTestId('edit-button');
-          await expect(editButton).toBeVisible();
-          await expect(editButton).toBeEnabled();
-          await editButton.click();
-        }
-      );
+      await test.step('Verify edit button is enabled and click it', async () => {
+        const editButton = page.getByTestId('edit-button');
+        await expect(editButton).toBeVisible();
+        await expect(editButton).toBeEnabled();
+        await editButton.click();
+      });
 
       await test.step('Verify drawer opens with all form fields', async () => {
         const drawer = page.getByTestId('column-bulk-operations-form-drawer');
@@ -698,15 +745,11 @@ test.describe(
     test('should show column count for multiple column selection', async ({
       page,
     }) => {
-      await test.step(
-        'Select two columns via header checkbox then individual',
-        async () => {
-          // Select header checkbox to select all, then verify
-          const headerCheckbox = page.locator('thead input[type="checkbox"]');
-          await expect(headerCheckbox).toBeVisible();
-          await headerCheckbox.click();
-        }
-      );
+      await test.step('Select two columns via header checkbox then individual', async () => {
+        const headerSelection = page.locator('thead [slot="selection"]');
+        await expect(headerSelection).toBeVisible();
+        await headerSelection.click();
+      });
 
       await test.step('Open drawer and verify multi-select title', async () => {
         const editButton = page.getByTestId('edit-button');
@@ -735,9 +778,7 @@ test.describe(
     }) => {
       await test.step('Search and select a column', async () => {
         await searchColumn(page, sharedColumnName);
-        const checkbox = page.getByTestId(
-          `column-checkbox-${sharedColumnName}`
-        );
+        const checkbox = getColumnRowCheckbox(page, sharedColumnName);
         await expect(checkbox).toBeVisible();
         await checkbox.click();
       });
@@ -746,6 +787,7 @@ test.describe(
         const cancelButton = page.getByTestId('cancel-selection-button');
         await expect(cancelButton).toBeVisible();
         await cancelButton.click();
+        await waitForAllLoadersToDisappear(page);
       });
 
       await test.step('Verify edit button is disabled again', async () => {
@@ -758,9 +800,7 @@ test.describe(
     }) => {
       await test.step('Search and select a column', async () => {
         await searchColumn(page, sharedColumnName);
-        const checkbox = page.getByTestId(
-          `column-checkbox-${sharedColumnName}`
-        );
+        const checkbox = getColumnRowCheckbox(page, sharedColumnName);
         await expect(checkbox).toBeVisible();
         await checkbox.click();
       });
@@ -781,30 +821,27 @@ test.describe(
       });
 
       await test.step('Close drawer without saving', async () => {
-        await page.keyboard.press('Escape');
+        await page.getByTestId('cancel-btn').click();
         await expect(
           page.getByTestId('column-bulk-operations-form-drawer')
         ).not.toBeVisible();
       });
 
-      await test.step(
-        'Reopen drawer and verify changes were discarded',
-        async () => {
-          const editButton = page.getByTestId('edit-button');
-          await editButton.click();
+      await test.step('Reopen drawer and verify changes were discarded', async () => {
+        const editButton = page.getByTestId('edit-button');
+        await expect(editButton).toBeEnabled();
+        await editButton.click();
 
-          const drawer = page.getByTestId('column-bulk-operations-form-drawer');
-          await expect(drawer).toBeVisible();
+        const drawer = page.getByTestId('column-bulk-operations-form-drawer');
+        await expect(drawer).toBeVisible();
 
-          const displayNameInput = drawer
-            .getByTestId('display-name-input')
-            .locator('input');
-          await expect(displayNameInput).toBeVisible();
+        const displayNameInput = drawer
+          .getByTestId('display-name-input')
+          .locator('input');
+        await expect(displayNameInput).toBeVisible();
 
-          const displayNameValue = await displayNameInput.inputValue();
-          expect(displayNameValue).not.toBe('Temporary Display Name');
-        }
-      );
+        await expect(displayNameInput).not.toHaveValue('Temporary Display Name');
+      });
 
       await test.step('Close drawer', async () => {
         await page.keyboard.press('Escape');
@@ -814,14 +851,11 @@ test.describe(
     test('should open edit drawer when clicking on aggregate row', async ({
       page,
     }) => {
-      await test.step(
-        'Click on a column name cell to open drawer',
-        async () => {
-          const firstNameCell = page.getByTestId('column-name-cell').first();
-          await expect(firstNameCell).toBeVisible();
-          await firstNameCell.click();
-        }
-      );
+      await test.step('Click on a column name cell to open drawer', async () => {
+        const firstNameCell = page.getByTestId('column-name-cell').first();
+        await expect(firstNameCell).toBeVisible();
+        await firstNameCell.click();
+      });
 
       await test.step('Verify drawer opens', async () => {
         const drawer = page.getByTestId('column-bulk-operations-form-drawer');
@@ -839,6 +873,8 @@ test.describe(
   'Column Bulk Operations - Bulk Update Flow',
   PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
+    test.setTimeout(120000);
+
     const table = new TableClass();
     let sharedColumnName: string;
 
@@ -856,6 +892,8 @@ test.describe(
           },
           apiContext
         );
+
+        await waitForColumnInGridIndex(apiContext, sharedColumnName, 2);
         await afterAction();
       }
     );
@@ -876,9 +914,7 @@ test.describe(
       });
 
       await test.step('Select the column', async () => {
-        const checkbox = page.getByTestId(
-          `column-checkbox-${sharedColumnName}`
-        );
+        const checkbox = getColumnRowCheckbox(page, sharedColumnName);
         await expect(checkbox).toBeVisible();
         await checkbox.click();
       });
@@ -955,9 +991,7 @@ test.describe(
       await test.step('Search and select column', async () => {
         await searchColumn(page, sharedColumnName);
 
-        const checkbox = page.getByTestId(
-          `column-checkbox-${sharedColumnName}`
-        );
+        const checkbox = getColumnRowCheckbox(page, sharedColumnName);
         await expect(checkbox).toBeVisible();
         await checkbox.click();
       });
@@ -993,6 +1027,8 @@ test.describe(
   'Column Bulk Operations - Nested STRUCT Columns',
   PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
+    test.setTimeout(120000);
+
     const table = new TableClass();
     let structColumnName: string;
 
@@ -1000,6 +1036,8 @@ test.describe(
       const { apiContext, afterAction } = await createNewPage(browser);
       await table.create(apiContext);
       structColumnName = table.columnsName[2];
+
+      await waitForColumnInGridIndex(apiContext, structColumnName);
       await afterAction();
     });
 
@@ -1025,15 +1063,18 @@ test.describe(
 
       await test.step('Expand the STRUCT row', async () => {
         const structRow = page.getByTestId(`column-row-${structColumnName}`);
-        const expandButton = structRow.locator('button.expand-button');
+        const expandButton = structRow.getByRole('button').first();
 
         // STRUCT rows should have expand button
         if ((await expandButton.count()) > 0) {
           const initialRowCount = await page.locator('tbody tr').count();
           await expandButton.click();
 
-          const expandedRowCount = await page.locator('tbody tr').count();
-          expect(expandedRowCount).toBeGreaterThan(initialRowCount);
+          await expect
+            .poll(() => page.locator('tbody tr').count(), {
+              timeout: 10000,
+            })
+            .toBeGreaterThan(initialRowCount);
         }
       });
     });
@@ -1047,7 +1088,7 @@ test.describe(
 
       await test.step('Expand STRUCT row', async () => {
         const structRow = page.getByTestId(`column-row-${structColumnName}`);
-        const expandButton = structRow.locator('button.expand-button');
+        const expandButton = structRow.getByRole('button').first();
 
         if ((await expandButton.count()) > 0) {
           await expandButton.click();
@@ -1056,9 +1097,8 @@ test.describe(
 
       await test.step('Select a nested child column', async () => {
         const childColumnName = table.columnsName[3];
-        const childCheckbox = page.getByTestId(
-          `column-checkbox-${childColumnName}`
-        );
+        const childRowId = `${structColumnName}-struct-${childColumnName}`;
+        const childCheckbox = getColumnRowCheckbox(page, childRowId);
 
         if ((await childCheckbox.count()) > 0) {
           await childCheckbox.click();
@@ -1087,25 +1127,22 @@ test.describe(
 
       const nextButton = page.getByRole('button', { name: 'Next' });
 
-      await test.step(
-        'Click Next and verify Previous becomes enabled',
-        async () => {
-          const isNextEnabled = await nextButton.isEnabled();
+      await test.step('Click Next and verify Previous becomes enabled', async () => {
+        const isNextEnabled = await nextButton.isEnabled();
 
-          if (isNextEnabled) {
-            const dataRes = waitForGridResponse(page);
-            await nextButton.click();
-            await dataRes;
-            await waitForAllLoadersToDisappear(page);
+        if (isNextEnabled) {
+          const dataRes = waitForGridResponse(page);
+          await nextButton.click();
+          await dataRes;
+          await waitForAllLoadersToDisappear(page);
 
-            const prevButton = page.getByRole('button', { name: 'Previous' });
-            await expect(prevButton).toBeEnabled();
+          const prevButton = page.getByRole('button', { name: 'Previous' });
+          await expect(prevButton).toBeEnabled();
 
-            await prevButton.click();
-            await waitForAllLoadersToDisappear(page);
-          }
+          await prevButton.click();
+          await waitForAllLoadersToDisappear(page);
         }
-      );
+      });
     });
   }
 );

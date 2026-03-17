@@ -44,7 +44,13 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   test.describe.configure({ mode: 'serial' });
 
   // Create terms with specific statuses to test filtering
-  const STATUSES_TO_TEST = ['Approved', 'Draft', 'In Review', 'Deprecated', 'Rejected'];
+  const STATUSES_TO_TEST = [
+    'Approved',
+    'Draft',
+    'In Review',
+    'Deprecated',
+    'Rejected',
+  ];
 
   const glossary = new Glossary();
   const createdTerms: { term: GlossaryTerm; status: string }[] = [];
@@ -73,7 +79,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   const applyStatusFilter = async (page: Page, statuses: string[]) => {
     const statusDropdown = page.getByTestId('glossary-status-dropdown');
     await statusDropdown.click();
-    await page.waitForSelector('.status-selection-dropdown');
+    await page.locator('.status-selection-dropdown').waitFor();
 
     const allCheckbox = page.locator('.glossary-dropdown-label', {
       hasText: 'All',
@@ -150,6 +156,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       .catch(() => {
         // Ignore timeout
       });
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- filter results need time to render
     await page.waitForTimeout(500);
   };
 
@@ -184,7 +191,11 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     // Create 2 terms per status (10 terms total)
     for (const status of STATUSES_TO_TEST) {
       for (let i = 0; i < 2; i++) {
-        const term = new GlossaryTerm(glossary, undefined, `Term_${status}_${i}`);
+        const term = new GlossaryTerm(
+          glossary,
+          undefined,
+          `Term_${status}_${i}`
+        );
         await term.create(apiContext);
         if (status !== 'Approved') {
           await setTermStatus(apiContext, term, status);
@@ -200,7 +211,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.delete(apiContext);
-    // eslint-disable-next-line no-console
     console.log('Deleted test glossary');
 
     await afterAction();
@@ -208,7 +218,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
   test.beforeEach(async ({ page }) => {
     await glossary.visitEntityPage(page);
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
     await page
       .locator('.glossary-terms-scroll-container [data-testid="loader"]')
       .waitFor({ state: 'detached', timeout: 30000 });
@@ -218,7 +228,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
   test.describe('Status Filter', () => {
     test('should display only Draft terms when filtered', async ({ page }) => {
-
       await applyStatusFilter(page, ['Draft']);
 
       const rowCount = await verifyRowStatuses(page, ['Draft']);
@@ -228,7 +237,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should display only Approved terms when filtered', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Approved']);
 
       const rowCount = await verifyRowStatuses(page, ['Approved']);
@@ -238,7 +246,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should display only In Review terms when filtered', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['In Review']);
 
       const rowCount = await verifyRowStatuses(page, ['In Review']);
@@ -248,7 +255,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should display only Deprecated terms when filtered', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Deprecated']);
 
       const rowCount = await verifyRowStatuses(page, ['Deprecated']);
@@ -258,18 +264,15 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should display only Rejected terms when filtered', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Rejected']);
 
       const rowCount = await verifyRowStatuses(page, ['Rejected']);
       expect(rowCount).toBeGreaterThan(0);
     });
 
-
     test('should display terms matching multiple selected statuses', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Draft', 'In Review']);
 
       const rowCount = await verifyRowStatuses(page, ['Draft', 'In Review']);
@@ -277,7 +280,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should display all terms when All is selected', async ({ page }) => {
-
       // First apply a filter
       await applyStatusFilter(page, ['Draft']);
       const filteredCount = await getRowCount(page);
@@ -285,7 +287,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       // Then select All
       const statusDropdown = page.getByTestId('glossary-status-dropdown');
       await statusDropdown.click();
-      await page.waitForSelector('.status-selection-dropdown');
+      await page.locator('.status-selection-dropdown').waitFor();
 
       const allCheckbox = page.locator('.glossary-dropdown-label', {
         hasText: 'All',
@@ -293,6 +295,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       await allCheckbox.click();
 
       await page.locator('.ant-btn-primary', { hasText: 'Save' }).click();
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- filter state needs time to settle after save
       await page.waitForTimeout(1000);
 
       const allCount = await getRowCount(page);
@@ -300,7 +303,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should maintain filter state across pagination', async ({ page }) => {
-
       const expectedCount = createdTerms.filter(
         (t) => t.status === 'Approved'
       ).length;
@@ -329,7 +331,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
         }
       }
 
-      // eslint-disable-next-line no-console
       console.log(`Verified ${totalVerified} Approved terms across pagination`);
     });
   });
@@ -338,7 +339,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
   test.describe('Search', () => {
     test('should return matching terms for search query', async ({ page }) => {
-
       await performSearch(page, 'Term_');
 
       const rows = page.locator(
@@ -354,10 +354,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should show no results for non-matching query', async ({ page }) => {
-
       await performSearch(page, 'NonExistentTermXYZ123');
-
-      await page.waitForTimeout(1000);
 
       // Check for the "No Glossary Term found" message in the table
       const noResultsMessage = page.locator('text=/No Glossary Term found/');
@@ -367,7 +364,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should restore all terms when search is cleared', async ({
       page,
     }) => {
-
       const initialCount = await getRowCount(page);
 
       await performSearch(page, 'Term_Draft');
@@ -375,6 +371,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       expect(searchCount).toBeLessThanOrEqual(initialCount);
 
       await clearSearch(page);
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- filter results need time to render after clearing search
       await page.waitForTimeout(1000);
 
       const restoredCount = await getRowCount(page);
@@ -382,7 +379,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should paginate through search results', async ({ page }) => {
-
       // Search for a common pattern that returns many results
       await performSearch(page, 'Term_');
 
@@ -393,7 +389,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       await scrollToLoadMore(page);
 
       const afterScrollCount = await getRowCount(page);
-      // eslint-disable-next-line no-console
       console.log(
         `Search pagination: ${initialCount} -> ${afterScrollCount} rows`
       );
@@ -406,7 +401,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should filter search results by selected status', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Draft']);
 
       await performSearch(page, 'Term_');
@@ -415,7 +409,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       // All results should be Draft status
       if (rowCount > 0) {
-        // eslint-disable-next-line no-console
         console.log(`Found ${rowCount} Draft terms matching search`);
       }
     });
@@ -423,7 +416,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should paginate combined search and status results', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Approved']);
 
       await performSearch(page, 'Term_');
@@ -446,7 +438,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
         }
       }
 
-      // eslint-disable-next-line no-console
       console.log(
         `Search + Status pagination: verified ${initialCount} Approved terms`
       );
@@ -455,7 +446,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should maintain status filter when search is cleared', async ({
       page,
     }) => {
-
       await applyStatusFilter(page, ['Draft']);
 
       await performSearch(page, 'Term_Draft');
@@ -470,7 +460,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should maintain search when status filter is changed', async ({
       page,
     }) => {
-
       await performSearch(page, 'Term_');
 
       const initialCount = await getRowCount(page);
@@ -490,13 +479,12 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
   test.describe('Filter State Management', () => {
     test('should revert changes when Cancel is clicked', async ({ page }) => {
-
       const initialCount = await getRowCount(page);
 
       // Open dropdown and make changes
       const statusDropdown = page.getByTestId('glossary-status-dropdown');
       await statusDropdown.click();
-      await page.waitForSelector('.status-selection-dropdown');
+      await page.locator('.status-selection-dropdown').waitFor();
 
       // Click "All" twice to clear selection, then select only Draft
       const allCheckbox = page.locator('.glossary-dropdown-label', {
@@ -516,6 +504,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       });
       await cancelButton.click();
 
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown dismiss animation needs time to settle
       await page.waitForTimeout(500);
 
       // Count should remain the same
@@ -524,7 +513,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     });
 
     test('should reset pagination when filter changes', async ({ page }) => {
-
       // Scroll to load more data
       await scrollToLoadMore(page);
       await scrollToLoadMore(page);
@@ -538,7 +526,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       // The count may be different (filtered results)
       // The key thing is pagination was reset
-      // eslint-disable-next-line no-console
       console.log(
         `Pagination reset: ${afterScrollCount} -> ${afterFilterCount}`
       );
@@ -552,12 +539,11 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should apply status filter within acceptable time', async ({
       page,
     }) => {
-
       const startTime = Date.now();
 
       const statusDropdown = page.getByTestId('glossary-status-dropdown');
       await statusDropdown.click();
-      await page.waitForSelector('.status-selection-dropdown');
+      await page.locator('.status-selection-dropdown').waitFor();
 
       // Click "All" twice to clear selection, then select only Draft
       const allCheckbox = page.locator('.glossary-dropdown-label', {
@@ -573,15 +559,13 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       await page.locator('.ant-btn-primary', { hasText: 'Save' }).click();
 
-      await page.waitForSelector(
-        'tbody.ant-table-tbody > tr:not([aria-hidden="true"])',
-        { timeout: 10000 }
-      );
+      await page.locator(
+        'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
+      ).first().waitFor({ timeout: 10000 });
 
       const endTime = Date.now();
       const elapsed = endTime - startTime;
 
-      // eslint-disable-next-line no-console
       console.log(`Filter performance: ${elapsed}ms`);
 
       expect(elapsed).toBeLessThan(5000);

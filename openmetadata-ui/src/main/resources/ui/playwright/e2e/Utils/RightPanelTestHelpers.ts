@@ -35,11 +35,7 @@ export async function runRightPanelTestsForLineagePage(
   entity: EntityClass,
   options?: TestOptions
 ): Promise<void> {
-  const testSuite = new RightPanelTestSuite(
-    page,
-    entity,
-    PageContext.LINEAGE
-  );
+  const testSuite = new RightPanelTestSuite(page, entity, PageContext.LINEAGE);
 
   const lineageOptions: TestOptions = {
     ...options,
@@ -54,11 +50,7 @@ export async function runRightPanelTestsForExplorePage(
   entity: EntityClass,
   options?: TestOptions
 ): Promise<void> {
-  const testSuite = new RightPanelTestSuite(
-    page,
-    entity,
-    PageContext.EXPLORE
-  );
+  const testSuite = new RightPanelTestSuite(page, entity, PageContext.EXPLORE);
 
   await testSuite.runStandardTestSuite(options);
 }

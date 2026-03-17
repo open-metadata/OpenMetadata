@@ -57,6 +57,8 @@ export type ListTestSuitePramsBySearch = ListTestSuitePrams & {
 
 export type ListTestCaseParams = ListParams & {
   entityLink?: string;
+  entityFQN?: string;
+  columnName?: string;
   testSuiteId?: string;
   includeAllTests?: boolean;
   testCaseStatus?: TestCaseStatus;
@@ -118,6 +120,7 @@ export type DataQualityReportParamsType = {
   q?: string;
   aggregationQuery: string;
   index: string;
+  domain?: string;
 };
 
 export type TestCaseDimensionResultParams = {
@@ -409,6 +412,7 @@ interface ListTestCasesParams {
   after?: string;
   entityFQN?: string;
   entityLink?: string;
+  columnName?: string;
   testSuiteId?: string;
   include?: Include;
   testCaseStatus?: TestCaseStatus;

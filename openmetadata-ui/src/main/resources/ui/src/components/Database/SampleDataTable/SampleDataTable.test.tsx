@@ -93,9 +93,7 @@ describe('Test SampleDataTable Component', () => {
       );
     });
 
-    expect(
-      screen.queryByTestId('sample-data-manage-button')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('sample-data-manage-button')).toBeInTheDocument();
   });
 
   it('Render Delete Modal when delete sample data button is clicked', async () => {
@@ -116,5 +114,64 @@ describe('Test SampleDataTable Component', () => {
     const deleteModal = screen.getByText('EntityDeleteModal');
 
     expect(deleteModal).toBeInTheDocument();
+  });
+
+  it('Should render row limit selector', async () => {
+    await act(async () => {
+      render(<SampleDataTable {...mockProps} />);
+    });
+
+    const rowLimitSelect = screen.getByTestId('row-limit-select');
+
+    expect(rowLimitSelect).toBeInTheDocument();
+  });
+
+  it('Should render export button in dropdown', async () => {
+    await act(async () => {
+      render(<SampleDataTable {...mockProps} />);
+    });
+
+    const dropdown = screen.getByTestId('sample-data-manage-button');
+
+    expect(dropdown).toBeInTheDocument();
+
+    fireEvent.click(dropdown);
+
+    const exportButton = screen.getByTestId('export-button-details-container');
+
+    expect(exportButton).toBeInTheDocument();
+  });
+
+  it('Should trigger CSV export when export button is clicked', async () => {
+    const originalCreateElement = document.createElement.bind(document);
+    const mockCreateElement = jest.fn((tag: string) =>
+      originalCreateElement(tag)
+    );
+    const mockCreateObjectURL = jest.fn(() => 'mock-url');
+
+    global.document.createElement = mockCreateElement;
+    global.URL.createObjectURL = mockCreateObjectURL;
+    global.URL.revokeObjectURL = jest.fn();
+
+    try {
+      await act(async () => {
+        render(<SampleDataTable {...mockProps} />);
+      });
+
+      const dropdown = screen.getByTestId('sample-data-manage-button');
+
+      fireEvent.click(dropdown);
+
+      const exportButton = screen.getByTestId(
+        'export-button-details-container'
+      );
+
+      fireEvent.click(exportButton);
+
+      expect(mockCreateElement).toHaveBeenCalledWith('a');
+      expect(mockCreateObjectURL).toHaveBeenCalled();
+    } finally {
+      global.document.createElement = originalCreateElement;
+    }
   });
 });

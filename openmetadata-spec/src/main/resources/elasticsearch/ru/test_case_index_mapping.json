@@ -253,6 +253,7 @@
         "type": "keyword"
       },
       "owners": {
+        "type": "nested",
         "properties": {
           "id": {
             "type": "keyword",
@@ -480,7 +481,6 @@
         }
       },
       "tags": {
-        "type": "nested",
         "properties": {
           "tagFQN": {
             "type": "keyword",
@@ -505,7 +505,8 @@
           "state": {
             "type": "keyword"
           }
-        }
+        },
+        "type": "nested"
       },
       "tier": {
         "properties": {
@@ -806,6 +807,14 @@
             "type": "text"
           }
         }
+      },
+      "ownerDisplayName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "ownerName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }

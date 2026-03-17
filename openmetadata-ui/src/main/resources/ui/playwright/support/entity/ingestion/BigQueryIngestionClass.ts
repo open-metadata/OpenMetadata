@@ -68,6 +68,7 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     await page
       .getByTestId('select-widget-root/credentials/gcpConfig__oneof_select')
       .getByRole('combobox')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
       .click({ force: true });
     await page.click(
       '.ant-select-dropdown:visible [title="GCP Credentials Values"]'
@@ -78,15 +79,15 @@ class BigQueryIngestionClass extends ServiceBaseClass {
         'select-widget-root/credentials/gcpConfig/projectId__oneof_select'
       )
       .getByRole('combobox')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
       .click({ force: true });
-    await page.click('.ant-select-dropdown:visible [title="Multiple Project ID"]');
+    await page.click(
+      '.ant-select-dropdown:visible [title="Multiple Project ID"]'
+    );
 
     const projectIds = projectId.split(',');
     for (const id of projectIds) {
-      await page.fill(
-        '#root\\/credentials\\/gcpConfig\\/projectId',
-        id.trim()
-      );
+      await page.fill('#root\\/credentials\\/gcpConfig\\/projectId', id.trim());
       await page
         .locator('#root\\/credentials\\/gcpConfig\\/projectId')
         .press('Enter');

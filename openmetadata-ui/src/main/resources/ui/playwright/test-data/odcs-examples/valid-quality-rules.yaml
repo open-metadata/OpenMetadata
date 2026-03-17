@@ -15,7 +15,7 @@ apiVersion: v3.1.0
 kind: DataContract
 id: product-inventory-contract
 name: Product Inventory Contract
-version: "1.5.0"
+version: '1.5.0'
 status: active
 
 description:
@@ -84,17 +84,17 @@ quality:
 
   # Custom SQL rules
   - type: custom
-    rule: "price > 0"
+    rule: 'price > 0'
     column: price
     description: Price must be positive
 
   - type: custom
-    rule: "stock_quantity >= 0"
+    rule: 'stock_quantity >= 0'
     column: stock_quantity
     description: Stock cannot be negative
 
   - type: custom
-    rule: "LENGTH(sku) BETWEEN 8 AND 12"
+    rule: 'LENGTH(sku) BETWEEN 8 AND 12'
     column: sku
     description: SKU must be 8-12 characters
 
@@ -103,13 +103,13 @@ quality:
     rule: nullValues
     column: last_updated
     scheduler: cron
-    schedule: "0 6 * * *"
+    schedule: '0 6 * * *'
     description: Daily check for update timestamps
 
 slaProperties:
   - property: freshness
-    value: "6"
+    value: '6'
     unit: hours
   - property: availability
-    value: "99.5"
+    value: '99.5'
     unit: percent

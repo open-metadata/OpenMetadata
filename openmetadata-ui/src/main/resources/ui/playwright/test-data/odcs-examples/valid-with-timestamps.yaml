@@ -12,19 +12,19 @@ apiVersion: v3.1.0
 kind: DataContract
 id: timestamp-contract
 name: ODCS Contract with Timestamp Types
-version: "1.0.0"
+version: '1.0.0'
 status: active
 description:
   purpose: Contract testing v3.1.0 timestamp and time types
 slaProperties:
   - property: freshness
-    value: "6"
+    value: '6'
     unit: hour
     timezone: GMT+00:00 UTC
   - property: latency
-    value: "15"
+    value: '15'
     unit: minute
   - property: availability
-    value: "99.9"
+    value: '99.9'
     unit: percent
     timezone: GMT-05:00 America/New_York

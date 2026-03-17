@@ -16,6 +16,8 @@ Run profiler metrics on the table
 
 import traceback
 from abc import ABC, abstractmethod
+from collections import namedtuple
+from datetime import datetime as _datetime
 from typing import Callable, List, Optional, Tuple, Type
 
 from sqlalchemy import (
@@ -28,6 +30,7 @@ from sqlalchemy import (
     literal,
     select,
 )
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
 from sqlalchemy.types import String
 
@@ -546,6 +549,59 @@ class MSSQLTableMetricComputer(BaseTableMetricComputer):
             )
         )
 
+        # sys.dm_db_partition_stats provides row count and size for standard MSSQL.
+        # Microsoft Fabric blocks this DMV (error 15871), so Fabric connectors use
+        # sys.partitions instead. This try/except ensures compatibility if the DMV
+        # is not available.
+        try:
+            res = self.runner._session.execute(query).first()
+        except ProgrammingError as err:
+            logger.debug(
+                "sys.dm_db_partition_stats not available, falling back to sys.partitions: %s",
+                err,
+            )
+            return self._compute_with_partitions(table_meta)
+
+        if not res:
+            return None
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
+            return super().compute()
+        return res
+
+    def _compute_with_partitions(self, table_meta):
+        """Fallback using sys.partitions for engines where dm_db_partition_stats is unavailable."""
+        row_count_cte = cte(
+            self._build_query(
+                [
+                    Column("object_id"),
+                    func.sum(Column("rows")).cast(BigInteger).label("row_count"),
+                ],
+                self._build_table("partitions", "sys"),
+                [Column("index_id").in_([0, 1])],
+            ).group_by(Column("object_id"))
+        )
+
+        columns = [
+            row_count_cte.c.row_count.label(ROW_COUNT),
+            table_meta.c.create_date.label(CREATE_DATETIME),
+            *self._get_col_names_and_count(),
+        ]
+
+        query = (
+            select(*columns)
+            .select_from(table_meta)
+            .join(
+                row_count_cte,
+                table_meta.c.object_id == row_count_cte.c.object_id,
+            )
+            .where(
+                table_meta.c.schema_name == self.schema_name,
+                table_meta.c.table_name == self.table_name,
+            )
+        )
+
         res = self.runner._session.execute(query).first()
         if not res:
             return None
@@ -701,6 +757,72 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
         return res
 
 
+class InformixTableMetricComputer(BaseTableMetricComputer):
+    """Informix table metrics from systables.
+
+    Reads nrows, npused * pagesize (size), and created date.
+    owner is CHAR-padded — TRIM() is required for equality match.
+
+    JayDeBeApi returns systables.created as a JPype Java string proxy,
+    not a Python datetime. core.py calls .replace(tzinfo=...) on it,
+    which fails on a string. Since SQLAlchemy Row is immutable, we
+    convert to a namedtuple so the date can be patched before returning.
+    """
+
+    def _parse_created_datetime(self, value) -> Optional[_datetime]:
+        for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
+            try:
+                return _datetime.strptime(str(value), fmt)
+            except (ValueError, TypeError):
+                continue
+        return None
+
+    def _get_col_names_and_count(self):
+        """Route literals through ColumnCountFn/ColunNameFn to avoid ? bind params.
+
+        Informix JDBC 4.50 rejects ? in SELECT projections via prepareStatement().
+        These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
+        that set literal_binds=True, inlining values directly into SQL.
+        """
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn
+        from metadata.profiler.metrics.static.column_names import ColunNameFn
+
+        col_names = ColunNameFn(
+            literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)
+        ).label(COLUMN_NAMES)
+        col_count = ColumnCountFn(
+            literal(len(inspect(self.runner.raw_dataset).c))
+        ).label(COLUMN_COUNT)
+        return col_names, col_count
+
+    def compute(self):
+        columns = [
+            Column("nrows").label(ROW_COUNT),
+            (Column("npused") * Column("pagesize")).label(SIZE_IN_BYTES),
+            Column("created").label(CREATE_DATETIME),
+            *self._get_col_names_and_count(),
+        ]
+        where_clause = [
+            Column("tabname") == self.table_name,
+            func.trim(Column("owner")) == self.schema_name,
+        ]
+        query = self._build_query(
+            columns,
+            self._build_table("systables", None),
+            where_clause,
+        )
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or res.rowCount == 0:
+            return super().compute()
+        d = dict(res._asdict())
+        created = d.get(CREATE_DATETIME)
+        if created is not None and not isinstance(created, _datetime):
+            d[CREATE_DATETIME] = self._parse_created_datetime(created)
+        return namedtuple("Row", d.keys())(**d)
+
+
 class TableMetricComputer:
     """Table Metric Construct"""
 
@@ -783,3 +905,4 @@ table_metric_computer_factory.register(Dialects.Cockroach, CockroachTableMetricC
 table_metric_computer_factory.register(Dialects.Db2, DB2TableMetricComputer)
 table_metric_computer_factory.register(Dialects.Vertica, VerticaTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Hana, SAPHanaTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Informix, InformixTableMetricComputer)

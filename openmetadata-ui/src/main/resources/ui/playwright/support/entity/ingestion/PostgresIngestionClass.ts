@@ -23,7 +23,9 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entity';
+import { visitEntityPage,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -113,19 +115,16 @@ class PostgresIngestionClass extends ServiceBaseClass {
         );
 
         await page.click('[data-testid="agents"]');
-        await page.waitForSelector(
-          '[data-testid="ingestion-details-container"]'
-        );
+        await page.getByTestId('ingestion-details-container').waitFor();
 
         const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
         if (await metadataTab.isVisible()) {
           await metadataTab.click();
         }
-        await page.waitForLoadState('networkidle');
         await page.click('[data-testid="add-new-ingestion-button"]');
-        await page.waitForSelector(
-          '.ant-dropdown:visible [data-menu-id*="usage"]'
-        );
+        await page
+          .locator('.ant-dropdown:visible [data-menu-id*="usage"]')
+          .waitFor();
         await page.click('[data-menu-id*="usage"]');
         await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
 
@@ -136,14 +135,13 @@ class PostgresIngestionClass extends ServiceBaseClass {
         await page.click('[data-testid="view-service-button"]');
 
         // Header available once page loads
-        await page.waitForSelector('[data-testid="data-assets-header"]');
-        await page.getByTestId('loader').waitFor({ state: 'detached' });
+        await page.getByTestId('data-assets-header').waitFor();
+        await waitForAllLoadersToDisappear(page);
         await page.getByTestId('agents').click();
         const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
         if (await metadataTab2.isVisible()) {
           await metadataTab2.click();
         }
-        await page.waitForLoadState('networkidle');
         await page
           .getByLabel('agents')
           .getByTestId('loader')
@@ -157,7 +155,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
           )
           .then((res) => res.json());
 
-        // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
         await page.waitForTimeout(3000);
         await page.click(
           `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
@@ -167,16 +165,14 @@ class PostgresIngestionClass extends ServiceBaseClass {
 
         await toastNotification(page, `Pipeline triggered successfully!`);
 
-        // need manual wait to make sure we are awaiting on latest run results
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
         await page.waitForTimeout(2000);
 
         await this.handleIngestionRetry('usage', page);
       });
 
       await test.step('Verify if usage is ingested properly', async () => {
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'hidden',
-        });
+        await waitForAllLoadersToDisappear(page);
         const entityResponse = page.waitForResponse(
           `/api/v1/tables/name/*.order_items?**`
         );
@@ -197,8 +193,8 @@ class PostgresIngestionClass extends ServiceBaseClass {
         // );
 
         await page.click('[data-testid="schema"]');
-        await page.waitForSelector('[data-testid="related-tables-data"]');
-        await page.waitForSelector('[data-testid="frequently-joined-columns"]');
+        await page.getByTestId('related-tables-data').waitFor();
+        await page.getByTestId('frequently-joined-columns').waitFor();
       });
     }
   }
@@ -208,5 +204,4 @@ class PostgresIngestionClass extends ServiceBaseClass {
   }
 }
 
-// eslint-disable-next-line jest/no-export
 export default PostgresIngestionClass;

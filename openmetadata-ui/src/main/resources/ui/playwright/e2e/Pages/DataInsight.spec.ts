@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -27,20 +29,50 @@ const DESCRIPTION_WITH_PERCENTAGE =
 
 const DESCRIPTION_WITH_OWNER = 'playwright-owner-with-percentage-percentage';
 
+const navigateToDataInsightPage = async (
+  page: Page,
+  waitOnLatestKPI = false
+) => {
+  const descriptionChartPromise = page.waitForResponse(
+    '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
+  );
+  const latestKpiPromise = waitOnLatestKPI
+    ? page.waitForResponse(
+        '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
+      )
+    : undefined;
+  await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+  await descriptionChartPromise;
+  if (latestKpiPromise) await latestKpiPromise;
+};
+
 test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   test.beforeAll(async ({ browser }) => {
-    const { apiContext } = await createNewPage(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Delete all existing KPIs before running the test
     await deleteKpiRequest(apiContext);
+
+    const metricWithDesc1 = new MetricClass();
+    await metricWithDesc1.create(apiContext);
+
+    const metricWithDesc2 = new MetricClass();
+    await metricWithDesc2.create(apiContext);
+
+    const metricWithoutDesc = new MetricClass();
+    metricWithoutDesc.entity.description = '';
+    await metricWithoutDesc.create(apiContext);
+
+    await afterAction();
   });
 
   test.beforeEach('Visit Data Insight Page', async ({ page }) => {
     await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
   });
 
   test('Create description and owner KPI', async ({ page }) => {
+    await navigateToDataInsightPage(page);
+
     await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
     for (const data of KPI_DATA) {
@@ -51,9 +83,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   });
 
   test('Verifying Data assets tab', async ({ page }) => {
-    await page.waitForResponse(
-      '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
-    );
+    await navigateToDataInsightPage(page);
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
 
@@ -80,12 +110,64 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     ).toBeVisible();
   });
 
+  test('Verify metrics appear in description chart', async ({ page }) => {
+    test.slow();
+    await navigateToDataInsightPage(page);
+
+    await test.step('Verify metric entity type is visible', async () => {
+      const chartCard = page.getByTestId(
+        'percentage_of_data_asset_with_description-graph'
+      );
+
+      const metricEntityContainer = chartCard
+        .getByTestId('entity-summary-container')
+        .filter({ has: page.getByTestId('entity-name').getByText('Metric') });
+
+      await expect(metricEntityContainer).toBeVisible();
+      await expect(
+        metricEntityContainer.getByTestId('progress-bar')
+      ).toBeVisible();
+
+      await expect(
+        metricEntityContainer.getByTestId('entity-value')
+      ).toBeVisible();
+      await expect(
+        metricEntityContainer.getByTestId('entity-value')
+      ).not.toHaveText('');
+    });
+  });
+
+  test('Verify metrics in chart API response', async ({ page }) => {
+    test.slow();
+
+    await test.step('Capture and validate API response', async () => {
+      const chartResponsePromise = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_data_asset_with_description/data'
+            ) && response.status() === 200
+      );
+
+      await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+
+      const chartResponse = await chartResponsePromise;
+      const responseData = await chartResponse.json();
+
+      const metricData =
+        responseData.results?.filter(
+          (r: { group: string }) => r.group === 'metric'
+        ) ?? [];
+      expect(metricData.length).toBeGreaterThan(0);
+    });
+  });
+
   test('Verify No owner and description redirection to explore page', async ({
     page,
   }) => {
-    await page.waitForResponse(
-      '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
-    );
+    await navigateToDataInsightPage(page);
+
     await page.getByTestId('explore-asset-with-no-description').click();
 
     await page.waitForURL('/explore/tables?*');
@@ -103,14 +185,12 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await page.waitForURL('/explore/tables?*');
 
     await expect(page.getByTestId('advance-search-filter-text')).toContainText(
-      'owners.displayName.keyword IS NULL'
+      'ownerDisplayName IS NULL'
     );
   });
 
   test('Verifying App analytics tab', async ({ page }) => {
-    await page.waitForResponse(
-      '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
-    );
+    await navigateToDataInsightPage(page);
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
 
@@ -132,10 +212,15 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   });
 
   test('Verifying KPI tab', async ({ page }) => {
-    await page.waitForResponse(
+    const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
+      '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
+    );
+    const latestKPIResponse = page.waitForResponse(
       '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
     );
-
+    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await latestKPIResponse;
+    await percentageOfDataAssetWithDescriptionResponse;
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
     await page.getByRole('menuitem', { name: 'KPIs' }).click();
@@ -150,9 +235,16 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   });
 
   test('Update KPI', async ({ page }) => {
-    await page.waitForResponse(
+    const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
+      '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
+    );
+    const latestKPIResponse = page.waitForResponse(
       '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
     );
+    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await latestKPIResponse;
+    await percentageOfDataAssetWithDescriptionResponse;
+
     await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
     for (const data of KPI_DATA) {
@@ -164,6 +256,16 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   });
 
   test('Verify KPI widget in Landing page', async ({ page }) => {
+    const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
+      '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
+    );
+    const latestKPIResponse = page.waitForResponse(
+      '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
+    );
+    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await latestKPIResponse;
+    await percentageOfDataAssetWithDescriptionResponse;
+
     const kpiResponse = page.waitForResponse(
       'api/v1/kpi?fields=dataInsightChart'
     );
@@ -173,17 +275,23 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await kpiResponse;
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
-    await page.waitForLoadState('networkidle');
 
-    expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
+    await expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {
-    await page.waitForResponse(
+    const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
+      '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
+    );
+    const latestKPIResponse = page.waitForResponse(
       '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
     );
+    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await latestKPIResponse;
+    await percentageOfDataAssetWithDescriptionResponse;
+
     await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
     for (const data of KPI_DATA) {

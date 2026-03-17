@@ -19,6 +19,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -1673,6 +1674,74 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Test
+  void put_tableDataModel_replacesConflictingMutuallyExclusiveTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TagLabel tier1Tag =
+        new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel tier2Tag =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    CreateTable createRequest =
+        createRequest(ns.prefix("tier_conflict_table"), ns).withTags(List.of(tier2Tag));
+    Table table = createEntity(createRequest);
+
+    Table fetched = client.tables().get(table.getId().toString(), "tags,columns");
+    assertTrue(
+        fetched.getTags().stream().anyMatch(t -> t.getTagFQN().equals("Tier.Tier2")),
+        "Table should have Tier2 tag");
+
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withSql("select * from test")
+            .withTags(List.of(tier1Tag));
+    client.tables().updateDataModel(table.getId(), dataModel);
+
+    Table result = client.tables().get(table.getId().toString(), "tags");
+    assertTrue(
+        result.getTags().stream().anyMatch(t -> t.getTagFQN().equals("Tier.Tier1")),
+        "Table should have Tier1 tag from dbt");
+    assertFalse(
+        result.getTags().stream().anyMatch(t -> t.getTagFQN().equals("Tier.Tier2")),
+        "Table should not have Tier2 tag after dbt update");
+  }
+
+  @Test
+  void put_tableDataModel_preservesNonConflictingManualTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TagLabel tier2Tag =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel piiTag =
+        new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    CreateTable createRequest =
+        createRequest(ns.prefix("tier_preserve_table"), ns).withTags(List.of(tier2Tag, piiTag));
+    Table table = createEntity(createRequest);
+
+    TagLabel tier1Tag =
+        new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withSql("select * from test")
+            .withTags(List.of(tier1Tag));
+    client.tables().updateDataModel(table.getId(), dataModel);
+
+    Table result = client.tables().get(table.getId().toString(), "tags");
+    assertTrue(
+        result.getTags().stream().anyMatch(t -> t.getTagFQN().equals("Tier.Tier1")),
+        "Table should have Tier1 from dbt");
+    assertTrue(
+        result.getTags().stream().anyMatch(t -> t.getTagFQN().equals("PII.Sensitive")),
+        "Table should preserve non-conflicting PII tag");
+    assertFalse(
+        result.getTags().stream().anyMatch(t -> t.getTagFQN().equals("Tier.Tier2")),
+        "Table should not have Tier2 after dbt update");
+  }
+
+  @Test
   void put_tableUpdatePreservesDataModel(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -2353,6 +2422,37 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertEquals("Manual description", patched.getDescription());
     // Change source tracking verified by the API
+  }
+
+  @Test
+  void patch_removeTagAppliedBy_200_ok(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest = createRequest(ns.prefix("patch_remove_applied_by"), ns);
+    Table table = client.tables().create(createRequest);
+
+    // First add a tag through the regular update flow so appliedBy is populated by server logic.
+    Table toTag = client.tables().get(table.getId().toString());
+    toTag.setTags(List.of(personalDataTagLabel()));
+    client.tables().update(toTag.getId(), toTag);
+
+    Table withTags = client.tables().get(table.getId().toString(), "tags");
+    assertNotNull(withTags.getTags());
+    assertFalse(withTags.getTags().isEmpty());
+
+    String patchJson =
+        """
+        [
+          {"op": "remove", "path": "/tags/0/appliedBy"}
+        ]
+        """;
+    com.fasterxml.jackson.databind.JsonNode patch =
+        new com.fasterxml.jackson.databind.ObjectMapper().readTree(patchJson);
+
+    Table patched = client.tables().patch(withTags.getId(), patch);
+    assertNotNull(patched.getTags());
+    assertFalse(patched.getTags().isEmpty());
+    assertEquals(withTags.getTags().get(0).getTagFQN(), patched.getTags().get(0).getTagFQN());
   }
 
   // ===================================================================
@@ -3763,6 +3863,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // ===================================================================
 
   @Test
+  @ResourceLock("MULTI_DOMAIN_RULE")
   void test_multipleDomainInheritance(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 

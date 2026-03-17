@@ -35,7 +35,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -223,7 +222,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     CountDownLatch completionLatch = new CountDownLatch(1);
     ScheduledExecutorService monitor =
         Executors.newSingleThreadScheduledExecutor(
-            Thread.ofPlatform().name("distributed-monitor").factory());
+            Thread.ofPlatform()
+                .name("reindex-distributed-monitor-" + jobId.toString().substring(0, 8))
+                .factory());
 
     try {
       monitor.scheduleAtFixedRate(
@@ -387,7 +388,42 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       }
     }
 
+    updateColumnStatsFromSink(stats);
+
     StatsReconciler.reconcile(stats);
+  }
+
+  private void updateColumnStatsFromSink(Stats jobDataStats) {
+    if (searchIndexSink == null || jobDataStats == null || jobDataStats.getEntityStats() == null) {
+      return;
+    }
+    StepStats columnStats = searchIndexSink.getColumnStats();
+    if (columnStats != null) {
+      StepStats existingColumnStats =
+          jobDataStats.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN);
+      if (existingColumnStats != null) {
+        existingColumnStats.setTotalRecords(columnStats.getTotalRecords());
+        existingColumnStats.setSuccessRecords(columnStats.getSuccessRecords());
+        existingColumnStats.setFailedRecords(columnStats.getFailedRecords());
+      }
+    }
+  }
+
+  private void promoteColumnIndex(
+      RecreateIndexHandler recreateIndexHandler,
+      ReindexContext recreateContext,
+      boolean tableSuccess) {
+    Optional<String> columnStagedIndex = recreateContext.getStagedIndex(Entity.TABLE_COLUMN);
+    if (columnStagedIndex.isEmpty()) {
+      return;
+    }
+    try {
+      finalizeEntityReindex(
+          recreateIndexHandler, recreateContext, Entity.TABLE_COLUMN, tableSuccess);
+      LOG.info("Promoted column index (tableSuccess={})", tableSuccess);
+    } catch (Exception ex) {
+      LOG.error("Failed to promote column index", ex);
+    }
   }
 
   private static int saturatedToInt(long value) {
@@ -446,7 +482,12 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
     entitiesToFinalize.removeAll(promotedEntities);
 
-    boolean hasVectorIndex = entitiesToFinalize.remove(VectorIndexService.VECTOR_INDEX_KEY);
+    if (promotedEntities.contains(Entity.TABLE)
+        && !promotedEntities.contains(Entity.TABLE_COLUMN)) {
+      boolean tableSuccess = computeEntitySuccess(Entity.TABLE, entityStatsMap);
+      promoteColumnIndex(recreateIndexHandler, recreateContext, tableSuccess);
+      entitiesToFinalize.remove(Entity.TABLE_COLUMN);
+    }
 
     LOG.debug("Entities to finalize={}, already promoted={}", entitiesToFinalize, promotedEntities);
 
@@ -466,24 +507,12 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
                 entitySuccess,
                 finalSuccess);
             finalizeEntityReindex(recreateIndexHandler, recreateContext, entityType, entitySuccess);
+            if (Entity.TABLE.equals(entityType)) {
+              promoteColumnIndex(recreateIndexHandler, recreateContext, entitySuccess);
+            }
           } catch (Exception ex) {
             LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
           }
-        }
-      }
-
-      if (hasVectorIndex) {
-        boolean vectorSuccess =
-            finalSuccess
-                || (currentStats.get() != null && !hasIncompleteProcessing(currentStats.get()));
-        try {
-          finalizeEntityReindex(
-              recreateIndexHandler,
-              recreateContext,
-              VectorIndexService.VECTOR_INDEX_KEY,
-              vectorSuccess);
-        } catch (Exception ex) {
-          LOG.error("Failed to finalize vector index", ex);
         }
       }
     } catch (Exception e) {
@@ -580,6 +609,15 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       entityStats.setSuccessRecords(0);
       entityStats.setFailedRecords(0);
       stats.getEntityStats().getAdditionalProperties().put(entityType, entityStats);
+    }
+
+    if (entities.contains(Entity.TABLE) && !entities.contains(Entity.TABLE_COLUMN)) {
+      StepStats columnEntityStats = new StepStats();
+      columnEntityStats.setTotalRecords(0);
+      columnEntityStats.setSuccessRecords(0);
+      columnEntityStats.setFailedRecords(0);
+      stats.getEntityStats().getAdditionalProperties().put(Entity.TABLE_COLUMN, columnEntityStats);
+      LOG.info("Added TABLE_COLUMN stats slot for column indexing tracking");
     }
 
     stats.getJobStats().setTotalRecords(total);

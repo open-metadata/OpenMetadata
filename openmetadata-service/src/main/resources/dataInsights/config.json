@@ -108,7 +108,7 @@
       "relatedTerms",
       "references",
       "reviewers",
-      "status",
+      "entityStatus",
       "usageCount",
       "childrenCount"
     ],
@@ -117,6 +117,13 @@
       "parent",
       "children",
       "usageCount"
+    ],
+    "metric": [
+      "metricType",
+      "unitOfMeasurement",
+      "granularity",
+      "relatedMetrics",
+      "metricExpression"
     ]
   }
 }

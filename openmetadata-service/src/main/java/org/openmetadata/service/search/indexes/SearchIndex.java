@@ -100,7 +100,17 @@ public interface SearchIndex {
             ? entity.getDisplayName()
             : entity.getName());
     map.put("entityType", entityType);
-    map.put("owners", getEntitiesWithDisplayName(entity.getOwners()));
+    List<EntityReference> ownersList = getEntitiesWithDisplayName(entity.getOwners());
+    map.put("owners", ownersList);
+    map.put(
+        "ownerDisplayName",
+        ownersList.stream()
+            .map(EntityReference::getDisplayName)
+            .filter(n -> !nullOrEmpty(n))
+            .toList());
+    map.put(
+        "ownerName",
+        ownersList.stream().map(EntityReference::getName).filter(n -> !nullOrEmpty(n)).toList());
     map.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
     map.put("reviewers", getEntitiesWithDisplayName(entity.getReviewers()));
     map.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
@@ -275,7 +285,12 @@ public interface SearchIndex {
           }
 
           columnIndex++;
-        } catch (EntityNotFoundException ignored) {
+        } catch (EntityNotFoundException ex) {
+          LOG.warn(
+              "Related table [{}] not found for upstream entity relationship of [{}]: {}",
+              relatedEntityFQN,
+              entity.getFullyQualifiedName(),
+              ex.getMessage());
         }
       }
     }

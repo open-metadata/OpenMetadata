@@ -17,7 +17,9 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { addMultiOwner, assignTag, removeTag } from '../../../utils/entity';
+import { addMultiOwner, assignTag, removeTag,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import {
   removeReviewer,
   selectActiveGlossary,
@@ -70,9 +72,7 @@ test.describe('Glossary Remove Operations', () => {
         .getByTestId('glossary-right-panel-owner-link')
         .getByTestId('edit-owner')
         .click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
       await page.click('[data-testid="clear-all-button"]');
@@ -174,9 +174,7 @@ test.describe('Glossary Remove Operations', () => {
         .getByTestId('glossary-right-panel-owner-link')
         .getByTestId('edit-owner')
         .click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const patchResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.click('[data-testid="clear-all-button"]');
@@ -330,8 +328,7 @@ test.describe('Glossary Remove Operations', () => {
       await page.getByTestId(`tag-${tagFqn}`).click();
 
       // Wait for save button and click
-      await page.waitForSelector(
-        '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor(
         { state: 'visible' }
       );
 
@@ -366,8 +363,7 @@ test.describe('Glossary Remove Operations', () => {
         .click();
 
       // Save the changes
-      await page.waitForSelector(
-        '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor(
         { state: 'visible' }
       );
 

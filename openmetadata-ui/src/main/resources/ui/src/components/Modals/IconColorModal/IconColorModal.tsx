@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -27,6 +26,7 @@ import { Style } from '../../../generated/type/schema';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
 import { MUIColorPicker } from '../../common/ColorPicker';
 import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
+import Loader from '../../common/Loader/Loader';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 
 const IconColorModal: FC<StyleModalProps> = ({
@@ -134,7 +134,7 @@ const IconColorModal: FC<StyleModalProps> = ({
             disabled={saving}
             form="style-modal-new"
             loading={saving}
-            loadingIndicator={<CircularProgress color="inherit" size={16} />}
+            loadingIndicator={<Loader size="x-small" type="white" />}
             type="submit"
             variant="contained"
             onClick={() => form.submit()}>

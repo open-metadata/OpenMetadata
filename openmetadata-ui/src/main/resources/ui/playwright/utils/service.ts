@@ -21,7 +21,10 @@ export const searchServiceFromSettingPage = async (
   const serviceResponse = page.waitForResponse((response) => {
     const url = response.url();
 
-    return url.includes('/api/v1/search/query') && url.includes(service);
+    return (
+      url.includes('/api/v1/search/query') &&
+      decodeURIComponent(url).includes(service)
+    );
   });
   await page.fill('[data-testid="searchbar"]', service);
 
@@ -46,19 +49,17 @@ export const visitServiceDetailsPage = async (
   // Click on created service
   await page.click(`[data-testid="service-name-${service.name}"]`);
 
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await waitForAllLoadersToDisappear(page);
 
   if (visitChildrenTab) {
     // Click on children tab Ex. DatabaseService -> Databases
     await page.getByRole('tab').nth(1).click();
   }
 
-  await page.waitForLoadState('networkidle');
 
   if (verifyHeader) {
-    const text = await page.textContent(`[data-testid="entity-header-name"]`);
-
-    expect(text).toBe(service.displayName);
+    await expect(
+      page.locator('[data-testid="entity-header-name"]')
+    ).toHaveText(service.displayName);
   }
 };

@@ -28,7 +28,9 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -687,37 +689,38 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void storeEntity(Pipeline pipeline, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference service = pipeline.getService();
-    pipeline.withService(null);
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
 
-    // Don't store column tags as JSON but build it on the fly based on relationships
-    List<Task> taskWithTagsAndOwners = pipeline.getTasks();
-    pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
+  @Override
+  protected ObjectNode storageJsonNode(Pipeline pipeline) {
+    ObjectNode node = super.storageJsonNode(pipeline);
+    stripTaskTagsAndOwners(node.get("tasks"));
+    return node;
+  }
+
+  private void stripTaskTagsAndOwners(JsonNode tasksNode) {
+    if (!(tasksNode instanceof ArrayNode taskArray)) {
+      return;
+    }
+    for (JsonNode taskNode : taskArray) {
+      if (!(taskNode instanceof ObjectNode taskObject)) {
+        continue;
+      }
+      taskObject.remove("tags");
+      taskObject.remove("owners");
+    }
+  }
+
+  @Override
+  public void storeEntity(Pipeline pipeline, boolean update) {
     store(pipeline, update);
-    pipeline.withService(service).withTasks(taskWithTagsAndOwners);
   }
 
   @Override
   public void storeEntities(List<Pipeline> pipelines) {
-    List<Pipeline> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Pipeline pipeline : pipelines) {
-      EntityReference service = pipeline.getService();
-      List<Task> taskWithTagsAndOwners = pipeline.getTasks();
-
-      pipeline.withService(null);
-      pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
-
-      String jsonCopy = gson.toJson(pipeline);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Pipeline.class));
-
-      pipeline.withService(service).withTasks(taskWithTagsAndOwners);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(pipelines);
   }
 
   @Override
@@ -762,10 +765,50 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  protected void storeEntitySpecificRelationshipsForMany(List<Pipeline> entities) {
+    List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
+    for (Pipeline pipeline : entities) {
+      EntityReference service = pipeline.getService();
+      if (service != null && service.getId() != null) {
+        relationships.add(
+            newRelationship(
+                service.getId(),
+                pipeline.getId(),
+                service.getType(),
+                entityType,
+                Relationship.CONTAINS));
+      }
+      for (Task task : listOrEmpty(pipeline.getTasks())) {
+        if (!nullOrEmpty(task.getOwners())) {
+          for (EntityReference owner : task.getOwners()) {
+            daoCollection
+                .fieldRelationshipDAO()
+                .insert(
+                    FullyQualifiedName.buildHash(owner.getFullyQualifiedName()),
+                    FullyQualifiedName.buildHash(task.getFullyQualifiedName()),
+                    owner.getFullyQualifiedName(),
+                    task.getFullyQualifiedName(),
+                    owner.getType(),
+                    Entity.TASK,
+                    OWNS.ordinal(),
+                    null);
+          }
+        }
+      }
+    }
+    bulkInsertRelationships(relationships);
+  }
+
+  @Override
   public void applyTags(Pipeline pipeline) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(pipeline);
     applyTaskTags(pipeline.getTasks()); // TODO need cleanup
+  }
+
+  @Override
+  protected EntityReference getParentReference(Pipeline entity) {
+    return entity.getService();
   }
 
   @Override
@@ -863,32 +906,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private void populateService(Pipeline pipeline) {
-    PipelineService service = Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
+    var service =
+        (PipelineService) getCachedParentOrLoad(pipeline.getService(), "", Include.NON_DELETED);
     pipeline.setService(service.getEntityReference());
     pipeline.setServiceType(service.getServiceType());
-  }
-
-  private List<Task> cloneWithoutTagsAndOwners(List<Task> tasks) {
-    if (nullOrEmpty(tasks)) {
-      return tasks;
-    }
-    List<Task> copy = new ArrayList<>();
-    tasks.forEach(t -> copy.add(cloneWithoutTagsAndOwners(t)));
-    return copy;
-  }
-
-  private Task cloneWithoutTagsAndOwners(Task task) {
-    return new Task()
-        .withDescription(task.getDescription())
-        .withName(task.getName())
-        .withDisplayName(task.getDisplayName())
-        .withFullyQualifiedName(task.getFullyQualifiedName())
-        .withSourceUrl(task.getSourceUrl())
-        .withTaskType(task.getTaskType())
-        .withDownstreamTasks(task.getDownstreamTasks())
-        .withTaskSQL(task.getTaskSQL())
-        .withStartDate(task.getStartDate())
-        .withEndDate(task.getEndDate());
   }
 
   protected void deleteTaskOwnerRelationship(Task task) {
@@ -966,19 +987,43 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateTasks(original, updated);
-      recordChange("state", original.getState(), updated.getState());
-      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
-      recordChange(
-          "pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
-      recordChange(
+      compareAndUpdate(
+          "tasks",
+          () -> {
+            updateTasks(original, updated);
+          });
+      compareAndUpdate(
+          "state",
+          () -> {
+            recordChange("state", original.getState(), updated.getState());
+          });
+      compareAndUpdate(
+          "sourceUrl",
+          () -> {
+            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+          });
+      compareAndUpdate(
+          "concurrency",
+          () -> {
+            recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
+          });
+      compareAndUpdate(
+          "pipelineLocation",
+          () -> {
+            recordChange(
+                "pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
+          });
+      compareAndUpdate(
           "sourceHash",
-          original.getSourceHash(),
-          updated.getSourceHash(),
-          false,
-          EntityUtil.objectMatch,
-          false);
+          () -> {
+            recordChange(
+                "sourceHash",
+                original.getSourceHash(),
+                updated.getSourceHash(),
+                false,
+                EntityUtil.objectMatch,
+                false);
+          });
     }
 
     private void updateTasks(Pipeline original, Pipeline updated) {
@@ -1038,7 +1083,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (origTask != null
           && ((origTask.getDescription() != null
                   && !origTask.getDescription().equals(updatedTask.getDescription()))
-              || updatedTask.getDescription() != null)) {
+              || !nullOrEmpty(updatedTask.getDescription()))) {
         recordChange(
             "tasks." + origTask.getName() + ".description",
             origTask.getDescription(),

@@ -14,12 +14,15 @@ import { APIRequestContext, expect, test } from '@playwright/test';
 
 import { SERVICE_TYPE } from '../../constant/service';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage,
-    uuid,
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
-import { fillDescriptionDetails, performBulkDownload } from '../../utils/importUtils';
+import {
+  fillDescriptionDetails,
+  performBulkDownload,
+} from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 // use the admin user to login
@@ -126,7 +129,9 @@ async function deleteDatabaseService(
   fqn: string
 ) {
   return apiContext.delete(
-    `/api/v1/services/databaseServices/name/${encodeURIComponent(fqn)}?recursive=true&hardDelete=true`
+    `/api/v1/services/databaseServices/name/${encodeURIComponent(
+      fqn
+    )}?recursive=true&hardDelete=true`
   );
 }
 
@@ -213,16 +218,18 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         false
       );
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.getByTestId('manage-dropdown-list-container').waitFor(
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      // Wait for file to load
-      await page.waitForTimeout(1000);
+      // Wait for CSV grid to render
+      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
 
       // Verify CSV loaded correctly - this would fail before the fix
       // because the CSV parser couldn't handle quoted FQN values
@@ -238,16 +245,14 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await page.getByRole('button', { name: 'Next' }).click();
 
       // Wait for validation to complete
-      await page.waitForSelector('[data-testid="processed-row"]', {
+      await page.getByTestId('processed-row').waitFor({
         timeout: 120000,
       });
 
       // Verify no failures
-      const failedRow = await page.$eval(
-        '[data-testid="failed-row"]',
-        (el) => el.textContent
-      );
-      expect(failedRow).toBe('0');
+      await expect(
+        page.locator('[data-testid="failed-row"]')
+      ).toHaveText('0');
 
       // Update
       const updateButtonResponse = page.waitForResponse(
@@ -260,12 +265,11 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       await updateButtonResponse;
 
-      await page.waitForSelector(
-        '.inovua-react-toolkit-load-mask__background-layer',
+      await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor(
         { state: 'detached', timeout: 60000 }
       );
 
-      // Wait for navigation or toast - import succeeded if we get here without errors
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
       await page.waitForTimeout(2000);
     });
 
@@ -318,15 +322,17 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Re-open import dialog
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.getByTestId('manage-dropdown-list-container').waitFor(
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.waitForTimeout(1000);
+      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
 
       // The main assertion - CSV should load without errors
       // Before the fix, this would fail with CSV parsing error
@@ -373,13 +379,18 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       `testschema${uid}`,
       database.fullyQualifiedName
     );
-    await createTable(apiContext, `testtable${uid}`, schema.fullyQualifiedName, [
-      {
-        name: 'col1',
-        dataType: 'INT',
-        dataTypeDisplay: 'int',
-      },
-    ]);
+    await createTable(
+      apiContext,
+      `testtable${uid}`,
+      schema.fullyQualifiedName,
+      [
+        {
+          name: 'col1',
+          dataType: 'INT',
+          dataTypeDisplay: 'int',
+        },
+      ]
+    );
 
     await redirectToHomePage(page);
 
@@ -394,15 +405,17 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.getByTestId('manage-dropdown-list-container').waitFor(
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.waitForTimeout(1000);
+      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
 
       // Verify grid loaded
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -413,16 +426,14 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await page.getByRole('button', { name: 'Next' }).click();
 
       // Wait for validation
-      await page.waitForSelector('[data-testid="processed-row"]', {
+      await page.getByTestId('processed-row').waitFor({
         timeout: 120000,
       });
 
       // Verify validation passed with no failures
-      const failedRow = await page.$eval(
-        '[data-testid="failed-row"]',
-        (el) => el.textContent
-      );
-      expect(failedRow).toBe('0');
+      await expect(
+        page.locator('[data-testid="failed-row"]')
+      ).toHaveText('0');
 
       // Update
       const updateButtonResponse = page.waitForResponse(
@@ -434,12 +445,11 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await page.getByRole('button', { name: 'Update' }).click();
       await updateButtonResponse;
 
-      await page.waitForSelector(
-        '.inovua-react-toolkit-load-mask__background-layer',
+      await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor(
         { state: 'detached', timeout: 60000 }
       );
 
-      // Wait for completion - import succeeded if we get here without errors
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
       await page.waitForTimeout(2000);
     });
 
@@ -487,15 +497,17 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await performBulkDownload(page, serviceNameWithDot);
 
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.getByTestId('manage-dropdown-list-container').waitFor(
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.waitForTimeout(1000);
+      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
 
       // Verify CSV loads correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -504,15 +516,13 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       // Validate
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await page.waitForSelector('[data-testid="processed-row"]', {
+      await page.getByTestId('processed-row').waitFor({
         timeout: 120000,
       });
 
-      const failedRow = await page.$eval(
-        '[data-testid="failed-row"]',
-        (el) => el.textContent
-      );
-      expect(failedRow).toBe('0');
+      await expect(
+        page.locator('[data-testid="failed-row"]')
+      ).toHaveText('0');
     });
 
     // Cleanup
@@ -525,7 +535,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
    * This tests double quoting scenario where both service and column have dots.
    * Column FQN: """service.name"".db.schema.table.""column.name"""
    */
-  test('Column with dot in name under service with dot', async ({ browser }) => {
+  test('Column with dot in name under service with dot', async ({
+    browser,
+  }) => {
     test.setTimeout(240_000);
 
     const { page, afterAction } = await createNewPage(browser);
@@ -579,15 +591,17 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import the exported CSV
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.getByTestId('manage-dropdown-list-container').waitFor(
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.waitForTimeout(1000);
+      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
 
       // Verify CSV loaded - columns with dots should be properly escaped
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -595,16 +609,14 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       // Validate
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await page.waitForSelector('[data-testid="processed-row"]', {
+      await page.getByTestId('processed-row').waitFor({
         timeout: 120000,
       });
 
       // Verify no failures - this confirms column dots are handled
-      const failedRow = await page.$eval(
-        '[data-testid="failed-row"]',
-        (el) => el.textContent
-      );
-      expect(failedRow).toBe('0');
+      await expect(
+        page.locator('[data-testid="failed-row"]')
+      ).toHaveText('0');
     });
 
     // Cleanup
@@ -655,22 +667,27 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.getByTestId('manage-dropdown-list-container').waitFor(
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.waitForTimeout(1000);
+      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
 
       await expect(page.locator('.rdg-header-row')).toBeVisible();
 
       // Click on a cell to edit - find the first row's description cell
       // Navigate to description column (3rd column) and edit
       await page.locator('.rdg-row').nth(0).click();
-      const descriptionCell1 = page.locator('.rdg-row').nth(0).locator('[aria-colindex="3"]');
+      const descriptionCell1 = page
+        .locator('.rdg-row')
+        .nth(0)
+        .locator('[aria-colindex="3"]');
       await descriptionCell1.dblclick();
 
       // Type new description
@@ -679,15 +696,13 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       // Validate - this reconstructs CSV with edited data
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await page.waitForSelector('[data-testid="processed-row"]', {
+      await page.getByTestId('processed-row').waitFor({
         timeout: 120000,
       });
 
-      const failedRow = await page.$eval(
-        '[data-testid="failed-row"]',
-        (el) => el.textContent
-      );
-      expect(failedRow).toBe('0');
+      await expect(
+        page.locator('[data-testid="failed-row"]')
+      ).toHaveText('0');
 
       // Update
       const updateButtonResponse = page.waitForResponse(
@@ -699,11 +714,11 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await page.getByRole('button', { name: 'Update' }).click();
       await updateButtonResponse;
 
-      await page.waitForSelector(
-        '.inovua-react-toolkit-load-mask__background-layer',
+      await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor(
         { state: 'detached', timeout: 60000 }
       );
 
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
       await page.waitForTimeout(2000);
     });
 
@@ -742,13 +757,18 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       `levelschema${uid}`,
       database.fullyQualifiedName
     );
-    await createTable(apiContext, `leveltable${uid}`, schema.fullyQualifiedName, [
-      {
-        name: 'id',
-        dataType: 'INT',
-        dataTypeDisplay: 'int',
-      },
-    ]);
+    await createTable(
+      apiContext,
+      `leveltable${uid}`,
+      schema.fullyQualifiedName,
+      [
+        {
+          name: 'id',
+          dataType: 'INT',
+          dataTypeDisplay: 'int',
+        },
+      ]
+    );
 
     await redirectToHomePage(page);
 
@@ -760,22 +780,23 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         false
       );
       await page.getByTestId(databaseName).click();
-      await page.waitForLoadState('networkidle');
 
       // Export from database level
       await performBulkDownload(page, databaseName);
 
       // Import at database level
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.getByTestId('manage-dropdown-list-container').waitFor(
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${databaseName}.csv`]);
 
-      await page.waitForTimeout(1000);
+      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
 
       // Verify CSV loaded
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -783,15 +804,13 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       // Validate
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await page.waitForSelector('[data-testid="processed-row"]', {
+      await page.getByTestId('processed-row').waitFor({
         timeout: 120000,
       });
 
-      const failedRow = await page.$eval(
-        '[data-testid="failed-row"]',
-        (el) => el.textContent
-      );
-      expect(failedRow).toBe('0');
+      await expect(
+        page.locator('[data-testid="failed-row"]')
+      ).toHaveText('0');
 
       // Update
       const updateButtonResponse = page.waitForResponse(
@@ -803,11 +822,11 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await page.getByRole('button', { name: 'Update' }).click();
       await updateButtonResponse;
 
-      await page.waitForSelector(
-        '.inovua-react-toolkit-load-mask__background-layer',
+      await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor(
         { state: 'detached', timeout: 60000 }
       );
 
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
       await page.waitForTimeout(2000);
     });
 
@@ -846,13 +865,18 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       schemaName,
       database.fullyQualifiedName
     );
-    await createTable(apiContext, `schematable${uid}`, schema.fullyQualifiedName, [
-      {
-        name: 'col1',
-        dataType: 'INT',
-        dataTypeDisplay: 'int',
-      },
-    ]);
+    await createTable(
+      apiContext,
+      `schematable${uid}`,
+      schema.fullyQualifiedName,
+      [
+        {
+          name: 'col1',
+          dataType: 'INT',
+          dataTypeDisplay: 'int',
+        },
+      ]
+    );
 
     await redirectToHomePage(page);
 
@@ -864,24 +888,24 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         false
       );
       await page.getByTestId(databaseName).click();
-      await page.waitForLoadState('networkidle');
       await page.getByTestId(schemaName).click();
-      await page.waitForLoadState('networkidle');
 
       // Export from schema level
       await performBulkDownload(page, schemaName);
 
       // Import at schema level
       await page.click('[data-testid="manage-button"]');
-      await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
-        state: 'visible',
-      });
+      await page.getByTestId('manage-dropdown-list-container').waitFor(
+        {
+          state: 'visible',
+        }
+      );
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${schemaName}.csv`]);
 
-      await page.waitForTimeout(1000);
+      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
 
       // Verify CSV loaded
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -889,15 +913,13 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       // Validate
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await page.waitForSelector('[data-testid="processed-row"]', {
+      await page.getByTestId('processed-row').waitFor({
         timeout: 120000,
       });
 
-      const failedRow = await page.$eval(
-        '[data-testid="failed-row"]',
-        (el) => el.textContent
-      );
-      expect(failedRow).toBe('0');
+      await expect(
+        page.locator('[data-testid="failed-row"]')
+      ).toHaveText('0');
     });
 
     // Cleanup

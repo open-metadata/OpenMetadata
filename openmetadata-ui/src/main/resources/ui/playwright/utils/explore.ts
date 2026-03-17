@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { isEmpty, isUndefined } from 'lodash';
 import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
+import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToExplorePage } from './common';
 import { openEntitySummaryPanel } from './entityPanel';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export interface Bucket {
   key: string;
@@ -28,15 +31,15 @@ export const searchAndClickOnOption = async (
 ) => {
   let testId = (filter.value ?? '').toLowerCase();
   // Filtering for tiers is done on client side, so no API call will be triggered
-  if (filter.key !== 'tier.tagFQN') {
+  if (filter.key === 'tier.tagFQN') {
+    testId = filter.value ?? '';
+  } else {
     const searchRes = page.waitForResponse(
       `/api/v1/search/aggregate?index=dataAsset&field=${filter.key}**`
     );
 
     await page.fill('[data-testid="search-input"]', filter.value ?? '');
     await searchRes;
-  } else {
-    testId = filter.value ?? '';
   }
 
   await page.getByTestId(testId).click();
@@ -92,7 +95,7 @@ export const selectNullOption = async (
 
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await waitForAllLoadersToDisappear(page);
   await queryRes;
 
   const queryParams = page.url().split('?')[1];
@@ -112,10 +115,13 @@ export const checkCheckboxStatus = async (
   boxId: string,
   isChecked: boolean
 ) => {
-  const checkbox = await page.getByTestId(boxId);
-  const isCheckedOnPage = await checkbox.isChecked();
+  const checkbox = page.getByTestId(boxId);
 
-  await expect(isCheckedOnPage).toEqual(isChecked);
+  if (isChecked) {
+    await expect(checkbox).toBeChecked();
+  } else {
+    await expect(checkbox).not.toBeChecked();
+  }
 };
 
 export const selectDataAssetFilter = async (
@@ -210,6 +216,53 @@ export const expandDatabaseInExploreTree = async (
   await databaseSchemaRes;
 };
 
+export const expandSchemaInExploreTree = async (
+  page: Page,
+  schemaName: string
+) => {
+  const schemaRes = page.waitForResponse(
+    '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
+  );
+  await page
+    .locator('.ant-tree-treenode')
+    .filter({ hasText: schemaName })
+    .locator('.ant-tree-switcher svg')
+    .click();
+  await schemaRes;
+};
+
+export const expandTableInExploreTree = async (
+  page: Page,
+  tableName: string
+) => {
+  const columnRes = page.waitForResponse(
+    '/api/v1/search/query?*entityType*tableColumn*'
+  );
+  await page
+    .locator('.ant-tree-treenode')
+    .filter({ hasText: tableName })
+    .locator('.ant-tree-switcher svg')
+    .click();
+  await columnRes;
+};
+
+export const verifyColumnSuggestion = async (
+  page: Page,
+  columnName: string,
+  tableName: string
+) => {
+  const suggestionsContainer = page.locator('[data-testid="suggestion-box"]');
+  const columnSuggestion = suggestionsContainer
+    .locator('.suggestion-item')
+    .filter({ hasText: columnName })
+    .filter({ hasText: tableName })
+    .first();
+
+  await expect(columnSuggestion).toBeVisible();
+
+  return columnSuggestion;
+};
+
 export const verifyDatabaseAndSchemaInExploreTree = async (
   page: Page,
   serviceName: string,
@@ -253,9 +306,9 @@ export const validateBucketsForIndexAndSort = async (
 };
 
 export const selectSortOrder = async (page: Page, sortOrder: string) => {
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('sorting-dropdown-label').click();
-  await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
+  await page.getByRole('menuitem', { name: sortOrder }).waitFor({
     state: 'visible',
   });
   const nameFilter = page.waitForResponse(
@@ -273,27 +326,35 @@ export const selectSortOrder = async (page: Page, sortOrder: string) => {
   );
   await page.getByTestId('sort-order-button').click();
   await ascSortOrder;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const verifyEntitiesAreSorted = async (page: Page) => {
   // Wait for search results to be stable after sort
-  await page.waitForSelector('[data-testid="search-results"]', {
+  await page.getByTestId('search-results').waitFor({
     state: 'visible',
   });
-  await page.waitForLoadState('networkidle');
 
-  const entityNames = await page.$$eval(
-    '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',
-    (elements) => elements.map((el) => el.textContent?.trim() ?? '')
-  );
+  const entityNames = (
+    await page
+      .locator(
+        '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]'
+      )
+      .allTextContents()
+  ).map((name) => name.trim());
 
   // Elasticsearch keyword field with case-insensitive sorting
   const sortedEntityNames = [...entityNames].sort((a, b) => {
     const aLower = a.toLowerCase();
     const bLower = b.toLowerCase();
 
-    return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
+    if (aLower < bLower) {
+      return -1;
+    }
+    if (aLower > bLower) {
+      return 1;
+    }
+    return 0;
   });
 
   expect(entityNames).toEqual(sortedEntityNames);
@@ -312,4 +373,18 @@ export const navigateToExploreAndSelectEntity = async (
   });
 
   await openEntitySummaryPanel(page, entityName, endpoint, fullyQualifiedName);
+};
+
+export const getFlatColumnCountOfTable = (
+  columns: TableClass['entity']['columns']
+) => {
+  let columnsCount = columns.length;
+
+  columns.forEach((column) => {
+    if (!isEmpty(column.children) && !isUndefined(column.children)) {
+      columnsCount += getFlatColumnCountOfTable(column.children);
+    }
+  });
+
+  return columnsCount;
 };

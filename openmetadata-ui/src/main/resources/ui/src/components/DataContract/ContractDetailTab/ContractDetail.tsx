@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { AddOutlined, ExpandMore } from '@mui/icons-material';
 import { Button, Menu, MenuItem } from '@mui/material';
+import { ChevronDown, Plus } from '@untitledui/icons';
 import {
   Card,
   Col,
@@ -168,14 +168,13 @@ const ContractDetail: React.FC<{
         label: t('label.create-contract-with-ui'),
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE,
         icon: (
-          <AddOutlined
-            sx={{
-              color:
-                hoveredAddContractItem ===
-                DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE
-                  ? PRIMARY_COLOR
-                  : 'inherit',
-            }}
+          <Plus
+            color={
+              hoveredAddContractItem ===
+              DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE
+                ? PRIMARY_COLOR
+                : undefined
+            }
           />
         ),
         testId: 'create-contract-button',
@@ -673,7 +672,7 @@ const ContractDetail: React.FC<{
               aria-expanded={addContractMenuAnchor ? 'true' : 'false'}
               aria-haspopup="true"
               data-testid="add-contract-button"
-              endIcon={<ExpandMore />}
+              endIcon={<ChevronDown />}
               id="add-contract-button"
               sx={{ marginTop: 2 }}
               variant="contained"
