@@ -806,7 +806,7 @@ test.describe('Teams Page', () => {
       await expect(deletedToggle).toBeVisible();
 
       const initialTeams = await apiContext
-        .get('/api/v1/teams?parentTeam=Organization&include=non-deleted&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains')
+        .get(`/api/v1/teams?parentTeam=Organization&include=non-deleted&limit=100000&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains`)
         .then((response) => response.json());
 
       expect(
@@ -830,7 +830,7 @@ test.describe('Teams Page', () => {
         .poll(() => recordedIncludes.has('deleted'), { timeout: 30000 })
         .toBe(true);
       const deletedTeams = await apiContext
-        .get('/api/v1/teams?parentTeam=Organization&include=deleted&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains')
+        .get(`/api/v1/teams?parentTeam=Organization&include=deleted&limit=100000&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains`)
         .then((response) => response.json());
 
       expect(
