@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.RdfTestUtils;
@@ -160,6 +162,9 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
   @Test
   void test_metricGlossaryTermRdfLink(TestNamespace ns) {
+    assumeTrue(
+        TestSuiteBootstrap.isFusekiEnabled(),
+        "Skipping RDF test: Fuseki not enabled (run with -DenableRdf=true)");
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     GlossaryTerm term = GlossaryTermTestFactory.createWithName(ns, glossary, "metricConcept");
 

@@ -129,6 +129,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -414,16 +415,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<EntityRelationshipRecord> toRecords =
         findToRecords(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
 
+    // entity is TO side: json reflects the FROM entity's relation type, apply inverse to get
+    // entity's perspective
     for (EntityRelationshipRecord record : fromRecords) {
-      relations.add(buildTermRelation(record));
-    }
-    for (EntityRelationshipRecord record : toRecords) {
       TermRelation rel = buildTermRelation(record);
       String inverse = getInverseRelationType(rel.getRelationType());
       if (inverse != null) {
         rel.setRelationType(inverse);
       }
       relations.add(rel);
+    }
+    // entity is FROM side: json reflects entity's relation type directly, use as-is
+    for (EntityRelationshipRecord record : toRecords) {
+      relations.add(buildTermRelation(record));
     }
     relations.sort(Comparator.comparing(tr -> tr.getTerm().getFullyQualifiedName()));
     return relations;
@@ -624,17 +628,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String relationType =
           termRelation.getRelationType() != null ? termRelation.getRelationType() : "relatedTo";
       validateRelationType(relationType);
-      String json = String.format("{\"relationType\":\"%s\"}", relationType);
+      UUID toId = termRelation.getTerm().getId();
+      String canonicalType = computeCanonicalRelationType(entity.getId(), toId, relationType);
+      String json = String.format("{\"relationType\":\"%s\"}", canonicalType);
       addRelationship(
-          entity.getId(),
-          termRelation.getTerm().getId(),
-          GLOSSARY_TERM,
-          GLOSSARY_TERM,
-          Relationship.RELATED_TO,
-          json,
-          true);
-      RdfUpdater.addGlossaryTermRelation(
-          entity.getId(), termRelation.getTerm().getId(), relationType);
+          entity.getId(), toId, GLOSSARY_TERM, GLOSSARY_TERM, Relationship.RELATED_TO, json, true);
+      RdfUpdater.addGlossaryTermRelation(entity.getId(), toId, relationType);
     }
   }
 
@@ -662,10 +661,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       validateRelationCardinality(id, List.of(termRelation));
     }
 
-    String json = String.format("{\"relationType\":\"%s\"}", relationType);
+    String canonicalType = computeCanonicalRelationType(id, termRef.getId(), relationType);
+    String json = String.format("{\"relationType\":\"%s\"}", canonicalType);
     addRelationship(
         id, termRef.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.RELATED_TO, json, true);
     RdfUpdater.addGlossaryTermRelation(id, termRef.getId(), relationType);
+    RequestEntityCache.invalidate(entityType, id, null);
     return get(null, id, getFields("relatedTerms"), Include.NON_DELETED, false);
   }
 
@@ -739,6 +740,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return config.getInverseRelation();
     }
     return null;
+  }
+
+  private String computeCanonicalRelationType(UUID fromId, UUID toId, String relationType) {
+    if (fromId.compareTo(toId) > 0) {
+      String inverse = getInverseRelationType(relationType);
+      if (inverse != null) {
+        return inverse;
+      }
+    }
+    return relationType;
   }
 
   private int getRelationCount(UUID termId, String relationType, Map<String, Integer> cache) {
@@ -2068,17 +2079,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         String relationType =
             termRelation.getRelationType() != null ? termRelation.getRelationType() : "relatedTo";
         validateRelationType(relationType);
-        String json = String.format("{\"relationType\":\"%s\"}", relationType);
+        UUID toId = termRelation.getTerm().getId();
+        String canonicalType = computeCanonicalRelationType(origTerm.getId(), toId, relationType);
+        String json = String.format("{\"relationType\":\"%s\"}", canonicalType);
         addRelationship(
             origTerm.getId(),
-            termRelation.getTerm().getId(),
+            toId,
             GLOSSARY_TERM,
             GLOSSARY_TERM,
             Relationship.RELATED_TO,
             json,
             true);
-        RdfUpdater.addGlossaryTermRelation(
-            origTerm.getId(), termRelation.getTerm().getId(), relationType);
+        RdfUpdater.addGlossaryTermRelation(origTerm.getId(), toId, relationType);
       }
 
       updatedTerm.setRelatedTerms(updatedRelated.isEmpty() ? null : updatedRelated);
@@ -2302,9 +2314,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void deleteBidirectionalRelatedTo(UUID termA, UUID termB, String relationType) {
     UUID from = termA;
     UUID to = termB;
+    String canonicalType = relationType;
     if (from.compareTo(to) > 0) {
       from = termB;
       to = termA;
+      String inverse = getInverseRelationType(relationType);
+      if (inverse != null) {
+        canonicalType = inverse;
+      }
     }
     daoCollection
         .relationshipDAO()
@@ -2314,7 +2331,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             to,
             GLOSSARY_TERM,
             Relationship.RELATED_TO.ordinal(),
-            relationType);
+            canonicalType);
   }
 
   private void deleteAllBidirectionalRelatedTo(UUID termA, UUID termB) {

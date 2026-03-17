@@ -29,6 +29,9 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.DockerImageName;
 
 /**
  * Integration tests for Glossary Ontology Export API.
@@ -52,22 +55,58 @@ public class GlossaryOntologyExportIT {
   private static final String N_TRIPLES_CONTENT_TYPE = "application/n-triples";
   private static final String JSON_LD_CONTENT_TYPE = "application/ld+json";
 
+  private static final String FUSEKI_IMAGE = "stain/jena-fuseki:latest";
+  private static final int FUSEKI_PORT = 3030;
+  private static final String FUSEKI_DATASET = "openmetadata";
+  private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
+
+  private static GenericContainer<?> localFusekiContainer;
+
   @BeforeAll
   static void enableRdf() {
+    String fusekiEndpoint;
+    if (TestSuiteBootstrap.isFusekiEnabled()) {
+      fusekiEndpoint = TestSuiteBootstrap.getFusekiEndpoint();
+    } else {
+      localFusekiContainer =
+          new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
+              .withExposedPorts(FUSEKI_PORT)
+              .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+              .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
+              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m,uid=100,gid=101"))
+              .waitingFor(
+                  Wait.forHttp("/$/ping")
+                      .forPort(FUSEKI_PORT)
+                      .forStatusCode(200)
+                      .withStartupTimeout(Duration.ofMinutes(2)));
+      localFusekiContainer.start();
+      fusekiEndpoint =
+          String.format(
+              "http://%s:%d/%s",
+              localFusekiContainer.getHost(),
+              localFusekiContainer.getMappedPort(FUSEKI_PORT),
+              FUSEKI_DATASET);
+      LOG.info("Started local Fuseki container: {}", fusekiEndpoint);
+    }
+
     RdfConfiguration rdfConfig = new RdfConfiguration();
     rdfConfig.setEnabled(true);
     rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));
     rdfConfig.setStorageType(RdfConfiguration.StorageType.FUSEKI);
-    rdfConfig.setRemoteEndpoint(java.net.URI.create(TestSuiteBootstrap.getFusekiEndpoint()));
+    rdfConfig.setRemoteEndpoint(java.net.URI.create(fusekiEndpoint));
     rdfConfig.setUsername("admin");
-    rdfConfig.setPassword("test-admin");
-    rdfConfig.setDataset("openmetadata");
+    rdfConfig.setPassword(FUSEKI_ADMIN_PASSWORD);
+    rdfConfig.setDataset(FUSEKI_DATASET);
     RdfUpdater.initialize(rdfConfig);
   }
 
   @AfterAll
   static void disableRdf() {
     RdfUpdater.disable();
+    if (localFusekiContainer != null) {
+      localFusekiContainer.stop();
+      localFusekiContainer = null;
+    }
   }
 
   @Test

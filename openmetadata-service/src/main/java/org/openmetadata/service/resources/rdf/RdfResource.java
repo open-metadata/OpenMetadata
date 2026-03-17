@@ -39,9 +39,9 @@ import org.openmetadata.service.security.Authorizer;
 @Slf4j
 public class RdfResource {
   public static final String COLLECTION_PATH = "/v1/rdf";
-  private final RdfRepository rdfRepository;
+  private RdfRepository rdfRepository;
   private final Authorizer authorizer;
-  private final SemanticSearchEngine semanticSearchEngine;
+  private SemanticSearchEngine semanticSearchEngine;
   private OpenMetadataApplicationConfig config;
 
   public static final String RDF_XML = "application/rdf+xml";
@@ -54,9 +54,21 @@ public class RdfResource {
 
   public RdfResource(Authorizer authorizer) {
     this.authorizer = authorizer;
-    this.rdfRepository = RdfRepository.getInstance();
-    this.semanticSearchEngine =
-        new SemanticSearchEngine(rdfRepository, Entity.getSearchRepository());
+  }
+
+  private RdfRepository getRdfRepository() {
+    if (rdfRepository == null) {
+      rdfRepository = RdfRepository.getInstanceOrNull();
+    }
+    return rdfRepository;
+  }
+
+  private SemanticSearchEngine getSemanticSearchEngine() {
+    if (semanticSearchEngine == null && getRdfRepository() != null) {
+      semanticSearchEngine =
+          new SemanticSearchEngine(getRdfRepository(), Entity.getSearchRepository());
+    }
+    return semanticSearchEngine;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -82,9 +94,9 @@ public class RdfResource {
       })
   public Response getRdfStatus(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    boolean enabled = rdfRepository.isEnabled();
-    boolean inferenceEnabled = enabled && rdfRepository.isInferenceEnabledByDefault();
-    String defaultInferenceLevel = enabled ? rdfRepository.getDefaultInferenceLevel() : "NONE";
+    boolean enabled = getRdfRepository() != null && getRdfRepository().isEnabled();
+    boolean inferenceEnabled = enabled && getRdfRepository().isInferenceEnabledByDefault();
+    String defaultInferenceLevel = enabled ? getRdfRepository().getDefaultInferenceLevel() : "NONE";
 
     String statusJson =
         String.format(
@@ -102,7 +114,7 @@ public class RdfResource {
             enabled,
             inferenceEnabled,
             defaultInferenceLevel,
-            enabled ? rdfRepository.getConfig().getStorageType() : "N/A");
+            enabled ? getRdfRepository().getConfig().getStorageType() : "N/A");
 
     return Response.ok().entity(statusJson).type(MediaType.APPLICATION_JSON).build();
   }
@@ -124,13 +136,13 @@ public class RdfResource {
   public Response debugGlossaryRelations(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
     try {
-      if (!rdfRepository.isEnabled()) {
+      if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
             .entity("{\"error\": \"RDF service not enabled\"}")
             .build();
       }
 
-      String result = rdfRepository.debugGlossaryTermRelations();
+      String result = getRdfRepository().debugGlossaryTermRelations();
       return Response.ok(result, MediaType.APPLICATION_JSON).build();
 
     } catch (IOException e) {
@@ -169,7 +181,7 @@ public class RdfResource {
           String format) {
     authorizer.authorizeAdmin(securityContext);
     try {
-      if (!rdfRepository.isEnabled()) {
+      if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
             .entity("{\"error\": \"RDF service not enabled\"}")
             .build();
@@ -179,19 +191,19 @@ public class RdfResource {
       MediaType mediaType =
           switch (format.toLowerCase()) {
             case "turtle", "ttl" -> {
-              result = rdfRepository.getEntityAsRdf(entityType, id, "turtle");
+              result = getRdfRepository().getEntityAsRdf(entityType, id, "turtle");
               yield MediaType.valueOf(TURTLE);
             }
             case "rdfxml", "xml" -> {
-              result = rdfRepository.getEntityAsRdf(entityType, id, "rdfxml");
+              result = getRdfRepository().getEntityAsRdf(entityType, id, "rdfxml");
               yield MediaType.valueOf(RDF_XML);
             }
             case "ntriples", "nt" -> {
-              result = rdfRepository.getEntityAsRdf(entityType, id, "ntriples");
+              result = getRdfRepository().getEntityAsRdf(entityType, id, "ntriples");
               yield MediaType.valueOf(N_TRIPLES);
             }
             default -> {
-              result = rdfRepository.getEntityAsJsonLd(entityType, id);
+              result = getRdfRepository().getEntityAsJsonLd(entityType, id);
               yield MediaType.valueOf(JSON_LD);
             }
           };
@@ -231,13 +243,13 @@ public class RdfResource {
           int depth) {
     authorizer.authorizeAdmin(securityContext);
     try {
-      if (!rdfRepository.isEnabled()) {
+      if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
             .entity("{\"error\": \"RDF service not enabled\"}")
             .build();
       }
 
-      String graphData = rdfRepository.getEntityGraph(entityId, entityType, depth);
+      String graphData = getRdfRepository().getEntityGraph(entityId, entityType, depth);
       return Response.ok(graphData, MediaType.APPLICATION_JSON).build();
 
     } catch (Exception e) {
@@ -321,7 +333,7 @@ public class RdfResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "SPARQL UPDATE query", required = true) SparqlQuery sparqlQuery) {
     authorizer.authorizeAdmin(securityContext);
-    if (!rdfRepository.isEnabled()) {
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
           .entity("RDF repository is not enabled")
           .build();
@@ -340,7 +352,7 @@ public class RdfResource {
             .build();
       }
 
-      rdfRepository.executeSparqlUpdate(sparqlQuery.getQuery());
+      getRdfRepository().executeSparqlUpdate(sparqlQuery.getQuery());
       return Response.ok().entity("{\"status\": \"success\"}").build();
 
     } catch (Exception e) {
@@ -352,7 +364,7 @@ public class RdfResource {
   }
 
   private Response executeSparqlQuery(String query, String format, String inference) {
-    if (!rdfRepository.isEnabled()) {
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
           .entity("RDF repository is not enabled")
           .build();
@@ -362,9 +374,9 @@ public class RdfResource {
       String mimeType = getMimeTypeForFormat(format);
       String results;
       if (!"none".equalsIgnoreCase(inference)) {
-        results = rdfRepository.executeSparqlQueryWithInference(query, mimeType, inference);
+        results = getRdfRepository().executeSparqlQueryWithInference(query, mimeType, inference);
       } else {
-        results = rdfRepository.executeSparqlQuery(query, mimeType);
+        results = getRdfRepository().executeSparqlQuery(query, mimeType);
       }
       return Response.ok(results).type(mimeType).build();
     } catch (IllegalArgumentException e) {
@@ -419,7 +431,15 @@ public class RdfResource {
     authorizer.authorizeAdmin(securityContext);
     try {
       String query = buildLineageQuery(entityId, entityType, direction);
-      String results = rdfRepository.executeSparqlQueryWithInference(query, SPARQL_JSON, "custom");
+      String results =
+          getRdfRepository() != null
+              ? getRdfRepository().executeSparqlQueryWithInference(query, SPARQL_JSON, "custom")
+              : null;
+      if (results == null) {
+        return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+            .entity("{\"error\": \"RDF service not enabled\"}")
+            .build();
+      }
       return Response.ok(results).build();
     } catch (Exception e) {
       LOG.error("Error getting lineage with inference", e);
@@ -518,15 +538,15 @@ public class RdfResource {
           boolean includeIsolated) {
     authorizer.authorizeAdmin(securityContext);
     try {
-      if (!rdfRepository.isEnabled()) {
+      if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
             .entity("{\"error\": \"RDF service not enabled\"}")
             .build();
       }
 
       String graphData =
-          rdfRepository.getGlossaryTermGraph(
-              glossaryId, relationTypes, limit, offset, includeIsolated);
+          getRdfRepository()
+              .getGlossaryTermGraph(glossaryId, relationTypes, limit, offset, includeIsolated);
       return Response.ok(graphData, MediaType.APPLICATION_JSON).build();
 
     } catch (Exception e) {
@@ -560,14 +580,14 @@ public class RdfResource {
           @DefaultValue("10")
           int limit) {
     authorizer.authorizeAdmin(securityContext);
-    if (!rdfRepository.isEnabled()) {
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
           .entity("{\"error\": \"RDF service not enabled\"}")
           .build();
     }
 
     try {
-      var results = semanticSearchEngine.semanticSearch(query, entityType, limit);
+      var results = getSemanticSearchEngine().semanticSearch(query, entityType, limit);
       return Response.ok(results).build();
     } catch (Exception e) {
       LOG.error("Semantic search failed", e);
@@ -601,14 +621,14 @@ public class RdfResource {
           @DefaultValue("10")
           int limit) {
     authorizer.authorizeAdmin(securityContext);
-    if (!rdfRepository.isEnabled()) {
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
           .entity("{\"error\": \"RDF service not enabled\"}")
           .build();
     }
 
     try {
-      var results = semanticSearchEngine.findSimilarEntities(id.toString(), entityType, limit);
+      var results = getSemanticSearchEngine().findSimilarEntities(id.toString(), entityType, limit);
       return Response.ok(results).build();
     } catch (Exception e) {
       LOG.error("Similar entity search failed", e);
@@ -654,13 +674,13 @@ public class RdfResource {
           boolean includeRelations) {
     authorizer.authorizeAdmin(securityContext);
     try {
-      if (!rdfRepository.isEnabled()) {
+      if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
             .entity("{\"error\": \"RDF service not enabled\"}")
             .build();
       }
 
-      String result = rdfRepository.exportGlossaryAsOntology(id, format, includeRelations);
+      String result = getRdfRepository().exportGlossaryAsOntology(id, format, includeRelations);
       String mediaType =
           switch (format.toLowerCase()) {
             case "rdfxml", "xml" -> RDF_XML;
@@ -713,14 +733,15 @@ public class RdfResource {
           @DefaultValue("10")
           int limit) {
     authorizer.authorizeAdmin(securityContext);
-    if (!rdfRepository.isEnabled()) {
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
           .entity("{\"error\": \"RDF service not enabled\"}")
           .build();
     }
 
     try {
-      var results = semanticSearchEngine.getRecommendations(userId.toString(), entityType, limit);
+      var results =
+          getSemanticSearchEngine().getRecommendations(userId.toString(), entityType, limit);
       return Response.ok(results).build();
     } catch (Exception e) {
       LOG.error("Recommendation generation failed", e);
