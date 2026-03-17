@@ -813,6 +813,12 @@ test.describe('Teams Page', () => {
 
         const teamsResponse = await teamsResponsePromise;
         expect(teamsResponse.status()).toBe(200);
+
+        const body = await teamsResponse.json();
+        const names: string[] = (body.data as { name?: string }[]).map(
+          (t) => t.name ?? ''
+        );
+        expect(names).toContain(deletedTeam.data.name);
       });
     });
   });
