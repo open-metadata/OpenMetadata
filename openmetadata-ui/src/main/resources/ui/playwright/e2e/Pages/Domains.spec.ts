@@ -2025,7 +2025,11 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Verify data products count is preserved after rename
-      await verifyDataProductsCount(page, 2);
+      // Poll search API first since index may lag after domain rename
+      await verifyDataProductsCount(page, 2, {
+        apiContext,
+        domainFqn: newDomainName,
+      });
 
       // Verify both data products are visible (scope to container)
       const dataProductsContainer = page.locator('.explore-search-card');

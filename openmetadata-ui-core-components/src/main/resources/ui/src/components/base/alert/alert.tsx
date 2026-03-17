@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { FC, ReactNode } from "react";
+import type { FC, HTMLAttributes, ReactNode } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -61,7 +61,7 @@ const variantStyles: Record<
   },
 };
 
-export interface AlertProps {
+export interface AlertProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
   /** success, warning, error, brand or gray */
   variant: AlertVariant;
   /** Bold heading text */
@@ -74,7 +74,6 @@ export interface AlertProps {
   closable?: boolean;
   /** Called when the × close button is clicked. */
   onClose?: () => void;
-  className?: string;
 }
 
 export const Alert = ({
@@ -85,12 +84,14 @@ export const Alert = ({
   closable = false,
   onClose,
   className,
+  ...props
 }: AlertProps) => {
   const styles = variantStyles[variant];
   const Icon = icon ?? styles.defaultIcon;
 
   return (
     <div
+      {...props}
       role="alert"
       className={cx(
         "tw:flex tw:w-full tw:gap-3 tw:rounded-xl tw:border tw:px-4",
