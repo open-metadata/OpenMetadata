@@ -741,7 +741,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         }
       });
 
-      return { nodes: Array.from(nodesMap.values()), edges };
+      const nodeIds = new Set(nodesMap.keys());
+      const validEdges = edges.filter(
+        (e) => nodeIds.has(e.from) && nodeIds.has(e.to)
+      );
+
+      return { nodes: Array.from(nodesMap.values()), edges: validEdges };
     },
     [t]
   );
@@ -1165,8 +1170,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         className
       )}
       data-testid="ontology-explorer"
-      style={{ height }}
-    >
+      style={{ height }}>
       {showHeader && (
         <div
           className="tw:flex tw:flex-col tw:gap-2 tw:px-5 tw:py-3 tw:mb-4"
@@ -1175,19 +1179,16 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             borderRadius: 12,
             border: '1px solid var(--Blue-gray-100, #EAECF5)',
             background: 'var(--colors-content-content1, #FFF)',
-          }}
-        >
+          }}>
           <Typography
             as="h2"
-            className="tw:m-0 tw:text-md tw:font-semibold tw:text-gray-800"
-          >
+            className="tw:m-0 tw:text-md tw:font-semibold tw:text-gray-800">
             {t('label.ontology-explorer')}
           </Typography>
           {filteredGraphData && statsItems.length > 0 && (
             <div
               className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap"
-              data-testid="ontology-explorer-stats"
-            >
+              data-testid="ontology-explorer-stats">
               {statsItems.map((item, index) => (
                 <React.Fragment key={`${item}-${index}`}>
                   {index > 0 && (
@@ -1207,8 +1208,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                     }
                     style={{
                       color: '#414651',
-                    }}
-                  >
+                    }}>
                     {item}
                   </span>
                 </React.Fragment>
@@ -1229,8 +1229,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 background: NODE_FILL_DEFAULT,
                 boxShadow:
                   '0 8px 20px 0 rgba(0, 0, 3, 0.04), 0 2px 4px 0 rgba(0, 0, 3, 0.03)',
-              }}
-            >
+              }}>
               <FilterToolbar
                 filters={filters}
                 glossaries={glossaries}
@@ -1248,8 +1247,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               'tw:absolute tw:bottom-4 tw:left-1/2 tw:-translate-x-1/2 tw:z-50 ' +
               'tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:rounded-xl ' +
               'tw:border tw:border-gray-200 tw:bg-white tw:px-3 tw:py-1.5 tw:shadow-md'
-            }
-          >
+            }>
             <Tabs
               className="tw:w-fit!"
               selectedKey={explorationMode}
@@ -1257,8 +1255,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 if (key === 'model' || key === 'data') {
                   handleModeChange(key as ExplorationMode);
                 }
-              }}
-            >
+              }}>
               <Tabs.List
                 items={[
                   { label: t('label.model'), id: 'model' },
@@ -1301,8 +1298,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           {loading ? (
             <div
               className="tw:relative tw:flex tw:min-h-100 tw:flex-1 tw:flex-col tw:items-center tw:justify-center"
-              data-testid="ontology-graph-loading"
-            >
+              data-testid="ontology-graph-loading">
               <div
                 className="tw:absolute tw:inset-0"
                 style={dottedGraphBackgroundStyle}
@@ -1319,24 +1315,21 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           ) : !graphDataToShow || graphDataToShow.nodes.length === 0 ? (
             <div
               className="tw:relative tw:flex tw:min-h-100 tw:flex-1 tw:flex-col tw:items-center tw:justify-center"
-              data-testid="ontology-graph-empty"
-            >
+              data-testid="ontology-graph-empty">
               <div
                 className="tw:absolute tw:inset-0"
                 style={dottedGraphBackgroundStyle}
               />
               <Typography
                 as="p"
-                className="tw:z-10 tw:text-center tw:text-gray-500"
-              >
+                className="tw:z-10 tw:text-center tw:text-gray-500">
                 {t('message.no-glossary-terms-found')}
               </Typography>
             </div>
           ) : (
             <div
               className="tw:absolute tw:inset-0"
-              style={dottedGraphBackgroundStyle}
-            >
+              style={dottedGraphBackgroundStyle}>
               <OntologyGraph
                 edges={graphDataToShow.edges}
                 explorationMode={
