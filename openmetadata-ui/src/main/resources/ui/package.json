@@ -100,7 +100,6 @@
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
     "diff": "^8.0.3",
     "dompurify": "^3.2.7",
-    "dompurify": "^3.2.4",
     "@antv/g6": "^5.0.50",
     "elkjs": "^0.9.3",
     "eventemitter3": "^5.0.1",
