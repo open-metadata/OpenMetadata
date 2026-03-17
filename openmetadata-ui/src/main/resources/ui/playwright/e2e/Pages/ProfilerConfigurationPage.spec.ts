@@ -73,7 +73,7 @@ test.describe('Profiler Configuration Page', () => {
      */
     await test.step('Verify validation', async () => {
       await adminPage.click('[data-testid="save-button"]');
-      await adminPage.waitForSelector('#metricConfiguration_0_dataType_help');
+      await adminPage.locator('#metricConfiguration_0_dataType_help').waitFor();
 
       await expect(
         adminPage.locator('#metricConfiguration_0_dataType_help')

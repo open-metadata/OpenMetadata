@@ -16,14 +16,24 @@ import { getAuthContext, getToken, redirectToHomePage } from './common';
 
 export const performAdminLogin = async (browser: Browser) => {
   const admin = new AdminClass();
-  const page = await browser.newPage();
-  await admin.login(page);
-  await redirectToHomePage(page);
+  const context = await browser.newContext({
+    storageState: 'playwright/.auth/admin.json',
+  });
+  const page = await context.newPage();
+
+  try {
+    await redirectToHomePage(page);
+  } catch {
+    await admin.login(page);
+    await redirectToHomePage(page);
+  }
+
   const token = await getToken(page);
   const apiContext = await getAuthContext(token);
   const afterAction = async () => {
     await apiContext.dispose();
     await page.close();
+    await context.close();
   };
 
   return { page, apiContext, afterAction };

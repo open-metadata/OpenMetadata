@@ -34,7 +34,6 @@ import es.co.elastic.clients.json.JsonData;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,15 +73,6 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   /** Simple record to hold index configuration */
   private record IndexConfig(String indexName, String columnFieldPath, String columnNameKeyword) {}
-
-  private static final List<String> BASE_SOURCE_FIELDS =
-      Arrays.asList(
-          "fullyQualifiedName",
-          "entityType",
-          "displayName",
-          "service.name",
-          "database.name",
-          "databaseSchema.name");
 
   public ElasticSearchColumnAggregator(ElasticsearchClient client) {
     this.client = client;
@@ -594,17 +584,9 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
             CompositeAggregationSource.of(
                 cas -> cas.terms(t -> t.field(columnNameKeyword).order(SortOrder.Asc)))));
 
-    // Get the column field path for source fields (e.g., "columns" or "dataModel.columns")
-    String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
-
-    // Build source fields list including the correct column field
-    List<String> sourceFields = new ArrayList<>(BASE_SOURCE_FIELDS);
-    sourceFields.add(columnFieldPath);
-
-    // Limit top hits to reduce memory usage - 10 samples is enough for grouping
-    Aggregation topHitsAgg =
-        Aggregation.of(
-            a -> a.topHits(th -> th.size(10).source(s -> s.filter(f -> f.includes(sourceFields)))));
+    // Use full _source to avoid top_hits source-filter edge cases where combining root and nested
+    // include paths can produce empty buckets.
+    Aggregation topHitsAgg = Aggregation.of(a -> a.topHits(th -> th.size(10)));
 
     Map<String, Aggregation> subAggs = new HashMap<>();
     subAggs.put("sample_docs", topHitsAgg);

@@ -12,19 +12,53 @@
 name: UI Checkstyle
 
 on:
-  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - openmetadata-ui/src/main/resources/ui/playwright/**
+      - openmetadata-ui/src/main/resources/ui/eslint.config.mjs
 
 permissions:
   contents: read
 
 concurrency:
-  group: ui-checkstyle-${{ github.head_ref }}
+  group: ui-checkstyle-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
+
+env:
+  UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
+
 jobs:
-  ui-checkstyle:
+  playwright-lint:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
+    if: ${{ !github.event.pull_request.draft }}
     steps:
-      - name: Render msg
-        run: echo "No checkstyle to run"
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+      - name: Caching NPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-node-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-yarn-
+
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+
+      - name: Install Yarn Packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install --frozen-lockfile
+
+      - name: Playwright ESLint Check
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn lint:playwright

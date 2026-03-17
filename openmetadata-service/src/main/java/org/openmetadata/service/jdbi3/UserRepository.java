@@ -29,7 +29,6 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
-import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -241,17 +240,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona");
+  }
+
+  @Override
   public void storeEntity(User user, boolean update) {
-    List<EntityReference> roles = user.getRoles();
-    List<EntityReference> teams = user.getTeams();
-    EntityReference defaultPersona = user.getDefaultPersona();
-
-    user.withRoles(null)
-        .withTeams(null)
-        .withInheritedRoles(null)
-        .withInheritedPersonas(null)
-        .withDefaultPersona(null);
-
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
       secretsManager.encryptAuthenticationMechanism(
@@ -259,39 +253,25 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     store(user, update);
-
-    user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
   }
 
   @Override
   public void storeEntities(List<User> entities) {
-    List<User> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(entities.size());
+    List<String> jsons = new ArrayList<>(entities.size());
 
     for (User user : entities) {
-      List<EntityReference> roles = user.getRoles();
-      List<EntityReference> teams = user.getTeams();
-      EntityReference defaultPersona = user.getDefaultPersona();
-
-      user.withRoles(null)
-          .withTeams(null)
-          .withInheritedRoles(null)
-          .withInheritedPersonas(null)
-          .withDefaultPersona(null);
-
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
         secretsManager.encryptAuthenticationMechanism(
             user.getName(), user.getAuthenticationMechanism());
       }
 
-      String jsonCopy = gson.toJson(user);
-      entitiesToStore.add(gson.fromJson(jsonCopy, User.class));
-
-      user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
+      fqns.add(user.getFullyQualifiedName());
+      jsons.add(serializeForStorage(user));
     }
 
-    storeMany(entitiesToStore);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -1337,30 +1317,83 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
-      recordChange(
+      compareAndUpdate(
           "lastLoginTime",
-          original.getLastLoginTime(),
-          updated.getLastLoginTime(),
-          false,
-          objectMatch,
-          false);
+          () -> {
+            recordChange(
+                "lastLoginTime",
+                original.getLastLoginTime(),
+                updated.getLastLoginTime(),
+                false,
+                objectMatch,
+                false);
+          });
 
-      // Updates
-      updateRoles(original, updated);
-      updateTeams(original, updated);
-      updatePersonas(original, updated);
-      updateDefaultPersona(original, updated);
-      recordChange("profile", original.getProfile(), updated.getProfile(), true);
-      recordChange("timezone", original.getTimezone(), updated.getTimezone());
-      recordChange("isBot", original.getIsBot(), updated.getIsBot());
-      recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
-      recordChange("isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
-      recordChange(
-          "allowImpersonation", original.getAllowImpersonation(), updated.getAllowImpersonation());
-      updatePersonaPreferences(original, updated);
-      updateAuthenticationMechanism(original, updated);
-      // Invalidate policy cache for this user when roles/teams change
-      SubjectCache.invalidateUser(updated.getName());
+      compareAndUpdate(
+          "roles",
+          () -> {
+            updateRoles(original, updated);
+          });
+      compareAndUpdate(
+          "teams",
+          () -> {
+            updateTeams(original, updated);
+          });
+      compareAndUpdate(
+          "personas",
+          () -> {
+            updatePersonas(original, updated);
+          });
+      compareAndUpdate(
+          "defaultPersona",
+          () -> {
+            updateDefaultPersona(original, updated);
+          });
+      compareAndUpdate(
+          "profile",
+          () -> {
+            recordChange("profile", original.getProfile(), updated.getProfile(), true);
+          });
+      compareAndUpdate(
+          "timezone",
+          () -> {
+            recordChange("timezone", original.getTimezone(), updated.getTimezone());
+          });
+      compareAndUpdate(
+          "isBot",
+          () -> {
+            recordChange("isBot", original.getIsBot(), updated.getIsBot());
+          });
+      compareAndUpdate(
+          "isAdmin",
+          () -> {
+            recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
+          });
+      compareAndUpdate(
+          "isEmailVerified",
+          () -> {
+            recordChange(
+                "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
+          });
+      compareAndUpdate(
+          "allowImpersonation",
+          () -> {
+            recordChange(
+                "allowImpersonation",
+                original.getAllowImpersonation(),
+                updated.getAllowImpersonation());
+          });
+      compareAndUpdate(
+          "personaPreferences",
+          () -> {
+            updatePersonaPreferences(original, updated);
+          });
+      compareAndUpdate(
+          "authenticationMechanism",
+          () -> {
+            updateAuthenticationMechanism(original, updated);
+          });
+      compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
     }
 
     private void updateRoles(User original, User updated) {

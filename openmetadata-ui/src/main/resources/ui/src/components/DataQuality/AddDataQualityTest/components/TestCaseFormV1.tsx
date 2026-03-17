@@ -33,7 +33,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, isEqual, isString, snakeCase } from 'lodash';
+import { isEmpty, isEqual, isString, isUndefined, snakeCase } from 'lodash';
 import {
   FC,
   FocusEvent,
@@ -60,6 +60,7 @@ import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/Airf
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType as EntityTypeEnum } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
@@ -81,6 +82,7 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
+import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
   addIngestionPipeline,
@@ -111,7 +113,10 @@ import {
 } from '../../../../utils/formUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
-import { generateUUID } from '../../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  generateUUID,
+} from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
@@ -1386,6 +1391,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                           ]}
                           valuePropName="selectedTest">
                           <AddTestCaseList
+                            columnFilters={
+                              table?.fullyQualifiedName
+                                ? `fullyQualifiedName:"${escapeESReservedCharacters(
+                                    table.fullyQualifiedName
+                                  )}"`
+                                : undefined
+                            }
+                            hideTableFilter={Boolean(table)}
                             showButton={false}
                             testCaseParams={{
                               testSuiteId:
@@ -1478,7 +1491,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         <div className="drawer-doc-panel service-doc-panel markdown-parser">
           <ServiceDocPanel
             activeField={activeField}
-            selectedEntity={selectedTableData}
+            selectedEntity={
+              isUndefined(selectedTableData)
+                ? undefined
+                : ({
+                    ...selectedTableData,
+                    entityType: EntityTypeEnum.TABLE,
+                  } as TableSearchSource)
+            }
             serviceName={TEST_CASE_FORM}
             serviceType={OPEN_METADATA as ServiceCategory}
           />

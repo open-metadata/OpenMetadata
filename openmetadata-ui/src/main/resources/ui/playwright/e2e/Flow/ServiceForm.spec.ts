@@ -59,6 +59,12 @@ test.describe(
       await afterAction();
     });
 
+    test.afterAll('Cleanup admin user', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await adminUser.delete(apiContext);
+      await afterAction();
+    });
+
     test.describe('Superset', () => {
       // Create the Certificate file for upload
       const testCertPath = path.join(__dirname, '..', 'output', CERT_FILE);
@@ -121,12 +127,11 @@ test.describe(
 
         await endTestConnection1;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
 
         // Fill superset form details - 2
         await fillSupersetFormDetails({ page, ...supersetFormDetails2 });
@@ -161,12 +166,11 @@ test.describe(
 
         await endTestConnection2;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
 
         // Fill superset form details - 3
         await fillSupersetFormDetails({ page, ...supersetFormDetails3 });
@@ -207,12 +211,11 @@ test.describe(
 
         await endTestConnection3;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
 
         // Fill superset form details - 4
         await fillSupersetFormDetails({ page, ...supersetFormDetails4 });
@@ -264,7 +267,7 @@ test.describe(
         await fileInput1.setInputFiles(testCertPath);
 
         // Wait for file upload to complete
-        await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
           state: 'visible',
         });
 
@@ -274,7 +277,7 @@ test.describe(
           .click();
 
         // Wait for file removal to complete
-        await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
           state: 'hidden',
         });
 
@@ -289,7 +292,7 @@ test.describe(
         await fileInput2.setInputFiles(testCertPath);
 
         // Wait for file upload to complete
-        await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
           state: 'visible',
         });
 
@@ -318,12 +321,11 @@ test.describe(
 
         await endTestConnection1;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
       });
     });
 
@@ -332,7 +334,6 @@ test.describe(
         test.slow();
 
         await page.goto('/databaseServices/add-service');
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId('BigQuery').click();
@@ -350,16 +351,13 @@ test.describe(
         await page.getByTestId('next-button').click();
         await page.getByTestId('submit-btn').click();
         await page.getByTestId('submit-btn').click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('entity-header-title')).toBeVisible();
 
         await page.getByRole('link', { name: 'Database Services' }).click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('add-service-button').click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('Databricks').click();
         await page.getByTestId('next-button').click();
@@ -368,19 +366,16 @@ test.describe(
         await page
           .getByTestId('service-name')
           .fill(`${SERVICE_NAMES.service1}`);
-        await page.waitForLoadState('networkidle');
 
         await expect(page.locator('#name_help')).toContainText(
           'Name already exists.'
         );
 
         await page.getByRole('link', { name: 'Database Services' }).click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
         await page
           .getByTestId(`service-name-${SERVICE_NAMES.service1}`)
           .click();
-        await page.waitForLoadState('networkidle');
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button-title').click();
         await page.getByTestId('confirmation-text-input').fill('DELETE');
@@ -404,7 +399,6 @@ test.describe(
         page,
       }) => {
         await page.goto('/dashboardServices/add-service');
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId('Looker').click();
@@ -431,7 +425,7 @@ test.describe(
           .click();
         await page.click(`.ant-select-dropdown:visible [title="Local Path"]`);
 
-        await page.waitForSelector('#root\\/gitCredentials', {
+        await page.locator('#root\\/gitCredentials').waitFor({
           state: 'visible',
         });
 

@@ -145,7 +145,7 @@ test.describe('Service form', () => {
     await page.click('[data-testid="Mysql"]');
     await page.click('[data-testid="next-button"]');
 
-    await page.waitForSelector('[data-testid="service-name"]');
+    await page.getByTestId('service-name').waitFor();
     await page.click('[data-testid="next-button"]');
 
     await expect(page.locator('#name_help')).toBeVisible();
@@ -356,7 +356,7 @@ test.describe.serial(
           false,
           false
         );
-        await page.waitForSelector('[data-testid="data-assets-header"]');
+        await page.getByTestId('data-assets-header').waitFor();
         await page.getByTestId('agents').click();
 
         const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');

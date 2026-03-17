@@ -15,6 +15,7 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   changeTermHierarchyFromModal,
   dragAndDropTerm,
@@ -144,7 +145,6 @@ test.describe('Glossary Hierarchy', () => {
 
       // Navigate to parent term
       await page.getByTestId(parentTerm.responseData.displayName).click();
-      await page.waitForLoadState('networkidle');
 
       // Move parent term (with child) to glossary2
       await changeTermHierarchyFromModal(
@@ -152,6 +152,7 @@ test.describe('Glossary Hierarchy', () => {
         glossary2ChildTerm.responseData.displayName,
         glossary2.responseData.fullyQualifiedName
       );
+      await waitForAllLoadersToDisappear(page);
 
       // Verify parent and child are now in glossary2
       await redirectToHomePage(page);
@@ -205,11 +206,13 @@ test.describe('Glossary Hierarchy', () => {
       await expect(
         page.locator('[role="dialog"].change-parent-hierarchy-modal')
       ).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Verify term is still in original location
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId(term.responseData.displayName)
@@ -262,7 +265,6 @@ test.describe('Glossary Hierarchy', () => {
 
       // Navigate to deepest term
       await page.getByTestId(terms[DEPTH - 1].responseData.displayName).click();
-      await page.waitForLoadState('networkidle');
 
       // Verify deepest term details are visible
       await expect(

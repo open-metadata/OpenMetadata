@@ -566,6 +566,11 @@ class LookerSource(DashboardServiceSource):
                     columns=get_columns_from_model(view),
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     project=first_project,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/projects/{first_project}/files/{view.source_file}"
+                    )
+                    if view.source_file and first_project
+                    else None,
                 )
 
                 yield Either(right=data_model_request)
@@ -669,6 +674,9 @@ class LookerSource(DashboardServiceSource):
                     sql=self._get_explore_sql(model),
                     # In Looker, you need to create Explores and Views within a Project
                     project=model.project_name,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/explore/{model.model_name}/{model.name}"
+                    ),
                 )
                 yield Either(right=explore_datamodel)
                 self.register_record_datamodel(datamodel_request=explore_datamodel)
@@ -818,6 +826,11 @@ class LookerSource(DashboardServiceSource):
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     # In Looker, you need to create Explores and Views within a Project
                     project=explore.project_name,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/projects/{explore.project_name}/files/{view.source_file}"
+                    )
+                    if view.source_file and explore.project_name
+                    else None,
                 )
                 yield Either(right=data_model_request)
                 self._view_data_model = self._build_data_model(datamodel_view_name)

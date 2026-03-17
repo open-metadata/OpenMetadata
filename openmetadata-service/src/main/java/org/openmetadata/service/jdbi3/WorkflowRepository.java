@@ -2,12 +2,10 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.WORKFLOW;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.automations.Workflow;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.automations.WorkflowResource;
@@ -50,44 +48,36 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("openMetadataServerConnection");
+  }
+
+  @Override
   public void storeEntity(Workflow entity, boolean update) {
-    OpenMetadataConnection openmetadataConnection = entity.getOpenMetadataServerConnection();
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
       entity = secretsManager.encryptWorkflow(entity);
     }
 
-    // Don't store owners, database, href and tags as JSON. Build it on the fly based on
-    // relationships
-    entity.withOpenMetadataServerConnection(null);
     store(entity, update);
-
-    // Restore the relationships
-    entity.withOpenMetadataServerConnection(openmetadataConnection);
   }
 
   public void storeEntities(List<Workflow> workflows) {
-    List<Workflow> workflowsToStore = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(workflows.size());
+    List<String> jsons = new ArrayList<>(workflows.size());
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     for (Workflow workflow : workflows) {
-      OpenMetadataConnection openmetadataConnection = workflow.getOpenMetadataServerConnection();
-
       if (secretsManager != null) {
         workflow = secretsManager.encryptWorkflow(workflow);
       }
 
-      workflow.withOpenMetadataServerConnection(null);
-
-      String jsonCopy = gson.toJson(workflow);
-      workflowsToStore.add(gson.fromJson(jsonCopy, Workflow.class));
-
-      workflow.withOpenMetadataServerConnection(openmetadataConnection);
+      fqns.add(workflow.getFullyQualifiedName());
+      jsons.add(serializeForStorage(workflow));
     }
 
-    storeMany(workflowsToStore);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   /** Remove the secrets from the secret manager */
@@ -116,8 +106,16 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("status", original.getStatus(), updated.getStatus());
-      recordChange("response", original.getResponse(), updated.getResponse(), true);
+      compareAndUpdate(
+          "status",
+          () -> {
+            recordChange("status", original.getStatus(), updated.getStatus());
+          });
+      compareAndUpdate(
+          "response",
+          () -> {
+            recordChange("response", original.getResponse(), updated.getResponse(), true);
+          });
     }
   }
 }

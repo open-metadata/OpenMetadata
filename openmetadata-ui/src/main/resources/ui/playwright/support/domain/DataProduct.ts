@@ -100,6 +100,14 @@ export class DataProduct extends EntityClass {
     const response = await apiContext.post('/api/v1/dataProducts', {
       data: this.data,
     });
+
+    if (!response.ok()) {
+      const text = await response.text();
+      throw new Error(
+        `DataProduct.create() failed with status ${response.status()}: ${text}`
+      );
+    }
+
     const data = await response.json();
     this.responseData = data;
 

@@ -69,6 +69,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.JsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.ErrorCause;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.SearchType;
@@ -329,7 +330,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw buildSearchException(e);
       }
     }
   }
@@ -528,7 +529,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw buildSearchException(e);
       }
     }
   }
@@ -1213,7 +1214,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         throw new SearchIndexNotFoundException(
             String.format("Failed to find index %s", request.getIndex()));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw buildSearchException(e);
       }
     }
   }
@@ -1348,6 +1349,19 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     requestBuilder.sort("fullyQualifiedName", SortOrder.Asc, "keyword");
 
     return requestBuilder;
+  }
+
+  private static SearchException buildSearchException(OpenSearchException e) {
+    String detail = e.getMessage();
+    ErrorCause error = e.error();
+    if (error != null && error.rootCause() != null && !error.rootCause().isEmpty()) {
+      String rootCauses =
+          error.rootCause().stream()
+              .map(c -> c.type() + ": " + c.reason())
+              .collect(Collectors.joining("; "));
+      detail = String.format("%s | Root cause: [%s]", detail, rootCauses);
+    }
+    return new SearchException(String.format("Search failed due to %s", detail));
   }
 
   private List<?> buildSearchHierarchy(

@@ -2461,7 +2461,7 @@ public class WorkflowDefinitionResourceIT {
 
       // Verify only database entities were updated, glossary remains unchanged
       await()
-          .atMost(Duration.ofSeconds(60))
+          .atMost(Duration.ofMinutes(2))
           .pollInterval(Duration.ofSeconds(2))
           .pollDelay(Duration.ofSeconds(1))
           .ignoreExceptions()

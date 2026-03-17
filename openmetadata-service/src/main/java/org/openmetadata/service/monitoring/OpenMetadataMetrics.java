@@ -1,7 +1,6 @@
 package org.openmetadata.service.monitoring;
 
 import static org.openmetadata.service.monitoring.MetricUtils.LATENCY_SLA_BUCKETS;
-import static org.openmetadata.service.monitoring.MetricUtils.normalizeUri;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -12,55 +11,31 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Central metrics class for OpenMetadata using Micrometer API.
- * This class provides a unified interface for recording various metrics
- * throughout the application.
- */
 @Slf4j
 @Singleton
 public class OpenMetadataMetrics {
   private final MeterRegistry meterRegistry;
 
-  // HTTP Metrics
-  private final Timer httpRequestTimer;
-  private final Counter httpRequestCounter;
   private final DistributionSummary httpResponseSize;
 
-  // Database Metrics
   private final Timer jdbiQueryTimer;
   private final Counter jdbiConnectionCounter;
   private final Counter jdbiErrorCounter;
 
-  // Business Metrics
   private final Counter entityCreatedCounter;
   private final Counter entityUpdatedCounter;
   private final Counter entityDeletedCounter;
   private final Counter searchQueryCounter;
 
-  // Pipeline Metrics
   private final Counter pipelineStatusCounter;
   private final Timer pipelineExecutionTimer;
 
-  // Authentication Metrics
   private final Counter authenticationAttempts;
   private final Counter authenticationFailures;
 
   @Inject
   public OpenMetadataMetrics(MeterRegistry meterRegistry) {
     this.meterRegistry = meterRegistry;
-
-    // Initialize HTTP metrics
-    this.httpRequestTimer =
-        Timer.builder("http.server.requests")
-            .description("HTTP server request duration")
-            .sla(LATENCY_SLA_BUCKETS)
-            .register(meterRegistry);
-
-    this.httpRequestCounter =
-        Counter.builder("http.server.requests.total")
-            .description("Total number of HTTP requests")
-            .register(meterRegistry);
 
     this.httpResponseSize =
         DistributionSummary.builder("http.server.response.size")
@@ -69,7 +44,6 @@ public class OpenMetadataMetrics {
             .serviceLevelObjectives(1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216)
             .register(meterRegistry);
 
-    // Initialize Database metrics
     this.jdbiQueryTimer =
         Timer.builder("db.query.duration")
             .description("Database query duration")
@@ -86,7 +60,6 @@ public class OpenMetadataMetrics {
             .description("Total database errors")
             .register(meterRegistry);
 
-    // Initialize Business metrics
     this.entityCreatedCounter =
         Counter.builder("entity.operations")
             .description("Number of entity operations")
@@ -110,7 +83,6 @@ public class OpenMetadataMetrics {
             .description("Total number of search queries")
             .register(meterRegistry);
 
-    // Initialize Pipeline metrics
     this.pipelineStatusCounter =
         Counter.builder("pipeline.status")
             .description("Pipeline execution status")
@@ -122,7 +94,6 @@ public class OpenMetadataMetrics {
             .sla(LATENCY_SLA_BUCKETS)
             .register(meterRegistry);
 
-    // Initialize Authentication metrics
     this.authenticationAttempts =
         Counter.builder("auth.attempts.total")
             .description("Total authentication attempts")
@@ -132,35 +103,6 @@ public class OpenMetadataMetrics {
         Counter.builder("auth.failures.total")
             .description("Total authentication failures")
             .register(meterRegistry);
-  }
-
-  // HTTP metric recording methods
-  public Timer.Sample startHttpRequestTimer() {
-    return Timer.start(meterRegistry);
-  }
-
-  public void recordHttpRequest(Timer.Sample sample, String method, String uri, int status) {
-    sample.stop(
-        Timer.builder("http.server.requests")
-            .tag("method", method)
-            .tag("uri", normalizeUri(uri))
-            .tag("status", String.valueOf(status))
-            .tag("status.class", getStatusClass(status))
-            .register(meterRegistry));
-
-    httpRequestCounter.increment();
-  }
-
-  public void recordHttpRequest(String method, String uri, int status, long durationMs) {
-    Timer.builder("http.server.requests")
-        .tag("method", method)
-        .tag("uri", normalizeUri(uri))
-        .tag("status", String.valueOf(status))
-        .tag("status.class", getStatusClass(status))
-        .register(meterRegistry)
-        .record(Duration.ofMillis(durationMs));
-
-    httpRequestCounter.increment();
   }
 
   public void recordHttpResponseSize(long sizeBytes) {
@@ -261,15 +203,6 @@ public class OpenMetadataMetrics {
     io.micrometer.core.instrument.Gauge.builder(name, () -> supplier.get().doubleValue())
         .description(description)
         .register(meterRegistry);
-  }
-
-  private String getStatusClass(int status) {
-    if (status >= 100 && status < 200) return "1xx";
-    if (status >= 200 && status < 300) return "2xx";
-    if (status >= 300 && status < 400) return "3xx";
-    if (status >= 400 && status < 500) return "4xx";
-    if (status >= 500 && status < 600) return "5xx";
-    return "unknown";
   }
 
   public MeterRegistry getMeterRegistry() {

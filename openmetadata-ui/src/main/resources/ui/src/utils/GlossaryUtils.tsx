@@ -476,13 +476,17 @@ export const permissionForApproveOrReject = (
   const taskThread = termTaskThreads[entityLink]?.find(
     (thread) => thread.about === entityLink
   );
+  const currentUserId = currentUser?.id;
 
   const isReviewer = record.reviewers?.some(
-    (reviewer) => reviewer.id === currentUser?.id
+    (reviewer) => reviewer.id === currentUserId
+  );
+  const isTaskAssignee = taskThread?.task?.assignees?.some(
+    (assignee) => assignee.id === currentUserId
   );
 
   return {
-    permission: taskThread && isReviewer,
+    permission: Boolean(taskThread && (isTaskAssignee || isReviewer)),
     taskId: taskThread?.task?.id ?? '',
   };
 };

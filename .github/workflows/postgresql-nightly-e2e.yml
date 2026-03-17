@@ -88,15 +88,21 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled
 
+          elif [ "${{ matrix.shardIndex }}" -eq "6" ]; then
+            echo "🔹 Running stateful Playwright tests serially on shard 6"
+            npx playwright test \
+              --project=stateful \
+              --workers=1
 
           else
-            # Shards 2-6 handle chromium tests (5 workers total)
+            # Shards 2-5 handle chromium tests (4 shards total)
             CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
-            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
+            echo "🔹 Running all tests (excluding DataAssetRules/stateful) on chromium shard ${CHROMIUM_SHARD}/4"
             npx playwright test \
               --project=chromium \
               --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/5
+              --shard=${CHROMIUM_SHARD}/4 \
+              --workers=50%
           fi
 
         env:

@@ -42,6 +42,13 @@ public class SchemaFieldExtractor {
   private static final Map<String, Map<String, FieldDefinition>> entityFieldsCache =
       new ConcurrentHashMap<>();
 
+  /**
+   * Entity types intentionally excluded from schema field extraction cache initialization. These
+   * entities are not currently supported by the custom-property schema extractor flow.
+   */
+  private static final Set<String> EXCLUDED_ENTITY_TYPES =
+      Set.of("promptTemplate", "agentExecution", "aiApplication", "learningResource");
+
   public SchemaFieldExtractor() {
     initializeEntityFieldsCache();
   }
@@ -53,6 +60,13 @@ public class SchemaFieldExtractor {
       }
       List<String> entityTypes = getAllEntityTypes();
       for (String entityType : entityTypes) {
+        if (EXCLUDED_ENTITY_TYPES.contains(entityType)) {
+          // Keep an empty cache entry to avoid null-handling branches downstream.
+          entityFieldsCache.put(entityType, new LinkedHashMap<>());
+          LOG.debug(
+              "Skipping schema extraction cache initialization for entity type '{}'", entityType);
+          continue;
+        }
         try {
           String schemaPath = determineSchemaPath(entityType);
           String schemaUri = "classpath:///" + schemaPath;
@@ -82,7 +96,9 @@ public class SchemaFieldExtractor {
     SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
     Deque<Schema> processingStack = new ArrayDeque<>();
     Set<String> processedFields = new HashSet<>();
-    Map<String, FieldDefinition> fieldTypesMap = entityFieldsCache.get(entityType);
+    Map<String, FieldDefinition> fieldTypesMap =
+        new LinkedHashMap<>(
+            entityFieldsCache.computeIfAbsent(entityType, ignored -> new LinkedHashMap<>()));
     addCustomProperties(
         typeEntity, schemaUri, schemaClient, fieldTypesMap, processingStack, processedFields);
     return convertMapToFieldList(fieldTypesMap);
@@ -97,7 +113,9 @@ public class SchemaFieldExtractor {
       SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
       EntityUtil.Fields fieldsParam = new EntityUtil.Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, Include.ALL, false);
-      Map<String, FieldDefinition> fieldTypesMap = new LinkedHashMap<>();
+      Map<String, FieldDefinition> fieldTypesMap =
+          new LinkedHashMap<>(
+              entityFieldsCache.computeIfAbsent(entityType, ignored -> new LinkedHashMap<>()));
       Set<String> processedFields = new HashSet<>();
       Deque<Schema> processingStack = new ArrayDeque<>();
       addCustomProperties(
@@ -607,6 +625,8 @@ public class SchemaFieldExtractor {
             Map.entry("notificationTemplate", "events"),
             Map.entry("tag", "classification"),
             Map.entry("classification", "classification"),
+            Map.entry("llmModel", "ai"),
+            Map.entry("aiGovernancePolicy", "ai"),
             Map.entry("page", "data"),
             Map.entry("tableColumn", "column"),
             Map.entry("dashboardDataModelColumn", "column"));

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { getRandomLastName } from '../../utils/common';
 import { visitClassificationPage } from '../../utils/tag';
 
@@ -74,14 +74,45 @@ export class TagClass {
   }
 
   async visitPage(page: Page) {
-    await visitClassificationPage(
-      page,
-      this.responseData.classification.name,
-      this.responseData.classification.displayName
-    );
-    await page.getByTestId(this.data.name).waitFor({ state: 'visible' });
-    await page.getByTestId(this.data.name).click();
-    await page.waitForLoadState('networkidle');
+    const openClassificationPage = async () => {
+      await visitClassificationPage(
+        page,
+        this.responseData.classification.name,
+        this.responseData.classification.displayName
+      );
+    };
+
+    await openClassificationPage();
+
+    await expect
+      .poll(
+        async () => {
+          const tagRow = page.getByTestId(this.data.name);
+          const visible = await tagRow.isVisible().catch(() => false);
+
+          if (visible) {
+            return true;
+          }
+
+          await openClassificationPage();
+
+          return false;
+        },
+        {
+          timeout: 120000,
+          intervals: [1000, 2000, 5000],
+          message: `Timed out waiting for tag ${this.data.name} to become visible`,
+        }
+      )
+      .toBe(true);
+
+    const tagLink = page.getByTestId(this.data.name);
+    const href = await tagLink.getAttribute('href');
+    if (href) {
+      await page.goto(href);
+    } else {
+      await tagLink.click();
+    }
   }
 
   async create(apiContext: APIRequestContext) {
