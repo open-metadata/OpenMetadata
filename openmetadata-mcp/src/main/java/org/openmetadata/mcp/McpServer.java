@@ -2,7 +2,7 @@ package org.openmetadata.mcp;
 
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
-import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
@@ -95,7 +95,7 @@ public class McpServer implements McpServerProvider {
 
     McpStatelessSyncServer server =
         io.modelcontextprotocol.server.McpServer.sync(statelessTransport)
-            .serverInfo("openmetadata-mcp-stateless", "0.17.1")
+            .serverInfo("openmetadata-mcp-stateless", "1.1.0")
             .capabilities(serverCapabilities)
             .build();
     addToolsToServer(server, tools);
