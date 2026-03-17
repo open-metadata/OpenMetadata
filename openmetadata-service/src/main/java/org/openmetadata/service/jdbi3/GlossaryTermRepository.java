@@ -719,7 +719,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .collect(Collectors.toList());
       }
     } catch (Exception e) {
-      // Settings not available, use defaults
+      LOG.warn("Failed to load glossary term relation settings, using defaults", e);
     }
     return DEFAULT_RELATION_TYPES;
   }
@@ -964,7 +964,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return;
     }
 
+    Set<String> edgesSeen = new HashSet<>();
     for (TermRelation relation : term.getRelatedTerms()) {
+      if (relation.getTerm() == null || relation.getTerm().getId() == null) {
+        continue;
+      }
       if (relationTypes != null && !relationTypes.isEmpty()) {
         if (!relationTypes.contains(relation.getRelationType())) {
           continue;
@@ -972,11 +976,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       UUID relatedTermId = relation.getTerm().getId();
+
+      String edgeKey = term.getId() + ":" + relatedTermId + ":" + relation.getRelationType();
+      if (edgesSeen.add(edgeKey)) {
+        Map<String, Object> edge = new HashMap<>();
+        edge.put("from", term.getId().toString());
+        edge.put("to", relatedTermId.toString());
+        edge.put("relationType", relation.getRelationType());
+        edges.add(edge);
+      }
+
       if (!visited.contains(relatedTermId)) {
         visited.add(relatedTermId);
 
         Map<String, Object> node = new HashMap<>();
-        node.put("id", relation.getTerm().getId().toString());
+        node.put("id", relatedTermId.toString());
         node.put("name", relation.getTerm().getName());
         node.put("fullyQualifiedName", relation.getTerm().getFullyQualifiedName());
         node.put("displayName", relation.getTerm().getDisplayName());
@@ -990,12 +1004,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           }
         }
       }
-
-      Map<String, Object> edge = new HashMap<>();
-      edge.put("from", term.getId().toString());
-      edge.put("to", relation.getTerm().getId().toString());
-      edge.put("relationType", relation.getRelationType());
-      edges.add(edge);
     }
   }
 
