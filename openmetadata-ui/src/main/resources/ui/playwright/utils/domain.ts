@@ -1376,11 +1376,15 @@ export const verifyDataProductsCount = async (
     await expect
       .poll(
         async () => {
-          const response = await apiContext
-            .get(searchUrl)
-            .then((res) => res.json());
+          const response = await apiContext.get(searchUrl);
 
-          return response.hits?.total?.value ?? 0;
+          if (!response.ok()) {
+            return -1;
+          }
+
+          const data = await response.json();
+
+          return data.hits?.total?.value ?? 0;
         },
         {
           message: `Wait for data product search index to show ${expectedCount} results for domain "${domainFqn}"`,
