@@ -130,9 +130,9 @@ jobs:
   # Single required-check gate for branch protection.
   # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
   # Runs and exits 1 only when a test job fails or is cancelled.
-  # Set "py-tests-postgres / py-tests-postgres-status" as the sole required check for this workflow.
-  py-tests-postgres-status:
-    name: py-tests-postgres-status
+  # Set "py-tests-postgres / py-tests-status" as the sole required check for this workflow.
+  py-tests-status:
+    name: py-tests-status
     needs: [changes, py-integration-tests]
     if: ${{ failure() || cancelled() }}
     runs-on: ubuntu-latest
