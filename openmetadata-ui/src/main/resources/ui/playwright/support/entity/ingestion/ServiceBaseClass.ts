@@ -18,6 +18,7 @@ import {
   PlaywrightWorkerArgs,
   TestType,
 } from '@playwright/test';
+import { startCase } from 'lodash';
 import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
   descriptionBox,
@@ -260,7 +261,6 @@ class ServiceBaseClass {
 
     await triggerPipeline;
 
-
     // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
     await page.waitForTimeout(2000);
 
@@ -418,7 +418,11 @@ class ServiceBaseClass {
     if (await metadataTab2.isVisible()) {
       await metadataTab2.click();
     }
-    await page.locator(`td:has-text("${ingestionType}")`).waitFor();
+    await expect(
+      page
+        .locator(`[data-row-key*="${workflowData.name}"]`)
+        .getByTestId('pipeline-type')
+    ).toContainText(startCase(ingestionType), { ignoreCase: true });
 
     await expect(
       page
