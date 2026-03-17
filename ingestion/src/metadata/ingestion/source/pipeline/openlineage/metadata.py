@@ -759,7 +759,7 @@ class OpenlineageSource(PipelineServiceSource):
                     )
                     edges.append(edge)
 
-        if inputs and outputs:
+        if inputs and outputs and input_edges and output_edges:
             event_entity_map = {
                 str(node.uuid): node.node_type
                 for node in input_edges + output_edges
