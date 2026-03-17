@@ -13,7 +13,6 @@
 import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
-import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -57,94 +56,10 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
-const PLAYWRIGHT_TEST_USER_PASSWORD = 'User@OMD123';
-
-const loginFromStoredIdentity = async (page: Page) => {
-  const userName = await page
-    .evaluate(() => window.localStorage.getItem('loggedInUsers'))
-    .catch(() => null);
-  const normalizedUserName = userName?.replace(/^"+|"+$/g, '').trim();
-
-  if (!normalizedUserName) {
-    return false;
-  }
-
-  const password =
-    normalizedUserName === DEFAULT_ADMIN_USER.userName
-      ? DEFAULT_ADMIN_USER.password
-      : PLAYWRIGHT_TEST_USER_PASSWORD;
-
-  const emailInput = page.locator('input[id="email"]');
-  await emailInput.waitFor({ state: 'visible' });
-  await emailInput.fill(normalizedUserName);
-  await page.locator('#email').press('Tab');
-  await page.fill('input[id="password"]', password);
-
-  const loginRes = page.waitForResponse('/api/v1/auth/login');
-  await page.getByTestId('login').click();
-  await loginRes;
-
-  const modal = page
-    .getByRole('dialog')
-    .locator('div')
-    .filter({ hasText: 'Getting Started' })
-    .nth(1);
-  if (await modal.isVisible().catch(() => false)) {
-    await page.getByRole('dialog').getByRole('img').first().click();
-  }
-
-  const leftNavBar = page.locator('[data-testid="left-sidebar"]');
-  const hasOpenClass = await leftNavBar
-    .evaluate((el) => el.classList.contains('sidebar-open'))
-    .catch(() => false);
-  if (hasOpenClass) {
-    await page.getByTestId('sidebar-toggle').click();
-  }
-
-  return true;
-};
-
-const waitForHomeOrSignin = async (page: Page) => {
-  try {
-    return await Promise.race([
-      page.waitForURL('**/my-data', { timeout: 30000 }).then(() => 'my-data'),
-      page.waitForURL('**/signin', { timeout: 30000 }).then(() => 'signin'),
-    ]);
-  } catch {
-    if (page.url().includes('/my-data')) {
-      return 'my-data';
-    }
-    if (page.url().includes('/signin')) {
-      return 'signin';
-    }
-
-    throw new Error(`Timed out navigating home. Current URL: ${page.url()}`);
-  }
-};
-
-export const redirectToHomePage = async (
-  page: Page,
-  _waitForLoaders = true
-) => {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    await page.goto('/');
-    const destination = await waitForHomeOrSignin(page);
-
-    if (destination === 'my-data') {
-      if (_waitForLoaders) {
-        await waitForAllLoadersToDisappear(page);
-      }
-
-      return;
-    }
-
-    const relogged = await loginFromStoredIdentity(page);
-    if (!relogged) {
-      break;
-    }
-  }
-
+export const redirectToHomePage = async (page: Page, _waitForLoaders = true) => {
+  await page.goto('/');
   await page.waitForURL('**/my-data');
+
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
   }
@@ -498,9 +413,7 @@ export const assignDataProduct = async (
           response.url().includes('/api/v1/search/query') &&
           response.url().includes(encodeURIComponent(domain.name))
       );
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .clear();
+      await page.locator('[data-testid="data-product-selector"] input').clear();
       await page
         .locator('[data-testid="data-product-selector"] input')
         .fill(dataProduct.displayName);
@@ -607,7 +520,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
 };
 
 export const getRandomFirstName = () => {
-  const index = parseInt(crypto.randomUUID().slice(0, 8), 16) % adjectives.length;
+  const index =
+    parseInt(crypto.randomUUID().slice(0, 8), 16) % adjectives.length;
   return `${adjectives[index]}${uuid()}`;
 };
 export const getRandomLastName = () => {
