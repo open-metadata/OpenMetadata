@@ -216,13 +216,16 @@ jest.mock('../../../../pages/TasksPage/shared/TagSuggestion', () =>
 
 // Mock ServiceDocPanel component
 jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
-  jest
-    .fn()
-    .mockImplementation(({ activeField }) => (
-      <div data-testid="service-doc-panel">
-        ServiceDocPanel Component - Active Field: {activeField}
-      </div>
-    ))
+  jest.fn().mockImplementation(({ activeField, selectedEntity }) => (
+    <div data-testid="service-doc-panel">
+      ServiceDocPanel Component - Active Field: {activeField}
+      {selectedEntity && (
+        <div data-testid="service-doc-panel-entity-type">
+          {selectedEntity.entityType}
+        </div>
+      )}
+    </div>
+  ))
 );
 
 jest.mock('../../../common/AsyncSelect/AsyncSelect', () => ({
@@ -921,6 +924,81 @@ describe('TestCaseFormV1 Component', () => {
           screen.getByText(/Active Field: root\/name/)
         ).toBeInTheDocument();
       });
+    });
+
+    it('should pass selectedEntity with entityType field to ServiceDocPanel', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('service-doc-panel')).toBeInTheDocument();
+      });
+
+      const entityTypeElement = screen.getByTestId(
+        'service-doc-panel-entity-type'
+      );
+
+      expect(entityTypeElement).toBeInTheDocument();
+      expect(entityTypeElement).toHaveTextContent('table');
+    });
+
+    it('should preserve selectedTableData properties when passed to ServiceDocPanel', async () => {
+      const ServiceDocPanelMock = require('../../../common/ServiceDocPanel/ServiceDocPanel');
+
+      render(<TestCaseFormV1 {...mockProps} table={MOCK_TABLE} />);
+
+      await waitFor(
+        () => {
+          const calls = ServiceDocPanelMock.mock.calls;
+          const lastCall = calls[calls.length - 1];
+          if (lastCall && lastCall[0].selectedEntity) {
+            expect(lastCall[0].selectedEntity.name).toBeDefined();
+          }
+        },
+        { timeout: 5000 }
+      );
+
+      const callArgs =
+        ServiceDocPanelMock.mock.calls[
+          ServiceDocPanelMock.mock.calls.length - 1
+        ][0];
+      const { selectedEntity } = callArgs;
+
+      expect(selectedEntity).toBeDefined();
+      expect(selectedEntity.entityType).toBe('table');
+      expect(selectedEntity.name).toBe(MOCK_TABLE.name);
+      expect(selectedEntity.fullyQualifiedName).toBe(
+        MOCK_TABLE.fullyQualifiedName
+      );
+      expect(selectedEntity.columns).toEqual(MOCK_TABLE.columns);
+    });
+
+    it('should use EntityTypeEnum.TABLE enum value for entityType', async () => {
+      const {
+        EntityType: EntityTypeEnum,
+      } = require('../../../../enums/entity.enum');
+      const ServiceDocPanelMock = require('../../../common/ServiceDocPanel/ServiceDocPanel');
+
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      await waitFor(
+        () => {
+          const calls = ServiceDocPanelMock.mock.calls;
+          const lastCall = calls[calls.length - 1];
+          if (lastCall && lastCall[0].selectedEntity) {
+            expect(lastCall[0].selectedEntity.name).toBeDefined();
+          }
+        },
+        { timeout: 5000 }
+      );
+
+      const callArgs =
+        ServiceDocPanelMock.mock.calls[
+          ServiceDocPanelMock.mock.calls.length - 1
+        ][0];
+      const { selectedEntity } = callArgs;
+
+      expect(selectedEntity.entityType).toBe(EntityTypeEnum.TABLE);
+      expect(selectedEntity.entityType).toBe('table');
     });
   });
 
