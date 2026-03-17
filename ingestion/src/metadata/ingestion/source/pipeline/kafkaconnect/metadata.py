@@ -411,7 +411,8 @@ class KafkaconnectSource(PipelineServiceSource):
             if raw:
                 topics_to_process = [
                     KafkaConnectTopics(name=t.strip())
-                    for t in raw.split(",") if t.strip()
+                    for t in raw.split(",")
+                    if t.strip()
                 ]
         if (
             not topics_to_process
@@ -1264,7 +1265,7 @@ class KafkaconnectSource(PipelineServiceSource):
         For CDC sources: Match by parsing topic names (format: {server}.{schema}.{table})
         For sinks: Match by name equality (topic.name == dataset.table)
         """
-        
+
         # For JDBC/Generic Sink connectors: match by name equality
         if pipeline_details.conn_type == ConnectorType.SINK.value:
             if dataset_details.table:
