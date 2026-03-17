@@ -998,6 +998,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             authorizer,
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
             limits);
+
+    // Start the Quartz scheduler after all resources are initialized to avoid race conditions
+    // where stale triggers fire before entity repositories have seeded their data
+    try {
+      AppScheduler.getInstance().start();
+    } catch (SchedulerException e) {
+      LOG.error("Failed to start AppScheduler", e);
+    }
+
     environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
     environment.jersey().register(new DiagnosticsResource(authorizer));
     environment.jersey().register(new JsonPatchProvider());
