@@ -26,7 +26,6 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
   getApiContext,
@@ -38,7 +37,6 @@ import {
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import {
@@ -53,14 +51,11 @@ import {
   executionOnOwnerTeam,
   getNewTeamDetails,
   hardDeleteTeam,
-  openTeamsPage,
   searchTeam,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
   verifyTeamListingAssetCount,
 } from '../../utils/team';
-
-base.describe.configure({ mode: 'serial' });
 
 const id = uuid();
 const dataConsumerUser = new UserClass();
@@ -116,12 +111,14 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  page: async ({ browser }, use) => {
+    const { page, afterAction } = await performAdminLogin(browser);
+    await use(page);
+    await afterAction();
+  },
 });
 
 test.describe('Teams Page', () => {
-  // use the admin user to login
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -317,7 +314,9 @@ test.describe('Teams Page', () => {
     await test.step('Soft Delete Team', async () => {
       await softDeleteTeam(page);
 
-      await page.goto('/settings/members/teams', { waitUntil: 'domcontentloaded' });
+      await page.goto('/settings/members/teams', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page).toHaveURL(/\/settings\/members\/teams/);
       await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
@@ -325,7 +324,9 @@ test.describe('Teams Page', () => {
       await expect
         .poll(
           async () =>
-            page.getByRole('cell', { name: teamDetails?.displayName ?? '' }).count(),
+            page
+              .getByRole('cell', { name: teamDetails?.displayName ?? '' })
+              .count(),
           { timeout: 60000, intervals: [500, 1000, 2000] }
         )
         .toBe(0);
@@ -395,7 +396,9 @@ test.describe('Teams Page', () => {
       await privateTeam.create(apiContext);
       const privateTeamFqn =
         privateTeam.responseData.fullyQualifiedName ??
-        `Organization.${privateTeam.responseData.name ?? privateTeam.data.name}`;
+        `Organization.${
+          privateTeam.responseData.name ?? privateTeam.data.name
+        }`;
       const createdTeamResponse = await apiContext.get(
         `/api/v1/teams/name/${encodeURIComponent(privateTeamFqn)}?include=all`
       );
@@ -407,7 +410,9 @@ test.describe('Teams Page', () => {
 
       await page.getByTestId('edit-teams-button').click();
 
-      await expect(page.getByTestId('profile-teams-edit-popover')).toBeVisible();
+      await expect(
+        page.getByTestId('profile-teams-edit-popover')
+      ).toBeVisible();
 
       await page
         .getByTestId('profile-teams-edit-popover')
@@ -519,7 +524,6 @@ test.describe('Teams Page', () => {
         .locator(`[data-row-key="${team.data.name}"]`)
         .getByRole('link')
         .click();
-
 
       await expect(page.getByTestId('team-heading')).toHaveText(
         team.data.displayName
@@ -788,7 +792,9 @@ test.describe('Teams Page', () => {
       }
 
       const url = new URL(candidate.url());
-      if (url.searchParams.get('parentTeam')?.toLowerCase() !== 'organization') {
+      if (
+        url.searchParams.get('parentTeam')?.toLowerCase() !== 'organization'
+      ) {
         return;
       }
 
@@ -806,7 +812,9 @@ test.describe('Teams Page', () => {
       await expect(deletedToggle).toBeVisible();
 
       const initialTeams = await apiContext
-        .get('/api/v1/teams?parentTeam=Organization&include=non-deleted&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains')
+        .get(
+          '/api/v1/teams?parentTeam=Organization&include=non-deleted&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains'
+        )
         .then((response) => response.json());
 
       expect(
@@ -830,7 +838,9 @@ test.describe('Teams Page', () => {
         .poll(() => recordedIncludes.has('deleted'), { timeout: 30000 })
         .toBe(true);
       const deletedTeams = await apiContext
-        .get('/api/v1/teams?parentTeam=Organization&include=deleted&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains')
+        .get(
+          '/api/v1/teams?parentTeam=Organization&include=deleted&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains'
+        )
         .then((response) => response.json());
 
       expect(
