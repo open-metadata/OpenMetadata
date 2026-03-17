@@ -57,6 +57,8 @@ export type ListTestSuitePramsBySearch = ListTestSuitePrams & {
 
 export type ListTestCaseParams = ListParams & {
   entityLink?: string;
+  entityFQN?: string;
+  columnName?: string;
   testSuiteId?: string;
   includeAllTests?: boolean;
   testCaseStatus?: TestCaseStatus;
@@ -410,6 +412,7 @@ interface ListTestCasesParams {
   after?: string;
   entityFQN?: string;
   entityLink?: string;
+  columnName?: string;
   testSuiteId?: string;
   include?: Include;
   testCaseStatus?: TestCaseStatus;

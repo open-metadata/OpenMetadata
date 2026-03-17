@@ -52,7 +52,6 @@ export interface ColumnGridRowData {
   parentId?: string;
   gridItem?: ColumnGridItem;
   group?: ColumnMetadataGroup;
-  isEditing?: boolean;
   editedDisplayName?: string;
   editedDescription?: string;
   editedTags?: TagLabel[];
@@ -74,37 +73,4 @@ export interface ColumnGridRowData {
   nestingLevel?: number;
   // Specific occurrence for occurrence rows (links to correct table)
   occurrenceRef?: { columnFQN: string; entityType: string; entityFQN?: string };
-}
-
-export interface ColumnGridState {
-  rows: ColumnGridRowData[];
-  loading: boolean;
-  hasMore: boolean;
-  cursor?: string;
-  totalUniqueColumns: number;
-  totalOccurrences: number;
-  error?: string;
-  selectedRows: Set<string>;
-  columnFilters: ColumnFilters;
-  quickFilter: string;
-  viewSelectedOnly: boolean;
-}
-
-export interface ColumnFilters {
-  columnName?: string;
-  displayName?: string;
-  description?: string;
-  dataType?: string;
-}
-
-export interface BulkUpdatePayload {
-  columnName?: string;
-  groupId?: string;
-  displayName?: string;
-  description?: string;
-  tags?: TagLabel[];
-  occurrences?: Array<{
-    columnFQN: string;
-    entityType: string;
-  }>;
 }

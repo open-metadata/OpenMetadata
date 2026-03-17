@@ -155,7 +155,6 @@ test.describe('Entity Version pages', () => {
       const { apiContext } = await getApiContext(page);
       await entity.visitEntityPage(page);
 
-      await page.waitForLoadState('networkidle');
       // Read actual version from API response to avoid hardcoding version numbers.
       const setupPatchVersion = entity.entityResponseData.version;
       const setupVersionText = `v${Number.parseFloat(
@@ -168,6 +167,10 @@ test.describe('Entity Version pages', () => {
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
+      // Wait for version selector to render before clicking
+      await page
+        .locator(`[data-testid="version-selector-${setupVersionText}"]`)
+        .waitFor({ state: 'visible' });
       // Explicitly select the incremental version in the history panel.
       await page
         .locator(`[data-testid="version-selector-${setupVersionText}"]`)
@@ -269,7 +272,7 @@ test.describe('Entity Version pages', () => {
             .locator('.ant-modal-footer [data-testid="save-button"]')
             .click();
 
-          await page.waitForSelector('.ant-modal-body', {
+          await page.locator('.ant-modal-body').waitFor({
             state: 'detached',
           });
 
@@ -339,7 +342,7 @@ test.describe('Entity Version pages', () => {
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="delete-button"]');
 
-        await page.waitForSelector('[role="dialog"].ant-modal');
+        await page.locator('[role="dialog"].ant-modal').waitFor();
 
         await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 

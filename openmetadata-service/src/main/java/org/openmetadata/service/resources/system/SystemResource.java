@@ -71,6 +71,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
@@ -91,6 +92,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "system")
 @Slf4j
+@LatencyPhase
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private final SystemRepository systemRepository;

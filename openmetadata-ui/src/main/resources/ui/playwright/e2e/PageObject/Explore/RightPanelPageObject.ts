@@ -1029,7 +1029,6 @@ export class RightPanelPageObject {
    * Wait for network idle
    */
   async waitForNetworkIdle() {
-    await this.page.waitForLoadState('networkidle');
   }
 
   /**

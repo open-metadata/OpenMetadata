@@ -78,7 +78,7 @@ server:
   # Virtual Threads (Project Loom) - Recommended for Java 21+
   # Jetty 12 uses AdaptiveExecutionStrategy to route blocking tasks to virtual threads
   # while keeping non-blocking I/O on platform threads for optimal cache locality
-  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
+  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-true}
   # Note: maxQueuedRequests removed in Dropwizard 5.0/Jetty 12
 
   # Request/Response logging (disable in production for performance)
@@ -149,11 +149,49 @@ server:
   #    allowRenegotiation: true
   #    endpointIdentificationAlgorithm: (none)
 
+qos:
+  # Virtual threads remove Jetty's natural back-pressure. Keep request admission below the DB
+  # pool ceiling so excess load queues instead of failing with connection exhaustion.
+  enabled: ${QOS_ENABLED:-true}
+  maxRequestCount: ${QOS_MAX_REQUEST_COUNT:-64}
+  maxSuspendedRequestCount: ${QOS_MAX_SUSPENDED_REQUEST_COUNT:-1000}
+  maxSuspendSeconds: ${QOS_MAX_SUSPEND_SECONDS:-30}
+
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
+    org.openmetadata.service.util.jdbi.OMSqlLogger:
+      level: ${SQL_LOG_LEVEL:-INFO}
+      additive: false
+      appenders:
+        - type: file
+          layout:
+            type: json
+            appendLineSeparator: true
+          threshold: DEBUG
+          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+          currentLogFilename: ./logs/queries.log
+          archivedLogFilenamePattern: ./logs/queries-%d{yyyy-MM-dd}-%i.log.gz
+          archivedFileCount: 7
+          timeZone: UTC
+          maxFileSize: 50MB
+    org.openmetadata.slowrequest:
+      level: ${SLOW_REQUEST_LOG_LEVEL:-OFF}
+      additive: false
+      appenders:
+        - type: file
+          layout:
+            type: json
+            appendLineSeparator: true
+          threshold: WARN
+          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+          currentLogFilename: ./logs/slow-requests.log
+          archivedLogFilenamePattern: ./logs/slow-requests-%d{yyyy-MM-dd}-%i.log.gz
+          archivedFileCount: 7
+          timeZone: UTC
+          maxFileSize: 50MB
     org.openmetadata.service.util.OpenMetadataSetup:
       level: INFO
       appenders:

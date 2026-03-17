@@ -75,6 +75,7 @@ export interface SelectionState {
   isIndeterminate: boolean;
   handleSelectAll: (checked: boolean) => void;
   handleSelect: (id: string, checked: boolean) => void;
+  setSelectedEntities: (ids: string[] | ((prev: string[]) => string[])) => void;
   clearSelection: () => void;
   isSelected: (id: string) => boolean;
 }

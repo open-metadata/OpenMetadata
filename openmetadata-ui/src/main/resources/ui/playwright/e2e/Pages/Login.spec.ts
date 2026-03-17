@@ -61,7 +61,6 @@ test.describe('Login flow should work properly', () => {
 
   test('Signup and Login with signed up credentials', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(`/signin`);
 
@@ -100,7 +99,6 @@ test.describe('Login flow should work properly', () => {
     const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
     await loginResponse;
-    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(`/my-data`);
 
@@ -114,7 +112,6 @@ test.describe('Login flow should work properly', () => {
 
   test('Signin using invalid credentials', async ({ page }) => {
     await page.goto(`/signin`);
-    await page.waitForLoadState('networkidle');
     // Login with invalid email
     await page.fill('#email', invalidEmail);
     await page.fill('#password', CREDENTIALS.password);
@@ -168,7 +165,7 @@ test.describe('Login flow should work properly', () => {
       await redirectToHomePage(page1);
       await redirectToHomePage(page2);
 
-      // Need to wait until refresh happens and update the storage
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
       await page1.waitForTimeout(3 * 60 * 1000);
 
       await redirectToHomePage(page1);
@@ -199,18 +196,16 @@ test.describe('Login flow should work properly', () => {
 
     await redirectToHomePage(page1);
     await page1.getByTestId('dropdown-profile').click();
-    await page1.waitForLoadState('networkidle');
     await clickOutside(page1);
 
     await expect(page1.getByTestId('nav-user-name')).toContainText(/admin/i);
 
-    // Wait for token expiry, kept 61 instead 60 so that ensure refresh API done withing timeframe
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
     await page2.waitForTimeout(2 * 61 * 1000);
 
     await redirectToHomePage(page2);
 
     await page2.getByTestId('dropdown-profile').click();
-    await page2.waitForLoadState('networkidle');
     await clickOutside(page2);
 
     await expect(page2.getByTestId('nav-user-name')).toContainText(/admin/i);

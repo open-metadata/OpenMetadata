@@ -93,6 +93,17 @@ public class SearchAPI {
     return httpClient.executeForString(HttpMethod.POST, "/v1/search/reindex/all", null);
   }
 
+  /**
+   * Reindex specific entities by their references.
+   *
+   * @param entities List of entity references to reindex
+   * @return Response string from the server
+   */
+  public String reindexEntities(Object entities) throws OpenMetadataException {
+    return httpClient.executeForString(
+        HttpMethod.POST, "/v1/search/reindexEntities", entities, null);
+  }
+
   // ===================================================================
   // FLUENT BUILDERS
   // ===================================================================

@@ -16,6 +16,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -57,9 +58,7 @@ test('Should show loader then render classification content on initial page load
   await classificationsResponse;
   await tagsResponse;
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('header')).toBeVisible();
   await expect(page.getByTestId('description-container')).toBeVisible();
@@ -102,9 +101,7 @@ test('Should render correct content when switching between classifications', asy
     .click();
   await tagsResponse;
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.locator('.activeCategory')).toContainText(
     classification2.data.displayName
@@ -126,10 +123,7 @@ test('Should render classification correctly after page reload', async ({
   await page.reload();
   await classificationsResponse;
 
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(
     page.getByTestId('side-panel-classification').first()

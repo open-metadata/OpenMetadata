@@ -95,6 +95,19 @@ public class LineageAPI {
         optionsBuilder.build());
   }
 
+  public String searchLineage(
+      String fqn, String type, int upstreamDepth, int downstreamDepth, boolean includeDeleted)
+      throws OpenMetadataException {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    optionsBuilder.queryParam("fqn", fqn);
+    optionsBuilder.queryParam("type", type);
+    optionsBuilder.queryParam("upstreamDepth", String.valueOf(upstreamDepth));
+    optionsBuilder.queryParam("downstreamDepth", String.valueOf(downstreamDepth));
+    optionsBuilder.queryParam("includeDeleted", String.valueOf(includeDeleted));
+    return httpClient.executeForString(
+        HttpMethod.GET, "/v1/lineage/getLineage", null, optionsBuilder.build());
+  }
+
   private String encodePathSegment(String segment) {
     try {
       return java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20");

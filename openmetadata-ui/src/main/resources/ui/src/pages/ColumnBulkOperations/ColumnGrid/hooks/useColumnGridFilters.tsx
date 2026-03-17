@@ -11,17 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Menu, MenuItem, useTheme } from '@mui/material';
-import { defaultColors } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
-import {
-  MouseEvent,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import type { Key } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useQuickFiltersWithComponent } from '../../../../components/common/atoms/filters/useQuickFiltersWithComponent';
 import { ExploreQuickFilterField } from '../../../../components/Explore/ExplorePage.interface';
@@ -58,14 +51,11 @@ export const useColumnGridFilters = (
 ): UseColumnGridFiltersReturn => {
   const { aggregations, parsedFilters, onFilterChange } = config;
   const { t } = useTranslation();
-  const theme = useTheme();
 
   const [addedFilterKeys, setAddedFilterKeys] = useState<Set<string>>(
     new Set()
   );
-  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
 
-  // Auto-include additional filters that have active values from URL
   const activeAdditionalKeys = useMemo(() => {
     if (!parsedFilters) {
       return new Set<string>();
@@ -83,7 +73,6 @@ export const useColumnGridFilters = (
     );
   }, [parsedFilters]);
 
-  // Persist URL-active filters so they remain visible even after clearing values
   useEffect(() => {
     if (activeAdditionalKeys.size > 0) {
       setAddedFilterKeys((prev) => {
@@ -103,7 +92,6 @@ export const useColumnGridFilters = (
     ]);
   }, [addedFilterKeys, activeAdditionalKeys]);
 
-  // Default filters first, then added filters in the order they were added
   const visibleFilters = useMemo(() => {
     const defaultFilters = COLUMN_GRID_FILTERS.filter((f) =>
       DEFAULT_VISIBLE_FILTER_KEYS.includes(f.key)
@@ -122,21 +110,9 @@ export const useColumnGridFilters = (
     [visibleFilterKeys]
   );
 
-  const handleMenuOpen = useCallback((event: MouseEvent<HTMLElement>) => {
-    setMenuAnchorEl(event.currentTarget);
+  const handleAddFilter = useCallback((filterKey: string) => {
+    setAddedFilterKeys((prev) => new Set([...prev, filterKey]));
   }, []);
-
-  const handleMenuClose = useCallback(() => {
-    setMenuAnchorEl(null);
-  }, []);
-
-  const handleAddFilter = useCallback(
-    (filterKey: string) => {
-      setAddedFilterKeys((prev) => new Set([...prev, filterKey]));
-      handleMenuClose();
-    },
-    [handleMenuClose]
-  );
 
   const addFilterButton = useMemo(() => {
     if (remainingFilters.length === 0) {
@@ -144,64 +120,29 @@ export const useColumnGridFilters = (
     }
 
     return (
-      <>
-        <Button
-          startIcon={<Plus />}
-          sx={{
-            color: defaultColors.blue[600],
-            fontSize: theme.typography.body2.fontSize,
-            fontWeight: theme.typography.subtitle2.fontWeight,
-            padding: 0,
-            minWidth: 'auto',
-            whiteSpace: 'nowrap',
-            marginLeft: theme.spacing(4 / 3),
-            '& .MuiButton-startIcon > *': {
-              width: '16px !important',
-              height: '16px !important',
-            },
-            '&:hover, &:active, &:focus': {
-              color: defaultColors.blue[600],
-              background: defaultColors.white,
-            },
-          }}
-          variant="text"
-          onClick={handleMenuOpen}>
-          {t('label.add-entity', { entity: t('label.filter') })}
-        </Button>
-        <Menu
-          anchorEl={menuAnchorEl}
-          open={Boolean(menuAnchorEl)}
-          slotProps={{
-            paper: {
-              sx: { width: 'auto' },
-            },
-          }}
-          onClose={handleMenuClose}>
-          {remainingFilters.map((filter) => (
-            <MenuItem
-              key={filter.key}
-              sx={{
-                color: defaultColors.gray[700],
-                fontSize: theme.typography.body2.fontSize,
-                fontWeight: theme.typography.subtitle2.fontWeight,
-                padding: theme.spacing(1),
-              }}
-              onClick={() => handleAddFilter(filter.key)}>
-              {filter.label}
-            </MenuItem>
-          ))}
-        </Menu>
-      </>
+      <Typography as="span" className="tw:inline-flex tw:items-center tw:h-8">
+        <Dropdown.Root>
+          <Button color="tertiary" iconLeading={Plus} size="sm">
+            {t('label.add-entity', { entity: t('label.filter') })}
+          </Button>
+          <Dropdown.Popover className="tw:w-auto">
+            <Dropdown.Menu
+              disallowEmptySelection={false}
+              selectionMode="none"
+              onAction={(key: Key) => handleAddFilter(key as string)}>
+              {remainingFilters.map((filter) => (
+                <Dropdown.Item
+                  id={filter.key}
+                  key={filter.key}
+                  label={filter.label}
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      </Typography>
     );
-  }, [
-    remainingFilters,
-    menuAnchorEl,
-    handleMenuOpen,
-    handleMenuClose,
-    handleAddFilter,
-    t,
-    theme,
-  ]);
+  }, [remainingFilters, handleAddFilter, t]);
 
   const { quickFilters: filterSection } = useQuickFiltersWithComponent({
     defaultFilters: visibleFilters,

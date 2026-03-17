@@ -29,6 +29,11 @@ export interface InformixConnection {
      */
     hostPort: string;
     /**
+     * Ingest data from all databases in Informix. You can use databaseFilterPattern on top of
+     * this.
+     */
+    ingestAllDatabases?: boolean;
+    /**
      * Password to connect to Informix.
      */
     password: string;
@@ -60,6 +65,7 @@ export interface InformixConnection {
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
     supportsProfiler?:             boolean;

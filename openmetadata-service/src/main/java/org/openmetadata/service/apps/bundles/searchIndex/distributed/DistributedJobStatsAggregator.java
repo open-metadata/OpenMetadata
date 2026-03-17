@@ -31,6 +31,8 @@ import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -64,6 +66,7 @@ public class DistributedJobStatsAggregator {
   private final AtomicReference<IndexJobStatus> lastNotifiedStatus = new AtomicReference<>();
   private long lastBroadcastSuccess = -1;
   private long lastBroadcastFailed = -1;
+  private volatile BulkSink bulkSink;
   private String cachedRunType;
   private AppSchedule cachedScheduleInfo;
 
@@ -100,6 +103,10 @@ public class DistributedJobStatsAggregator {
       ReindexingProgressListener listener, ReindexingJobContext context) {
     this.progressListener = listener;
     this.jobContext = context;
+  }
+
+  public void setBulkSink(BulkSink sink) {
+    this.bulkSink = sink;
   }
 
   /** Safely convert long to int, capping at Integer.MAX_VALUE to prevent overflow */
@@ -399,6 +406,15 @@ public class DistributedJobStatsAggregator {
       vectorStats.setFailedRecords(0);
     }
     stats.setVectorStats(vectorStats);
+
+    // Inject column stats from the bulk sink (columns are indexed as a side effect
+    // of table processing and are not tracked via partitions)
+    if (bulkSink != null) {
+      StepStats columnStats = bulkSink.getColumnStats();
+      if (columnStats != null && columnStats.getTotalRecords() > 0) {
+        stats.getEntityStats().getAdditionalProperties().put(Entity.TABLE_COLUMN, columnStats);
+      }
+    }
 
     return stats;
   }

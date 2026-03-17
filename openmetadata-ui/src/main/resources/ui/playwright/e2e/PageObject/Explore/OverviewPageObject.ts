@@ -394,16 +394,30 @@ export class OverviewPageObject extends RightPanelBase {
     await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
 
     if (type === 'Users') {
-      const isAlreadyActive = await this.selectOwnerUsersTab.getAttribute(
-        'aria-selected'
-      );
-      if (isAlreadyActive !== 'true') {
-        await this.selectOwnerUsersTab.click();
-      }
+      await expect
+        .poll(
+          async () => {
+            const isAlreadyActive =
+              (await this.selectOwnerUsersTab.getAttribute('aria-selected')) ===
+              'true';
+            if (!isAlreadyActive) {
+              await this.selectOwnerUsersTab.click();
+            }
+
+            return await this.userSearchBar.isVisible().catch(() => false);
+          },
+          {
+            timeout: 120000,
+            intervals: [500, 1000, 2000],
+            message: 'Timed out waiting for owner search input to become visible',
+          }
+        )
+        .toBe(true);
     }
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
     await this.userSearchBar.waitFor({ state: 'visible' });
+    await this.userSearchBar.scrollIntoViewIfNeeded();
 
     const searchUser = this.page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
@@ -416,13 +430,9 @@ export class OverviewPageObject extends RightPanelBase {
 
     const ownerPatchPromise = this.waitForPatchResponse();
     if (type === 'Teams') {
-      await this.page
-        .getByRole('listitem', { name: owner, exact: true })
-        .click();
+      await this.page.getByRole('listitem', { name: owner }).click();
     } else {
-      await this.page
-        .getByRole('listitem', { name: owner, exact: true })
-        .click();
+      await this.page.getByRole('listitem', { name: owner }).click();
       await this.updateOwnersButton.click();
     }
     await ownerPatchPromise;
@@ -431,6 +441,7 @@ export class OverviewPageObject extends RightPanelBase {
 
   async editOwners(ownerName: string): Promise<OverviewPageObject> {
     await this.editOwnersIcon.scrollIntoViewIfNeeded();
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await this.editOwnersIcon.click({ force: true });
     await this.userSearchBar.waitFor({ state: 'visible' });
     await this.userSearchBar.scrollIntoViewIfNeeded();
@@ -463,6 +474,7 @@ export class OverviewPageObject extends RightPanelBase {
     type: 'Users' | 'Teams' = 'Users'
   ): Promise<OverviewPageObject> {
     await this.editOwnersIcon.waitFor({ state: 'visible' });
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await this.editOwnersIcon.click({ force: true });
 
     await this.selectOwnerTabs.waitFor({ state: 'visible' });
@@ -548,6 +560,7 @@ export class OverviewPageObject extends RightPanelBase {
   ): Promise<OverviewPageObject> {
     await this.editGlossaryTermsIcon.scrollIntoViewIfNeeded();
     await this.editGlossaryTermsIcon.waitFor({ state: 'visible' });
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await this.editGlossaryTermsIcon.click({ force: true });
 
     await this.selectableList.waitFor({ state: 'visible' });
@@ -586,6 +599,7 @@ export class OverviewPageObject extends RightPanelBase {
   async removeTier(): Promise<OverviewPageObject> {
     await this.editTierIcon.scrollIntoViewIfNeeded();
     await this.editTierIcon.waitFor({ state: 'visible' });
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await this.editTierIcon.click({ force: true });
 
     await this.tierListContainer.waitFor({ state: 'visible' });
@@ -605,6 +619,7 @@ export class OverviewPageObject extends RightPanelBase {
    */
   async removeDomain(domainName: string): Promise<OverviewPageObject> {
     await this.addDomainIcon.waitFor({ state: 'visible' });
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await this.addDomainIcon.click({ force: true });
 
     await this.domainTree.waitFor({ state: 'visible' });
@@ -644,6 +659,7 @@ export class OverviewPageObject extends RightPanelBase {
       Teams: 'team_search_index',
     };
 
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await this.editOwnersIcon.click({ force: true });
 
     await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });

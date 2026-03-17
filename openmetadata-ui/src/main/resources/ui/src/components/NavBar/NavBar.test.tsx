@@ -82,7 +82,6 @@ jest.mock('../../utils/FeedUtils', () => ({
 
 jest.mock('../../hooks/useDomainStore', () => ({
   useDomainStore: jest.fn().mockImplementation(() => ({
-    domainOptions: jest.fn().mockReturnValue('domainOptions'),
     activeDomain: jest.fn().mockReturnValue('activeDomain'),
     updateActiveDomain: jest.fn(),
   })),

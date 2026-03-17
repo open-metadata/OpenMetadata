@@ -10,12 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React, { act, forwardRef } from 'react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { act, forwardRef } from 'react';
 import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
+import { Table } from '../../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
+import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import { getListTestDefinitions } from '../../../../rest/testAPI';
 import TestCaseFormV1 from './TestCaseFormV1';
 import { TestCaseFormV1Props } from './TestCaseFormV1.interface';
@@ -208,13 +216,16 @@ jest.mock('../../../../pages/TasksPage/shared/TagSuggestion', () =>
 
 // Mock ServiceDocPanel component
 jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
-  jest
-    .fn()
-    .mockImplementation(({ activeField }) => (
-      <div data-testid="service-doc-panel">
-        ServiceDocPanel Component - Active Field: {activeField}
-      </div>
-    ))
+  jest.fn().mockImplementation(({ activeField, selectedEntity }) => (
+    <div data-testid="service-doc-panel">
+      ServiceDocPanel Component - Active Field: {activeField}
+      {selectedEntity && (
+        <div data-testid="service-doc-panel-entity-type">
+          {selectedEntity.entityType}
+        </div>
+      )}
+    </div>
+  ))
 );
 
 jest.mock('../../../common/AsyncSelect/AsyncSelect', () => ({
@@ -330,6 +341,14 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 jest.mock('../../../../utils/formUtils', () => ({
   ...jest.requireActual('../../../../utils/formUtils'),
   createScrollToErrorHandler: jest.fn(() => jest.fn()),
+}));
+
+const mockAddTestCaseList = jest
+  .fn()
+  .mockImplementation(() => <div data-testid="add-test-case-list" />);
+jest.mock('../../AddTestCaseList/AddTestCaseList.component', () => ({
+  AddTestCaseList: (props: Record<string, unknown>) =>
+    mockAddTestCaseList(props),
 }));
 
 // Mock DataQualityUtils
@@ -564,6 +583,116 @@ describe('TestCaseFormV1 Component', () => {
     });
   });
 
+  describe('AddTestCaseList props when opened from profiler', () => {
+    const tableWithTestSuite = {
+      ...MOCK_TABLE,
+      testSuite: {
+        id: 'suite-1',
+        fullyQualifiedName: 'test-suite',
+        summary: { success: 0, failed: 0, aborted: 0 },
+      },
+    };
+
+    it('passes hideTableFilter and columnFilters when table prop is provided', async () => {
+      (getIngestionPipelines as jest.Mock).mockResolvedValue({
+        paging: { total: 0 },
+      });
+
+      render(
+        <TestCaseFormV1
+          {...mockProps}
+          table={tableWithTestSuite as unknown as Table}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      const schedulerCard = await screen.findByTestId('scheduler-card');
+      await waitFor(
+        () => {
+          expect(schedulerCard).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      const switches = within(schedulerCard).getAllByRole('switch');
+      const selectAllSwitch = switches[0];
+      await act(async () => {
+        fireEvent.click(selectAllSwitch);
+      });
+
+      expect(
+        await screen.findByTestId('add-test-case-list')
+      ).toBeInTheDocument();
+
+      const lastCall =
+        mockAddTestCaseList.mock.calls[
+          mockAddTestCaseList.mock.calls.length - 1
+        ];
+      const props = lastCall[0] as {
+        hideTableFilter: boolean;
+        columnFilters?: string;
+      };
+
+      expect(props.hideTableFilter).toBe(true);
+      expect(props.columnFilters).toBe(
+        'fullyQualifiedName:"sample_data.ecommerce_db.shopify.dim_address"'
+      );
+    });
+
+    it('passes hideTableFilter false and columnFilters undefined when table is not provided', async () => {
+      (getTableDetailsByFQN as jest.Mock).mockResolvedValue(tableWithTestSuite);
+      (getIngestionPipelines as jest.Mock).mockResolvedValue({
+        paging: { total: 0 },
+      });
+
+      render(<TestCaseFormV1 {...mockProps} table={undefined} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      const tableSelect = await screen.findByTestId('async-select');
+      await act(async () => {
+        fireEvent.change(tableSelect, {
+          target: { value: 'sample_data.ecommerce_db.shopify.dim_address' },
+        });
+      });
+
+      const schedulerCard = await screen.findByTestId('scheduler-card');
+      await waitFor(
+        () => {
+          expect(schedulerCard).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      const switches = within(schedulerCard).getAllByRole('switch');
+      const selectAllSwitch = switches[0];
+      await act(async () => {
+        fireEvent.click(selectAllSwitch);
+      });
+
+      expect(
+        await screen.findByTestId('add-test-case-list')
+      ).toBeInTheDocument();
+
+      const lastCall =
+        mockAddTestCaseList.mock.calls[
+          mockAddTestCaseList.mock.calls.length - 1
+        ];
+      const props = lastCall[0] as {
+        hideTableFilter: boolean;
+        columnFilters?: string;
+      };
+
+      expect(props.hideTableFilter).toBe(false);
+      expect(props.columnFilters).toBeUndefined();
+    });
+  });
+
   describe('Custom Query Functionality', () => {
     it('should render custom query button for table level tests', async () => {
       render(<TestCaseFormV1 {...mockProps} />);
@@ -795,6 +924,81 @@ describe('TestCaseFormV1 Component', () => {
           screen.getByText(/Active Field: root\/name/)
         ).toBeInTheDocument();
       });
+    });
+
+    it('should pass selectedEntity with entityType field to ServiceDocPanel', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('service-doc-panel')).toBeInTheDocument();
+      });
+
+      const entityTypeElement = screen.getByTestId(
+        'service-doc-panel-entity-type'
+      );
+
+      expect(entityTypeElement).toBeInTheDocument();
+      expect(entityTypeElement).toHaveTextContent('table');
+    });
+
+    it('should preserve selectedTableData properties when passed to ServiceDocPanel', async () => {
+      const ServiceDocPanelMock = require('../../../common/ServiceDocPanel/ServiceDocPanel');
+
+      render(<TestCaseFormV1 {...mockProps} table={MOCK_TABLE} />);
+
+      await waitFor(
+        () => {
+          const calls = ServiceDocPanelMock.mock.calls;
+          const lastCall = calls[calls.length - 1];
+          if (lastCall && lastCall[0].selectedEntity) {
+            expect(lastCall[0].selectedEntity.name).toBeDefined();
+          }
+        },
+        { timeout: 5000 }
+      );
+
+      const callArgs =
+        ServiceDocPanelMock.mock.calls[
+          ServiceDocPanelMock.mock.calls.length - 1
+        ][0];
+      const { selectedEntity } = callArgs;
+
+      expect(selectedEntity).toBeDefined();
+      expect(selectedEntity.entityType).toBe('table');
+      expect(selectedEntity.name).toBe(MOCK_TABLE.name);
+      expect(selectedEntity.fullyQualifiedName).toBe(
+        MOCK_TABLE.fullyQualifiedName
+      );
+      expect(selectedEntity.columns).toEqual(MOCK_TABLE.columns);
+    });
+
+    it('should use EntityTypeEnum.TABLE enum value for entityType', async () => {
+      const {
+        EntityType: EntityTypeEnum,
+      } = require('../../../../enums/entity.enum');
+      const ServiceDocPanelMock = require('../../../common/ServiceDocPanel/ServiceDocPanel');
+
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      await waitFor(
+        () => {
+          const calls = ServiceDocPanelMock.mock.calls;
+          const lastCall = calls[calls.length - 1];
+          if (lastCall && lastCall[0].selectedEntity) {
+            expect(lastCall[0].selectedEntity.name).toBeDefined();
+          }
+        },
+        { timeout: 5000 }
+      );
+
+      const callArgs =
+        ServiceDocPanelMock.mock.calls[
+          ServiceDocPanelMock.mock.calls.length - 1
+        ][0];
+      const { selectedEntity } = callArgs;
+
+      expect(selectedEntity.entityType).toBe(EntityTypeEnum.TABLE);
+      expect(selectedEntity.entityType).toBe('table');
     });
   });
 

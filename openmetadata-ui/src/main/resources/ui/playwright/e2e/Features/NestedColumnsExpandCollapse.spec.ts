@@ -44,6 +44,17 @@ const entityCreators: Record<
   File: createFileEntity,
 };
 
+const serviceEndpointMap: Record<string, string> = {
+  Table: 'databaseServices',
+  Topic: 'messagingServices',
+  'API Endpoint': 'apiServices',
+  'Data Model': 'dashboardServices',
+  Container: 'storageServices',
+  'Search Index': 'searchServices',
+  Worksheet: 'driveServices',
+  File: 'driveServices',
+};
+
 for (const [entityType, createEntity] of Object.entries(entityCreators)) {
   test.describe(`${entityType} - Nested columns with duplicate names`, () => {
     let entityData: EntityTestData;
@@ -51,6 +62,17 @@ for (const [entityType, createEntity] of Object.entries(entityCreators)) {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
       entityData = await createEntity(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const serviceEndpoint = serviceEndpointMap[entityType];
+      await apiContext.delete(
+        `/api/v1/services/${serviceEndpoint}/name/${encodeURIComponent(
+          entityData.service.fullyQualifiedName
+        )}?recursive=true&hardDelete=true`
+      );
       await afterAction();
     });
 
@@ -75,6 +97,16 @@ test.describe('Table Version History - Nested columns with duplicate names', () 
     await afterAction();
   });
 
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await apiContext.delete(
+      `/api/v1/services/databaseServices/name/${encodeURIComponent(
+        entityData.service.fullyQualifiedName
+      )}?recursive=true&hardDelete=true`
+    );
+    await afterAction();
+  });
+
   test('should not duplicate rows when expanding and collapsing nested columns with same names in Version History', async ({
     page,
   }) => {
@@ -92,6 +124,16 @@ test.describe('Table Profiler Tab - Nested columns with duplicate names', () => 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     entityData = await createTableEntity(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await apiContext.delete(
+      `/api/v1/services/databaseServices/name/${encodeURIComponent(
+        entityData.service.fullyQualifiedName
+      )}?recursive=true&hardDelete=true`
+    );
     await afterAction();
   });
 
@@ -127,13 +169,23 @@ test.describe('API Endpoint Entity Summary Panel - Nested columns with duplicate
     await afterAction();
   });
 
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await apiContext.delete(
+      `/api/v1/services/apiServices/name/${encodeURIComponent(
+        apiService.service.fullyQualifiedName
+      )}?recursive=true&hardDelete=true`
+    );
+    await afterAction();
+  });
+
   test('should not duplicate rows when expanding and collapsing nested columns with same names in Explore Summary Panel', async ({
     page,
   }) => {
     await redirectToHomePage(page);
 
     const dataAssestResponse = page.waitForResponse(
-      'api/v1/search/query?q=*&index=dataAsset*'
+      '**/api/v1/search/query?q=*&index=dataAsset*'
     );
     // Go to Explore
     await page.locator('[data-testid="app-bar-item-explore"]').click();
@@ -148,15 +200,25 @@ test.describe('API Endpoint Entity Summary Panel - Nested columns with duplicate
     await page.getByTestId('search-input').fill(apiService.service.name);
     await serviceSearchResponse;
     await page.getByTestId(apiService.service.name).click();
+
+    const filteredSearchResponse = page.waitForResponse(
+      '**/api/v1/search/query*'
+    );
     await page.getByTestId('update-btn').click();
+    await filteredSearchResponse;
+    await waitForAllLoadersToDisappear(page);
 
-    // Click row (anywhere on the row usually opens summary)
-    // We target the specific row by test-id generated from service and table name
-    await page
-      .getByTestId(`table-data-card_${apiService.entity.fullyQualifiedName}`)
-      .click();
+    // Use dispatchEvent to click on the card div directly, avoiding the inner
+    // Link element which would navigate to the entity detail page instead of
+    // opening the summary panel.
+    const card = page.getByTestId(
+      `table-data-card_${apiService.entity.fullyQualifiedName}`
+    );
+    await card.waitFor({ state: 'visible' });
+    await card.dispatchEvent('click');
 
-    // Click Schema Tab
+    // Click Schema Tab in the summary panel
+    await page.getByTestId('schema-tab').waitFor({ state: 'visible' });
     await page.getByTestId('schema-tab').click();
 
     await verifyExpandCollapseForSummaryPanel(page);

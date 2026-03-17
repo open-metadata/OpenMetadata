@@ -50,6 +50,29 @@ export const getRoles = async (
   return response.data;
 };
 
+export const getAllRoles = async (
+  fields: string,
+  defaultRoles = false,
+  limit = 100
+) => {
+  const roles: Role[] = [];
+  let after: string | undefined;
+
+  do {
+    const response = await getRoles(
+      fields,
+      after,
+      undefined,
+      defaultRoles,
+      limit
+    );
+    roles.push(...response.data);
+    after = response.paging.after;
+  } while (after);
+
+  return roles;
+};
+
 export const getPolicies = async (
   fields: string,
   after?: string,

@@ -43,6 +43,7 @@ import {
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.describe('Long Description Visibility', () => {
   test.slow(true);
@@ -214,7 +215,6 @@ test.describe('Long Description Visibility', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProductData);
-    await page.waitForLoadState('networkidle');
 
     const descContainer = page.getByTestId('asset-description-container');
     await expect(descContainer).toBeVisible();
@@ -232,7 +232,6 @@ test.describe('Long Description Visibility', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProductData);
-    await page.waitForLoadState('networkidle');
 
     const descContainer = page.getByTestId('asset-description-container');
     await expect(descContainer).toBeVisible();
@@ -256,7 +255,6 @@ test.describe('Long Description Visibility', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProductData);
-    await page.waitForLoadState('networkidle');
 
     const descContainer = page.getByTestId('asset-description-container');
     await expect(descContainer).toBeVisible();
@@ -392,13 +390,10 @@ test.describe('Long Description Visibility', () => {
     await personaListResponse;
     await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-    await adminPage.waitForLoadState('networkidle');
 
     await adminPage.getByText('Data Assets').click();
     await adminPage.getByText('Table', { exact: true }).click();
-    await adminPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(adminPage);
 
     // Add custom tab
     await adminPage.getByRole('button', { name: 'Add tab' }).click();
@@ -456,10 +451,7 @@ test.describe('Long Description Visibility', () => {
     await redirectToHomePage(userPage);
 
     await table.visitEntityPage(userPage);
-    await userPage.waitForLoadState('networkidle');
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
 
     await expect(
       userPage.getByRole('tab', { name: 'Description Tab' })
