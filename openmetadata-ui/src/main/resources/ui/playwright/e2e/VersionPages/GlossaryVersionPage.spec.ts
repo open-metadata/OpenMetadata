@@ -20,10 +20,7 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
-import {
-  addMultiOwner,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { addMultiOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { setupGlossaryAndTerms } from '../../utils/glossary';
 
 // use the admin user to login

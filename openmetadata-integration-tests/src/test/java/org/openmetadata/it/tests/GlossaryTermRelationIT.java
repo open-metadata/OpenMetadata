@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,6 +66,9 @@ public class GlossaryTermRelationIT {
 
   @BeforeAll
   public static void setup() throws Exception {
+    assumeTrue(
+        TestSuiteBootstrap.isFusekiEnabled(),
+        "Skipping RDF tests: Fuseki not enabled (run with -DenableRdf=true)");
     RdfConfiguration rdfConfig = new RdfConfiguration();
     rdfConfig.setEnabled(true);
     rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));

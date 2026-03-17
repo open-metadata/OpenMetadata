@@ -190,7 +190,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const modelFiltersRef = useRef<GraphFilters>(DEFAULT_FILTERS);
   const dataFiltersRef = useRef<GraphFilters>({
     ...DEFAULT_FILTERS,
-    relationTypes: [METRIC_RELATION_TYPE, ASSET_RELATION_TYPE],
   });
   // Prevents the loadAssetsForDataMode useEffect from double-fetching when
   // handleModeChange has already pre-loaded assets before switching mode.
@@ -283,19 +282,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     if (filters.relationTypes.length > 0) {
       const nodeTypeMap = new Map(filteredNodes.map((n) => [n.id, n.type]));
       filteredEdges = filteredEdges.filter((e) => {
-        // In data mode, always show term-to-term edges so the ontology
-        // relations between terms remain visible alongside asset connections.
-        if (explorationMode === 'data') {
-          const fromType = nodeTypeMap.get(e.from);
-          const toType = nodeTypeMap.get(e.to);
-          if (
-            fromType !== ASSET_NODE_TYPE &&
-            fromType !== METRIC_NODE_TYPE &&
-            toType !== ASSET_NODE_TYPE &&
-            toType !== METRIC_NODE_TYPE
-          ) {
-            return true;
-          }
+        const fromType = nodeTypeMap.get(e.from);
+        const toType = nodeTypeMap.get(e.to);
+        // In data mode, always show asset/metric edges regardless of filter
+        if (
+          explorationMode === 'data' &&
+          (fromType === ASSET_NODE_TYPE ||
+            fromType === METRIC_NODE_TYPE ||
+            toType === ASSET_NODE_TYPE ||
+            toType === METRIC_NODE_TYPE)
+        ) {
+          return true;
         }
 
         return filters.relationTypes.includes(e.relationType);
@@ -741,7 +738,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         }
       });
 
-      return { nodes: Array.from(nodesMap.values()), edges };
+      const nodeIds = new Set(nodesMap.keys());
+      const validEdges = edges.filter(
+        (e) => nodeIds.has(e.from) && nodeIds.has(e.to)
+      );
+
+      return { nodes: Array.from(nodesMap.values()), edges: validEdges };
     },
     [t]
   );
@@ -955,7 +957,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         modelFiltersRef.current = filters;
         const nextFilters: GraphFilters = {
           ...dataFiltersRef.current,
-          relationTypes: [METRIC_RELATION_TYPE, ASSET_RELATION_TYPE],
+          glossaryIds: filters.glossaryIds,
           viewMode: 'overview' satisfies GraphViewMode,
         };
         // Pre-fetch assets before switching mode so all state updates are
@@ -1165,8 +1167,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         className
       )}
       data-testid="ontology-explorer"
-      style={{ height }}
-    >
+      style={{ height }}>
       {showHeader && (
         <div
           className="tw:flex tw:flex-col tw:gap-2 tw:px-5 tw:py-3 tw:mb-4"
@@ -1175,19 +1176,16 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             borderRadius: 12,
             border: '1px solid var(--Blue-gray-100, #EAECF5)',
             background: 'var(--colors-content-content1, #FFF)',
-          }}
-        >
+          }}>
           <Typography
             as="h2"
-            className="tw:m-0 tw:text-md tw:font-semibold tw:text-gray-800"
-          >
+            className="tw:m-0 tw:text-md tw:font-semibold tw:text-gray-800">
             {t('label.ontology-explorer')}
           </Typography>
           {filteredGraphData && statsItems.length > 0 && (
             <div
               className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap"
-              data-testid="ontology-explorer-stats"
-            >
+              data-testid="ontology-explorer-stats">
               {statsItems.map((item, index) => (
                 <React.Fragment key={`${item}-${index}`}>
                   {index > 0 && (
@@ -1207,8 +1205,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                     }
                     style={{
                       color: '#414651',
-                    }}
-                  >
+                    }}>
                     {item}
                   </span>
                 </React.Fragment>
@@ -1229,8 +1226,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 background: NODE_FILL_DEFAULT,
                 boxShadow:
                   '0 8px 20px 0 rgba(0, 0, 3, 0.04), 0 2px 4px 0 rgba(0, 0, 3, 0.03)',
-              }}
-            >
+              }}>
               <FilterToolbar
                 filters={filters}
                 glossaries={glossaries}
@@ -1248,8 +1244,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               'tw:absolute tw:bottom-4 tw:left-1/2 tw:-translate-x-1/2 tw:z-50 ' +
               'tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:rounded-xl ' +
               'tw:border tw:border-gray-200 tw:bg-white tw:px-3 tw:py-1.5 tw:shadow-md'
-            }
-          >
+            }>
             <Tabs
               className="tw:w-fit!"
               selectedKey={explorationMode}
@@ -1257,8 +1252,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 if (key === 'model' || key === 'data') {
                   handleModeChange(key as ExplorationMode);
                 }
-              }}
-            >
+              }}>
               <Tabs.List
                 items={[
                   { label: t('label.model'), id: 'model' },
@@ -1301,8 +1295,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           {loading ? (
             <div
               className="tw:relative tw:flex tw:min-h-100 tw:flex-1 tw:flex-col tw:items-center tw:justify-center"
-              data-testid="ontology-graph-loading"
-            >
+              data-testid="ontology-graph-loading">
               <div
                 className="tw:absolute tw:inset-0"
                 style={dottedGraphBackgroundStyle}
@@ -1319,24 +1312,24 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           ) : !graphDataToShow || graphDataToShow.nodes.length === 0 ? (
             <div
               className="tw:relative tw:flex tw:min-h-100 tw:flex-1 tw:flex-col tw:items-center tw:justify-center"
-              data-testid="ontology-graph-empty"
-            >
+              data-testid="ontology-graph-empty">
               <div
                 className="tw:absolute tw:inset-0"
                 style={dottedGraphBackgroundStyle}
               />
               <Typography
                 as="p"
-                className="tw:z-10 tw:text-center tw:text-gray-500"
-              >
-                {t('message.no-glossary-terms-found')}
+                className="tw:z-10 tw:text-center tw:text-gray-500">
+                {filters.glossaryIds.length > 0 ||
+                filters.relationTypes.length > 0
+                  ? t('message.no-data-available-for-selected-filter')
+                  : t('message.no-glossary-terms-found')}
               </Typography>
             </div>
           ) : (
             <div
               className="tw:absolute tw:inset-0"
-              style={dottedGraphBackgroundStyle}
-            >
+              style={dottedGraphBackgroundStyle}>
               <OntologyGraph
                 edges={graphDataToShow.edges}
                 explorationMode={

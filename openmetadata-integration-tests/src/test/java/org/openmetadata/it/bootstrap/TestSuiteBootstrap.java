@@ -880,6 +880,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   /**
+   * Returns true if Fuseki was started for this test session.
+   */
+  public static boolean isFusekiEnabled() {
+    return fusekiEndpoint != null;
+  }
+
+  /**
    * Returns the Fuseki SPARQL endpoint URL for RDF operations.
    */
   public static String getFusekiEndpoint() {
