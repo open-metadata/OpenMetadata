@@ -353,19 +353,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       return list;
     }
 
-    /** Default relation types supported by the system */
     private static final Set<String> DEFAULT_RELATION_TYPES =
-        Set.of(
-            "relatedTo",
-            "synonym",
-            "broader",
-            "narrower",
-            "antonym",
-            "partOf",
-            "hasPart",
-            "calculatedFrom",
-            "usedToCalculate",
-            "seeAlso");
+        Set.copyOf(GlossaryTermRepository.DEFAULT_RELATION_TYPES);
 
     /**
      * Parse term relations from CSV field with support for relation type prefix.

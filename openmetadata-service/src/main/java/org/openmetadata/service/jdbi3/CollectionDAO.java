@@ -5457,6 +5457,12 @@ public interface CollectionDAO {
           if (!isTransientDeadlock(ex) || attempt == TAG_USAGE_MAX_ATTEMPTS) {
             throw ex;
           }
+          try {
+            Thread.sleep(20L + (long) (Math.random() * 80));
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw ex;
+          }
           long retryCount = TAG_USAGE_DEADLOCK_RETRY_COUNT.incrementAndGet();
           TAG_USAGE_LOG.debug(
               "Retrying tag_usage batch after transient deadlock (attempt {}/{}), total retries={}",

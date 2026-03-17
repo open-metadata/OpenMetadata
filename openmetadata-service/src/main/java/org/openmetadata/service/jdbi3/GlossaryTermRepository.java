@@ -681,8 +681,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return get(null, id, getFields("relatedTerms"), Include.NON_DELETED, false);
   }
 
-  private static final List<String> DEFAULT_RELATION_TYPES =
-      List.of("relatedTo", "synonym", "broader", "narrower", "antonym", "partOf", "hasPart");
+  public static final List<String> DEFAULT_RELATION_TYPES =
+      List.of(
+          "relatedTo",
+          "synonym",
+          "broader",
+          "narrower",
+          "antonym",
+          "partOf",
+          "hasPart",
+          "calculatedFrom",
+          "usedToCalculate",
+          "seeAlso");
 
   public void validateRelationType(String relationType) {
     if (relationType == null || relationType.isEmpty()) {
@@ -899,28 +909,42 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private void prefetchGraphTerms(
       GlossaryTerm term, int depth, Map<UUID, GlossaryTerm> prefetchedTerms) {
-    if (depth <= 1 || term.getRelatedTerms() == null || prefetchedTerms.size() >= MAX_GRAPH_NODES) {
+    if (depth <= 1 || prefetchedTerms.size() >= MAX_GRAPH_NODES) {
       return;
     }
-    List<UUID> toFetch = new ArrayList<>();
-    for (TermRelation relation : term.getRelatedTerms()) {
-      UUID relatedId = relation.getTerm().getId();
-      if (!prefetchedTerms.containsKey(relatedId)) {
-        toFetch.add(relatedId);
+
+    List<GlossaryTerm> currentLevel = List.of(term);
+    Fields fields = getFields("relatedTerms");
+
+    for (int d = depth; d > 1 && !currentLevel.isEmpty(); d--) {
+      List<UUID> toFetch = new ArrayList<>();
+      for (GlossaryTerm t : currentLevel) {
+        if (t.getRelatedTerms() == null) {
+          continue;
+        }
+        for (TermRelation relation : t.getRelatedTerms()) {
+          UUID relatedId = relation.getTerm().getId();
+          if (!prefetchedTerms.containsKey(relatedId) && !toFetch.contains(relatedId)) {
+            toFetch.add(relatedId);
+            if (prefetchedTerms.size() + toFetch.size() >= MAX_GRAPH_NODES) {
+              break;
+            }
+          }
+        }
+        if (prefetchedTerms.size() + toFetch.size() >= MAX_GRAPH_NODES) {
+          break;
+        }
       }
-    }
-    for (UUID fetchId : toFetch) {
-      if (prefetchedTerms.size() >= MAX_GRAPH_NODES) {
+
+      if (toFetch.isEmpty()) {
         break;
       }
-      try {
-        GlossaryTerm fetched =
-            get(null, fetchId, getFields("relatedTerms"), Include.NON_DELETED, false);
-        prefetchedTerms.put(fetchId, fetched);
-        prefetchGraphTerms(fetched, depth - 1, prefetchedTerms);
-      } catch (Exception e) {
-        LOG.debug("Failed to prefetch term {}: {}", fetchId, e.getMessage());
+
+      List<GlossaryTerm> fetched = get(null, toFetch, fields, Include.NON_DELETED);
+      for (GlossaryTerm f : fetched) {
+        prefetchedTerms.put(f.getId(), f);
       }
+      currentLevel = fetched;
     }
   }
 

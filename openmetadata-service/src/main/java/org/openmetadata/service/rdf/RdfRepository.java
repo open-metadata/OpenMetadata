@@ -97,6 +97,9 @@ public class RdfRepository {
   }
 
   public String getBaseUri() {
+    if (config.getBaseUri() == null) {
+      throw new IllegalStateException("RDF baseUri is not configured");
+    }
     return config.getBaseUri().toString();
   }
 
@@ -742,7 +745,7 @@ public class RdfRepository {
 
     } catch (Exception e) {
       LOG.error("Error executing SPARQL query with inference", e);
-      throw new RuntimeException("Failed to execute query with inference: " + e.getMessage(), e);
+      throw new RuntimeException("Failed to execute query with inference", e);
     }
   }
 
@@ -1305,7 +1308,7 @@ public class RdfRepository {
       graphData.set("edges", edges);
       graphData.put("totalNodes", 0);
       graphData.put("totalEdges", 0);
-      graphData.put("error", e.getMessage());
+      graphData.put("error", "An internal error occurred while building the graph");
       return JsonUtils.pojoToJson(graphData);
     }
   }
@@ -2105,7 +2108,7 @@ public class RdfRepository {
 
     } catch (Exception e) {
       LOG.error("Error exporting glossary {} as ontology", glossaryId, e);
-      throw new IOException("Failed to export glossary as ontology: " + e.getMessage(), e);
+      throw new IOException("Failed to export glossary as ontology", e);
     }
   }
 
@@ -2344,7 +2347,7 @@ public class RdfRepository {
       LOG.error("Error debugging glossary term relations", e);
       com.fasterxml.jackson.databind.node.ObjectNode errorNode =
           JsonUtils.getObjectMapper().createObjectNode();
-      errorNode.put("error", e.getMessage() != null ? e.getMessage() : "Unknown error");
+      errorNode.put("error", "An internal error occurred while debugging glossary relations");
       return JsonUtils.pojoToJson(errorNode);
     }
   }

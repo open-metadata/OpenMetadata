@@ -108,8 +108,7 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
           data-testid={getEntityName(entity)}
           iconLeading={<Tag01 className="tw:size-3" />}
           size="sm"
-          onClick={() => onRelatedTermClick(entity.fullyQualifiedName ?? '')}
-        >
+          onClick={() => onRelatedTermClick(entity.fullyQualifiedName ?? '')}>
           <Typography as="span" className="tw:text-xs tw:font-semibold">
             {getEntityName(entity)}
           </Typography>
@@ -262,6 +261,7 @@ const RelatedTerms = () => {
       <RelatedTermTagButton
         entity={entity}
         getRelationDisplayName={getRelationDisplayName}
+        key={`${entity.fullyQualifiedName}-${relationType}`}
         relationType={relationType}
         versionStatus={versionStatus}
         onRelatedTermClick={handleRelatedTermClick}
@@ -347,8 +347,7 @@ const RelatedTerms = () => {
             <div className="d-flex flex-col gap-1" key={relationType}>
               <Typography
                 as="span"
-                className="text-xs font-medium text-grey-muted"
-              >
+                className="text-xs font-medium text-grey-muted">
                 {getRelationDisplayName(relationType)}
               </Typography>
               <div className="d-flex flex-wrap gap-1">
@@ -424,8 +423,7 @@ const RelatedTerms = () => {
           value={selectedRelationType}
           onChange={(key) =>
             setSelectedRelationType(String(key ?? 'relatedTo'))
-          }
-        >
+          }>
           {(item) => (
             <Select.Item id={item.id} key={item.id} label={item.label} />
           )}
@@ -459,8 +457,7 @@ const RelatedTerms = () => {
         title: header,
       }}
       dataTestId="related-term-container"
-      isExpandDisabled={termRelations.length === 0 && !isEditing}
-    >
+      isExpandDisabled={termRelations.length === 0 && !isEditing}>
       {isEditing ? editingContent : relatedTermsContainer}
     </ExpandableCard>
   );

@@ -834,8 +834,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     try {
       JsonUtils.convertValue(appConfig, EventPublisherJob.class);
     } catch (IllegalArgumentException e) {
-      throw AppException.byMessage(
-          Response.Status.BAD_REQUEST, "Invalid App Configuration: " + e.getMessage());
+      throw AppException.byMessage(Response.Status.BAD_REQUEST, "Invalid App Configuration");
     }
   }
 

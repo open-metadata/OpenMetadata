@@ -39,9 +39,9 @@ import org.openmetadata.service.security.Authorizer;
 @Slf4j
 public class RdfResource {
   public static final String COLLECTION_PATH = "/v1/rdf";
-  private RdfRepository rdfRepository;
+  private volatile RdfRepository rdfRepository;
   private final Authorizer authorizer;
-  private SemanticSearchEngine semanticSearchEngine;
+  private volatile SemanticSearchEngine semanticSearchEngine;
   private OpenMetadataApplicationConfig config;
 
   public static final String RDF_XML = "application/rdf+xml";

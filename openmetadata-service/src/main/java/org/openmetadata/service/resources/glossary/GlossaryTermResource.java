@@ -1198,6 +1198,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Comma-separated list of relation types to include")
           @QueryParam("relationTypes")
           String relationTypes) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     List<String> types = null;
     if (relationTypes != null && !relationTypes.isEmpty()) {
       types = List.of(relationTypes.split(","));
