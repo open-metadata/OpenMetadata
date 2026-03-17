@@ -43,13 +43,13 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.generated.schema.type.termRelation import TermRelation
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
     TagLabel,
     TagSource,
 )
+from metadata.generated.schema.type.termRelation import TermRelation
 from metadata.utils import fqn
 
 from ..integration_base import generate_name
