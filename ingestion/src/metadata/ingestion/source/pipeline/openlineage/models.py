@@ -50,6 +50,15 @@ class TopicFQN:
 
 
 @dataclass
+class PipelineFQN:
+    """
+    Fully Qualified Name of a Pipeline.
+    """
+
+    value: str
+
+
+@dataclass
 class ColumnFQN:
     """
     Fully Qualified Name of a Column.
@@ -65,7 +74,7 @@ class LineageNode:
     """
 
     uuid: str
-    fqn: Union[TableFQN, TopicFQN]
+    fqn: Union[TableFQN, TopicFQN, PipelineFQN]
     node_type: str = "table"
 
 

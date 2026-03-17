@@ -326,7 +326,7 @@ class OMetaLineageMixin(Generic[T]):
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error {err.status_code} trying to GET linage for "
-                + f"{entity.__name__} and {path}: {err}"
+                + f"{entity_name} and {path}: {err}"
             )
             return None
 
