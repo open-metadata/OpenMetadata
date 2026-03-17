@@ -1406,9 +1406,7 @@ export const verifyDataProductsCount = async (
     .getByTestId('data_products')
     .getByTestId('count');
 
-  await expect(dataProductCountElement).toHaveText(String(expectedCount), {
-    timeout: 15000,
-  });
+  await expect(dataProductCountElement).toHaveText(String(expectedCount));
 };
 
 /**
