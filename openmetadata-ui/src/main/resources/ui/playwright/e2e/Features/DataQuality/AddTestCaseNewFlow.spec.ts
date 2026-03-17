@@ -17,13 +17,16 @@ import {
 } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { visitDataQualityTab } from '../../../utils/testCases';
-import { test } from '../../fixtures/pages';
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
+import {
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
+import { visitDataQualityTab } from '../../../utils/testCases';
+import { test } from '../../fixtures/pages';
 
 /**
  * Data Quality: Add Test Case (New Flow)
@@ -357,6 +360,12 @@ test.describe(
 
       await page.click('[data-testid="profiler-add-table-test-btn"]');
       await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
+
+      await expect(
+        page
+          .getByTestId('entity-summary-panel-container')
+          .getByTestId('entity-link')
+      ).toContainText(getEntityDisplayName(table.entityResponseData));
 
       await createTestCase({
         page,
