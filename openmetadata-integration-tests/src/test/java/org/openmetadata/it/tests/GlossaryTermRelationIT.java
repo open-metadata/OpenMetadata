@@ -69,15 +69,17 @@ public class GlossaryTermRelationIT {
     assumeTrue(
         TestSuiteBootstrap.isFusekiEnabled(),
         "Skipping RDF tests: Fuseki not enabled (run with -DenableRdf=true)");
-    RdfConfiguration rdfConfig = new RdfConfiguration();
-    rdfConfig.setEnabled(true);
-    rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));
-    rdfConfig.setStorageType(RdfConfiguration.StorageType.FUSEKI);
-    rdfConfig.setRemoteEndpoint(java.net.URI.create(TestSuiteBootstrap.getFusekiEndpoint()));
-    rdfConfig.setUsername("admin");
-    rdfConfig.setPassword("test-admin");
-    rdfConfig.setDataset("openmetadata");
-    RdfUpdater.initialize(rdfConfig);
+    if (!RdfUpdater.isEnabled()) {
+      RdfConfiguration rdfConfig = new RdfConfiguration();
+      rdfConfig.setEnabled(true);
+      rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));
+      rdfConfig.setStorageType(RdfConfiguration.StorageType.FUSEKI);
+      rdfConfig.setRemoteEndpoint(java.net.URI.create(TestSuiteBootstrap.getFusekiEndpoint()));
+      rdfConfig.setUsername("admin");
+      rdfConfig.setPassword("test-admin");
+      rdfConfig.setDataset("openmetadata");
+      RdfUpdater.initialize(rdfConfig);
+    }
 
     client = SdkClients.adminClient();
 
