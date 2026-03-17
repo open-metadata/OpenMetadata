@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@mui/material';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { omit } from 'lodash';
@@ -102,7 +102,7 @@ export async function handleCoverImageUpload<T>(
     );
 
     return { entity: updatedEntity, uploadFailed: false };
-  } catch (uploadError) {
+  } catch {
     // Return original entity (without cover image)
     // Note: Warning notification will be shown by caller
     return { entity: createdEntity, uploadFailed: true };
@@ -226,7 +226,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
             jsonPatch
           );
 
-          return patchResult as Awaited<TEntity>;
+          return patchResult;
         },
       });
 
@@ -239,7 +239,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
       // Entity created but upload failed - show warning
       showNotistackWarning(
         enqueueSnackbar,
-        <Typography sx={{ fontWeight: 600 }} variant="body2">
+        <Typography className="tw:font-bold">
           {t('message.entity-created-but-cover-image-failed', {
             entity: entityLabel,
           })}
@@ -250,7 +250,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
       // Entity created successfully (with or without cover image)
       showNotistackSuccess(
         enqueueSnackbar,
-        <Typography sx={{ fontWeight: 600 }} variant="body2">
+        <Typography className="tw:font-bold">
           {t('server.create-entity-success', { entity: entityLabel })}
         </Typography>,
         closeSnackbar
@@ -266,7 +266,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
     showNotistackError(
       enqueueSnackbar,
       getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
-        <Typography sx={{ fontWeight: 600 }} variant="body2">
+        <Typography className="tw:font-bold">
           {t('server.entity-already-exist', {
             entity: entityLabel,
             entityPlural: entityPluralLabel,

@@ -422,6 +422,8 @@ public class LineageRepository {
       lineageData.setUpdatedAt(nullOrDefault(lineageDetails.getUpdatedAt(), null));
       lineageData.setUpdatedBy(nullOrDefault(lineageDetails.getUpdatedBy(), null));
       lineageData.setAssetEdges(nullOrDefault(lineageDetails.getAssetEdges(), null));
+      lineageData.setTempLineageTables(
+          collectionOrDefault(lineageDetails.getTempLineageTables(), null));
     }
     return lineageData;
   }

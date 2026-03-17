@@ -22,6 +22,7 @@ from looker_sdk.sdk.api40.models import (
     DashboardBase,
     DashboardElement,
     LookmlModelExplore,
+    LookmlModelExploreFieldset,
     Query,
     User,
 )
@@ -769,3 +770,175 @@ class LookerUnitTest(TestCase):
 
             # Should return None when exception occurs
             self.assertIsNone(result)
+
+    def test_explore_source_url(self):
+        """
+        Check that sourceUrl is set for LookMlExplore data models
+        """
+        mock_explore = LookmlModelExplore(
+            name="my_explore",
+            model_name="my_model",
+            project_name="my_project",
+            fields=LookmlModelExploreFieldset(dimensions=[], measures=[]),
+        )
+
+        with (
+            patch.object(
+                LookerSource,
+                "register_record_datamodel",
+                return_value=None,
+            ),
+            patch.object(
+                LookerSource,
+                "_build_data_model",
+                return_value=None,
+            ),
+            patch.object(
+                LookerSource,
+                "_get_explore_sql",
+                return_value=None,
+            ),
+        ):
+            results = [
+                r for r in self.looker.yield_bulk_datamodel(mock_explore) if r.right
+            ]
+            explore_result = results[0].right
+            self.assertEqual(
+                explore_result.sourceUrl.root,
+                "https://my-looker.com/explore/my_model/my_explore",
+            )
+
+    def test_view_source_url(self):
+        """
+        Check that sourceUrl is set for LookMlView data models
+        """
+        from unittest.mock import MagicMock
+
+        from metadata.ingestion.source.dashboard.looker.models import LookMlView
+
+        mock_view = LookMlView(
+            name="my_view",
+            source_file="views/my_view.view.lkml",
+        )
+        mock_explore = LookmlModelExplore(
+            name="my_explore",
+            model_name="my_model",
+            project_name="my_project",
+        )
+
+        mock_parser = MagicMock()
+        mock_parser.find_view.return_value = mock_view
+        mock_parser.parsed_files = {}
+
+        with (
+            patch.object(
+                LookerSource,
+                "parser",
+                new_callable=lambda: property(lambda self: {"my_project": mock_parser}),
+            ),
+            patch.object(
+                LookerSource,
+                "register_record_datamodel",
+                return_value=None,
+            ),
+            patch.object(
+                LookerSource,
+                "_build_data_model",
+                return_value=None,
+            ),
+            patch.object(LookerSource, "add_view_lineage", return_value=iter([])),
+        ):
+            results = list(
+                self.looker._process_view(view_name="my_view", explore=mock_explore)
+            )
+            view_result = results[0].right
+            self.assertEqual(
+                view_result.sourceUrl.root,
+                "https://my-looker.com/projects/my_project/files/views/my_view.view.lkml",
+            )
+
+    def test_view_source_url_none_when_no_source_file(self):
+        """
+        Check that sourceUrl is None when view has no source_file
+        """
+        from unittest.mock import MagicMock
+
+        from metadata.ingestion.source.dashboard.looker.models import LookMlView
+
+        mock_view = LookMlView(
+            name="my_view",
+            source_file=None,
+        )
+        mock_explore = LookmlModelExplore(
+            name="my_explore",
+            model_name="my_model",
+            project_name="my_project",
+        )
+
+        mock_parser = MagicMock()
+        mock_parser.find_view.return_value = mock_view
+        mock_parser.parsed_files = {}
+
+        with (
+            patch.object(
+                LookerSource,
+                "parser",
+                new_callable=lambda: property(lambda self: {"my_project": mock_parser}),
+            ),
+            patch.object(
+                LookerSource,
+                "register_record_datamodel",
+                return_value=None,
+            ),
+            patch.object(
+                LookerSource,
+                "_build_data_model",
+                return_value=None,
+            ),
+            patch.object(LookerSource, "add_view_lineage", return_value=iter([])),
+        ):
+            results = list(
+                self.looker._process_view(view_name="my_view", explore=mock_explore)
+            )
+            view_result = results[0].right
+            self.assertIsNone(view_result.sourceUrl)
+
+    def test_chart_source_url_from_query(self):
+        """
+        Check that sourceUrl uses query share_url for charts
+        """
+        result = next(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)).right
+        self.assertEqual(result.sourceUrl.root, "https://my-looker.com/hello")
+
+    def test_chart_source_url_fallback_to_merge(self):
+        """
+        Check that sourceUrl falls back to merge URL when no query
+        """
+        dashboard = LookerDashboard(
+            id="1",
+            title="test",
+            dashboard_elements=[
+                DashboardElement(
+                    id="chart_no_query",
+                    title="chart_title",
+                    type="line",
+                    merge_result_id="merge123",
+                )
+            ],
+        )
+        result = next(self.looker.yield_dashboard_chart(dashboard)).right
+        self.assertEqual(
+            result.sourceUrl.root,
+            "https://my-looker.com/merge?mid=merge123",
+        )
+
+    def test_dashboard_source_url(self):
+        """
+        Check that sourceUrl is set for dashboards
+        """
+        with patch.object(LookerSource, "get_owner_ref", return_value=None):
+            result = next(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD)).right
+            self.assertEqual(
+                result.sourceUrl.root,
+                "https://my-looker.com/dashboards/1",
+            )

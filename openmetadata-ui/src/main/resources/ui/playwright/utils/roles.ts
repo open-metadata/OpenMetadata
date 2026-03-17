@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const removePolicyFromRole = async (
   page: Page,
@@ -20,9 +21,7 @@ export const removePolicyFromRole = async (
   // Clicking on remove action for added policy
   await page.locator(`[data-testid="remove-action-${policyName}"]`).click();
 
-  const modalText = await page.locator('.ant-modal-body').textContent();
-
-  expect(modalText).toBe(
+  await expect(page.locator('.ant-modal-body')).toHaveText(
     `Are you sure you want to remove the ${policyName} from ${roleName}?`
   );
 
@@ -34,8 +33,16 @@ export const getElementWithPagination = async (
   page: Page,
   locator: Locator,
   click = true,
-  maxPages = 15
+  maxPages = 50
 ) => {
+  const previousBtn = page.locator('[data-testid="previous"]');
+  if (await previousBtn.isVisible()) {
+    while (await previousBtn.isEnabled()) {
+      await previousBtn.click();
+      await waitForAllLoadersToDisappear(page);
+    }
+  }
+
   for (let currentPage = 0; currentPage < maxPages; currentPage++) {
     // Check if element is visible on current page
     if (await locator.isVisible()) {
@@ -50,6 +57,6 @@ export const getElementWithPagination = async (
     await nextBtn.waitFor({ state: 'visible' });
 
     await nextBtn.click();
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
   }
 };

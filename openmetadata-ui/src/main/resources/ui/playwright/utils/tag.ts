@@ -65,28 +65,31 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
-  await page.waitForLoadState('networkidle');
-
-  await page.waitForSelector(
-    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-    { state: 'detached' }
-  );
 
   await page
-    .getByTestId('data-summary-container')
-    .getByText(classificationDisplayName)
-    .click();
+    .getByTestId('tags-container')
+    .locator('.table-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+
+  const classificationEntry = page
+    .getByTestId('side-panel-classification')
+    .filter({ hasText: classificationDisplayName })
+    .first();
+
+  await expect(classificationEntry).toBeVisible();
+  await classificationEntry.click();
 
   await expect(page.locator('.activeCategory')).toContainText(
     classificationDisplayName
   );
 
   await fetchTags;
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector(
-    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .locator('.table-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
@@ -96,12 +99,15 @@ export const addAssetsToTag = async (
   tag: TagClass,
   otherAsset?: EntityClass[]
 ) => {
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+  const searchBar = assetSelectionModal.getByTestId('searchbar');
+
   await tag.visitPage(page);
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -116,18 +122,30 @@ export const addAssetsToTag = async (
   if (!isUndefined(otherAsset)) {
     for (const asset of otherAsset) {
       const name = get(asset, 'entityResponseData.name');
+      const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
       const entityDisplayName = get(asset, 'entityResponseData.displayName');
       const visibleName = entityDisplayName ?? name;
       const searchRes = page.waitForResponse(
-        `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&**`
+        `/api/v1/search/query?q=${encodeURIComponent(
+          visibleName
+        )}&index=all&from=0&size=25&**`
       );
-      await page
-        .getByTestId('asset-selection-modal')
-        .getByTestId('searchbar')
-        .fill(visibleName);
+      await searchBar.fill(visibleName);
       await searchRes;
 
-      await expect(page.getByText(visibleName)).not.toBeVisible();
+      await expect
+        .poll(
+          async () => {
+
+            return assetSelectionModal
+              .locator(`[data-testid="table-data-card_${fqn}"]`)
+              .count();
+          },
+          {
+            timeout: 45000,
+          }
+        )
+        .toBe(0);
     }
   }
 
@@ -142,16 +160,15 @@ export const addAssetsToTag = async (
         visibleName
       )}&index=all&from=0&size=25&**`
     );
-    await page
-      .getByTestId('asset-selection-modal')
-      .getByTestId('searchbar')
-      .fill(visibleName);
+    await searchBar.fill(visibleName);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await assetSelectionModal
+      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .check();
 
     await expect(
-      page.locator(
+      assetSelectionModal.locator(
         `[data-testid="table-data-card_${fqn}"] [data-testid="entity-header-name"]`
       )
     ).toContainText(visibleName);
@@ -171,10 +188,10 @@ export const removeAssetsFromTag = async (
   await tag.visitPage(page);
   await res;
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
@@ -187,12 +204,11 @@ export const removeAssetsFromTag = async (
   await page.getByTestId('delete-all-button').click();
   await assetsRemoveRes;
 
-  await page.waitForLoadState('networkidle');
   await page.reload();
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
   await checkAssetsCount(page, 0);
 };
 
@@ -316,7 +332,7 @@ export const addTagToTableColumn = async (
   await page.click('[data-testid="saveAssociatedTag"]');
   await saveAssociatedTag;
 
-  await page.waitForSelector('.ant-select-dropdown', {
+  await page.locator('.ant-select-dropdown').first().waitFor({
     state: 'detached',
   });
 
@@ -340,10 +356,10 @@ export const verifyTagPageUI = async (
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
@@ -378,30 +394,39 @@ export const verifyTagPageUI = async (
 
 export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   await redirectToHomePage(page);
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
-  await res;
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
+  const updatedDescription = `This is updated test description for tag ${tag.data.name}.`;
+
+  await expect(page.getByTestId('edit-description')).toBeVisible();
   await page.getByTestId('edit-description').click();
 
   await expect(page.getByRole('dialog')).toBeVisible();
 
   await page.locator(descriptionBox).clear();
-  await page
-    .locator(descriptionBox)
-    .fill(`This is updated test description for tag ${tag.data.name}.`);
+  await page.locator(descriptionBox).fill(updatedDescription);
 
-  const editDescription = page.waitForResponse(`/api/v1/tags/*`);
+  const editDescription = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      response.url().includes('/api/v1/tags/') &&
+      response.status() === 200
+  );
   await page.getByTestId('save').click();
   await editDescription;
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+  await expect(page.getByRole('dialog')).not.toBeVisible();
 
   await expect(page.getByTestId('viewer-container')).toContainText(
-    `This is updated test description for tag ${tag.data.name}.`
+    updatedDescription
   );
 };
 
@@ -596,7 +621,7 @@ export const verifyEntityTypeFilterInTagAssets = async (
   await clearResponse;
 };
 
-export const selectTagInMUITagSuggestion = async (
+export const selectTagInTagSuggestion = async (
   page: Page,
   {
     searchTerm,
@@ -620,8 +645,10 @@ export const selectTagInMUITagSuggestion = async (
   await tagInput.fill(searchTerm);
   await tagSearchResponse;
 
-  await page.waitForSelector('[role="listbox"]', { state: 'visible' });
+  await page.locator('[role="listbox"]').first().waitFor({ state: 'visible' });
   const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
   await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
+  await page.keyboard.press('Escape');
+  await page.locator('[role="listbox"]').first().waitFor({ state: 'hidden' });
 };

@@ -87,8 +87,8 @@ import {
   InputType,
   SubscriptionCategory,
   SubscriptionType,
+  Type,
   Webhook,
-  WebhookAuthType,
 } from '../../generated/events/eventSubscription';
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
@@ -412,8 +412,7 @@ export const getDestinationConfigField = (
                     fieldText: t('label.endpoint-url'),
                   }),
                 },
-              ]}
-            >
+              ]}>
               <Input
                 data-testid={`endpoint-input-${fieldName}`}
                 placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
@@ -427,8 +426,7 @@ export const getDestinationConfigField = (
             <Col span={24}>
               <Collapse
                 className="webhook-config-collapse"
-                expandIconPosition="end"
-              >
+                expandIconPosition="end">
                 <Collapse.Panel
                   header={
                     <Row align="middle" gutter={[8, 8]}>
@@ -442,8 +440,7 @@ export const getDestinationConfigField = (
                       </Col>
                     </Row>
                   }
-                  key={`advanced-configuration-${fieldName}`}
-                >
+                  key={`advanced-configuration-${fieldName}`}>
                   <Row align="middle" gutter={[8, 8]}>
                     <Col data-testid="auth-type" span={24}>
                       <Form.Item
@@ -453,23 +450,22 @@ export const getDestinationConfigField = (
                           )}:`}</Typography.Text>
                         }
                         labelCol={{ span: 24 }}
-                        name={[fieldName, 'config', 'authType', 'type']}
-                      >
+                        name={[fieldName, 'config', 'authType', 'type']}>
                         <Select
                           className="w-full"
                           data-testid={`auth-type-select-${fieldName}`}
                           options={[
                             {
                               label: t('label.no-authentication'),
-                              value: WebhookAuthType.None,
+                              value: Type.None,
                             },
                             {
                               label: t('label.bearer-hmac-signature'),
-                              value: WebhookAuthType.Bearer,
+                              value: Type.Bearer,
                             },
                             {
                               label: t('label.oauth2-client-credential-plural'),
-                              value: WebhookAuthType.OAuth2,
+                              value: Type.Oauth2,
                             },
                           ]}
                           placeholder={t('label.authentication-type')}
@@ -487,8 +483,7 @@ export const getDestinationConfigField = (
                             ?.authType?.type;
 
                         return prevType !== currentType;
-                      }}
-                    >
+                      }}>
                       {({ getFieldValue }) => {
                         const selectedAuthType = getFieldValue([
                           'destinations',
@@ -498,7 +493,7 @@ export const getDestinationConfigField = (
                           'type',
                         ]);
 
-                        if (selectedAuthType === WebhookAuthType.Bearer) {
+                        if (selectedAuthType === Type.Bearer) {
                           return (
                             <Col data-testid="secret-key" span={24}>
                               <Form.Item
@@ -524,8 +519,7 @@ export const getDestinationConfigField = (
                                       }
                                     ),
                                   },
-                                ]}
-                              >
+                                ]}>
                                 <Input.Password
                                   data-testid={`secret-key-input-${fieldName}`}
                                   placeholder={t('label.secret-key')}
@@ -535,7 +529,7 @@ export const getDestinationConfigField = (
                           );
                         }
 
-                        if (selectedAuthType === WebhookAuthType.OAuth2) {
+                        if (selectedAuthType === Type.Oauth2) {
                           return (
                             <>
                               <Col span={24}>
@@ -562,8 +556,7 @@ export const getDestinationConfigField = (
                                         }
                                       ),
                                     },
-                                  ]}
-                                >
+                                  ]}>
                                   <Input
                                     data-testid={`token-url-input-${fieldName}`}
                                     placeholder="https://auth.example.com/oauth/token"
@@ -594,8 +587,7 @@ export const getDestinationConfigField = (
                                         }
                                       ),
                                     },
-                                  ]}
-                                >
+                                  ]}>
                                   <Input.Password
                                     data-testid={`client-id-input-${fieldName}`}
                                     placeholder={t('label.client-id')}
@@ -626,8 +618,7 @@ export const getDestinationConfigField = (
                                         }
                                       ),
                                     },
-                                  ]}
-                                >
+                                  ]}>
                                   <Input.Password
                                     data-testid={`client-secret-input-${fieldName}`}
                                     placeholder={t('label.client-secret')}
@@ -647,8 +638,7 @@ export const getDestinationConfigField = (
                                     'config',
                                     'authType',
                                     'scope',
-                                  ]}
-                                >
+                                  ]}>
                                   <Input
                                     data-testid={`scope-input-${fieldName}`}
                                     placeholder={`${t('label.scope')} (${t(
@@ -670,8 +660,7 @@ export const getDestinationConfigField = (
                           <Row
                             data-testid={`webhook-${fieldName}-headers-list`}
                             gutter={[8, 8]}
-                            key="headers"
-                          >
+                            key="headers">
                             <Col span={24}>
                               <Row align="middle" justify="space-between">
                                 <Col>
@@ -710,8 +699,7 @@ export const getDestinationConfigField = (
                                                 }
                                               ),
                                             },
-                                          ]}
-                                        >
+                                          ]}>
                                           <Input
                                             data-testid={`header-key-input-${name}`}
                                             placeholder={t('label.key')}
@@ -732,8 +720,7 @@ export const getDestinationConfigField = (
                                                 }
                                               ),
                                             },
-                                          ]}
-                                        >
+                                          ]}>
                                           <Input
                                             data-testid={`header-value-input-${name}`}
                                             placeholder={t('label.value')}
@@ -764,8 +751,7 @@ export const getDestinationConfigField = (
                           <Row
                             data-testid={`webhook-${fieldName}-query-params-list`}
                             gutter={[8, 8]}
-                            key="queryParams"
-                          >
+                            key="queryParams">
                             <Col span={24}>
                               <Row align="middle" justify="space-between">
                                 <Col>
@@ -804,8 +790,7 @@ export const getDestinationConfigField = (
                                                 }
                                               ),
                                             },
-                                          ]}
-                                        >
+                                          ]}>
                                           <Input
                                             data-testid={`query-param-key-input-${name}`}
                                             placeholder={t('label.key')}
@@ -826,8 +811,7 @@ export const getDestinationConfigField = (
                                                 }
                                               ),
                                             },
-                                          ]}
-                                        >
+                                          ]}>
                                           <Input
                                             data-testid={`query-param-value-input-${name}`}
                                             placeholder={t('label.value')}
@@ -860,8 +844,7 @@ export const getDestinationConfigField = (
                           )}:`}</Typography.Text>
                         }
                         labelCol={{ span: 24 }}
-                        name={[fieldName, 'config', 'httpMethod']}
-                      >
+                        name={[fieldName, 'config', 'httpMethod']}>
                         <Radio.Group
                           data-testid={`http-method-${fieldName}`}
                           defaultValue={HTTPMethod.Post}
@@ -891,8 +874,7 @@ export const getDestinationConfigField = (
                   fieldText: t('label.email'),
                 }),
               },
-            ]}
-          >
+            ]}>
             <Select
               className="w-full"
               data-testid={`email-input-${fieldName}`}
@@ -923,8 +905,7 @@ export const getDestinationConfigField = (
                   }),
                 }),
               },
-            ]}
-          >
+            ]}>
             <TeamAndUserSelectItem
               destinationNumber={fieldName}
               entityType={
@@ -949,8 +930,7 @@ export const getDestinationConfigField = (
         <Form.Item
           hidden
           initialValue
-          name={[fieldName, 'config', getConfigFieldFromDestinationType(type)]}
-        >
+          name={[fieldName, 'config', getConfigFieldFromDestinationType(type)]}>
           <Switch />
         </Form.Item>
       );
@@ -1321,8 +1301,7 @@ export const getFieldByArgumentType = (
               required: true,
               message: getMessageFromArgumentName(argument),
             },
-          ]}
-        >
+          ]}>
           {field}
         </Form.Item>
       </Col>
@@ -1532,8 +1511,7 @@ export const getSourceOptionsFromResourceList = (
       label: (
         <div
           className="d-flex items-center gap-2"
-          data-testid={`${resource}-option`}
-        >
+          data-testid={`${resource}-option`}>
           {showCheckbox && (
             <Checkbox checked={selectedResource?.includes(resource)} />
           )}

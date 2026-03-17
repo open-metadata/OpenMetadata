@@ -18,6 +18,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { createTableDescriptionSuggestions } from '../../utils/suggestions';
 import { performUserLogin } from '../../utils/user';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const table = new TableClass();
 const table2 = new TableClass();
@@ -111,10 +112,7 @@ test.describe.serial(
         await singleResolveResponse;
 
         await page.reload();
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // since we accepted one suggestion, the badge count should be total-1
         await expect(
@@ -153,10 +151,7 @@ test.describe.serial(
         await singleResolveResponse;
 
         await page.reload();
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // since we accepted two suggestions, the badge count should be total-2
         await expect(

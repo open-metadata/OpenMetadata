@@ -475,7 +475,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
     entityManager.createEntities(indexName, docsAndIds);
   }
 
@@ -665,13 +666,6 @@ public class ElasticSearchClient implements SearchClient {
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
-  }
-
-  @Override
-  public DataInsightCustomChartResultList buildDIChart(
-      @NotNull DataInsightCustomChart diChart, long start, long end, boolean live, String filter)
-      throws IOException {
-    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, filter);
   }
 
   @Override

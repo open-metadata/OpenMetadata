@@ -36,6 +36,8 @@ const testGlossaryTerm = new GlossaryTerm(testGlossary);
 const domainEntity = new Domain();
 const ownerUser = new UserClass();
 
+test.describe.configure({ mode: 'serial' });
+
 test.describe('Tag Page Assets - Right Panel', () => {
   test.beforeAll(async ({ browser }) => {
     test.slow();
@@ -170,7 +172,6 @@ test.describe('Tag Page Assets - Right Panel', () => {
     await adminPage.goto(
       `/tag/${encodeURIComponent(testTag.responseData.fullyQualifiedName)}`
     );
-    await adminPage.waitForLoadState('networkidle');
 
     const panelLocator = adminPage.locator('.entity-summary-panel-container');
 

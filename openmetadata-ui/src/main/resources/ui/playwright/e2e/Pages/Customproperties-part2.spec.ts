@@ -19,6 +19,7 @@ import {
   clickOutside,
   createNewPage,
   redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -107,8 +108,9 @@ test.describe('Custom properties with custom property config', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup users', async ({ browser }) => {
+  test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    await adminTestEntity.delete(apiContext);
     for (const user of users) {
       await user.delete(apiContext);
     }
@@ -125,7 +127,7 @@ test.describe('Custom properties with custom property config', () => {
       propertiesWithConfigList.forEach((propertyConfig) => {
         test(propertyConfig.name, async ({ page }) => {
           test.slow();
-          const propertyName = `pwcp${Date.now()}test${entity.name}`;
+          const propertyName = `pwcp${uuid()}${uuid()}test${entity.name}`;
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,
@@ -187,7 +189,7 @@ test.describe('Custom properties with custom property config', () => {
       page,
     }) => {
       test.slow();
-      const propertyName = `pwcp${Date.now()}entityRefListLayout`;
+      const propertyName = `pwcp${uuid()}${uuid()}entityRefListLayout`;
 
       await test.step('Create entityReferenceList property', async () => {
         await settingClick(
@@ -209,6 +211,7 @@ test.describe('Custom properties with custom property config', () => {
         await adminTestEntity.visitEntityPage(page);
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('custom_properties').click();
+        await waitForAllLoadersToDisappear(page);
 
         const container = page.locator(
           `[data-testid="custom-property-${propertyName}-card"]`
@@ -220,16 +223,24 @@ test.describe('Custom properties with custom property config', () => {
         await editButton.click();
 
         for (const user of users) {
-          const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
-            user.getUserName()
-          )}*`;
-          const searchResponse = page.waitForResponse(searchApi);
-          await page.locator('#entityReference').clear();
-          await page.locator('#entityReference').fill(user.getUserName());
-          await searchResponse;
-          await page
-            .locator(`[data-testid="${user.getUserDisplayName()}"]`)
-            .click();
+          const userName = user.getUserName();
+          const displayName = user.getUserDisplayName();
+          const resultLocator = page.locator(
+            `[data-testid="${displayName}"]`
+          );
+
+          await expect(async () => {
+            const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
+              userName
+            )}*`;
+            const searchResponse = page.waitForResponse(searchApi);
+            await page.locator('#entityReference').clear();
+            await page.locator('#entityReference').fill(userName);
+            await searchResponse;
+            await expect(resultLocator).toBeVisible({ timeout: 5_000 });
+          }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+
+          await resultLocator.click();
         }
         await clickOutside(page);
         const patchResponse = page.waitForResponse(
@@ -284,7 +295,7 @@ test.describe('Custom properties with custom property config', () => {
       page,
     }) => {
       test.slow();
-      const propertyName = `pwcp${Date.now()}tableCpLayout`;
+      const propertyName = `pwcp${uuid()}${uuid()}tableCpLayout`;
 
       await test.step('Create table-cp property', async () => {
         await settingClick(

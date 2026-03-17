@@ -25,6 +25,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
 import { getCurrentMillis } from '../../../utils/dateTime';
 
@@ -111,6 +112,7 @@ test.describe(
       const incidentTab = page.getByRole('tab', { name: /Incident/i });
       await expect(incidentTab).toBeVisible();
       await incidentTab.click();
+      await waitForAllLoadersToDisappear(page);
       await expect(page.getByTestId('issue-tab-container')).toBeVisible();
     };
 
@@ -147,22 +149,32 @@ test.describe(
         failedTimestamp - 60000
       }&endTs=${failedTimestamp + 60000}`;
 
-      const incidentListRes = await apiContext.get(incidentUrl);
-      const incidentList = await incidentListRes.json();
+      // Poll for incident creation — may not be immediate after adding failed result
+      await expect
+        .poll(
+          async () => {
+            const incidentListRes = await apiContext.get(incidentUrl);
+            const incidentList = await incidentListRes.json();
 
-      if (incidentList.data?.length > 0) {
-        const incident = incidentList.data.find(
-          (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
-            i.testCaseReference?.fullyQualifiedName === testCaseFqn
-        );
-        if (incident) {
-          incidentId = incident.id;
-          incidentStateId = incident.stateId;
-        }
-      }
+            if (incidentList.data?.length > 0) {
+              const incident = incidentList.data.find(
+                (i: {
+                  testCaseReference?: { fullyQualifiedName?: string };
+                }) => i.testCaseReference?.fullyQualifiedName === testCaseFqn
+              );
+              if (incident) {
+                incidentId = incident.id;
+                incidentStateId = incident.stateId;
 
-      expect(incidentId).toBeDefined();
-      expect(incidentStateId).toBeDefined();
+                return true;
+              }
+            }
+
+            return false;
+          },
+          { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
+        )
+        .toBe(true);
 
       // Setup all users
       await setupUserWithPolicy(
@@ -201,6 +213,27 @@ test.describe(
         CONSUMER_LIKE_POLICY
       );
 
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await viewIncidentsUser.delete(apiContext);
+      await editIncidentsUser.delete(apiContext);
+      await tableEditIncidentsUser.delete(apiContext);
+      await tableViewIncidentsUser.delete(apiContext);
+      await consumerLikeUser.delete(apiContext);
+      await viewIncidentsRole.delete(apiContext);
+      await editIncidentsRole.delete(apiContext);
+      await tableEditIncidentsRole.delete(apiContext);
+      await tableViewIncidentsRole.delete(apiContext);
+      await consumerLikeRole.delete(apiContext);
+      await viewIncidentsPolicy.delete(apiContext);
+      await editIncidentsPolicy.delete(apiContext);
+      await tableEditIncidentsPolicy.delete(apiContext);
+      await tableViewIncidentsPolicy.delete(apiContext);
+      await consumerLikePolicy.delete(apiContext);
+      await table.delete(apiContext);
       await afterAction();
     });
 

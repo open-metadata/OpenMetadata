@@ -14,7 +14,7 @@ import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
 import { descriptionBox, uuid } from './common';
-import { hardDeleteEntity } from './entity';
+import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
 
 export const updateMetricType = async (page: Page, metric: string) => {
   await page.click(`[data-testid="edit-metric-type-button"]`);
@@ -154,10 +154,9 @@ export const updateRelatedMetric = async (
     await page.getByTestId('edit-related-metrics').click();
   }
 
-  await page.waitForSelector(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
-    { state: 'visible' }
-  );
+  await page
+    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
+    .waitFor({ state: 'visible' });
 
   const apiPromise = page.waitForResponse(
     '/api/v1/search/query?q=*&index=metric_search_index&*'
@@ -180,7 +179,7 @@ export const updateRelatedMetric = async (
 
   await patchPromise;
 
-  await page.waitForSelector(`[data-testid="${dataAsset.entity.name}"]`, {
+  await page.getByTestId(dataAsset.entity.name).waitFor({
     state: 'visible',
   });
 
@@ -195,14 +194,13 @@ export const updateRelatedMetric = async (
 
   await metricsResponsePromise1;
 
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('entity-header-display-name')).toContainText(
     dataAsset.entity.name
   );
 
-  // Adding manual wait for,right panel to be in place
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- right panel rendering delay
   await page.waitForTimeout(1000);
 
   // Wait for the metrics API call to complete
@@ -212,8 +210,7 @@ export const updateRelatedMetric = async (
   await page.getByRole('button', { name: title, exact: true }).click();
   await metricsResponsePromise2;
 
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('entity-header-display-name')).toContainText(
     title
@@ -236,6 +233,23 @@ export const addMetric = async (page: Page) => {
     unitOfMeasurement: 'Dollars',
   };
 
+  const selectFormOption = async (
+    field: ReturnType<Page['getByTestId']>,
+    input: ReturnType<Page['locator']>,
+    title: string
+  ) => {
+    await input.click();
+    await input.fill(title);
+
+    const option = page
+      .locator('.ant-select-dropdown:visible')
+      .getByTitle(title, { exact: true });
+    await expect(option).toBeVisible();
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+    await option.click({ force: true });
+    await expect(field).toContainText(title);
+  };
+
   await page.getByTestId('create-button').click();
 
   await expect(page.locator('#name_help')).toHaveText('Name is required');
@@ -247,29 +261,32 @@ export const addMetric = async (page: Page) => {
   await page.fill(descriptionBox, metricData.description);
 
   // Select the granularity
-  await page.locator('[id="root\\/granularity"]').fill(metricData.granularity);
-  await page.getByTitle(`${metricData.granularity}`, { exact: true }).click();
+  await selectFormOption(
+    page.getByTestId('granularity'),
+    page.locator('[id="root\\/granularity"]'),
+    metricData.granularity
+  );
 
   // Select the metric type
-  await page.locator('[id="root\\/metricType"]').fill(metricData.metricType);
-  await page.getByTitle(`${metricData.metricType}`, { exact: true }).click();
+  await selectFormOption(
+    page.getByTestId('metricType'),
+    page.locator('[id="root\\/metricType"]'),
+    metricData.metricType
+  );
 
   // Select the unit of measurement
-  await page
-    .getByTestId('unitOfMeasurement')
-    .locator('input')
-    .fill(metricData.unitOfMeasurement);
-  await page
-    .getByTitle(`${metricData.unitOfMeasurement}`, { exact: true })
-    .click();
+  await selectFormOption(
+    page.getByTestId('unitOfMeasurement'),
+    page.getByTestId('unitOfMeasurement').locator('input'),
+    metricData.unitOfMeasurement
+  );
 
   // Select the language
-  await page
-    .locator('[id="root\\/language"]')
-    .fill(metricData.metricExpression.language);
-  await page
-    .getByTitle(`${metricData.metricExpression.language}`, { exact: true })
-    .click();
+  await selectFormOption(
+    page.getByTestId('language'),
+    page.locator('[id="root\\/language"]'),
+    metricData.metricExpression.language
+  );
 
   // Enter the code
   await page.locator("pre[role='presentation']").last().click();

@@ -15,7 +15,7 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
@@ -53,6 +53,12 @@ test.describe(
       await afterAction();
     });
 
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await adminTestEntity.delete(apiContext);
+      await afterAction();
+    });
+
     test.beforeEach('Visit Home Page', async ({ page }) => {
       await redirectToHomePage(page);
     });
@@ -62,9 +68,7 @@ test.describe(
         .serial(`Add update and delete custom properties for ${entity.name}`, () => {
         propertiesList.forEach((property) => {
           test(property, async ({ page }) => {
-            // Using Date.now() to generate property names in a way that new property will always be
-            // added after existing properties to avoid conflicts due to parallel test executions
-            const propertyName = `pwcp${Date.now()}test${entity.name}`;
+            const propertyName = `pwcp${uuid()}${uuid()}test${entity.name}`;
             await settingClick(
               page,
               entity.entityApiType as SettingOptionsType,
@@ -106,7 +110,7 @@ test.describe(
         page,
       }) => {
         test.slow();
-        const propertyName = `pwcp${Date.now()}sqlQueryLayout`;
+        const propertyName = `pwcp${uuid()}${uuid()}sqlQueryLayout`;
 
         await test.step('Create sqlQuery property', async () => {
           await settingClick(

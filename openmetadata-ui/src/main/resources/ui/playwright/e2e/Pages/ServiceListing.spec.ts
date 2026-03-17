@@ -43,6 +43,21 @@ test.describe('Service Listing', () => {
     },
   });
   const databaseService2 = new DatabaseServiceClass();
+  const serviceDisplayName = `pw-display-name-${uuid()}`;
+  const databaseServiceWithDisplayName = new DatabaseServiceClass(undefined, {
+    name: `pw-database-service-${uuid()}`,
+    displayName: serviceDisplayName,
+    serviceType: 'Mysql',
+    connection: {
+      config: {
+        type: 'Mysql',
+        scheme: 'mysql+pymysql',
+        username: 'username',
+        authType: { password: 'password' },
+        hostPort: 'mysql:3306',
+      },
+    },
+  });
   const messagingService = new MessagingServiceClass();
   const dashboardService = new DashboardServiceClass();
   const pipelineService = new PipelineServiceClass();
@@ -57,6 +72,7 @@ test.describe('Service Listing', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await databaseService1.create(apiContext);
     await databaseService2.create(apiContext);
+    await databaseServiceWithDisplayName.create(apiContext);
     await messagingService.create(apiContext);
     await dashboardService.create(apiContext);
     await pipelineService.create(apiContext);
@@ -80,8 +96,6 @@ test.describe('Service Listing', () => {
   });
 
   test('should render the service listing page', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
-
     await page.getByTestId('filter-icon').click();
 
     const searchService1Response = page.waitForResponse(
@@ -115,6 +129,65 @@ test.describe('Service Listing', () => {
     ).not.toBeVisible();
   });
 
+  test('should send wildcard query_filter on name and displayName when searching', async ({
+    page,
+  }) => {
+    const searchTerm = databaseService2.entity.name;
+
+    const capturedRequest = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/search/query') &&
+        request.url().includes('query_filter')
+    );
+    await page.getByTestId('searchbar').fill(searchTerm);
+    const searchRequest = await capturedRequest;
+
+    const url = new URL(searchRequest.url());
+    const queryFilterParam = url.searchParams.get('query_filter');
+
+    expect(queryFilterParam).not.toBeNull();
+
+    const queryFilter = JSON.parse(queryFilterParam!);
+
+    expect(queryFilter).toMatchObject({
+      query: {
+        bool: {
+          must: expect.arrayContaining([
+            expect.objectContaining({
+              bool: expect.objectContaining({
+                should: expect.arrayContaining([
+                  { wildcard: { 'name.keyword': `*${searchTerm}*` } },
+                  { wildcard: { 'displayName.keyword': `*${searchTerm}*` } },
+                ]),
+                minimum_should_match: 1,
+              }),
+            }),
+          ]),
+        },
+      },
+    });
+
+    await expect(
+      page.getByRole('cell', { name: databaseService2.entity.name })
+    ).toBeVisible();
+  });
+
+  test('should find service when searching by displayName', async ({
+    page,
+  }) => {
+    const searchResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('database_service_search_index')
+    );
+    await page.getByTestId('searchbar').fill(serviceDisplayName);
+    const searchRequest = await searchResponse;
+    expect(searchRequest.status()).toBe(200);
+    await expect(
+      page.getByRole('cell', { name: serviceDisplayName }).first()
+    ).toBeVisible();
+  });
+
   test('service listing pages should use the correct search index for search', async ({
     page,
   }) => {
@@ -138,7 +211,6 @@ test.describe('Service Listing', () => {
     } of searchIndexMappings) {
       await test.step(`${settingOption} uses ${expectedIndex}`, async () => {
         await settingClick(page, settingOption);
-        await page.waitForLoadState('networkidle');
 
         const searchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=${expectedIndex}*`

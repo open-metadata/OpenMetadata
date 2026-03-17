@@ -136,8 +136,16 @@ public abstract class ServiceEntityRepository<
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateConnection();
-      updateIngestionRunner();
+      compareAndUpdate(
+          "connection",
+          () -> {
+            updateConnection();
+          });
+      compareAndUpdate(
+          "ingestionRunner",
+          () -> {
+            updateIngestionRunner();
+          });
     }
 
     private void updateConnection() {
@@ -180,7 +188,7 @@ public abstract class ServiceEntityRepository<
           updated.getIngestionRunner() != null ? updated.getIngestionRunner().getId() : null;
       if (!Objects.equals(originalAgentId, updatedAgentId)) {
         addIngestionRunnerRelationship(updated);
-        recordChange("ingestionAgent", originalAgentId, updatedAgentId, true);
+        recordChange("ingestionRunner", originalAgentId, updatedAgentId, true);
       }
     }
   }

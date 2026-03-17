@@ -288,100 +288,102 @@ export const UserTeamSelectableList = ({
     <Popover
       destroyTooltipOnHide
       content={
-        <FocusTrapWithContainer active={popoverProps?.open || false}>
-          {previewSelected && (
-            <Space
-              className="user-team-popover-header w-full p-x-sm p-y-md"
-              direction="vertical"
-              size={8}>
-              <Typography.Text className="text-grey-muted">
-                {t('label.selected-entity', {
-                  entity: label ?? t('label.owner-plural'),
-                })}
-              </Typography.Text>
-              <div className="user-team-popover-header-content">
-                {selectedUsers.map((user) => {
-                  return (
-                    <UserTag
-                      closable
-                      avatarType="outlined"
-                      className="user-team-pills"
-                      id={user.name ?? ''}
-                      isTeam={user.type === EntityType.TEAM}
-                      key={user.id}
-                      name={getEntityName(user)}
-                      size={UserTagSize.small}
-                      onRemove={() => onRemove(user.id)}
+        <div data-react-aria-top-layer>
+          <FocusTrapWithContainer active={popoverProps?.open || false}>
+            {previewSelected && (
+              <Space
+                className="user-team-popover-header w-full p-x-sm p-y-md"
+                direction="vertical"
+                size={8}>
+                <Typography.Text className="text-grey-muted">
+                  {t('label.selected-entity', {
+                    entity: label ?? t('label.owner-plural'),
+                  })}
+                </Typography.Text>
+                <div className="user-team-popover-header-content">
+                  {selectedUsers.map((user) => {
+                    return (
+                      <UserTag
+                        closable
+                        avatarType="outlined"
+                        className="user-team-pills"
+                        id={user.name ?? ''}
+                        isTeam={user.type === EntityType.TEAM}
+                        key={user.id}
+                        name={getEntityName(user)}
+                        size={UserTagSize.small}
+                        onRemove={() => onRemove(user.id)}
+                      />
+                    );
+                  })}
+                </div>
+              </Space>
+            )}
+            <Tabs
+              centered
+              activeKey={activeTab}
+              className="select-owner-tabs"
+              data-testid="select-owner-tabs"
+              destroyInactiveTabPane={false}
+              items={[
+                {
+                  label: (
+                    <>
+                      {t('label.team-plural')}{' '}
+                      {getCountBadge(count.team, '', activeTab === 'teams')}
+                    </>
+                  ),
+                  key: 'teams',
+                  children: (
+                    <SelectableList
+                      customTagRenderer={TeamListItemRenderer}
+                      fetchOptions={fetchTeamOptions}
+                      height={listHeight}
+                      multiSelect={isMultiTeam}
+                      searchBarDataTestId="owner-select-teams-search-bar"
+                      searchPlaceholder={t('label.search-for-type', {
+                        type: t('label.team'),
+                      })}
+                      selectedItems={defaultTeams}
+                      onCancel={handleCancelSelectableList}
+                      onChange={isMultiTeam ? handleChange : noop}
+                      onUpdate={handleUpdate}
                     />
-                  );
-                })}
-              </div>
-            </Space>
-          )}
-          <Tabs
-            centered
-            activeKey={activeTab}
-            className="select-owner-tabs"
-            data-testid="select-owner-tabs"
-            destroyInactiveTabPane={false}
-            items={[
-              {
-                label: (
-                  <>
-                    {t('label.team-plural')}{' '}
-                    {getCountBadge(count.team, '', activeTab === 'teams')}
-                  </>
-                ),
-                key: 'teams',
-                children: (
-                  <SelectableList
-                    customTagRenderer={TeamListItemRenderer}
-                    fetchOptions={fetchTeamOptions}
-                    height={listHeight}
-                    multiSelect={isMultiTeam}
-                    searchBarDataTestId="owner-select-teams-search-bar"
-                    searchPlaceholder={t('label.search-for-type', {
-                      type: t('label.team'),
-                    })}
-                    selectedItems={defaultTeams}
-                    onCancel={handleCancelSelectableList}
-                    onChange={isMultiTeam ? handleChange : noop}
-                    onUpdate={handleUpdate}
-                  />
-                ),
-              },
-              {
-                label: (
-                  <>
-                    {t('label.user-plural')}
-                    {getCountBadge(count.user, '', activeTab === 'users')}
-                  </>
-                ),
-                key: 'users',
-                children: (
-                  <SelectableList
-                    fetchOptions={fetchUserOptions}
-                    height={listHeight}
-                    multiSelect={isMultiUser}
-                    searchBarDataTestId="owner-select-users-search-bar"
-                    searchPlaceholder={t('label.search-for-type', {
-                      type: t('label.user'),
-                    })}
-                    selectedItems={defaultUsers}
-                    onCancel={handleCancelSelectableList}
-                    onChange={isMultiUser ? handleChange : noop}
-                    onUpdate={handleUpdate}
-                  />
-                ),
-              },
-            ]}
-            size="small"
-            onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}
-            // Used div to stop click propagation event anywhere in the component to parent
-            // Users.component collapsible panel
-            onClick={(e) => e.stopPropagation()}
-          />
-        </FocusTrapWithContainer>
+                  ),
+                },
+                {
+                  label: (
+                    <>
+                      {t('label.user-plural')}
+                      {getCountBadge(count.user, '', activeTab === 'users')}
+                    </>
+                  ),
+                  key: 'users',
+                  children: (
+                    <SelectableList
+                      fetchOptions={fetchUserOptions}
+                      height={listHeight}
+                      multiSelect={isMultiUser}
+                      searchBarDataTestId="owner-select-users-search-bar"
+                      searchPlaceholder={t('label.search-for-type', {
+                        type: t('label.user'),
+                      })}
+                      selectedItems={defaultUsers}
+                      onCancel={handleCancelSelectableList}
+                      onChange={isMultiUser ? handleChange : noop}
+                      onUpdate={handleUpdate}
+                    />
+                  ),
+                },
+              ]}
+              size="small"
+              onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}
+              // Used div to stop click propagation event anywhere in the component to parent
+              // Users.component collapsible panel
+              onClick={(e) => e.stopPropagation()}
+            />
+          </FocusTrapWithContainer>
+        </div>
       }
       open={popupVisible}
       overlayClassName={classNames(

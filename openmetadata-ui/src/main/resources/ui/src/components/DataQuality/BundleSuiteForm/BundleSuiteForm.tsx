@@ -393,7 +393,6 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
               },
             ]}>
             <AddTestCaseList
-              showSelectAll
               selectedTest={selectedTestCases.map((tc) => tc.name)}
               showButton={false}
               onChange={handleTestCaseSelection}

@@ -10,6 +10,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
@@ -35,20 +36,26 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
 
   @SneakyThrows
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    // Build Index Doc
-    TestDefinition testDefinition =
-        Entity.getEntity(
-            Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
     doc.put("fqnParts", getFQNParts(testCase.getFullyQualifiedName()));
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owners", getEntitiesWithDisplayName(testCase.getOwners()));
     doc.put("tags", testCase.getTags());
-    doc.put("testPlatforms", testDefinition.getTestPlatforms());
-    doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
     doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
-    doc.put("testCaseType", testDefinition.getEntityType());
     doc.put(
         "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
+    try {
+      TestDefinition testDefinition =
+          Entity.getEntity(
+              Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
+      doc.put("testPlatforms", testDefinition.getTestPlatforms());
+      doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
+      doc.put("testCaseType", testDefinition.getEntityType());
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "TestDefinition not found for TestCase [{}]: {}",
+          testCase.getFullyQualifiedName(),
+          ex.getMessage());
+    }
     setParentRelationships(doc, testCase);
     return doc;
   }
@@ -60,6 +67,9 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
       return;
     }
     TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
+    if (testSuite == null) {
+      return;
+    }
     EntityReference entityReference = testSuite.getBasicEntityReference();
     if (entityReference != null) {
       TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);

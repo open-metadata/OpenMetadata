@@ -65,6 +65,14 @@ public interface MessageDecorator<T> {
 
   String getBoldWithSpace();
 
+  default String bold(String text) {
+    return String.format(getBold(), text);
+  }
+
+  default String boldWithSpace(String text) {
+    return String.format(getBoldWithSpace(), text);
+  }
+
   String getLineBreak();
 
   String getAddMarker();

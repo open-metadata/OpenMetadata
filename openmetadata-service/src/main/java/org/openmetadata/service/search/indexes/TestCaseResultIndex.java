@@ -8,10 +8,10 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
@@ -42,37 +42,46 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
 
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
-    // Load TestCase with minimal fields - only what we need for the index
-    TestCase testCase =
-        Entity.getEntityByName(
-            Entity.TEST_CASE,
-            testCaseResult.getTestCaseFQN(),
-            "testSuites,testSuite,testDefinition,entityLink,owners,tags",
-            Include.ALL);
-
-    // Load TestDefinition with only required fields
-    TestDefinition testDefinition = null;
-    if (testCase.getTestDefinition() != null) {
-      testDefinition =
-          Entity.getEntity(
-              Entity.TEST_DEFINITION,
-              testCase.getTestDefinition().getId(),
-              "testPlatforms,dataQualityDimension,entityType",
+    TestCase testCase;
+    try {
+      testCase =
+          Entity.getEntityByName(
+              Entity.TEST_CASE,
+              testCaseResult.getTestCaseFQN(),
+              "testSuites,testSuite,testDefinition,entityLink,owners,tags",
               Include.ALL);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "TestCase [{}] not found during search indexing: {}",
+          testCaseResult.getTestCaseFQN(),
+          ex.getMessage());
+      esDoc.put("@timestamp", testCaseResult.getTimestamp());
+      return esDoc;
     }
 
-    // we set testSuites and testSuite at the root for cascade deletion purposes
+    TestDefinition testDefinition = null;
+    if (testCase.getTestDefinition() != null) {
+      try {
+        testDefinition =
+            Entity.getEntity(
+                Entity.TEST_DEFINITION,
+                testCase.getTestDefinition().getId(),
+                "testPlatforms,dataQualityDimension,entityType",
+                Include.ALL);
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "TestDefinition not found for TestCase [{}]: {}",
+            testCaseResult.getTestCaseFQN(),
+            ex.getMessage());
+      }
+    }
+
     Map<String, Object> testCaseMap = JsonUtils.getMap(testCase);
     esDoc.put("testSuites", testCaseMap.get("testSuites"));
     esDoc.put("testSuite", testCaseMap.get("testSuite"));
     testCaseMap
         .keySet()
-        .removeAll(
-            Set.of(
-                "testSuites",
-                "testSuite",
-                "testCaseResult",
-                "testDefinition")); // remove testCase fields not needed
+        .removeAll(Set.of("testSuites", "testSuite", "testCaseResult", "testDefinition"));
     esDoc.put("testCase", testCaseMap);
     esDoc.put("@timestamp", testCaseResult.getTimestamp());
     if (testDefinition != null) {
@@ -94,21 +103,23 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
 
   private void setTableEntityParentRelations(
       MessageParser.EntityLink entityLink, Map<String, Object> esDoc) {
-    // Only load the references we need for search indexing
-    Table table =
-        Entity.getEntityByName(
-            Entity.TABLE,
-            entityLink.getEntityFQN(),
-            "database,databaseSchema,service",
-            Include.ALL);
-    EntityReference databaseSchemaReference = table.getDatabaseSchema();
-    EntityReference databaseReference = table.getDatabase();
-    EntityReference serviceReference = table.getService();
-    EntityReference tableReference = table.getEntityReference();
-    esDoc.put("database", databaseReference);
-    esDoc.put("databaseSchema", databaseSchemaReference);
-    esDoc.put("service", serviceReference);
-    esDoc.put("table", tableReference);
+    try {
+      Table table =
+          Entity.getEntityByName(
+              Entity.TABLE,
+              entityLink.getEntityFQN(),
+              "database,databaseSchema,service",
+              Include.ALL);
+      esDoc.put("database", table.getDatabase());
+      esDoc.put("databaseSchema", table.getDatabaseSchema());
+      esDoc.put("service", table.getService());
+      esDoc.put("table", table.getEntityReference());
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "Table [{}] not found during search indexing: {}",
+          entityLink.getEntityFQN(),
+          ex.getMessage());
+    }
   }
 
   public static Map<String, Float> getFields() {

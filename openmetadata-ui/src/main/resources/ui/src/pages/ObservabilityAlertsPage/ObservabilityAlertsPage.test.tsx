@@ -123,7 +123,9 @@ describe('Observability Alerts Page Tests', () => {
       });
     });
 
-    expect(await screen.findByText('label.observability')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.observability-alert')
+    ).toBeInTheDocument();
   });
 
   it('SubTitle should be rendered', async () => {

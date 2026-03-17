@@ -48,7 +48,7 @@ test.describe('Enum Custom Property on Table Right Panel', () => {
 
     await adminTestEntity.visitEntityPage(page);
 
-    await page.waitForSelector('[data-testid="custom_properties"]', {
+    await page.getByTestId('custom_properties').waitFor({
       state: 'visible',
     });
 

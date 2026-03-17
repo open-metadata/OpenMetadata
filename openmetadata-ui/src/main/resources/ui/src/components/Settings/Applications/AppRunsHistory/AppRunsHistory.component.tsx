@@ -115,6 +115,25 @@ const AppRunsHistory = forwardRef(
       [appData]
     );
 
+    const tableData = useMemo<AppRunRecordWithId[]>(() => {
+      if (appRunsHistoryData.length > 0 || isExternalApp || !appData) {
+        return appRunsHistoryData;
+      }
+
+      return [
+        {
+          id: `${appData.id ?? appData.name ?? 'app'}-current-config`,
+          appId: appData.id,
+          appName: appData.name,
+          config: appData.appConfiguration ?? {},
+          isSynthetic: true,
+          runType: 'CurrentConfig',
+          startTime: appData.updatedAt,
+          timestamp: appData.updatedAt,
+        },
+      ];
+    }, [appData, appRunsHistoryData, isExternalApp]);
+
     const handleRowExpandable = useCallback(
       (key?: string) => {
         if (key) {
@@ -138,6 +157,10 @@ const AppRunsHistory = forwardRef(
     );
 
     const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
+      if (record.isSynthetic) {
+        return true;
+      }
+
       if (appData?.appType === AppType.External) {
         return false;
       }
@@ -403,7 +426,7 @@ const AppRunsHistory = forwardRef(
             onShowSizeChange: handlePageSizeChange,
           }}
           data-testid="app-run-history-table"
-          dataSource={appRunsHistoryData}
+          dataSource={tableData}
           expandable={{
             expandedRowRender: (record) => (
               <AppLogsViewer

@@ -1419,13 +1419,10 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private void updateColumnStatsFromSink(Stats jobDataStats) {
-    StepStats columnStats = null;
-    if (searchIndexSink instanceof OpenSearchBulkSink opensearchBulkSink) {
-      columnStats = opensearchBulkSink.getColumnStats();
-    } else if (searchIndexSink instanceof ElasticSearchBulkSink elasticSearchBulkSink) {
-      columnStats = elasticSearchBulkSink.getColumnStats();
+    if (searchIndexSink == null || jobDataStats == null || jobDataStats.getEntityStats() == null) {
+      return;
     }
-
+    StepStats columnStats = searchIndexSink.getColumnStats();
     if (columnStats != null && columnStats.getTotalRecords() > 0) {
       StepStats existingColumnStats =
           jobDataStats.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN);
@@ -1541,13 +1538,15 @@ public class SearchIndexExecutor implements AutoCloseable {
     }
 
     int totalSuccess =
-        statsObj.getEntityStats().getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getSuccessRecords)
+        statsObj.getEntityStats().getAdditionalProperties().entrySet().stream()
+            .filter(e -> !Entity.TABLE_COLUMN.equals(e.getKey()))
+            .mapToInt(e -> e.getValue().getSuccessRecords())
             .sum();
 
     int totalFailed =
-        statsObj.getEntityStats().getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getFailedRecords)
+        statsObj.getEntityStats().getAdditionalProperties().entrySet().stream()
+            .filter(e -> !Entity.TABLE_COLUMN.equals(e.getKey()))
+            .mapToInt(e -> e.getValue().getFailedRecords())
             .sum();
 
     jobStats.withSuccessRecords(totalSuccess).withFailedRecords(totalFailed);
@@ -1602,6 +1601,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     }
 
     syncSinkStatsFromBulkSink();
+    updateColumnStatsFromSink(stats.get());
 
     Stats currentStats = stats.get();
     if (currentStats != null) {
