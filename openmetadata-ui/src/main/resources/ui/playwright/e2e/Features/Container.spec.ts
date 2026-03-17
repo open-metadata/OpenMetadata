@@ -24,7 +24,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-import { DataType } from '../../../src/generated/entity/data/container';
 
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -163,7 +162,7 @@ test.describe('Container entity specific tests ', () => {
     nestedContainer.entity.dataModel.columns = [
       {
         name: structColName,
-        dataType: DataType.Struct,
+        dataType: 'STRUCT',
         dataTypeDisplay: 'struct',
         description: 'A struct column with nested fields.',
         tags: [],
@@ -171,7 +170,7 @@ test.describe('Container entity specific tests ', () => {
         children: [
           {
             name: nestedFieldName,
-            dataType: DataType.Varchar,
+            dataType: 'VARCHAR',
             dataLength: 100,
             dataTypeDisplay: 'varchar',
             description: 'A nested field inside the struct.',
