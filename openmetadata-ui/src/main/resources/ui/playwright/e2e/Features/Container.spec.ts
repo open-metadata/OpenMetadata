@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -23,9 +22,9 @@ import {
   testCopyLinkButton,
   validateCopiedLinkFormat,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+import { DataType } from '../../../src/generated/entity/data/container';
 
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -150,38 +149,89 @@ test.describe('Container entity specific tests ', () => {
     );
   });
 
-  test(
-    'expand / collapse should not appear after updating nested fields for container',
-    PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-    async ({ page }) => {
-      await page.goto('/container/s3_storage_sample.departments.finance');
+  test('expand / collapse should not appear after updating nested fields for container', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext, afterAction: afterSetup } = await performAdminLogin(
+      browser
+    );
+    const nestedContainer = new ContainerClass();
+    const structColName = `struct_col_${uuid()}`;
+    const nestedFieldName = `nested_field_${uuid()}`;
 
+    nestedContainer.entity.dataModel.columns = [
+      {
+        name: structColName,
+        dataType: DataType.Struct,
+        dataTypeDisplay: 'struct',
+        description: 'A struct column with nested fields.',
+        tags: [],
+        ordinalPosition: 1,
+        children: [
+          {
+            name: nestedFieldName,
+            dataType: DataType.Varchar,
+            dataLength: 100,
+            dataTypeDisplay: 'varchar',
+            description: 'A nested field inside the struct.',
+            tags: [],
+            ordinalPosition: 1,
+          },
+        ],
+      },
+    ];
+
+    await nestedContainer.create(apiContext);
+    await afterSetup();
+
+    try {
+      await redirectToHomePage(page);
+      await nestedContainer.visitEntityPage(page);
       await waitForAllLoadersToDisappear(page);
+
+      const structRowId =
+        nestedContainer.entityResponseData.dataModel?.columns?.[0]
+          .fullyQualifiedName ?? '';
+      const nestedRowId =
+        nestedContainer.entityResponseData.dataModel?.columns?.[0]
+          ?.children?.[0].fullyQualifiedName ?? '';
+
+      // Expand the struct column to reveal the child row
+      await page
+        .locator(`[data-row-key="${structRowId}"]`)
+        .getByTestId('expand-icon')
+        .click();
+      await expect(
+        page.locator(`[data-row-key="${nestedRowId}"]`)
+      ).toBeVisible();
 
       await assignTagToChildren({
         page,
         tag: 'PersonalData.Personal',
-        rowId: 's3_storage_sample.departments.finance.budget_executor',
+        rowId: nestedRowId,
         entityEndpoint: 'containers',
       });
 
-      // Should not show expand icon for non-nested columns
       await expect(
         page
-          .locator(
-            '[data-row-key="s3_storage_sample.departments.finance.budget_executor"]'
-          )
+          .locator(`[data-row-key="${nestedRowId}"]`)
           .getByTestId('expand-icon')
       ).not.toBeVisible();
 
       await removeTagsFromChildren({
         page,
         tags: ['PersonalData.Personal'],
-        rowId: 's3_storage_sample.departments.finance.budget_executor',
+        rowId: nestedRowId,
         entityEndpoint: 'containers',
       });
+    } finally {
+      const { apiContext: cleanupContext, afterAction: afterCleanup } =
+        await performAdminLogin(browser);
+      await nestedContainer.delete(cleanupContext);
+      await afterCleanup();
     }
-  );
+  });
 
   test('Copy column link button should copy the column URL to clipboard', async ({
     dataConsumerPage: page,
