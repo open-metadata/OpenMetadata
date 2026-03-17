@@ -28,6 +28,12 @@ const glossary = new Glossary();
 const term1 = new GlossaryTerm(glossary);
 const term2 = new GlossaryTerm(glossary);
 
+async function applyGlossaryFilter(page: Page, glossaryName: string) {
+  const glossarySection = page.getByText('Glossary:').locator('..');
+  await glossarySection.getByRole('button').click();
+  await page.getByRole('menuitemradio', { name: glossaryName }).click();
+}
+
 async function navigateToOntologyExplorer(page: Page) {
   await redirectToHomePage(page);
   const glossaryResponse = page.waitForResponse('/api/v1/glossaries*');
@@ -536,5 +542,97 @@ test.describe('Ontology Explorer', () => {
         'true'
       );
     });
+  });
+});
+
+test.describe('Relation Sync with OntologyExplorer', () => {
+  const syncGlossary = new Glossary();
+  const syncTerm1 = new GlossaryTerm(syncGlossary);
+  const syncTerm2 = new GlossaryTerm(syncGlossary);
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    await syncGlossary.create(apiContext);
+    await syncTerm1.create(apiContext);
+    await syncTerm2.create(apiContext);
+
+    await apiContext.dispose();
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    await syncTerm1.delete(apiContext);
+    await syncTerm2.delete(apiContext);
+    await syncGlossary.delete(apiContext);
+
+    await apiContext.dispose();
+    await page.close();
+  });
+
+  test('should reflect relation add and remove in the graph', async ({
+    page,
+  }) => {
+    const glossaryName =
+      syncGlossary.responseData.displayName ?? syncGlossary.responseData.name;
+
+    await navigateToOntologyExplorer(page);
+    await waitForGraphLoaded(page);
+    await applyGlossaryFilter(page, glossaryName);
+
+    await expect(
+      page.getByTestId('ontology-explorer-stats')
+    ).toContainText(/0\s*Relations?/i);
+
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+    await syncTerm1.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/relatedTerms/0',
+        value: {
+          relationType: 'synonym',
+          term: {
+            id: syncTerm2.responseData.id,
+            type: 'glossaryTerm',
+            name: syncTerm2.responseData.name,
+            fullyQualifiedName: syncTerm2.responseData.fullyQualifiedName,
+          },
+        },
+      },
+    ]);
+    await apiContext.dispose();
+
+    await page.getByTestId('refresh').click();
+    await waitForGraphLoaded(page);
+
+    await expect(
+      page.getByTestId('ontology-explorer-stats')
+    ).toContainText(/1\s*Relations?/i);
+
+    const apiContext2 = await getAuthContext(await getToken(page));
+    await syncTerm1.patch(apiContext2, [
+      { op: 'remove', path: '/relatedTerms/0' },
+    ]);
+    await apiContext2.dispose();
+
+    await page.getByTestId('refresh').click();
+    await waitForGraphLoaded(page);
+
+    await expect(
+      page.getByTestId('ontology-explorer-stats')
+    ).toContainText(/0\s*Relations?/i);
   });
 });
