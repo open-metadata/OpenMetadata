@@ -343,7 +343,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
             .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
-            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m,uid=100,gid=101"))
+            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,uid=100,gid=101"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)

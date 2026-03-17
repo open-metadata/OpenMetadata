@@ -228,23 +228,24 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
         return;
       } catch (org.apache.jena.atlas.web.HttpException e) {
-        if (e.getStatusCode() == 500 && retryCount < maxRetries - 1) {
-          lastException = e;
-          retryCount++;
+        lastException = e;
+        retryCount++;
+        if (retryCount < maxRetries) {
           try {
             long waitTime = (long) (100 * Math.pow(2, retryCount - 1));
             LOG.debug(
-                "Retrying entity storage after {} ms (attempt {}/{})",
+                "Retrying entity storage after {} ms (attempt {}/{}, status: {})",
                 waitTime,
                 retryCount + 1,
-                maxRetries);
+                maxRetries,
+                e.getStatusCode());
             Thread.sleep(waitTime);
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while retrying", ie);
           }
         } else {
-          LOG.error("Failed to store entity in Fuseki", e);
+          LOG.error("Failed to store entity in Fuseki after {} attempts", maxRetries, e);
           throw new RuntimeException("Failed to store entity in RDF", e);
         }
       } catch (Exception e) {
@@ -305,36 +306,33 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
         return; // Success
       } catch (org.apache.jena.atlas.web.HttpException e) {
-        if (e.getStatusCode() == 500 && retryCount < maxRetries - 1) {
-          lastException = e;
-          retryCount++;
+        lastException = e;
+        retryCount++;
+        if (retryCount < maxRetries) {
           try {
             long waitTime = (long) (100 * Math.pow(2, retryCount - 1));
             LOG.debug(
-                "Retrying relationship storage after {} ms (attempt {}/{})",
+                "Retrying relationship storage after {} ms (attempt {}/{}, status: {})",
                 waitTime,
                 retryCount + 1,
-                maxRetries);
+                maxRetries,
+                e.getStatusCode());
             Thread.sleep(waitTime);
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while retrying", ie);
           }
         } else {
-          LOG.error("Failed to store relationship in Fuseki. Query was: {}", deleteInsertQuery, e);
+          LOG.error("Failed to store relationship in Fuseki after {} attempts", maxRetries, e);
           throw new RuntimeException("Failed to store relationship in RDF", e);
         }
       } catch (Exception e) {
-        LOG.error("Failed to store relationship in Fuseki. Query was: {}", deleteInsertQuery, e);
+        LOG.error("Failed to store relationship in Fuseki", e);
         throw new RuntimeException("Failed to store relationship in RDF", e);
       }
     }
 
-    // If we get here, all retries failed
-    LOG.error(
-        "Failed to store relationship after {} retries. Query was: {}",
-        maxRetries,
-        deleteInsertQuery);
+    LOG.error("Failed to store relationship after {} retries", maxRetries);
     throw new RuntimeException("Failed to store relationship in RDF after retries", lastException);
   }
 

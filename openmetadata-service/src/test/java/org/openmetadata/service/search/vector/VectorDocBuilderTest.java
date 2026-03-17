@@ -221,6 +221,53 @@ class VectorDocBuilderTest {
   }
 
   @Test
+  void testBuildEmbeddingFieldsWithGlossaryTermRelations() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue metric");
+
+    EntityReference ref1 = new EntityReference();
+    ref1.setId(UUID.randomUUID());
+    ref1.setType("glossaryTerm");
+    ref1.setName("profit");
+    ref1.setDisplayName("Profit");
+    ref1.setFullyQualifiedName("finance.profit");
+
+    EntityReference ref2 = new EntityReference();
+    ref2.setId(UUID.randomUUID());
+    ref2.setType("glossaryTerm");
+    ref2.setName("cost");
+    ref2.setDisplayName("Cost");
+    ref2.setFullyQualifiedName("finance.cost");
+
+    TermRelation rel1 = new TermRelation().withTerm(ref1).withRelationType("broader");
+    TermRelation rel2 = new TermRelation().withTerm(ref2).withRelationType("synonym");
+    term.setRelatedTerms(List.of(rel1, rel2));
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(term, MOCK_CLIENT);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToEmbed"));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(textToEmbed.contains("finance.profit"));
+    assertTrue(textToEmbed.contains("finance.cost"));
+    assertTrue(textToEmbed.contains("relatedTerms:"));
+  }
+
+  @Test
+  void testBuildEmbeddingFieldsWithGlossaryTermNoRelatedTerms() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
+    term.setRelatedTerms(null);
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(term, MOCK_CLIENT);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("textToEmbed"));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(textToEmbed.contains("relatedTerms:"));
+    assertFalse(textToEmbed.contains("finance."));
+  }
+
+  @Test
   void testGlossaryTermMetaLightIncludesRelatedTerms() {
     GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
 
