@@ -190,7 +190,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const modelFiltersRef = useRef<GraphFilters>(DEFAULT_FILTERS);
   const dataFiltersRef = useRef<GraphFilters>({
     ...DEFAULT_FILTERS,
-    relationTypes: [METRIC_RELATION_TYPE, ASSET_RELATION_TYPE],
   });
   // Prevents the loadAssetsForDataMode useEffect from double-fetching when
   // handleModeChange has already pre-loaded assets before switching mode.
@@ -283,19 +282,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     if (filters.relationTypes.length > 0) {
       const nodeTypeMap = new Map(filteredNodes.map((n) => [n.id, n.type]));
       filteredEdges = filteredEdges.filter((e) => {
-        // In data mode, always show term-to-term edges so the ontology
-        // relations between terms remain visible alongside asset connections.
-        if (explorationMode === 'data') {
-          const fromType = nodeTypeMap.get(e.from);
-          const toType = nodeTypeMap.get(e.to);
-          if (
-            fromType !== ASSET_NODE_TYPE &&
-            fromType !== METRIC_NODE_TYPE &&
-            toType !== ASSET_NODE_TYPE &&
-            toType !== METRIC_NODE_TYPE
-          ) {
-            return true;
-          }
+        const fromType = nodeTypeMap.get(e.from);
+        const toType = nodeTypeMap.get(e.to);
+        // In data mode, always show asset/metric edges regardless of filter
+        if (
+          explorationMode === 'data' &&
+          (fromType === ASSET_NODE_TYPE ||
+            fromType === METRIC_NODE_TYPE ||
+            toType === ASSET_NODE_TYPE ||
+            toType === METRIC_NODE_TYPE)
+        ) {
+          return true;
         }
 
         return filters.relationTypes.includes(e.relationType);
@@ -960,7 +957,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         modelFiltersRef.current = filters;
         const nextFilters: GraphFilters = {
           ...dataFiltersRef.current,
-          relationTypes: [METRIC_RELATION_TYPE, ASSET_RELATION_TYPE],
+          glossaryIds: filters.glossaryIds,
           viewMode: 'overview' satisfies GraphViewMode,
         };
         // Pre-fetch assets before switching mode so all state updates are
@@ -1323,7 +1320,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               <Typography
                 as="p"
                 className="tw:z-10 tw:text-center tw:text-gray-500">
-                {t('message.no-glossary-terms-found')}
+                {filters.glossaryIds.length > 0 ||
+                filters.relationTypes.length > 0
+                  ? t('message.no-data-available-for-selected-filter')
+                  : t('message.no-glossary-terms-found')}
               </Typography>
             </div>
           ) : (
