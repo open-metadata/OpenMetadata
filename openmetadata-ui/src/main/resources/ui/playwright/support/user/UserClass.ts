@@ -251,7 +251,7 @@ export class UserClass {
     const leftNavBar = page.getByTestId('left-sidebar');
 
     const hasOpenClass = await leftNavBar
-      .evaluate((el) => el.classList.contains('sidebar-open'), {
+      .evaluate((el) => el.classList.contains('sidebar-open'), null, {
         timeout: 10000,
       })
       .catch(() => false);
