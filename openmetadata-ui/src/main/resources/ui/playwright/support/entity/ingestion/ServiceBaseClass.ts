@@ -18,6 +18,7 @@ import {
   PlaywrightWorkerArgs,
   TestType,
 } from '@playwright/test';
+import { startCase } from 'lodash';
 import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
   descriptionBox,
@@ -421,7 +422,7 @@ class ServiceBaseClass {
       page
         .locator(`[data-row-key*="${workflowData.name}"]`)
         .getByTestId('pipeline-type')
-    ).toContainText(ingestionType, { ignoreCase: true });
+    ).toContainText(startCase(ingestionType), { ignoreCase: true });
 
     await expect(
       page
