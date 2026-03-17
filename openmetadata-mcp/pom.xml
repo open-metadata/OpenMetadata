@@ -35,7 +35,7 @@
     <dependencies>
         <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
-            <artifactId>mcp</artifactId>
+            <artifactId>mcp-core</artifactId>
         </dependency>
         <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
