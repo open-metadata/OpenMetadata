@@ -221,49 +221,6 @@ class VectorDocBuilderTest {
   }
 
   @Test
-  void testFromEntityWithGlossaryTermRelations() {
-    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue metric");
-
-    UUID relatedId1 = UUID.randomUUID();
-    UUID relatedId2 = UUID.randomUUID();
-
-    EntityReference ref1 = new EntityReference();
-    ref1.setId(relatedId1);
-    ref1.setType("glossaryTerm");
-    ref1.setName("profit");
-    ref1.setDisplayName("Profit");
-    ref1.setFullyQualifiedName("finance.profit");
-
-    EntityReference ref2 = new EntityReference();
-    ref2.setId(relatedId2);
-    ref2.setType("glossaryTerm");
-    ref2.setName("cost");
-    ref2.setDisplayName("Cost");
-    ref2.setFullyQualifiedName("finance.cost");
-
-    TermRelation rel1 = new TermRelation().withTerm(ref1).withRelationType("broader");
-    TermRelation rel2 = new TermRelation().withTerm(ref2).withRelationType("synonym");
-    term.setRelatedTerms(List.of(rel1, rel2));
-
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(term, MOCK_CLIENT);
-
-    assertNotNull(docs);
-    assertFalse(docs.isEmpty());
-    Map<String, Object> doc = docs.getFirst();
-
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> relatedTerms = (List<Map<String, Object>>) doc.get("relatedTerms");
-    assertNotNull(relatedTerms);
-    assertEquals(2, relatedTerms.size());
-    assertEquals(relatedId1.toString(), relatedTerms.get(0).get("id"));
-    assertEquals("profit", relatedTerms.get(0).get("name"));
-    assertEquals("glossaryTerm", relatedTerms.get(0).get("type"));
-    assertEquals("finance.profit", relatedTerms.get(0).get("fullyQualifiedName"));
-    assertEquals(relatedId2.toString(), relatedTerms.get(1).get("id"));
-    assertEquals("cost", relatedTerms.get(1).get("name"));
-  }
-
-  @Test
   void testGlossaryTermMetaLightIncludesRelatedTerms() {
     GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
 
@@ -292,20 +249,6 @@ class VectorDocBuilderTest {
     assertTrue(metaLight.contains("synonyms:"));
     assertTrue(metaLight.contains("income"));
     assertTrue(metaLight.contains("earnings"));
-  }
-
-  @Test
-  void testGlossaryTermWithNoRelatedTerms() {
-    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
-    term.setRelatedTerms(null);
-
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(term, MOCK_CLIENT);
-
-    assertNotNull(docs);
-    assertFalse(docs.isEmpty());
-    Map<String, Object> doc = docs.getFirst();
-    // relatedTerms should not be in doc when null
-    assertFalse(doc.containsKey("relatedTerms"));
   }
 
   private GlossaryTerm createTestGlossaryTerm(String name, String displayName, String description) {

@@ -6476,12 +6476,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateOwnersForImport();
         updateExtension(consolidatingChanges);
         updateTagsForImport(
-            updated.getFullyQualifiedName(),
-            FIELD_TAGS,
-            original.getTags(),
-            updated.getTags(),
-            entityType,
-            updated.getId());
+            updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
         updateDomainsForImport();
         updateDataProducts();
         updateExperts();
@@ -6741,7 +6736,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deferReactOperation(
           () -> {
             for (TagLabel tagLabel : tagsForRdf) {
-              org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel.getTagFQN(), targetFqn);
+              org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
             }
           });
     }
@@ -6754,8 +6749,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         deferReactOperation(
             () -> {
               for (TagLabel tagLabel : tagsToRemove) {
-                org.openmetadata.service.rdf.RdfTagUpdater.removeTag(
-                    tagLabel.getTagFQN(), targetFqn);
+                org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
               }
             });
       }
