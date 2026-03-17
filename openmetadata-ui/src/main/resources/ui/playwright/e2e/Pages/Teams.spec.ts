@@ -816,7 +816,7 @@ test.describe('Teams Page', () => {
             new URL(res.url()).searchParams.get('include') === 'deleted'
         );
 
-        await deletedToggle.click();
+        await deletedToggle.click({ force: true });
         await expect(deletedToggle).toHaveAttribute('aria-checked', 'true');
 
         const teamsResponse = await teamsResponsePromise;
