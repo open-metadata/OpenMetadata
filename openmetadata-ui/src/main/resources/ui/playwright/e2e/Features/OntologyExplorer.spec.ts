@@ -297,7 +297,7 @@ test.describe('Ontology Explorer', () => {
     }) => {
       await page.getByTestId('ontology-graph-settings').click();
       await expect(page.getByTestId('graph-settings-close')).toBeVisible();
-      await page.getByTestId('ontology-explorer-header').click();
+      await page.keyboard.press('Escape');
       await expect(page.getByTestId('graph-settings-close')).not.toBeVisible();
     });
 
