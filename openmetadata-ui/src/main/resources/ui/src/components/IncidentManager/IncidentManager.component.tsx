@@ -455,6 +455,7 @@ const IncidentManager = ({
       'endTs',
       'key',
       'title',
+      'dateField',
     ]);
     navigate(
       {
