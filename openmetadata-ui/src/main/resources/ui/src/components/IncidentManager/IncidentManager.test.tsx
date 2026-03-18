@@ -97,24 +97,81 @@ jest.mock('../common/MuiDatePickerMenu/MuiDatePickerMenu', () => {
     </div>
   ));
 });
-jest.mock('../Explore/SortingDropDown', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ fieldList, handleFieldDropDown, sortField }) => (
-      <div data-testid="date-field-select">
-        <span data-testid="sorting-dropdown-label">
-          {fieldList.find(
-            (f: { name: string; value: string }) => f.value === sortField
-          )?.name ?? sortField}
-        </span>
-        <button
-          data-testid="date-field-updatedAt"
-          onClick={() => handleFieldDropDown('updatedAt')}>
-          Updated At
-        </button>
+jest.mock('@openmetadata/ui-core-components', () => {
+  const DropdownRoot = ({
+    children,
+    isOpen,
+    onOpenChange,
+  }: {
+    children: { [key: number]: React.ReactNode };
+    isOpen: boolean;
+    onOpenChange: (v: boolean) => void;
+  }) => (
+    <div data-testid="date-field-dropdown-root">
+      {/* Trigger element */}
+      <button
+        data-testid="date-field-dropdown-trigger"
+        type="button"
+        onClick={() => onOpenChange(!isOpen)}>
+        {children[0]}
+      </button>
+      {/* Popover (only rendered when open) */}
+      {isOpen && children[1]}
+    </div>
+  );
+
+  const DropdownMenu = ({
+    items,
+    onAction,
+  }: {
+    items?: { name: string; value: string }[];
+    onAction?: (key: string) => void;
+  }) => {
+    if (!items) {
+      return <div data-testid="date-field-dropdown-menu" />;
+    }
+
+    return (
+      <div data-testid="date-field-dropdown-menu">
+        {items.map((item) => (
+          <button
+            data-testid={`date-field-option-${item.value}`}
+            key={item.value}
+            type="button"
+            onClick={() => onAction?.(item.value)}>
+            {item.name}
+          </button>
+        ))}
       </div>
-    ));
+    );
+  };
+
+  return {
+    Dropdown: {
+      Root: DropdownRoot,
+      Popover: jest
+        .fn()
+        .mockImplementation(({ children }) => (
+          <div data-testid="date-field-dropdown-popover">{children}</div>
+        )),
+      Menu: DropdownMenu,
+      Item: jest
+        .fn()
+        .mockImplementation(({ label, id }) => (
+          <div data-testid={`date-field-item-${id}`}>{label}</div>
+        )),
+    },
+    Skeleton: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="skeleton" />),
+    Button: jest
+      .fn()
+      .mockImplementation(({ children, className }) => (
+        <button className={className}>{children}</button>
+      )),
+  };
 });
+
 jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
@@ -517,19 +574,22 @@ describe('IncidentManagerPage', () => {
     expect(screen.getByText('label.table')).toBeInTheDocument();
   });
 
-  it('should render date field selector with Created At selected by default', async () => {
+  it('should render date field dropdown with Created At selected by default', async () => {
     await act(async () => {
       render(<IncidentManager />);
     });
 
-    const dateFieldSelect = await screen.findByTestId('date-field-select');
+    const dropdownRoot = await screen.findByTestId('date-field-dropdown-root');
 
-    expect(dateFieldSelect).toBeInTheDocument();
-    // Default should show the created-at label
-    expect(screen.getByTestId('sorting-dropdown-label')).toBeInTheDocument();
+    expect(dropdownRoot).toBeInTheDocument();
+
+    // Dropdown menu should NOT be visible by default (closed)
+    expect(
+      screen.queryByTestId('date-field-dropdown-menu')
+    ).not.toBeInTheDocument();
   });
 
-  it('should update URL with dateField when date type is changed', async () => {
+  it('should open date field dropdown on trigger click', async () => {
     const mockUseNavigate = require('react-router-dom').useNavigate;
     const navigate = jest.fn();
     mockUseNavigate.mockReturnValue(navigate);
@@ -538,8 +598,35 @@ describe('IncidentManagerPage', () => {
       render(<IncidentManager />);
     });
 
-    const updatedAtBtn = await screen.findByTestId('date-field-updatedAt');
+    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    await act(async () => {
+      fireEvent.click(triggerDiv);
+    });
 
+    // Now the dropdown menu should be visible since isOpen = true
+    const dropdownMenu = await screen.findByTestId('date-field-dropdown-menu');
+
+    expect(dropdownMenu).toBeInTheDocument();
+  });
+
+  it('should update URL with dateField=updatedAt when Updated At option is selected', async () => {
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    // Open the dropdown
+    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    await act(async () => {
+      fireEvent.click(triggerDiv);
+    });
+
+    const updatedAtBtn = await screen.findByTestId(
+      'date-field-option-updatedAt'
+    );
     await act(async () => {
       fireEvent.click(updatedAtBtn);
     });
@@ -550,6 +637,39 @@ describe('IncidentManagerPage', () => {
       }),
       expect.anything()
     );
+  });
+
+  it('should close dropdown after selecting an option', async () => {
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    // Open the dropdown
+    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    await act(async () => {
+      fireEvent.click(triggerDiv);
+    });
+
+    const dropdownMenu = await screen.findByTestId('date-field-dropdown-menu');
+
+    expect(dropdownMenu).toBeInTheDocument();
+
+    // Select an option — mock calls onOpenChange(false)
+    const updatedAtBtn = await screen.findByTestId(
+      'date-field-option-updatedAt'
+    );
+    await act(async () => {
+      fireEvent.click(updatedAtBtn);
+    });
+
+    // Menu should be gone after selection
+    expect(
+      screen.queryByTestId('date-field-dropdown-menu')
+    ).not.toBeInTheDocument();
   });
 
   it('should fetch incidents with dateField from URL params', async () => {

@@ -777,6 +777,7 @@ const IncidentManager = ({
                 <Button
                   className="tw:border-0 tw:bg-transparent tw:self-center m-r-xs sorting-dropdown tw:hover:*:data-text:decoration-transparent! tw:hover:*:data-text:no-underline!"
                   color="link-gray"
+                  data-testid="sort-field-dropdown-trigger"
                   iconTrailing={
                     <DropDownIcon
                       className="align-middle"
@@ -801,6 +802,7 @@ const IncidentManager = ({
                     }}>
                     {(field) => (
                       <Dropdown.Item
+                        data-testid={`date-field-item-${field.value}`}
                         id={field.value}
                         key={field.value}
                         label={field.name}
