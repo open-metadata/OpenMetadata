@@ -13,24 +13,40 @@
 
 import APIClient from './index';
 
-interface GraphNode {
+export interface GraphNode {
   id: string;
   label: string;
   type: string;
-  group: string;
+  group?: string;
   title?: string;
+  fullyQualifiedName?: string;
+  description?: string;
+  isolated?: boolean;
 }
 
-interface GraphEdge {
+export interface GraphEdge {
   from: string;
   to: string;
   label: string;
+  relationType?: string;
   arrows?: string;
 }
 
-interface GraphData {
+export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
+  totalNodes?: number;
+  totalEdges?: number;
+  source?: string;
+  error?: string;
+}
+
+export interface GlossaryGraphParams {
+  glossaryId?: string;
+  relationTypes?: string;
+  limit?: number;
+  offset?: number;
+  includeIsolated?: boolean;
 }
 
 export const checkRdfEnabled = async (): Promise<boolean> => {
@@ -63,4 +79,102 @@ export const getEntityGraphData = async (
   });
 
   return response.data;
+};
+
+export const getGlossaryTermGraph = async (
+  params: GlossaryGraphParams = {}
+): Promise<GraphData> => {
+  const {
+    glossaryId,
+    relationTypes,
+    limit = 500,
+    offset = 0,
+    includeIsolated = true,
+  } = params;
+
+  const response = await APIClient.get<GraphData>('/rdf/glossary/graph', {
+    params: {
+      glossaryId,
+      relationTypes,
+      limit,
+      offset,
+      includeIsolated,
+    },
+  });
+
+  return response.data;
+};
+
+export type OntologyExportFormat = 'turtle' | 'rdfxml' | 'ntriples' | 'jsonld';
+
+export interface ExportGlossaryParams {
+  glossaryId: string;
+  format?: OntologyExportFormat;
+  includeRelations?: boolean;
+}
+
+export const exportGlossaryAsOntology = async (
+  params: ExportGlossaryParams
+): Promise<Blob> => {
+  const { glossaryId, format = 'turtle', includeRelations = true } = params;
+
+  const response = await APIClient.get(`/rdf/glossary/${glossaryId}/export`, {
+    params: {
+      format,
+      includeRelations,
+    },
+    responseType: 'blob',
+    headers: {
+      Accept:
+        format === 'turtle'
+          ? 'text/turtle'
+          : format === 'rdfxml'
+          ? 'application/rdf+xml'
+          : format === 'ntriples'
+          ? 'application/n-triples'
+          : 'application/ld+json',
+    },
+  });
+
+  return response.data;
+};
+
+export const downloadGlossaryOntology = async (
+  glossaryId: string,
+  glossaryName: string,
+  format: OntologyExportFormat = 'turtle'
+): Promise<void> => {
+  const blob = await exportGlossaryAsOntology({ glossaryId, format });
+
+  const extension =
+    format === 'turtle'
+      ? 'ttl'
+      : format === 'rdfxml'
+      ? 'rdf'
+      : format === 'ntriples'
+      ? 'nt'
+      : 'jsonld';
+
+  const safeFilename = glossaryName.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const filename = `${safeFilename}_ontology.${extension}`;
+
+  // Create blob if response is text
+  const downloadBlob =
+    blob instanceof Blob ? blob : new Blob([blob], { type: 'text/plain' });
+
+  const url = window.URL.createObjectURL(downloadBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+
+  // Trigger download
+  link.click();
+
+  // Cleanup
+  setTimeout(() => {
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }, 100);
 };

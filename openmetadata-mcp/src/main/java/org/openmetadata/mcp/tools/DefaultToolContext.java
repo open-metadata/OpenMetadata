@@ -75,7 +75,7 @@ public class DefaultToolContext {
           result = new TestDefinitionsTool().execute(authorizer, securityContext, params);
           break;
         case "create_test_case":
-          result = new CreateTestCaseTool().execute(authorizer, securityContext, params);
+          result = new CreateTestCaseTool().execute(authorizer, limits, securityContext, params);
           break;
         case "root_cause_analysis":
           result = new RootCauseAnalysisTool().execute(authorizer, securityContext, params);
@@ -98,8 +98,7 @@ public class DefaultToolContext {
           .isError(false)
           .build();
     } catch (AuthorizationException ex) {
-      // OpenMetadata authorization error
-      LOG.error("Authorization error: {}", ex.getMessage());
+      LOG.warn("Authorization error: {}", ex.getMessage());
       return McpSchema.CallToolResult.builder()
           .content(
               List.of(

@@ -20,6 +20,7 @@ export enum SidebarItem {
   DOMAIN = 'domain',
   GOVERNANCE = 'governance',
   GLOSSARY = 'glossary',
+  ONTOLOGY_EXPLORER = 'ontology-explorer',
   DOMAINS = 'domains-section',
   DATA_PRODUCT = 'data-product',
   TAGS = 'tags',
@@ -45,6 +46,10 @@ export const SIDEBAR_LIST_ITEMS = {
     SidebarItem.OBSERVABILITY_ALERT,
   ],
   [SidebarItem.GLOSSARY]: [SidebarItem.GOVERNANCE, SidebarItem.GLOSSARY],
+  [SidebarItem.ONTOLOGY_EXPLORER]: [
+    SidebarItem.GOVERNANCE,
+    SidebarItem.ONTOLOGY_EXPLORER,
+  ],
   [SidebarItem.TAGS]: [SidebarItem.GOVERNANCE, SidebarItem.TAGS],
   [SidebarItem.METRICS]: [SidebarItem.GOVERNANCE, SidebarItem.METRICS],
   [SidebarItem.DOMAIN]: [SidebarItem.DOMAINS, SidebarItem.DOMAIN],

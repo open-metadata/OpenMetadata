@@ -15,21 +15,28 @@ import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class McpServer implements McpServerProvider {
-  private JwtFilter jwtFilter;
-  private Authorizer authorizer;
-  private Limits limits;
+  private static final String MCP_APP_NAME = "McpApplication";
+  private static final String DEFAULT_MCP_BOT_NAME = MCP_APP_NAME + "Bot";
+
+  protected JwtFilter jwtFilter;
+  protected Authorizer authorizer;
+  protected Limits limits;
   protected DefaultToolContext toolContext;
   protected DefaultPromptsContext promptsContext;
   private Environment environment;
+  private volatile String mcpBotName;
 
   // Default constructor for dynamic loading
   public McpServer() {
@@ -243,13 +250,34 @@ public class McpServer implements McpServerProvider {
     }
   }
 
-  private McpStatelessServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
+  private String getMcpBotName() {
+    if (mcpBotName == null) {
+      try {
+        AbstractNativeApplication mcpApp =
+            ApplicationContext.getInstance().getAppIfExists(MCP_APP_NAME);
+        if (mcpApp != null && mcpApp.getApp().getBot() != null) {
+          mcpBotName = mcpApp.getApp().getBot().getName();
+        }
+        // Don't cache the default — if the app isn't registered yet, retry on next call
+      } catch (Exception e) {
+        LOG.debug("Could not resolve MCP bot name from app registry, will retry on next call", e);
+      }
+    }
+    return mcpBotName != null ? mcpBotName : DEFAULT_MCP_BOT_NAME;
+  }
+
+  protected McpStatelessServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpStatelessServerFeatures.SyncToolSpecification(
         tool,
         (context, req) -> {
-          String authHeader = (String) context.get("Authorization");
-          CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(authHeader);
-          return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
+          try {
+            ImpersonationContext.setImpersonatedBy(getMcpBotName());
+            CatalogSecurityContext securityContext =
+                jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
+            return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
+          } finally {
+            ImpersonationContext.clear();
+          }
         });
   }
 

@@ -24,7 +24,11 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addMultiOwner, addOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  addMultiOwner,
+  addOwner,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { validateFormNameFieldInput } from './form';
 import { settingClick } from './sidebar';
 
@@ -324,7 +328,9 @@ export const searchTeam = async (
             .getByTestId('search-error-placeholder')
             .isVisible()
             .catch(() => false);
-          const matchingRows = await page.getByRole('cell', { name: teamName }).count();
+          const matchingRows = await page
+            .getByRole('cell', { name: teamName })
+            .count();
 
           return hasPlaceholder || matchingRows === 0;
         },
@@ -333,10 +339,10 @@ export const searchTeam = async (
       .toBe(true);
   } else if (options?.expectNotFound) {
     await expect
-      .poll(
-        async () => page.getByRole('cell', { name: teamName }).count(),
-        { timeout: 30000, intervals: [500, 1000, 2000] }
-      )
+      .poll(async () => page.getByRole('cell', { name: teamName }).count(), {
+        timeout: 30000,
+        intervals: [500, 1000, 2000],
+      })
       .toBe(0);
   } else {
     await expect
@@ -495,7 +501,6 @@ export const addEmailTeam = async (page: Page, email: string) => {
   // Reload the page
   await page.reload();
 
-
   await waitForAllLoadersToDisappear(page);
 
   // Check for updated email
@@ -581,7 +586,6 @@ export const executionOnOwnerTeam = async (
   await page.getByTestId('add-placeholder-button').click();
 
   const newTeamData = await createTeam(page);
-
 
   await waitForAllLoadersToDisappear(page);
 

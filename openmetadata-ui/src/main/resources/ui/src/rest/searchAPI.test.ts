@@ -29,7 +29,7 @@ const mockTableSearchResponse = {
     },
     hits: [
       {
-        _index: 'table_search_index',
+        _index: SearchIndex.TABLE,
         _type: '_doc',
         _id: '9b30a945-239a-4cb7-93b0-f1b7425aed41',
         _score: null,

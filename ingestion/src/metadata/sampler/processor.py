@@ -142,7 +142,7 @@ class SamplerProcessor(Processor):
             sampler_interface.close()
             return Either(
                 right=SamplerResponse(
-                    table=entity,
+                    entity=entity,
                     sample_data=sample_data,
                 )
             )
