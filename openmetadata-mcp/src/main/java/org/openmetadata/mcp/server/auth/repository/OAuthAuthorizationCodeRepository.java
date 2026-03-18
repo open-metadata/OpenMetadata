@@ -1,6 +1,10 @@
 package org.openmetadata.mcp.server.auth.repository;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -33,7 +37,7 @@ public class OAuthAuthorizationCodeRepository {
       long expiresAt) {
 
     dao.insert(
-        code,
+        hashAuthCode(code),
         clientId,
         userName,
         codeChallenge,
@@ -50,7 +54,7 @@ public class OAuthAuthorizationCodeRepository {
    * Find authorization code by code value.
    */
   public OAuthAuthorizationCodeRecord findByCode(String code) {
-    return dao.findByCode(code);
+    return dao.findByCode(hashAuthCode(code));
   }
 
   /**
@@ -62,10 +66,11 @@ public class OAuthAuthorizationCodeRepository {
    * @return The updated record if successful, null if code was already used or doesn't exist
    */
   public OAuthAuthorizationCodeRecord markAsUsedAtomic(String code) {
-    int rowsAffected = dao.markAsUsedAtomic(code);
+    String hashed = hashAuthCode(code);
+    int rowsAffected = dao.markAsUsedAtomic(hashed);
     if (rowsAffected == 1) {
       LOG.debug("Atomically marked authorization code as used");
-      return dao.findByCode(code);
+      return dao.findByCode(hashed);
     }
     LOG.warn("Failed to atomically mark authorization code as used (already used or not found)");
     return null;
@@ -75,7 +80,7 @@ public class OAuthAuthorizationCodeRepository {
    * Delete authorization code.
    */
   public void delete(String code) {
-    dao.delete(code);
+    dao.delete(hashAuthCode(code));
     LOG.debug("Deleted authorization code");
   }
 
@@ -87,5 +92,15 @@ public class OAuthAuthorizationCodeRepository {
     long currentTime = System.currentTimeMillis();
     dao.deleteExpired(currentTime);
     LOG.info("Deleted expired authorization codes");
+  }
+
+  private String hashAuthCode(String code) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(code.getBytes(StandardCharsets.UTF_8));
+      return Base64.getEncoder().encodeToString(hash);
+    } catch (NoSuchAlgorithmException e) {
+      throw new RuntimeException("SHA-256 not available", e);
+    }
   }
 }
