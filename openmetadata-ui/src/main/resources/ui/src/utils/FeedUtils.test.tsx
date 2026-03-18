@@ -12,6 +12,7 @@
  */
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import {
@@ -38,7 +39,7 @@ jest.mock('../rest/searchAPI', () => ({
             fullyQualifiedName: 'db.schema.Table1',
           },
           _id: '1',
-          _index: 'team_search_index',
+          _index: SearchIndex.TEAM,
         },
       ],
     },

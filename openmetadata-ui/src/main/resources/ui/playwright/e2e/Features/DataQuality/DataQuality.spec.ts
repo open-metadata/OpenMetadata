@@ -205,7 +205,7 @@ test.describe(
         // Add tags to test case
         await page.click('[data-testid="tags-selector"] input');
         const tagsSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=tag_search_index*`
+          `/api/v1/search/query?q=*index=tag*`
         );
         await page.fill(
           '[data-testid="tags-selector"] input',
@@ -220,7 +220,7 @@ test.describe(
         // Add glossary terms to test case
         await page.click('[data-testid="glossary-terms-selector"] input');
         const glossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossary_term_search_index*`
+          `/api/v1/search/query?q=*index=glossaryTerm*`
         );
         await page.fill(
           '[data-testid="glossary-terms-selector"] input',
@@ -274,7 +274,7 @@ test.describe(
 
         await page.click('[data-testid="tags-selector"] input');
         const newTagsSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=tag_search_index*`
+          `/api/v1/search/query?q=*index=tag*`
         );
         await page.fill(
           '[data-testid="tags-selector"] input',
@@ -293,7 +293,7 @@ test.describe(
         );
         await page.click('[data-testid="glossary-terms-selector"] input');
         const newGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossary_term_search_index*`
+          `/api/v1/search/query?q=*index=glossaryTerm*`
         );
         await page.fill(
           '[data-testid="glossary-terms-selector"] input',
@@ -420,7 +420,7 @@ test.describe(
         // Add tags to column test case
         await page.click('[data-testid="tags-selector"] input');
         const columnTagsSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=tag_search_index*`
+          `/api/v1/search/query?q=*index=tag*`
         );
         await page.fill(
           '[data-testid="tags-selector"] input',
@@ -436,7 +436,7 @@ test.describe(
         // Add glossary terms to column test case
         await page.click('[data-testid="glossary-terms-selector"] input');
         const columnGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossary_term_search_index*`
+          `/api/v1/search/query?q=*index=glossaryTerm*`
         );
         await page.fill(
           '[data-testid="glossary-terms-selector"] input',
@@ -476,7 +476,7 @@ test.describe(
         );
         await page.click('[data-testid="tags-selector"] input');
         const columnNewTagsSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=tag_search_index*`
+          `/api/v1/search/query?q=*index=tag*`
         );
         await page.fill(
           '[data-testid="tags-selector"] input',
@@ -495,7 +495,7 @@ test.describe(
         );
         await page.click('[data-testid="glossary-terms-selector"] input');
         const columnNewGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossary_term_search_index*`
+          `/api/v1/search/query?q=*index=glossaryTerm*`
         );
         await page.fill(
           '[data-testid="glossary-terms-selector"] input',
@@ -889,7 +889,7 @@ test.describe(
 
         // Test case filter by service name
         const serviceResponse = page.waitForResponse(
-          '/api/v1/search/query?q=*index=database_service_search_index*'
+          '/api/v1/search/query?q=*index=databaseService*'
         );
         await page.fill('#serviceName', filterTable1.service.name);
         await serviceResponse;
@@ -918,7 +918,7 @@ test.describe(
 
         // Test case filter by Tags
         const tagResponse = page.waitForResponse(
-          '/api/v1/search/query?q=*index=tag_search_index*'
+          '/api/v1/search/query?q=*index=tag*'
         );
         await page
           .getByTestId('tags-select-filter')
@@ -973,7 +973,7 @@ test.describe(
 
         // Test case filter by table name
         const tableSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=table_search_index*`
+          `/api/v1/search/query?q=*index=table*`
         );
         await page.fill('#tableFqn', filterTable1.entity.name);
         await tableSearchResponse;
@@ -1105,7 +1105,7 @@ test.describe(
         const domainSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*${encodeURIComponent(
             domain.responseData.name
-          )}*&index=domain_search_index*`
+          )}*&index=domain*`
         );
 
         await page

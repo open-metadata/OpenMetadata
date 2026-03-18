@@ -248,14 +248,12 @@ export class UserClass {
     }
 
     // Collapse the left side bar after logging in if it's open
-    const leftNavBar = page.locator('[data-testid="left-sidebar"]');
-    const sidebarVisible = await leftNavBar.isVisible().catch(() => false);
-    if (!sidebarVisible) {
-      return;
-    }
+    const leftNavBar = page.getByTestId('left-sidebar');
 
     const hasOpenClass = await leftNavBar
-      .evaluate((el) => el.classList.contains('sidebar-open'))
+      .evaluate((el) => el.classList.contains('sidebar-open'), null, {
+        timeout: 10000,
+      })
       .catch(() => false);
 
     if (hasOpenClass) {

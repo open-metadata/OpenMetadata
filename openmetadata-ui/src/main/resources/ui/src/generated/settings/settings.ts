@@ -38,6 +38,7 @@ export enum SettingType {
     EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
+    GlossaryTermRelationSettings = "glossaryTermRelationSettings",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
@@ -101,6 +102,9 @@ export enum SettingType {
  *
  * Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and
  * processes lineage events from external systems like Spark, Airflow, and Flink.
+ *
+ * This schema defines the Glossary Term Relation Settings for configuring typed semantic
+ * relations between glossary terms.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -549,6 +553,10 @@ export interface PipelineServiceClientConfiguration {
      * 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
+    /**
+     * List of configured glossary term relation types.
+     */
+    relationTypes?: GlossaryTermRelationType[];
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -2381,6 +2389,96 @@ export interface TitleSection {
 export enum PipelineViewMode {
     Edge = "Edge",
     Node = "Node",
+}
+
+/**
+ * Definition of a glossary term relation type.
+ */
+export interface GlossaryTermRelationType {
+    /**
+     * Preset cardinality for this relation type. CUSTOM lets you set explicit source/target
+     * maxima.
+     */
+    cardinality?: RelationCardinality;
+    /**
+     * Category of the relation.
+     */
+    category: RelationCategory;
+    /**
+     * Hex color code for visualizing this relation type in graphs (e.g., '#1890ff').
+     */
+    color?: string;
+    /**
+     * Description of what this relation type represents.
+     */
+    description?: string;
+    /**
+     * Display name for the relation type.
+     */
+    displayName: string;
+    /**
+     * Name of the inverse relation type (e.g., 'narrower' for 'broader'). Null for symmetric
+     * relations.
+     */
+    inverseRelation?: string;
+    /**
+     * Whether relations can be created between terms in different glossaries.
+     */
+    isCrossGlossaryAllowed?: boolean;
+    /**
+     * Whether the relation is symmetric (A relates B implies B relates A).
+     */
+    isSymmetric?: boolean;
+    /**
+     * Whether this is a system-defined relation type (cannot be deleted).
+     */
+    isSystemDefined?: boolean;
+    /**
+     * Whether the relation is transitive (A relates B, B relates C implies A relates C).
+     */
+    isTransitive?: boolean;
+    /**
+     * Unique name of the relation type (e.g., 'broader', 'synonym').
+     */
+    name: string;
+    /**
+     * RDF predicate URI for this relation (e.g., 'skos:broader').
+     */
+    rdfPredicate?: string;
+    /**
+     * Maximum number of relations of this type that can originate from a term. Null means
+     * unbounded.
+     */
+    sourceMax?: number | null;
+    /**
+     * Maximum number of relations of this type that can target a term. Null means unbounded.
+     */
+    targetMax?: number | null;
+}
+
+/**
+ * Preset cardinality for this relation type. CUSTOM lets you set explicit source/target
+ * maxima.
+ *
+ * Preset cardinality for term-to-term relations.
+ */
+export enum RelationCardinality {
+    Custom = "CUSTOM",
+    ManyToMany = "MANY_TO_MANY",
+    ManyToOne = "MANY_TO_ONE",
+    OneToMany = "ONE_TO_MANY",
+    OneToOne = "ONE_TO_ONE",
+}
+
+/**
+ * Category of the relation.
+ *
+ * Category of the relation type.
+ */
+export enum RelationCategory {
+    Associative = "associative",
+    Equivalence = "equivalence",
+    Hierarchical = "hierarchical",
 }
 
 /**

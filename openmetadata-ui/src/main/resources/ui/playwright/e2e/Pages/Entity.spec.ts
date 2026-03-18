@@ -490,7 +490,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await page
             .locator('[data-testid="tag-select-search-bar"]')
@@ -541,7 +541,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchTagCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await page
             .locator('[data-testid="tag-select-search-bar"]')
@@ -612,7 +612,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const glossarySearchResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('glossary_term_search_index') &&
+              response.url().includes('glossaryTerm') &&
               response.request().method() === 'GET'
           );
           await searchBar.fill(
@@ -667,7 +667,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await expect(tagSearchBar).toBeVisible();
 
           const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await tagSearchBar.fill('PII.Sensitive');
           await searchTag;
@@ -739,7 +739,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchGlossaryCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=glossary_term_search_index*'
+            '/api/v1/search/query?q=*index=glossaryTerm*'
           );
           await page
             .locator('[data-testid="glossary-term-select-search-bar"]')
@@ -769,7 +769,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchTagCleanup2 = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await page
             .locator('[data-testid="tag-select-search-bar"]')

@@ -109,7 +109,7 @@ export const MOCK_ASSIGNEE_DATA = {
       hits: [
         {
           text: 'Ashish Gupta',
-          _index: 'user_search_index',
+          _index: 'user',
           _type: '_doc',
           _id: '18ca6cd1-d696-4a22-813f-c7a42fc09dc4',
           _score: 30,
@@ -203,7 +203,7 @@ export const MOCK_ASSIGNEE_DATA = {
         },
         {
           text: 'Ashley King',
-          _index: 'user_search_index',
+          _index: 'user',
           _type: '_doc',
           _id: '0c83a592-7ced-4156-b235-01726259a0e7',
           _score: 30,

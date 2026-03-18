@@ -532,7 +532,7 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await waitForAllLoadersToDisappear(adminPage);
 
   const searchDomain = adminPage.waitForResponse(
-    `/api/v1/search/query?q=*index=domain_search_index*`
+    `/api/v1/search/query?q=*index=domain*`
   );
 
   await domainInput.fill(domain.responseData.displayName);
@@ -637,7 +637,7 @@ export const selectTagInTagSuggestion = async (
     const url = response.url();
     return (
       url.includes('/api/v1/search/query') &&
-      url.includes('index=tag_search_index') &&
+      url.includes('index=tag') &&
       response.request().method() === 'GET'
     );
   });

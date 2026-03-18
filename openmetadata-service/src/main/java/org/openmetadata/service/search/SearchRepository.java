@@ -436,29 +436,7 @@ public class SearchRepository {
 
       vectorServiceInitialized = true;
 
-      NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
-      double keywordWeight =
-          nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
-      double semanticWeight =
-          nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
-
-      try {
-        SearchSettings ss =
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-        if (ss != null && ss.getGlobalSettings() != null) {
-          if (ss.getGlobalSettings().getKeywordWeight() != null) {
-            keywordWeight = ss.getGlobalSettings().getKeywordWeight();
-          }
-          if (ss.getGlobalSettings().getSemanticWeight() != null) {
-            semanticWeight = ss.getGlobalSettings().getSemanticWeight();
-          }
-        }
-      } catch (Exception e) {
-        LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
-      }
-
-      ((OpenSearchVectorService) vectorIndexService)
-          .ensureHybridSearchPipeline(keywordWeight, semanticWeight);
+      ensureHybridSearchPipeline();
 
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
@@ -467,6 +445,35 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.error("Failed to initialize vector search service: {}", e.getMessage(), e);
     }
+  }
+
+  public void ensureHybridSearchPipeline() {
+    if (!isVectorEmbeddingEnabled() || !vectorServiceInitialized) {
+      return;
+    }
+
+    ElasticSearchConfiguration cfg = getSearchConfiguration();
+    NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
+    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
+    double semanticWeight =
+        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
+
+    try {
+      SearchSettings ss =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      if (ss != null && ss.getGlobalSettings() != null) {
+        if (ss.getGlobalSettings().getKeywordWeight() != null) {
+          keywordWeight = ss.getGlobalSettings().getKeywordWeight();
+        }
+        if (ss.getGlobalSettings().getSemanticWeight() != null) {
+          semanticWeight = ss.getGlobalSettings().getSemanticWeight();
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
+    }
+
+    updateHybridSearchPipeline(keywordWeight, semanticWeight);
   }
 
   public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {

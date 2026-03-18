@@ -45,7 +45,7 @@ test.describe(
       // Wait for the metric to be indexed in OpenSearch
       await expect(async () => {
         const response = await apiContext.get(
-          `/api/v1/search/query?q=${metric.entity.name}&index=metric_search_index&from=0&size=10`
+          `/api/v1/search/query?q=${metric.entity.name}&index=metric&from=0&size=10`
         );
         const data = await response.json();
 
@@ -100,7 +100,7 @@ test.describe(
         const searchResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/search/query') &&
-            response.url().includes('metric_search_index')
+            response.url().includes('metric')
         );
 
         await page

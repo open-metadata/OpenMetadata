@@ -31,7 +31,6 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
   getApiContext,
@@ -57,7 +56,6 @@ import {
   executionOnOwnerTeam,
   getNewTeamDetails,
   hardDeleteTeam,
-  openTeamsPage,
   searchTeam,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
@@ -120,12 +118,14 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  page: async ({ browser }, use) => {
+    const { page, afterAction } = await performAdminLogin(browser);
+    await use(page);
+    await afterAction();
+  },
 });
 
 test.describe('Teams Page', () => {
-  // use the admin user to login
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {

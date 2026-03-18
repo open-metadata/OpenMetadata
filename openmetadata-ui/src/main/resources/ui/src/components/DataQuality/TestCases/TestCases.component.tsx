@@ -373,7 +373,7 @@ export const TestCases = () => {
         return {
           label: (
             <Space
-              data-testid={hit._source.fullyQualifiedName}
+              data-testid={hit._source.name}
               direction="vertical"
               size={0}>
               <Typography.Text className="text-xs text-grey-muted">
@@ -384,7 +384,7 @@ export const TestCases = () => {
               </Typography.Text>
             </Space>
           ),
-          value: hit._source.fullyQualifiedName,
+          value: hit._source.name,
         };
       });
       setServiceOptions(options);

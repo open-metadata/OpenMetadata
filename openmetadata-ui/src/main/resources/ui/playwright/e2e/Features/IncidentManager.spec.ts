@@ -233,7 +233,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await page.getByRole('menuitem', { name: 'Reassign' }).click();
 
       const searchUserResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${user2.data.firstName}*${user2.data.lastName}*&index=user_search_index*`
+        `/api/v1/search/query?q=*${user2.data.firstName}*${user2.data.lastName}*&index=user*`
       );
 
       await page.getByTestId('select-assignee').locator('div').click();
@@ -590,7 +590,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.click('[data-testid="select-assignee"]');
     const searchUserResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${assigneeTestCase.userDisplayName}*index=user_search_index*`
+      `/api/v1/search/query?q=*${assigneeTestCase.userDisplayName}*index=user*`
     );
     await page
       .getByTestId('select-assignee')
@@ -644,7 +644,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const testCaseResponse = page.waitForResponse(
       (response) =>
         response.url().includes(`/api/v1/search/query`) &&
-        response.url().includes('index=test_case_search_index') &&
+        response.url().includes('index=testCase') &&
         response.url().includes(encodeURIComponent(testCase1))
     );
     await page.getByTestId('test-case-select').locator('input').fill(testCase1);

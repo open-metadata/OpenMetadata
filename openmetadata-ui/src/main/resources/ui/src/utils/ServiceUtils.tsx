@@ -354,9 +354,9 @@ export const getSearchIndexForService = (type: ServiceTypes): SearchIndex => {
     case ServiceCategory.SEARCH_SERVICES:
       return SearchIndex.SEARCH_INDEX;
     case ServiceCategory.API_SERVICES:
-      return SearchIndex.API_COLLECTION_INDEX;
+      return SearchIndex.API_COLLECTION;
     case ServiceCategory.DRIVE_SERVICES:
-      return SearchIndex.DIRECTORY_SEARCH_INDEX;
+      return SearchIndex.DIRECTORY;
     default:
       return SearchIndex.DATABASE;
   }
@@ -619,7 +619,7 @@ export const getSearchIndexFromService = (serviceName: string): SearchIndex => {
     [ServiceCategory.ML_MODEL_SERVICES]: SearchIndex.ML_MODEL_SERVICE,
     [ServiceCategory.STORAGE_SERVICES]: SearchIndex.STORAGE_SERVICE,
     [ServiceCategory.SEARCH_SERVICES]: SearchIndex.SEARCH_SERVICE,
-    [ServiceCategory.API_SERVICES]: SearchIndex.API_SERVICE_INDEX,
+    [ServiceCategory.API_SERVICES]: SearchIndex.API_SERVICE,
     [ServiceCategory.DRIVE_SERVICES]: SearchIndex.DRIVE_SERVICE,
     [ServiceCategory.METADATA_SERVICES]: SearchIndex.METADATA_SERVICE,
   };
