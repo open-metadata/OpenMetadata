@@ -113,5 +113,4 @@ export const searchForEntityShouldWorkShowNoResult = async (
     .getByTestId('navbar-search-container')
     .getByTestId('cancel-icon')
     .click();
-
 };

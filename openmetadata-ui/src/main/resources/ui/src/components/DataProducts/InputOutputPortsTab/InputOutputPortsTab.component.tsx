@@ -13,17 +13,14 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
-  Box,
-  Card,
-  CardContent,
-  Collapse,
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Button,
   Grid,
-  IconButton,
   Typography,
-  useTheme,
-} from '@mui/material';
-import { ChevronDown, ChevronUp } from '@untitledui/icons';
-import { Button } from 'antd';
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, {
   forwardRef,
@@ -69,13 +66,12 @@ export const InputOutputPortsTab = forwardRef<
     ref
   ) => {
     const { t } = useTranslation();
-    const theme = useTheme();
     const [isAddingInputPort, setIsAddingInputPort] = useState(false);
     const [isAddingOutputPort, setIsAddingOutputPort] = useState(false);
     const [isLineageFullScreen, setIsLineageFullScreen] = useState(false);
-    const [isLineageCollapsed, setIsLineageCollapsed] = useState(true);
-    const [isInputPortsCollapsed, setIsInputPortsCollapsed] = useState(false);
-    const [isOutputPortsCollapsed, setIsOutputPortsCollapsed] = useState(false);
+    const [isLineageExpanded, setIsLineageExpanded] = useState(false);
+    const [isInputPortsExpanded, setIsInputPortsExpanded] = useState(true);
+    const [isOutputPortsExpanded, setIsOutputPortsExpanded] = useState(true);
     const inputPortsListRef = React.useRef<PortsListViewRef>(null);
     const outputPortsListRef = React.useRef<PortsListViewRef>(null);
 
@@ -200,9 +196,7 @@ export const InputOutputPortsTab = forwardRef<
       [onPortClick]
     );
 
-    const handleToggleLineageCollapse = useCallback(() => {
-      setIsLineageCollapsed((prev) => !prev);
-    }, []);
+    const isLineageCollapsed = !isLineageExpanded;
 
     // Fetch port counts on initial load
     useEffect(() => {
@@ -233,75 +227,42 @@ export const InputOutputPortsTab = forwardRef<
     }, [isLineageFullScreen]);
 
     return (
-      <Box
-        className="input-output-ports-tab"
-        data-testid="input-output-ports-tab"
-        sx={{
-          height: '100%',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          gap: 5,
-        }}>
-        <Grid container spacing={2} sx={{ width: '100%', flexShrink: 0 }}>
-          <Grid size={12}>
-            <Card
-              sx={{
-                border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
-                borderRadius: '8px',
-                overflow: 'visible',
-                boxShadow: 'none',
-              }}
-              variant="outlined">
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 16px',
-                  backgroundColor: theme.palette.grey[50],
-                  borderRadius: isLineageCollapsed ? '8px' : '8px 8px 0 0',
-                  cursor: 'pointer',
-                }}
-                onClick={handleToggleLineageCollapse}>
-                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                  <Typography fontWeight={500} variant="body1">
-                    {t('label.port-plural')} {t('label.lineage')}
-                  </Typography>
-                  {isLineageCollapsed && (
-                    <Typography color="text.secondary" variant="caption">
-                      ({inputPortsCount} {t('label.input').toLowerCase()},{' '}
-                      {outputPortsCount} {t('label.output').toLowerCase()})
+      <div
+        className="tw:h-full tw:flex tw:flex-col tw:gap-5 tw:items-start tw:pb-3"
+        data-testid="input-output-ports-tab">
+        <Grid className="tw:w-full tw:shrink-0 tw:p-1" gap="4">
+          <Grid.Item span={24}>
+            <Accordion
+              allowsMultipleExpanded
+              expandedKeys={
+                isLineageExpanded ? new Set(['lineage']) : new Set()
+              }
+              onExpandedChange={(keys) =>
+                setIsLineageExpanded(keys.has('lineage'))
+              }>
+              <AccordionItem id="lineage">
+                <AccordionHeader data-testid="toggle-lineage-collapse">
+                  <div className="tw:flex tw:items-baseline tw:gap-1">
+                    <Typography as="span" className="tw:text-md">
+                      {t('label.port-plural')} {t('label.lineage')}
                     </Typography>
-                  )}
-                </Box>
-                <IconButton
-                  data-testid="toggle-lineage-collapse"
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleLineageCollapse();
-                  }}>
-                  {isLineageCollapsed ? (
-                    <ChevronDown height={20} width={20} />
-                  ) : (
-                    <ChevronUp height={20} width={20} />
-                  )}
-                </IconButton>
-              </Box>
-              <Collapse in={!isLineageCollapsed}>
-                <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+                    {isLineageCollapsed && (
+                      <Typography
+                        as="p"
+                        className="tw:text-xs tw:text-gray-700 tw:font-light">
+                        ({inputPortsCount} {t('label.input').toLowerCase()},{' '}
+                        {outputPortsCount} {t('label.output').toLowerCase()})
+                      </Typography>
+                    )}
+                  </div>
+                </AccordionHeader>
+                <AccordionPanel>
                   {isLoadingLineage ? (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        height: 250,
-                      }}>
+                    <div
+                      className="tw:flex tw:justify-center tw:items-center"
+                      style={{ height: 250 }}>
                       <Loader />
-                    </Box>
+                    </div>
                   ) : (
                     <ReactFlowProvider>
                       <PortsLineageView
@@ -316,249 +277,194 @@ export const InputOutputPortsTab = forwardRef<
                       />
                     </ReactFlowProvider>
                   )}
-                </CardContent>
-              </Collapse>
-            </Card>
-          </Grid>
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
+          </Grid.Item>
         </Grid>
 
-        <Grid
-          container
-          spacing={2}
-          sx={{ width: '100%', flex: 1, minHeight: 0 }}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card
-              sx={{
-                border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
-                borderRadius: '8px',
-                boxShadow: 'none',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-              variant="outlined">
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 16px',
-                  backgroundColor: theme.palette.grey[50],
-                  borderRadius: isInputPortsCollapsed ? '8px' : '8px 8px 0 0',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-                onClick={() => setIsInputPortsCollapsed((prev) => !prev)}>
-                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                  <Typography fontWeight={500} variant="body1">
-                    {t('label.entity-port-plural', {
-                      entity: t('label.input'),
-                    })}
-                  </Typography>
-                  <Typography color="text.secondary" variant="caption">
-                    ({inputPortsCount})
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {permissions.EditAll &&
-                    !isInputPortsCollapsed &&
-                    inputPortsCount > 0 && (
-                      <Button
-                        className="h-8 flex items-center"
-                        data-testid="add-input-port-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddInputPort();
-                        }}>
-                        {t('label.add')}
-                      </Button>
-                    )}
-                  <IconButton
-                    data-testid="toggle-input-ports-collapse"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsInputPortsCollapsed((prev) => !prev);
-                    }}>
-                    {isInputPortsCollapsed ? (
-                      <ChevronDown height={20} width={20} />
-                    ) : (
-                      <ChevronUp height={20} width={20} />
-                    )}
-                  </IconButton>
-                </Box>
-              </Box>
-              <Collapse in={!isInputPortsCollapsed}>
-                <CardContent
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    '&:last-child': { pb: 2 },
-                    height: isInputPortsCollapsed
-                      ? 'auto'
-                      : 'calc(100vh - 400px)',
-                  }}>
-                  {inputPortsCount === 0 ? (
-                    <ErrorPlaceHolder
-                      className="m-t-0"
-                      icon={
-                        <AddPlaceHolderIcon
-                          className="w-16 h-16"
-                          data-testid="no-input-ports-placeholder"
-                        />
-                      }
-                      size={SIZE.SMALL}
-                      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                      <Typography className="text-center">
-                        {t('message.no-input-ports-added')}
+        <Grid className="tw:w-full tw:flex-1 tw:min-h-0 tw:p-1" gap="4">
+          <Grid.Item span={12}>
+            <Accordion
+              allowsMultipleExpanded
+              expandedKeys={
+                isInputPortsExpanded ? new Set(['input-ports']) : new Set()
+              }
+              onExpandedChange={(keys) =>
+                setIsInputPortsExpanded(keys.has('input-ports'))
+              }>
+              <AccordionItem id="input-ports">
+                <AccordionHeader data-testid="toggle-input-ports-collapse">
+                  <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-2">
+                    <div className="tw:flex tw:items-baseline tw:gap-1">
+                      <Typography as="span" className="tw:text-md">
+                        {t('label.entity-port-plural', {
+                          entity: t('label.input'),
+                        })}
                       </Typography>
-                      {permissions.EditAll && (
+                      <Typography
+                        as="p"
+                        className="tw:text-xs tw:text-gray-700 tw:font-light"
+                        data-testid="input-port-count">
+                        ({inputPortsCount})
+                      </Typography>
+                    </div>
+                    {permissions.EditAll &&
+                      isInputPortsExpanded &&
+                      inputPortsCount > 0 && (
                         <Button
-                          className="m-t-md"
+                          color="link-color"
                           data-testid="add-input-port-button"
-                          icon={<PlusOutlined />}
-                          type="primary"
-                          onClick={handleAddInputPort}>
-                          {t('label.add-entity', {
-                            entity: t('label.entity-port-plural', {
-                              entity: t('label.input'),
-                            }),
-                          })}
+                          iconLeading={<PlusOutlined />}
+                          size="sm"
+                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                            handleAddInputPort();
+                          }}>
+                          {`${t('label.add')} ${t('label.port')}`}
                         </Button>
                       )}
-                    </ErrorPlaceHolder>
-                  ) : (
-                    <PortsListView
-                      dataProductFqn={dataProductFqn}
-                      permissions={permissions}
-                      portType="input"
-                      ref={inputPortsListRef}
-                      onRemovePort={refreshPorts}
-                    />
-                  )}
-                </CardContent>
-              </Collapse>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card
-              sx={{
-                border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
-                borderRadius: '8px',
-                boxShadow: 'none',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-              variant="outlined">
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 16px',
-                  backgroundColor: theme.palette.grey[50],
-                  borderRadius: isOutputPortsCollapsed ? '8px' : '8px 8px 0 0',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-                onClick={() => setIsOutputPortsCollapsed((prev) => !prev)}>
-                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                  <Typography fontWeight={500} variant="body1">
-                    {t('label.entity-port-plural', {
-                      entity: t('label.output'),
-                    })}
-                  </Typography>
-                  <Typography color="text.secondary" variant="caption">
-                    ({outputPortsCount})
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {permissions.EditAll &&
-                    !isOutputPortsCollapsed &&
-                    outputPortsCount > 0 && (
-                      <Button
-                        className="h-8 flex items-center"
-                        data-testid="add-output-port-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddOutputPort();
-                        }}>
-                        {t('label.add')}
-                      </Button>
-                    )}
-                  <IconButton
-                    data-testid="toggle-output-ports-collapse"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsOutputPortsCollapsed((prev) => !prev);
-                    }}>
-                    {isOutputPortsCollapsed ? (
-                      <ChevronDown height={20} width={20} />
+                  </div>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <div
+                    className="tw:flex tw:flex-col tw:pb-2"
+                    style={{ height: 'calc(100vh - 460px)' }}>
+                    {inputPortsCount === 0 ? (
+                      <ErrorPlaceHolder
+                        className="m-t-0"
+                        icon={
+                          <AddPlaceHolderIcon
+                            className="tw:w-16 tw:h-16"
+                            data-testid="no-input-ports-placeholder"
+                          />
+                        }
+                        size={SIZE.SMALL}
+                        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                        <Typography as="p" className="tw:text-center">
+                          {t('message.no-input-ports-added')}
+                        </Typography>
+                        {permissions.EditAll && (
+                          <Button
+                            className="tw:mt-2"
+                            color="primary"
+                            data-testid="add-input-port-button"
+                            iconLeading={<PlusOutlined />}
+                            onClick={handleAddInputPort}>
+                            {t('label.add-entity', {
+                              entity: t('label.entity-port-plural', {
+                                entity: t('label.input'),
+                              }),
+                            })}
+                          </Button>
+                        )}
+                      </ErrorPlaceHolder>
                     ) : (
-                      <ChevronUp height={20} width={20} />
+                      <PortsListView
+                        dataProductFqn={dataProductFqn}
+                        permissions={permissions}
+                        portType="input"
+                        ref={inputPortsListRef}
+                        onRemovePort={refreshPorts}
+                      />
                     )}
-                  </IconButton>
-                </Box>
-              </Box>
-              <Collapse in={!isOutputPortsCollapsed}>
-                <CardContent
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    '&:last-child': { pb: 2 },
-                    height: isOutputPortsCollapsed
-                      ? 'auto'
-                      : 'calc(100vh - 400px)',
-                  }}>
-                  {outputPortsCount === 0 ? (
-                    <ErrorPlaceHolder
-                      className="m-t-0"
-                      icon={
-                        <AddPlaceHolderIcon
-                          className="w-16 h-16"
-                          data-testid="no-output-ports-placeholder"
-                        />
-                      }
-                      size={SIZE.SMALL}
-                      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                      <Typography className="text-center">
-                        {assetCount === 0
-                          ? t('message.no-assets-for-output-ports')
-                          : t('message.no-output-ports-added')}
+                  </div>
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
+          </Grid.Item>
+
+          <Grid.Item span={12}>
+            <Accordion
+              allowsMultipleExpanded
+              expandedKeys={
+                isOutputPortsExpanded ? new Set(['output-ports']) : new Set()
+              }
+              onExpandedChange={(keys) =>
+                setIsOutputPortsExpanded(keys.has('output-ports'))
+              }>
+              <AccordionItem id="output-ports">
+                <AccordionHeader data-testid="toggle-output-ports-collapse">
+                  <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-2">
+                    <div className="tw:flex tw:items-baseline tw:gap-1">
+                      <Typography as="span" className="tw:text-md">
+                        {t('label.entity-port-plural', {
+                          entity: t('label.output'),
+                        })}
                       </Typography>
-                      {permissions.EditAll && assetCount > 0 && (
+                      <Typography
+                        as="p"
+                        className="tw:text-xs tw:text-gray-700 tw:font-light"
+                        data-testid="output-port-count">
+                        ({outputPortsCount})
+                      </Typography>
+                    </div>
+                    {permissions.EditAll &&
+                      isOutputPortsExpanded &&
+                      outputPortsCount > 0 && (
                         <Button
-                          className="m-t-md"
+                          color="link-color"
                           data-testid="add-output-port-button"
-                          icon={<PlusOutlined />}
-                          type="primary"
-                          onClick={handleAddOutputPort}>
-                          {t('label.add-entity', {
-                            entity: t('label.entity-port-plural', {
-                              entity: t('label.output'),
-                            }),
-                          })}
+                          iconLeading={<PlusOutlined />}
+                          size="sm"
+                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                            handleAddOutputPort();
+                          }}>
+                          {`${t('label.add')} ${t('label.port')}`}
                         </Button>
                       )}
-                    </ErrorPlaceHolder>
-                  ) : (
-                    <PortsListView
-                      dataProductFqn={dataProductFqn}
-                      permissions={permissions}
-                      portType="output"
-                      ref={outputPortsListRef}
-                      onRemovePort={refreshPorts}
-                    />
-                  )}
-                </CardContent>
-              </Collapse>
-            </Card>
-          </Grid>
+                  </div>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <div
+                    className="tw:flex tw:flex-col tw:pb-2"
+                    style={{ height: 'calc(100vh - 460px)' }}>
+                    {outputPortsCount === 0 ? (
+                      <ErrorPlaceHolder
+                        className="m-t-0"
+                        icon={
+                          <AddPlaceHolderIcon
+                            className="tw:w-16 tw:h-16"
+                            data-testid="no-output-ports-placeholder"
+                          />
+                        }
+                        size={SIZE.SMALL}
+                        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                        <Typography as="p" className="tw:text-center">
+                          {assetCount === 0
+                            ? t('message.no-assets-for-output-ports')
+                            : t('message.no-output-ports-added')}
+                        </Typography>
+                        {permissions.EditAll && assetCount > 0 && (
+                          <Button
+                            className="tw:mt-2"
+                            color="primary"
+                            data-testid="add-output-port-button"
+                            iconLeading={<PlusOutlined />}
+                            onClick={handleAddOutputPort}>
+                            {t('label.add-entity', {
+                              entity: t('label.entity-port-plural', {
+                                entity: t('label.output'),
+                              }),
+                            })}
+                          </Button>
+                        )}
+                      </ErrorPlaceHolder>
+                    ) : (
+                      <PortsListView
+                        dataProductFqn={dataProductFqn}
+                        permissions={permissions}
+                        portType="output"
+                        ref={outputPortsListRef}
+                        onRemovePort={refreshPorts}
+                      />
+                    )}
+                  </div>
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
+          </Grid.Item>
         </Grid>
 
         <AssetSelectionDrawer
@@ -586,7 +492,7 @@ export const InputOutputPortsTab = forwardRef<
           onCancel={() => setIsAddingOutputPort(false)}
           onSave={handleOutputPortSave}
         />
-      </Box>
+      </div>
     );
   }
 );

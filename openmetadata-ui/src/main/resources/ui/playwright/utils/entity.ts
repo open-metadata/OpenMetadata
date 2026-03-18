@@ -72,11 +72,13 @@ export const visitEntityPage = async (data: {
     await page.getByTestId('welcome-screen-close-btn').click();
   }
 
-  const waitForSearchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*index=dataAsset*'
-  );
   await page.getByTestId('searchBox').fill(searchTerm);
-  await waitForSearchResponse;
+  await page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=dataAsset') &&
+      response.url().includes('exclude_source_fields')
+  );
 
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await waitForAllLoadersToDisappear(page);
@@ -101,7 +103,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=user_search_index&*'
+      '/api/v1/search/query?q=*&index=user&*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -202,7 +204,7 @@ export const addOwnerWithoutValidation = async ({
 
     if (!isTabAlreadySelected) {
       const userListResponse = page.waitForResponse(
-        '/api/v1/search/query?q=&index=user_search_index&*'
+        '/api/v1/search/query?q=&index=user&*'
       );
       await usersTab.click();
       await userListResponse;
@@ -412,7 +414,7 @@ export const addMultiOwner = async (data: {
     ).toBeVisible();
 
     const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user_search_index*'
+      'api/v1/search/query?q=*&index=user*'
     );
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
@@ -1757,7 +1759,7 @@ export const checkForTableSpecificFields = async (
   page: Page,
   deleted?: boolean
 ) => {
-  const queryDataUrl = `/api/v1/search/query?q=*index=query_search_index*`;
+  const queryDataUrl = `/api/v1/search/query?q=*index=query*`;
 
   const queryApi = page.waitForResponse(queryDataUrl);
   // Click the table queries tab

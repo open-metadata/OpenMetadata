@@ -67,8 +67,7 @@ public class GlossaryTool implements McpTool {
     GlossaryRepository glossaryRepository =
         (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
 
-    glossaryRepository.prepare(glossary, true);
-    glossaryRepository.setFullyQualifiedName(glossary);
+    glossaryRepository.prepareInternal(glossary, false);
 
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
 

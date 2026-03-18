@@ -206,7 +206,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Search and add new owner
       const searchOwner = page.waitForResponse(
-        'api/v1/search/query?q=*&index=user_search_index*'
+        'api/v1/search/query?q=*&index=user*'
       );
       await page.fill(
         '[data-testid="owner-select-users-search-bar"]',
@@ -288,7 +288,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Search and add new reviewer
       const searchUser = page.waitForResponse(
-        'api/v1/search/query?q=*&index=user_search_index*'
+        'api/v1/search/query?q=*&index=user*'
       );
       await page.fill(
         '[data-testid="owner-select-users-search-bar"]',
@@ -878,8 +878,14 @@ test.describe('Glossary Advanced Operations', () => {
           path: '/relatedTerms',
           value: [
             {
-              id: relatedTerm.responseData.id,
-              type: 'glossaryTerm',
+              relationType: 'relatedTo',
+              term: {
+                id: relatedTerm.responseData.id,
+                type: 'glossaryTerm',
+                name: relatedTerm.responseData.name,
+                displayName: relatedTerm.responseData.displayName,
+                fullyQualifiedName: relatedTerm.responseData.fullyQualifiedName,
+              },
             },
           ],
         },
@@ -1309,8 +1315,14 @@ test.describe('Glossary Advanced Operations', () => {
           path: '/relatedTerms',
           value: [
             {
-              id: term2.responseData.id,
-              type: 'glossaryTerm',
+              relationType: 'relatedTo',
+              term: {
+                id: term2.responseData.id,
+                type: 'glossaryTerm',
+                name: term2.responseData.name,
+                displayName: term2.responseData.displayName,
+                fullyQualifiedName: term2.responseData.fullyQualifiedName,
+              },
             },
           ],
         },

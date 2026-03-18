@@ -20,9 +20,7 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
-import { addMultiOwner,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { addMultiOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { setupGlossaryAndTerms } from '../../utils/glossary';
 
 // use the admin user to login
@@ -323,6 +321,7 @@ test('Return to current version from history', async ({ page }) => {
 
     // Wait for version dialog
     await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
+    await waitForAllLoadersToDisappear(page);
 
     // Close the version dialog
     await page.getByRole('dialog').getByRole('img').click();

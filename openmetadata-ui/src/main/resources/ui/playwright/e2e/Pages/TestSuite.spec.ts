@@ -402,14 +402,14 @@ test(
       });
       await waitForAllLoadersToDisappear(page);
       const getOwnerList = page.waitForResponse(
-        '/api/v1/search/query?q=&index=user_search_index&*'
+        '/api/v1/search/query?q=&index=user&*'
       );
       await page.click('.ant-tabs [id*=tab-users]');
       await getOwnerList;
       await waitForAllLoadersToDisappear(page);
 
       const searchOwner = page.waitForResponse(
-        'api/v1/search/query?q=*&index=user_search_index*'
+        'api/v1/search/query?q=*&index=user*'
       );
       await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
       await searchOwner;

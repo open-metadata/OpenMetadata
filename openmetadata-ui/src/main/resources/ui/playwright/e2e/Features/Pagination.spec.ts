@@ -175,7 +175,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     test('should test pagination on Table columns', async ({ page }) => {
       await page.goto(`/table/${tableFqn}?pageSize=15`);
-      await testPaginationNavigation(page, '/columns', 'table', false);
+      await testPaginationNavigation(
+        page,
+        '/columns',
+        '[data-testid="entity-table"]',
+        false
+      );
     });
     test('should test Table columns complete flow with search', async ({
       page,
@@ -189,7 +194,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         searchApiPattern: '/columns/search',
         searchTestTerm: 'pw',
         searchParamName: 'columnSearch',
-        waitForLoadSelector: 'table',
+        waitForLoadSelector: '[data-testid="entity-table"]',
       });
     });
   });

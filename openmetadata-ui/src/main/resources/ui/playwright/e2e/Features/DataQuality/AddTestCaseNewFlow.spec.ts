@@ -17,13 +17,16 @@ import {
 } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { visitDataQualityTab } from '../../../utils/testCases';
-import { test } from '../../fixtures/pages';
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
+import {
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
+import { visitDataQualityTab } from '../../../utils/testCases';
+import { test } from '../../fixtures/pages';
 
 /**
  * Data Quality: Add Test Case (New Flow)
@@ -42,7 +45,7 @@ test.describe(
     const selectTable = async (page: Page, table: TableClass) => {
       await page.click('[id="root\\/table"]');
       const tableResponse = page.waitForResponse(
-        '/api/v1/search/query?*index=table_search_index*'
+        '/api/v1/search/query?*index=table*'
       );
       await page.fill('[id="root\\/table"]', table.entity.name);
       await tableResponse;
@@ -184,7 +187,7 @@ test.describe(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
       const tableEntityResponse = page.waitForResponse(
-        '/api/v1/search/query?q=*&index=table_search_index*'
+        '/api/v1/search/query?q=*&index=table*'
       );
       await page.getByTestId('add-test-case-btn').click();
       await tableEntityResponse;
@@ -357,6 +360,12 @@ test.describe(
 
       await page.click('[data-testid="profiler-add-table-test-btn"]');
       await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
+
+      await expect(
+        page
+          .getByTestId('entity-summary-panel-container')
+          .getByTestId('entity-link')
+      ).toContainText(getEntityDisplayName(table.entityResponseData));
 
       await createTestCase({
         page,

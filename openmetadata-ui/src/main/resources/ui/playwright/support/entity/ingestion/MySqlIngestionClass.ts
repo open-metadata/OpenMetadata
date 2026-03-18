@@ -25,7 +25,8 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
-import { visitEntityPage,
+import {
+  visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
@@ -205,11 +206,22 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   async validateIngestionDetails(page: Page) {
-    await page.locator('.ant-select-selection-item-content').waitFor();
-
-    await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
-      this.defaultFilters.concat([...this.excludeSchemas, ...this.tableFilter])
+    const tableIncludes = page.getByTestId(
+      'workflow-array-field-root/tableFilterPattern/includes'
     );
+    const schemaExcludes = page.getByTestId(
+      'workflow-array-field-root/schemaFilterPattern/excludes'
+    );
+
+    await tableIncludes.waitFor();
+
+    for (const filter of this.tableFilter) {
+      await expect(tableIncludes.locator(`[title="${filter}"]`)).toBeVisible();
+    }
+
+    for (const schema of this.excludeSchemas) {
+      await expect(schemaExcludes.locator(`[title="${schema}"]`)).toBeVisible();
+    }
   }
 }
 

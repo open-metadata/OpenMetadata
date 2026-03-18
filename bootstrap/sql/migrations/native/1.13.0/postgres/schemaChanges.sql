@@ -70,6 +70,9 @@ WHERE json->'config'->>'app' LIKE '%"preview"%';
 
 -- Clean up QRTZ tables to remove stale persisted job data that may contain old App JSON with 'preview'
 -- Delete FK children first, then parents. Using DELETE (not TRUNCATE) to respect FK constraints.
+-- NOTE: This migration must run with the application fully stopped.
+-- Deleting QRTZ_LOCKS and QRTZ_SCHEDULER_STATE while the scheduler is running
+-- will cause distributed lock failures and missed recovery.
 DELETE FROM QRTZ_SIMPLE_TRIGGERS;
 DELETE FROM QRTZ_CRON_TRIGGERS;
 DELETE FROM QRTZ_SIMPROP_TRIGGERS;

@@ -30,6 +30,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -68,6 +70,23 @@ public class RdfIndexApp extends AbstractNativeApplication {
       java.util.Arrays.stream(Relationship.values())
           .map(Relationship::ordinal)
           .collect(Collectors.toList());
+
+  // Entity types that should be excluded from RDF relationships as they don't provide
+  // meaningful semantic value (operational/audit entities)
+  private static final Set<String> EXCLUDED_RELATIONSHIP_ENTITY_TYPES =
+      Set.of(
+          "changeEvent",
+          "auditLog",
+          "webAnalyticEvent",
+          "entityUsage",
+          "eventSubscription",
+          "vote",
+          "THREAD");
+
+  // Relationship types that should be excluded from RDF as they don't provide
+  // meaningful semantic relationships (user interactions, not data relationships)
+  private static final Set<Integer> EXCLUDED_RELATIONSHIP_TYPES =
+      Set.of(Relationship.VOTED.ordinal(), Relationship.FOLLOWS.ordinal());
 
   private final RdfRepository rdfRepository;
   private volatile boolean stopped = false;
@@ -247,6 +266,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
+      // Clear entire RDF store before re-indexing to remove stale data
+      LOG.info("Clearing RDF store before re-indexing");
+      rdfRepository.clearAll();
+
       processEntityTypes();
       signalConsumersToStop(numConsumers);
       consumerLatch.await();
@@ -306,6 +329,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
       processBatchRelationships(entityType, entities);
 
+      // Process glossary term relations if this is a glossaryTerm batch
+      if ("glossaryTerm".equals(entityType)) {
+        processGlossaryTermRelations(entities);
+      }
+
       StepStats currentStats =
           new StepStats().withSuccessRecords(successCount).withFailedRecords(failedCount);
       updateEntityStats(entityType, currentStats);
@@ -344,14 +372,59 @@ public class RdfIndexApp extends AbstractNativeApplication {
       List<org.openmetadata.schema.type.EntityRelationship> allRelationships = new ArrayList<>();
 
       for (EntityRelationshipObject rel : outgoingRelationships) {
+        // Skip relationships to/from excluded entity types (changeEvent, auditLog, vote, etc.)
+        // These don't provide meaningful semantic value in the knowledge graph
+        if (EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getToEntity())
+            || EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getFromEntity())) {
+          LOG.debug(
+              "Skipping relationship {} -> {} (excluded entity type: {} or {})",
+              rel.getFromId(),
+              rel.getToId(),
+              rel.getFromEntity(),
+              rel.getToEntity());
+          continue;
+        }
+
+        // Skip excluded relationship types (VOTED, FOLLOWS, etc.)
+        if (EXCLUDED_RELATIONSHIP_TYPES.contains(rel.getRelation())) {
+          LOG.debug(
+              "Skipping relationship {} -> {} (excluded relationship type: {})",
+              rel.getFromId(),
+              rel.getToId(),
+              rel.getRelation());
+          continue;
+        }
+
         if (rel.getRelation() == Relationship.UPSTREAM.ordinal() && rel.getJson() != null) {
           processLineageRelationship(rel);
         } else {
+          // Skip glossary term RELATED_TO relationships - they're handled separately
+          // by processGlossaryTermRelations() with typed predicates
+          if ("glossaryTerm".equals(entityType)
+              && rel.getRelation() == Relationship.RELATED_TO.ordinal()
+              && "glossaryTerm".equals(rel.getToEntity())) {
+            LOG.debug(
+                "Skipping glossary term relation {} -> {} (handled by processGlossaryTermRelations)",
+                rel.getFromId(),
+                rel.getToId());
+            continue;
+          }
           allRelationships.add(convertToEntityRelationship(rel));
         }
       }
 
       for (EntityRelationshipObject rel : incomingLineage) {
+        // Skip relationships to/from excluded entity types
+        if (EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getToEntity())
+            || EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getFromEntity())) {
+          continue;
+        }
+
+        // Skip excluded relationship types
+        if (EXCLUDED_RELATIONSHIP_TYPES.contains(rel.getRelation())) {
+          continue;
+        }
+
         if (rel.getJson() != null) {
           processLineageRelationship(rel);
         } else {
@@ -392,6 +465,53 @@ public class RdfIndexApp extends AbstractNativeApplication {
       } catch (Exception ex) {
         LOG.debug("Failed to add basic lineage relationship", ex);
       }
+    }
+  }
+
+  private void processGlossaryTermRelations(List<? extends EntityInterface> entities) {
+    List<RdfRepository.GlossaryTermRelationData> relations = new ArrayList<>();
+
+    for (EntityInterface entity : entities) {
+      if (stopped) {
+        break;
+      }
+
+      if (entity instanceof GlossaryTerm glossaryTerm) {
+        List<TermRelation> relatedTerms = glossaryTerm.getRelatedTerms();
+        if (relatedTerms != null && !relatedTerms.isEmpty()) {
+          UUID fromTermId = glossaryTerm.getId();
+          LOG.info(
+              "Processing glossary term {} ({}) with {} relations",
+              glossaryTerm.getName(),
+              fromTermId,
+              relatedTerms.size());
+
+          for (TermRelation termRelation : relatedTerms) {
+            if (termRelation.getTerm() != null && termRelation.getTerm().getId() != null) {
+              UUID toTermId = termRelation.getTerm().getId();
+              String relationType =
+                  termRelation.getRelationType() != null
+                      ? termRelation.getRelationType()
+                      : "relatedTo";
+
+              LOG.info(
+                  "  Relation: {} -> {} (type: {}, raw: {})",
+                  glossaryTerm.getName(),
+                  termRelation.getTerm().getName(),
+                  relationType,
+                  termRelation.getRelationType());
+
+              relations.add(
+                  new RdfRepository.GlossaryTermRelationData(fromTermId, toTermId, relationType));
+            }
+          }
+        }
+      }
+    }
+
+    if (!relations.isEmpty()) {
+      rdfRepository.bulkAddGlossaryTermRelations(relations);
+      LOG.info("Added {} glossary term relations to RDF store", relations.size());
     }
   }
 
@@ -714,8 +834,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     try {
       JsonUtils.convertValue(appConfig, EventPublisherJob.class);
     } catch (IllegalArgumentException e) {
-      throw AppException.byMessage(
-          Response.Status.BAD_REQUEST, "Invalid App Configuration: " + e.getMessage());
+      throw AppException.byMessage(Response.Status.BAD_REQUEST, "Invalid App Configuration");
     }
   }
 
