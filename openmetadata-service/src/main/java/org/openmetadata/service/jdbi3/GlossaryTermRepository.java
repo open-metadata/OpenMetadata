@@ -771,7 +771,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     int count = 0;
     Set<String> seen = new HashSet<>();
+    String inverseType = getInverseRelationType(relationType);
 
+    // toRecords: termId is the source (fromId) — stored relation type matches directly
     List<EntityRelationshipRecord> toRecords =
         daoCollection
             .relationshipDAO()
@@ -786,13 +788,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
     }
 
+    // fromRecords: termId is the target (toId) — stored type is from the other term's
+    // perspective, so match against the inverse
     List<EntityRelationshipRecord> fromRecords =
         daoCollection
             .relationshipDAO()
             .findFrom(termId, GLOSSARY_TERM, Relationship.RELATED_TO.ordinal(), GLOSSARY_TERM);
     for (EntityRelationshipRecord record : fromRecords) {
       String relType = extractRelationType(record.getJson());
-      if (relationType.equalsIgnoreCase(relType)) {
+      String matchType = inverseType != null ? inverseType : relationType;
+      if (matchType.equalsIgnoreCase(relType)) {
         String relKey = record.getId() + "->" + termId;
         if (seen.add(relKey)) {
           count++;

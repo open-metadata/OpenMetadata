@@ -64,11 +64,17 @@ public class RdfResource {
   }
 
   private SemanticSearchEngine getSemanticSearchEngine() {
-    if (semanticSearchEngine == null && getRdfRepository() != null) {
-      semanticSearchEngine =
-          new SemanticSearchEngine(getRdfRepository(), Entity.getSearchRepository());
+    SemanticSearchEngine local = semanticSearchEngine;
+    if (local == null) {
+      synchronized (this) {
+        local = semanticSearchEngine;
+        if (local == null && getRdfRepository() != null) {
+          local = new SemanticSearchEngine(getRdfRepository(), Entity.getSearchRepository());
+          semanticSearchEngine = local;
+        }
+      }
     }
-    return semanticSearchEngine;
+    return local;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
