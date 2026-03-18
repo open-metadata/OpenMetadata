@@ -233,6 +233,7 @@ const renderWithRouter = (props: AddTestCaseModalProps) => {
 
 describe('AddTestCaseList', () => {
   beforeEach(() => {
+    jest.useRealTimers();
     jest.clearAllMocks();
     mockGetListTestCaseBySearch.mockResolvedValue({
       data: [],
@@ -240,6 +241,10 @@ describe('AddTestCaseList', () => {
         total: 0,
       },
     });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('renders the component with initial state', async () => {
@@ -686,12 +691,10 @@ describe('AddTestCaseList', () => {
         expect(mockSearchQuery).toHaveBeenCalledWith(
           expect.objectContaining({
             query: '*table_search_term*',
-            searchIndex: 'table_search_index',
+            searchIndex: 'table',
           })
         );
       });
-
-      jest.useRealTimers();
     });
   });
 
