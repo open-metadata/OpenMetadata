@@ -82,8 +82,7 @@ public class CreateTestCaseTool implements McpTool {
       TestCase testCase =
           getTestCase(
               name, description, entityLinkValue, testDefinitionName, parameterValue, updatedBy);
-      repository.setFullyQualifiedName(testCase);
-      repository.prepare(testCase, false);
+      repository.prepareInternal(testCase, false);
       RestUtil.PutResponse<TestCase> response =
           repository.createOrUpdate(null, testCase, updatedBy, impersonatedBy);
       return JsonUtils.getMap(response.getEntity());

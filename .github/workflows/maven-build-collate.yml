@@ -26,6 +26,7 @@ on:
       - "openmetadata-clients/**"
       - "openmetadata-sdk/**"
       - "openmetadata-integration-tests/**"
+      - "openmetadata-mcp/**"
       - "common/**"
       - "pom.xml"
       - "yarn.lock"
@@ -37,6 +38,7 @@ on:
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-integration-tests/**"
+      - "openmetadata-mcp/**"
 
 permissions:
   contents: read
