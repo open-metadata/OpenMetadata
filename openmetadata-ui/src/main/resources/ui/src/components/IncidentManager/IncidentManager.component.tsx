@@ -82,6 +82,7 @@ import {
 } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
+import SortingDropDown from '../Explore/SortingDropDown';
 import { IncidentManagerProps } from './IncidentManager.interface';
 
 const IncidentManager = ({
@@ -755,33 +756,26 @@ const IncidentManager = ({
             </Select>
           </Form.Item>
           {isDateRangePickerVisible && (
-            <Form.Item className="m-b-0" label={t('label.date')}>
-              <div className="tw:flex tw:items-center tw:gap-2">
-                <Select
-                  className="w-min-10"
-                  data-testid="date-field-select"
-                  value={
-                    (filters.dateField as 'timestamp' | 'updatedAt') ??
-                    'timestamp'
-                  }
-                  onChange={handleDateFieldChange}>
-                  <Select.Option value="timestamp">
-                    {t('label.created-at')}
-                  </Select.Option>
-                  <Select.Option value="updatedAt">
-                    {t('label.updated-at')}
-                  </Select.Option>
-                </Select>
-                <MuiDatePickerMenu
-                  allowClear
-                  showSelectedCustomRange
-                  defaultDateRange={dateRangeKey}
-                  handleDateRangeChange={handleDateRangeChange}
-                  size="small"
-                  onClear={handleDateRangeClear}
-                />
-              </div>
-            </Form.Item>
+            <div className="tw:flex tw:items-center tw:gap-2">
+              <SortingDropDown
+                fieldList={[
+                  { name: t('label.created-at'), value: 'timestamp' },
+                  { name: t('label.updated-at'), value: 'updatedAt' },
+                ]}
+                handleFieldDropDown={handleDateFieldChange}
+                sortField={
+                  (filters.dateField as string | undefined) ?? 'timestamp'
+                }
+              />
+              <MuiDatePickerMenu
+                allowClear
+                showSelectedCustomRange
+                defaultDateRange={dateRangeKey}
+                handleDateRangeChange={handleDateRangeChange}
+                size="small"
+                onClear={handleDateRangeClear}
+              />
+            </div>
           )}
         </div>
       </div>

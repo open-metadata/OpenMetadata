@@ -97,6 +97,24 @@ jest.mock('../common/MuiDatePickerMenu/MuiDatePickerMenu', () => {
     </div>
   ));
 });
+jest.mock('../Explore/SortingDropDown', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ fieldList, handleFieldDropDown, sortField }) => (
+      <div data-testid="date-field-select">
+        <span data-testid="sorting-dropdown-label">
+          {fieldList.find(
+            (f: { name: string; value: string }) => f.value === sortField
+          )?.name ?? sortField}
+        </span>
+        <button
+          data-testid="date-field-updatedAt"
+          onClick={() => handleFieldDropDown('updatedAt')}>
+          Updated At
+        </button>
+      </div>
+    ));
+});
 jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
@@ -507,6 +525,8 @@ describe('IncidentManagerPage', () => {
     const dateFieldSelect = await screen.findByTestId('date-field-select');
 
     expect(dateFieldSelect).toBeInTheDocument();
+    // Default should show the created-at label
+    expect(screen.getByTestId('sorting-dropdown-label')).toBeInTheDocument();
   });
 
   it('should update URL with dateField when date type is changed', async () => {
@@ -518,19 +538,10 @@ describe('IncidentManagerPage', () => {
       render(<IncidentManager />);
     });
 
-    const dateFieldSelect = await screen.findByTestId('date-field-select');
-    const selectBox = dateFieldSelect.querySelector('.ant-select-selector');
-
-    expect(selectBox).toBeInTheDocument();
+    const updatedAtBtn = await screen.findByTestId('date-field-updatedAt');
 
     await act(async () => {
-      fireEvent.mouseDown(selectBox!);
-    });
-
-    const updatedAtOption = await screen.findByText('label.updated-at');
-
-    await act(async () => {
-      fireEvent.click(updatedAtOption);
+      fireEvent.click(updatedAtBtn);
     });
 
     expect(navigate).toHaveBeenCalledWith(
