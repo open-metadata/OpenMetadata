@@ -22,6 +22,13 @@ WHERE NOT EXISTS (
   SELECT 1 FROM openmetadata_settings WHERE configType = 'glossaryTermRelationSettings'
 );
 
+-- Strip stale relatedTerms from glossary term entity JSON.
+-- relatedTerms is now loaded from entity_relationship table, not from entity JSON.
+-- Old data stored relatedTerms as EntityReference objects which fail to deserialize as TermRelation.
+UPDATE glossary_term_entity
+SET json = JSON_REMOVE(json, '$.relatedTerms')
+WHERE JSON_EXTRACT(json, '$.relatedTerms') IS NOT NULL;
+
 -- Backfill conceptMappings for existing glossary terms
 UPDATE glossary_term_entity
 SET json = JSON_SET(COALESCE(json, '{}'), '$.conceptMappings', JSON_ARRAY())
