@@ -27,9 +27,9 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 /**
  * Tests that MCP tool execution correctly sets ImpersonationContext on the execution thread.
  *
- * <p>Key invariant: ImpersonationContext must be set on the TOOL EXECUTION thread (the Reactor
- * boundedElastic thread), not on the Jetty servlet thread where McpAuthFilter runs. ThreadLocal
- * values do not cross thread boundaries.
+ * <p>Key invariant: ImpersonationContext must be set on the TOOL EXECUTION thread, not on the
+ * Jetty servlet thread that handles OAuth token validation. ThreadLocal values do not cross thread
+ * boundaries.
  */
 public class McpImpersonationTest {
 
@@ -147,25 +147,6 @@ public class McpImpersonationTest {
 
     assertThat(ImpersonationContext.getImpersonatedBy())
         .as("ImpersonationContext must be cleared even when tool throws an exception")
-        .isNull();
-  }
-
-  /**
-   * Verifies that the McpAuthFilter does NOT set ImpersonationContext (it runs on the wrong thread
-   * — the Jetty servlet thread). Setting it there would have no effect on the boundedElastic tool
-   * execution thread.
-   */
-  @Test
-  void mcpAuthFilterDoesNotSetImpersonationContext() throws Exception {
-    ImpersonationContext.clear();
-
-    JwtFilter jwtFilter = mock(JwtFilter.class);
-    when(jwtFilter.validateJwtAndGetClaims(anyString())).thenReturn(Map.of());
-
-    new McpAuthFilter(jwtFilter);
-
-    assertThat(ImpersonationContext.getImpersonatedBy())
-        .as("McpAuthFilter must not set ImpersonationContext — that belongs in McpServer.getTool()")
         .isNull();
   }
 

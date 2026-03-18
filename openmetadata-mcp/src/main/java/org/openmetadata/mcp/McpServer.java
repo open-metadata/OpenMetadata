@@ -271,9 +271,9 @@ public class McpServer implements McpServerProvider {
         tool,
         (context, req) -> {
           try {
-            ImpersonationContext.setImpersonatedBy(getMcpBotName());
             CatalogSecurityContext securityContext =
                 jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
+            ImpersonationContext.setImpersonatedBy(getMcpBotName());
             return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
           } finally {
             ImpersonationContext.clear();
