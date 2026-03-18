@@ -250,7 +250,7 @@ export const verifyDataProductsFilters = async (
   const aToZFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=data_product') &&
+      response.url().includes('index=dataProduct') &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=asc')
   );
@@ -267,7 +267,7 @@ export const verifyDataProductsFilters = async (
   const zToAFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=data_product') &&
+      response.url().includes('index=dataProduct') &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=desc')
   );
@@ -284,7 +284,7 @@ export const verifyDataProductsFilters = async (
   const latestFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=data_product') &&
+      response.url().includes('index=dataProduct') &&
       response.url().includes('sort_field=updatedAt') &&
       response.url().includes('sort_order=desc')
   );
@@ -317,7 +317,7 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   const aToZFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=domain_search_index') &&
+      response.url().includes('index=domain') &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=asc')
   );
@@ -337,7 +337,7 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   const zToAFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=domain_search_index') &&
+      response.url().includes('index=domain') &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=desc')
   );
@@ -357,7 +357,7 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   const latestFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=domain_search_index') &&
+      response.url().includes('index=domain') &&
       response.url().includes('sort_field=updatedAt') &&
       response.url().includes('sort_order=desc')
   );
@@ -463,7 +463,7 @@ export const verifyDataAssetsFilters = async (
   const aToZFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('table_search_index')
+      response.url().includes('index=table')
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
@@ -479,7 +479,7 @@ export const verifyDataAssetsFilters = async (
   const zToAFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('table_search_index')
+      response.url().includes('index=table')
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
@@ -495,7 +495,7 @@ export const verifyDataAssetsFilters = async (
   const highToLowFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('table_search_index')
+      response.url().includes('index=table')
   );
   await page.getByRole('menuitem', { name: 'High to Low' }).click();
   await highToLowFilter;
@@ -511,7 +511,7 @@ export const verifyDataAssetsFilters = async (
   const lowToHighFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('table_search_index')
+      response.url().includes('index=table')
   );
   await page.getByRole('menuitem', { name: 'Low to High' }).click();
   await lowToHighFilter;

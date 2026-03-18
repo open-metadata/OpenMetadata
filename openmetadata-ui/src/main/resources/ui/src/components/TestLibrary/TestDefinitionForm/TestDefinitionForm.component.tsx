@@ -229,7 +229,17 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           />
         </Form.Item>
 
-        <Form.Item label={t('label.description')} name="description">
+        <Form.Item
+          label={t('label.description')}
+          name="description"
+          rules={[
+            {
+              required: true,
+              message: t('message.field-text-is-required', {
+                fieldText: t('label.description'),
+              }),
+            },
+          ]}>
           <Input.TextArea
             placeholder={t('label.enter-entity-description', {
               entity: t('label.test-definition'),
@@ -423,7 +433,15 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                     <Form.Item
                       {...restField}
                       label={t('label.data-type')}
-                      name={[name, 'dataType']}>
+                      name={[name, 'dataType']}
+                      rules={[
+                        {
+                          required: true,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.data-type'),
+                          }),
+                        },
+                      ]}>
                       <Select
                         showSearch
                         disabled={isReadOnlyField}

@@ -38,7 +38,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       <WorkflowArrayFieldTemplate {...mockWorkflowArrayFieldTemplateProps} />
     );
 
-    const arrayField = screen.getByTestId('workflow-array-field-template');
+    const arrayField = screen.getByTestId('workflow-array-field-root/workflow-array-field-template');
 
     expect(arrayField).toBeInTheDocument();
   });
@@ -77,7 +77,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       />
     );
 
-    fireEvent.focus(screen.getByTestId('workflow-array-field-template'));
+    fireEvent.focus(screen.getByTestId('workflow-array-field-root/workflow-array-field-template'));
 
     expect(mockOnFocus).toHaveBeenCalledWith(
       'root/workflow-array-field-template'
@@ -92,7 +92,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       />
     );
 
-    fireEvent.blur(screen.getByTestId('workflow-array-field-template'));
+    fireEvent.blur(screen.getByTestId('workflow-array-field-root/workflow-array-field-template'));
 
     expect(mockOnBlur).toHaveBeenCalledWith(
       'root/workflow-array-field-template',
@@ -108,7 +108,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       />
     );
 
-    const selectElement = screen.getByTestId('workflow-array-field-template');
+    const selectElement = screen.getByTestId('workflow-array-field-root/workflow-array-field-template');
 
     expect(selectElement).toHaveClass('ant-select-disabled');
   });
@@ -139,7 +139,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
     );
 
     const placeholderText = screen
-      .getByTestId('workflow-array-field-template')
+      .getByTestId('workflow-array-field-root/spaceTypes')
       .querySelector('span.ant-select-selection-placeholder');
 
     expect(placeholderText).toHaveTextContent('');
@@ -153,7 +153,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       />
     );
 
-    const select = screen.getByTestId('workflow-array-field-template');
+    const select = screen.getByTestId('workflow-array-field-root/workflow-array-field-template');
     const input = within(select).getByRole('combobox');
 
     // Test basic comma-separated values

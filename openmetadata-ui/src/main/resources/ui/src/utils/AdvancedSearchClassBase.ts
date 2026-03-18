@@ -395,7 +395,7 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.API_COLLECTION_INDEX,
+          searchIndex: SearchIndex.API_COLLECTION,
           entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
@@ -407,7 +407,7 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          searchIndex: SearchIndex.API_ENDPOINT,
           entityField: EntityFields.REQUEST_SCHEMA_FIELD,
         }),
         useAsyncSearch: true,
@@ -419,7 +419,7 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          searchIndex: SearchIndex.API_ENDPOINT,
           entityField: EntityFields.RESPONSE_SCHEMA_FIELD,
         }),
         useAsyncSearch: true,
@@ -593,7 +593,7 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          searchIndex: SearchIndex.DIRECTORY,
           entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
@@ -611,7 +611,7 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          searchIndex: SearchIndex.DIRECTORY,
           entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
@@ -628,7 +628,7 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.FILE_SEARCH_INDEX,
+          searchIndex: SearchIndex.FILE,
           entityField: EntityFields.FILE_TYPE,
         }),
         useAsyncSearch: true,
@@ -646,7 +646,7 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          searchIndex: SearchIndex.DIRECTORY,
           entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
@@ -676,7 +676,7 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+          searchIndex: SearchIndex.SPREADSHEET,
           entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
@@ -1078,17 +1078,14 @@ class AdvancedSearchClassBase {
       [SearchIndex.CONTAINER]: this.containerQueryBuilderFields,
       [SearchIndex.SEARCH_INDEX]: this.searchIndexQueryBuilderFields,
       [SearchIndex.DASHBOARD_DATA_MODEL]: this.dataModelQueryBuilderFields,
-      [SearchIndex.API_ENDPOINT_INDEX]: this.apiEndpointQueryBuilderFields,
+      [SearchIndex.API_ENDPOINT]: this.apiEndpointQueryBuilderFields,
       [SearchIndex.GLOSSARY_TERM]: this.glossaryTermQueryBuilderFields,
       [SearchIndex.DATABASE_SCHEMA]: this.databaseSchemaQueryBuilderFields,
       [SearchIndex.STORED_PROCEDURE]: this.storedProcedureQueryBuilderFields,
-      [SearchIndex.DIRECTORY_SEARCH_INDEX]:
-        this.directorySearchQueryBuilderFields,
-      [SearchIndex.FILE_SEARCH_INDEX]: this.fileSearchQueryBuilderFields,
-      [SearchIndex.SPREADSHEET_SEARCH_INDEX]:
-        this.spreadsheetSearchQueryBuilderFields,
-      [SearchIndex.WORKSHEET_SEARCH_INDEX]:
-        this.worksheetSearchQueryBuilderFields,
+      [SearchIndex.DIRECTORY]: this.directorySearchQueryBuilderFields,
+      [SearchIndex.FILE]: this.fileSearchQueryBuilderFields,
+      [SearchIndex.SPREADSHEET]: this.spreadsheetSearchQueryBuilderFields,
+      [SearchIndex.WORKSHEET]: this.worksheetSearchQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,
@@ -1212,9 +1209,9 @@ class AdvancedSearchClassBase {
       SearchIndex.ML_MODEL_SERVICE,
       SearchIndex.SEARCH_SERVICE,
       SearchIndex.STORAGE_SERVICE,
-      SearchIndex.API_SERVICE_INDEX,
-      SearchIndex.API_ENDPOINT_INDEX,
-      SearchIndex.API_COLLECTION_INDEX,
+      SearchIndex.API_SERVICE,
+      SearchIndex.API_ENDPOINT,
+      SearchIndex.API_COLLECTION,
       SearchIndex.DASHBOARD_DATA_MODEL,
       SearchIndex.STORED_PROCEDURE,
     ];

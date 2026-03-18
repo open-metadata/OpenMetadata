@@ -599,6 +599,11 @@ const TestSuiteDetailsPage = () => {
                       <Dialog.Content>
                         <AddTestCaseList
                           existingTest={testSuite?.tests ?? []}
+                          getPopupContainer={(trigger) =>
+                            (trigger.closest(
+                              '[role="dialog"]',
+                            ) as HTMLElement) ?? document.body
+                          }
                           selectedTest={selectedTestCases}
                           onCancel={() => setIsTestCaseModalOpen(false)}
                           onSubmit={handleAddTestCaseSubmit}

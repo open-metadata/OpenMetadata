@@ -151,7 +151,7 @@
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>12.1.6</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.17.1</mcp-sdk.version>
+    <mcp-sdk.version>1.1.0</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>
@@ -259,7 +259,12 @@
       </dependency>
       <dependency>
         <groupId>io.modelcontextprotocol.sdk</groupId>
-        <artifactId>mcp</artifactId>
+        <artifactId>mcp-core</artifactId>
+        <version>${mcp-sdk.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.modelcontextprotocol.sdk</groupId>
+        <artifactId>mcp-json-jackson2</artifactId>
         <version>${mcp-sdk.version}</version>
       </dependency>
       <dependency>

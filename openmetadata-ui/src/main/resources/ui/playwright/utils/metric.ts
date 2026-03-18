@@ -159,7 +159,7 @@ export const updateRelatedMetric = async (
     .waitFor({ state: 'visible' });
 
   const apiPromise = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=metric_search_index&*'
+    '/api/v1/search/query?q=*&index=metric&*'
   );
 
   await page.fill(
