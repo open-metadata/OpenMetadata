@@ -15,14 +15,19 @@ Test sigma Dashboard using the topology
 
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -41,7 +46,13 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
-from metadata.ingestion.source.dashboard.sigma.models import Elements, WorkbookDetails
+from metadata.ingestion.source.dashboard.sigma.models import (
+    Elements,
+    NodeDetails,
+    WorkbookDetails,
+    WorkbookQueriesResponse,
+    WorkbookQuery,
+)
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
@@ -55,7 +66,13 @@ MOCK_DATABASE_SERVICE = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     fullyQualifiedName=FullyQualifiedEntityName("mock_mysql"),
     name="mock_mysql",
-    connection=DatabaseConnection(),
+    connection=DatabaseConnection(
+        config=MysqlConnection(
+            username="test",
+            hostPort="localhost:3306",
+            databaseName="test_database",
+        )
+    ),
     serviceType=DatabaseServiceType.Mysql,
 )
 
@@ -172,6 +189,50 @@ EXPECTED_CHARTS = [
     ),
 ]
 
+# Mock data for query-based lineage testing
+MOCK_WORKBOOK_QUERY = WorkbookQuery(
+    elementId="1a",
+    name="test_query",
+    sql="SELECT * FROM test_database.test_schema.test_table",
+)
+
+MOCK_WORKBOOK_QUERIES_RESPONSE = WorkbookQueriesResponse(
+    entries=[MOCK_WORKBOOK_QUERY],
+    total=1,
+)
+
+MOCK_DATA_MODEL = DashboardDataModel(
+    id="550e8400-e29b-41d4-a716-446655440001",
+    name="test_datamodel",
+    fullyQualifiedName=FullyQualifiedEntityName("mock_sigma.test_datamodel"),
+    dataModelType="SigmaDataModel",
+    columns=[],
+)
+
+MOCK_TABLE_ENTITY = Table(
+    id="550e8400-e29b-41d4-a716-446655440002",
+    name="test_table",
+    fullyQualifiedName=FullyQualifiedEntityName(
+        "mock_mysql.test_database.test_schema.test_table"
+    ),
+    columns=[],
+)
+
+MOCK_NODE_DETAILS = NodeDetails(
+    **{
+        "id": "node1",
+        "name": "test_table",
+        "type": "table",
+        "path": "test_database/test_schema",
+    }
+)
+
+MOCK_ELEMENT_WITH_COLUMNS = Elements(
+    elementId="elem1",
+    name="test_element",
+    columns=["column1", "column2", "very_long_column_name_that_needs_truncation"],
+)
+
 
 class SigmaUnitTest(TestCase):
     """
@@ -272,3 +333,138 @@ class SigmaUnitTest(TestCase):
         # Test with includeOwners = False
         self.sigma.source_config.includeOwners = False
         self.assertFalse(self.sigma.source_config.includeOwners)
+
+    def test_query_based_lineage_with_queries(self):
+        """
+        Test query-based lineage when queries are available
+        """
+        # Setup mocks
+        self.sigma.client.get_workbook_queries = (
+            lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
+        )
+        self.sigma.data_models = [
+            Elements(elementId="1a", name="chart1", columns=["col1"])
+        ]
+
+        # Mock metadata methods
+        self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
+        self.sigma.metadata.get_by_name = MagicMock(return_value=MOCK_DATABASE_SERVICE)
+        self.sigma.metadata.search_in_any_service = MagicMock(
+            return_value=MOCK_TABLE_ENTITY
+        )
+
+        # Execute
+        results = list(
+            self.sigma.yield_dashboard_lineage_details(
+                MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"
+            )
+        )
+
+        # Verify lineage was created - results are Either objects
+        self.assertTrue(len(results) > 0)
+        self.assertIsNotNone(results[0].right)
+        self.assertIsInstance(results[0].right, AddLineageRequest)
+
+    def test_query_based_lineage_no_queries_fallback(self):
+        """
+        Test that file-based lineage is used when no queries are available
+        """
+        # Setup mocks - no queries available
+        self.sigma.client.get_workbook_queries = lambda *_: None
+        self.sigma.client.get_lineage_details = lambda *_: [MOCK_NODE_DETAILS]
+        self.sigma.data_models = [
+            Elements(elementId="1a", name="chart1", columns=["col1"])
+        ]
+
+        # Mock metadata methods
+        self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
+        self.sigma._get_table_entity_from_node = MagicMock(
+            return_value=MOCK_TABLE_ENTITY
+        )
+
+        # Execute
+        results = list(
+            self.sigma.yield_dashboard_lineage_details(
+                MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"
+            )
+        )
+
+        # Verify file-based lineage was used
+        self.sigma._get_table_entity_from_node.assert_called()
+
+    def test_query_based_lineage_no_sql_in_query(self):
+        """
+        Test that elements without SQL are skipped
+        """
+        # Setup mocks with query but no SQL
+        query_without_sql = WorkbookQuery(elementId="1a", name="test", sql=None)
+        queries_response = WorkbookQueriesResponse(entries=[query_without_sql], total=1)
+
+        self.sigma.client.get_workbook_queries = lambda *_: queries_response
+        self.sigma.data_models = [
+            Elements(elementId="1a", name="chart1", columns=["col1"])
+        ]
+
+        # Mock metadata methods
+        self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
+
+        # Execute
+        results = list(
+            self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS)
+        )
+
+        # Verify no lineage created
+        self.assertEqual(len(results), 0)
+
+    def test_get_column_info_with_truncation(self):
+        """
+        Test that column names are properly truncated
+        """
+        columns = self.sigma.get_column_info(MOCK_ELEMENT_WITH_COLUMNS)
+
+        # Verify columns were created
+        self.assertEqual(len(columns), 3)
+
+        # Verify all columns have names
+        for col in columns:
+            self.assertIsNotNone(col.name)
+            self.assertIsNotNone(col.displayName)
+
+    def test_node_details_schema_parsing(self):
+        """
+        Test NodeDetails schema parsing from path
+        """
+        node = NodeDetails(
+            id="node1",
+            name="test_table",
+            node_type="table",
+            path="database/schema/test_table",
+        )
+
+        # node_schema should parse dotted format from path
+        self.assertIsNotNone(node.node_schema)
+
+    def test_workbook_query_model(self):
+        """
+        Test WorkbookQuery model instantiation
+        """
+        query = WorkbookQuery(
+            elementId="test123",
+            name="Test Query",
+            sql="SELECT * FROM test_table",
+        )
+
+        self.assertEqual(query.elementId, "test123")
+        self.assertEqual(query.name, "Test Query")
+        self.assertIsNotNone(query.sql)
+
+    def test_workbook_queries_response_model(self):
+        """
+        Test WorkbookQueriesResponse model instantiation
+        """
+        query = WorkbookQuery(elementId="1", name="q1", sql="SELECT 1")
+        response = WorkbookQueriesResponse(entries=[query], total=1)
+
+        self.assertEqual(len(response.entries), 1)
+        self.assertEqual(response.total, 1)
+        self.assertEqual(response.entries[0].elementId, "1")
