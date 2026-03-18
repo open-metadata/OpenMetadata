@@ -26,7 +26,7 @@ WHERE NOT EXISTS (
 -- Old data stored relatedTerms as EntityReference objects which fail to deserialize as TermRelation.
 UPDATE glossary_term_entity
 SET json = (json::jsonb - 'relatedTerms')::json
-WHERE json::jsonb ? 'relatedTerms';
+WHERE jsonb_exists(json::jsonb, 'relatedTerms');
 
 -- Backfill conceptMappings for existing glossary terms
 UPDATE glossary_term_entity
