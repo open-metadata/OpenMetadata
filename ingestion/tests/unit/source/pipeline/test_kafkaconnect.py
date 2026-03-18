@@ -201,6 +201,13 @@ def test_topic_to_sink_table_mapping(mock_source):
             "aw.Person.Person",
             True,
         ),
+        (
+            "sink",
+            {"collection.name.format": "${topic}"},
+            "aw_person_person",
+            "aw.Person.Person",
+            True,
+        ),
         (ConnectorType.SINK, {}, "aw_sales", "aw.Sales", True),
     ],
 )
