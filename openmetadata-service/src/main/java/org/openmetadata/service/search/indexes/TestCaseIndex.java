@@ -39,7 +39,6 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     doc.put("fqnParts", getFQNParts(testCase.getFullyQualifiedName()));
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owners", getEntitiesWithDisplayName(testCase.getOwners()));
-    doc.put("domains", getEntitiesWithDisplayName(testCase.getDomains()));
     doc.put("tags", testCase.getTags());
     doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
     doc.put(
