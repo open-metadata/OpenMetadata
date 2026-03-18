@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -45,10 +46,12 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
 import os.org.opensearch.client.opensearch._types.Conflicts;
@@ -78,11 +81,16 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 public class OpenSearchEntityManager implements EntityManagementClient {
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
+  private OpenSearchAsyncClient asyncClient;
+  private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public OpenSearchEntityManager(OpenSearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
+    this.asyncClient =
+        this.isClientAvailable ? new OpenSearchAsyncClient(client._transport()) : null;
+    this.isAsyncClientAvailable = this.asyncClient != null;
   }
 
   @Override
@@ -93,8 +101,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
       throws IOException {
-    if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot create entities.");
+    if (!isAsyncClientAvailable) {
+      LOG.error("OpenSearch async client is not available. Cannot create entities.");
       return;
     }
 
@@ -117,25 +125,55 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     BulkRequest bulkRequest = BulkRequest.of(b -> b.operations(operations).refresh(Refresh.True));
-    BulkResponse response = client.bulk(bulkRequest);
+    // Async call using OpenSearchAsyncClient
+    CompletableFuture<BulkResponse> future = asyncClient.bulk(bulkRequest);
 
-    if (response.errors()) {
-      LOG.error(
-          "Bulk indexing to OpenSearch encountered errors. Index: {}, Total: {}, Failed: {}",
-          indexName,
-          docsAndIds.size(),
-          response.items().stream().filter(item -> item.error() != null).count());
+    future.whenComplete(
+        (response, error) -> {
+          if (error != null) {
+            String reason = SearchIndexRetryQueue.failureReason("createEntities", error);
+            docsAndIds.forEach(
+                docAndId ->
+                    docAndId
+                        .keySet()
+                        .forEach(
+                            docId -> {
+                              if (SearchIndexRetryQueue.isUuid(docId)) {
+                                SearchIndexRetryQueue.enqueue(docId, null, reason);
+                              }
+                            }));
+            LOG.error("Failed to create entities in OpenSearch (async)", error);
+            return;
+          }
 
-      response.items().stream()
-          .filter(item -> item.error() != null)
-          .forEach(
-              item -> LOG.error("Indexing failed for ID {}: {}", item.id(), item.error().reason()));
-    } else {
-      LOG.info(
-          "Successfully indexed {} entities to OpenSearch for index: {}",
-          docsAndIds.size(),
-          indexName);
-    }
+          if (response.errors()) {
+            LOG.error(
+                "Bulk indexing to OpenSearch encountered errors. Index: {}, Total: {}, Failed: {}",
+                indexName,
+                docsAndIds.size(),
+                response.items().stream().filter(item -> item.error() != null).count());
+
+            response.items().stream()
+                .filter(item -> item.error() != null)
+                .forEach(
+                    item -> {
+                      if (SearchIndexRetryQueue.isUuid(item.id())) {
+                        SearchIndexRetryQueue.enqueue(
+                            item.id(),
+                            null,
+                            SearchIndexRetryQueue.failureReason(
+                                "createEntitiesItemError",
+                                new RuntimeException(item.error().reason())));
+                      }
+                      LOG.error("Indexing failed for ID {}: {}", item.id(), item.error().reason());
+                    });
+          } else {
+            LOG.info(
+                "Successfully indexed {} entities to OpenSearch (async) for index: {}",
+                docsAndIds.size(),
+                indexName);
+          }
+        });
   }
 
   @Override
@@ -404,10 +442,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             indexName,
             docId);
       } else {
+        SearchIndexRetryQueue.enqueue(
+            docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
         LOG.error(
             "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
       }
     } catch (IOException e) {
+      SearchIndexRetryQueue.enqueue(
+          docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
       LOG.error(
           "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
     }
@@ -448,6 +490,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
       LOG.info("Successfully updated children in OpenSearch for index: {}", indexName);
     } catch (IOException | OpenSearchException e) {
+      SearchIndexRetryQueue.enqueue(
+          null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
       LOG.error("Failed to update children in OpenSearch for index: {}", indexName, e);
     }
   }
@@ -637,6 +681,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to update FQN prefix: {}", errorMessage);
       }
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newParentFQN, SearchIndexRetryQueue.failureReason("updateByFqnPrefix", e));
       LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
     }
   }
@@ -965,6 +1011,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          newFqnPrefix,
+          SearchIndexRetryQueue.failureReason("updateGlossaryTermByFqnPrefix", e));
       LOG.error("Error while updating glossary term FQN: {}", e.getMessage(), e);
     }
   }
@@ -1021,6 +1071,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          newFqnPrefix,
+          SearchIndexRetryQueue.failureReason("updateClassificationTagByFqnPrefix", e));
       LOG.error("Error while updating classification tag FQN: {}", e.getMessage(), e);
     }
   }
@@ -1082,6 +1136,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateDataProductReferences", e));
       LOG.error("Error while updating data product references: {}", e.getMessage(), e);
     }
   }
@@ -1159,6 +1215,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          dataProductFqn,
+          SearchIndexRetryQueue.failureReason("updateAssetDomainsForDataProduct", e));
       LOG.error("Error while updating asset domains for data product: {}", e.getMessage(), e);
     }
   }
@@ -1234,6 +1294,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      for (UUID assetId : assetIds) {
+        SearchIndexRetryQueue.enqueue(
+            assetId != null ? assetId.toString() : null,
+            null,
+            SearchIndexRetryQueue.failureReason("updateAssetDomainsByIds", e));
+      }
       LOG.error("Error while updating asset domains by IDs: {}", e.getMessage(), e);
     }
   }
@@ -1297,6 +1363,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to update domain FQNs: {}", errorMessage);
       }
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateDomainFqnByPrefix", e));
       LOG.error("Error while updating domain FQNs by prefix: {}", e.getMessage(), e);
     }
   }
@@ -1358,6 +1426,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to update asset domain FQNs: {}", errorMessage);
       }
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateAssetDomainFqnByPrefix", e));
       LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
     }
   }

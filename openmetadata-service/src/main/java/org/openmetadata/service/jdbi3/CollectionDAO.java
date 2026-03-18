@@ -482,6 +482,9 @@ public interface CollectionDAO {
   SearchIndexFailureDAO searchIndexFailureDAO();
 
   @CreateSqlObject
+  SearchIndexRetryQueueDAO searchIndexRetryQueueDAO();
+
+  @CreateSqlObject
   SearchIndexServerStatsDAO searchIndexServerStatsDAO();
 
   @CreateSqlObject
@@ -10695,6 +10698,151 @@ public interface CollectionDAO {
             rs.getString("errorMessage"),
             rs.getString("stackTrace"),
             rs.getLong("timestamp"));
+      }
+    }
+  }
+
+  /** DAO for incremental search retry queue records. */
+  interface SearchIndexRetryQueueDAO {
+
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    class SearchIndexRetryRecord {
+      private final String entityId;
+      private final String entityFqn;
+      private final String failureReason;
+      private final String status;
+      private final String entityType;
+      private final int retryCount;
+      private final java.sql.Timestamp claimedAt;
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
+                + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
+                + "ON DUPLICATE KEY UPDATE failureReason = VALUES(failureReason), status = VALUES(status), entityType = VALUES(entityType)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
+                + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
+                + "ON CONFLICT (entityId, entityFqn) DO UPDATE SET "
+                + "failureReason = EXCLUDED.failureReason, status = EXCLUDED.status, entityType = EXCLUDED.entityType",
+        connectionType = POSTGRES)
+    void upsert(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("failureReason") String failureReason,
+        @Bind("status") String status,
+        @Bind("entityType") String entityType);
+
+    @SqlQuery(
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+            + "FROM search_index_retry_queue WHERE status = :status LIMIT :limit")
+    @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
+    List<SearchIndexRetryRecord> findByStatus(
+        @Bind("status") String status, @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+            + "FROM search_index_retry_queue WHERE status IN (<statuses>) LIMIT :limit")
+    @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
+    List<SearchIndexRetryRecord> findByStatuses(
+        @BindList("statuses") List<String> statuses, @Bind("limit") int limit);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = :newStatus "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn AND status = :currentStatus")
+    int updateStatusIfCurrent(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("currentStatus") String currentStatus,
+        @Bind("newStatus") String newStatus);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn")
+    int updateFailureAndStatus(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("failureReason") String failureReason,
+        @Bind("status") String status);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = :status "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn")
+    int updateStatus(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("status") String status);
+
+    @SqlUpdate(
+        "DELETE FROM search_index_retry_queue WHERE entityId = :entityId AND entityFqn = :entityFqn")
+    int deleteByEntity(@Bind("entityId") String entityId, @Bind("entityFqn") String entityFqn);
+
+    @SqlUpdate("DELETE FROM search_index_retry_queue WHERE status IN (<statuses>)")
+    int deleteByStatuses(@BindList("statuses") List<String> statuses);
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_retry_queue WHERE status = :status")
+    int countByStatus(@Bind("status") String status);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = 'IN_PROGRESS', claimedAt = NOW() "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn AND status = :currentStatus")
+    int claimRecord(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("currentStatus") String currentStatus);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = 'PENDING', claimedAt = NULL "
+            + "WHERE status = 'IN_PROGRESS' AND claimedAt < :cutoff")
+    int recoverStaleInProgress(@Bind("cutoff") java.sql.Timestamp cutoff);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason, "
+            + "retryCount = retryCount + 1, claimedAt = NULL "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn")
+    int updateFailureAndRetryCount(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("failureReason") String failureReason,
+        @Bind("status") String status);
+
+    default List<SearchIndexRetryRecord> claimPending(int batchSize) {
+      int fetchSize = Math.max(batchSize * 5, batchSize);
+      List<SearchIndexRetryRecord> candidates =
+          new ArrayList<>(
+              findByStatuses(List.of("PENDING", "PENDING_RETRY_1", "PENDING_RETRY_2"), fetchSize));
+      // Shuffle so concurrent worker threads attempt different rows first,
+      // reducing wasted optimistic-lock failures on the same candidates.
+      Collections.shuffle(candidates);
+      List<SearchIndexRetryRecord> claimed = new ArrayList<>();
+      for (SearchIndexRetryRecord candidate : candidates) {
+        if (claimed.size() >= batchSize) {
+          break;
+        }
+        int updated =
+            claimRecord(candidate.getEntityId(), candidate.getEntityFqn(), candidate.getStatus());
+        if (updated == 1) {
+          claimed.add(candidate);
+        }
+      }
+      return claimed;
+    }
+
+    class SearchIndexRetryRecordMapper implements RowMapper<SearchIndexRetryRecord> {
+      @Override
+      public SearchIndexRetryRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new SearchIndexRetryRecord(
+            rs.getString("entityId"),
+            rs.getString("entityFqn"),
+            rs.getString("failureReason"),
+            rs.getString("status"),
+            rs.getString("entityType"),
+            rs.getInt("retryCount"),
+            rs.getTimestamp("claimedAt"));
       }
     }
   }
