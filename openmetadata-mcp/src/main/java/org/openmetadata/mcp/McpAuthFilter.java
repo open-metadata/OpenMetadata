@@ -34,6 +34,7 @@ public class McpAuthFilter implements Filter {
     if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
       sendError(
           httpServletResponse,
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
           "McpApplication is not installed please install it to use MCP features.");
       return;
     }
@@ -49,6 +50,8 @@ public class McpAuthFilter implements Filter {
 
       // Continue with the filter chain
       filterChain.doFilter(servletRequest, servletResponse);
+    } catch (Exception e) {
+      sendError(httpServletResponse, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
     } finally {
       // Clear any impersonation context set during JWT validation on this (Jetty) thread.
       // MCP bot impersonation is set and cleared on the Reactor boundedElastic thread
@@ -57,12 +60,13 @@ public class McpAuthFilter implements Filter {
     }
   }
 
-  private void sendError(HttpServletResponse response, String errorMessage) throws IOException {
+  private void sendError(HttpServletResponse response, int statusCode, String errorMessage)
+      throws IOException {
     Map<String, Object> error = new HashMap<>();
     error.put("error", errorMessage);
     String errorJson = JsonUtils.pojoToJson(error);
     response.setContentType("application/json");
-    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    response.setStatus(statusCode);
     response.getWriter().write(errorJson);
   }
 }
