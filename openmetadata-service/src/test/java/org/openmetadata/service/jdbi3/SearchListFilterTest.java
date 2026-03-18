@@ -1,6 +1,8 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.DataQualityDimensions;
@@ -75,5 +77,106 @@ public class SearchListFilterTest {
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"testDefinition.dataQualityDimension\"}}]}}]}}}";
     assertEquals(expected, actual);
+  }
+
+  // --- TestCaseResolutionStatus / dateField tests ---
+
+  @Test
+  void testResolutionStatusCondition_noTimestamp() {
+    SearchListFilter filter = new SearchListFilter();
+    String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"deleted\": \"false\"}}]}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testResolutionStatusCondition_defaultDateField_usesAtTimestamp() {
+    SearchListFilter filter = new SearchListFilter();
+    filter.addQueryParam("startTimestamp", "1000000");
+    filter.addQueryParam("endTimestamp", "2000000");
+    String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    assertTrue(
+        actual.contains("\"@timestamp\""),
+        "Expected '@timestamp' field in condition but got: " + actual);
+  }
+
+  @Test
+  void testResolutionStatusCondition_explicitTimestampDateField_usesAtTimestamp() {
+    SearchListFilter filter = new SearchListFilter();
+    filter.addQueryParam("startTimestamp", "1000000");
+    filter.addQueryParam("endTimestamp", "2000000");
+    filter.addQueryParam("dateField", "timestamp");
+    String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    assertTrue(
+        actual.contains("\"@timestamp\""),
+        "Expected '@timestamp' field in condition but got: " + actual);
+  }
+
+  @Test
+  void testResolutionStatusCondition_updatedAtDateField_usesUpdatedAt() {
+    SearchListFilter filter = new SearchListFilter();
+    filter.addQueryParam("startTimestamp", "1000000");
+    filter.addQueryParam("endTimestamp", "2000000");
+    filter.addQueryParam("dateField", "updatedAt");
+    String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    assertTrue(
+        actual.contains("\"updatedAt\""),
+        "Expected 'updatedAt' field in condition but got: " + actual);
+  }
+
+  @Test
+  void testResolutionStatusCondition_updatedAtDateField_doesNotUseAtTimestamp() {
+    SearchListFilter filter = new SearchListFilter();
+    filter.addQueryParam("startTimestamp", "1000000");
+    filter.addQueryParam("endTimestamp", "2000000");
+    filter.addQueryParam("dateField", "updatedAt");
+    String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    assertFalse(
+        actual.contains("\"@timestamp\""),
+        "Did not expect '@timestamp' in condition when dateField=updatedAt, got: " + actual);
+  }
+
+  @Test
+  void testResolutionStatusCondition_timestampRangeValues_presentInQuery() {
+    SearchListFilter filter = new SearchListFilter();
+    filter.addQueryParam("startTimestamp", "1709556624254");
+    filter.addQueryParam("endTimestamp", "1710161424255");
+    String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    assertTrue(
+        actual.contains("1709556624254") && actual.contains("1710161424255"),
+        "Expected timestamp values in condition but got: " + actual);
+  }
+
+  @Test
+  void testResolutionStatusCondition_withStatusType() {
+    SearchListFilter filter = new SearchListFilter();
+    filter.addQueryParam("testCaseResolutionStatusType", "Resolved");
+    String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    assertTrue(
+        actual.contains("testCaseResolutionStatusType") && actual.contains("Resolved"),
+        "Expected testCaseResolutionStatusType filter but got: " + actual);
+  }
+
+  @Test
+  void testResolutionStatusCondition_withAssignee() {
+    SearchListFilter filter = new SearchListFilter();
+    filter.addQueryParam("assignee", "john_doe");
+    String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    assertTrue(
+        actual.contains("testCaseResolutionStatusDetails.assignee.name")
+            && actual.contains("john_doe"),
+        "Expected assignee filter but got: " + actual);
+  }
+
+  @Test
+  void testResolutionStatusCondition_withTestCaseFqn() {
+    SearchListFilter filter = new SearchListFilter();
+    filter.addQueryParam("testCaseFqn", "db.schema.table.test1");
+    String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
+    assertTrue(
+        actual.contains("testCase.fullyQualifiedName.keyword")
+            && actual.contains("db.schema.table.test1"),
+        "Expected testCaseFqn filter but got: " + actual);
   }
 }

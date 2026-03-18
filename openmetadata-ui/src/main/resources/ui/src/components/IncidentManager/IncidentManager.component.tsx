@@ -189,18 +189,18 @@ const IncidentManager = ({
 
   const { t } = useTranslation();
 
-  const dateFilterOptions = [
-    { name: t('label.created-at'), value: 'timestamp' },
-    { name: t('label.updated-at'), value: 'updatedAt' },
-  ];
+  const dateFilterOptions = useMemo(
+    () => [
+      { name: t('label.created-at'), value: 'timestamp' },
+      { name: t('label.updated-at'), value: 'updatedAt' },
+    ],
+    [t]
+  );
 
   const selectedDateFilterKey = (filters.dateField as string) ?? 'timestamp';
-  const selectedDateFilterOption = useMemo(
-    () =>
-      dateFilterOptions.find((o) => o.value === selectedDateFilterKey) ??
-      dateFilterOptions[0],
-    [dateFilterOptions, selectedDateFilterKey]
-  );
+  const selectedDateFilterOption =
+    dateFilterOptions.find((o) => o.value === selectedDateFilterKey) ??
+    dateFilterOptions[0];
 
   const {
     paging,

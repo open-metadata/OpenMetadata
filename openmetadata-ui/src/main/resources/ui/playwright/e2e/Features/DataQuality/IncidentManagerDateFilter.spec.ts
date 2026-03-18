@@ -19,7 +19,6 @@ import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
-import { parseInt } from 'lodash';
 
 const table = new TableClass();
 
