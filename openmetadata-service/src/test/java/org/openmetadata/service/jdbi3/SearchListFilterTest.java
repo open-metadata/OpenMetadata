@@ -80,18 +80,28 @@ public class SearchListFilterTest {
   }
 
   // --- TestCaseResolutionStatus / dateField tests ---
+  // These tests cover the dateField routing logic added to
+  // SearchListFilter.getTestCaseResolutionStatusCondition(). The dateField param
+  // selects which Elasticsearch field is used for the timestamp range filter:
+  //   - "timestamp" (default / absent) → "@timestamp" ES field (incident creation time)
+  //   - "updatedAt"                    → "updatedAt"   ES field (last status update time)
 
   @Test
   void testResolutionStatusCondition_noTimestamp() {
+    // When no timestamp params are supplied and no other filters are active the query falls
+    // back to match_all. TestCaseResolutionStatus is a time-series entity with no 'deleted'
+    // field, so the usual deleted:false term is NOT injected into the filter.
     SearchListFilter filter = new SearchListFilter();
     String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
     String expected =
-        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"deleted\": \"false\"}}]}}}";
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"match_all\": {}}}";
     assertEquals(expected, actual);
   }
 
   @Test
   void testResolutionStatusCondition_defaultDateField_usesAtTimestamp() {
+    // When dateField is absent the range filter must target the "@timestamp" ES field,
+    // which maps to the incident creation time stored by the indexing pipeline.
     SearchListFilter filter = new SearchListFilter();
     filter.addQueryParam("startTimestamp", "1000000");
     filter.addQueryParam("endTimestamp", "2000000");
@@ -103,6 +113,8 @@ public class SearchListFilterTest {
 
   @Test
   void testResolutionStatusCondition_explicitTimestampDateField_usesAtTimestamp() {
+    // An explicit dateField=timestamp is equivalent to the default and must also
+    // resolve to the "@timestamp" ES field.
     SearchListFilter filter = new SearchListFilter();
     filter.addQueryParam("startTimestamp", "1000000");
     filter.addQueryParam("endTimestamp", "2000000");
@@ -115,6 +127,8 @@ public class SearchListFilterTest {
 
   @Test
   void testResolutionStatusCondition_updatedAtDateField_usesUpdatedAt() {
+    // When dateField=updatedAt the range filter must target the "updatedAt" ES field
+    // so that the UI can filter incidents by their last-updated time.
     SearchListFilter filter = new SearchListFilter();
     filter.addQueryParam("startTimestamp", "1000000");
     filter.addQueryParam("endTimestamp", "2000000");
@@ -127,6 +141,8 @@ public class SearchListFilterTest {
 
   @Test
   void testResolutionStatusCondition_updatedAtDateField_doesNotUseAtTimestamp() {
+    // Complementary to the above: when dateField=updatedAt the "@timestamp" field
+    // must NOT appear so the two date fields are mutually exclusive in the query.
     SearchListFilter filter = new SearchListFilter();
     filter.addQueryParam("startTimestamp", "1000000");
     filter.addQueryParam("endTimestamp", "2000000");
@@ -139,6 +155,8 @@ public class SearchListFilterTest {
 
   @Test
   void testResolutionStatusCondition_timestampRangeValues_presentInQuery() {
+    // The exact start/end timestamp values supplied by the caller must be present
+    // verbatim in the generated Elasticsearch range query.
     SearchListFilter filter = new SearchListFilter();
     filter.addQueryParam("startTimestamp", "1709556624254");
     filter.addQueryParam("endTimestamp", "1710161424255");
@@ -150,6 +168,8 @@ public class SearchListFilterTest {
 
   @Test
   void testResolutionStatusCondition_withStatusType() {
+    // The testCaseResolutionStatusType param must produce a term filter on the
+    // matching ES field so callers can narrow results to a specific status (e.g. "Resolved").
     SearchListFilter filter = new SearchListFilter();
     filter.addQueryParam("testCaseResolutionStatusType", "Resolved");
     String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
@@ -160,6 +180,8 @@ public class SearchListFilterTest {
 
   @Test
   void testResolutionStatusCondition_withAssignee() {
+    // The assignee param must produce a term filter on the nested assignee name field
+    // so callers can list incidents assigned to a specific user.
     SearchListFilter filter = new SearchListFilter();
     filter.addQueryParam("assignee", "john_doe");
     String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
@@ -171,6 +193,8 @@ public class SearchListFilterTest {
 
   @Test
   void testResolutionStatusCondition_withTestCaseFqn() {
+    // The testCaseFqn param must produce a term filter on the keyword sub-field so
+    // callers can retrieve all statuses belonging to a single test case.
     SearchListFilter filter = new SearchListFilter();
     filter.addQueryParam("testCaseFqn", "db.schema.table.test1");
     String actual = filter.getCondition(Entity.TEST_CASE_RESOLUTION_STATUS);
