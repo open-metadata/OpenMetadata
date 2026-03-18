@@ -149,6 +149,32 @@ export const removeTestCasesFromLogicalTestSuite = async (
   }
 };
 
+const ACTION_DROPDOWN_PREFIX = 'action-dropdown-';
+
+export const removeFirstNTestCasesFromLogicalTestSuite = async (
+  page: Page,
+  count: number
+) => {
+  const rowActionDropdown = page
+    .locator('.ant-table-tbody')
+    .locator(`[data-testid^="${ACTION_DROPDOWN_PREFIX}"]`);
+
+  for (let i = 0; i < count; i++) {
+    const trigger = rowActionDropdown.first();
+    await trigger.waitFor({ state: 'visible' });
+    const fullTestId = await trigger.getAttribute('data-testid');
+    const name = fullTestId?.slice(ACTION_DROPDOWN_PREFIX.length) ?? '';
+
+    await trigger.click();
+    await page.getByTestId(`remove-${name}`).click();
+    const removeResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/logicalTestCases/*/*'
+    );
+    await page.getByTestId('save-button').click();
+    await removeResponse;
+  }
+};
+
 export const addTestSuitePipeline = async (page: Page) => {
   const pipelineTab = page.getByRole('tab', { name: 'Pipeline' });
   await expect(pipelineTab).toBeVisible();
