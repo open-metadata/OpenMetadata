@@ -1,16 +1,11 @@
 package org.openmetadata.mcp.tools;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
@@ -46,6 +41,9 @@ public class GlossaryTermTool implements McpTool {
     if (params.containsKey("owners")) {
       CommonUtils.setOwners(createGlossaryTerm, params);
     }
+    if (params.containsKey("reviewers")) {
+      createGlossaryTerm.setReviewers(CommonUtils.getTeamsOrUsers(params.get("reviewers")));
+    }
 
     GlossaryTerm glossaryTerm =
         glossaryTermMapper.createToEntity(
@@ -59,16 +57,9 @@ public class GlossaryTermTool implements McpTool {
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
 
-    GlossaryRepository glossaryRepository =
-        (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
-    Glossary glossary =
-        glossaryRepository.findByNameOrNull(createGlossaryTerm.getGlossary(), Include.ALL);
-
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-    // TODO: Get the updatedBy from the tool request.
-    glossaryTermRepository.prepare(glossaryTerm, nullOrEmpty(glossary));
-    glossaryTermRepository.setFullyQualifiedName(glossaryTerm);
+    glossaryTermRepository.prepareInternal(glossaryTerm, false);
 
     // Get impersonatedBy from thread-local context set by McpAuthFilter
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();

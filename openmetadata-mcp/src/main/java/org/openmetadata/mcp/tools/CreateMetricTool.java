@@ -180,8 +180,7 @@ public class CreateMetricTool implements McpTool {
     authorizer.authorize(securityContext, operationContext, createResourceContext);
 
     MetricRepository repo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
-    repo.prepare(metric, true);
-    repo.setFullyQualifiedName(metric);
+    repo.prepareInternal(metric, false);
 
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     RestUtil.PutResponse<Metric> response =
