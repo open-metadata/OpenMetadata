@@ -65,6 +65,7 @@ import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.api.lineage.LineageSettings;
@@ -79,6 +80,7 @@ import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -172,6 +174,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -481,10 +484,28 @@ public interface CollectionDAO {
   SearchIndexFailureDAO searchIndexFailureDAO();
 
   @CreateSqlObject
+  SearchIndexRetryQueueDAO searchIndexRetryQueueDAO();
+
+  @CreateSqlObject
   SearchIndexServerStatsDAO searchIndexServerStatsDAO();
 
   @CreateSqlObject
   AuditLogDAO auditLogDAO();
+
+  @CreateSqlObject
+  OAuthClientDAO oauthClientDAO();
+
+  @CreateSqlObject
+  OAuthAuthorizationCodeDAO oauthAuthorizationCodeDAO();
+
+  @CreateSqlObject
+  OAuthAccessTokenDAO oauthAccessTokenDAO();
+
+  @CreateSqlObject
+  OAuthRefreshTokenDAO oauthRefreshTokenDAO();
+
+  @CreateSqlObject
+  McpPendingAuthRequestDAO mcpPendingAuthRequestDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -1845,6 +1866,15 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity);
 
     @SqlQuery(
+        "SELECT toId, toEntity, json FROM entity_relationship "
+            + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation")
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<EntityRelationshipRecord> findAllByEntityTypes(
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation IN (<relation>)")
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -2200,6 +2230,26 @@ public interface CollectionDAO {
         @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+                + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')) = :relationType",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+                + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
+                + "AND json->>'relationType' = :relationType",
+        connectionType = POSTGRES)
+    int deleteWithRelationType(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("relationType") String relationType);
 
     // Delete all the entity relationship fromID --- relation --> entity of type toEntity
     @SqlUpdate(
@@ -5425,6 +5475,12 @@ public interface CollectionDAO {
           return;
         } catch (RuntimeException ex) {
           if (!isTransientDeadlock(ex) || attempt == TAG_USAGE_MAX_ATTEMPTS) {
+            throw ex;
+          }
+          try {
+            Thread.sleep(20L + (long) (Math.random() * 80));
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
             throw ex;
           }
           long retryCount = TAG_USAGE_DEADLOCK_RETRY_COUNT.incrementAndGet();
@@ -8668,6 +8724,9 @@ public interface CollectionDAO {
             case SCIM_CONFIGURATION -> JsonUtils.readValue(json, ScimConfiguration.class);
             case OPEN_LINEAGE_SETTINGS -> JsonUtils.readValue(json, OpenLineageSettings.class);
             case TEAMS_APP_CONFIGURATION -> JsonUtils.readValue(json, TeamsAppConfiguration.class);
+            case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
+            case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
+                json, GlossaryTermRelationSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -8689,6 +8748,72 @@ public interface CollectionDAO {
         case PERSONAL_ACCESS_TOKEN -> JsonUtils.readValue(json, PersonalAccessToken.class);
         case SUPPORT_TOKEN -> JsonUtils.readValue(json, SupportToken.class);
       };
+    }
+  }
+
+  // OAuth 2.0 Row Mappers
+  class OAuthClientRowMapper implements RowMapper<OAuthRecords.OAuthClientRecord> {
+    @Override
+    public OAuthRecords.OAuthClientRecord map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new OAuthRecords.OAuthClientRecord(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("client_id"),
+          rs.getString("client_secret_encrypted"),
+          rs.getString("client_name"),
+          JsonUtils.readObjects(rs.getString("redirect_uris"), String.class),
+          JsonUtils.readObjects(rs.getString("grant_types"), String.class),
+          rs.getString("token_endpoint_auth_method"),
+          JsonUtils.readObjects(rs.getString("scopes"), String.class));
+    }
+  }
+
+  class OAuthAuthorizationCodeRowMapper
+      implements RowMapper<OAuthRecords.OAuthAuthorizationCodeRecord> {
+    @Override
+    public OAuthRecords.OAuthAuthorizationCodeRecord map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new OAuthRecords.OAuthAuthorizationCodeRecord(
+          rs.getString("code"),
+          rs.getString("client_id"),
+          rs.getString("user_name"),
+          rs.getString("code_challenge"),
+          rs.getString("code_challenge_method"),
+          rs.getString("redirect_uri"),
+          JsonUtils.readObjects(rs.getString("scopes"), String.class),
+          rs.getLong("expires_at"),
+          rs.getBoolean("used"));
+    }
+  }
+
+  class OAuthAccessTokenRowMapper implements RowMapper<OAuthRecords.OAuthAccessTokenRecord> {
+    @Override
+    public OAuthRecords.OAuthAccessTokenRecord map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new OAuthRecords.OAuthAccessTokenRecord(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("token_hash"),
+          rs.getString("access_token_encrypted"),
+          rs.getString("client_id"),
+          rs.getString("user_name"),
+          JsonUtils.readObjects(rs.getString("scopes"), String.class),
+          rs.getLong("expires_at"));
+    }
+  }
+
+  class OAuthRefreshTokenRowMapper implements RowMapper<OAuthRecords.OAuthRefreshTokenRecord> {
+    @Override
+    public OAuthRecords.OAuthRefreshTokenRecord map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new OAuthRecords.OAuthRefreshTokenRecord(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("token_hash"),
+          rs.getString("refresh_token_encrypted"),
+          rs.getString("client_id"),
+          rs.getString("user_name"),
+          JsonUtils.readObjects(rs.getString("scopes"), String.class),
+          rs.getLong("expires_at"),
+          rs.getBoolean("revoked"));
     }
   }
 
@@ -10661,6 +10786,151 @@ public interface CollectionDAO {
     }
   }
 
+  /** DAO for incremental search retry queue records. */
+  interface SearchIndexRetryQueueDAO {
+
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    class SearchIndexRetryRecord {
+      private final String entityId;
+      private final String entityFqn;
+      private final String failureReason;
+      private final String status;
+      private final String entityType;
+      private final int retryCount;
+      private final java.sql.Timestamp claimedAt;
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
+                + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
+                + "ON DUPLICATE KEY UPDATE failureReason = VALUES(failureReason), status = VALUES(status), entityType = VALUES(entityType)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
+                + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
+                + "ON CONFLICT (entityId, entityFqn) DO UPDATE SET "
+                + "failureReason = EXCLUDED.failureReason, status = EXCLUDED.status, entityType = EXCLUDED.entityType",
+        connectionType = POSTGRES)
+    void upsert(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("failureReason") String failureReason,
+        @Bind("status") String status,
+        @Bind("entityType") String entityType);
+
+    @SqlQuery(
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+            + "FROM search_index_retry_queue WHERE status = :status LIMIT :limit")
+    @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
+    List<SearchIndexRetryRecord> findByStatus(
+        @Bind("status") String status, @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+            + "FROM search_index_retry_queue WHERE status IN (<statuses>) LIMIT :limit")
+    @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
+    List<SearchIndexRetryRecord> findByStatuses(
+        @BindList("statuses") List<String> statuses, @Bind("limit") int limit);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = :newStatus "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn AND status = :currentStatus")
+    int updateStatusIfCurrent(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("currentStatus") String currentStatus,
+        @Bind("newStatus") String newStatus);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn")
+    int updateFailureAndStatus(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("failureReason") String failureReason,
+        @Bind("status") String status);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = :status "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn")
+    int updateStatus(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("status") String status);
+
+    @SqlUpdate(
+        "DELETE FROM search_index_retry_queue WHERE entityId = :entityId AND entityFqn = :entityFqn")
+    int deleteByEntity(@Bind("entityId") String entityId, @Bind("entityFqn") String entityFqn);
+
+    @SqlUpdate("DELETE FROM search_index_retry_queue WHERE status IN (<statuses>)")
+    int deleteByStatuses(@BindList("statuses") List<String> statuses);
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_retry_queue WHERE status = :status")
+    int countByStatus(@Bind("status") String status);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = 'IN_PROGRESS', claimedAt = NOW() "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn AND status = :currentStatus")
+    int claimRecord(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("currentStatus") String currentStatus);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = 'PENDING', claimedAt = NULL "
+            + "WHERE status = 'IN_PROGRESS' AND claimedAt < :cutoff")
+    int recoverStaleInProgress(@Bind("cutoff") java.sql.Timestamp cutoff);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason, "
+            + "retryCount = retryCount + 1, claimedAt = NULL "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn")
+    int updateFailureAndRetryCount(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("failureReason") String failureReason,
+        @Bind("status") String status);
+
+    default List<SearchIndexRetryRecord> claimPending(int batchSize) {
+      int fetchSize = Math.max(batchSize * 5, batchSize);
+      List<SearchIndexRetryRecord> candidates =
+          new ArrayList<>(
+              findByStatuses(List.of("PENDING", "PENDING_RETRY_1", "PENDING_RETRY_2"), fetchSize));
+      // Shuffle so concurrent worker threads attempt different rows first,
+      // reducing wasted optimistic-lock failures on the same candidates.
+      Collections.shuffle(candidates);
+      List<SearchIndexRetryRecord> claimed = new ArrayList<>();
+      for (SearchIndexRetryRecord candidate : candidates) {
+        if (claimed.size() >= batchSize) {
+          break;
+        }
+        int updated =
+            claimRecord(candidate.getEntityId(), candidate.getEntityFqn(), candidate.getStatus());
+        if (updated == 1) {
+          claimed.add(candidate);
+        }
+      }
+      return claimed;
+    }
+
+    class SearchIndexRetryRecordMapper implements RowMapper<SearchIndexRetryRecord> {
+      @Override
+      public SearchIndexRetryRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new SearchIndexRetryRecord(
+            rs.getString("entityId"),
+            rs.getString("entityFqn"),
+            rs.getString("failureReason"),
+            rs.getString("status"),
+            rs.getString("entityType"),
+            rs.getInt("retryCount"),
+            rs.getTimestamp("claimedAt"));
+      }
+    }
+  }
+
   /** DAO for search index per-server stats in distributed mode */
   interface SearchIndexServerStatsDAO {
 
@@ -11029,5 +11299,210 @@ public interface CollectionDAO {
                 + ")",
         connectionType = POSTGRES)
     int deleteInBatches(@Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
+  }
+
+  // OAuth 2.0 DAOs for MCP Server
+  interface OAuthClientDAO {
+    @SqlQuery(
+        "SELECT id, client_id, client_secret_encrypted, client_name, redirect_uris, grant_types, token_endpoint_auth_method, scopes FROM oauth_clients WHERE client_id = :clientId")
+    @RegisterRowMapper(OAuthClientRowMapper.class)
+    OAuthRecords.OAuthClientRecord findByClientId(@Bind("clientId") String clientId);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO oauth_clients (client_id, client_secret_encrypted, client_name, redirect_uris, grant_types, token_endpoint_auth_method, scopes) VALUES (:clientId, :clientSecret, :clientName, :redirectUris ::jsonb, :grantTypes ::jsonb, :authMethod, :scopes ::jsonb)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO oauth_clients (client_id, client_secret_encrypted, client_name, redirect_uris, grant_types, token_endpoint_auth_method, scopes) VALUES (:clientId, :clientSecret, :clientName, :redirectUris, :grantTypes, :authMethod, :scopes)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("clientId") String clientId,
+        @Bind("clientSecret") String clientSecret,
+        @Bind("clientName") String clientName,
+        @Bind("redirectUris") String redirectUris,
+        @Bind("grantTypes") String grantTypes,
+        @Bind("authMethod") String authMethod,
+        @Bind("scopes") String scopes);
+
+    @SqlUpdate("DELETE FROM oauth_clients WHERE client_id = :clientId")
+    void delete(@Bind("clientId") String clientId);
+  }
+
+  interface OAuthAuthorizationCodeDAO {
+    @SqlQuery(
+        "SELECT code, client_id, user_name, code_challenge, code_challenge_method, redirect_uri, scopes, expires_at, used FROM oauth_authorization_codes WHERE code = :code")
+    @RegisterRowMapper(OAuthAuthorizationCodeRowMapper.class)
+    OAuthRecords.OAuthAuthorizationCodeRecord findByCode(@Bind("code") String code);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO oauth_authorization_codes (code, client_id, user_name, code_challenge, code_challenge_method, redirect_uri, scopes, expires_at) VALUES (:code, :clientId, :userName, :codeChallenge, :codeChallengeMethod, :redirectUri, :scopes ::jsonb, :expiresAt)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO oauth_authorization_codes (code, client_id, user_name, code_challenge, code_challenge_method, redirect_uri, scopes, expires_at) VALUES (:code, :clientId, :userName, :codeChallenge, :codeChallengeMethod, :redirectUri, :scopes, :expiresAt)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("code") String code,
+        @Bind("clientId") String clientId,
+        @Bind("userName") String userName,
+        @Bind("codeChallenge") String codeChallenge,
+        @Bind("codeChallengeMethod") String codeChallengeMethod,
+        @Bind("redirectUri") String redirectUri,
+        @Bind("scopes") String scopes,
+        @Bind("expiresAt") long expiresAt);
+
+    @SqlUpdate(
+        "UPDATE oauth_authorization_codes SET used = TRUE WHERE code = :code AND used = FALSE")
+    int markAsUsedAtomic(@Bind("code") String code);
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE code = :code")
+    void delete(@Bind("code") String code);
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE expires_at < :currentTime")
+    void deleteExpired(@Bind("currentTime") long currentTime);
+  }
+
+  interface OAuthAccessTokenDAO {
+    @SqlQuery(
+        "SELECT id, token_hash, access_token_encrypted, client_id, user_name, scopes, expires_at FROM oauth_access_tokens WHERE token_hash = :tokenHash")
+    @RegisterRowMapper(OAuthAccessTokenRowMapper.class)
+    OAuthRecords.OAuthAccessTokenRecord findByTokenHash(@Bind("tokenHash") String tokenHash);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO oauth_access_tokens (token_hash, access_token_encrypted, client_id, user_name, scopes, expires_at) VALUES (:tokenHash, :accessTokenEncrypted, :clientId, :userName, :scopes ::jsonb, :expiresAt)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO oauth_access_tokens (token_hash, access_token_encrypted, client_id, user_name, scopes, expires_at) VALUES (:tokenHash, :accessTokenEncrypted, :clientId, :userName, :scopes, :expiresAt)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("tokenHash") String tokenHash,
+        @Bind("accessTokenEncrypted") String accessTokenEncrypted,
+        @Bind("clientId") String clientId,
+        @Bind("userName") String userName,
+        @Bind("scopes") String scopes,
+        @Bind("expiresAt") long expiresAt);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE token_hash = :tokenHash")
+    void delete(@Bind("tokenHash") String tokenHash);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE expires_at < :currentTime")
+    void deleteExpired(@Bind("currentTime") long currentTime);
+  }
+
+  interface OAuthRefreshTokenDAO {
+    @SqlQuery(
+        "SELECT id, token_hash, refresh_token_encrypted, client_id, user_name, scopes, expires_at, revoked FROM oauth_refresh_tokens WHERE token_hash = :tokenHash")
+    @RegisterRowMapper(OAuthRefreshTokenRowMapper.class)
+    OAuthRecords.OAuthRefreshTokenRecord findByTokenHash(@Bind("tokenHash") String tokenHash);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO oauth_refresh_tokens (token_hash, refresh_token_encrypted, client_id, user_name, scopes, expires_at) VALUES (:tokenHash, :refreshTokenEncrypted, :clientId, :userName, :scopes ::jsonb, :expiresAt)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO oauth_refresh_tokens (token_hash, refresh_token_encrypted, client_id, user_name, scopes, expires_at) VALUES (:tokenHash, :refreshTokenEncrypted, :clientId, :userName, :scopes, :expiresAt)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("tokenHash") String tokenHash,
+        @Bind("refreshTokenEncrypted") String refreshTokenEncrypted,
+        @Bind("clientId") String clientId,
+        @Bind("userName") String userName,
+        @Bind("scopes") String scopes,
+        @Bind("expiresAt") long expiresAt);
+
+    @SqlUpdate("UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE token_hash = :tokenHash")
+    void revoke(@Bind("tokenHash") String tokenHash);
+
+    @SqlUpdate(
+        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE token_hash = :tokenHash AND revoked = FALSE")
+    int revokeAtomic(@Bind("tokenHash") String tokenHash);
+
+    @SqlUpdate("DELETE FROM oauth_refresh_tokens WHERE token_hash = :tokenHash")
+    void delete(@Bind("tokenHash") String tokenHash);
+
+    @SqlUpdate("DELETE FROM oauth_refresh_tokens WHERE expires_at < :currentTime")
+    void deleteExpired(@Bind("currentTime") long currentTime);
+
+    @SqlUpdate(
+        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE client_id = :clientId AND user_name = :userName AND revoked = FALSE")
+    void revokeAllForUser(@Bind("clientId") String clientId, @Bind("userName") String userName);
+  }
+
+  interface McpPendingAuthRequestDAO {
+    @SqlQuery(
+        "SELECT auth_request_id, client_id, code_challenge, code_challenge_method, redirect_uri, mcp_state, scopes, pac4j_state, pac4j_nonce, pac4j_code_verifier, expires_at FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
+    @RegisterRowMapper(McpPendingAuthRequestRowMapper.class)
+    OAuthRecords.McpPendingAuthRequest findByAuthRequestId(
+        @Bind("authRequestId") String authRequestId);
+
+    @SqlQuery(
+        "SELECT auth_request_id, client_id, code_challenge, code_challenge_method, redirect_uri, mcp_state, scopes, pac4j_state, pac4j_nonce, pac4j_code_verifier, expires_at FROM mcp_pending_auth_requests WHERE pac4j_state = :pac4jState")
+    @RegisterRowMapper(McpPendingAuthRequestRowMapper.class)
+    OAuthRecords.McpPendingAuthRequest findByPac4jState(@Bind("pac4jState") String pac4jState);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO mcp_pending_auth_requests (auth_request_id, client_id, code_challenge, code_challenge_method, redirect_uri, mcp_state, scopes, pac4j_state, pac4j_nonce, pac4j_code_verifier, expires_at) VALUES (:authRequestId, :clientId, :codeChallenge, :codeChallengeMethod, :redirectUri, :mcpState, :scopes ::jsonb, :pac4jState, :pac4jNonce, :pac4jCodeVerifier, :expiresAt)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO mcp_pending_auth_requests (auth_request_id, client_id, code_challenge, code_challenge_method, redirect_uri, mcp_state, scopes, pac4j_state, pac4j_nonce, pac4j_code_verifier, expires_at) VALUES (:authRequestId, :clientId, :codeChallenge, :codeChallengeMethod, :redirectUri, :mcpState, :scopes, :pac4jState, :pac4jNonce, :pac4jCodeVerifier, :expiresAt)",
+        connectionType = MYSQL)
+    void insert(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("clientId") String clientId,
+        @Bind("codeChallenge") String codeChallenge,
+        @Bind("codeChallengeMethod") String codeChallengeMethod,
+        @Bind("redirectUri") String redirectUri,
+        @Bind("mcpState") String mcpState,
+        @Bind("scopes") String scopes,
+        @Bind("pac4jState") String pac4jState,
+        @Bind("pac4jNonce") String pac4jNonce,
+        @Bind("pac4jCodeVerifier") String pac4jCodeVerifier,
+        @Bind("expiresAt") long expiresAt);
+
+    @SqlUpdate(
+        "UPDATE mcp_pending_auth_requests SET pac4j_state = :pac4jState, pac4j_nonce = :pac4jNonce, pac4j_code_verifier = :pac4jCodeVerifier WHERE auth_request_id = :authRequestId")
+    void updatePac4jSession(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("pac4jState") String pac4jState,
+        @Bind("pac4jNonce") String pac4jNonce,
+        @Bind("pac4jCodeVerifier") String pac4jCodeVerifier);
+
+    @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
+    void delete(@Bind("authRequestId") String authRequestId);
+
+    @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE expires_at < :currentTime")
+    void deleteExpired(@Bind("currentTime") long currentTime);
+  }
+
+  class McpPendingAuthRequestRowMapper implements RowMapper<OAuthRecords.McpPendingAuthRequest> {
+    @Override
+    public OAuthRecords.McpPendingAuthRequest map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      String scopesJson = rs.getString("scopes");
+      List<String> scopes =
+          scopesJson != null
+              ? org.openmetadata.schema.utils.JsonUtils.readValue(
+                  scopesJson, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {})
+              : List.of();
+      return new OAuthRecords.McpPendingAuthRequest(
+          rs.getString("auth_request_id"),
+          rs.getString("client_id"),
+          rs.getString("code_challenge"),
+          rs.getString("code_challenge_method"),
+          rs.getString("redirect_uri"),
+          rs.getString("mcp_state"),
+          scopes,
+          rs.getString("pac4j_state"),
+          rs.getString("pac4j_nonce"),
+          rs.getString("pac4j_code_verifier"),
+          rs.getLong("expires_at"));
+    }
   }
 }

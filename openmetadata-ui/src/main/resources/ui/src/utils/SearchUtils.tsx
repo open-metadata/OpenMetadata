@@ -176,38 +176,38 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = IconChart;
 
       break;
-    case SearchIndex.API_COLLECTION_INDEX:
+    case SearchIndex.API_COLLECTION:
       label = i18next.t('label.api-collection-plural');
       GroupIcon = IconApiCollection;
 
       break;
 
-    case SearchIndex.API_ENDPOINT_INDEX:
+    case SearchIndex.API_ENDPOINT:
       label = i18next.t('label.api-endpoint-plural');
       GroupIcon = IconApiEndpoint;
 
       break;
-    case SearchIndex.METRIC_SEARCH_INDEX:
+    case SearchIndex.METRIC:
       label = i18next.t('label.metric-plural');
       GroupIcon = MetricIcon;
 
       break;
-    case SearchIndex.DIRECTORY_SEARCH_INDEX:
+    case SearchIndex.DIRECTORY:
       label = i18next.t('label.directory-plural');
       GroupIcon = MetricIcon;
 
       break;
-    case SearchIndex.FILE_SEARCH_INDEX:
+    case SearchIndex.FILE:
       label = i18next.t('label.file-plural');
       GroupIcon = MetricIcon;
 
       break;
-    case SearchIndex.SPREADSHEET_SEARCH_INDEX:
+    case SearchIndex.SPREADSHEET:
       label = i18next.t('label.spreadsheet-plural');
       GroupIcon = MetricIcon;
 
       break;
-    case SearchIndex.WORKSHEET_SEARCH_INDEX:
+    case SearchIndex.WORKSHEET:
       label = i18next.t('label.worksheet-plural');
       GroupIcon = MetricIcon;
 
@@ -290,11 +290,19 @@ export const filterOptionsByIndex = (
   options: Array<Option>,
   searchIndex: SearchIndex,
   maxItemsPerType = 5
-) =>
-  options
-    .filter((option) => option._index.includes(searchIndex))
+) => {
+  const entityType =
+    searchClassBase.getSearchIndexEntityTypeMapping()[searchIndex];
+
+  if (!entityType) {
+    return [];
+  }
+
+  return options
+    .filter((option) => option._source?.entityType === entityType)
     .map((option) => option._source)
     .slice(0, maxItemsPerType);
+};
 
 export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
   const commonAssets: Record<string, EntityType> = {
@@ -320,10 +328,10 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.DATABASE]: EntityType.DATABASE,
     [SearchIndex.DOMAIN]: EntityType.DOMAIN,
     [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
-    [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
-    [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
-    [SearchIndex.METRIC_SEARCH_INDEX]: EntityType.METRIC,
-    [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
+    [SearchIndex.API_COLLECTION]: EntityType.API_COLLECTION,
+    [SearchIndex.API_ENDPOINT]: EntityType.API_ENDPOINT,
+    [SearchIndex.METRIC]: EntityType.METRIC,
+    [SearchIndex.API_SERVICE]: EntityType.API_SERVICE,
   };
 
   return commonAssets[searchIndex] || null; // Return null if not found

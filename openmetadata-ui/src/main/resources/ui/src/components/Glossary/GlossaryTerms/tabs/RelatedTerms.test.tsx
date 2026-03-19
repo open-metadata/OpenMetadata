@@ -24,11 +24,33 @@ const mockContext = {
   permissions: MOCK_PERMISSIONS,
 };
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  const React = require('react');
+
+  return {
+    Button: ({
+      children,
+      iconLeading: _iconLeading,
+      ...props
+    }: Record<string, unknown>) =>
+      React.createElement('button', props, children),
+    Select: ({ children, ...props }: Record<string, unknown>) =>
+      React.createElement('select', props, children),
+    Tooltip: ({ children, ...props }: Record<string, unknown>) =>
+      React.createElement('span', props, children),
+    TooltipTrigger: ({ children, ...props }: Record<string, unknown>) =>
+      React.createElement('span', props, children),
+    Typography: ({ children, ...props }: Record<string, unknown>) =>
+      React.createElement('span', props, children),
+  };
+});
+
 jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
 }));
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 

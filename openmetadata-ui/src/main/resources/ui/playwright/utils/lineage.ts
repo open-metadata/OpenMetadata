@@ -118,9 +118,7 @@ export const editLineageClick = async (page: Page) => {
 export const editLineage = async (page: Page) => {
   await editLineageClick(page);
 
-  await expect(
-    page.getByTestId('table_search_index-draggable-icon')
-  ).toBeVisible();
+  await expect(page.getByTestId('table-draggable-icon')).toBeVisible();
 };
 
 export const performZoomOut = async (page: Page, xTimes = 10) => {

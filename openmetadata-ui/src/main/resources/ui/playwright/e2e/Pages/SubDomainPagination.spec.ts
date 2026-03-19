@@ -85,7 +85,7 @@ test.describe('SubDomain Pagination', () => {
 
     await test.step('Navigate to subdomains tab and verify initial data load', async () => {
       const subDomainRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9*'
+        '/api/v1/search/query?q=&index=domain&from=0&size=9*'
       );
       await page.getByTestId('subdomains').click();
       await subDomainRes;

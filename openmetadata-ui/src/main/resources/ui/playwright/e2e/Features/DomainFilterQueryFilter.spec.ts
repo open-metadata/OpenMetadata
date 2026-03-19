@@ -268,7 +268,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       const searchDomainRes6 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
+          response.url().includes('index=domain')
       );
       await page
         .getByTestId('domain-selectable-tree')

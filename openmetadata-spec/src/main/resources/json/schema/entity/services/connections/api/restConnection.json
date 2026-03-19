@@ -29,6 +29,9 @@
         },
         {
           "$ref": "openAPISchemaFilePath.json"
+        },
+        {
+          "$ref": "openAPISchemaS3.json"
         }
       ]
     },

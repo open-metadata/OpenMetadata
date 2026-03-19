@@ -118,6 +118,10 @@ public class VectorSearchQueryBuilder {
             sb.append(',');
             appendFlatOr(sb, "database.name", "database.displayName", values);
           }
+          case "databaseSchema" -> {
+            sb.append(',');
+            appendFlat(sb, "databaseSchema.name", values);
+          }
           default -> LOG.debug("Ignoring unrecognized filter key: {}", field);
         }
       }

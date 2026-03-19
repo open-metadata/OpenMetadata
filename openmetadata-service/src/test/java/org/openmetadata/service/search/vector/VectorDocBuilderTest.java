@@ -9,11 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class VectorDocBuilderTest {
@@ -216,6 +218,95 @@ class VectorDocBuilderTest {
     table.setTags(List.of(regularTag));
 
     assertEquals(null, VectorDocBuilder.extractTierLabel(table));
+  }
+
+  @Test
+  void testBuildEmbeddingFieldsWithGlossaryTermRelations() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue metric");
+
+    EntityReference ref1 = new EntityReference();
+    ref1.setId(UUID.randomUUID());
+    ref1.setType("glossaryTerm");
+    ref1.setName("profit");
+    ref1.setDisplayName("Profit");
+    ref1.setFullyQualifiedName("finance.profit");
+
+    EntityReference ref2 = new EntityReference();
+    ref2.setId(UUID.randomUUID());
+    ref2.setType("glossaryTerm");
+    ref2.setName("cost");
+    ref2.setDisplayName("Cost");
+    ref2.setFullyQualifiedName("finance.cost");
+
+    TermRelation rel1 = new TermRelation().withTerm(ref1).withRelationType("broader");
+    TermRelation rel2 = new TermRelation().withTerm(ref2).withRelationType("synonym");
+    term.setRelatedTerms(List.of(rel1, rel2));
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(term, MOCK_CLIENT);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToEmbed"));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(textToEmbed.contains("finance.profit"));
+    assertTrue(textToEmbed.contains("finance.cost"));
+    assertTrue(textToEmbed.contains("relatedTerms:"));
+  }
+
+  @Test
+  void testBuildEmbeddingFieldsWithGlossaryTermNoRelatedTerms() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
+    term.setRelatedTerms(null);
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(term, MOCK_CLIENT);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("textToEmbed"));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(textToEmbed.contains("relatedTerms:"));
+    assertFalse(textToEmbed.contains("finance."));
+  }
+
+  @Test
+  void testGlossaryTermMetaLightIncludesRelatedTerms() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
+
+    EntityReference ref = new EntityReference();
+    ref.setId(UUID.randomUUID());
+    ref.setType("glossaryTerm");
+    ref.setName("profit");
+    ref.setFullyQualifiedName("finance.profit");
+
+    TermRelation rel = new TermRelation().withTerm(ref).withRelationType("synonym");
+    term.setRelatedTerms(List.of(rel));
+
+    String metaLight = VectorDocBuilder.buildMetaLightText(term, "glossaryTerm");
+
+    assertTrue(metaLight.contains("relatedTerms:"));
+    assertTrue(metaLight.contains("finance.profit"));
+  }
+
+  @Test
+  void testGlossaryTermWithSynonymsInMetaLight() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
+    term.setSynonyms(List.of("income", "earnings"));
+
+    String metaLight = VectorDocBuilder.buildMetaLightText(term, "glossaryTerm");
+
+    assertTrue(metaLight.contains("synonyms:"));
+    assertTrue(metaLight.contains("income"));
+    assertTrue(metaLight.contains("earnings"));
+  }
+
+  private GlossaryTerm createTestGlossaryTerm(String name, String displayName, String description) {
+    GlossaryTerm term = new GlossaryTerm();
+    term.setId(UUID.randomUUID());
+    term.setName(name);
+    term.setDisplayName(displayName);
+    term.setDescription(description);
+    term.setFullyQualifiedName("glossary." + name);
+    term.setDeleted(false);
+    return term;
   }
 
   private Table createTestTable(String name, String displayName, String description) {

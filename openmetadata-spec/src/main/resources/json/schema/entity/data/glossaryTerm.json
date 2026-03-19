@@ -22,6 +22,44 @@
         }
       },
       "additionalProperties": false
+    },
+    "conceptMappingType": {
+      "description": "Type of mapping used to align this term with an external concept.",
+      "type": "string",
+      "enum": [
+        "EXACT_MATCH",
+        "CLOSE_MATCH",
+        "BROAD_MATCH",
+        "NARROW_MATCH",
+        "RELATED_MATCH",
+        "SAME_AS"
+      ]
+    },
+    "conceptMapping": {
+      "description": "Mapping to an external concept (e.g., SKOS concept IRI).",
+      "type": "object",
+      "properties": {
+        "conceptIri": {
+          "description": "External concept IRI to map this glossary term to.",
+          "type": "string",
+          "format": "uri"
+        },
+        "mappingType": {
+          "description": "Type of mapping used for the external concept alignment.",
+          "$ref": "#/definitions/conceptMappingType"
+        },
+        "schemeIri": {
+          "description": "Optional external concept scheme IRI for the mapped concept.",
+          "type": "string",
+          "format": "uri"
+        },
+        "source": {
+          "description": "Optional source label or catalog for the external concept.",
+          "type": "string"
+        }
+      },
+      "required": ["conceptIri", "mappingType"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -68,8 +106,12 @@
       "$ref": "../../type/entityReferenceList.json"
     },
     "relatedTerms": {
-      "description": "Other glossary terms that are related to this glossary term.",
-      "$ref": "../../type/entityReferenceList.json"
+      "description": "Other glossary terms that are related to this glossary term with typed semantic relations.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/termRelation.json"
+      },
+      "default": []
     },
     "references": {
       "description": "Link to a reference from an external glossary.",
@@ -77,6 +119,14 @@
       "items": {
         "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
       }
+    },
+    "conceptMappings": {
+      "description": "Optional mappings to external concepts (e.g., SKOS alignments).",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/glossaryTerm.json#/definitions/conceptMapping"
+      },
+      "default": []
     },
     "version": {
       "description": "Metadata version of the entity.",

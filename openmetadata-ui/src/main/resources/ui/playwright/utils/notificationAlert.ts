@@ -95,7 +95,7 @@ export const addFilterWithUsersListInput = async ({
     (response) =>
       response.url().includes('/api/v1/search/query?q=') &&
       response.url().includes(encodeURIComponent(updaterName)) &&
-      response.url().includes('index=user_search_index')
+      response.url().includes('index=user')
   );
   // Fill search term and wait for API response
   await userSelectInput.fill(updaterName);
