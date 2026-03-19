@@ -159,7 +159,7 @@ def test_trino_get_data_diff_url_sets_catalog_and_schema_from_fqn():
 
     # The returned objects should be dicts derived from, but not mutating, the service-level dict
     assert isinstance(result1, dict)
-   assert isinstance(result2, dict)
+    assert isinstance(result2, dict)
     assert result1 is not service_level_dict
     assert result2 is not service_level_dict
     assert result1 is not result2
