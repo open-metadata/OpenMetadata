@@ -181,8 +181,7 @@ const GlossaryDetails = ({
     <Row
       className="glossary-details"
       data-testid="glossary-details"
-      gutter={[0, 12]}
-    >
+      gutter={[0, 12]}>
       <Col span={24}>
         <GlossaryHeader
           updateVote={updateVote}

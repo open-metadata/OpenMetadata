@@ -22,6 +22,7 @@ import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTING
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
@@ -280,6 +281,20 @@ public class SettingsCache {
       if (authzConfig != null) {
         Settings setting =
             new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
+
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
+    }
+
+    // Initialize MCP Configuration
+    Settings storedMcpConfig =
+        Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
+    if (storedMcpConfig == null) {
+      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
+          applicationConfig.getMcpConfiguration();
+      if (mcpConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
 
         Entity.getSystemRepository().createNewSetting(setting);
       }

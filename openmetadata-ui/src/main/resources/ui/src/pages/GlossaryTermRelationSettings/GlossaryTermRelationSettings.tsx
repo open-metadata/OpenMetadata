@@ -448,8 +448,7 @@ function GlossaryTermRelationSettingsPage() {
             </Typography>
             <Typography
               as="p"
-              className="tw:text-xs tw:font-normal tw:text-secondary"
-            >
+              className="tw:text-xs tw:font-normal tw:text-secondary">
               {t('message.glossary-term-relation-settings-description')}
             </Typography>
           </div>
@@ -458,8 +457,7 @@ function GlossaryTermRelationSettingsPage() {
               color="primary"
               data-testid="add-relation-type-btn"
               size="sm"
-              onClick={handleAddNew}
-            >
+              onClick={handleAddNew}>
               {t('label.add-entity', {
                 entity: t('label.relation-type'),
               })}
@@ -476,8 +474,7 @@ function GlossaryTermRelationSettingsPage() {
             <TableCard.Root size="sm">
               <Table
                 className="tw:table-fixed tw:w-full"
-                data-testid="relation-types-table"
-              >
+                data-testid="relation-types-table">
                 <Table.Header>
                   <Table.Head
                     className="tw:w-[9%]"
@@ -548,8 +545,7 @@ function GlossaryTermRelationSettingsPage() {
                               <Typography
                                 as="span"
                                 className="tw:font-semibold tw:text-primary tw:truncate tw:block"
-                                data-testid={`relation-name-${record.name}`}
-                              >
+                                data-testid={`relation-name-${record.name}`}>
                                 {record.name}
                               </Typography>
                             </TooltipTrigger>
@@ -560,8 +556,7 @@ function GlossaryTermRelationSettingsPage() {
                             <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
                               <Typography
                                 as="span"
-                                className="tw:truncate tw:block"
-                              >
+                                className="tw:truncate tw:block">
                                 {record.displayName}
                               </Typography>
                             </TooltipTrigger>
@@ -574,21 +569,18 @@ function GlossaryTermRelationSettingsPage() {
                               CATEGORY_BADGE_COLORS[record.category ?? ''] ??
                               'gray'
                             }
-                            type="color"
-                          >
+                            type="color">
                             {record.category}
                           </Badge>
                         </Table.Cell>
                         <Table.Cell className="tw:max-w-0 tw:overflow-hidden">
                           <Tooltip
                             placement="top"
-                            title={record.inverseRelation || ''}
-                          >
+                            title={record.inverseRelation || ''}>
                             <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
                               <Typography
                                 as="span"
-                                className="tw:truncate tw:block"
-                              >
+                                className="tw:truncate tw:block">
                                 {record.inverseRelation || '-'}
                               </Typography>
                             </TooltipTrigger>
@@ -635,8 +627,7 @@ function GlossaryTermRelationSettingsPage() {
                                 <TooltipTrigger className="tw:block tw:min-w-0 tw:overflow-hidden">
                                   <Typography
                                     as="span"
-                                    className="tw:text-xs tw:font-mono tw:text-tertiary tw:truncate tw:block"
-                                  >
+                                    className="tw:text-xs tw:font-mono tw:text-tertiary tw:truncate tw:block">
                                     {record.color}
                                   </Typography>
                                 </TooltipTrigger>
@@ -656,14 +647,12 @@ function GlossaryTermRelationSettingsPage() {
                                       count,
                                     })
                                   : t('message.relation-type-not-in-use')
-                              }
-                            >
+                              }>
                               <TooltipTrigger>
                                 <Badge
                                   color={isInUse ? 'brand' : 'gray'}
                                   data-testid={`usage-count-${record.name}`}
-                                  type="pill-color"
-                                >
+                                  type="pill-color">
                                   {count}
                                 </Badge>
                               </TooltipTrigger>
@@ -677,14 +666,12 @@ function GlossaryTermRelationSettingsPage() {
                                 record.isSystemDefined
                                   ? 'tw:invisible'
                                   : undefined
-                              }
-                            >
+                              }>
                               <Button
                                 color="tertiary"
                                 data-testid={`edit-${record.name}-btn`}
                                 size="sm"
-                                onClick={() => handleEdit(record)}
-                              >
+                                onClick={() => handleEdit(record)}>
                                 {t('label.edit')}
                               </Button>
                             </span>
@@ -701,15 +688,13 @@ function GlossaryTermRelationSettingsPage() {
                                       { count }
                                     )
                                   : undefined
-                              }
-                            >
+                              }>
                               <Button
                                 color="tertiary-destructive"
                                 data-testid={`delete-${record.name}-btn`}
                                 isDisabled={saving || isInUse}
                                 size="sm"
-                                onClick={() => handleDelete(record.name)}
-                              >
+                                onClick={() => handleDelete(record.name)}>
                                 {t('label.delete')}
                               </Button>
                             </span>
@@ -731,8 +716,7 @@ function GlossaryTermRelationSettingsPage() {
             if (!open) {
               handleModalCancel();
             }
-          }}
-        >
+          }}>
           {() => (
             <>
               <SlideoutMenu.Header onClose={handleModalCancel}>
@@ -751,8 +735,7 @@ function GlossaryTermRelationSettingsPage() {
               <SlideoutMenu.Content>
                 <div
                   className="tw:flex tw:flex-col tw:gap-4"
-                  data-testid="relation-type-form"
-                >
+                  data-testid="relation-type-form">
                   <Input
                     data-testid="name-input"
                     hint={formErrors.name}
@@ -800,8 +783,7 @@ function GlossaryTermRelationSettingsPage() {
                         'category',
                         String(key) as RelationCategory
                       )
-                    }
-                  >
+                    }>
                     {(item) => <Select.Item {...item} />}
                   </Select>
 
@@ -850,8 +832,7 @@ function GlossaryTermRelationSettingsPage() {
                         'cardinality',
                         String(key) as RelationCardinality
                       )
-                    }
-                  >
+                    }>
                     {(item) => <Select.Item {...item} />}
                   </Select>
 
@@ -916,8 +897,7 @@ function GlossaryTermRelationSettingsPage() {
                       />
                       <Typography
                         as="span"
-                        className="tw:text-xs tw:text-tertiary"
-                      >
+                        className="tw:text-xs tw:text-tertiary">
                         {formValues.color ||
                           t('label.no-entity', { entity: t('label.color') })}
                       </Typography>
@@ -962,8 +942,7 @@ function GlossaryTermRelationSettingsPage() {
                     color="secondary"
                     data-testid="cancel-btn"
                     size="sm"
-                    onClick={handleModalCancel}
-                  >
+                    onClick={handleModalCancel}>
                     {t('label.cancel')}
                   </Button>
                   <Button
@@ -971,8 +950,7 @@ function GlossaryTermRelationSettingsPage() {
                     data-testid="save-btn"
                     isLoading={saving}
                     size="sm"
-                    onClick={handleModalOk}
-                  >
+                    onClick={handleModalOk}>
                     {editingRelation ? t('label.update') : t('label.add')}
                   </Button>
                 </div>
