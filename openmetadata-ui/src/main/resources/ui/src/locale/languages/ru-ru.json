@@ -2627,6 +2627,7 @@
     "invalid-string-length-error": "Не удалось сгенерировать изображение {{exportType}} из-за слишком большого объекта «{{entity}}».",
     "invalid-unix-epoch-time-milliseconds": "Неверное время Unix epoch в миллисекундах",
     "invalid-url": "Неверный формат URL",
+    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
     "inverse-relation-tooltip": "Укажите тип связи, представляющий обратную связь (например, 'уже' является обратным для 'шире').",
     "issue-in-count-checks": "{{issue}} проблема из {{count}} проверок",
     "jwt-token": "Сгенерированный вами токен, который можно использовать для доступа к API OpenMetadata.",

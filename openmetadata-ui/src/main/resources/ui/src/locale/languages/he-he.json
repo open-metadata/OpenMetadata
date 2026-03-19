@@ -2627,6 +2627,7 @@
     "invalid-string-length-error": "לא ניתן היה לייצר את התמונה {{exportType}} עקב {{entity}} גדול מדי.",
     "invalid-unix-epoch-time-milliseconds": "זמן Unix epoch לא חוקי באלפיות שנייה",
     "invalid-url": "פורמט URL לא חוקי",
+    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
     "inverse-relation-tooltip": "היחס ההפוך שנוצר אוטומטית (למשל 'צר יותר' עבור 'רחב יותר')",
     "issue-in-count-checks": "{{issue}} בעיות מתוך {{count}} בדיקות",
     "jwt-token": "אסימון שיצרת שימוש בו כדי לגשת ל-OpenMetadata API.",

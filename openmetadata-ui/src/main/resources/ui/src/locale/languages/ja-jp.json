@@ -2627,6 +2627,7 @@
     "invalid-string-length-error": "{{entity}} が大きすぎるため、{{exportType}} イメージを生成できませんでした。",
     "invalid-unix-epoch-time-milliseconds": "無効なミリ秒単位の Unix エポック時間です",
     "invalid-url": "無効なURL形式",
+    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
     "inverse-relation-tooltip": "この関係の逆を表す関係タイプを指定します（例：'下位'は'上位'の逆）。",
     "issue-in-count-checks": "{{count}}件のチェック中{{issue}}件の問題",
     "jwt-token": "OpenMetadata API にアクセスするために使用できるトークンです。",

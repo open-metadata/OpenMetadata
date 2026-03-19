@@ -2627,6 +2627,7 @@
     "invalid-string-length-error": "{{entity}}가 너무 커서 {{exportType}} 이미지를 생성할 수 없습니다.",
     "invalid-unix-epoch-time-milliseconds": "유효하지 않은 Unix 에포크 시간(밀리초)",
     "invalid-url": "잘못된 URL 형식",
+    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
     "inverse-relation-tooltip": "이 관계의 역을 나타내는 관계 유형을 지정합니다 (예: '하위'는 '상위'의 역).",
     "issue-in-count-checks": "{{count}}개 중 {{issue}}개 문제",
     "jwt-token": "OpenMetadata API에 접근하는 데 사용할 수 있는 생성된 토큰입니다.",

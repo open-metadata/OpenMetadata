@@ -2627,6 +2627,7 @@
     "invalid-string-length-error": "{{exportType}} resmi, aşırı büyük bir {{entity}} nedeniyle oluşturulamadı.",
     "invalid-unix-epoch-time-milliseconds": "Milisaniye cinsinden geçersiz Unix çağ zamanı",
     "invalid-url": "Geçersiz URL formatı",
+    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
     "inverse-relation-tooltip": "Bu ilişkinin tersini temsil eden ilişki türünü belirtin (örn. 'daha dar', 'daha geniş'in tersidir).",
     "issue-in-count-checks": "{{count}} kontrolden {{issue}} tanesi sorun",
     "jwt-token": "OpenMetadata API'sine erişmek için kullanabileceğiniz oluşturduğunuz anahtar.",
