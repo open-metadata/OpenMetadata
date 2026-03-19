@@ -186,18 +186,18 @@ export const AsArticle: StoryObj = {
   ),
 };
 
-const ALL_SIZES: { value: TypographySize; px: number }[] = [
-  { value: 'display-2xl', px: 72 },
-  { value: 'display-xl', px: 60 },
-  { value: 'display-lg', px: 48 },
-  { value: 'display-md', px: 36 },
-  { value: 'display-sm', px: 30 },
-  { value: 'display-xs', px: 24 },
-  { value: 'text-xl', px: 20 },
-  { value: 'text-lg', px: 18 },
-  { value: 'text-md', px: 16 },
-  { value: 'text-sm', px: 14 },
-  { value: 'text-xs', px: 12 },
+const ALL_SIZES: { value: TypographySize; px: number; lineHeight: number; letterSpacing?: string }[] = [
+  { value: 'display-2xl', px: 72, lineHeight: 90, letterSpacing: '-2%' },
+  { value: 'display-xl', px: 60, lineHeight: 72, letterSpacing: '-2%' },
+  { value: 'display-lg', px: 48, lineHeight: 60, letterSpacing: '-2%' },
+  { value: 'display-md', px: 36, lineHeight: 44, letterSpacing: '-2%' },
+  { value: 'display-sm', px: 30, lineHeight: 38 },
+  { value: 'display-xs', px: 24, lineHeight: 32 },
+  { value: 'text-xl', px: 20, lineHeight: 30 },
+  { value: 'text-lg', px: 18, lineHeight: 28 },
+  { value: 'text-md', px: 16, lineHeight: 24 },
+  { value: 'text-sm', px: 14, lineHeight: 20 },
+  { value: 'text-xs', px: 12, lineHeight: 18 },
 ];
 
 const ALL_WEIGHTS: { label: string; fontWeight: number; value: TypographyWeight }[] = [
@@ -243,11 +243,13 @@ export const AllVariants: StoryObj = {
           </tr>
         </thead>
         <tbody>
-          {ALL_SIZES.map(({ value: size, px }) => (
+          {ALL_SIZES.map(({ value: size, px, lineHeight, letterSpacing }) => (
             <tr key={size} style={{ borderTop: '1px solid #f2f4f7' }}>
               <td style={{ ...tdMetaStyle, whiteSpace: 'nowrap' }}>
                 <div style={{ fontSize: '12px', color: '#344054', fontWeight: 500 }}>{size}</div>
-                <div style={metaStyle}>{px}px</div>
+                <div style={metaStyle}>Size: {px}px</div>
+                <div style={metaStyle}>Line height: {lineHeight}px</div>
+                {letterSpacing && <div style={metaStyle}>Letter spacing: {letterSpacing}</div>}
               </td>
               {ALL_WEIGHTS.map(({ value: weight }) => (
                 <td key={weight} style={tdMetaStyle}>
