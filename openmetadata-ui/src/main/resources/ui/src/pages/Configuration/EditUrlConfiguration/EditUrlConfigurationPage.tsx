@@ -149,7 +149,7 @@ const EditUrlConfigurationPage = () => {
             },
             {
               // The Regex to catch missing http/https
-              pattern: /^(https?:\/\/).*/,
+              pattern: /^https?:\/\/\S+/,
               message: t('message.invalid-url-with-scheme'),
             },
           ]}>

@@ -2627,7 +2627,7 @@
     "invalid-string-length-error": "تعذر إنشاء صورة {{exportType}} بسبب حجم {{entity}} كبير جدًا.",
     "invalid-unix-epoch-time-milliseconds": "وقت Unix epoch غير صالح بالمللي ثانية",
     "invalid-url": "تنسيق URL غير صالح",
-    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
+    "invalid-url-with-scheme": "يجب أن يتضمن عنوان URL مخططًا (على سبيل المثال، http:// أو https://)\",",
     "inverse-relation-tooltip": "حدد نوع العلاقة الذي يمثل عكس هذه العلاقة (مثال: 'أضيق' هو عكس 'أوسع').",
     "issue-in-count-checks": "{{issue}} مشكلة من أصل {{count}} عملية تحقق",
     "jwt-token": "الرمز المميز الذي قمت بتوليده ويمكن استخدامه للوصول إلى واجهة برمجة تطبيقات OpenMetadata.",

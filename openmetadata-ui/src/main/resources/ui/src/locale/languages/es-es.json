@@ -2627,7 +2627,7 @@
     "invalid-string-length-error": "No se pudo generar la imagen {{exportType}} debido a un {{entity}} excesivamente grande.",
     "invalid-unix-epoch-time-milliseconds": "Tiempo Unix en milisegundos inválido",
     "invalid-url": "Formato de URL no válido",
-    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
+    "invalid-url-with-scheme": "La URL debe incluir un esquema (por ejemplo, http:// o https://)",
     "inverse-relation-tooltip": "Especifique el tipo de relación que representa el inverso de esta relación (por ej., 'más específico' es el inverso de 'más amplio').",
     "issue-in-count-checks": "{{issue}} problema de {{count}} verificaciones",
     "jwt-token": "Token que ha generado que se puede utilizar para acceder a la API de OpenMetadata.",

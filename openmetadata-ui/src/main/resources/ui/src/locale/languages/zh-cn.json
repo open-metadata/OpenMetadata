@@ -2627,7 +2627,7 @@
     "invalid-string-length-error": "由于 {{entity}} 过大，无法生成 {{exportType}} 图像。",
     "invalid-unix-epoch-time-milliseconds": "无效的Unix纪元时间（毫秒）",
     "invalid-url": "无效的URL格式",
-    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
+    "invalid-url-with-scheme": "URL 必须包含方案（例如 http:// 或 https://）",
     "inverse-relation-tooltip": "指定表示此关系逆向的关系类型（例如，'下位'是'上位'的逆向）。",
     "issue-in-count-checks": "{{count}}项检查中有{{issue}}个问题",
     "jwt-token": "您生成的, 用于访问 OpenMetadata API 的令牌",

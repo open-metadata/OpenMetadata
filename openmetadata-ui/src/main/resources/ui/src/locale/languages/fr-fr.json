@@ -2627,7 +2627,7 @@
     "invalid-string-length-error": "L'image {{exportType}} n'a pas pu être générée en raison d'une taille excessive de {{entity}}.",
     "invalid-unix-epoch-time-milliseconds": "Temps Unix (epoch) en millisecondes invalide",
     "invalid-url": "Format d'URL invalide",
-    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
+    "invalid-url-with-scheme": "L'URL doit inclure un schéma (par exemple, http:// ou https://)",
     "inverse-relation-tooltip": "Spécifiez le type de relation qui représente l'inverse de cette relation (par ex., 'plus étroit' est l'inverse de 'plus large').",
     "issue-in-count-checks": "{{issue}} problème(s) sur {{count}} vérifications",
     "jwt-token": "Le Jeton que vous avez généré peut être utilisé pour accéder à l'API OpenMetadata.",

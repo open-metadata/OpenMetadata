@@ -2627,7 +2627,7 @@
     "invalid-string-length-error": "{{exportType}} प्रतिमा अत्यंत मोठ्या {{entity}} मुळे तयार केली जाऊ शकली नाही.",
     "invalid-unix-epoch-time-milliseconds": "अवैध युनिक्स युग वेळ मिलीसेकंदात",
     "invalid-url": "अवैध URL स्वरूप",
-    "invalid-url-with-scheme": "The URL must include a scheme (e.g., http:// or https://)",
+    "invalid-url-with-scheme": "URL मध्ये स्कीम असणे आवश्यक आहे (उदा. http:// किंवा https://)",
     "inverse-relation-tooltip": "स्वयंचलितपणे तयार केलेला उलट संबंध (उदा. 'व्यापक' साठी 'संकुचित')",
     "issue-in-count-checks": "{{count}} तपासण्यांपैकी {{issue}} समस्या",
     "jwt-token": "तुम्ही व्युत्पन्न केलेले टोकन जे OpenMetadata API वर प्रवेश करण्यासाठी वापरले जाऊ शकते.",
