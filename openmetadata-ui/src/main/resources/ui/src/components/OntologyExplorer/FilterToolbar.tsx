@@ -129,8 +129,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         className={
           'tw:flex tw:shrink-0 tw:items-center tw:gap-2' +
           (viewModeDisabled ? ' tw:pointer-events-none tw:opacity-50' : '')
-        }
-      >
+        }>
         <span className="tw:whitespace-nowrap tw:text-sm tw:font-medium tw:text-gray-600">
           {t('label.view-mode')}:
         </span>
@@ -147,8 +146,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
             if (viewMode) {
               onViewModeChange?.(viewMode);
             }
-          }}
-        >
+          }}>
           <Tabs.List items={viewModeTabItems} size="sm" type="button-border" />
           {viewModeTabItems.map((item) => (
             <Tabs.Panel className="tw:hidden" id={item.id} key={item.id} />
@@ -172,8 +170,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
               <Dropdown.Popover className="tw:min-w-45">
                 <Dropdown.Menu
                   items={glossaryItems}
-                  onAction={(key) => handleGlossaryChange(key)}
-                >
+                  onAction={(key) => handleGlossaryChange(key)}>
                   {(item) => (
                     <Dropdown.Item id={item.id} label={item.label ?? ''} />
                   )}
@@ -201,8 +198,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
               <Dropdown.Popover className="tw:min-w-45">
                 <Dropdown.Menu
                   items={relationTypeItems}
-                  onAction={(key) => handleRelationTypeChange(key)}
-                >
+                  onAction={(key) => handleRelationTypeChange(key)}>
                   {(item) => (
                     <Dropdown.Item id={item.id} label={item.label ?? ''} />
                   )}
@@ -234,8 +230,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
             color="tertiary"
             data-testid="ontology-clear-filters"
             size="sm"
-            onClick={handleClearFilters}
-          >
+            onClick={handleClearFilters}>
             {`${t('label.clear')} ${t('label.all')}`}
           </Button>
         </div>

@@ -23,6 +23,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.api.openAPISchemaFilePath import (
     OpenAPISchemaFilePath,
 )
+from metadata.generated.schema.entity.services.connections.api.openAPISchemaS3 import (
+    OpenAPISchemaS3,
+)
 from metadata.generated.schema.entity.services.connections.api.openAPISchemaURL import (
     OpenAPISchemaURL,
 )
@@ -38,6 +41,7 @@ from metadata.ingestion.source.api.rest.parser import (
     OpenAPIParseError,
     parse_openapi_schema,
     parse_openapi_schema_from_file,
+    parse_openapi_schema_from_s3,
     validate_openapi_schema,
 )
 from metadata.utils.constants import THREE_MIN
@@ -70,6 +74,12 @@ def get_connection(connection: RestConnection) -> Union[Response, Dict]:
 
     if isinstance(schema_conn, OpenAPISchemaFilePath):
         return parse_openapi_schema_from_file(schema_conn.openAPISchemaFilePath)
+
+    if isinstance(schema_conn, OpenAPISchemaS3):
+        return parse_openapi_schema_from_s3(
+            s3_url=str(schema_conn.openAPISchemaS3URL),
+            aws_credentials=schema_conn.awsCredentials,
+        )
 
     raise ValueError(f"Unsupported openAPISchemaConnection type: {type(schema_conn)}")
 

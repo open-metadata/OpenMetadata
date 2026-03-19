@@ -132,8 +132,7 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
     <div
       className="tw:fixed tw:z-1050 tw:min-w-45 tw:rounded-lg tw:bg-white tw:py-1 tw:shadow-[0_3px_6px_-4px_rgba(0,0,0,.12),0_6px_16px_rgba(0,0,0,.08)]"
       ref={menuRef}
-      style={{ top: position.y, left: position.x }}
-    >
+      style={{ top: position.y, left: position.x }}>
       {menuItems.map((item) => (
         <React.Fragment key={item.key}>
           {item.isDividerBefore && <Divider className="tw:my-1" />}
@@ -142,8 +141,7 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
             color="tertiary"
             isDisabled={item.disabled}
             size="sm"
-            onClick={() => !item.disabled && handleMenuClick(item.key)}
-          >
+            onClick={() => !item.disabled && handleMenuClick(item.key)}>
             <span className="tw:leading-none tw:text-gray-500">
               {item.icon}
             </span>

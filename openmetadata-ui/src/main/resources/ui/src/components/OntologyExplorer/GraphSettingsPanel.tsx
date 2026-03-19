@@ -62,8 +62,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
       <div className="tw:flex tw:items-center tw:justify-between tw:shrink-0 tw:border-b tw:border-gray-200">
         <Typography
           as="span"
-          className="tw:text-sm tw:font-semibold tw:text-gray-900 tw:py-4"
-        >
+          className="tw:text-sm tw:font-semibold tw:text-gray-900 tw:py-4">
           {t('label.graph-settings')}
         </Typography>
         <ButtonUtility
@@ -79,8 +78,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
         <div className="tw:space-y-1.5 tw:w-full tw:pt-4">
           <Typography
             as="span"
-            className="tw:text-xs tw:font-semibold tw:text-gray-500"
-          >
+            className="tw:text-xs tw:font-semibold tw:text-gray-500">
             {t('label.layout')}
           </Typography>
           <Dropdown.Root>
@@ -88,8 +86,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
               className="tw:w-full tw:justify-between"
               color="secondary"
               iconTrailing={ChevronDown}
-              size="sm"
-            >
+              size="sm">
               {layoutItems.find((i) => i.id === settings.layout)?.label ??
                 t('label.layout')}
             </Button>
@@ -102,8 +99,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
                   if (layout) {
                     handleLayoutChange(layout);
                   }
-                }}
-              >
+                }}>
                 {(item) => (
                   <Dropdown.Item id={item.id} label={item.label ?? ''} />
                 )}
@@ -133,8 +129,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
       />
       <Dropdown.Popover
         aria-label={t('label.graph-settings')}
-        className="tw:absolute tw:right-0 tw:bottom-full tw:z-50 tw:mb-1 tw:rounded-lg tw:border-0 tw:bg-white tw:py-0 tw:shadow-lg tw:ring-1 tw:ring-gray-200 tw:px-4"
-      >
+        className="tw:absolute tw:right-0 tw:bottom-full tw:z-50 tw:mb-1 tw:rounded-lg tw:border-0 tw:bg-white tw:py-0 tw:shadow-lg tw:ring-1 tw:ring-gray-200 tw:px-4">
         {popoverContent}
       </Dropdown.Popover>
     </Dropdown.Root>

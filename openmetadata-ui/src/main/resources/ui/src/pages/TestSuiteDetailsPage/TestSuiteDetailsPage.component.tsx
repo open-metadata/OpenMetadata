@@ -601,7 +601,7 @@ const TestSuiteDetailsPage = () => {
                           existingTest={testSuite?.tests ?? []}
                           getPopupContainer={(trigger) =>
                             (trigger.closest(
-                              '[role="dialog"]',
+                              '[role="dialog"]'
                             ) as HTMLElement) ?? document.body
                           }
                           selectedTest={selectedTestCases}

@@ -144,8 +144,7 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
         'tw:z-1050 tw:flex tw:flex-col tw:min-h-0 tw:overflow-hidden'
       }
       data-testid="ontology-details-panel"
-      style={panelStyle}
-    >
+      style={panelStyle}>
       <div className="tw:shrink-0 tw:flex tw:flex-col tw:min-h-0 tw:w-full tw:min-w-0 tw:box-border">
         <div className="tw:flex tw:justify-between tw:items-center tw:gap-2 tw:w-full tw:min-w-0 tw:box-border tw:p-3">
           <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:flex-1 tw:overflow-hidden">
@@ -154,8 +153,7 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
               as="span"
               className="tw:truncate tw:min-w-0 tw:text-sm tw:font-semibold tw:text-blue-dark-700"
               data-testid="details-panel-title"
-              title={node.originalLabel ?? node.label}
-            >
+              title={node.originalLabel ?? node.label}>
               {node.originalLabel ?? node.label}
             </Typography>
           </div>
@@ -180,8 +178,7 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
               if (key === 'summary' || key === 'relations') {
                 setActiveTab(key);
               }
-            }}
-          >
+            }}>
             <Tabs.List
               fullWidth
               className="tw:w-full tw:min-w-0 tw:overflow-hidden [&_[role=tab]]:tw:min-w-0 [&_[role=tab]]:tw:truncate"
@@ -194,23 +191,20 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
             />
             <Tabs.Panel
               className="tw:flex-1 tw:min-h-0 tw:pt-4 tw:min-w-0 tw:overflow-hidden"
-              id="summary"
-            >
+              id="summary">
               <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:min-w-0">
                 {node.fullyQualifiedName && (
                   <div className="tw:mb-4 last:tw:mb-0">
                     <Typography
                       as="div"
-                      className="tw:mb-1 tw:text-xs tw:font-normal tw:text-gray-700"
-                    >
+                      className="tw:mb-1 tw:text-xs tw:font-normal tw:text-gray-700">
                       {t('label.fully-qualified-name')}
                     </Typography>
                     <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0">
                       <Typography
                         as="span"
                         className="tw:flex-1 tw:min-w-0 tw:truncate tw:text-sm tw:font-semibold tw:text-gray-900"
-                        title={node.fullyQualifiedName}
-                      >
+                        title={node.fullyQualifiedName}>
                         {node.fullyQualifiedName}
                       </Typography>
                       <ButtonUtility
@@ -233,8 +227,7 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
                   <div className="tw:mb-4 last:tw:mb-0">
                     <Typography
                       as="div"
-                      className="tw:mb-1 tw:text-xs tw:font-normal tw:text-gray-700"
-                    >
+                      className="tw:mb-1 tw:text-xs tw:font-normal tw:text-gray-700">
                       {t('label.description')}
                     </Typography>
                     <div className="tw:text-sm tw:leading-5 tw:max-h-35 tw:overflow-y-auto tw:text-gray-700">
@@ -247,15 +240,13 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
                   <div className="tw:mb-4 last:tw:mb-0">
                     <Typography
                       as="div"
-                      className="tw:mb-1 tw:text-xs tw:font-normal tw:text-gray-700"
-                    >
+                      className="tw:mb-1 tw:text-xs tw:font-normal tw:text-gray-700">
                       {t('label.glossary')}
                     </Typography>
                     <Badge
                       className="tw:border tw:border-(--color-gray-300)"
                       color="gray"
-                      type="color"
-                    >
+                      type="color">
                       {node.group}
                     </Badge>
                   </div>
@@ -264,8 +255,7 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
                 <div className="tw:mb-4 last:tw:mb-0">
                   <Typography
                     as="div"
-                    className="tw:mb-1 tw:text-xs tw:font-normal tw:text-gray-700"
-                  >
+                    className="tw:mb-1 tw:text-xs tw:font-normal tw:text-gray-700">
                     {t('label.owner-plural')}
                   </Typography>
                   <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
@@ -284,14 +274,12 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
             </Tabs.Panel>
             <Tabs.Panel
               className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:py-0 tw:min-w-0 tw:overflow-x-hidden"
-              id="relations"
-            >
+              id="relations">
               <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:min-w-0">
                 {totalRelations === 0 ? (
                   <Typography
                     as="div"
-                    className="tw:text-center tw:py-8 tw:text-sm tw:text-gray-500"
-                  >
+                    className="tw:text-center tw:py-8 tw:text-sm tw:text-gray-500">
                     {t('message.no-relations-found')}
                   </Typography>
                 ) : (
@@ -302,15 +290,13 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
                           <Typography
                             as="span"
                             className="tw:text-xs tw:font-normal tw:text-gray-700"
-                            data-testid="outgoing-relation-label"
-                          >
+                            data-testid="outgoing-relation-label">
                             {t('label.outgoing-relation-plural')}
                           </Typography>
                           <Typography
                             as="span"
                             className="tw:rounded tw:border tw:border-gray-blue-100 tw:bg-gray-blue-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium"
-                            data-testid="outgoing-relation-count"
-                          >
+                            data-testid="outgoing-relation-count">
                             {String(nodeRelations.outgoing.length).padStart(
                               2,
                               '0'
@@ -322,14 +308,12 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
                             {nodeRelations.outgoing.map((rel) => (
                               <li
                                 className="tw:flex tw:items-start tw:py-1 tw:min-w-0 tw:gap-6"
-                                key={`${rel.from}-${rel.to}-${rel.relationType}`}
-                              >
+                                key={`${rel.from}-${rel.to}-${rel.relationType}`}>
                                 <span
                                   className="tw:shrink-0 tw:min-w-[90px] tw:w-[90px] tw:rounded-md tw:border-0 tw:px-2 tw:py-1 tw:text-xs tw:font-bold tw:uppercase tw:text-center"
                                   style={getRelationBadgeStyle(
                                     rel.relationType
-                                  )}
-                                >
+                                  )}>
                                   {getDisplayName(rel.relationType)}
                                 </span>
                                 <Typography
@@ -339,8 +323,7 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
                                     rel.relatedNode?.originalLabel ??
                                     rel.relatedNode?.label ??
                                     rel.to
-                                  }`}
-                                >
+                                  }`}>
                                   {rel.relatedNode?.originalLabel ??
                                     rel.relatedNode?.label ??
                                     rel.to}
@@ -358,15 +341,13 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
                           <Typography
                             as="span"
                             className="tw:text-xs tw:font-normal tw:text-gray-700"
-                            data-testid="incoming-relation-label"
-                          >
+                            data-testid="incoming-relation-label">
                             {t('label.incoming-relation-plural')}
                           </Typography>
                           <Typography
                             as="span"
                             className="tw:rounded tw:border tw:border-gray-blue-100 tw:bg-gray-blue-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium"
-                            data-testid="incoming-relation-count"
-                          >
+                            data-testid="incoming-relation-count">
                             {String(nodeRelations.incoming.length).padStart(
                               2,
                               '0'
@@ -378,14 +359,12 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
                             {nodeRelations.incoming.map((rel) => (
                               <li
                                 className="tw:flex tw:items-start tw:py-1 tw:min-w-0 tw:gap-6"
-                                key={`${rel.from}-${rel.to}-${rel.relationType}`}
-                              >
+                                key={`${rel.from}-${rel.to}-${rel.relationType}`}>
                                 <span
                                   className="tw:shrink-0 tw:min-w-[90px] tw:w-[90px] tw:rounded-md tw:border-0 tw:px-2 tw:py-1 tw:text-xs tw:font-bold tw:uppercase tw:text-center"
                                   style={getRelationBadgeStyle(
                                     rel.relationType
-                                  )}
-                                >
+                                  )}>
                                   {getDisplayName(rel.relationType)}
                                 </span>
                                 <Typography
@@ -395,8 +374,7 @@ const DetailsPanel: React.FC<EnhancedDetailsPanelProps> = ({
                                     rel.relatedNode?.originalLabel ??
                                     rel.relatedNode?.label ??
                                     rel.from
-                                  }`}
-                                >
+                                  }`}>
                                   {rel.relatedNode?.originalLabel ??
                                     rel.relatedNode?.label ??
                                     rel.from}

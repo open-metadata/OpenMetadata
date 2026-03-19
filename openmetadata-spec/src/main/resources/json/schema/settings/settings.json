@@ -40,6 +40,7 @@
         "securityConfiguration",
         "entityRulesSettings",
         "openLineageSettings",
+        "mcpConfiguration",
         "glossaryTermRelationSettings"
       ]
     }
@@ -110,6 +111,9 @@
         },
         {
           "$ref": "../configuration/openLineageSettings.json"
+        },
+        {
+          "$ref": "../configuration/mcpConfiguration.json"
         },
         {
           "$ref": "../configuration/glossaryTermRelationSettings.json"
