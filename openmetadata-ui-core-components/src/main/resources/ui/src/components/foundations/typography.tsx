@@ -70,7 +70,7 @@ const weightClasses: Record<TypographyWeight, string> = {
 
 export const Typography = (props: TypographyProps) => {
     const {
-        as: Component = "p",
+        as: Component = "span",
         quoteVariant = "default",
         className,
         children,
