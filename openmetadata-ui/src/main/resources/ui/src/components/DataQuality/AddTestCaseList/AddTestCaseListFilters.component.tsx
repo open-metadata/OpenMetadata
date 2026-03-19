@@ -61,9 +61,9 @@ const AddTestCaseListFilters = ({
     <Space className="add-test-case-filters" size="middle">
       {filtersToShow.map((filter) => (
         <SearchDropdown
+          hideCounts
           dropdownClassName="add-test-case-filter-dropdown"
           getPopupContainer={getPopupContainer}
-          hideCounts
           hideSearchBar={!filter.enableSearch}
           isSuggestionsLoading={filterLoading?.[filter.searchKey]}
           key={filter.searchKey}

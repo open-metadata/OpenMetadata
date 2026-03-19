@@ -372,10 +372,7 @@ export const TestCases = () => {
       const options = response.hits.hits.map((hit) => {
         return {
           label: (
-            <Space
-              data-testid={hit._source.name}
-              direction="vertical"
-              size={0}>
+            <Space data-testid={hit._source.name} direction="vertical" size={0}>
               <Typography.Text className="text-xs text-grey-muted">
                 {hit._source.fullyQualifiedName}
               </Typography.Text>

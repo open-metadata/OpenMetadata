@@ -1,9 +1,9 @@
 package org.openmetadata.mcp.tools;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -27,6 +27,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.dqtests.TestCaseMapper;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -36,20 +37,30 @@ import org.openmetadata.service.util.RestUtil;
 class CreateTestCaseToolTest {
 
   private Authorizer authorizer;
+  private Limits limits;
   private CatalogSecurityContext securityContext;
 
   @BeforeEach
   void setUp() {
     authorizer = mock(Authorizer.class);
+    limits = mock(Limits.class);
     securityContext = mock(CatalogSecurityContext.class);
-
-    Principal mockPrincipal = mock(Principal.class);
-    when(mockPrincipal.getName()).thenReturn("test-user");
-    when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
   }
 
   @Test
-  void testExecuteCallsPrepareInternal() {
+  void testNonLimitsOverloadThrows() {
+    CreateTestCaseTool tool = new CreateTestCaseTool();
+    Map<String, Object> params = new HashMap<>();
+    assertThatThrownBy(() -> tool.execute(authorizer, securityContext, params))
+        .isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  @Test
+  void testLimitsAwareExecuteCreatesTestCase() {
+    Principal mockPrincipal = mock(Principal.class);
+    when(mockPrincipal.getName()).thenReturn("test-user");
+    when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
+
     TestCaseRepository repo = mock(TestCaseRepository.class);
     TestCase testCase = new TestCase();
     testCase.setId(UUID.randomUUID());
@@ -62,6 +73,7 @@ class CreateTestCaseToolTest {
         .thenReturn(putResponse);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> eventMock = mockStatic(McpChangeEventUtil.class);
         MockedConstruction<TestCaseMapper> mapperMock =
             mockConstruction(
                 TestCaseMapper.class,
@@ -77,10 +89,13 @@ class CreateTestCaseToolTest {
       params.put("parameterValues", new ArrayList<>());
 
       CreateTestCaseTool tool = new CreateTestCaseTool();
-      Map<String, Object> result = tool.execute(authorizer, securityContext, params);
+      Map<String, Object> result = tool.execute(authorizer, limits, securityContext, params);
 
-      assertNotNull(result);
-      verify(repo).prepareInternal(any(TestCase.class), eq(false));
+      assertThat(result).isNotNull();
+      verify(repo).setFullyQualifiedName(any(TestCase.class));
+      verify(repo).prepare(any(TestCase.class), any(Boolean.class));
+      verify(limits).enforceLimits(any(), any(), any());
+      verify(authorizer).authorize(any(), any(), any());
     }
   }
 }
