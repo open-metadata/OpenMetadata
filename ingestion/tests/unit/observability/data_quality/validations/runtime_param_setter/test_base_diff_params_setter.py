@@ -109,6 +109,10 @@ def test_trino_get_data_diff_url_sets_catalog_and_schema_from_fqn():
     service-level catalog and no schema. TrinoTableParameter must
     override these with values from the table FQN so data_diff opens
     a session against the correct catalog.
+
+    This test also guards against regressions where the underlying
+    service-level dict is mutated in place, which would cause the
+    catalog/schema from one table FQN to leak into another.
     """
     from metadata.ingestion.source.database.trino.data_diff.data_diff import (
         TrinoTableParameter,
@@ -126,6 +130,7 @@ def test_trino_get_data_diff_url_sets_catalog_and_schema_from_fqn():
         ),
     )
 
+    # Simulate the service-level connection dict returned by TrinoConnection.get_connection_dict()
     service_level_dict = {
         "driver": "trino",
         "host": "trino-test",
@@ -141,11 +146,30 @@ def test_trino_get_data_diff_url_sets_catalog_and_schema_from_fqn():
         "_get_service_connection_config",
         return_value=service_level_dict,
     ):
-        result = param_setter.get_data_diff_url(
+        # First table: catalog and schema from its FQN
+        result1 = param_setter.get_data_diff_url(
             db_service,
             "trino_service.iceberg_nlm.sharp_datastore.pni_foundry_riser_all_segments",
         )
+        # Second table: use the same service-level dict, but with a different FQN
+        result2 = param_setter.get_data_diff_url(
+            db_service,
+            "trino_service.other_catalog.other_schema.other_table",
+        )
 
-    assert isinstance(result, dict)
-    assert result["catalog"] == "iceberg_nlm"
-    assert result["schema"] == "sharp_datastore"
+    # The returned objects should be dicts derived from, but not mutating, the service-level dict
+    assert isinstance(result1, dict)
+   assert isinstance(result2, dict)
+    assert result1 is not service_level_dict
+    assert result2 is not service_level_dict
+    assert result1 is not result2
+
+    # Each call must apply catalog/schema from its own FQN
+    assert result1["catalog"] == "iceberg_nlm"
+    assert result1["schema"] == "sharp_datastore"
+    assert result2["catalog"] == "other_catalog"
+    assert result2["schema"] == "other_schema"
+
+    # And the original service-level dict must remain unchanged
+    assert service_level_dict["catalog"] == "default_catalog"
+    assert service_level_dict["schema"] is None
