@@ -20,6 +20,9 @@ from metadata.data_quality.validations.runtime_param_setter.base_diff_params_set
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -116,7 +119,7 @@ def test_trino_get_data_diff_url_sets_catalog_and_schema_from_fqn():
         name="trino_service",
         serviceType=DatabaseServiceType.Trino,
         connection=DatabaseConnection(
-            config=MysqlConnection(
+            config=TrinoConnection(
                 hostPort="localhost:8080",
                 username="trino",
             )
