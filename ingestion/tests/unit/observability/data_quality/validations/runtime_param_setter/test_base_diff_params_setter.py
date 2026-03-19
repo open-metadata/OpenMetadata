@@ -97,3 +97,52 @@ def test_get_data_diff_url_mysql_includes_database():
         result = param_setter.get_data_diff_url(db_service, table_fqn)
 
     assert result == "mysql://testuser:pass@localhost:3306/zxk"
+
+
+def test_trino_get_data_diff_url_sets_catalog_and_schema_from_fqn():
+    """Trino data_diff URL must carry the table-specific catalog and schema.
+
+    TrinoConnection.get_connection_dict() returns a dict with the
+    service-level catalog and no schema. TrinoTableParameter must
+    override these with values from the table FQN so data_diff opens
+    a session against the correct catalog.
+    """
+    from metadata.ingestion.source.database.trino.data_diff.data_diff import (
+        TrinoTableParameter,
+    )
+
+    db_service = DatabaseService(
+        id=uuid.uuid4(),
+        name="trino_service",
+        serviceType=DatabaseServiceType.Trino,
+        connection=DatabaseConnection(
+            config=MysqlConnection(
+                hostPort="localhost:8080",
+                username="trino",
+            )
+        ),
+    )
+
+    service_level_dict = {
+        "driver": "trino",
+        "host": "trino-test",
+        "port": 8080,
+        "user": "trino",
+        "catalog": "default_catalog",
+        "schema": None,
+    }
+
+    param_setter = TrinoTableParameter()
+    with patch.object(
+        param_setter,
+        "_get_service_connection_config",
+        return_value=service_level_dict,
+    ):
+        result = param_setter.get_data_diff_url(
+            db_service,
+            "trino_service.iceberg_nlm.sharp_datastore.pni_foundry_riser_all_segments",
+        )
+
+    assert isinstance(result, dict)
+    assert result["catalog"] == "iceberg_nlm"
+    assert result["schema"] == "sharp_datastore"
