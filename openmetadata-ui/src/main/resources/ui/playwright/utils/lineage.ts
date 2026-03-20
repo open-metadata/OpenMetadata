@@ -118,9 +118,7 @@ export const editLineageClick = async (page: Page) => {
 export const editLineage = async (page: Page) => {
   await editLineageClick(page);
 
-  await expect(
-    page.getByTestId('table_search_index-draggable-icon')
-  ).toBeVisible();
+  await expect(page.getByTestId('table-draggable-icon')).toBeVisible();
 };
 
 export const performZoomOut = async (page: Page, xTimes = 10) => {
@@ -256,7 +254,6 @@ export const connectEdgeBetweenNodes = async (
   await dragAndDropNode(page, source, target);
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
-
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*&from=0&size=10&*`

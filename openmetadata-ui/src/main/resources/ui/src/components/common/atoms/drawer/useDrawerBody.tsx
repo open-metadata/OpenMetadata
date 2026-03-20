@@ -12,6 +12,7 @@
  */
 
 import { Box } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { ReactNode, useMemo } from 'react';
 import Loader from '../../Loader/Loader';
 
@@ -21,7 +22,7 @@ export interface DrawerBodyConfig {
   loadingMessage?: string;
   padding?: number | string;
   className?: string;
-  sx?: any;
+  sx?: SxProps<Theme>;
 }
 
 /**

@@ -122,7 +122,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     );
     await page.getByTestId('save').click();
     await patchResponse;
-
   }
 
   test('Rename then update description - assets should be preserved', async ({
@@ -287,7 +286,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await page.getByTestId('saveAssociatedTag').click();
       await patchResponse;
 
-
       // Step 3: Verify assets
       await page.getByTestId('assets').click();
       await checkAssetsCount(page, 1);
@@ -378,7 +376,7 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       const searchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user_search_index')
+          response.url().includes('index=user')
       );
       await page
         .getByTestId('owner-select-users-search-bar')
@@ -395,7 +393,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       );
       await page.getByTestId('selectable-list-update-btn').click();
       await patchResponse;
-
 
       // Step 3: Verify assets
       await page.getByTestId('assets').click();

@@ -3,7 +3,9 @@ package org.openmetadata.service.resources.system;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -40,10 +42,14 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
+import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -64,6 +70,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
@@ -389,6 +396,16 @@ public class SystemResource {
               "Failed to update hybrid search pipeline: " + e.getMessage());
         }
       }
+    }
+
+    if (GLOSSARY_TERM_RELATION_SETTINGS
+        .value()
+        .equalsIgnoreCase(settingName.getConfigType().toString())) {
+      GlossaryTermRelationSettings relationSettings =
+          JsonUtils.convertValue(settingName.getConfigValue(), GlossaryTermRelationSettings.class);
+      normalizeGlossaryTermRelationSettings(relationSettings);
+      settingName.setConfigValue(relationSettings);
+      validateGlossaryTermRelationSettingsUpdate(settingName);
     }
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
@@ -805,6 +822,113 @@ public class SystemResource {
   }
 
   @GET
+  @Path("/mcp/config")
+  @Operation(
+      operationId = "getMCPConfiguration",
+      summary = "Get MCP server configuration",
+      description =
+          "Get the current MCP server configuration including base URL, allowed origins, and timeout settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "MCP configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MCPConfiguration.class))),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response getMCPConfiguration(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    Settings mcpSettings = systemRepository.getConfigWithKey(MCP_CONFIGURATION.toString());
+    if (mcpSettings != null && mcpSettings.getConfigValue() != null) {
+      return Response.ok(mcpSettings.getConfigValue()).build();
+    }
+    return Response.status(Response.Status.NOT_FOUND).entity("MCP configuration not found").build();
+  }
+
+  @PUT
+  @Path("/mcp/config")
+  @Operation(
+      operationId = "updateMCPConfiguration",
+      summary = "Update MCP server configuration",
+      description =
+          "Update MCP server configuration. Changes take effect after server reload. "
+              + "Note: Updating MCP configuration will reload the security system to apply changes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "MCP configuration updated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MCPConfiguration.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid configuration"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response updateMCPConfiguration(
+      @Context SecurityContext securityContext, @Valid MCPConfiguration mcpConfig) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      // Validate baseUrl
+      if (mcpConfig.getBaseUrl() != null && !mcpConfig.getBaseUrl().isEmpty()) {
+        try {
+          java.net.URI uri = new java.net.URI(mcpConfig.getBaseUrl());
+          if (!uri.getScheme().matches("https?")) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("baseUrl must use HTTP or HTTPS scheme")
+                .build();
+          }
+        } catch (java.net.URISyntaxException e) {
+          return Response.status(Response.Status.BAD_REQUEST)
+              .entity("Invalid baseUrl: " + e.getMessage())
+              .build();
+        }
+      }
+
+      // Validate allowedOrigins
+      if (mcpConfig.getAllowedOrigins() != null) {
+        for (String origin : mcpConfig.getAllowedOrigins()) {
+          if (origin.contains("*") && !origin.equals("*")) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity(
+                    "Wildcard origins must be exactly '*', not partial wildcards like '"
+                        + origin
+                        + "'")
+                .build();
+          }
+          if (!origin.equals("*")) {
+            try {
+              new java.net.URI(origin);
+            } catch (java.net.URISyntaxException e) {
+              return Response.status(Response.Status.BAD_REQUEST)
+                  .entity("Invalid origin URL '" + origin + "': " + e.getMessage())
+                  .build();
+            }
+          }
+        }
+      }
+
+      Settings mcpSettings =
+          new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
+
+      systemRepository.createOrUpdate(mcpSettings);
+
+      SettingsCache.invalidateSettings(MCP_CONFIGURATION.toString());
+
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+
+      return Response.ok(mcpConfig).build();
+    } catch (Exception e) {
+      LOG.error("Failed to update MCP configuration", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("Failed to update MCP configuration. Please check server logs for details.")
+          .build();
+    }
+  }
+
+  @GET
   @Path("/cache/stats")
   @Operation(
       operationId = "getCacheStats",
@@ -819,5 +943,117 @@ public class SystemResource {
 
     Map<String, Object> stats = CacheBundle.getCacheProvider().getStats();
     return Response.ok(stats).build();
+  }
+
+  private void validateGlossaryTermRelationSettingsUpdate(Settings newSettings) {
+    Settings currentSettings =
+        systemRepository.getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.value());
+    if (currentSettings == null) {
+      return;
+    }
+
+    GlossaryTermRelationSettings currentConfig =
+        JsonUtils.convertValue(
+            currentSettings.getConfigValue(), GlossaryTermRelationSettings.class);
+    GlossaryTermRelationSettings newConfig =
+        JsonUtils.convertValue(newSettings.getConfigValue(), GlossaryTermRelationSettings.class);
+
+    if (currentConfig.getRelationTypes() == null || newConfig.getRelationTypes() == null) {
+      return;
+    }
+
+    List<String> currentRelationTypeNames =
+        currentConfig.getRelationTypes().stream().map(GlossaryTermRelationType::getName).toList();
+    List<String> newRelationTypeNames =
+        newConfig.getRelationTypes().stream().map(GlossaryTermRelationType::getName).toList();
+
+    List<String> removedRelationTypes =
+        currentRelationTypeNames.stream()
+            .filter(name -> !newRelationTypeNames.contains(name))
+            .toList();
+
+    if (removedRelationTypes.isEmpty()) {
+      return;
+    }
+
+    GlossaryTermRepository glossaryTermRepository =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    Map<String, Integer> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
+
+    List<String> inUseRelationTypes =
+        removedRelationTypes.stream()
+            .filter(name -> usageCounts.getOrDefault(name, 0) > 0)
+            .toList();
+
+    if (!inUseRelationTypes.isEmpty()) {
+      StringBuilder message = new StringBuilder("Cannot delete relation types that are in use: ");
+      for (String relationTypeName : inUseRelationTypes) {
+        int count = usageCounts.get(relationTypeName);
+        message.append(
+            String.format("%s (%d usage%s), ", relationTypeName, count, count == 1 ? "" : "s"));
+      }
+      message.setLength(message.length() - 2);
+      throw new SystemSettingsException(message.toString());
+    }
+  }
+
+  private void normalizeGlossaryTermRelationSettings(GlossaryTermRelationSettings settings) {
+    if (settings == null || settings.getRelationTypes() == null) {
+      return;
+    }
+
+    for (GlossaryTermRelationType relationType : settings.getRelationTypes()) {
+      if (relationType == null) {
+        continue;
+      }
+
+      RelationCardinality cardinality = relationType.getCardinality();
+      if (cardinality == null) {
+        relationType.setCardinality(
+            deriveCardinality(relationType.getSourceMax(), relationType.getTargetMax()));
+        continue;
+      }
+
+      switch (cardinality) {
+        case ONE_TO_ONE -> {
+          relationType.setSourceMax(1);
+          relationType.setTargetMax(1);
+        }
+        case ONE_TO_MANY -> {
+          relationType.setSourceMax(1);
+          relationType.setTargetMax(null);
+        }
+        case MANY_TO_ONE -> {
+          relationType.setSourceMax(null);
+          relationType.setTargetMax(1);
+        }
+        case MANY_TO_MANY -> {
+          relationType.setSourceMax(null);
+          relationType.setTargetMax(null);
+        }
+        case CUSTOM -> {
+          // Keep explicit values as-is.
+        }
+        default -> {
+          // No-op for unknown values.
+        }
+      }
+    }
+  }
+
+  private RelationCardinality deriveCardinality(Integer sourceMax, Integer targetMax) {
+    if (sourceMax == null && targetMax == null) {
+      return RelationCardinality.MANY_TO_MANY;
+    }
+    if (Integer.valueOf(1).equals(sourceMax) && Integer.valueOf(1).equals(targetMax)) {
+      return RelationCardinality.ONE_TO_ONE;
+    }
+    if (Integer.valueOf(1).equals(sourceMax) && targetMax == null) {
+      return RelationCardinality.ONE_TO_MANY;
+    }
+    if (sourceMax == null && Integer.valueOf(1).equals(targetMax)) {
+      return RelationCardinality.MANY_TO_ONE;
+    }
+    return RelationCardinality.CUSTOM;
   }
 }

@@ -118,7 +118,7 @@ import {
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
-type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<any>;
+type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
 
 class EntityUtilClassBase {
   serviceTypeLookupMap: Map<string, string>;
@@ -391,7 +391,7 @@ class EntityUtilClassBase {
       case EntityType.PERSONA:
         return getPersonaDetailsPath(fullyQualifiedName);
 
-      case SearchIndex.API_COLLECTION_INDEX:
+      case SearchIndex.API_COLLECTION:
       case EntityType.API_COLLECTION:
         return getEntityDetailsPath(
           EntityType.API_COLLECTION,
@@ -400,7 +400,7 @@ class EntityUtilClassBase {
           subTab
         );
 
-      case SearchIndex.API_ENDPOINT_INDEX:
+      case SearchIndex.API_ENDPOINT:
       case EntityType.API_ENDPOINT:
         return getEntityDetailsPath(
           EntityType.API_ENDPOINT,
@@ -408,7 +408,7 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
-      case SearchIndex.METRIC_SEARCH_INDEX:
+      case SearchIndex.METRIC:
       case EntityType.METRIC:
         return getEntityDetailsPath(
           EntityType.METRIC,

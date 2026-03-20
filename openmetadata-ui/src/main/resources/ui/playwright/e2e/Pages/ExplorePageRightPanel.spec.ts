@@ -45,7 +45,6 @@ import { RolesClass } from '../../support/access-control/RolesClass';
 import {
   openColumnDetailPanel,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 
 const domainEntity = new Domain();
@@ -1439,11 +1438,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1467,11 +1466,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1494,11 +1493,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1519,11 +1518,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1544,11 +1543,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1569,11 +1568,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1616,9 +1615,9 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataStewardPage.getByTestId('entity-summary-panel-container').waitFor(
-              { state: 'visible' }
-            );
+            await dataStewardPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({ state: 'visible' });
 
             const rightPanelDS = new RightPanelPageObject(dataStewardPage);
             rightPanelDS.setEntityConfig(entityInstance);
@@ -1695,11 +1694,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1723,11 +1722,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1748,11 +1747,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1773,11 +1772,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1798,11 +1797,11 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
-              {
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({
                 state: 'visible',
-              }
-            );
+              });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1849,9 +1848,9 @@ test.describe('Right Panel Test Suite', () => {
               entityInstance.endpoint,
               fqn
             );
-            await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
-              { state: 'visible' }
-            );
+            await dataConsumerPage
+              .getByTestId('entity-summary-panel-container')
+              .waitFor({ state: 'visible' });
 
             const rightPanelDC = new RightPanelPageObject(dataConsumerPage);
             rightPanelDC.setEntityConfig(entityInstance);
@@ -1889,9 +1888,9 @@ test.describe('Right Panel Test Suite', () => {
           dcOwnerTestTable.endpoint,
           fqn
         );
-        await adminPage.getByTestId('entity-summary-panel-container').waitFor(
-          { state: 'visible' }
-        );
+        await adminPage
+          .getByTestId('entity-summary-panel-container')
+          .waitFor({ state: 'visible' });
         const adminRightPanel = new RightPanelPageObject(adminPage);
         adminRightPanel.setEntityConfig(dcOwnerTestTable);
         const adminOverview = new OverviewPageObject(adminRightPanel);
@@ -1909,9 +1908,9 @@ test.describe('Right Panel Test Suite', () => {
           dcOwnerTestTable.endpoint,
           fqn
         );
-        await dataConsumerPage.getByTestId('entity-summary-panel-container').waitFor(
-          { state: 'visible' }
-        );
+        await dataConsumerPage
+          .getByTestId('entity-summary-panel-container')
+          .waitFor({ state: 'visible' });
         const dcSummaryPanel = dataConsumerPage.locator(
           '.entity-summary-panel-container'
         );
@@ -2514,7 +2513,6 @@ test.describe('Right Panel Test Suite', () => {
             columnNameTestId: 'column-name',
             entityType: 'table',
           });
-
 
           expect(forbiddenUrls).toHaveLength(0);
         } finally {

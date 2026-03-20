@@ -430,7 +430,17 @@ public class TestCaseResolutionStatusResource
                       allowableValues = {"asc", "desc"}))
           @QueryParam("sortType")
           @DefaultValue("desc")
-          String sortType)
+          String sortType,
+      @Parameter(
+              description =
+                  "Field to filter incidents by date range. Use 'timestamp' for created at or 'updatedAt' for last updated at.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"timestamp", "updatedAt"}))
+          @QueryParam("dateField")
+          @DefaultValue("timestamp")
+          String dateField)
       throws IOException {
 
     // Use updatedAt as default sort field for TestCaseResolutionStatus since it doesn't have a name
@@ -444,6 +454,7 @@ public class TestCaseResolutionStatusResource
     searchListFilter.addQueryParam("testCaseFqn", testCaseFQN);
     searchListFilter.addQueryParam("originEntityFQN", originEntityFQN);
     searchListFilter.addQueryParam("domains", domain);
+    searchListFilter.addQueryParam("dateField", dateField);
     if (startTs != null) {
       searchListFilter.addQueryParam("startTimestamp", String.valueOf(startTs));
     }

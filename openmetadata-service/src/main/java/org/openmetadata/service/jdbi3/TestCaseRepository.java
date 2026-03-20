@@ -26,6 +26,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
+import com.google.common.collect.Lists;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -992,21 +993,68 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Transaction
   public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> testCaseIds) {
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
     bulkAddToRelationship(
         testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-    for (UUID testCaseId : testCaseIds) {
-      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
-      ChangeDescription change =
-          new ChangeDescription()
-              .withFieldsUpdated(
-                  List.of(
-                      new FieldChange()
-                          .withName("testSuites")
-                          .withNewValue(testCase.getTestSuites())));
-      testCase.setChangeDescription(change);
-      postUpdate(testCase, testCase);
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> testCaseReferences =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+
+    List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(testCaseReferences);
+    postUpdateMany(updatedTestCases);
+    updateLogicalTestSuite(testSuite.getId());
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  @Transaction
+  public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
+      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
+
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+
+    String tableName = daoCollection.testCaseDAO().getTableName();
+    if (nullOrEmpty(excludedTestCaseIds)) {
+      daoCollection
+          .relationshipDAO()
+          .bulkInsertAllToRelationship(
+              testSuite.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal(), tableName);
+    } else {
+      daoCollection
+          .relationshipDAO()
+          .bulkInsertAllToRelationshipWithExclusions(
+              excludedTestCaseIds.stream().map(UUID::toString).toList(),
+              testSuite.getId(),
+              TEST_SUITE,
+              TEST_CASE,
+              Relationship.CONTAINS.ordinal(),
+              tableName);
+    }
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> newTestCaseReferences =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+
+    int batchSize = 100;
+    for (List<EntityReference> batch : Lists.partition(newTestCaseReferences, batchSize)) {
+      List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(batch);
+      postUpdateMany(updatedTestCases);
     }
     updateLogicalTestSuite(testSuite.getId());
+
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
@@ -1030,6 +1078,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testCase.setTestSuite(updatedTestCase.getTestSuite());
     testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
+  }
+
+  private List<TestCase> getLogicalSuiteUpdatedTestCase(List<EntityReference> testCaseReferences) {
+    List<TestCase> testCases = Entity.getEntities(testCaseReferences, "*", Include.ALL);
+    testCases.forEach(
+        tc -> {
+          ChangeDescription change =
+              new ChangeDescription()
+                  .withFieldsUpdated(
+                      List.of(
+                          new FieldChange()
+                              .withName("testSuites")
+                              .withNewValue(tc.getTestSuites())));
+          tc.setChangeDescription(change);
+        });
+    return testCases;
   }
 
   @Override

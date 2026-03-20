@@ -20,6 +20,7 @@ export enum GlobalSettingsMenuCategory {
   BOTS = 'bots',
   APPLICATIONS = 'apps',
   SSO = 'sso',
+  GOVERNANCE = 'governance',
 }
 
 export enum ServiceTypes {
@@ -103,6 +104,7 @@ export enum GlobalSettingOptions {
   SPREADSHEETS = 'spreadsheets',
   WORKSHEETS = 'worksheets',
   SSO = 'sso',
+  GLOSSARY_TERM_RELATIONS = 'glossary-term-relations',
   TABLE_COLUMNS = 'column',
 }
 
@@ -252,6 +254,11 @@ export const SETTINGS_OPTIONS_PATH = {
   ],
   [GlobalSettingOptions.SSO]: [GlobalSettingsMenuCategory.SSO],
 
+  // Governance
+  [GlobalSettingOptions.GLOSSARY_TERM_RELATIONS]: [
+    GlobalSettingsMenuCategory.GOVERNANCE,
+    `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.GLOSSARY_TERM_RELATIONS}`,
+  ],
   // Learning Resources
   [GlobalSettingOptions.LEARNING_RESOURCES]: [
     GlobalSettingsMenuCategory.PREFERENCES,

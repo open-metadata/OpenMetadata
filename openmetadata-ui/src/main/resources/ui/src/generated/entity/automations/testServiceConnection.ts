@@ -226,6 +226,8 @@ export interface TestServiceConnectionConnection {
  *
  * Kinesis Connection Config
  *
+ * Google Cloud Pub/Sub Connection Config
+ *
  * Custom Messaging Service Connection to build a source that is not supported by
  * OpenMetadata yet.
  *
@@ -408,7 +410,7 @@ export interface ConfigObject {
      *
      * GCP Credentials for Google Drive API
      */
-    credentials?: GCPCredentials;
+    credentials?: CredentialsClass;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
@@ -517,6 +519,8 @@ export interface ConfigObject {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Pipeline Service Management/UI URI.
      *
@@ -1707,6 +1711,31 @@ export interface ConfigObject {
      */
     topicFilterPattern?: FilterPattern;
     /**
+     * GCP credentials configuration for authenticating with Pub/Sub.
+     */
+    gcpConfig?: GcpConfigClass;
+    /**
+     * Include dead letter topics in metadata extraction.
+     */
+    includeDeadLetterTopics?: boolean;
+    /**
+     * Include subscription metadata for each topic.
+     */
+    includeSubscriptions?: boolean;
+    /**
+     * GCP Project ID where Pub/Sub topics are located. If not specified, will be read from
+     * credentials.
+     */
+    projectId?: string;
+    /**
+     * Enable fetching schemas from Pub/Sub Schema Registry.
+     */
+    schemaRegistryEnabled?: boolean;
+    /**
+     * Connect to a Pub/Sub emulator rather than the production service.
+     */
+    useEmulator?: boolean;
+    /**
      * Pipeline Service Number Of Status
      */
     numberOfStatus?: number;
@@ -2351,6 +2380,8 @@ export enum AuthProvider {
  *
  * SSL Certificates By Path
  *
+ * AWS credentials required to access the S3 file.
+ *
  * AWS credentials configs.
  *
  * AWS credentials configuration.
@@ -2531,6 +2562,8 @@ export interface AuthenticationType {
 }
 
 /**
+ * AWS credentials required to access the S3 file.
+ *
  * AWS credentials configs.
  *
  * AWS credentials configuration.
@@ -2977,6 +3010,8 @@ export interface IcebergFileSystem {
 }
 
 /**
+ * AWS credentials required to access the S3 file.
+ *
  * AWS credentials configs.
  *
  * AWS credentials configuration.
@@ -3250,7 +3285,11 @@ export interface ConfigSourceConnection {
  *
  * GCP credentials configs.
  *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
  * GCP Credentials for Google Drive API
+ *
+ * AWS credentials required to access the S3 file.
  *
  * AWS credentials configs.
  *
@@ -3680,6 +3719,8 @@ export interface DataStorageConfig {
 }
 
 /**
+ * AWS credentials required to access the S3 file.
+ *
  * AWS credentials configs.
  *
  * AWS credentials configuration.
@@ -3829,6 +3870,8 @@ export enum VerifySSL {
  *
  * GCP credentials configs.
  *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
  * GCP Credentials for Google Drive API
  *
  * Azure Cloud Credentials
@@ -3837,7 +3880,7 @@ export enum VerifySSL {
  *
  * Azure Credentials
  */
-export interface GCPCredentials {
+export interface CredentialsClass {
     /**
      * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
      * Credentials Path
@@ -4004,6 +4047,27 @@ export enum FHIRVersion {
     Dstu2 = "DSTU2",
     R4 = "R4",
     Stu3 = "STU3",
+}
+
+/**
+ * GCP Credentials
+ *
+ * GCP credentials configs.
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
+ * GCP Credentials for Google Drive API
+ */
+export interface GcpConfigClass {
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
 }
 
 /**
@@ -4239,6 +4303,8 @@ export interface NifiCredentialsConfiguration {
  * Open API Schema URL Connection Config
  *
  * Open API Schema File Path Connection Config
+ *
+ * Open API Schema S3 Connection Config
  */
 export interface OpenAPISchemaConnection {
     /**
@@ -4249,6 +4315,15 @@ export interface OpenAPISchemaConnection {
      * Path to a local OpenAPI schema file.
      */
     openAPISchemaFilePath?: string;
+    /**
+     * AWS credentials required to access the S3 file.
+     */
+    awsCredentials?: AWSCredentials;
+    /**
+     * S3 URL of the OpenAPI schema file (JSON or YAML). Example:
+     * https://bucket-name.s3.amazonaws.com/path/to/openapi_schema.json
+     */
+    openAPISchemaS3URL?: string;
 }
 
 /**
@@ -4773,6 +4848,7 @@ export enum ConfigType {
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     Presto = "Presto",
+    PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",

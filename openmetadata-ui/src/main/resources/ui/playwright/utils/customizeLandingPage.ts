@@ -229,10 +229,7 @@ export const saveCustomizeLayoutPage = async (page: Page) => {
   await page.locator('[data-testid="save-button"]').click();
   await saveResponse;
 
-  await toastNotification(
-    page,
-    /Page layout (created|updated) successfully\./
-  );
+  await toastNotification(page, /Page layout (created|updated) successfully\./);
 };
 
 export const removeAndVerifyWidget = async (
@@ -338,7 +335,9 @@ export const addCuratedAssetPlaceholder = async ({
   await page.locator('[data-testid="apply-btn"]').click();
 
   await expect(
-    page.getByTestId('page-layout-v1').getByTestId('KnowledgePanel.CuratedAssets')
+    page
+      .getByTestId('page-layout-v1')
+      .getByTestId('KnowledgePanel.CuratedAssets')
   ).toBeVisible();
 
   await expect(
@@ -614,7 +613,9 @@ export const verifyWidgetHeaderNavigation = async (
   await redirectToHomePage(page, false);
   await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(() => undefined);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
+    () => undefined
+  );
 };
 
 export const verifyDomainCountInDomainWidget = async (
@@ -635,7 +636,9 @@ export const verifyDomainCountInDomainWidget = async (
       async () => {
         const domainWidget = page.getByTestId('KnowledgePanel.Domains');
         await domainWidget.scrollIntoViewIfNeeded().catch(() => undefined);
-        const isWidgetVisible = await domainWidget.isVisible().catch(() => false);
+        const isWidgetVisible = await domainWidget
+          .isVisible()
+          .catch(() => false);
 
         if (!isWidgetVisible) {
           return null;
@@ -670,7 +673,9 @@ export const verifyDataProductCountInDataProductWidget = async (
   await expect
     .poll(
       async () => {
-        const dataProductWidget = page.getByTestId('KnowledgePanel.DataProducts');
+        const dataProductWidget = page.getByTestId(
+          'KnowledgePanel.DataProducts'
+        );
         await dataProductWidget.scrollIntoViewIfNeeded().catch(() => undefined);
         const isWidgetVisible = await dataProductWidget
           .isVisible()

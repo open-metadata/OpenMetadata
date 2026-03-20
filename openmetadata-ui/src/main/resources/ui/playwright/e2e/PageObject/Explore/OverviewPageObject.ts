@@ -409,7 +409,8 @@ export class OverviewPageObject extends RightPanelBase {
           {
             timeout: 120000,
             intervals: [500, 1000, 2000],
-            message: 'Timed out waiting for owner search input to become visible',
+            message:
+              'Timed out waiting for owner search input to become visible',
           }
         )
         .toBe(true);
@@ -655,8 +656,8 @@ export class OverviewPageObject extends RightPanelBase {
     type: 'Users' | 'Teams' = 'Users'
   ): Promise<Locator> {
     const searchIndexMap = {
-      Users: 'user_search_index',
-      Teams: 'team_search_index',
+      Users: 'user',
+      Teams: 'team',
     };
 
     // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
@@ -707,7 +708,7 @@ export class OverviewPageObject extends RightPanelBase {
     const searchResponsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=tag_search_index')
+        response.url().includes('index=tag')
     );
 
     await this.tagSearchBar.fill(tagName);
@@ -738,7 +739,7 @@ export class OverviewPageObject extends RightPanelBase {
     const searchResponsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=glossary_term_search_index')
+        response.url().includes('index=glossaryTerm')
     );
 
     await this.glossaryTermSearchBar.fill(termName);

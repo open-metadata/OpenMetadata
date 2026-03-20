@@ -362,7 +362,8 @@ export const getAggregationOptions = async (
   filter: string,
   isIndependent: boolean,
   deleted = false,
-  size = 10
+  size = 10,
+  isNLPEnabled = false
 ) => {
   return isIndependent
     ? postAggregateFieldOptions({
@@ -372,7 +373,15 @@ export const getAggregationOptions = async (
         query: filter,
         size,
       })
-    : getAggregateFieldOptions(index, key, value, filter, undefined, deleted);
+    : getAggregateFieldOptions(
+        index,
+        key,
+        value,
+        filter,
+        undefined,
+        deleted,
+        isNLPEnabled
+      );
 };
 
 export const updateTreeDataWithCounts = (

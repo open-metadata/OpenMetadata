@@ -279,7 +279,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const userSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user_search_index')
+          response.url().includes('index=user')
       );
       await searchInput.fill('admin');
       await userSearchResponse;
@@ -357,7 +357,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await removeUserButton.click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.locator('.ant-skeleton').first().waitFor({ state: 'detached' });
+      await page
+        .locator('.ant-skeleton')
+        .first()
+        .waitFor({ state: 'detached' });
 
       await expect(userFilterTag).not.toBeVisible();
 

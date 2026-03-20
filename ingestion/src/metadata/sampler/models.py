@@ -11,9 +11,9 @@
 """
 Sampling Models
 """
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from typing_extensions import Annotated
 
 from metadata.config.common import ConfigModel
@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
+from metadata.pii.types import ClassifiableEntityType
 
 
 class BaseProfileConfig(ConfigModel):
@@ -89,15 +90,35 @@ class SampleData(BaseModel):
 
 
 class SamplerResponse(ConfigModel):
-    """PII & Sampler Workflow Response. For a given table, return all the tags and sample data"""
+    """PII & Sampler Workflow Response. For a given entity, return all the tags and sample data"""
 
-    table: Table
+    entity: ClassifiableEntityType
     sample_data: Optional[SampleData] = None
     column_tags: Optional[List[ColumnTag]] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def handle_backward_compatibility(cls, data: Any) -> Any:
+        """Handle backward compatibility for table -> entity field rename"""
+        if isinstance(data, dict) and "table" in data and "entity" not in data:
+            data["entity"] = data.pop("table")
+        return data
+
+    @property
+    def table(self) -> Table:
+        """Backward compatibility property. Returns entity as Table.
+
+        Deprecated: Use .entity instead. Will be removed when all entity types are supported.
+        """
+        return self.entity  # type: ignore
+
     def __str__(self):
-        """Return the table name being processed"""
-        return f"Table [{self.table.name.root}]"
+        """Return the entity name being processed"""
+        entity_type = type(self.entity).__name__
+        entity_name = (
+            self.entity.name.root if hasattr(self.entity, "name") else "Unknown"
+        )
+        return f"{entity_type} [{entity_name}]"
 
 
 class SampleConfig(ConfigModel):

@@ -39,7 +39,9 @@
         "scimConfiguration",
         "securityConfiguration",
         "entityRulesSettings",
-        "openLineageSettings"
+        "openLineageSettings",
+        "mcpConfiguration",
+        "glossaryTermRelationSettings"
       ]
     }
   },
@@ -109,6 +111,12 @@
         },
         {
           "$ref": "../configuration/openLineageSettings.json"
+        },
+        {
+          "$ref": "../configuration/mcpConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/glossaryTermRelationSettings.json"
         }
       ]
     }

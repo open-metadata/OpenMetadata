@@ -14,12 +14,6 @@ on:
   workflow_dispatch:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "ingestion/**"
-      - "openmetadata-service/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "pom.xml"
-      - "Makefile"
 
 permissions:
   contents: read
@@ -39,15 +33,39 @@ env:
     -Dsonar.pullrequest.provider=github
 
 jobs:
+  # Detect whether relevant paths changed. When no Python/service/schema files
+  # are modified the downstream jobs are skipped via their `if` condition.
+  # A job skipped by `if` reports as "Success", so required checks still pass.
+  # This replaces the old py-tests-skip.yml companion workflow.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    outputs:
+      python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          filters: |
+            python:
+              - 'ingestion/**'
+              - 'openmetadata-service/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - 'pom.xml'
+              - 'Makefile'
+
   py-unit-tests:
     name: Unit Tests & Static Checks
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         py-version: ["3.10", "3.11"] # , "3.12"]
-    if: ${{ !github.event.pull_request.draft }}
     steps:
 
       - name: Wait for the labeler
@@ -103,9 +121,10 @@ jobs:
 
   py-integration-tests:
     name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
     timeout-minutes: 180
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
     strategy:
       fail-fast: false
       matrix:
@@ -190,9 +209,21 @@ jobs:
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
 
+  # Single required-check gate for branch protection.
+  # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
+  # Runs and exits 1 only when a test job fails or is cancelled.
+  # Set "py-tests / py-tests-status" as the sole required check for this workflow.
+  py-tests-status:
+    name: py-tests-status
+    needs: [changes, py-unit-tests, py-integration-tests]
+    if: ${{ failure() || cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 1
+
   py-combine-coverage:
-    if: ${{ !github.event.pull_request.draft && !cancelled() }}
-    needs: [py-unit-tests, py-integration-tests]
+    needs: [changes, py-unit-tests, py-integration-tests]
+    if: ${{ needs.changes.outputs.python == 'true' && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

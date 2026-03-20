@@ -111,7 +111,6 @@ test.describe('Data Product Permissions', () => {
 
     const manageButtonElements = ['delete-button', 'rename-button'];
 
-
     for (const testId of directElements) {
       let element;
       if (testId === 'add-tag') {
@@ -165,7 +164,6 @@ test.describe('Data Product Permissions', () => {
     const directElements = ['edit-description', 'add-tag'];
 
     const manageButtonElements = ['delete-button', 'rename-button'];
-
 
     for (const testId of directElements) {
       let element;

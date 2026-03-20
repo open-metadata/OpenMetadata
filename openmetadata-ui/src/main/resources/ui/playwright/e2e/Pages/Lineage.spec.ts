@@ -444,7 +444,6 @@ test('Verify function data in edge drawer', async ({ page }) => {
     await page.reload();
     await lineageReq1;
 
-
     await activateColumnLayer(page);
     await page
       .locator(`[data-testid="column-edge-${sourceColName}-${targetColName}"]`)

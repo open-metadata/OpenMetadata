@@ -17,49 +17,49 @@ export const ADVANCED_SEARCH_SUGGESTION_FIELDS: AdvancedSearchSuggestionField[] 
   [
     {
       label: 'Database',
-      searchIndex: 'database_search_index',
+      searchIndex: 'database',
       fieldName: 'displayName.keyword',
     },
     {
       label: 'Database Schema',
-      searchIndex: 'database_schema_search_index',
+      searchIndex: 'databaseSchema',
       fieldName: 'displayName.keyword',
     },
     {
       label: 'API Collection',
-      searchIndex: 'api_collection_search_index',
+      searchIndex: 'apiCollection',
       fieldName: 'displayName.keyword',
     },
     {
       label: 'Glossary',
-      searchIndex: 'glossary_search_index',
+      searchIndex: 'glossary',
       fieldName: 'displayName.keyword',
     },
     {
       label: 'Domains',
-      searchIndex: 'domain_search_index',
+      searchIndex: 'domain',
       fieldName: 'displayName.keyword',
     },
     {
       label: 'Data Product',
-      searchIndex: 'data_product_search_index',
+      searchIndex: 'dataProduct',
       fieldName: 'displayName.keyword',
     },
     {
       label: 'Tags',
-      searchIndex: 'tag_search_index,glossary_term_search_index',
+      searchIndex: 'tag,glossaryTerm',
       fieldName: 'fullyQualifiedName',
       q: 'name:* NOT classification.name:tier NOT classification.name:certification',
     },
     {
       label: 'Certification',
-      searchIndex: 'tag_search_index',
+      searchIndex: 'tag',
       fieldName: 'fullyQualifiedName',
       q: 'name:* AND classification.name:certification',
     },
     {
       label: 'Tier',
-      searchIndex: 'tag_search_index',
+      searchIndex: 'tag',
       fieldName: 'fullyQualifiedName',
       q: 'name:* AND classification.name:tier',
     },

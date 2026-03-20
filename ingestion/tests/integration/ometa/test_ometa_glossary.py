@@ -49,6 +49,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.generated.schema.type.termRelation import TermRelation
 from metadata.utils import fqn
 
 from ..integration_base import generate_name
@@ -227,9 +228,12 @@ class TestOMetaGlossary:
 
         # Add related term
         updated_glossary_term_1 = deepcopy(glossary_term_1)
-        updated_glossary_term_1.relatedTerms = EntityReferenceList(
-            root=[EntityReference(id=glossary_term_2.id, type="glossaryTerm")]
-        )
+        updated_glossary_term_1.relatedTerms = [
+            TermRelation(
+                term=EntityReference(id=glossary_term_2.id, type="glossaryTerm"),
+                relationType="relatedTo",
+            )
+        ]
 
         patched_glossary_term_1 = metadata.patch(
             entity=GlossaryTerm,
@@ -238,8 +242,8 @@ class TestOMetaGlossary:
         )
 
         assert patched_glossary_term_1 is not None
-        assert len(patched_glossary_term_1.relatedTerms.root) == 1
-        assert patched_glossary_term_1.relatedTerms.root[0].id == glossary_term_2.id
+        assert len(patched_glossary_term_1.relatedTerms) == 1
+        assert patched_glossary_term_1.relatedTerms[0].term.id == glossary_term_2.id
 
     def test_patch_reviewer(
         self, metadata, create_glossary, create_glossary_term, create_user

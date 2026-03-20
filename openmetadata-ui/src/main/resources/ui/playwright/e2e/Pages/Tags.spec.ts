@@ -24,7 +24,9 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { addMultiOwner, removeOwner,
+import {
+  addMultiOwner,
+  removeOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
@@ -130,13 +132,7 @@ test('Classification Page', async ({ page }) => {
 
     await expect(
       page.locator('.ant-table-thead > tr > .ant-table-cell')
-    ).toHaveText([
-      'Enabled',
-      'Tag',
-      'Display Name',
-      'Description',
-      'Actions',
-    ]);
+    ).toHaveText(['Enabled', 'Tag', 'Display Name', 'Description', 'Actions']);
   });
 
   await test.step('Disabled system tags should not render', async () => {
@@ -376,7 +372,7 @@ test('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="select-assignee"]');
     const assigneeResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=user_search_index*team_search_index*'
+      '/api/v1/search/query?q=*&index=user*team*'
     );
     await page.keyboard.type(assignee);
     await page.click(`[data-testid="${assignee}"]`);
@@ -385,7 +381,7 @@ test('Classification Page', async ({ page }) => {
     await clickOutside(page);
 
     const suggestTag = page.waitForResponse(
-      'api/v1/search/query?q=*&index=tag_search_index*'
+      'api/v1/search/query?q=*&index=tag*'
     );
     await page.click('[data-testid="tag-selector"]');
     await page.keyboard.type(tag);
@@ -421,7 +417,6 @@ test('Classification Page', async ({ page }) => {
     );
     await page.reload();
     await databaseSchemasPage;
-
 
     await waitForAllLoadersToDisappear(page);
 
@@ -517,7 +512,6 @@ test('Classification Page', async ({ page }) => {
     await page.click('[data-testid="confirm-button"]');
     await deleteClassification;
 
-
     await expect(
       page
         .locator('[data-testid="data-summary-container"]')
@@ -532,7 +526,6 @@ test('Search tag using classification display name should work', async ({
   const displayNameToSearch = tag.responseData.classification.displayName;
 
   await table.visitEntityPage(page);
-
 
   const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
 
@@ -663,7 +656,6 @@ test('Verify Owner Add Delete', async ({ page }) => {
 
   await classification1.visitPage(page);
 
-
   await removeOwner({
     page,
     endpoint: EntityTypeEndpoint.Classification,
@@ -686,9 +678,11 @@ test('Disabled tag should not allow adding assets from Assets tab', async ({
     // Visit the disabled tag page
     await tag1.visitPage(page);
 
-    await page.getByTestId('tags-container').getByTestId('loader').first().waitFor(
-      { state: 'detached' }
-    );
+    await page
+      .getByTestId('tags-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
 
     // Verify the disabled badge is visible
     await expect(page.getByTestId('disabled')).toBeVisible();

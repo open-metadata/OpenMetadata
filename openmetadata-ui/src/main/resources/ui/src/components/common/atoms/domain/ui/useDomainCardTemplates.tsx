@@ -16,6 +16,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import { ColumnConfig } from '../../shared/types';
 
 /**
  * Provides card layout templates for different entity types
@@ -52,7 +53,10 @@ export const useDomainCardTemplates = () => {
     () =>
       (
         entity: Domain,
-        renderCell: (entity: Domain, column: any) => React.ReactNode
+        renderCell: (
+          entity: Domain,
+          column: ColumnConfig<Domain>
+        ) => React.ReactNode
       ) =>
         (
           <>
@@ -149,7 +153,10 @@ export const useDomainCardTemplates = () => {
     () =>
       (
         entity: DataProduct,
-        renderCell: (entity: DataProduct, column: any) => React.ReactNode
+        renderCell: (
+          entity: DataProduct,
+          column: ColumnConfig<DataProduct>
+        ) => React.ReactNode
       ) =>
         (
           <>

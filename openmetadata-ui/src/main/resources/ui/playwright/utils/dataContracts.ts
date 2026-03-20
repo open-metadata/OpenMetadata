@@ -19,8 +19,8 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext } from './common';
-import { sidebarClick } from './sidebar';
 import { waitForAllLoadersToDisappear } from './entity';
+import { sidebarClick } from './sidebar';
 
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
@@ -71,7 +71,6 @@ export const validateDataContractInsideBundleTestSuites = async (
   await page.getByTestId('test-suites').click();
   await testSuiteResponse;
 
-
   const bundleSuitesResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
@@ -119,7 +118,8 @@ export const waitForDataContractExecution = async (
           consecutiveErrors = 0; // Reset error counter on success
 
           const latestStatus = latestResultResponse?.contractExecutionStatus;
-          const specificStatus = specificResultResponse?.contractExecutionStatus;
+          const specificStatus =
+            specificResultResponse?.contractExecutionStatus;
 
           if (
             latestStatus &&
