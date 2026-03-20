@@ -122,6 +122,31 @@ class SearchIndexHandlerTest {
   }
 
   @Test
+  void testOnEntitiesUpdatedUsesBulkApi() {
+    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+
+    searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
+
+    verify(mockSearchRepository).updateEntitiesIndex(entities);
+    verifyNoMoreInteractions(mockSearchRepository);
+  }
+
+  @Test
+  void testOnEntitiesUpdatedFallsBackToIndividualUpdates() {
+    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+    doThrow(new RuntimeException("Bulk update failed"))
+        .when(mockSearchRepository)
+        .updateEntitiesIndex(entities);
+
+    searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
+
+    verify(mockSearchRepository).updateEntitiesIndex(entities);
+    verify(mockSearchRepository).updateEntityIndex(mockEntity);
+    verify(mockSearchRepository).updateEntityIndex(mockEntity2);
+    verifyNoMoreInteractions(mockSearchRepository);
+  }
+
+  @Test
   void testOnEntityUpdatedWithException() {
     doThrow(new RuntimeException("Search update failed"))
         .when(mockSearchRepository)

@@ -1204,7 +1204,7 @@ public class SearchRepository {
    *
    * @param entities List of entities to update in the search index
    */
-  public void updateEntitiesBulk(List<EntityInterface> entities) {
+  public void updateEntitiesIndex(List<? extends EntityInterface> entities) {
     if (entities == null || entities.isEmpty()) {
       return;
     }
@@ -1231,6 +1231,12 @@ public class SearchRepository {
     // Group entities by their actual type to ensure each goes to the correct index
     Map<String, List<EntityInterface>> entitiesByType = new HashMap<>();
     for (EntityInterface entity : dedupedEntities.values()) {
+      if (entity == null
+          || entity.getEntityReference() == null
+          || !checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+        continue;
+      }
+
       String actualType = entity.getEntityReference().getType();
       entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
     }
@@ -1343,6 +1349,10 @@ public class SearchRepository {
           propagated,
           System.currentTimeMillis() - startTime);
     }
+  }
+
+  public void updateEntitiesBulk(List<? extends EntityInterface> entities) {
+    updateEntitiesIndex(entities);
   }
 
   /**

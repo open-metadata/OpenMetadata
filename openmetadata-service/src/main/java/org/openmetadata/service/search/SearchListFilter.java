@@ -404,10 +404,12 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String originEntityFQN = getQueryParam("originEntityFQN");
     String startTimestamp = getQueryParam("startTimestamp");
     String endTimestamp = getQueryParam("endTimestamp");
+    String dateField = getQueryParam("dateField");
 
     if (startTimestamp != null && endTimestamp != null) {
-      conditions.add(getTimestampFilter("@timestamp", "gte", Long.parseLong(startTimestamp)));
-      conditions.add(getTimestampFilter("@timestamp", "lte", Long.parseLong(endTimestamp)));
+      String esDateField = "updatedAt".equals(dateField) ? "updatedAt" : "@timestamp";
+      conditions.add(getTimestampFilter(esDateField, "gte", Long.parseLong(startTimestamp)));
+      conditions.add(getTimestampFilter(esDateField, "lte", Long.parseLong(endTimestamp)));
     }
 
     if (testCaseResolutionStatusType != null) {
