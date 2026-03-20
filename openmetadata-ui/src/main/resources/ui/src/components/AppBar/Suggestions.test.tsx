@@ -25,7 +25,9 @@ jest.mock('react-i18next', () => ({
 jest.mock('../../context/TourProvider/TourProvider');
 jest.mock('../../utils/SearchUtils', () => ({
   filterOptionsByIndex: jest.fn((options, index) => {
-    return options.filter((option: any) => option._index === index);
+    return options.filter(
+      (option: any) => option._source?.entityType === index
+    );
   }),
   getGroupLabel: jest.fn((index) => `Group ${index}`),
   getSuggestionElement: jest.fn((suggestion) => (

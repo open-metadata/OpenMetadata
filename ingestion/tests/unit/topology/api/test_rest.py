@@ -12,10 +12,13 @@
 Test REST/OpenAPI.
 """
 
+import json
 from copy import deepcopy
+from io import BytesIO
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
 from pydantic import AnyUrl
 from pydantic_core import Url
 
@@ -27,9 +30,13 @@ from metadata.generated.schema.entity.services.apiService import (
     ApiService,
     ApiServiceType,
 )
+from metadata.generated.schema.entity.services.connections.api.openAPISchemaS3 import (
+    OpenAPISchemaS3,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
@@ -39,6 +46,11 @@ from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.api.rest.metadata import RestSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
+from metadata.ingestion.source.api.rest.parser import (
+    OpenAPIParseError,
+    _parse_s3_url,
+    parse_openapi_schema_from_s3,
+)
 
 mock_rest_config = {
     "source": {
@@ -1190,3 +1202,255 @@ class RESTTest(TestCase):
         assert len(result) == 2
         assert "/health" in result
         assert "/untagged/endpoint" in result
+
+
+MOCK_OPENAPI_JSON = {
+    "openapi": "3.0.0",
+    "info": {"title": "Test API", "version": "1.0.0"},
+    "paths": {
+        "/test": {
+            "get": {
+                "tags": ["test"],
+                "summary": "Test endpoint",
+                "operationId": "testGet",
+            }
+        }
+    },
+    "tags": [{"name": "test", "description": "Test collection"}],
+}
+
+MOCK_OPENAPI_YAML = """openapi: "3.0.0"
+info:
+  title: Test API
+  version: "1.0.0"
+paths:
+  /test:
+    get:
+      tags:
+        - test
+      summary: Test endpoint
+      operationId: testGet
+tags:
+  - name: test
+    description: Test collection
+"""
+
+MOCK_S3_REST_CONFIG = {
+    "source": {
+        "type": "rest",
+        "serviceName": "openapi_rest_s3",
+        "serviceConnection": {
+            "config": {
+                "type": "Rest",
+                "openAPISchemaConnection": {
+                    "openAPISchemaS3URL": "https://my-bucket.s3.us-east-1.amazonaws.com/schemas/openapi.json",
+                    "awsCredentials": {
+                        "awsRegion": "us-east-1",
+                        "awsAccessKeyId": "test-key",
+                        "awsSecretAccessKey": "test-secret",
+                    },
+                },
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "ApiMetadata",
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            },
+        }
+    },
+}
+
+
+class TestParseS3URL:
+    def test_virtual_hosted_style(self):
+        bucket, key = _parse_s3_url(
+            "https://my-bucket.s3.us-east-1.amazonaws.com/path/to/schema.json"
+        )
+        assert bucket == "my-bucket"
+        assert key == "path/to/schema.json"
+
+    def test_virtual_hosted_style_no_region(self):
+        bucket, key = _parse_s3_url("https://my-bucket.s3.amazonaws.com/openapi.yaml")
+        assert bucket == "my-bucket"
+        assert key == "openapi.yaml"
+
+    def test_path_style(self):
+        bucket, key = _parse_s3_url(
+            "https://s3.us-east-1.amazonaws.com/my-bucket/path/to/schema.json"
+        )
+        assert bucket == "my-bucket"
+        assert key == "path/to/schema.json"
+
+    def test_path_style_no_region(self):
+        bucket, key = _parse_s3_url("https://s3.amazonaws.com/my-bucket/openapi.json")
+        assert bucket == "my-bucket"
+        assert key == "openapi.json"
+
+    def test_invalid_url_raises(self):
+        with pytest.raises(OpenAPIParseError, match="Unable to parse S3 URL"):
+            _parse_s3_url("https://example.com/not-an-s3-url")
+
+    def test_virtual_hosted_empty_path_raises(self):
+        with pytest.raises(OpenAPIParseError, match="missing the object key"):
+            _parse_s3_url("https://my-bucket.s3.amazonaws.com/")
+
+    def test_virtual_hosted_no_path_raises(self):
+        with pytest.raises(OpenAPIParseError, match="missing the object key"):
+            _parse_s3_url("https://my-bucket.s3.us-east-1.amazonaws.com")
+
+    def test_path_style_missing_key_raises(self):
+        with pytest.raises(OpenAPIParseError, match="missing the object key"):
+            _parse_s3_url("https://s3.amazonaws.com/my-bucket")
+
+    def test_deeply_nested_key(self):
+        bucket, key = _parse_s3_url(
+            "https://data-bucket.s3.eu-central-1.amazonaws.com/a/b/c/d/openapi.yaml"
+        )
+        assert bucket == "data-bucket"
+        assert key == "a/b/c/d/openapi.yaml"
+
+
+class TestParseOpenAPISchemaFromS3:
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_json_file(self, mock_aws_client_cls):
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {
+            "Body": BytesIO(json.dumps(MOCK_OPENAPI_JSON).encode("utf-8"))
+        }
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        result = parse_openapi_schema_from_s3(
+            "https://bucket.s3.us-east-1.amazonaws.com/schema.json", creds
+        )
+
+        assert result["openapi"] == "3.0.0"
+        assert "/test" in result["paths"]
+        mock_s3.get_object.assert_called_once_with(Bucket="bucket", Key="schema.json")
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_yaml_file(self, mock_aws_client_cls):
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {
+            "Body": BytesIO(MOCK_OPENAPI_YAML.encode("utf-8"))
+        }
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        result = parse_openapi_schema_from_s3(
+            "https://bucket.s3.us-east-1.amazonaws.com/schema.yaml", creds
+        )
+
+        assert result["openapi"] == "3.0.0"
+        assert "/test" in result["paths"]
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_unknown_extension_parses_json(self, mock_aws_client_cls):
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {
+            "Body": BytesIO(json.dumps(MOCK_OPENAPI_JSON).encode("utf-8"))
+        }
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        result = parse_openapi_schema_from_s3(
+            "https://bucket.s3.us-east-1.amazonaws.com/schema.txt", creds
+        )
+
+        assert result["openapi"] == "3.0.0"
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_unknown_extension_parses_yaml(self, mock_aws_client_cls):
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {
+            "Body": BytesIO(MOCK_OPENAPI_YAML.encode("utf-8"))
+        }
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        result = parse_openapi_schema_from_s3(
+            "https://bucket.s3.us-east-1.amazonaws.com/schema.txt", creds
+        )
+
+        assert result["openapi"] == "3.0.0"
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_s3_download_failure(self, mock_aws_client_cls):
+        mock_s3 = MagicMock()
+        mock_s3.get_object.side_effect = Exception("Access Denied")
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match="Failed to download S3 object"):
+            parse_openapi_schema_from_s3(
+                "https://bucket.s3.us-east-1.amazonaws.com/schema.json", creds
+            )
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_invalid_json_content(self, mock_aws_client_cls):
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {
+            "Body": BytesIO(b"not valid json or yaml: [[[")
+        }
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match="Failed to parse S3 JSON file"):
+            parse_openapi_schema_from_s3(
+                "https://bucket.s3.us-east-1.amazonaws.com/schema.json", creds
+            )
+
+
+class TestGetConnectionS3:
+    @patch("metadata.ingestion.source.api.rest.connection.parse_openapi_schema_from_s3")
+    def test_get_connection_with_s3(self, mock_parse_s3):
+        from metadata.generated.schema.entity.services.connections.api.restConnection import (
+            RestConnection,
+        )
+        from metadata.ingestion.source.api.rest.connection import get_connection
+
+        mock_parse_s3.return_value = MOCK_OPENAPI_JSON
+
+        connection = RestConnection(
+            openAPISchemaConnection=OpenAPISchemaS3(
+                openAPISchemaS3URL="https://bucket.s3.us-east-1.amazonaws.com/schema.json",
+                awsCredentials=AWSCredentials(awsRegion="us-east-1"),
+            )
+        )
+
+        result = get_connection(connection)
+
+        assert isinstance(result, dict)
+        assert result["openapi"] == "3.0.0"
+        mock_parse_s3.assert_called_once()
+
+    @patch("metadata.ingestion.source.api.rest.connection.parse_openapi_schema_from_s3")
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_s3_config_parsing(self, mock_test_conn, mock_parse_s3):
+        mock_test_conn.return_value = False
+        mock_parse_s3.return_value = MOCK_OPENAPI_JSON
+
+        config = OpenMetadataWorkflowConfig.model_validate(MOCK_S3_REST_CONFIG)
+        connection = config.source.serviceConnection.root.config
+
+        assert isinstance(connection.openAPISchemaConnection, OpenAPISchemaS3)
+        assert (
+            str(connection.openAPISchemaConnection.openAPISchemaS3URL)
+            == "https://my-bucket.s3.us-east-1.amazonaws.com/schemas/openapi.json"
+        )
+        assert (
+            connection.openAPISchemaConnection.awsCredentials.awsRegion == "us-east-1"
+        )

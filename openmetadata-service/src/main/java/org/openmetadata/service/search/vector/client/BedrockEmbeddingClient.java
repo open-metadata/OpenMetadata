@@ -4,12 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -24,16 +18,15 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 @Slf4j
-public final class BedrockEmbeddingClient implements EmbeddingClient, AutoCloseable {
+public final class BedrockEmbeddingClient extends EmbeddingClient implements AutoCloseable {
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final int PARALLEL_THREADS = 8;
 
   private final BedrockRuntimeClient bedrockClient;
   private final String modelId;
   private final int dimension;
-  private final ExecutorService executor;
 
   public BedrockEmbeddingClient(ElasticSearchConfiguration config) {
+    super(resolveMaxConcurrent(config));
     NaturalLanguageSearchConfiguration nlsCfg = config.getNaturalLanguageSearch();
     if (nlsCfg.getBedrock() == null) {
       throw new IllegalArgumentException("Bedrock configuration is required");
@@ -54,7 +47,6 @@ public final class BedrockEmbeddingClient implements EmbeddingClient, AutoClosea
 
     this.modelId = nlsCfg.getBedrock().getEmbeddingModelId();
     this.dimension = nlsCfg.getBedrock().getEmbeddingDimension();
-    this.executor = Executors.newFixedThreadPool(PARALLEL_THREADS);
 
     this.bedrockClient =
         BedrockRuntimeClient.builder()
@@ -70,7 +62,7 @@ public final class BedrockEmbeddingClient implements EmbeddingClient, AutoClosea
   }
 
   @Override
-  public float[] embed(String text) {
+  protected float[] doEmbed(String text) {
     try {
       ObjectNode payload = MAPPER.createObjectNode();
       payload.put("inputText", text);
@@ -100,24 +92,6 @@ public final class BedrockEmbeddingClient implements EmbeddingClient, AutoClosea
   }
 
   @Override
-  public List<float[]> embedBatch(List<String> texts) {
-    if (texts == null || texts.isEmpty()) {
-      return List.of();
-    }
-
-    List<CompletableFuture<float[]>> futures = new ArrayList<>(texts.size());
-    for (String text : texts) {
-      futures.add(CompletableFuture.supplyAsync(() -> embed(text), executor));
-    }
-
-    List<float[]> results = new ArrayList<>(texts.size());
-    for (CompletableFuture<float[]> future : futures) {
-      results.add(future.join());
-    }
-    return results;
-  }
-
-  @Override
   public int getDimension() {
     return dimension;
   }
@@ -129,15 +103,6 @@ public final class BedrockEmbeddingClient implements EmbeddingClient, AutoClosea
 
   @Override
   public void close() {
-    executor.shutdown();
-    try {
-      if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
-        executor.shutdownNow();
-      }
-    } catch (InterruptedException e) {
-      executor.shutdownNow();
-      Thread.currentThread().interrupt();
-    }
     if (bedrockClient != null) {
       bedrockClient.close();
     }

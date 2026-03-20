@@ -508,7 +508,6 @@ test.describe('Domain Description Editing', () => {
       await page.getByTestId('save').click();
       await saveRes;
 
-
       await expect(
         page.locator('.om-block-editor[contenteditable="false"]')
       ).toContainText('Updated domain description via UI');
@@ -539,7 +538,6 @@ test.describe('Domain Description Editing', () => {
       const saveRes = page.waitForResponse('/api/v1/dataProducts/*');
       await page.getByTestId('save').click();
       await saveRes;
-
 
       await expect(
         page.locator('.om-block-editor[contenteditable="false"]')
@@ -924,9 +922,7 @@ test.describe('Domain Search and Filter', () => {
 
       await searchBox.fill(`SearchTestDomain_${uniqueId}`);
 
-      await page.waitForResponse(
-        '/api/v1/search/query?q=*&index=domain_search_index*'
-      );
+      await page.waitForResponse('/api/v1/search/query?q=*&index=domain*');
 
       await waitForAllLoadersToDisappear(page);
 

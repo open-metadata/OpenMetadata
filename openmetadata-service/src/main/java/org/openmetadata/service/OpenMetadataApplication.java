@@ -133,6 +133,7 @@ import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.system.DiagnosticsResource;
+import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -368,6 +369,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
 
+    environment
+        .lifecycle()
+        .manage(
+            new SearchIndexRetryWorker(
+                jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
+
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi, catalogConfig.getCacheConfig());
 
@@ -389,14 +396,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Asset Servlet Registration
     registerAssetServlet(catalogConfig, catalogConfig.getWebConfiguration(), environment);
 
-    // Register MCP
+    // Register Auth Handlers (must be before MCP for SSO initialization)
+    registerAuthServlets(catalogConfig, environment);
+
+    // Register MCP (depends on Auth Handlers for SSO)
     registerMCPServer(catalogConfig, environment);
 
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
-
-    // Register Auth Handlers
-    registerAuthServlets(catalogConfig, environment);
 
     // Register User Metrics Servlet
     registerUserMetricsServlet(environment);
@@ -1020,6 +1027,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Jetty metrics for monitoring
     JettyMetricsIntegration.registerJettyMetrics(environment);
+
+    // MCP OAuth is handled by servlets registered in McpServer.initializeMcpServer()
+    // No JAX-RS resources needed for OAuth endpoints
 
     // Register QoS handler for request concurrency limiting
     JettyQoSIntegration.registerQoSHandler(environment, config.getQosConfiguration());

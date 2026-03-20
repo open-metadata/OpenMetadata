@@ -310,6 +310,48 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
+  void testHasDomainWithMultipleDomains() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference domain1 = new EntityReference();
+    domain1.setId(UUID.randomUUID());
+    domain1.setName("Finance");
+
+    EntityReference domain2 = new EntityReference();
+    domain2.setId(UUID.randomUUID());
+    domain2.setName("Engineering");
+
+    when(mockUser.getDomains()).thenReturn(List.of(domain1, domain2));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertTrue(generatedQuery.contains("domains.id"), "The query should contain 'domains.id'.");
+    assertTrue(
+        generatedQuery.contains(domain1.getId().toString()),
+        "The query should contain domain1 ID.");
+    assertTrue(
+        generatedQuery.contains(domain2.getId().toString()),
+        "The query should contain domain2 ID.");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.id'].value=='" + domain1.getId() + "')]",
+        "domain1 should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.id'].value=='" + domain2.getId() + "')]",
+        "domain2 should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.bool.must_not)]",
+        "should include a clause for entities with no domain");
+  }
+
+  @Test
   void testComplexConditionWithRolesDomainTagsTeams() {
     setupMockPolicies(
         "hasAnyRole('Admin', 'DataSteward') && hasDomain() && (matchAnyTag('Sensitive') || inAnyTeam('Interns'))",
@@ -335,11 +377,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    assertFieldExists(jsonContext, "$.bool.must[?(@.term['domains.id'])]", "domains.id");
+    assertFieldExists(jsonContext, "$..bool.should[?(@.term['domains.id'])]", "domains.id");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
         "user's domain ID");
 
     assertFieldExists(
@@ -761,7 +803,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
-    assertFieldExists(jsonContext, "$.bool.must[?(@.term['domains.id'])]", "domains.id");
+    assertFieldExists(jsonContext, "$..bool.should[?(@.term['domains.id'])]", "domains.id");
 
     assertFieldExists(
         jsonContext,
@@ -860,7 +902,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
         jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
         "domains.id");
   }
 
@@ -950,7 +992,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['domains.id'].value=='"
+        "$.bool.should[0]..bool.should[?(@.term['domains.id'].value=='"
             + domain.getId().toString()
             + "')]",
         "user's domain ID");
@@ -993,7 +1035,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['domains.id'].value=='"
+        "$.bool.should[0]..bool.should[?(@.term['domains.id'].value=='"
             + domain.getId().toString()
             + "')]",
         "user's domain ID");

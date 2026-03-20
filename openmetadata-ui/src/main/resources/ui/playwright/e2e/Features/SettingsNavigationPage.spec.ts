@@ -75,9 +75,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
     // Make changes to enable save button
-    const exploreSwitch = page
-      .locator('.ant-tree-title:has-text("Explore")')
-      .locator('.ant-switch');
+    const exploreSwitch = page.getByTestId('navigation-switch-/explore');
 
     await exploreSwitch.click();
 
@@ -112,9 +110,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
 
     // Make changes to trigger unsaved state
-    const navigateSwitch = page
-      .locator('.ant-tree-title:has-text("Explore")')
-      .locator('.ant-switch');
+    const navigateSwitch = page.getByTestId('navigation-switch-/explore');
 
     await navigateSwitch.click();
 
@@ -296,15 +292,11 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const exploreSwitchLocator = page
-      .locator('.ant-tree-title:has-text("Explore")')
-      .locator('.ant-switch');
-    const insightsSwitchLocator = page
+    const exploreSwitch = page.getByTestId('navigation-switch-/explore');
+    const insightsSwitch = page
       .locator('.ant-tree-title:has-text("Insights")')
-      .locator('.ant-switch');
-
-    const exploreSwitch = exploreSwitchLocator.first();
-    const insightsSwitch = insightsSwitchLocator.first();
+      .locator('.ant-switch')
+      .first();
 
     await exploreSwitch.click();
     await insightsSwitch.click();

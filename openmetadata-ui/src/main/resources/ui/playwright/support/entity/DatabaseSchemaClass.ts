@@ -141,7 +141,6 @@ export class DatabaseSchemaClass extends EntityClass {
       false
     );
 
-
     // Wait for the database to be visible before clicking
     await page.getByTestId(this.database.name).waitFor({ state: 'visible' });
 

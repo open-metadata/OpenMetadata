@@ -19,8 +19,10 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURA
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
@@ -55,8 +57,11 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.RelationCategory;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -281,6 +286,20 @@ public class SettingsCache {
       }
     }
 
+    // Initialize MCP Configuration
+    Settings storedMcpConfig =
+        Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
+    if (storedMcpConfig == null) {
+      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
+          applicationConfig.getMcpConfiguration();
+      if (mcpConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
+
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
+    }
+
     Settings storedScimConfig =
         Entity.getSystemRepository().getConfigWithKey(SCIM_CONFIGURATION.toString());
     if (storedScimConfig == null) {
@@ -328,6 +347,179 @@ public class SettingsCache {
                       .withDefaultPipelineService("openlineage"));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+
+    // Initialize Glossary Term Relation Settings with default relation types
+    Settings glossaryTermRelationSettings =
+        Entity.getSystemRepository().getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.toString());
+    if (glossaryTermRelationSettings == null) {
+      List<GlossaryTermRelationType> defaultRelationTypes =
+          List.of(
+              createRelationType(
+                  "relatedTo",
+                  "Related To",
+                  "General semantic relationship between terms",
+                  null,
+                  "https://open-metadata.org/ontology/relatedTo",
+                  true,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#1890ff",
+                  null,
+                  null),
+              createRelationType(
+                  "synonym",
+                  "Synonym",
+                  "Terms that have the same or nearly the same meaning",
+                  null,
+                  "http://www.w3.org/2004/02/skos/core#exactMatch",
+                  true,
+                  false,
+                  RelationCategory.EQUIVALENCE,
+                  true,
+                  "#722ed1",
+                  null,
+                  null),
+              createRelationType(
+                  "antonym",
+                  "Antonym",
+                  "Terms that have opposite meanings",
+                  null,
+                  "https://open-metadata.org/ontology/antonym",
+                  true,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#f5222d",
+                  null,
+                  null),
+              createRelationType(
+                  "broader",
+                  "Broader",
+                  "A more general term (hypernym)",
+                  "narrower",
+                  "http://www.w3.org/2004/02/skos/core#broader",
+                  false,
+                  true,
+                  RelationCategory.HIERARCHICAL,
+                  true,
+                  "#597ef7",
+                  null,
+                  null),
+              createRelationType(
+                  "narrower",
+                  "Narrower",
+                  "A more specific term (hyponym)",
+                  "broader",
+                  "http://www.w3.org/2004/02/skos/core#narrower",
+                  false,
+                  true,
+                  RelationCategory.HIERARCHICAL,
+                  true,
+                  "#85a5ff",
+                  null,
+                  null),
+              createRelationType(
+                  "partOf",
+                  "Part Of",
+                  "This term is a part or component of another term",
+                  "hasPart",
+                  "https://open-metadata.org/ontology/partOf",
+                  false,
+                  false,
+                  RelationCategory.HIERARCHICAL,
+                  true,
+                  "#13c2c2",
+                  null,
+                  null),
+              createRelationType(
+                  "hasPart",
+                  "Has Part",
+                  "This term has the other term as a part or component",
+                  "partOf",
+                  "https://open-metadata.org/ontology/hasPart",
+                  false,
+                  false,
+                  RelationCategory.HIERARCHICAL,
+                  true,
+                  "#36cfc9",
+                  null,
+                  null),
+              createRelationType(
+                  "calculatedFrom",
+                  "Calculated From",
+                  "This term/metric is calculated or derived from another term",
+                  "usedToCalculate",
+                  "https://open-metadata.org/ontology/calculatedFrom",
+                  false,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#faad14",
+                  null,
+                  null),
+              createRelationType(
+                  "usedToCalculate",
+                  "Used To Calculate",
+                  "This term is used in the calculation of another term",
+                  "calculatedFrom",
+                  "https://open-metadata.org/ontology/usedToCalculate",
+                  false,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#ffc53d",
+                  null,
+                  null),
+              createRelationType(
+                  "seeAlso",
+                  "See Also",
+                  "Related term that may provide additional context",
+                  null,
+                  "http://www.w3.org/2000/01/rdf-schema#seeAlso",
+                  true,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#eb2f96",
+                  null,
+                  null));
+
+      Settings setting =
+          new Settings()
+              .withConfigType(GLOSSARY_TERM_RELATION_SETTINGS)
+              .withConfigValue(
+                  new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
+  }
+
+  private static GlossaryTermRelationType createRelationType(
+      String name,
+      String displayName,
+      String description,
+      String inverseRelation,
+      String rdfPredicate,
+      boolean isSymmetric,
+      boolean isTransitive,
+      RelationCategory category,
+      boolean isSystemDefined,
+      String color,
+      Integer sourceMax,
+      Integer targetMax) {
+    return new GlossaryTermRelationType()
+        .withName(name)
+        .withDisplayName(displayName)
+        .withDescription(description)
+        .withInverseRelation(inverseRelation)
+        .withRdfPredicate(java.net.URI.create(rdfPredicate))
+        .withIsSymmetric(isSymmetric)
+        .withIsTransitive(isTransitive)
+        .withCategory(category)
+        .withIsSystemDefined(isSystemDefined)
+        .withColor(color)
+        .withSourceMax(sourceMax)
+        .withTargetMax(targetMax);
   }
 
   public static <T> T getSetting(SettingsType settingName, Class<T> clazz) {

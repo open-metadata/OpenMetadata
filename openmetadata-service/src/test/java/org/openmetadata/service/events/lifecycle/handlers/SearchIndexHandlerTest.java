@@ -16,6 +16,7 @@ package org.openmetadata.service.events.lifecycle.handlers;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -121,6 +122,31 @@ class SearchIndexHandlerTest {
   }
 
   @Test
+  void testOnEntitiesUpdatedUsesBulkApi() {
+    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+
+    searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
+
+    verify(mockSearchRepository).updateEntitiesIndex(entities);
+    verifyNoMoreInteractions(mockSearchRepository);
+  }
+
+  @Test
+  void testOnEntitiesUpdatedFallsBackToIndividualUpdates() {
+    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+    doThrow(new RuntimeException("Bulk update failed"))
+        .when(mockSearchRepository)
+        .updateEntitiesIndex(entities);
+
+    searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
+
+    verify(mockSearchRepository).updateEntitiesIndex(entities);
+    verify(mockSearchRepository).updateEntityIndex(mockEntity);
+    verify(mockSearchRepository).updateEntityIndex(mockEntity2);
+    verifyNoMoreInteractions(mockSearchRepository);
+  }
+
+  @Test
   void testOnEntityUpdatedWithException() {
     doThrow(new RuntimeException("Search update failed"))
         .when(mockSearchRepository)
@@ -191,7 +217,7 @@ class SearchIndexHandlerTest {
   }
 
   @Test
-  void testOnEntitiesCreatedSameType() {
+  void testOnEntitiesCreatedSameType() throws IOException {
     List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
 
     searchIndexHandler.onEntitiesCreated(entities, mockSubjectContext);
@@ -201,7 +227,7 @@ class SearchIndexHandlerTest {
   }
 
   @Test
-  void testOnEntitiesCreatedMixedTypes() {
+  void testOnEntitiesCreatedMixedTypes() throws IOException {
     // Setup different entity types
     when(mockEntityRef2.getType()).thenReturn(Entity.DASHBOARD);
 
@@ -216,7 +242,7 @@ class SearchIndexHandlerTest {
   }
 
   @Test
-  void testOnEntitiesCreatedWithFallback() {
+  void testOnEntitiesCreatedWithFallback() throws IOException {
     List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
 
     // Make bulk operation fail

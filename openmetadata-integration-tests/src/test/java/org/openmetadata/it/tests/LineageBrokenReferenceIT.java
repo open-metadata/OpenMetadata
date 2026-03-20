@@ -3,12 +3,17 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.StringReader;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -247,6 +252,72 @@ public class LineageBrokenReferenceIT {
     } finally {
       hardDeleteQuietly(client, mainTable);
       hardDeleteQuietly(client, referencedTable);
+    }
+  }
+
+  /**
+   * Regression test for the writeEdge() bug in exportCsvAsync().
+   *
+   * <p>Fan-in topology: tBad→tFocal and tGood→tFocal. Hard-delete tBad's ES document so it
+   * disappears from entityMap while its lineage edge remains. Before the fix, writeEdge() called
+   * {@code return} on the first missing entity, dropping all subsequent edges (tGood→tFocal would
+   * be lost). After the fix it calls {@code continue}, so tGood→tFocal still appears in the export.
+   */
+  @Test
+  void testAsyncExportSkipsMissingEntityAndContinuesRemainingEdges(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table tFocal = createTable(client, ns, "async_export_focal");
+    Table tBad = createTable(client, ns, "async_export_bad");
+    Table tGood = createTable(client, ns, "async_export_good");
+
+    try {
+      addLineage(client, tBad, tFocal);
+      addLineage(client, tGood, tFocal);
+
+      Awaitility.await("Both upstream lineage edges indexed")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String csv =
+                    Entity.getLineageRepository()
+                        .exportCsv(tFocal.getFullyQualifiedName(), 2, 0, null, false, "table");
+                return parseCsvRecords(csv).size() >= 2;
+              });
+
+      Entity.getSearchRepository().deleteEntityIndex(tBad);
+
+      String[] csvHolder = {null};
+      assertDoesNotThrow(
+          () ->
+              csvHolder[0] =
+                  Entity.getLineageRepository()
+                      .exportCsvAsync(tFocal.getFullyQualifiedName(), 2, 0, null, "table", false),
+          "exportCsvAsync must not throw when a referenced entity is missing from the search index");
+
+      assertNotNull(csvHolder[0]);
+
+      List<CSVRecord> rows = parseCsvRecords(csvHolder[0]);
+      boolean goodEdgePresent =
+          rows.stream().anyMatch(r -> tGood.getFullyQualifiedName().equals(r.get("fromEntityFQN")));
+      assertTrue(
+          goodEdgePresent,
+          "tGood→tFocal edge must appear in the export — exportCsvAsync should continue past the missing tBad node");
+
+    } finally {
+      hardDeleteQuietly(client, tFocal);
+      hardDeleteQuietly(client, tBad);
+      hardDeleteQuietly(client, tGood);
+    }
+  }
+
+  private List<CSVRecord> parseCsvRecords(String csvContent) throws Exception {
+    try (CSVParser parser =
+        CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(new StringReader(csvContent))) {
+      return parser.getRecords();
     }
   }
 

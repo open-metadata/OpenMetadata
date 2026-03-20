@@ -12,8 +12,8 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { descriptionBox, removeLandingBanner } from './common';
-import { TaskDetails } from './task';
 import { waitForAllLoadersToDisappear } from './entity';
+import { TaskDetails } from './task';
 
 export const REACTION_EMOJIS = ['🚀', '😕', '👀', '❤️', '🎉', '😄', '👎', '👍'];
 

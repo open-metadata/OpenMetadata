@@ -92,7 +92,7 @@ describe('QueryUsedByOtherTable test', () => {
       query: '',
       pageNumber: 1,
       pageSize: 25,
-      searchIndex: 'table_search_index',
+      searchIndex: 'table',
     });
   });
 

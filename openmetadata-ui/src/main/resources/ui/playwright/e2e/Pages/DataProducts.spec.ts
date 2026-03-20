@@ -173,9 +173,9 @@ test.describe('Data Products', () => {
 
     await test.step('Verify asset count', async () => {
       await waitForAllLoadersToDisappear(page);
-      await expect(
-        page.getByTestId('assets').getByTestId('count')
-      ).toHaveText('1');
+      await expect(page.getByTestId('assets').getByTestId('count')).toHaveText(
+        '1'
+      );
     });
 
     await test.step('Remove assets from data product', async () => {
@@ -372,8 +372,8 @@ test.describe('Data Products', () => {
         const url = new URL(request.url());
         const index = url.searchParams.get('index');
 
-        // Only mock data_product_search_index requests
-        if (index === 'data_product_search_index') {
+        // Only mock dataProduct requests
+        if (index === 'dataProduct') {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -472,7 +472,7 @@ test.describe('Data Products', () => {
       await domainInput.waitFor({ state: 'visible' });
       await domainInput.click();
       const searchDomain = page.waitForResponse(
-        '/api/v1/search/query?q=*index=domain_search_index*'
+        '/api/v1/search/query?q=*index=domain*'
       );
       await domainInput.fill(domain.data.displayName);
       await searchDomain;

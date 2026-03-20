@@ -32,7 +32,6 @@ test.describe(
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.EXPLORE);
 
-
         await page.getByTestId('search-dropdown-Data Assets').click();
         await page
           .getByTestId('drop-down-menu')

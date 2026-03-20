@@ -255,7 +255,7 @@ class PiiProcessorTest(TestCase):
         """
 
         record = SamplerResponse(
-            table=self.table_entity,
+            entity=self.table_entity,
             sample_data=SampleData(data=table_data),
         )
 

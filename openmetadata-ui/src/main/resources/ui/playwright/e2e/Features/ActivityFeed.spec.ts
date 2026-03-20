@@ -679,7 +679,9 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     const commentsInput = page.getByTestId('comments-input-field');
     if (!(await commentsInput.isVisible().catch(() => false))) {
       const seededThread = page
-        .locator('[data-testid="message-container"], [data-testid="feed-reply-card"]')
+        .locator(
+          '[data-testid="message-container"], [data-testid="feed-reply-card"]'
+        )
         .filter({
           hasText: 'Initial conversation for Chinese character encoding test',
         })

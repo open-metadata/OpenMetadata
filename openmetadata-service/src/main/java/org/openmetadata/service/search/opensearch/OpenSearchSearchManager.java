@@ -1228,8 +1228,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     String indexName = request.getIndex();
     String glossaryTermIndex =
         Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String glossaryTermAlias =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getAlias(clusterAlias);
     String domainIndex =
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+    String domainAlias =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getAlias(clusterAlias);
 
     Query existingQuery = requestBuilder.query();
 
@@ -1251,7 +1255,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                             q.matchPhrase(
                                 mp -> mp.field("displayName").query(request.getQuery()))));
 
-    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)
+        || indexName.equalsIgnoreCase(glossaryTermAlias)) {
       baseQueryBuilder
           .should(
               Query.of(
@@ -1266,7 +1271,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           .must(
               Query.of(
                   q -> q.match(m -> m.field("entityStatus").query(FieldValue.of("Approved")))));
-    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+    } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       baseQueryBuilder
           .should(
               Query.of(
@@ -1373,12 +1378,17 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     String indexName = request.getIndex();
     String glossaryTermIndex =
         Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String glossaryTermAlias =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getAlias(clusterAlias);
     String domainIndex =
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+    String domainAlias =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getAlias(clusterAlias);
 
-    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)
+        || indexName.equalsIgnoreCase(glossaryTermAlias)) {
       response = buildGlossaryTermSearchHierarchy(searchResponse);
-    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+    } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       response = buildDomainSearchHierarchy(searchResponse);
     }
     return response;

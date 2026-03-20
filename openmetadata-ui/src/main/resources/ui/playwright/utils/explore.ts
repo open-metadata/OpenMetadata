@@ -16,8 +16,8 @@ import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToExplorePage } from './common';
-import { openEntitySummaryPanel } from './entityPanel';
 import { waitForAllLoadersToDisappear } from './entity';
+import { openEntitySummaryPanel } from './entityPanel';
 
 export interface Bucket {
   key: string;
@@ -177,7 +177,7 @@ export const expandServiceInExploreTree = async (
   if (!serviceExpanded) {
     // Check that the service exists in the explore tree
     const serviceNameRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
+      '/api/v1/search/query?q=&index=database&from=0&size=0*mysql*'
     );
     await page
       .locator('div')

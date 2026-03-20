@@ -43,11 +43,7 @@ const waitForTourBadgeWithRetry = async (
   }
 };
 
-const expectTourBadge = async (
-  page: Page,
-  step: string,
-  timeout = 10000
-) => {
+const expectTourBadge = async (page: Page, step: string, timeout = 10000) => {
   const badge = page.locator('[data-tour-elem="badge"]');
   await badge.waitFor({ state: 'visible', timeout });
   await expect

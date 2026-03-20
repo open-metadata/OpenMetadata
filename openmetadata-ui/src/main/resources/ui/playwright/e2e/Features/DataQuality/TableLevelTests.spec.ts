@@ -727,7 +727,7 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         const tableListSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=table_search_index*`
+          `/api/v1/search/query?q=*index=table*`
         );
         await page.getByTestId('tableDiff').click();
         await tableListSearchResponse;
@@ -746,7 +746,7 @@ test.describe(
         await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
 
         const tableSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*${testCase.table2}*index=table_search_index*`
+          `/api/v1/search/query?q=*${testCase.table2}*index=table*`
         );
         await page.fill(`#testCaseFormV1_params_table2`, testCase.table2);
         await tableSearchResponse;
@@ -754,12 +754,17 @@ test.describe(
 
         await expect(
           page
-            .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+            .getByTitle(
+              table2.entityResponseData?.['fullyQualifiedName'] ?? '',
+              { exact: true }
+            )
             .locator('div')
         ).toBeVisible();
 
         await page
-          .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+          .getByTitle(table2.entityResponseData?.['fullyQualifiedName'] ?? '', {
+            exact: true,
+          })
           .locator('div')
           .click();
 
@@ -1074,11 +1079,11 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableRowInsertedCountToBeBetween').click();
-        await page.locator('[data-id="tableRowInsertedCountToBeBetween"]').waitFor(
-          {
+        await page
+          .locator('[data-id="tableRowInsertedCountToBeBetween"]')
+          .waitFor({
             state: 'visible',
-          }
-        );
+          });
 
         await expect(
           page.locator('[data-id="tableRowInsertedCountToBeBetween"]')
@@ -1093,9 +1098,11 @@ test.describe(
         );
 
         await page.click('#testCaseFormV1_params_columnName');
-        await page.locator(`.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`).waitFor(
-          { state: 'visible' }
-        );
+        await page
+          .locator(
+            `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`
+          )
+          .waitFor({ state: 'visible' });
         await page.click(
           `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`
         );

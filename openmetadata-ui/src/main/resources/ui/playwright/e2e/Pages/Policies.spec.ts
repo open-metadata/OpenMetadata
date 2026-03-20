@@ -408,7 +408,6 @@ test.describe(
 
       await waitForAllLoadersToDisappear(page);
 
-
       await getElementWithPagination(page, policyLocator);
 
       await page.getByTestId('manage-button').click();
