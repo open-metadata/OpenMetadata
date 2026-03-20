@@ -12,12 +12,13 @@
 name: UI Checkstyle
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
       - reopened
       - ready_for_review
+      - labeled
     paths:
       - "openmetadata-ui/src/main/resources/ui/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
@@ -40,10 +41,12 @@ jobs:
   # Job 0: Authorize
   # ──────────────────────────────────────────────────────────────────────────
   authorize:
+    if: |
+      github.event_name == 'pull_request_target' && 
+      (github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
-        if: ${{ github.event_name == 'pull_request_target' }}
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -52,7 +55,6 @@ jobs:
           wait-interval: 90
 
       - name: Verify PR labels
-        if: ${{ github.event_name == 'pull_request_target' }}
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
@@ -671,7 +673,6 @@ jobs:
 
       - name: TypeScript Type Check (playwright)
         id: tsc
-        if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
           if [ -z "$CHANGED_FILES" ]; then
