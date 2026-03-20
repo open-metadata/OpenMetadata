@@ -22,8 +22,7 @@ interface NodeEqualsTypeArgs {
 function nodeEqualsType({ types, node }: NodeEqualsTypeArgs) {
   return (
     node &&
-    ((Array.isArray(types) && types.includes(node.type)) ||
-      node.type === types)
+    ((Array.isArray(types) && types.includes(node.type)) || node.type === types)
   );
 }
 

@@ -99,6 +99,8 @@ jobs:
         uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
         with:
           path: ${{ env.UI_WORKING_DIRECTORY }}
+          files_ignore: |
+            src/generated/**
           files: |
             src/**/*.{ts,tsx,js,jsx}
 
@@ -203,7 +205,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         env:
-          CHANGED_FILES_ALL: ${{ steps.changed-files.outputs.all_changed_files }}
+          CHANGED_FILES_ALL: ${{ steps.changed-files.outputs.added_modified_files }}
         run: |
           yarn license-header-fix $CHANGED_FILES_ALL
           if [ -n "$(git status --porcelain)" ]; then
@@ -549,6 +551,8 @@ jobs:
         uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
         with:
           path: ${{ env.UI_WORKING_DIRECTORY }}
+          files_ignore: |
+            playwright/test-data/**
           files: |
             playwright/**/*.{ts,tsx,js,jsx}
 
@@ -557,7 +561,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         env:
-          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.added_modified_files }}
         run: |
           yarn organize-imports:cli $CHANGED_FILES
           yarn lint:base --fix $CHANGED_FILES
@@ -648,6 +652,8 @@ jobs:
         uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
         with:
           path: ${{ env.UI_WORKING_DIRECTORY }}
+          files_ignore: |
+            playwright/test-data/**
           files: |
             playwright/**/*.{ts,tsx,js,jsx}
 
