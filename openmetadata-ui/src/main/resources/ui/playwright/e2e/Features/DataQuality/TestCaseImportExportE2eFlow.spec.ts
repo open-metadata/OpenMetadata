@@ -20,7 +20,7 @@ import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import {
   cleanupDownloadedCSV,
-  performE2EExportImportFlow
+  performE2EExportImportFlow,
 } from '../../../utils/testCases';
 import { test as base } from '../../fixtures/pages';
 
@@ -90,7 +90,6 @@ test.describe(
       await redirectToHomePage(page);
       await performE2EExportImportFlow(page, table, 'admin');
     });
-
   }
 );
 

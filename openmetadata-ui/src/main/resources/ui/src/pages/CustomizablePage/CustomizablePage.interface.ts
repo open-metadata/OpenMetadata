@@ -17,7 +17,7 @@ export interface WidgetConfig
   extends Pick<Layout, 'i' | 'x' | 'y' | 'h' | 'w' | 'static' | 'isDraggable'> {
   children?: WidgetConfig[];
   config?: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
   data?: {
     page: {

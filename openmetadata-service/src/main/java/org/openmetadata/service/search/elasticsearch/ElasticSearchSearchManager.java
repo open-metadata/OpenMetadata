@@ -16,6 +16,7 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorCause;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.SortMode;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
@@ -353,7 +354,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw buildSearchException(e);
       }
     }
   }
@@ -519,7 +520,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw buildSearchException(e);
       }
     }
   }
@@ -1175,9 +1176,22 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         throw new SearchIndexNotFoundException(
             String.format("Failed to find index %s", request.getIndex()));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw buildSearchException(e);
       }
     }
+  }
+
+  private static SearchException buildSearchException(ElasticsearchException e) {
+    String detail = e.getMessage();
+    ErrorCause error = e.error();
+    if (error != null && error.rootCause() != null && !error.rootCause().isEmpty()) {
+      String rootCauses =
+          error.rootCause().stream()
+              .map(c -> c.type() + ": " + c.reason())
+              .collect(Collectors.joining("; "));
+      detail = String.format("%s | Root cause: [%s]", detail, rootCauses);
+    }
+    return new SearchException(String.format("Search failed due to %s", detail));
   }
 
   private ElasticSearchRequestBuilder buildHierarchyQuery(
@@ -1189,8 +1203,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     String indexName = request.getIndex();
     String glossaryTermIndex =
         Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String glossaryTermAlias =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getAlias(clusterAlias);
     String domainIndex =
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+    String domainAlias =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getAlias(clusterAlias);
 
     Query existingQuery = requestBuilder.query();
     org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.BoolQueryBuilder
@@ -1210,7 +1228,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                             q.matchPhrase(
                                 mp -> mp.field("displayName").query(request.getQuery()))));
 
-    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)
+        || indexName.equalsIgnoreCase(glossaryTermAlias)) {
       baseQueryBuilder
           .should(
               Query.of(
@@ -1223,7 +1242,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                       q.matchPhrase(
                           mp -> mp.field("glossary.displayName").query(request.getQuery()))))
           .must(Query.of(q -> q.match(m -> m.field("entityStatus").query("Approved"))));
-    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+    } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       baseQueryBuilder
           .should(
               Query.of(
@@ -1309,12 +1328,17 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     String indexName = request.getIndex();
     String glossaryTermIndex =
         Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String glossaryTermAlias =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getAlias(clusterAlias);
     String domainIndex =
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+    String domainAlias =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getAlias(clusterAlias);
 
-    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)
+        || indexName.equalsIgnoreCase(glossaryTermAlias)) {
       response = buildGlossaryTermSearchHierarchy(searchResponse);
-    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+    } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       response = buildDomainSearchHierarchy(searchResponse);
     }
     return response;

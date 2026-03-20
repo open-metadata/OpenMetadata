@@ -76,8 +76,10 @@ const IncidentManagerPageHeader = ({
   const [isLoading, setIsLoading] = useState(true);
   const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
 
-  const { fqn: decodedFqn, dimensionKey } =
-    useRequiredParams<{ fqn: string; dimensionKey?: string }>();
+  const { fqn: decodedFqn, dimensionKey } = useRequiredParams<{
+    fqn: string;
+    dimensionKey?: string;
+  }>();
   const {
     setActiveThread,
     entityThread,

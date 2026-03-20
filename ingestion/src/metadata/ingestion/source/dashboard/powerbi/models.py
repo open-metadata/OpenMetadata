@@ -428,6 +428,24 @@ class DataflowEntity(BaseModel):
     attributes: Optional[List[DataflowEntityAttribute]] = []
 
 
+class DataflowQueryMetadata(BaseModel):
+    queryId: Optional[str] = None
+    queryName: Optional[str] = None
+    loadEnabled: Optional[bool] = False
+
+
+class DataflowMashup(BaseModel):
+    document: Optional[str] = None
+    queriesMetadata: Optional[dict] = None
+
+    @field_validator("queriesMetadata", mode="before")
+    @classmethod
+    def parse_queries_metadata(cls, v):
+        if isinstance(v, dict):
+            return v
+        return None
+
+
 class DataflowExportResponse(BaseModel):
     """
     PowerBI Dataflow Export API Response Model
@@ -439,3 +457,4 @@ class DataflowExportResponse(BaseModel):
     description: Optional[str] = None
     version: Optional[str] = None
     entities: Optional[List[DataflowEntity]] = []
+    mashup: Optional[DataflowMashup] = Field(None, alias="pbi:mashup")

@@ -24,6 +24,7 @@ import {
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
 import { setToken } from '../../utils/tokenStorage';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const test = base.extend<{
   page: Page;
@@ -50,8 +51,7 @@ const test = base.extend<{
 
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('loader', { state: 'hidden' });
+    await page.locator('loader').waitFor({ state: 'hidden' });
 
     await expect(page.getByTestId('nav-user-name')).toHaveText('ingestion-bot');
 
@@ -96,95 +96,77 @@ test.describe('Ingestion Bot ', () => {
     await test.step('Assign assets to domains', async () => {
       // Add assets to domain 1
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain1.data);
       await addAssetsToDomain(page, domain1, domainAsset1, true, true);
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain2.data);
       await addAssetsToDomain(page, domain2, domainAsset2, true, true);
     });
 
-    await test.step(
-      'Ingestion bot should access domain assigned assets',
-      async () => {
-        // Check if entity page is accessible & it has domain
-        for (const asset of domainAsset1) {
-          await redirectToHomePage(ingestionBotPage);
-          await asset.visitEntityPage(ingestionBotPage);
+    await test.step('Ingestion bot should access domain assigned assets', async () => {
+      // Check if entity page is accessible & it has domain
+      for (const asset of domainAsset1) {
+        await redirectToHomePage(ingestionBotPage);
+        await asset.visitEntityPage(ingestionBotPage);
 
-          await expect(
-            ingestionBotPage.getByTestId('permission-error-placeholder')
-          ).not.toBeVisible();
+        await expect(
+          ingestionBotPage.getByTestId('permission-error-placeholder')
+        ).not.toBeVisible();
 
-          await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
-            domain1.data.displayName
-          );
-        }
-        // Check if entity page is accessible & it has domain
-        for (const asset of domainAsset2) {
-          await redirectToHomePage(ingestionBotPage);
-          await asset.visitEntityPage(ingestionBotPage);
-
-          await expect(
-            ingestionBotPage.getByTestId('permission-error-placeholder')
-          ).not.toBeVisible();
-
-          await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
-            domain2.data.displayName
-          );
-        }
+        await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
+          domain1.data.displayName
+        );
       }
-    );
+      // Check if entity page is accessible & it has domain
+      for (const asset of domainAsset2) {
+        await redirectToHomePage(ingestionBotPage);
+        await asset.visitEntityPage(ingestionBotPage);
+
+        await expect(
+          ingestionBotPage.getByTestId('permission-error-placeholder')
+        ).not.toBeVisible();
+
+        await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
+          domain2.data.displayName
+        );
+      }
+    });
 
     await test.step('Assign services to domains', async () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await addServicesToDomain(page, domain1.data, [
         domainAsset1[0].get().service,
       ]);
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await addServicesToDomain(page, domain2.data, [
         domainAsset2[0].get().service,
       ]);
     });
 
-    await test.step(
-      'Ingestion bot should access domain assigned services',
-      async () => {
-        await redirectToHomePage(ingestionBotPage);
+    await test.step('Ingestion bot should access domain assigned services', async () => {
+      await redirectToHomePage(ingestionBotPage);
 
-        // Check if services is searchable and accessible or not
-        await visitServiceDetailsPage(ingestionBotPage, {
-          name: domainAsset1[0].get().service.name,
-          type: domainAsset1[0].serviceCategory,
-        });
+      // Check if services is searchable and accessible or not
+      await visitServiceDetailsPage(ingestionBotPage, {
+        name: domainAsset1[0].get().service.name,
+        type: domainAsset1[0].serviceCategory,
+      });
 
-        // check if service has domain or not
-        await expect(
-          ingestionBotPage.getByTestId('domain-link').first()
-        ).toHaveText(domain1.data.displayName);
-      }
-    );
+      // check if service has domain or not
+      await expect(
+        ingestionBotPage.getByTestId('domain-link').first()
+      ).toHaveText(domain1.data.displayName);
+    });
 
     await assetCleanup1();
     await assetCleanup2();

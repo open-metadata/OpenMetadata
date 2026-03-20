@@ -156,7 +156,7 @@ setup('authenticate all users', async ({ browser }) => {
     // Wait for indexedDB databases to be available
     await adminPage.waitForFunction(() => indexedDB.databases());
 
-    // Additional wait to ensure auth state is persisted
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for auth state to be persisted to indexedDB
     await adminPage.waitForTimeout(2000);
 
     // Save admin state
@@ -166,43 +166,36 @@ setup('authenticate all users', async ({ browser }) => {
 
     // Save states for each user sequentially to avoid file operation conflicts
     await dataConsumer.login(dataConsumerPage);
-    await dataConsumerPage.waitForLoadState('networkidle');
     await dataConsumerPage
       .context()
       .storageState({ path: dataConsumerFile, indexedDB: true });
 
     await dataSteward.login(dataStewardPage);
-    await dataStewardPage.waitForLoadState('networkidle');
     await dataStewardPage
       .context()
       .storageState({ path: dataStewardFile, indexedDB: true });
 
     await editDescriptionUser.login(editDescriptionPage);
-    await editDescriptionPage.waitForLoadState('networkidle');
     await editDescriptionPage
       .context()
       .storageState({ path: editDescriptionFile, indexedDB: true });
 
     await editTagsUser.login(editTagsPage);
-    await editTagsPage.waitForLoadState('networkidle');
     await editTagsPage
       .context()
       .storageState({ path: editTagsFile, indexedDB: true });
 
     await editGlossaryTermUser.login(editGlossaryTermPage);
-    await editGlossaryTermPage.waitForLoadState('networkidle');
     await editGlossaryTermPage
       .context()
       .storageState({ path: editGlossaryTermFile, indexedDB: true });
 
     await viewOnlyUser.login(viewOnlyPage);
-    await viewOnlyPage.waitForLoadState('networkidle');
     await viewOnlyPage
       .context()
       .storageState({ path: viewOnlyFile, indexedDB: true });
 
     await ownerUser.login(ownerPage);
-    await ownerPage.waitForLoadState('networkidle');
     await ownerPage
       .context()
       .storageState({ path: ownerFile, indexedDB: true });
@@ -213,7 +206,6 @@ setup('authenticate all users', async ({ browser }) => {
       await newAdminPage.close();
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Error during authentication setup:', error);
 
     throw error;

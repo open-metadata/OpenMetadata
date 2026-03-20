@@ -17,7 +17,8 @@ from typing import Optional
 
 from requests._internal_utils import to_native_string
 
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
@@ -46,7 +47,7 @@ class ModeApiClient:
     REST Auth & Client for Mode
     """
 
-    client: REST
+    client: TrackedREST
 
     def __init__(self, config):
         self.config = config
@@ -66,7 +67,7 @@ class ModeApiClient:
                 ).strip()
             ),
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="mode")
 
     def fetch_all_reports(
         self, workspace_name: str, filter: Optional[str] = "all"

@@ -81,6 +81,7 @@ import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-d
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as IconTestCase } from '../assets/svg/ic-checklist.svg';
+import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
@@ -446,6 +447,8 @@ export const getEntityIcon = (
     [EntityType.CHART]: ChartIcon,
     [SearchIndex.TABLE]: TableIcon,
     [EntityType.TABLE]: TableIcon,
+    [SearchIndex.COLUMN]: ColumnIcon,
+    [EntityType.TABLE_COLUMN]: ColumnIcon,
     [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
     [SearchIndex.DATA_PRODUCT]: DataProductIcon,
     [EntityType.DATA_PRODUCT]: DataProductIcon,
@@ -474,24 +477,24 @@ export const getEntityIcon = (
     ['automator']: AutomatorBotIcon,
     ['notification']: NotificationIcon,
     [EntityType.API_ENDPOINT]: APIEndpointIcon,
-    [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointIcon,
+    [SearchIndex.API_ENDPOINT]: APIEndpointIcon,
     [EntityType.METRIC]: MetricIcon,
-    [SearchIndex.METRIC_SEARCH_INDEX]: MetricIcon,
+    [SearchIndex.METRIC]: MetricIcon,
     [EntityType.API_SERVICE]: APIServiceIcon,
-    [SearchIndex.API_SERVICE_INDEX]: APIServiceIcon,
+    [SearchIndex.API_SERVICE]: APIServiceIcon,
     [EntityType.API_COLLECTION]: APICollectionIcon,
-    [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
+    [SearchIndex.API_COLLECTION]: APICollectionIcon,
     ['location']: LocationIcon,
     [EntityType.QUERY]: QueryIcon,
     [SearchIndex.QUERY]: QueryIcon,
     [EntityType.DIRECTORY]: DirectoryIcon,
-    [SearchIndex.DIRECTORY_SEARCH_INDEX]: DirectoryIcon,
+    [SearchIndex.DIRECTORY]: DirectoryIcon,
     [EntityType.FILE]: FileIcon,
-    [SearchIndex.FILE_SEARCH_INDEX]: FileIcon,
+    [SearchIndex.FILE]: FileIcon,
     [EntityType.SPREADSHEET]: SpreadsheetIcon,
-    [SearchIndex.SPREADSHEET_SEARCH_INDEX]: SpreadsheetIcon,
+    [SearchIndex.SPREADSHEET]: SpreadsheetIcon,
     [EntityType.WORKSHEET]: WorksheetIcon,
-    [SearchIndex.WORKSHEET_SEARCH_INDEX]: WorksheetIcon,
+    [SearchIndex.WORKSHEET]: WorksheetIcon,
     [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
     [SearchIndex.DRIVE_SERVICE]: DriveServiceIcon,
   };

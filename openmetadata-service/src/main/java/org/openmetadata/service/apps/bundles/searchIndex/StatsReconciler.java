@@ -1,8 +1,10 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.Entity;
 
 @Slf4j
 public class StatsReconciler {
@@ -15,6 +17,7 @@ public class StatsReconciler {
     }
 
     StepStats readerStats = stats.getReaderStats();
+    StepStats processStats = stats.getProcessStats();
     StepStats sinkStats = stats.getSinkStats();
     StepStats jobStats = stats.getJobStats();
 
@@ -26,20 +29,26 @@ public class StatsReconciler {
     int readerTotal = safeGet(readerStats.getTotalRecords());
     int readerFailed = safeGet(readerStats.getFailedRecords());
     int readerWarnings = safeGet(readerStats.getWarningRecords());
+    int processFailed = processStats != null ? safeGet(processStats.getFailedRecords()) : 0;
     int sinkSuccess = safeGet(sinkStats.getSuccessRecords());
     int sinkFailed = safeGet(sinkStats.getFailedRecords());
     int sinkWarnings = safeGet(sinkStats.getWarningRecords());
 
-    // Reconcile entity-level totals
+    // Reconcile entity-level totals (exclude TABLE_COLUMN — columns are indexed as a
+    // side effect of table processing and should not inflate the job-level totals)
     if (stats.getEntityStats() != null
         && stats.getEntityStats().getAdditionalProperties() != null) {
       int reconciledTotal = 0;
-      for (StepStats es : stats.getEntityStats().getAdditionalProperties().values()) {
+      for (Map.Entry<String, StepStats> entry :
+          stats.getEntityStats().getAdditionalProperties().entrySet()) {
+        StepStats es = entry.getValue();
         int actual = safeGet(es.getSuccessRecords()) + safeGet(es.getFailedRecords());
         if (actual > safeGet(es.getTotalRecords())) {
           es.setTotalRecords(actual);
         }
-        reconciledTotal += safeGet(es.getTotalRecords());
+        if (!Entity.TABLE_COLUMN.equals(entry.getKey())) {
+          reconciledTotal += safeGet(es.getTotalRecords());
+        }
       }
       if (reconciledTotal > readerTotal) {
         readerStats.setTotalRecords(reconciledTotal);
@@ -48,7 +57,7 @@ public class StatsReconciler {
     }
 
     int jobSuccess = sinkSuccess;
-    int jobFailed = readerFailed + sinkFailed;
+    int jobFailed = readerFailed + processFailed + sinkFailed;
     int jobTotal = readerTotal;
     int jobWarnings = readerWarnings;
 
@@ -61,12 +70,13 @@ public class StatsReconciler {
     if (computedTotal != jobTotal && jobTotal > 0) {
       LOG.warn(
           "Stats discrepancy detected: total={}, success+failed={}. "
-              + "Reader: total={}, failed={}, warnings={}. Sink: success={}, failed={}, warnings={}",
+              + "Reader: total={}, failed={}, warnings={}. Process: failed={}. Sink: success={}, failed={}, warnings={}",
           jobTotal,
           computedTotal,
           readerTotal,
           readerFailed,
           readerWarnings,
+          processFailed,
           sinkSuccess,
           sinkFailed,
           sinkWarnings);
@@ -75,7 +85,8 @@ public class StatsReconciler {
     return stats;
   }
 
-  public static StepStats reconcileToJobStats(StepStats readerStats, StepStats sinkStats) {
+  public static StepStats reconcileToJobStats(
+      StepStats readerStats, StepStats processStats, StepStats sinkStats) {
     if (readerStats == null && sinkStats == null) {
       return new StepStats()
           .withTotalRecords(0)
@@ -87,13 +98,14 @@ public class StatsReconciler {
     int readerTotal = readerStats != null ? safeGet(readerStats.getTotalRecords()) : 0;
     int readerFailed = readerStats != null ? safeGet(readerStats.getFailedRecords()) : 0;
     int readerWarnings = readerStats != null ? safeGet(readerStats.getWarningRecords()) : 0;
+    int processFailed = processStats != null ? safeGet(processStats.getFailedRecords()) : 0;
     int sinkSuccess = sinkStats != null ? safeGet(sinkStats.getSuccessRecords()) : 0;
     int sinkFailed = sinkStats != null ? safeGet(sinkStats.getFailedRecords()) : 0;
 
     return new StepStats()
         .withTotalRecords(readerTotal)
         .withSuccessRecords(sinkSuccess)
-        .withFailedRecords(readerFailed + sinkFailed)
+        .withFailedRecords(readerFailed + processFailed + sinkFailed)
         .withWarningRecords(readerWarnings);
   }
 

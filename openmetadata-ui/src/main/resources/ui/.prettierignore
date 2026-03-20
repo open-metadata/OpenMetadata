@@ -62,3 +62,10 @@ src/generated/
 
 # Snapshots
 *.snap
+
+
+# Playwright generated output (reports, traces, test artifacts)
+playwright/output/
+
+# Playwright test fixtures (may contain intentionally malformed files)
+playwright/test-data/

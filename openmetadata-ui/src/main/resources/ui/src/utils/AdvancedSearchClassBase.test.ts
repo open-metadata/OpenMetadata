@@ -67,7 +67,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.TIER,
       'extension',
       'descriptionStatus',
-      EntityFields.ENTITY_TYPE,
+      EntityFields.ENTITY_TYPE_KEYWORD,
       'descriptionSources.Suggested',
       'tags.labelType',
       'tier.labelType',
@@ -161,7 +161,7 @@ describe('getEntitySpecificQueryBuilderFields', () => {
 
   it('should return apiEndpoint specific fields', () => {
     const result = advancedSearchClassBase.getEntitySpecificQueryBuilderFields([
-      SearchIndex.API_ENDPOINT_INDEX,
+      SearchIndex.API_ENDPOINT,
     ]);
 
     expect(Object.keys(result)).toEqual([

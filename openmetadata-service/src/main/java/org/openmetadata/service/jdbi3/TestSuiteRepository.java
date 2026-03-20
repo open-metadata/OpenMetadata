@@ -17,7 +17,6 @@ import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.escapeDoubleQuotes;
 
-import com.google.gson.Gson;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
@@ -69,6 +68,7 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -270,9 +270,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
+  protected EntityReference getParentReference(TestSuite entity) {
+    return entity.getBasic() ? entity.getBasicEntityReference() : null;
+  }
+
+  @Override
   public EntityInterface getParentEntity(TestSuite entity, String fields) {
     if (entity.getBasic() && entity.getBasicEntityReference() != null) {
-      String filteredFields = EntityUtil.getFilteredFields(TABLE, fields);
+      var filteredFields = EntityUtil.getFilteredFields(TABLE, fields);
       return Entity.getEntity(entity.getBasicEntityReference(), filteredFields, ALL);
     }
     return null;
@@ -504,11 +509,23 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
               .getSearchIndexFactory()
               .buildIndex(entity.getBasicEntityReference().getType(), entityInterface);
       Map<String, Object> doc = index.buildSearchIndexDoc();
-      searchClient.updateEntity(
-          indexMapping.getIndexName(searchRepository.getClusterAlias()),
-          entity.getBasicEntityReference().getId().toString(),
-          doc,
-          "ctx._source.testSuite = params.testSuite;");
+      try {
+        searchClient.updateEntity(
+            indexMapping.getIndexName(searchRepository.getClusterAlias()),
+            entity.getBasicEntityReference().getId().toString(),
+            doc,
+            "ctx._source.testSuite = params.testSuite;");
+      } catch (Exception e) {
+        SearchIndexRetryQueue.enqueue(
+            entity.getBasicEntityReference().getId().toString(),
+            entityInterface.getFullyQualifiedName(),
+            entity.getBasicEntityReference().getType(),
+            SearchIndexRetryQueue.failureReason("postCreate.updateTestSuiteIndex", e));
+        LOG.error(
+            "Failed to update search index for entity [{}] in postCreate: {}",
+            entity.getBasicEntityReference().getId(),
+            e.getMessage());
+      }
     }
   }
 
@@ -525,6 +542,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     testCaseResultSummaryMap.forEach(
         (id, results) -> testSummaryMap.put(id, computeSimpleSummary(results)));
 
+    setFieldFromMap(
+        true, testSuites, testCaseResultSummaryMap, TestSuite::setTestCaseResultSummary);
     setFieldFromMap(true, testSuites, testSummaryMap, TestSuite::setSummary);
   }
 
@@ -631,26 +650,18 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("tests");
+  }
+
+  @Override
   public void storeEntity(TestSuite entity, boolean update) {
-    // we don't want to store the tests in the test suite entity
-    List<EntityReference> tests = entity.getTests();
-    entity.setTests(null);
     store(entity, update);
-    entity.setTests(tests);
   }
 
   @Override
   public void storeEntities(List<TestSuite> entities) {
-    List<TestSuite> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-    for (TestSuite entity : entities) {
-      List<EntityReference> tests = entity.getTests();
-      entity.setTests(null);
-      String jsonCopy = gson.toJson(entity);
-      entitiesToStore.add(gson.fromJson(jsonCopy, TestSuite.class));
-      entity.setTests(tests);
-    }
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -956,16 +967,28 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      List<EntityReference> origTests = listOrEmpty(original.getTests());
-      List<EntityReference> updatedTests = listOrEmpty(updated.getTests());
-      List<ResultSummary> origTestCaseResultSummary =
-          listOrEmpty(original.getTestCaseResultSummary());
-      List<ResultSummary> updatedTestCaseResultSummary =
-          listOrEmpty(updated.getTestCaseResultSummary());
-      recordChange(UPDATE_FIELDS, origTests, updatedTests);
-      recordChange(
-          "testCaseResultSummary", origTestCaseResultSummary, updatedTestCaseResultSummary);
-      recordChange("dataContract", original.getDataContract(), updated.getDataContract());
+      compareAndUpdate(
+          UPDATE_FIELDS,
+          () -> {
+            List<EntityReference> origTests = listOrEmpty(original.getTests());
+            List<EntityReference> updatedTests = listOrEmpty(updated.getTests());
+            recordChange(UPDATE_FIELDS, origTests, updatedTests);
+          });
+      compareAndUpdate(
+          "testCaseResultSummary",
+          () -> {
+            List<ResultSummary> origTestCaseResultSummary =
+                listOrEmpty(original.getTestCaseResultSummary());
+            List<ResultSummary> updatedTestCaseResultSummary =
+                listOrEmpty(updated.getTestCaseResultSummary());
+            recordChange(
+                "testCaseResultSummary", origTestCaseResultSummary, updatedTestCaseResultSummary);
+          });
+      compareAndUpdate(
+          "dataContract",
+          () -> {
+            recordChange("dataContract", original.getDataContract(), updated.getDataContract());
+          });
     }
   }
 }

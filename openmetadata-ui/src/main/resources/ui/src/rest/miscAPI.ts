@@ -169,7 +169,8 @@ export const getAggregateFieldOptions = (
   value: string,
   q: string,
   sourceFields?: string,
-  deleted = false
+  deleted = false,
+  isNLPEnabled = false
 ) => {
   const withWildCardValue = value
     ? `.*${escapeESReservedCharacters(value)}.*`
@@ -184,7 +185,7 @@ export const getAggregateFieldOptions = (
   };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
-    `/search/aggregate`,
+    isNLPEnabled ? `/hybrid/nlq/search/aggregate` : `/search/aggregate`,
     {
       params,
     }

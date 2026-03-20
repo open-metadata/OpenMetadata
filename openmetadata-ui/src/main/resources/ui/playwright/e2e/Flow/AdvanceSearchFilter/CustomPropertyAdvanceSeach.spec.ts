@@ -68,6 +68,14 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     await afterAction();
   });
 
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await dashboard.delete(apiContext);
+    await topic1.delete(apiContext);
+    await topic2.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.EXPLORE);
@@ -605,21 +613,21 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     test('Entity Reference CP with all operators', async ({ page }) => {
       test.slow();
       const propertyName = propertyNames['entityReference'];
-      const containsText = topic1.entityResponseData.displayName.substring(
+      const containsText = topic1.entityResponseData.displayName?.substring(
         1,
         5
       );
-      const regexpText = `${topic1.entityResponseData.displayName.substring(
+      const regexpText = `${topic1.entityResponseData.displayName?.substring(
         0,
         2
-      )}.*${topic1.entityResponseData.displayName.substring(5, 7)}.*`;
+      )}.*${topic1.entityResponseData.displayName?.substring(5, 7)}.*`;
 
       await showAdvancedSearchDialog(page);
       await applyCustomPropertyFilter(
         page,
         propertyName,
         'select_equals',
-        topic1.entityResponseData.displayName,
+        topic1.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReference'
       );
@@ -635,7 +643,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'select_not_equals',
-        topic1.entityResponseData.displayName,
+        topic1.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReference'
       );
@@ -647,7 +655,12 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(page, propertyName, 'like', containsText);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'like',
+        containsText ?? ''
+      );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
@@ -661,7 +674,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'not_like',
-        containsText
+        containsText ?? ''
       );
       await verifySearchResults(
         page,
@@ -703,21 +716,21 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     test('Entity Reference List CP with all operators', async ({ page }) => {
       test.slow();
       const propertyName = propertyNames['entityReferenceList'];
-      const containsText = topic1.entityResponseData.displayName.substring(
+      const containsText = topic1.entityResponseData.displayName?.substring(
         1,
         5
       );
-      const regexpText = `${topic1.entityResponseData.displayName.substring(
+      const regexpText = `${topic1.entityResponseData.displayName?.substring(
         0,
         2
-      )}.*${topic1.entityResponseData.displayName.substring(5, 7)}.*`;
+      )}.*${topic1.entityResponseData.displayName?.substring(5, 7)}.*`;
 
       await showAdvancedSearchDialog(page);
       await applyCustomPropertyFilter(
         page,
         propertyName,
         'select_equals',
-        topic1.entityResponseData.displayName,
+        topic1.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReferenceList'
       );
@@ -733,7 +746,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'select_equals',
-        topic2.entityResponseData.displayName,
+        topic2.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReferenceList'
       );
@@ -749,7 +762,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'select_not_equals',
-        topic2.entityResponseData.displayName,
+        topic2.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReferenceList'
       );
@@ -761,7 +774,12 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(page, propertyName, 'like', containsText);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'like',
+        containsText ?? ''
+      );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
@@ -775,7 +793,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'not_like',
-        containsText
+        containsText ?? ''
       );
       await verifySearchResults(
         page,

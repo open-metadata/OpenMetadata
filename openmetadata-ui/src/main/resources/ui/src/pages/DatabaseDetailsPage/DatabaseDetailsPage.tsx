@@ -99,8 +99,9 @@ const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { withinPageSearch } =
-    useLocationSearch<{ withinPageSearch: string }>();
+  const { withinPageSearch } = useLocationSearch<{
+    withinPageSearch: string;
+  }>();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { entityFqn: decodedDatabaseFQN } = useFqn({
     type: EntityType.DATABASE,

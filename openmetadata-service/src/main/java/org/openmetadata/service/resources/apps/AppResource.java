@@ -482,9 +482,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String after) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
-      return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation))
-          .build();
+      AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
+      if (latestRun == null) {
+        return Response.status(Response.Status.NO_CONTENT).build();
+      }
+      return Response.status(Response.Status.OK).entity(latestRun).build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
         EntityReference pipelineRef = installation.getPipelines().get(0);
@@ -531,9 +533,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String after) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
-      return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation))
-          .build();
+      AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
+      if (latestRun == null) {
+        return Response.status(Response.Status.NO_CONTENT).build();
+      }
+      return Response.status(Response.Status.OK).entity(latestRun).build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
         EntityReference pipelineRef = installation.getPipelines().get(0);
@@ -1120,6 +1124,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Map<String, Object> configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
+    if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
+      throw AppException.byMessage(
+          name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");
+    }
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
           .triggerApplicationOnDemand(
@@ -1168,7 +1176,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.getByName(uriInfo, name, fields);
     if (Boolean.TRUE.equals(app.getSupportsInterrupt())) {
       if (app.getAppType().equals(AppType.Internal)) {
-        new Thread(() -> AppScheduler.getInstance().stopApplicationRun(app)).start();
+        Thread.ofVirtual()
+            .name("om-app-stop-" + name)
+            .start(() -> AppScheduler.getInstance().stopApplicationRun(app));
         return Response.status(Response.Status.OK)
             .entity("Application stop in progress. Please check status via.")
             .build();
@@ -1207,6 +1217,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
+    if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
+      throw AppException.byMessage(
+          name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");
+    }
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
           .installApplication(

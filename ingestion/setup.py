@@ -68,6 +68,7 @@ VERSIONS = {
     "starrocks": "pymysql~=1.0",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
+    "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
     "s3fs": "s3fs~=2023.12.1",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
@@ -164,7 +165,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage~=2.0",
+    "collate-sqllineage>=2.0.2",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
@@ -313,6 +314,7 @@ plugins: Dict[str, Set[str]] = {
     "kafka": {*COMMONS["kafka"]},
     "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
+    "pubsub": {VERSIONS["google-cloud-pubsub"]},
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
@@ -373,6 +375,7 @@ plugins: Dict[str, Set[str]] = {
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
+    "ssrs": {"requests-ntlm"},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
     "teradata": {VERSIONS["teradata"]},

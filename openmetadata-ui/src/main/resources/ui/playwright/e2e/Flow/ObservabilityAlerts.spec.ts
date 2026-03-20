@@ -35,6 +35,7 @@ import {
   visitAlertDetailsPage,
 } from '../../utils/alert';
 import { getApiContext } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addExternalDestination,
   checkAlertDetailsForWithPermissionUser,
@@ -170,6 +171,7 @@ test('Pipeline Alert', async ({ page }) => {
     );
     await diagnosticTab.click();
     await diagnosticInfoResponse;
+    await waitForAllLoadersToDisappear(page);
   });
 
   await test.step('Check created alert details', async () => {
@@ -297,7 +299,7 @@ test('Alert operations for a user with and without permissions', async ({
       `[data-testid="fqn-list-select"] [role="combobox"]`,
       table1.entity.name,
       {
-        force: true,
+        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
       }
     );
 
@@ -322,21 +324,19 @@ test('Alert operations for a user with and without permissions', async ({
     await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
 
     // Adding the dropdown visibility check to avoid flakiness here
-    await userWithPermissionsPage.waitForSelector(
-      `.ant-select-dropdown:visible`,
-      {
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
         state: 'visible',
-      }
-    );
+      });
     await userWithPermissionsPage.click(
       '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
     );
-    await userWithPermissionsPage.waitForSelector(
-      `.ant-select-dropdown:visible`,
-      {
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
         state: 'hidden',
-      }
-    );
+      });
 
     await userWithPermissionsPage.click(
       '[data-testid="add-destination-button"]'
@@ -380,18 +380,15 @@ test('Alert operations for a user with and without permissions', async ({
     });
   });
 
-  await test.step(
-    'Check alert details page and Recent Events tab',
-    async () => {
-      await checkAlertDetailsForWithPermissionUser({
-        page: userWithPermissionsPage,
-        alertDetails: data.alertDetails,
-        sourceName: SOURCE_NAME_3,
-        table: table1,
-        user: user2,
-      });
-    }
-  );
+  await test.step('Check alert details page and Recent Events tab', async () => {
+    await checkAlertDetailsForWithPermissionUser({
+      page: userWithPermissionsPage,
+      alertDetails: data.alertDetails,
+      sourceName: SOURCE_NAME_3,
+      table: table1,
+      user: user2,
+    });
+  });
 
   await test.step('Delete alert', async () => {
     await deleteAlert(userWithPermissionsPage, data.alertDetails, false);

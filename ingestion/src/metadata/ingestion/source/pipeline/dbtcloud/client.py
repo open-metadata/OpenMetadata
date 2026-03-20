@@ -18,7 +18,8 @@ from typing import Iterable, List, Optional, Tuple
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.pipeline.dbtcloud.models import (
     DBTJob,
     DBTJobList,
@@ -66,8 +67,8 @@ class DBTCloudClient:
             allow_redirects=True,
         )
 
-        self.client = REST(client_config)
-        self.graphql_client = REST(graphql_client_config)
+        self.client = TrackedREST(client_config, source_name="dbtcloud")
+        self.graphql_client = TrackedREST(graphql_client_config, source_name="dbtcloud")
 
     def _get_jobs(
         self,

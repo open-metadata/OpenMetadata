@@ -9,11 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class VectorDocBuilderTest {
@@ -22,111 +24,41 @@ class VectorDocBuilderTest {
       new EmbeddingClientTest.MockEmbeddingClient(384);
 
   @Test
-  void testFromEntityBasic() {
+  void testBuildEmbeddingFieldsBasic() {
     Table table = createTestTable("test_table", "Test Table", "A test table for unit testing");
 
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
-    assertNotNull(docs);
-    assertFalse(docs.isEmpty());
-    Map<String, Object> doc = docs.getFirst();
-    assertEquals(table.getId().toString(), doc.get("parent_id"));
-    assertEquals("test_table", doc.get("name"));
-    assertEquals("Test Table", doc.get("displayName"));
-    assertEquals("service.db.schema.test_table", doc.get("fullyQualifiedName"));
-    assertNotNull(doc.get("embedding"));
-    assertNotNull(doc.get("fingerprint"));
-    assertEquals(0, doc.get("chunk_index"));
-    assertEquals(1, doc.get("chunk_count"));
+    assertNotNull(fields);
+    assertEquals(table.getId().toString(), fields.get("parentId"));
+    assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToEmbed"));
+    assertNotNull(fields.get("fingerprint"));
+    assertEquals(0, fields.get("chunkIndex"));
+    assertTrue((int) fields.get("chunkCount") >= 1);
   }
 
   @Test
-  void testFromEntityWithTags() {
-    Table table = createTestTable("tagged_table", null, null);
+  void testBuildEmbeddingFieldsContainsEmbeddingVector() {
+    Table table = createTestTable("vec_table", null, "A table with embedding");
 
-    TagLabel tag = new TagLabel();
-    tag.setTagFQN("PII.Sensitive");
-    tag.setName("Sensitive");
-    table.setTags(List.of(tag));
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    Map<String, Object> doc = docs.getFirst();
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> tags = (List<Map<String, Object>>) doc.get("tags");
-    assertNotNull(tags);
-    assertEquals(1, tags.size());
-    assertEquals("PII.Sensitive", tags.getFirst().get("tagFQN"));
+    Object embedding = fields.get("embedding");
+    assertTrue(embedding instanceof float[]);
+    assertEquals(384, ((float[]) embedding).length);
   }
 
   @Test
-  void testFromEntityWithTier() {
-    Table table = createTestTable("tiered_table", null, null);
+  void testBuildEmbeddingFieldsTextToEmbedContainsEntityInfo() {
+    Table table = createTestTable("info_table", "Info Display", "Important description");
 
-    TagLabel tierTag = new TagLabel();
-    tierTag.setTagFQN("Tier.Tier1");
-    tierTag.setName("Tier1");
-    table.setTags(List.of(tierTag));
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    Map<String, Object> doc = docs.getFirst();
-    @SuppressWarnings("unchecked")
-    Map<String, Object> tier = (Map<String, Object>) doc.get("tier");
-    assertNotNull(tier);
-    assertEquals("Tier.Tier1", tier.get("tagFQN"));
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> tags = (List<Map<String, Object>>) doc.get("tags");
-    assertTrue(tags.isEmpty());
-  }
-
-  @Test
-  void testFromEntityWithOwners() {
-    Table table = createTestTable("owned_table", null, null);
-
-    EntityReference owner = new EntityReference();
-    owner.setId(UUID.randomUUID());
-    owner.setType("user");
-    owner.setName("test_user");
-    owner.setDisplayName("Test User");
-    table.setOwners(List.of(owner));
-
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    Map<String, Object> doc = docs.getFirst();
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> owners = (List<Map<String, Object>>) doc.get("owners");
-    assertNotNull(owners);
-    assertEquals(1, owners.size());
-    assertEquals("test_user", owners.getFirst().get("name"));
-    assertEquals("user", owners.getFirst().get("type"));
-  }
-
-  @Test
-  void testFromEntityWithColumns() {
-    Table table = createTestTable("column_table", null, "A table with columns");
-
-    Column col1 = new Column();
-    col1.setName("id");
-    col1.setDataType(ColumnDataType.INT);
-    col1.setDescription("Primary key");
-
-    Column col2 = new Column();
-    col2.setName("email");
-    col2.setDataType(ColumnDataType.VARCHAR);
-    col2.setDescription("User email address");
-
-    table.setColumns(List.of(col1, col2));
-
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    Map<String, Object> doc = docs.getFirst();
-    @SuppressWarnings("unchecked")
-    List<String> columns = (List<String>) doc.get("columns");
-    assertNotNull(columns);
-    assertEquals(2, columns.size());
-    assertEquals("id", columns.get(0));
-    assertEquals("email", columns.get(1));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertNotNull(textToEmbed);
+    assertTrue(textToEmbed.contains("info_table"));
+    assertTrue(textToEmbed.contains("Important description"));
   }
 
   @Test
@@ -151,31 +83,18 @@ class VectorDocBuilderTest {
   }
 
   @Test
-  void testMultiChunkDocument() {
+  void testBuildEmbeddingFieldsChunkCount() {
     StringBuilder longDesc = new StringBuilder();
     for (int i = 0; i < 500; i++) {
       longDesc.append("word").append(i).append(" ");
     }
     Table table = createTestTable("chunked_table", null, longDesc.toString());
 
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
-    assertTrue(docs.size() > 1);
-    for (int i = 0; i < docs.size(); i++) {
-      assertEquals(i, docs.get(i).get("chunk_index"));
-      assertEquals(docs.size(), docs.get(i).get("chunk_count"));
-      assertEquals(table.getId().toString(), docs.get(i).get("parent_id"));
-    }
-  }
-
-  @Test
-  void testDeletedFlag() {
-    Table table = createTestTable("deleted_table", null, null);
-    table.setDeleted(true);
-
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    assertEquals(true, docs.getFirst().get("deleted"));
+    assertTrue((int) fields.get("chunkCount") > 1);
+    assertEquals(0, fields.get("chunkIndex"));
+    assertEquals(table.getId().toString(), fields.get("parentId"));
   }
 
   @Test
@@ -211,6 +130,34 @@ class VectorDocBuilderTest {
     String bodyText = VectorDocBuilder.buildBodyText(table, "table");
 
     assertTrue(bodyText.contains("my_column"));
+  }
+
+  @Test
+  void testMetaLightTextContainsTags() {
+    Table table = createTestTable("tagged_table", null, null);
+
+    TagLabel tag = new TagLabel();
+    tag.setTagFQN("PII.Sensitive");
+    tag.setName("Sensitive");
+    table.setTags(List.of(tag));
+
+    String metaLight = VectorDocBuilder.buildMetaLightText(table, "table");
+    assertTrue(metaLight.contains("PII.Sensitive"));
+  }
+
+  @Test
+  void testMetaLightTextContainsOwners() {
+    Table table = createTestTable("owned_table", null, null);
+
+    EntityReference owner = new EntityReference();
+    owner.setId(UUID.randomUUID());
+    owner.setType("user");
+    owner.setName("test_user");
+    owner.setDisplayName("Test User");
+    table.setOwners(List.of(owner));
+
+    String metaLight = VectorDocBuilder.buildMetaLightText(table, "table");
+    assertTrue(metaLight.contains("test_user"));
   }
 
   @Test
@@ -271,6 +218,95 @@ class VectorDocBuilderTest {
     table.setTags(List.of(regularTag));
 
     assertEquals(null, VectorDocBuilder.extractTierLabel(table));
+  }
+
+  @Test
+  void testBuildEmbeddingFieldsWithGlossaryTermRelations() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue metric");
+
+    EntityReference ref1 = new EntityReference();
+    ref1.setId(UUID.randomUUID());
+    ref1.setType("glossaryTerm");
+    ref1.setName("profit");
+    ref1.setDisplayName("Profit");
+    ref1.setFullyQualifiedName("finance.profit");
+
+    EntityReference ref2 = new EntityReference();
+    ref2.setId(UUID.randomUUID());
+    ref2.setType("glossaryTerm");
+    ref2.setName("cost");
+    ref2.setDisplayName("Cost");
+    ref2.setFullyQualifiedName("finance.cost");
+
+    TermRelation rel1 = new TermRelation().withTerm(ref1).withRelationType("broader");
+    TermRelation rel2 = new TermRelation().withTerm(ref2).withRelationType("synonym");
+    term.setRelatedTerms(List.of(rel1, rel2));
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(term, MOCK_CLIENT);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToEmbed"));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(textToEmbed.contains("finance.profit"));
+    assertTrue(textToEmbed.contains("finance.cost"));
+    assertTrue(textToEmbed.contains("relatedTerms:"));
+  }
+
+  @Test
+  void testBuildEmbeddingFieldsWithGlossaryTermNoRelatedTerms() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
+    term.setRelatedTerms(null);
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(term, MOCK_CLIENT);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("textToEmbed"));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(textToEmbed.contains("relatedTerms:"));
+    assertFalse(textToEmbed.contains("finance."));
+  }
+
+  @Test
+  void testGlossaryTermMetaLightIncludesRelatedTerms() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
+
+    EntityReference ref = new EntityReference();
+    ref.setId(UUID.randomUUID());
+    ref.setType("glossaryTerm");
+    ref.setName("profit");
+    ref.setFullyQualifiedName("finance.profit");
+
+    TermRelation rel = new TermRelation().withTerm(ref).withRelationType("synonym");
+    term.setRelatedTerms(List.of(rel));
+
+    String metaLight = VectorDocBuilder.buildMetaLightText(term, "glossaryTerm");
+
+    assertTrue(metaLight.contains("relatedTerms:"));
+    assertTrue(metaLight.contains("finance.profit"));
+  }
+
+  @Test
+  void testGlossaryTermWithSynonymsInMetaLight() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
+    term.setSynonyms(List.of("income", "earnings"));
+
+    String metaLight = VectorDocBuilder.buildMetaLightText(term, "glossaryTerm");
+
+    assertTrue(metaLight.contains("synonyms:"));
+    assertTrue(metaLight.contains("income"));
+    assertTrue(metaLight.contains("earnings"));
+  }
+
+  private GlossaryTerm createTestGlossaryTerm(String name, String displayName, String description) {
+    GlossaryTerm term = new GlossaryTerm();
+    term.setId(UUID.randomUUID());
+    term.setName(name);
+    term.setDisplayName(displayName);
+    term.setDescription(description);
+    term.setFullyQualifiedName("glossary." + name);
+    term.setDeleted(false);
+    return term;
   }
 
   private Table createTestTable(String name, String displayName, String description) {

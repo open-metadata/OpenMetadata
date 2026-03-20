@@ -195,7 +195,7 @@ export async function suggestions(
             hit._source.name
           ),
           type:
-            hit._index === SearchIndex.USER ? OwnerType.USER : OwnerType.TEAM,
+            entityType === EntityType.USER ? OwnerType.USER : OwnerType.TEAM,
           name: hit._source.name,
           displayName: hit._source.displayName,
         };

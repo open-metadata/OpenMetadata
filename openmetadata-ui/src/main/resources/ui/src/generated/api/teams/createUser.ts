@@ -469,6 +469,11 @@ export interface MessagingProvider {
  */
 export interface Webhook {
     /**
+     * Authentication configuration for the webhook. If not specified, the webhook will be sent
+     * without authentication.
+     */
+    authType?: AuthenticationConfigurationType;
+    /**
      * Endpoint to receive the webhook events over POST requests.
      */
     endpoint?: string;
@@ -489,11 +494,6 @@ export interface Webhook {
      */
     receivers?: string[];
     /**
-     * Secret set by the webhook client used for computing HMAC SHA256 signature of webhook
-     * payload and sent in `X-OM-Signature` header in POST requests to publish the events.
-     */
-    secretKey?: string;
-    /**
      * Send the Event to Admins
      */
     sendToAdmins?: boolean;
@@ -505,6 +505,53 @@ export interface Webhook {
      * Send the Event to Owners
      */
     sendToOwners?: boolean;
+}
+
+/**
+ * Authentication configuration for the webhook. If not specified, the webhook will be sent
+ * without authentication.
+ *
+ * No authentication.
+ *
+ * Bearer token authentication for webhook endpoints.
+ *
+ * OAuth2 Client Credentials configuration for webhook authentication.
+ */
+export interface AuthenticationConfigurationType {
+    /**
+     * Authentication type discriminator.
+     */
+    type: Type;
+    /**
+     * Secret key used for computing HMAC SHA256 signature of webhook payload, sent in the
+     * X-OM-Signature header.
+     */
+    secretKey?: string;
+    /**
+     * OAuth2 client identifier. Stored encrypted via Fernet.
+     */
+    clientId?: string;
+    /**
+     * OAuth2 client secret. Stored encrypted via Fernet.
+     */
+    clientSecret?: string;
+    /**
+     * Optional OAuth2 scopes to request (space-separated).
+     */
+    scope?: string;
+    /**
+     * Token endpoint URL to obtain access tokens.
+     */
+    tokenUrl?: string;
+}
+
+/**
+ * Authentication type discriminator.
+ */
+export enum Type {
+    Bearer = "bearer",
+    None = "none",
+    Oauth2 = "oauth2",
 }
 
 /**

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +53,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -78,12 +80,16 @@ import software.amazon.awssdk.regions.Region;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  private final boolean isClientAvailable;
+  private static final int REQUEST_COMPRESSION_THRESHOLD_BYTES = 8 * 1024;
+
+  private volatile boolean isClientAvailable;
+  private static final long HEALTH_CHECK_CACHE_MS = 5000;
+  private final AtomicLong lastHealthCheckAt = new AtomicLong();
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
   // New OpenSearch Java API client
   @Getter protected final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
-  private final boolean isNewClientAvailable;
+  private volatile boolean isNewClientAvailable;
   private final OpenSearchTransport transport;
   private final SdkHttpClient awsHttpClient; // Stored for cleanup on close()
 
@@ -155,6 +161,25 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public boolean isClientAvailable() {
+    if (newClient == null) {
+      return false;
+    }
+    long now = System.currentTimeMillis();
+    long last = lastHealthCheckAt.get();
+    if (now - last < HEALTH_CHECK_CACHE_MS) {
+      return isClientAvailable;
+    }
+    if (!lastHealthCheckAt.compareAndSet(last, now)) {
+      return isClientAvailable;
+    }
+    try {
+      boolean alive = newClient.ping().value();
+      isClientAvailable = alive;
+      isNewClientAvailable = alive;
+    } catch (Exception e) {
+      isClientAvailable = false;
+      isNewClientAvailable = false;
+    }
     return isClientAvailable;
   }
 
@@ -538,6 +563,11 @@ public class OpenSearchClient implements SearchClient {
                   }
                 } catch (Exception ex) {
                   LOG.error("Reindexing Across Entities Failed", ex);
+                  SearchIndexRetryQueue.enqueue(
+                      sourceRef.getId() != null ? sourceRef.getId().toString() : null,
+                      sourceRef.getFullyQualifiedName(),
+                      sourceRef.getType(),
+                      SearchIndexRetryQueue.failureReason("reindexAcrossIndices", ex));
                 }
               });
     }
@@ -718,6 +748,8 @@ public class OpenSearchClient implements SearchClient {
           AwsSdk2TransportOptions.builder()
               .setCredentials(buildCredentialsProvider(awsConfig))
               .setMapper(new JacksonJsonpMapper())
+              .setRequestCompressionSize(REQUEST_COMPRESSION_THRESHOLD_BYTES)
+              .setResponseCompression(true)
               .build();
 
       LOG.info(
@@ -831,6 +863,12 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
     genericManager.deleteILMPolicy(policyName);
+  }
+
+  @Override
+  public void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    genericManager.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
   }
 
   @Override

@@ -39,7 +39,7 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
   }, [avatarList]);
 
   const handleMouseOut = useCallback(() => {
-    avatarBtnRefs.current.forEach((ref: any) => {
+    avatarBtnRefs.current.forEach((ref: RefObject<HTMLButtonElement>) => {
       ref.current?.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
     });
   }, [avatarBtnRefs]);

@@ -46,12 +46,15 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
+import os.org.opensearch.client.opensearch._types.Conflicts;
 import os.org.opensearch.client.opensearch._types.ErrorCause;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
@@ -117,6 +120,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                               .document(toJsonData(entry.getValue())))));
     }
 
+    if (operations.isEmpty()) {
+      return;
+    }
+
     BulkRequest bulkRequest = BulkRequest.of(b -> b.operations(operations).refresh(Refresh.True));
     // Async call using OpenSearchAsyncClient
     CompletableFuture<BulkResponse> future = asyncClient.bulk(bulkRequest);
@@ -124,6 +131,17 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     future.whenComplete(
         (response, error) -> {
           if (error != null) {
+            String reason = SearchIndexRetryQueue.failureReason("createEntities", error);
+            docsAndIds.forEach(
+                docAndId ->
+                    docAndId
+                        .keySet()
+                        .forEach(
+                            docId -> {
+                              if (SearchIndexRetryQueue.isUuid(docId)) {
+                                SearchIndexRetryQueue.enqueue(docId, null, reason);
+                              }
+                            }));
             LOG.error("Failed to create entities in OpenSearch (async)", error);
             return;
           }
@@ -138,9 +156,17 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             response.items().stream()
                 .filter(item -> item.error() != null)
                 .forEach(
-                    item ->
-                        LOG.error(
-                            "Indexing failed for ID {}: {}", item.id(), item.error().reason()));
+                    item -> {
+                      if (SearchIndexRetryQueue.isUuid(item.id())) {
+                        SearchIndexRetryQueue.enqueue(
+                            item.id(),
+                            null,
+                            SearchIndexRetryQueue.failureReason(
+                                "createEntitiesItemError",
+                                new RuntimeException(item.error().reason())));
+                      }
+                      LOG.error("Indexing failed for ID {}: {}", item.id(), item.error().reason());
+                    });
           } else {
             LOG.info(
                 "Successfully indexed {} entities to OpenSearch (async) for index: {}",
@@ -303,6 +329,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             u.index(indexName)
                 .id(docId)
                 .refresh(Refresh.True)
+                .retryOnConflict(3)
                 .script(
                     s ->
                         s.inline(
@@ -382,26 +409,29 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     try {
       Map<String, JsonData> params = convertToJsonDataMap(doc);
 
-      client.update(
-          u ->
-              u.index(indexName)
-                  .id(docId)
-                  .refresh(Refresh.True)
-                  .scriptedUpsert(true)
-                  .upsert(params)
-                  .script(
-                      s ->
-                          s.inline(
-                              inline ->
-                                  inline
-                                      .lang(
-                                          l ->
-                                              l.builtin(
-                                                  os.org.opensearch.client.opensearch._types
-                                                      .BuiltinScriptLanguage.Painless))
-                                      .source(scriptTxt)
-                                      .params(params))),
-          Map.class);
+      SearchRetryUtil.executeWithRetry(
+          () ->
+              client.update(
+                  u ->
+                      u.index(indexName)
+                          .id(docId)
+                          .refresh(Refresh.True)
+                          .retryOnConflict(3)
+                          .scriptedUpsert(true)
+                          .upsert(params)
+                          .script(
+                              s ->
+                                  s.inline(
+                                      inline ->
+                                          inline
+                                              .lang(
+                                                  l ->
+                                                      l.builtin(
+                                                          os.org.opensearch.client.opensearch._types
+                                                              .BuiltinScriptLanguage.Painless))
+                                              .source(scriptTxt)
+                                              .params(params))),
+                  Map.class));
 
       LOG.info(
           "Successfully updated entity in OpenSearch for index: {}, docId: {}", indexName, docId);
@@ -412,10 +442,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             indexName,
             docId);
       } else {
+        SearchIndexRetryQueue.enqueue(
+            docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
         LOG.error(
             "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
       }
     } catch (IOException e) {
+      SearchIndexRetryQueue.enqueue(
+          docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
       LOG.error(
           "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
     }
@@ -438,13 +472,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       client.updateByQuery(
           u ->
               u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                  .query(
-                      q ->
-                          q.match(
-                              m ->
-                                  m.field(fieldAndValue.getKey())
-                                      .query(FieldValue.of(fieldAndValue.getValue()))
-                                      .operator(Operator.And)))
+                  .query(exactFieldQuery(fieldAndValue))
+                  .conflicts(Conflicts.Proceed)
                   .script(
                       s ->
                           s.inline(
@@ -461,6 +490,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
       LOG.info("Successfully updated children in OpenSearch for index: {}", indexName);
     } catch (IOException | OpenSearchException e) {
+      SearchIndexRetryQueue.enqueue(
+          null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
       LOG.error("Failed to update children in OpenSearch for index: {}", indexName, e);
     }
   }
@@ -482,13 +513,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     client.updateByQuery(
         u ->
             u.index(indexNames)
-                .query(
-                    q ->
-                        q.match(
-                            m ->
-                                m.field(fieldAndValue.getKey())
-                                    .query(FieldValue.of(fieldAndValue.getValue()))
-                                    .operator(Operator.And)))
+                .query(exactFieldQuery(fieldAndValue))
+                .conflicts(Conflicts.Proceed)
                 .script(
                     s ->
                         s.inline(
@@ -555,13 +581,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           client.updateByQuery(
               u ->
                   u.index(indexName)
-                      .query(
-                          q ->
-                              q.match(
-                                  m ->
-                                      m.field(fieldAndValue.getKey())
-                                          .query(FieldValue.of(fieldAndValue.getValue()))
-                                          .operator(Operator.And)))
+                      .query(exactFieldQuery(fieldAndValue))
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -635,6 +656,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -659,8 +681,33 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to update FQN prefix: {}", errorMessage);
       }
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newParentFQN, SearchIndexRetryQueue.failureReason("updateByFqnPrefix", e));
       LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
     }
+  }
+
+  private Query exactFieldQuery(Pair<String, String> fieldAndValue) {
+    String field = fieldAndValue.getKey();
+    String value = fieldAndValue.getValue();
+    if ("_id".equals(field)) {
+      return Query.of(q -> q.ids(i -> i.values(value)));
+    }
+
+    Query termOnField = Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
+    Query termOnKeyword =
+        field.endsWith(".keyword")
+            ? null
+            : Query.of(q -> q.term(t -> t.field(field + ".keyword").value(FieldValue.of(value))));
+    Query matchOnField =
+        Query.of(
+            q -> q.match(m -> m.field(field).query(FieldValue.of(value)).operator(Operator.And)));
+
+    BoolQuery.Builder bool = new BoolQuery.Builder().should(termOnField).should(matchOnField);
+    if (termOnKeyword != null) {
+      bool.should(termOnKeyword);
+    }
+    return Query.of(q -> q.bool(bool.minimumShouldMatch("1").build()));
   }
 
   @Override
@@ -674,18 +721,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     Map<String, JsonData> params =
         Collections.singletonMap("lineageData", JsonData.of(JsonUtils.getMap(lineageData)));
+    Query lineageQuery = buildLineageUpdateQuery(fieldAndValue);
 
     UpdateByQueryResponse response =
         client.updateByQuery(
             u ->
                 u.index(indexName)
-                    .query(
-                        q ->
-                            q.match(
-                                m ->
-                                    m.field(fieldAndValue.getKey())
-                                        .query(FieldValue.of(fieldAndValue.getValue()))
-                                        .operator(Operator.And)))
+                    .query(lineageQuery)
+                    .conflicts(Conflicts.Proceed)
                     .script(
                         s ->
                             s.inline(
@@ -813,14 +856,23 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
+    if (originalUpdatedColumnFqnMap == null || originalUpdatedColumnFqnMap.isEmpty()) {
+      LOG.debug("No column updates provided for upstream lineage update.");
+      return;
+    }
+
     try {
       Map<String, JsonData> params =
           Collections.singletonMap("columnUpdates", JsonData.of(originalUpdatedColumnFqnMap));
+      Query impactedLineageQuery =
+          buildLineageColumnsQuery(new ArrayList<>(originalUpdatedColumnFqnMap.keySet()));
 
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .query(impactedLineageQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -860,14 +912,22 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
+    if (deletedColumns == null || deletedColumns.isEmpty()) {
+      LOG.debug("No deleted columns provided for upstream lineage cleanup.");
+      return;
+    }
+
     try {
       Map<String, JsonData> params =
           Collections.singletonMap("deletedFQNs", JsonData.of(deletedColumns));
+      Query impactedLineageQuery = buildLineageColumnsQuery(deletedColumns);
 
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .query(impactedLineageQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -922,6 +982,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -950,6 +1011,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          newFqnPrefix,
+          SearchIndexRetryQueue.failureReason("updateGlossaryTermByFqnPrefix", e));
       LOG.error("Error while updating glossary term FQN: {}", e.getMessage(), e);
     }
   }
@@ -977,6 +1042,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1005,6 +1071,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          newFqnPrefix,
+          SearchIndexRetryQueue.failureReason("updateClassificationTagByFqnPrefix", e));
       LOG.error("Error while updating classification tag FQN: {}", e.getMessage(), e);
     }
   }
@@ -1036,6 +1106,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1065,6 +1136,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateDataProductReferences", e));
       LOG.error("Error while updating data product references: {}", e.getMessage(), e);
     }
   }
@@ -1111,6 +1184,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1141,6 +1215,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          dataProductFqn,
+          SearchIndexRetryQueue.failureReason("updateAssetDomainsForDataProduct", e));
       LOG.error("Error while updating asset domains for data product: {}", e.getMessage(), e);
     }
   }
@@ -1185,6 +1263,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(idsQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1194,12 +1273,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                   l.builtin(
                                                       os.org.opensearch.client.opensearch._types
                                                           .BuiltinScriptLanguage.Painless))
-                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_FQN_SCRIPT)
+                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_SCRIPT)
                                           .params(params)))
                       .refresh(Refresh.True));
 
       LOG.info(
-          "Successfully updated asset domain FQNs by IDs: {} assets, oldFqns={}, newFqns={}, updated {} documents",
+          "Successfully updated asset domains by IDs: {} assets, oldFqns={}, newFqns={}, updated {} documents",
           assetIds.size(),
           oldDomainFqns,
           newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
@@ -1215,6 +1294,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
 
     } catch (Exception e) {
+      for (UUID assetId : assetIds) {
+        SearchIndexRetryQueue.enqueue(
+            assetId != null ? assetId.toString() : null,
+            null,
+            SearchIndexRetryQueue.failureReason("updateAssetDomainsByIds", e));
+      }
       LOG.error("Error while updating asset domains by IDs: {}", e.getMessage(), e);
     }
   }
@@ -1249,6 +1334,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(domainIndexName)
                       .query(combinedQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1277,6 +1363,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to update domain FQNs: {}", errorMessage);
       }
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateDomainFqnByPrefix", e));
       LOG.error("Error while updating domain FQNs by prefix: {}", e.getMessage(), e);
     }
   }
@@ -1296,8 +1384,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           oldFqn,
           newFqn);
 
-      // Use match_all query - the script will filter and update only matching documents
-      Query matchAllQuery = Query.of(q -> q.matchAll(m -> m));
+      Query matchingDomainQuery = buildDomainFqnPrefixQuery(oldFqn);
 
       Map<String, JsonData> params =
           Map.of(
@@ -1308,7 +1395,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           client.updateByQuery(
               req ->
                   req.index(indexName)
-                      .query(matchAllQuery)
+                      .query(matchingDomainQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1338,6 +1426,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to update asset domain FQNs: {}", errorMessage);
       }
     } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateAssetDomainFqnByPrefix", e));
       LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
     }
   }
@@ -1372,6 +1462,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                       u ->
                           u.index(indexName)
                               .id(entity.getId().toString())
+                              .retryOnConflict(3)
                               .docAsUpsert(true)
                               .document(toJsonData(doc)))));
     }
@@ -1399,15 +1490,23 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       LOG.error("OpenSearch client is not available. Cannot {}.", operation);
       return;
     }
-    client.update(
-        u ->
-            u.index(indexName)
-                .id(docId)
-                .refresh(Refresh.True)
-                .docAsUpsert(true)
-                .doc(toJsonData(doc)),
-        Map.class);
-    LOG.info("Successfully {} in OpenSearch for index: {}, docId: {}", operation, indexName, docId);
+    SearchRetryUtil.executeWithRetry(
+        () -> {
+          client.update(
+              u ->
+                  u.index(indexName)
+                      .id(docId)
+                      .refresh(Refresh.True)
+                      .retryOnConflict(3)
+                      .docAsUpsert(true)
+                      .doc(toJsonData(doc)),
+              Map.class);
+          LOG.info(
+              "Successfully {} in OpenSearch for index: {}, docId: {}",
+              operation,
+              indexName,
+              docId);
+        });
   }
 
   @Override
@@ -1524,5 +1623,38 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
     }
     return String.format("{\"bool\":{\"must\":%s}}", innerBoolFilter);
+  }
+
+  private Query buildLineageUpdateQuery(Pair<String, String> fieldAndValue) {
+    return exactFieldQuery(fieldAndValue);
+  }
+
+  private Query buildLineageColumnsQuery(List<String> columnFqns) {
+    List<FieldValue> values = columnFqns.stream().map(FieldValue::of).toList();
+    Query toColumnQuery =
+        Query.of(
+            q ->
+                q.terms(
+                    t ->
+                        t.field("upstreamLineage.columns.toColumn.keyword")
+                            .terms(tv -> tv.value(values))));
+    Query fromColumnsQuery =
+        Query.of(
+            q ->
+                q.terms(
+                    t ->
+                        t.field("upstreamLineage.columns.fromColumns.keyword")
+                            .terms(tv -> tv.value(values))));
+    return Query.of(
+        q -> q.bool(b -> b.should(toColumnQuery).should(fromColumnsQuery).minimumShouldMatch("1")));
+  }
+
+  private Query buildDomainFqnPrefixQuery(String oldFqn) {
+    Query prefixOnField =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName").value(oldFqn)));
+    Query prefixOnKeyword =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName.keyword").value(oldFqn)));
+    return Query.of(
+        q -> q.bool(b -> b.should(prefixOnField).should(prefixOnKeyword).minimumShouldMatch("1")));
   }
 }

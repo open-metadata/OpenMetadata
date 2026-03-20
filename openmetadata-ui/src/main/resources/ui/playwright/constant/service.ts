@@ -20,6 +20,7 @@ import { PipelineServiceClass } from '../support/entity/service/PipelineServiceC
 import { SearchIndexServiceClass } from '../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../support/entity/service/StorageServiceClass';
 import { uuid } from '../utils/common';
+import type { SettingOptionsType } from '../utils/sidebar';
 import { GlobalSettingOptions, ServiceTypes } from './settings';
 
 export const SERVICE_TYPE = {
@@ -111,6 +112,39 @@ export const DBT = {
   dataQualityTest1: 'unique_customers_customer_id',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
+
+export const SERVICE_SEARCH_INDEX_MAP = {
+  [GlobalSettingOptions.DATABASES]: 'databaseService',
+  [GlobalSettingOptions.MESSAGING]: 'messagingService',
+  [GlobalSettingOptions.DASHBOARDS]: 'dashboardService',
+  [GlobalSettingOptions.PIPELINES]: 'pipelineService',
+  [GlobalSettingOptions.MLMODELS]: 'mlModelService',
+  [GlobalSettingOptions.STORAGES]: 'storageService',
+  [GlobalSettingOptions.SEARCH]: 'searchService',
+  [GlobalSettingOptions.APIS]: 'apiService',
+  [GlobalSettingOptions.DRIVES]: 'driveService',
+  [GlobalSettingOptions.METADATA]: 'metadataService',
+} as const;
+
+export type ServiceSearchIndexKey = keyof typeof SERVICE_SEARCH_INDEX_MAP;
+
+export const getServiceSearchIndexMappings = (
+  serviceEntityMap: Record<ServiceSearchIndexKey, string>
+): {
+  settingOption: SettingOptionsType;
+  expectedIndex: string;
+  entityName: string;
+}[] =>
+  (
+    Object.entries(SERVICE_SEARCH_INDEX_MAP) as [
+      ServiceSearchIndexKey,
+      string
+    ][]
+  ).map(([settingOption, expectedIndex]) => ({
+    settingOption,
+    expectedIndex,
+    entityName: serviceEntityMap[settingOption],
+  }));
 
 export const MAX_CONSECUTIVE_ERRORS = 3;
 

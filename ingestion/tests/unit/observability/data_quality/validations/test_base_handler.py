@@ -4,7 +4,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.base_test_handler import (
+    DIMENSION_IMPACT_SCORE_KEY,
+    DIMENSION_VALUE_KEY,
+    BaseTestValidator,
+)
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
     TestCaseDimensionResult,
@@ -386,6 +390,71 @@ class TestBaseTestValidator:
         validator._run_dimensional_validation.assert_called_once()
 
 
+class TestGetTopDimensions:
+    @pytest.fixture
+    def make_validator(self):
+        def _make(top_dimensions=None):
+            test_case = MagicMock(spec=TestCase)
+            test_case.name = "test_top_dims"
+            test_case.dimensionColumns = ["col1"]
+            test_case.topDimensions = top_dimensions
+            return MockTestValidator(
+                runner=MagicMock(),
+                test_case=test_case,
+                execution_date=EXECUTION_DATE.timestamp(),
+            )
+
+        return _make
+
+    def test_returns_configured_value(self, make_validator):
+        validator = make_validator(top_dimensions=10)
+        assert validator._get_top_dimensions() == 10
+
+    def test_returns_default_when_none(self, make_validator):
+        validator = make_validator(top_dimensions=None)
+        assert validator._get_top_dimensions() == 5
+
+    def test_returns_default_when_zero(self, make_validator):
+        validator = make_validator(top_dimensions=0)
+        assert validator._get_top_dimensions() == 5
+
+    def test_returns_one(self, make_validator):
+        validator = make_validator(top_dimensions=1)
+        assert validator._get_top_dimensions() == 1
+
+    def test_caps_large_value_to_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=100)
+        assert validator._get_top_dimensions() == 50
+
+    def test_returns_value_at_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=50)
+        assert validator._get_top_dimensions() == 50
+
+    def test_returns_value_just_below_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=49)
+        assert validator._get_top_dimensions() == 49
+
+    def test_caps_value_just_above_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=51)
+        assert validator._get_top_dimensions() == 50
+
+    def test_returns_default_when_negative(self, make_validator):
+        validator = make_validator(top_dimensions=-3)
+        assert validator._get_top_dimensions() == 5
+
+    def test_returns_default_when_attribute_missing(self):
+        test_case = MagicMock()
+        del test_case.topDimensions
+        test_case.name = "test_no_attr"
+        test_case.dimensionColumns = ["col1"]
+        validator = MockTestValidator(
+            runner=MagicMock(),
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+        assert validator._get_top_dimensions() == 5
+
+
 def test_get_test_parameters_default_returns_empty_dict():
     """Test that default _get_test_parameters implementation returns None"""
     test_case = MagicMock(spec=TestCase)
@@ -445,3 +514,83 @@ def test_format_result_message_not_implemented_error():
     assert "MockTestValidator must implement _format_result_message()" in str(
         exc_info.value
     )
+
+
+class TestProcessDimensionRows:
+    @pytest.fixture
+    def validator(self):
+        test_case = MagicMock(spec=TestCase)
+        test_case.name = "test_process_rows"
+        test_case.dimensionColumns = ["dim_col"]
+        test_case.topDimensions = None
+        v = MockTestValidator(
+            runner=MagicMock(),
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+        v._evaluate_test_condition = lambda metric_values, test_params=None: {
+            "matched": metric_values.get("VALUE", 0) > 50,
+            "passed_rows": metric_values.get("VALUE", 0),
+            "failed_rows": 100 - metric_values.get("VALUE", 0),
+            "total_rows": 100,
+        }
+        v._format_result_message = (
+            lambda metric_values, dimension_info=None, test_params=None: f"value={metric_values.get('VALUE')}"
+        )
+        v._get_test_result_values = lambda metric_values: []
+        return v
+
+    def test_empty_input_returns_empty_list(self, validator):
+        result = validator._process_dimension_rows([], "dim_col", {"VALUE": None}, {})
+        assert result == []
+
+    def test_builds_results_for_each_row(self, validator):
+        rows = [
+            {
+                DIMENSION_VALUE_KEY: "A",
+                DIMENSION_IMPACT_SCORE_KEY: 0.8,
+                "VALUE": 80,
+            },
+            {
+                DIMENSION_VALUE_KEY: "B",
+                DIMENSION_IMPACT_SCORE_KEY: 0.3,
+                "VALUE": 30,
+            },
+        ]
+        results = validator._process_dimension_rows(
+            rows, "dim_col", {"VALUE": None}, {}
+        )
+        assert len(results) == 2
+        assert all(isinstance(r, DimensionResult) for r in results)
+
+    def test_skips_rows_where_hook_returns_none(self, validator):
+        validator._build_dimension_metric_values = MagicMock(
+            side_effect=[{"VALUE": 80}, None, {"VALUE": 60}]
+        )
+        rows = [
+            {DIMENSION_VALUE_KEY: "A", DIMENSION_IMPACT_SCORE_KEY: 0.8},
+            {DIMENSION_VALUE_KEY: "B", DIMENSION_IMPACT_SCORE_KEY: 0.5},
+            {DIMENSION_VALUE_KEY: "C", DIMENSION_IMPACT_SCORE_KEY: 0.3},
+        ]
+        results = validator._process_dimension_rows(
+            rows, "dim_col", {"VALUE": None}, {}
+        )
+        assert len(results) == 2
+
+    def test_default_hook_delegates_to_build_metric_values_from_row(self, validator):
+        row = {DIMENSION_VALUE_KEY: "A", "VALUE": 42}
+        result = validator._build_dimension_metric_values(row, {"VALUE": None}, {})
+        assert result == {"VALUE": 42}
+
+    def test_mixed_skip_and_process(self, validator):
+        validator._build_dimension_metric_values = MagicMock(
+            side_effect=[None, {"VALUE": 70}, None, {"VALUE": 90}, {"VALUE": 10}]
+        )
+        rows = [
+            {DIMENSION_VALUE_KEY: f"D{i}", DIMENSION_IMPACT_SCORE_KEY: 0.5}
+            for i in range(5)
+        ]
+        results = validator._process_dimension_rows(
+            rows, "dim_col", {"VALUE": None}, {}
+        )
+        assert len(results) == 3

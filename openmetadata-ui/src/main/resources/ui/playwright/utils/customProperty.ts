@@ -18,8 +18,8 @@ import {
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
@@ -120,6 +120,7 @@ export const setValueForProperty = async (data: {
     `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
   );
   await editButton.scrollIntoViewIfNeeded();
+  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await editButton.click({ force: true });
 
   const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
@@ -148,6 +149,7 @@ export const setValueForProperty = async (data: {
 
     case 'enum':
       await page.click('#enumValues');
+      // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
       await page.fill('#enumValues', value, { force: true });
       await page.press('#enumValues', 'Enter');
       await clickOutside(page);
@@ -242,7 +244,7 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="add-new-row"]').click();
 
       // Editor grid to be visible
-      await page.waitForSelector('.om-rdg', { state: 'visible' });
+      await page.locator('.om-rdg').waitFor({ state: 'visible' });
 
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
@@ -764,7 +766,7 @@ export const addCustomPropertiesForEntity = async ({
     page.locator(String.raw`#root\/entityReferenceConfig_list`)
   ).not.toBeVisible();
 
-  await page.waitForSelector(descriptionBox, { state: 'visible' });
+  await page.locator(descriptionBox).waitFor({ state: 'visible' });
   await page.locator(descriptionBox).click();
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
 
@@ -783,14 +785,12 @@ export const addCustomPropertiesForEntity = async ({
   await createButton.click();
 
   const response = await createPropertyPromise;
-  await page.waitForSelector('[data-testid="custom-property-form"]', {
+  await page.getByTestId('custom-property-form').waitFor({
     state: 'detached',
   });
 
   // CRITICAL: Wait for UI to update after API response
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   expect(response.status()).toBe(200);
   await expect(
@@ -920,9 +920,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   await sidebarClick(page, SidebarItem.EXPLORE);
 
   // Wait for loader to disappear instead of networkidle
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   // Open advanced search dialog
   await showAdvancedSearchDialog(page);
@@ -1028,7 +1026,7 @@ export const editColumnCustomProperty = async (
       .click();
   } else if (propertyType === 'table-cp') {
     await page.locator('[data-testid="add-new-row"]').click();
-    await page.waitForSelector('.om-rdg', { state: 'visible' });
+    await page.locator('.om-rdg').waitFor({ state: 'visible' });
 
     // Fill Row
     await page.locator('div.rdg-cell-pw-column1').last().dblclick();
@@ -1150,8 +1148,7 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   const testValue = getPropertyValues(propertyType, users).value;
 
   // 1. Navigate and Open Column Detail Panel
-  await page.goto(`/table/${columnFqn}`);
-  await page.waitForLoadState('networkidle');
+  await page.goto(`/table/${columnFqn}`, { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
   const sidePanel = page.locator('.column-detail-panel-container');
   await expect(sidePanel).toBeVisible();
@@ -1175,7 +1172,8 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   const updateColumnResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/columns/name') &&
-      response.request().method() === 'PUT'
+      response.request().method() === 'PUT' &&
+      response.ok()
   );
 
   // Edit logic
@@ -1185,9 +1183,7 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   await updateColumnResponse;
 
   // CRITICAL: Wait for UI to update after API response
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   // Validation
   await validateColumnCustomProperty(
@@ -1197,25 +1193,16 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
     propertyName
   );
 
-  // 5. Reload Page
-  const getColumnDetails = page.waitForResponse(
-    '/api/v1/tables/name/*/columns?*fields=*extension*'
-  );
-  const getTableColumnTypes = page.waitForResponse(
-    '/api/v1/metadata/types/name/tableColumn*'
-  );
-  await page.reload();
-  await getTableColumnTypes;
-  await getColumnDetails;
-
-  await page.waitForSelector(
-    '.column-detail-panel-container [data-testid="custom-properties-tab"]',
-    {
-      state: 'visible',
-    }
-  );
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.locator(
+      '.column-detail-panel-container [data-testid="custom-properties-tab"]'
+    )
+  ).toBeVisible();
   await customPropertiesTab.click();
   await expect(searchbar).toBeVisible();
+  await searchbar.clear();
   await searchbar.fill(propertyName);
 
   // Validation Logic After Reload
@@ -1251,21 +1238,21 @@ export const updateCustomPropertyInRightPanel = async (data: {
     await waitForAllLoadersToDisappear(page);
   }
 
-  const searchContainer = page.getByTestId('search-bar-container');
-  if (await searchContainer.isVisible()) {
-    await searchContainer.getByTestId('searchbar').fill(propertyName);
-  }
+  // Scope everything to the panel container to avoid matching stray elements
+  // elsewhere on the Explore page when tests run in parallel.
+  const panelContainer = page.locator('.entity-summary-panel-container');
+  const searchContainer = panelContainer.getByTestId('search-bar-container');
+  await expect(searchContainer).toBeVisible();
+  await searchContainer.getByRole('textbox').fill(propertyName);
 
   // Since the search is client side, can't wait on APIs and names are unique,
   // waiting for only single custom property card to be visible
-  // to ensure stability of the next click operations
+  // to ensure stability of the next click operations.
   await expect(
-    page.getByTestId('custom-property-right-panel-card')
+    panelContainer.getByTestId('custom-property-right-panel-card')
   ).toHaveCount(1);
 
-  const container = page
-    .locator('.entity-summary-panel-container')
-    .getByTestId(propertyName);
+  const container = panelContainer.getByTestId(propertyName);
 
   await expect(container.getByTestId('property-name')).toContainText(
     propertyName
@@ -1273,6 +1260,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
   const editButton = container.getByTestId('edit-icon-right-panel');
   await editButton.scrollIntoViewIfNeeded();
+  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await editButton.click({ force: true });
 
   const patchRequestPromise = page.waitForResponse(
@@ -1401,15 +1389,16 @@ export const updateCustomPropertyInRightPanel = async (data: {
       await page.locator('[data-testid="add-new-row"]').click();
 
       // Editor grid to be visible
-      await page.waitForSelector('.om-rdg', { state: 'visible' });
+      await page.locator('.om-rdg').waitFor({ state: 'visible' });
 
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
       await fillTableColumnInputDetails(page, values[1], 'pw-column2');
 
-      await page.locator('[data-testid="update-table-type-property"]').click({
-        force: true,
-      });
+      await page
+        .locator('[data-testid="update-table-type-property"]')
+        // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+        .click({ force: true });
 
       break;
     }

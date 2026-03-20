@@ -19,6 +19,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { validateViewPermissions } from '../../utils/permission';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const policy = new PolicyClass();
 const policy2 = new PolicyClass();
@@ -152,9 +153,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
 
   await test.step('ViewBasic permission', async () => {
     await table.visitEntityPage(userPage);
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
     await validateViewPermissions(userPage);
   });
 
@@ -172,9 +171,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
       );
       await table.visitEntityPage(userPage);
       await permissionResponse;
-      await userPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(userPage);
       await validateViewPermissions(userPage, viewPermission.data.permission);
     });
   }
@@ -204,11 +201,9 @@ test('Permissions', async ({ userPage, adminPage }) => {
     );
     await table.visitEntityPage(userPage);
     await permissionResponse;
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
     const queryListResponse = userPage.waitForResponse(
-      '/api/v1/search/query?q=*&index=query_search_index*'
+      '/api/v1/search/query?q=*&index=query*'
     );
     await userPage.click('[data-testid="table_queries"]');
     await queryListResponse;
@@ -247,15 +242,10 @@ test('Permissions', async ({ userPage, adminPage }) => {
     );
     await table.visitEntityPage(userPage);
     await permissionResponse;
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
 
     await userPage.getByTestId('profiler').click();
-    await userPage.waitForLoadState('networkidle');
-    await userPage.waitForSelector("[data-testid='loader']", {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(userPage);
 
     const testCaseResponse = userPage.waitForResponse(
       (response) =>

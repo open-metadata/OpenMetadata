@@ -437,6 +437,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to pick up dashboard usage data
         """
+        if not self.source_config.includeUsage:
+            return
 
     def close(self):
         self.metadata.close()
@@ -522,7 +524,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _get_add_lineage_request(
-        to_entity: Union[Dashboard, DashboardDataModel],
+        to_entity: Union[Dashboard, DashboardDataModel, Chart],
         from_entity: Union[Table, DashboardDataModel, Dashboard],
         column_lineage: List[ColumnLineage] = None,
         sql: Optional[str] = None,

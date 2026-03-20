@@ -126,6 +126,28 @@ class QlikcloudSource(QliksenseSource):
             not dashboard.published
         )
 
+    def get_dashboard_name(self, dashboard: QlikApp) -> str:
+        """
+        Get app Name
+        """
+        return dashboard.name
+
+    def get_project_name(self, dashboard_details: Optional[QlikApp]) -> Optional[str]:
+        """
+        Get Project Name
+        """
+        if not dashboard_details:
+            return None
+
+        project = self.projects_map.get(dashboard_details.space_id)
+        return project.name if project else None
+
+    def get_dashboard_details(self, dashboard: QlikApp) -> Optional[QlikApp]:
+        """
+        Get app Details
+        """
+        return self.client.get_dashboard_details(dashboard.app_id)
+
     def get_dashboards_list(self) -> Iterable[QlikApp]:
         """
         Get List of all apps
@@ -133,8 +155,16 @@ class QlikcloudSource(QliksenseSource):
         for dashboard in self.client.get_dashboards_list():
             if self.filter_draft_dashboard(dashboard):
                 # Skip unpublished dashboards
+                self.status.filter(
+                    self.get_dashboard_name(dashboard=dashboard),
+                    "Filtering dashboard as it is a draft dashboard",
+                )
                 continue
             if dashboard.space_id not in self.projects_map:
+                self.status.filter(
+                    dashboard.name,
+                    "Filtering dashboard as project id is not present in projects map",
+                )
                 logger.warning(
                     f"Project ID '{dashboard.space_id}' for Dashboard '{dashboard.name}' is not present"
                     " in projects map"
@@ -142,28 +172,23 @@ class QlikcloudSource(QliksenseSource):
                 continue
             project = self.projects_map[dashboard.space_id]
             if self.filter_projects_by_type(project):
+                self.status.filter(
+                    project.name, "Filtering dashboard based on space type filter"
+                )
+
                 # Skip dashboard based on space type filter
                 continue
             if not self.is_personal_project(project) and filter_by_project(
                 self.service_connection.projectFilterPattern, project.name
             ):
+                self.status.filter(
+                    project.name, "Filtering dashboard based on project filter pattern"
+                )
                 # Skip dashboard based on project filter pattern
                 continue
             # clean data models for next iteration
             self.data_models = []
             yield dashboard
-
-    def get_dashboard_name(self, dashboard: QlikApp) -> str:
-        """
-        Get app Name
-        """
-        return dashboard.name
-
-    def get_dashboard_details(self, dashboard: QlikApp) -> dict:
-        """
-        Get app Details
-        """
-        return self.client.get_dashboard_details(dashboard.app_id)
 
     def yield_dashboard(
         self, dashboard_details: QlikApp
@@ -259,6 +284,10 @@ class QlikcloudSource(QliksenseSource):
                         and prefix_table_name.lower()
                         != data_model_entity.displayName.lower()
                     ):
+                        self.status.filter(
+                            data_model_entity.displayName,
+                            "Filtering Table as display name doesnt match prefix table name",
+                        )
                         logger.debug(
                             f"Table {data_model_entity.displayName} does not match prefix {prefix_table_name}"
                         )

@@ -174,18 +174,21 @@ export const TaskTabNew = ({
 
   const showAddSuggestionButton = useMemo(() => {
     const taskType = taskDetails?.type ?? ('' as TaskType);
-    const parsedSuggestion = [
-      TaskType.UpdateDescription,
-      TaskType.RequestDescription,
-    ].includes(taskType)
-      ? taskDetails?.suggestion
-      : JSON.parse(taskDetails?.suggestion || '[]');
+    let parsedSuggestion: string | TagLabel[] = taskDetails?.suggestion ?? '';
+
+    if (isTaskTags) {
+      try {
+        parsedSuggestion = JSON.parse(taskDetails?.suggestion || '[]');
+      } catch {
+        parsedSuggestion = [];
+      }
+    }
 
     return (
       [TaskType.RequestTag, TaskType.RequestDescription].includes(taskType) &&
       isEmpty(parsedSuggestion)
     );
-  }, [taskDetails]);
+  }, [taskDetails, isTaskTags]);
 
   const noSuggestionTaskMenuOptions = useMemo(() => {
     let label;
@@ -815,14 +818,22 @@ export const TaskTabNew = ({
         taskDetails?.suggestion ?? taskDetails?.oldValue ?? '';
 
       return { description };
-    } else {
-      const updatedTags = JSON.parse(
-        taskDetails?.suggestion ?? taskDetails?.oldValue ?? '[]'
-      );
+    } else if (isTaskTags) {
+      let updatedTags: TagLabel[] = [];
+
+      try {
+        updatedTags = JSON.parse(
+          taskDetails?.suggestion ?? taskDetails?.oldValue ?? '[]'
+        );
+      } catch {
+        updatedTags = [];
+      }
 
       return { updatedTags };
     }
-  }, [taskDetails, isTaskDescription]);
+
+    return {};
+  }, [taskDetails, isTaskDescription, isTaskTags]);
 
   const handleAssigneeUpdate = async () => {
     setIsAssigneeLoading(true);

@@ -162,3 +162,13 @@ export const importUserInTeam = async (
 
   return response.data;
 };
+
+export const getTeamsAssetCounts = async (): Promise<
+  Record<string, number>
+> => {
+  const response = await APIClient.get<Record<string, number>>(
+    '/teams/assets/counts'
+  );
+
+  return response.data;
+};

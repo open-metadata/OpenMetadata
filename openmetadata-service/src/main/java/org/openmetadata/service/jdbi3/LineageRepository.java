@@ -103,6 +103,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -422,6 +423,8 @@ public class LineageRepository {
       lineageData.setUpdatedAt(nullOrDefault(lineageDetails.getUpdatedAt(), null));
       lineageData.setUpdatedBy(nullOrDefault(lineageDetails.getUpdatedBy(), null));
       lineageData.setAssetEdges(nullOrDefault(lineageDetails.getAssetEdges(), null));
+      lineageData.setTempLineageTables(
+          collectionOrDefault(lineageDetails.getTempLineageTables(), null));
     }
     return lineageData;
   }
@@ -627,7 +630,7 @@ public class LineageRepository {
       if (fromEntity == null || toEntity == null) {
         LOG.error(
             "Entity not found for IDs: fromEntityId={}, toEntityId={}", fromEntityId, toEntityId);
-        return;
+        continue;
       }
 
       Map<String, String> baseRow = new HashMap<>();
@@ -1193,11 +1196,19 @@ public class LineageRepository {
   private void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
-    searchClient.updateChildren(
-        GLOBAL_SEARCH_ALIAS,
-        new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
-        new ImmutablePair<>(
-            REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+    try {
+      searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
+          new ImmutablePair<>(
+              REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+    } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          fromEntity.getId() != null ? fromEntity.getId().toString() : null,
+          fromEntity.getFullyQualifiedName(),
+          SearchIndexRetryQueue.failureReason("deleteLineageFromSearch", e));
+      LOG.error("Failed to delete lineage from search for {}: {}", uniqueValue, e.getMessage());
+    }
   }
 
   private EntityLineage getLineage(

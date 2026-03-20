@@ -550,6 +550,8 @@ export enum AuthProvider {
  *
  * Regex to only fetch api endpoints with names matching the pattern.
  *
+ * Regex to exclude or include charts that matches the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -659,6 +661,9 @@ export interface OpenMetadataJWTClientConfig {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -695,6 +700,8 @@ export enum OpenmetadataType {
  * Flag to verify SSL Certificate for OpenMetadata Server.
  *
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -778,6 +785,11 @@ export interface StepSummary {
      */
     name: string;
     /**
+     * Operation metrics by category (db_queries, api_calls) -> operation -> entityType ->
+     * summary
+     */
+    operationMetrics?: { [key: string]: { [key: string]: { [key: string]: OperationMetric } } };
+    /**
      * Detailed progress tracking by entity type (databases, schemas, tables, stored procedures)
      */
     progress?: { [key: string]: Progress };
@@ -785,6 +797,14 @@ export interface StepSummary {
      * Number of successfully processed records.
      */
     records?: number;
+    /**
+     * Total time spent processing and sinking data to OpenMetadata (milliseconds)
+     */
+    sinkTimeMs?: number;
+    /**
+     * Total time spent fetching data from source systems (milliseconds)
+     */
+    sourceTimeMs?: number;
     /**
      * Number of successfully updated records.
      */
@@ -811,6 +831,30 @@ export interface StackTraceError {
      * Exception stack trace
      */
     stackTrace?: string;
+}
+
+export interface OperationMetric {
+    /**
+     * Average time per operation in milliseconds
+     */
+    avgTimeMs?: number;
+    /**
+     * Total number of operations
+     */
+    count?: number;
+    /**
+     * Maximum operation time in milliseconds
+     */
+    maxTimeMs?: number;
+    /**
+     * Minimum operation time in milliseconds
+     */
+    minTimeMs?: number;
+    /**
+     * Total time spent in milliseconds
+     */
+    totalTimeMs?: number;
+    [property: string]: any;
 }
 
 export interface Progress {
@@ -1133,6 +1177,11 @@ export interface Pipeline {
      */
     includeDraftDashboard?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of usage metadata for dashboards. When
+     * enabled, usage statistics will be collected and ingested.
+     */
+    includeUsage?: boolean;
+    /**
      * Details required to generate Lineage
      */
     lineageInformation?: LineageInformation;
@@ -1185,7 +1234,11 @@ export interface Pipeline {
      * level metrics.
      */
     computeTableMetrics?: boolean;
-    processingEngine?:    ProcessingEngine;
+    /**
+     * List of metrics to compute. If empty, then all metrics will be computed
+     */
+    metrics?:          MetricType[];
+    processingEngine?: ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -1202,16 +1255,17 @@ export interface Pipeline {
     /**
      * Number of threads to use during metric computations
      */
-    threadCount?: number;
+    threadCount?: number | null;
     /**
      * Profiler Timeout in Seconds
      */
     timeoutSeconds?: number;
     /**
-     * Use system tables to extract metrics. Metrics that cannot be gathered from system tables
-     * will use the default methods. Using system tables can be faster but requires gathering
-     * statistics before running (for example using the ANALYZE procedure). More information can
-     * be found in the documentation: https://docs.openmetadata.org/latest/profler
+     * Use system tables to extract table metrics. Metrics that cannot be gathered from system
+     * tables will use the default methods. Using system tables can be faster but requires
+     * gathering statistics before running (for example using the ANALYZE procedure). More
+     * information can be found in the documentation:
+     * https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
     /**
@@ -2762,6 +2816,8 @@ export interface DBTPrefixConfig {
 /**
  * AWS credentials configs.
  *
+ * AWS credentials required to access the S3 file.
+ *
  * AWS credentials configuration.
  *
  * Azure Cloud Credentials
@@ -2773,6 +2829,8 @@ export interface DBTPrefixConfig {
  * GCP credentials configs.
  *
  * GCP Credentials
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
  *
  * GCP Credentials for Google Drive API
  */
@@ -3000,6 +3058,48 @@ export interface LineageInformation {
      */
     storageServiceNames?: string[];
     [property: string]: any;
+}
+
+/**
+ * This schema defines all possible metric types in OpenMetadata.
+ */
+export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
+    ColumnCount = "columnCount",
+    ColumnNames = "columnNames",
+    CountInSet = "countInSet",
+    DistinctCount = "distinctCount",
+    DistinctProportion = "distinctProportion",
+    DuplicateCount = "duplicateCount",
+    FirstQuartile = "firstQuartile",
+    Histogram = "histogram",
+    ILikeCount = "iLikeCount",
+    ILikeRatio = "iLikeRatio",
+    InterQuartileRange = "interQuartileRange",
+    LikeCount = "likeCount",
+    LikeRatio = "likeRatio",
+    Max = "max",
+    MaxLength = "maxLength",
+    Mean = "mean",
+    Median = "median",
+    Min = "min",
+    MinLength = "minLength",
+    NonParametricSkew = "nonParametricSkew",
+    NotLikeCount = "notLikeCount",
+    NotRegexCount = "notRegexCount",
+    NullCount = "nullCount",
+    NullMissingCount = "nullMissingCount",
+    NullProportion = "nullProportion",
+    RegexCount = "regexCount",
+    RowCount = "rowCount",
+    Stddev = "stddev",
+    Sum = "sum",
+    System = "system",
+    ThirdQuartile = "thirdQuartile",
+    UniqueCount = "uniqueCount",
+    UniqueProportion = "uniqueProportion",
+    ValueRank = "valueRank",
+    ValuesCount = "valuesCount",
 }
 
 /**
@@ -3287,6 +3387,9 @@ export interface ServiceConnection {
  *
  * Hex Connection Config
  *
+ * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
+ * create, deploy, and manage paginated reports
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -3393,11 +3496,15 @@ export interface ServiceConnection {
  *
  * BurstIQ LifeGraph Database Connection Config
  *
+ * IBM Informix Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
  *
  * Kinesis Connection Config
+ *
+ * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
  * OpenMetadata yet.
@@ -3563,6 +3670,8 @@ export interface ConfigObject {
     type?: PurpleType;
     /**
      * Regex exclude or include charts that matches the pattern.
+     *
+     * Regex to exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
     /**
@@ -3641,6 +3750,8 @@ export interface ConfigObject {
      *
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
+     * Host and Port of the Ssrs instance.
+     *
      * BigQuery APIs URL.
      *
      * Host and port of the AzureSQL service.
@@ -3706,6 +3817,10 @@ export interface ConfigObject {
      * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      *
+     * Host and port of the Informix service.
+     *
+     * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
+     *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
      *
@@ -3768,6 +3883,8 @@ export interface ConfigObject {
      *
      * Password to connect to MicroStrategy.
      *
+     * Password to connect to Ssrs.
+     *
      * Password to connect to AzureSQL.
      *
      * Password to connect to Clickhouse.
@@ -3822,6 +3939,8 @@ export interface ConfigObject {
      *
      * Password to connect to BurstIQ.
      *
+     * Password to connect to Informix.
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -3838,6 +3957,8 @@ export interface ConfigObject {
      *
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
+     *
+     * Username to connect to Ssrs.
      *
      * Username to connect to AzureSQL. This user should have privileges to read the metadata.
      *
@@ -3939,6 +4060,9 @@ export interface ConfigObject {
      *
      * Username to connect to BurstIQ. This user should have privileges to read all the metadata
      * in BurstIQ LifeGraph.
+     *
+     * Username to connect to Informix. This user should have privileges to read all the
+     * metadata in Informix.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -4060,19 +4184,24 @@ export interface ConfigObject {
      */
     siteName?: string;
     /**
+     * SSL Configuration details.
+     *
      * SSL Configuration details for DB2 connection. Provide CA certificate for server
      * validation, and optionally client certificate and key for mutual TLS authentication.
      *
-     * SSL Configuration details.
-     *
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
+     *
+     * SSL Configuration details. Provide the CA certificate to validate the Informix server
+     * certificate. Paste the PEM content directly or upload the certificate file.
      *
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
      *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *
@@ -4221,7 +4350,7 @@ export interface ConfigObject {
      *
      * GCP Credentials for Google Drive API
      */
-    credentials?: GCPCredentials;
+    credentials?: CredentialsClass;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
@@ -4297,6 +4426,12 @@ export interface ConfigObject {
      * multi-regions are not yet in GA.
      */
     usageLocation?: string;
+    /**
+     * Catalog ID for Athena. For S3 Tables, use the format 's3tablescatalog/<bucket-name>'. For
+     * cross-account Glue catalogs, use the AWS account ID. If not provided, defaults to the
+     * caller's AWS account.
+     */
+    catalogId?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -4379,6 +4514,9 @@ export interface ConfigObject {
      *
      * Ingest data from all databases (Warehouses and Lakehouses) in Microsoft Fabric. You can
      * use databaseFilterPattern on top of this.
+     *
+     * Ingest data from all databases in Informix. You can use databaseFilterPattern on top of
+     * this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -4447,7 +4585,12 @@ export interface ConfigObject {
     /**
      * License file name to connect to DB2.
      */
-    licenseFileName?:               string;
+    licenseFileName?: string;
+    /**
+     * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
+     * without certificate verification, or 'verify-ca' to validate the server certificate
+     * against the provided CA certificate.
+     */
     sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
@@ -4532,6 +4675,11 @@ export interface ConfigObject {
      * re-ingesting.
      */
     preserveIdentifierCase?: boolean;
+    /**
+     * Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA
+     * privileges.
+     */
+    useDBATable?: boolean;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      *
@@ -4671,6 +4819,12 @@ export interface ConfigObject {
      */
     prefix?: string;
     /**
+     * Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS
+     * Coldline/Archive). When enabled, only files in hot/standard storage tiers will be
+     * processed.
+     */
+    skipColdStorage?: boolean;
+    /**
      * Couchbase connection Bucket options.
      */
     bucket?: string;
@@ -4764,6 +4918,11 @@ export interface ConfigObject {
      */
     realmName?: string;
     /**
+     * Informix server name as defined in the sqlhosts file or INFORMIXSERVER environment
+     * variable.
+     */
+    serverName?: string;
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -4829,6 +4988,31 @@ export interface ConfigObject {
      * Regex to only fetch topics that matches the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * GCP credentials configuration for authenticating with Pub/Sub.
+     */
+    gcpConfig?: GcpConfigClass;
+    /**
+     * Include dead letter topics in metadata extraction.
+     */
+    includeDeadLetterTopics?: boolean;
+    /**
+     * Include subscription metadata for each topic.
+     */
+    includeSubscriptions?: boolean;
+    /**
+     * GCP Project ID where Pub/Sub topics are located. If not specified, will be read from
+     * credentials.
+     */
+    projectId?: string;
+    /**
+     * Enable fetching schemas from Pub/Sub Schema Registry.
+     */
+    schemaRegistryEnabled?: boolean;
+    /**
+     * Connect to a Pub/Sub emulator rather than the production service.
+     */
+    useEmulator?: boolean;
     /**
      * Enable encryption for the Amundsen Neo4j Connection.
      */
@@ -5374,6 +5558,8 @@ export enum AuthMechanismEnum {
  *
  * AWS credentials configs.
  *
+ * AWS credentials required to access the S3 file.
+ *
  * AWS credentials configuration.
  *
  * Authentication type to connect to Apache Ranger.
@@ -5553,6 +5739,8 @@ export interface AuthenticationTypeForTableau {
 
 /**
  * AWS credentials configs.
+ *
+ * AWS credentials required to access the S3 file.
  *
  * AWS credentials configuration.
  */
@@ -5960,6 +6148,8 @@ export interface IcebergFileSystem {
 
 /**
  * AWS credentials configs.
+ *
+ * AWS credentials required to access the S3 file.
  *
  * AWS credentials configuration.
  *
@@ -6463,6 +6653,8 @@ export interface DataStorageConfig {
 /**
  * AWS credentials configs.
  *
+ * AWS credentials required to access the S3 file.
+ *
  * AWS credentials configuration.
  */
 export interface AwsCredentials {
@@ -6539,6 +6731,9 @@ export enum ConnectionScheme {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -6562,6 +6757,10 @@ export interface ConnectionSSLConfig {
 
 /**
  * SSL Mode to connect to database.
+ *
+ * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
+ * without certificate verification, or 'verify-ca' to validate the server certificate
+ * against the provided CA certificate.
  */
 export enum SSLMode {
     Allow = "allow",
@@ -6590,6 +6789,8 @@ export enum ConnectionType {
  *
  * GCP Credentials
  *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
  * GCP Credentials for Google Drive API
  *
  * Azure Cloud Credentials
@@ -6598,7 +6799,7 @@ export enum ConnectionType {
  *
  * Azure Credentials
  */
-export interface GCPCredentials {
+export interface CredentialsClass {
     /**
      * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
      * Credentials Path
@@ -6765,6 +6966,27 @@ export enum FHIRVersion {
     Dstu2 = "DSTU2",
     R4 = "R4",
     Stu3 = "STU3",
+}
+
+/**
+ * GCP credentials configs.
+ *
+ * GCP Credentials
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
+ * GCP Credentials for Google Drive API
+ */
+export interface GcpConfigClass {
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
 }
 
 /**
@@ -7000,6 +7222,8 @@ export interface NifiCredentialsConfiguration {
  * Open API Schema URL Connection Config
  *
  * Open API Schema File Path Connection Config
+ *
+ * Open API Schema S3 Connection Config
  */
 export interface OpenAPISchemaConnection {
     /**
@@ -7010,6 +7234,15 @@ export interface OpenAPISchemaConnection {
      * Path to a local OpenAPI schema file.
      */
     openAPISchemaFilePath?: string;
+    /**
+     * AWS credentials required to access the S3 file.
+     */
+    awsCredentials?: AWSCredentials;
+    /**
+     * S3 URL of the OpenAPI schema file (JSON or YAML). Example:
+     * https://bucket-name.s3.amazonaws.com/path/to/openapi_schema.json
+     */
+    openAPISchemaS3URL?: string;
 }
 
 /**
@@ -7157,6 +7390,7 @@ export enum ConfigScheme {
     Ibmi = "ibmi",
     Impala = "impala",
     Impala4 = "impala4",
+    Informix = "informix",
     Mongodb = "mongodb",
     MongodbSrv = "mongodb+srv",
     MssqlPymssql = "mssql+pymssql",
@@ -7197,6 +7431,9 @@ export enum SpaceType {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -7443,6 +7680,7 @@ export enum PurpleType {
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
+    Informix = "Informix",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
@@ -7472,6 +7710,7 @@ export enum PurpleType {
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     Presto = "Presto",
+    PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
@@ -7499,6 +7738,7 @@ export enum PurpleType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    Ssrs = "Ssrs",
     StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",

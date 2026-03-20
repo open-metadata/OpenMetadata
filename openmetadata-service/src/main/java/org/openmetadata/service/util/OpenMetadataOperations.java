@@ -14,11 +14,9 @@ import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -57,6 +55,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
@@ -174,11 +173,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
+            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
+    LOG.info(
+        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate all bot JWT tokens. "
+            + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
     return 0;
   }
 
@@ -207,14 +209,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
         row.add(serverChangeLog.getInstalledOn());
 
         if (serverChangeLog.getMetrics() != null) {
-          JsonObject metricsJson =
-              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
-          for (Map.Entry<String, JsonElement> entry : metricsJson.entrySet()) {
-            if (!columns.contains(entry.getKey())) {
-              columns.add(entry.getKey());
-            }
-            row.add(entry.getValue().toString());
-          }
+          JsonNode metricsJson = new ObjectMapper().readTree(serverChangeLog.getMetrics());
+          metricsJson
+              .fields()
+              .forEachRemaining(
+                  entry -> {
+                    if (!columns.contains(entry.getKey())) {
+                      columns.add(entry.getKey());
+                    }
+                    row.add(entry.getValue().toString());
+                  });
         }
         rows.add(row);
       }
@@ -880,7 +884,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withDescription(definition.getDescription())
             .withDisplayName(definition.getDisplayName())
             .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-            .withAppConfiguration(Map.of());
+            .withAppConfiguration(Map.of())
+            .withAllowBotImpersonation(Boolean.TRUE.equals(definition.getAllowBotImpersonation()));
 
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
@@ -953,6 +958,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("OpenMetadata Database Schema is Updated.");
       LOG.info("create indexes.");
       searchRepository.createIndexes();
+      searchRepository.createOrUpdateIndexTemplates();
       Entity.cleanup();
       return 0;
     } catch (Exception e) {
@@ -993,6 +999,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         return 1;
       }
 
+      initOrganization();
+
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
       fieldList.add(AUTH_MECHANISM_FIELD);
@@ -1031,6 +1039,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       validateAndRunSystemDataMigrations(force);
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
+      LOG.info("Update Index Templates.");
+      searchRepository.createOrUpdateIndexTemplates();
       printChangeLog();
       // update entities secrets if required
       new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
@@ -1475,38 +1485,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         return 1;
       }
 
-      IndexMapping vectorMapping =
-          repo.getIndexMapping(
-              org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY);
-      if (vectorMapping != null) {
-        try {
-          String indexName = vectorMapping.getIndexName(repo.getClusterAlias());
-          LOG.info("Dropping vector index '{}' before re-embedding", indexName);
-          repo.deleteIndex(vectorMapping);
-        } catch (Exception e) {
-          LOG.warn(
-              "Failed to drop vector index '{}' - continuing with recreate",
-              org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY,
-              e);
-        }
-        try {
-          repo.createIndex(vectorMapping);
-        } catch (Exception e) {
-          LOG.error(
-              "Failed to recreate vector index '{}'",
-              org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY,
-              e);
-          return 1;
-        }
-      } else {
-        LOG.warn(
-            "Vector index mapping '{}' not found; skipping index recreation step",
-            org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY);
-      }
-
-      String targetIndex =
-          org.openmetadata.service.search.vector.VectorIndexService.getClusteredIndexName();
-
       java.util.concurrent.ConcurrentHashMap<String, Integer> entityTotals =
           new java.util.concurrent.ConcurrentHashMap<>();
       int totalBatches = calculateReembedTotalBatches(batchSize, entityTotals);
@@ -1527,7 +1505,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               taskQueue,
               producersDone,
               vecService,
-              targetIndex,
               processedCounts,
               failedCounts);
 
@@ -1622,7 +1599,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
       org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
-      String targetIndex,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     java.util.concurrent.CountDownLatch consumerLatch =
@@ -1633,13 +1609,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           () -> {
             try {
               runReembedConsumer(
-                  consumerId,
-                  taskQueue,
-                  producersDone,
-                  vecService,
-                  targetIndex,
-                  processedCounts,
-                  failedCounts);
+                  consumerId, taskQueue, producersDone, vecService, processedCounts, failedCounts);
             } finally {
               consumerLatch.countDown();
             }
@@ -1653,7 +1623,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
       org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
-      String targetIndex,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     LOG.debug("Consumer {} started", consumerId);
@@ -1667,9 +1636,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
           break;
         }
         String entityType = task.entityType();
+        String entityIndexName = resolveEntityIndexName(entityType);
+        if (entityIndexName == null) {
+          LOG.warn("No index mapping found for entity type: {}, skipping batch", entityType);
+          continue;
+        }
         for (EntityInterface entity : task.batch().getData()) {
           try {
-            vecService.updateVectorEmbeddings(entity, targetIndex);
+            vecService.updateEntityEmbedding(entity, entityIndexName);
             processedCounts
                 .computeIfAbsent(
                     entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
@@ -1687,6 +1661,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
       Thread.currentThread().interrupt();
     } finally {
       LOG.debug("Consumer {} stopped", consumerId);
+    }
+  }
+
+  private String resolveEntityIndexName(String entityType) {
+    try {
+      org.openmetadata.search.IndexMapping mapping =
+          Entity.getSearchRepository().getIndexMapping(entityType);
+      if (mapping == null) {
+        return null;
+      }
+      return mapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+    } catch (Exception e) {
+      LOG.warn("Failed to resolve index name for entity type {}: {}", entityType, e.getMessage());
+      return null;
     }
   }
 
@@ -2277,6 +2265,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Creating indexes for search engine...");
       parseConfig();
       searchRepository.createIndexes();
+      searchRepository.createOrUpdateIndexTemplates();
       createDataInsightsIndexes();
       Entity.cleanup();
       LOG.info("All indexes created successfully.");
@@ -2474,6 +2463,97 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to analyze tables due to ", e);
+      return 1;
+    }
+  }
+
+  /**
+   * Unlike most ops commands (e.g. deploy-pipelines) that delegate to the server API, this command
+   * operates directly on the database. This is intentional: when JWT signing keys have been rotated,
+   * all existing bot tokens — including the ingestion-bot token we'd use to authenticate against the
+   * server — are invalid. We must bypass the server to regenerate tokens in this scenario.
+   */
+  @Command(
+      name = "regenerate-bot-tokens",
+      description =
+          "Regenerates JWT tokens for all bot users. "
+              + "Use this after rotating JWT signing keys or changing the cluster name.")
+  public Integer regenerateBotTokens(
+      @Option(
+              names = {"--expiry"},
+              description =
+                  "Token expiry for regenerated tokens (OneHour, One, Seven, Thirty, Sixty, Ninety, Unlimited). "
+                      + "Defaults to Unlimited.",
+              defaultValue = "Unlimited")
+          JWTTokenExpiry expiry) {
+    try {
+      parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+
+      JWTTokenGenerator.getInstance()
+          .init(
+              SecurityConfigurationManager.getInstance()
+                  .getCurrentAuthConfig()
+                  .getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
+
+      initOrganization();
+
+      BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+
+      List<Bot> bots =
+          botRepository.listAll(
+              botRepository.getFields("botUser"), new ListFilter(Include.NON_DELETED));
+
+      List<List<String>> rows = new ArrayList<>();
+
+      for (Bot listedBot : bots) {
+        String botName = listedBot.getName();
+        try {
+          // Fetch individually so that setFields populates the botUser relationship
+          Bot bot = botRepository.getByName(null, botName, botRepository.getFields("botUser"));
+
+          if (bot.getBotUser() == null) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "No bot user associated"));
+            continue;
+          }
+
+          User botUser =
+              userRepository.getByName(
+                  null,
+                  bot.getBotUser().getFullyQualifiedName(),
+                  new EntityUtil.Fields(Set.of("authenticationMechanism", "roles")));
+
+          if (botUser.getAuthenticationMechanism() == null
+              || botUser.getAuthenticationMechanism().getAuthType()
+                  != AuthenticationMechanism.AuthType.JWT) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "Not using JWT authentication"));
+            continue;
+          }
+
+          JWTAuthMechanism newJwtAuth =
+              JWTTokenGenerator.getInstance().generateJWTToken(botUser, expiry);
+          botUser.setAuthenticationMechanism(
+              new AuthenticationMechanism()
+                  .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                  .withConfig(newJwtAuth));
+          UserUtil.addOrUpdateUser(botUser);
+
+          rows.add(Arrays.asList(botName, "SUCCESS", "Token regenerated"));
+        } catch (Exception e) {
+          LOG.error("Failed to regenerate token for bot: {}", botName, e);
+          rows.add(Arrays.asList(botName, "FAILED", e.getMessage()));
+        }
+      }
+
+      boolean hasFailures = rows.stream().anyMatch(r -> "FAILED".equals(r.get(1)));
+      printToAsciiTable(Arrays.asList("Bot", "Status", "Details"), rows, "No bots found");
+      return hasFailures ? 1 : 0;
+    } catch (Exception e) {
+      LOG.error("Failed to regenerate bot tokens due to ", e);
       return 1;
     }
   }
@@ -2945,7 +3025,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           }
           roleRepository.initializeEntity(role);
         }
-        teamRepository.initOrganization();
       } catch (Exception ex) {
         LOG.error("Failed to initialize organization due to ", ex);
         throw new RuntimeException(ex);
@@ -2953,6 +3032,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         rootLogger.setLevel(originalLevel);
       }
     }
+    teamRepository.initOrganization();
   }
 
   public static void printToAsciiTable(
@@ -2977,17 +3057,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
       for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
         List<String> row = new ArrayList<>();
         if (serverChangeLog.getMetrics() != null) {
-          JsonObject metricsJson =
-              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
-          Set<String> keys = metricsJson.keySet();
-          columns.addAll(keys);
+          JsonNode metricsJson = new ObjectMapper().readTree(serverChangeLog.getMetrics());
+          metricsJson.fieldNames().forEachRemaining(columns::add);
           row.add(serverChangeLog.getVersion());
           row.add(serverChangeLog.getInstalledOn());
-          row.addAll(
-              metricsJson.entrySet().stream()
-                  .map(Map.Entry::getValue)
-                  .map(JsonElement::toString)
-                  .toList());
+          metricsJson.fields().forEachRemaining(entry -> row.add(entry.getValue().toString()));
           rows.add(row);
         }
       }

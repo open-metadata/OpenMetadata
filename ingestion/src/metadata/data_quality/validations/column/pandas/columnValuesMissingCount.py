@@ -25,10 +25,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesMissingCount import (
     BaseColumnValuesMissingCountValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -58,12 +55,20 @@ class ColumnValuesMissingCountValidator(
         """
         return self.run_dataframe_results(self.runner, metric, column, **kwargs)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        metric_values = self._build_metric_values_from_row(
+            row, metrics_to_compute, test_params
+        )
+        metric_values[self.TOTAL_MISSING_COUNT] = row.get(self.TOTAL_MISSING_COUNT)
+        return metric_values
+
     def _execute_dimensional_validation(
         self,
         column: SQALikeColumn,
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
@@ -176,7 +181,7 @@ class ColumnValuesMissingCountValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                     agg_functions={
                         self.TOTAL_MISSING_COUNT: "sum",  # Sum actual missing counts
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
@@ -188,29 +193,12 @@ class ColumnValuesMissingCountValidator(
                     # No violation_predicate needed - deviation IS the failed_count
                 )
 
-                for row_dict in results_df.to_dict("records"):
-                    metric_values = self._build_metric_values_from_row(
-                        row_dict, metrics_to_compute, test_params
-                    )
-
-                    # Need to add the calculated metric here.
-                    metric_values[self.TOTAL_MISSING_COUNT] = row_dict.get(
-                        self.TOTAL_MISSING_COUNT
-                    )
-
-                    evaluation = self._evaluate_test_condition(
-                        metric_values, test_params
-                    )
-
-                    dimension_result = self._create_dimension_result(
-                        row_dict,
-                        dimension_col.name,
-                        metric_values,
-                        evaluation,
-                        test_params,
-                    )
-
-                    dimension_results.append(dimension_result)
+                dimension_results = self._process_dimension_rows(
+                    results_df.to_dict("records"),
+                    dimension_col.name,
+                    metrics_to_compute,
+                    test_params,
+                )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

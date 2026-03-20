@@ -16,6 +16,8 @@ package org.openmetadata.service.events.lifecycle;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -128,26 +131,31 @@ class EntityLifecycleEventDispatcherTest {
   }
 
   @Test
-  void testHandlerPriorityOrdering() {
+  void testHandlerPriorityOrdering() throws InterruptedException {
+    CountDownLatch asyncLatch = new CountDownLatch(1);
+    TestHandler lowPrioritySyncHandler = new TestHandler("LowPrioritySync", 50, false, Set.of());
+    TestHandler orderedAsyncHandler =
+        new TestHandler("AsyncHandler", 200, true, Set.of()) {
+          @Override
+          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+            super.onEntityCreated(entity, subjectContext);
+            asyncLatch.countDown();
+          }
+        };
+
     // Register handlers in different order
-    dispatcher.registerHandler(asyncHandler); // priority 200
-    dispatcher.registerHandler(specificEntityHandler); // priority 50
+    dispatcher.registerHandler(orderedAsyncHandler); // priority 200
+    dispatcher.registerHandler(lowPrioritySyncHandler); // priority 50
     dispatcher.registerHandler(syncHandler); // priority 100
 
     // Test that handlers are called in priority order (lower values first)
-    dispatcher.onEntityCreated(mockEntity, mockSubjectContext);
-
-    // Wait a bit for async handler
-    try {
-      Thread.sleep(100);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    dispatcher.onEntityCreated(createAsyncSafeEntity(), mockSubjectContext);
 
     // Verify all handlers were called
-    assertTrue(specificEntityHandler.createdCalled);
+    assertTrue(lowPrioritySyncHandler.createdCalled);
     assertTrue(syncHandler.createdCalled);
-    assertTrue(asyncHandler.createdCalled);
+    assertTrue(asyncLatch.await(10, TimeUnit.SECONDS));
+    assertTrue(orderedAsyncHandler.createdCalled);
   }
 
   @Test
@@ -185,10 +193,10 @@ class EntityLifecycleEventDispatcherTest {
         };
 
     dispatcher.registerHandler(asyncHandlerWithLatch);
-    dispatcher.onEntityCreated(mockEntity, mockSubjectContext);
+    dispatcher.onEntityCreated(createAsyncSafeEntity(), mockSubjectContext);
 
     // Wait for async execution
-    assertTrue(latch.await(2, TimeUnit.SECONDS), "Async handler should have been called");
+    assertTrue(latch.await(10, TimeUnit.SECONDS), "Async handler should have been called");
     assertTrue(asyncHandlerWithLatch.createdCalled);
   }
 
@@ -239,11 +247,24 @@ class EntityLifecycleEventDispatcherTest {
     dispatcher.registerHandler(faultyAsyncHandler);
     dispatcher.registerHandler(goodAsyncHandler);
 
-    dispatcher.onEntityCreated(mockEntity, mockSubjectContext);
+    dispatcher.onEntityCreated(createAsyncSafeEntity(), mockSubjectContext);
 
     // Both handlers should execute despite the exception
-    assertTrue(faultyLatch.await(2, TimeUnit.SECONDS));
-    assertTrue(goodLatch.await(2, TimeUnit.SECONDS));
+    assertTrue(faultyLatch.await(10, TimeUnit.SECONDS));
+    assertTrue(goodLatch.await(10, TimeUnit.SECONDS));
+  }
+
+  private EntityInterface createAsyncSafeEntity() {
+    Table entity = new Table();
+    UUID entityId = UUID.randomUUID();
+    entity.setId(entityId);
+    entity.setName("test_table");
+    entity.setFullyQualifiedName("service.db.schema.test_table");
+    entity.setColumns(new java.util.ArrayList<>());
+    entity.setTags(new java.util.ArrayList<>());
+    entity.setOwners(new java.util.ArrayList<>());
+    entity.setDomains(new java.util.ArrayList<>());
+    return entity;
   }
 
   @Test
@@ -254,6 +275,22 @@ class EntityLifecycleEventDispatcherTest {
     assertTrue(syncHandler.updatedCalled);
     assertSame(mockEntity, syncHandler.lastUpdatedEntity);
     assertSame(mockChangeDescription, syncHandler.lastChangeDescription);
+  }
+
+  @Test
+  void testOnEntitiesUpdatedUsesEntitySpecificChangeDescriptions() {
+    TestHandler allEntitiesHandler = new TestHandler("AllEntitiesHandler", 100, false, Set.of());
+    dispatcher.registerHandler(allEntitiesHandler);
+
+    EntityInterface dashboardEntity = mock(EntityInterface.class);
+    ChangeDescription dashboardChangeDescription = mock(ChangeDescription.class);
+    when(dashboardEntity.getChangeDescription()).thenReturn(dashboardChangeDescription);
+
+    dispatcher.onEntitiesUpdated(List.of(mockEntity, dashboardEntity), null, mockSubjectContext);
+
+    assertEquals(2, allEntitiesHandler.updatedCallCount);
+    assertTrue(allEntitiesHandler.receivedChangeDescriptions.contains(mockChangeDescription));
+    assertTrue(allEntitiesHandler.receivedChangeDescriptions.contains(dashboardChangeDescription));
   }
 
   @Test
@@ -309,12 +346,14 @@ class EntityLifecycleEventDispatcherTest {
     boolean updatedCalled = false;
     boolean deletedCalled = false;
     boolean softDeletedOrRestoredCalled = false;
+    int updatedCallCount = 0;
 
     EntityInterface lastCreatedEntity;
     EntityInterface lastUpdatedEntity;
     EntityInterface lastDeletedEntity;
     ChangeDescription lastChangeDescription;
     boolean lastIsDeleted;
+    List<ChangeDescription> receivedChangeDescriptions = new ArrayList<>();
 
     TestHandler(String name, int priority, boolean async, Set<String> supportedEntityTypes) {
       this.name = name;
@@ -335,8 +374,10 @@ class EntityLifecycleEventDispatcherTest {
         ChangeDescription changeDescription,
         SubjectContext subjectContext) {
       updatedCalled = true;
+      updatedCallCount++;
       lastUpdatedEntity = entity;
       lastChangeDescription = changeDescription;
+      receivedChangeDescriptions.add(changeDescription);
     }
 
     @Override
@@ -377,11 +418,13 @@ class EntityLifecycleEventDispatcherTest {
       updatedCalled = false;
       deletedCalled = false;
       softDeletedOrRestoredCalled = false;
+      updatedCallCount = 0;
       lastCreatedEntity = null;
       lastUpdatedEntity = null;
       lastDeletedEntity = null;
       lastChangeDescription = null;
       lastIsDeleted = false;
+      receivedChangeDescriptions.clear();
     }
   }
 }

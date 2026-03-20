@@ -14,76 +14,127 @@ on:
   workflow_dispatch:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "ingestion/**"
-      - "openmetadata-service/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "pom.xml"
-      - "Makefile"
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  py-run-tests:
+  # Detect whether relevant paths changed. When no Python/service/schema files
+  # are modified the downstream jobs are skipped via their `if` condition.
+  # A job skipped by `if` reports as "Success", so required checks still pass.
+  changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
+    outputs:
+      python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          filters: |
+            python:
+              - 'ingestion/**'
+              - 'openmetadata-service/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - 'pom.xml'
+              - 'Makefile'
+
+  py-integration-tests:
+    name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    timeout-minutes: 180
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        py-version: ['3.10', '3.11']
+        py-version: ["3.10", "3.11"] # , "3.12"]
+        shard:
+          - name: "shard-1"
+            nox-args: >-
+              tests/integration/ometa
+              tests/integration/postgres
+              tests/integration/mysql
+              tests/integration/profiler
+              tests/integration/data_quality
+          - name: "shard-2"
+            nox-args: >-
+              --ignore=tests/integration/ometa
+              --ignore=tests/integration/postgres
+              --ignore=tests/integration/mysql
+              --ignore=tests/integration/profiler
+              --ignore=tests/integration/data_quality
     steps:
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      with:
-        tool-cache: false
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: false
-        swap-storage: true
-        docker-images: false
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
 
-    - name: Wait for the labeler
-      uses: lewagon/wait-on-check-action@v1.3.4
-      if: ${{ github.event_name == 'pull_request_target' }}
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        check-name: Team Label
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        wait-interval: 90
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
 
-    - name: Verify PR labels
-      uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-      if: ${{ github.event_name == 'pull_request_target' }}
-      with:
-        github-token: '${{ secrets.GITHUB_TOKEN }}'
-        valid-labels: 'safe to test'
-        pull-request-number: '${{ github.event.pull_request.number }}'
-        disable-reviews: true  # To not auto approve changes
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true # To not auto approve changes
 
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
-    - name: Setup Openmetadata Test Environment
-      uses: ./.github/actions/setup-openmetadata-test-environment
-      with:
-        python-version: ${{ matrix.py-version}}
-        args: "-m no-ui -d postgresql"
-        ingestion_dependency: "mysql,elasticsearch,sample-data"
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ matrix.py-version}}
+          args: "-m no-ui -d postgresql"
+          ingestion_dependency: "mysql,elasticsearch,sample-data"
 
-    - name: Run Python Tests
-      run: |
-        source env/bin/activate
-        make run_python_tests
-      env:
-        TESTCONTAINERS_RYUK_DISABLED: true
-      
-    - name: Clean Up
-      run: |
-        cd ./docker/development
-        docker compose down --remove-orphans
-        sudo rm -rf ${PWD}/docker-volume
+      - name: Run Integration Tests
+        run: |
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s integration-tests -- --standalone --durations=5 ${{ matrix.shard.nox-args }}
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+        shell: bash
+
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
+
+  # Single required-check gate for branch protection.
+  # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
+  # Runs and exits 1 only when a test job fails or is cancelled.
+  # Set "py-tests-postgres / py-tests-status" as the sole required check for this workflow.
+  py-tests-status:
+    name: py-tests-status
+    needs: [changes, py-integration-tests]
+    if: ${{ failure() || cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 1

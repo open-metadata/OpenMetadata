@@ -153,7 +153,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (!nullOrEmpty(owners)) {
       String ownersList =
           Arrays.stream(owners.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
-      return String.format("{\"terms\": {\"%s\": [%s]}}", FIELD_OWNERS_ID, ownersList);
+      return String.format(
+          "{\"nested\":{\"path\":\"owners\",\"query\":{\"terms\":{\"owners.id\":[%s]}}}}",
+          ownersList);
     }
     return "";
   }
@@ -216,6 +218,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String serviceName = getQueryParam("serviceName");
     String dataQualityDimension = getQueryParam("dataQualityDimension");
     String followedBy = getQueryParam("followedBy");
+    String columnName = getQueryParam("columnName");
 
     if (tags != null) {
       String tagsList =
@@ -277,6 +280,13 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (followedBy != null) {
       conditions.add(
           String.format("{\"term\": {\"%s\": \"%s\"}}", FIELD_FOLLOWERS_KEYWORD, followedBy));
+    }
+
+    if (columnName != null) {
+      conditions.add(
+          String.format(
+              "{\"wildcard\": {\"entityLink\": \"*::columns::%s>\"}}",
+              escapeDoubleQuotes(columnName)));
     }
 
     return addCondition(conditions);
@@ -394,10 +404,12 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String originEntityFQN = getQueryParam("originEntityFQN");
     String startTimestamp = getQueryParam("startTimestamp");
     String endTimestamp = getQueryParam("endTimestamp");
+    String dateField = getQueryParam("dateField");
 
     if (startTimestamp != null && endTimestamp != null) {
-      conditions.add(getTimestampFilter("@timestamp", "gte", Long.parseLong(startTimestamp)));
-      conditions.add(getTimestampFilter("@timestamp", "lte", Long.parseLong(endTimestamp)));
+      String esDateField = "updatedAt".equals(dateField) ? "updatedAt" : "@timestamp";
+      conditions.add(getTimestampFilter(esDateField, "gte", Long.parseLong(startTimestamp)));
+      conditions.add(getTimestampFilter(esDateField, "lte", Long.parseLong(endTimestamp)));
     }
 
     if (testCaseResolutionStatusType != null) {

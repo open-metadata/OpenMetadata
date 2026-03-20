@@ -1,7 +1,9 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -114,6 +116,27 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       }
 
       List<String> assigneeList = new ArrayList<>(assignees);
+
+      // Prevent self-approval: Remove updatedBy user from assignees list
+      try {
+        String updatedBy =
+            (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+        if (updatedBy != null && !updatedBy.trim().isEmpty()) {
+          String updatedByEntityLink =
+              new MessageParser.EntityLink("user", updatedBy).getLinkString();
+          boolean removed = assigneeList.remove(updatedByEntityLink);
+          if (removed) {
+            LOG.debug(
+                "[Process: {}] Prevented self-approval: Removed updatedBy user '{}' from assignees",
+                execution.getProcessInstanceId(),
+                updatedBy);
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to retrieve updatedBy variable for self-approval prevention: {}",
+            e.getMessage());
+      }
 
       // Persist the list as JSON array so TaskListener can read it.
       // Using setVariable instead of setVariableLocal to ensure visibility across subprocess.

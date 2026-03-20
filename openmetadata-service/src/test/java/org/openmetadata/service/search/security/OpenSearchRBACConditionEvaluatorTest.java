@@ -13,6 +13,7 @@ import static org.openmetadata.service.util.TestUtils.assertFieldExists;
 
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -123,8 +124,42 @@ class OpenSearchRBACConditionEvaluatorTest {
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'DataSteward'");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
         "domains.id");
+  }
+
+  @Test
+  void testHasDomainWithMultipleDomains() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference domain1 = new EntityReference();
+    domain1.setId(UUID.randomUUID());
+    domain1.setName("Finance");
+
+    EntityReference domain2 = new EntityReference();
+    domain2.setId(UUID.randomUUID());
+    domain2.setName("Engineering");
+
+    when(mockUser.getDomains()).thenReturn(List.of(domain1, domain2));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.id'].value=='" + domain1.getId() + "')]",
+        "domain1 should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.id'].value=='" + domain2.getId() + "')]",
+        "domain2 should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.bool.must_not)]",
+        "should include a clause for entities with no domain");
   }
 
   @Test
@@ -144,7 +179,9 @@ class OpenSearchRBACConditionEvaluatorTest {
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + mockUser.getId().toString()
+            + "')]",
         "owner.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
@@ -178,7 +215,7 @@ class OpenSearchRBACConditionEvaluatorTest {
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'Admin'");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
         "domains.id");
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for inAnyTeam 'Analytics'");
@@ -222,6 +259,8 @@ class OpenSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -275,6 +314,8 @@ class OpenSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -316,6 +357,8 @@ class OpenSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);

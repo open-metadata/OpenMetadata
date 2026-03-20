@@ -26,7 +26,10 @@ import {
   redirectToHomePage,
   removeSingleSelectDomain,
 } from '../../../utils/common';
-import { addMultiOwner } from '../../../utils/entity';
+import {
+  addMultiOwner,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import {
   addMultiOwnerInDialog,
   openAddGlossaryTermModal,
@@ -56,7 +59,7 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
       await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+      await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossary.data.name);
       await page.locator(descriptionBox).fill(glossary.data.description);
@@ -110,7 +113,7 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
       await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+      await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossary.data.name);
       await page.locator(descriptionBox).fill(glossary.data.description);
@@ -197,25 +200,21 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('glossary-right-panel-owner-link')
         .getByTestId('edit-owner')
         .click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Clear existing owner
       await page.click('[data-testid="clear-all-button"]');
 
       // Search and add new owner
       const searchOwner = page.waitForResponse(
-        'api/v1/search/query?q=*&index=user_search_index*'
+        'api/v1/search/query?q=*&index=user*'
       );
       await page.fill(
         '[data-testid="owner-select-users-search-bar"]',
         user2.getUserDisplayName()
       );
       await searchOwner;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page
         .getByRole('listitem', {
@@ -283,25 +282,21 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Click edit reviewer
       await page.click('[data-testid="edit-reviewer-button"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Clear existing reviewer
       await page.click('[data-testid="clear-all-button"]');
 
       // Search and add new reviewer
       const searchUser = page.waitForResponse(
-        'api/v1/search/query?q=*&index=user_search_index*'
+        'api/v1/search/query?q=*&index=user*'
       );
       await page.fill(
         '[data-testid="owner-select-users-search-bar"]',
         user2.getUserDisplayName()
       );
       await searchUser;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page
         .getByRole('listitem', {
@@ -369,9 +364,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Add initial domain via UI first
       await page.getByTestId('add-domain').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const searchDomain1 = page.waitForResponse(
         (response) =>
@@ -395,9 +388,7 @@ test.describe('Glossary Advanced Operations', () => {
       );
       await domain1Tag.click();
       await addPatchReq;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Verify initial domain is visible
       await expect(page.getByTestId('domain-link')).toContainText(
@@ -406,9 +397,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Click on domain to change it
       await page.getByTestId('add-domain').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Search for new domain
       await page
@@ -439,9 +428,7 @@ test.describe('Glossary Advanced Operations', () => {
       );
       await domain2Tag.click();
       await changePatchReq;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Verify new domain is visible
       await expect(page.getByTestId('domain-link')).toContainText(
@@ -549,7 +536,7 @@ test.describe('Glossary Advanced Operations', () => {
       const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
       await termRow.getByTestId('edit-button').click();
 
-      await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       // Set custom color
       const customColor = '#28A745';
@@ -590,7 +577,7 @@ test.describe('Glossary Advanced Operations', () => {
       const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
       await termRow.getByTestId('edit-button').click();
 
-      await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       // Set custom icon URL
       const iconUrl = 'https://example.com/new-icon.png';
@@ -892,8 +879,14 @@ test.describe('Glossary Advanced Operations', () => {
           path: '/relatedTerms',
           value: [
             {
-              id: relatedTerm.responseData.id,
-              type: 'glossaryTerm',
+              relationType: 'relatedTo',
+              term: {
+                id: relatedTerm.responseData.id,
+                type: 'glossaryTerm',
+                name: relatedTerm.responseData.name,
+                displayName: relatedTerm.responseData.displayName,
+                fullyQualifiedName: relatedTerm.responseData.fullyQualifiedName,
+              },
             },
           ],
         },
@@ -921,9 +914,7 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Clear all related terms
 
@@ -1001,9 +992,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Click edit owner button
       await page.getByTestId('edit-owner').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Clear all owners
       await page.click('[data-testid="clear-all-button"]');
@@ -1069,9 +1058,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Click edit reviewer button
       await page.getByTestId('edit-reviewer-button').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Clear all reviewers
       await page.click('[data-testid="clear-all-button"]');
@@ -1190,7 +1177,7 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('tags-container')
         .getByTestId('edit-button')
         .click();
-      await page.waitForSelector('[data-testid="tag-selector"]');
+      await page.getByTestId('tag-selector').waitFor();
 
       // Remove the tag by clicking its close button
       await page.getByTestId('remove-tags').locator('svg').click();
@@ -1220,7 +1207,7 @@ test.describe('Glossary Advanced Operations', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
 
     await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
+    await page.getByTestId('form-heading').waitFor();
 
     const glossaryName = `CancelTest${Date.now()}`;
     await page.fill('[data-testid="name"]', glossaryName);
@@ -1230,7 +1217,6 @@ test.describe('Glossary Advanced Operations', () => {
     await page.click('[data-testid="cancel-glossary"]');
 
     // Verify we're back on glossary page and the glossary was not created
-    await page.waitForLoadState('networkidle');
 
     // The glossary should not exist - check it's not in the list
     await expect(page.getByTestId(glossaryName)).not.toBeVisible();
@@ -1291,7 +1277,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.getByTestId('rename-button').click();
 
       // Wait for rename modal
-      await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+      await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
       const newDisplayName = `UpdatedTerm_${Date.now()}`;
       await page.locator('#displayName').fill(newDisplayName);
@@ -1330,8 +1316,14 @@ test.describe('Glossary Advanced Operations', () => {
           path: '/relatedTerms',
           value: [
             {
-              id: term2.responseData.id,
-              type: 'glossaryTerm',
+              relationType: 'relatedTo',
+              term: {
+                id: term2.responseData.id,
+                type: 'glossaryTerm',
+                name: term2.responseData.name,
+                displayName: term2.responseData.displayName,
+                fullyQualifiedName: term2.responseData.fullyQualifiedName,
+              },
             },
           ],
         },
@@ -1343,7 +1335,6 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Navigate to term1 details
       await page.getByTestId(term1.responseData.displayName).click();
-      await page.waitForLoadState('networkidle');
 
       // Verify term2 is shown as related term
       await expect(
@@ -1357,7 +1348,6 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('related-term-container')
         .getByTestId(term2.responseData.displayName)
         .click();
-      await page.waitForLoadState('networkidle');
 
       // Verify we're on term2 page
       await expect(
@@ -1452,7 +1442,7 @@ test.describe('Glossary Advanced Operations', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
 
     await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
+    await page.getByTestId('form-heading').waitFor();
 
     // Try to enter name exceeding 128 chars
     const tooLongName = 'A'.repeat(150);

@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.HashMap;
 import java.util.Map;
 
+@Deprecated(since = "1.12.0", forRemoval = true)
 public class AccessTokenResponse {
   @JsonProperty("token_type")
   private String tokenType = null;

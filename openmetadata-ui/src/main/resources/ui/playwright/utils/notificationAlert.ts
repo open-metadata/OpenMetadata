@@ -32,7 +32,11 @@ import {
   waitForRecentEventsToFinishExecution,
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
-import { addMultiOwner, updateDescription } from './entity';
+import {
+  addMultiOwner,
+  updateDescription,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { addExternalDestination } from './observabilityAlert';
 import { sidebarClick } from './sidebar';
 
@@ -54,7 +58,7 @@ export const visitNotificationAlertPage = async (page: Page) => {
   ]);
 
   // Ensure UI is ready after API responses
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const addFilterWithUsersListInput = async ({
@@ -95,7 +99,7 @@ export const addFilterWithUsersListInput = async ({
     (response) =>
       response.url().includes('/api/v1/search/query?q=') &&
       response.url().includes(encodeURIComponent(updaterName)) &&
-      response.url().includes('index=user_search_index')
+      response.url().includes('index=user')
   );
   // Fill search term and wait for API response
   await userSelectInput.fill(updaterName);

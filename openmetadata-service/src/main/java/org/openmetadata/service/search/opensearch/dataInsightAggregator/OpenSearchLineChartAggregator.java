@@ -38,6 +38,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
     }
   }
 
+  @Override
   public SearchRequest prepareSearchRequest(
       @NotNull DataInsightCustomChart diChart,
       long start,
@@ -72,20 +73,20 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
         Aggregation termsAgg =
             Aggregation.of(
                 a -> {
-                  var tb = a.terms(t -> t.field(lineChart.getxAxisField()).size(1000));
+                  var tb = a.terms(t -> t.field(lineChart.getxAxisField()).size(100));
                   if (finalIncludeTerms != null) {
                     tb =
                         a.terms(
                             t ->
                                 t.field(lineChart.getxAxisField())
-                                    .size(1000)
+                                    .size(100)
                                     .include(inc -> inc.regexp(finalIncludeTerms)));
                   }
                   if (finalExcludeTerms != null) {
                     tb =
                         a.terms(
                             t -> {
-                              var builder = t.field(lineChart.getxAxisField()).size(1000);
+                              var builder = t.field(lineChart.getxAxisField()).size(100);
                               if (finalIncludeTerms != null) {
                                 builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
                               }
@@ -129,7 +130,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       if (!subAggregations.isEmpty()) {
         if (currentAgg._kind().name().equals("Terms")) {
           final String fieldName = currentAgg.terms().field();
-          final int size = Optional.ofNullable(currentAgg.terms().size()).orElse(1000);
+          final int size = Optional.ofNullable(currentAgg.terms().size()).orElse(100);
           metricAggregations.put(
               metricName,
               Aggregation.of(
@@ -163,12 +164,12 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
         Aggregation groupByAgg =
             Aggregation.of(
                 a -> {
-                  var termsBuilder = a.terms(t -> t.field(lineChart.getGroupBy()).size(1000));
+                  var termsBuilder = a.terms(t -> t.field(lineChart.getGroupBy()).size(100));
                   if (finalIncludeGroups != null || finalExcludeGroups != null) {
                     termsBuilder =
                         a.terms(
                             t -> {
-                              var tb = t.field(lineChart.getGroupBy()).size(1000);
+                              var tb = t.field(lineChart.getGroupBy()).size(100);
                               if (finalIncludeGroups != null) {
                                 tb = tb.include(inc -> inc.terms(finalIncludeGroups));
                               }
@@ -199,6 +200,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
                           r.field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
                               .gte(JsonData.of(finalStartTime))
                               .lte(JsonData.of(end))));
+
       searchRequestBuilder.query(rangeQuery);
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {

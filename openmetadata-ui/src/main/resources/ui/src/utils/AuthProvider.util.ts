@@ -204,7 +204,7 @@ export const getAuthConfig = (
           authority,
           clientId,
           redirectUri,
-          postLogoutRedirectUri: '/',
+          postLogoutRedirectUri: globalThis.location.origin + ROUTES.SIGNIN,
         },
         cache: {
           cacheLocation: BrowserCacheLocation.LocalStorage,

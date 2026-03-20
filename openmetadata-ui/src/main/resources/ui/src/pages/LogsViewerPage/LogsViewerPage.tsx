@@ -16,7 +16,6 @@ import { LazyLog } from '@melloware/react-logviewer';
 import {
   Box,
   Button,
-  CircularProgress,
   Divider,
   IconButton,
   Skeleton,
@@ -40,6 +39,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as TimeDateIcon } from '../../assets/svg/time-date.svg';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionRecentRuns } from '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
@@ -383,7 +383,7 @@ const LogsViewerPage = () => {
           )}
         />
         <Typography variant="h6">
-          {ingestionDetails?.name ?? appData?.name}
+          {getEntityName(ingestionDetails) || getEntityName(appData)}
         </Typography>
 
         <Stack
@@ -470,7 +470,7 @@ const LogsViewerPage = () => {
                 <Tooltip
                   placement="top"
                   title={t('label.downloading-log-plural')}>
-                  <CircularProgress size={16} />
+                  <Loader size="x-small" />
                 </Tooltip>
               ) : (
                 <IconButton

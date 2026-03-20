@@ -196,7 +196,7 @@ public class AppMarketPlaceResource
           Include include) {
     AppMarketPlaceDefinition definition =
         getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
+    definition.setEnabled(ApplicationHandler.getInstance().isEnabled(definition.getName()));
     return definition;
   }
 
@@ -235,7 +235,7 @@ public class AppMarketPlaceResource
           Include include) {
     AppMarketPlaceDefinition definition =
         getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
+    definition.setEnabled(ApplicationHandler.getInstance().isEnabled(definition.getName()));
     return definition;
   }
 

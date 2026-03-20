@@ -23,15 +23,16 @@ import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
 import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
+import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { SpreadsheetClass } from '../support/entity/SpreadsheetClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
-import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
-import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage } from './common';
 import { addCustomPropertiesForEntity } from './customProperty';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 // All operations across all entities
@@ -389,9 +390,7 @@ export const testPipelineSpecificOperations = async (
 
   // Test Edit Lineage for Pipeline
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
-  await testUserPage.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
@@ -446,9 +445,7 @@ export const testDatabaseSpecificOperations = async (
     testUserPage.getByTestId('database-databaseSchemas')
   ).toBeVisible();
 
-  await testUserPage.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(testUserPage);
 
   await checkElementVisibility(
     testUserPage,
@@ -467,9 +464,7 @@ export const testDashboardDataModelSpecificOperations = async (
 
   // Test Edit Lineage for Dashboard Data Model
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
-  await testUserPage.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
@@ -483,7 +478,6 @@ export const testDashboardDataModelSpecificOperations = async (
 // after a vote action triggers the re-fetch of entity details.
 const testVotePreservesUsage = async (testUserPage: Page) => {
   await testUserPage.locator('[data-testid="up-vote-btn"]').click();
-  await testUserPage.waitForLoadState('networkidle');
   await expect(testUserPage.getByText('Usage').first()).toBeVisible();
 };
 

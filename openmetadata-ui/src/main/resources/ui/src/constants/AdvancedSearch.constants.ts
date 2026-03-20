@@ -177,6 +177,25 @@ export const CONTAINER_DROPDOWN_ITEMS = [
   },
 ];
 
+export const COLUMN_DROPDOWN_ITEMS = [
+  {
+    label: 'label.data-type',
+    key: EntityFields.DATA_TYPE,
+  },
+  {
+    label: 'label.table',
+    key: EntityFields.TABLE_NAME,
+  },
+  {
+    label: 'label.database',
+    key: EntityFields.DATABASE,
+  },
+  {
+    label: 'label.schema',
+    key: EntityFields.DATABASE_SCHEMA,
+  },
+];
+
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
     label: 'label.domain-plural',

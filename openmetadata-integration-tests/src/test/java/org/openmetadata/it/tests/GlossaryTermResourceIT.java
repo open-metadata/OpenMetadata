@@ -8,23 +8,38 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.CreateTaskDetails;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for GlossaryTerm entity operations.
@@ -608,6 +623,112 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     // Fetch with reviewers field
     GlossaryTerm fetched = client.glossaryTerms().get(term.getId().toString(), "reviewers");
     assertNotNull(fetched.getReviewers());
+  }
+
+  @Test
+  void test_glossaryApprovalTaskRemainsVisibleInGlossaryFeed(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateGlossary glossaryRequest =
+        new CreateGlossary()
+            .withName(ns.prefix("glossary_task_visibility"))
+            .withDescription("Glossary to validate approval task feed consistency")
+            .withReviewers(List.of(testUser1().getEntityReference()));
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+
+    GlossaryTerm term = null;
+    Thread approvalTaskThread = null;
+    try {
+      CreateGlossaryTerm termRequest =
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("term_task_visibility"))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("Term that should keep an open approval task visible in feed");
+      term = client.glossaryTerms().create(termRequest);
+      final String termName = term.getName();
+      assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+
+      User assigneeUser = SdkClients.adminClient().users().getByName(testUser1().getName());
+      CreateThread createThread =
+          new CreateThread()
+              .withFrom("admin")
+              .withMessage("Please approve glossary term")
+              .withAbout(String.format("<#E::glossaryTerm::%s>", term.getFullyQualifiedName()))
+              .withType(ThreadType.Task)
+              .withTaskDetails(
+                  new CreateTaskDetails()
+                      .withType(TaskType.RequestApproval)
+                      .withAssignees(List.of(assigneeUser.getEntityReference()))
+                      .withOldValue(term.getEntityStatus().value())
+                      .withSuggestion(EntityStatus.APPROVED.value()));
+      approvalTaskThread =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .execute(HttpMethod.POST, "/v1/feed", createThread, Thread.class);
+      assertNotNull(approvalTaskThread);
+      assertNotNull(approvalTaskThread.getTask());
+
+      Awaitility.await("wait for open approval task to appear in glossary feed")
+          .atMost(java.time.Duration.ofSeconds(60))
+          .pollInterval(java.time.Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      getOpenGlossaryTaskEntityNames(glossary.getFullyQualifiedName())
+                          .contains(termName),
+                      "Expected open approval task for created glossary term"));
+
+      Awaitility.await("open approval task should not disappear before reviewer action")
+          .during(java.time.Duration.ofSeconds(5))
+          .atMost(java.time.Duration.ofSeconds(20))
+          .pollInterval(java.time.Duration.ofMillis(500))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      getOpenGlossaryTaskEntityNames(glossary.getFullyQualifiedName())
+                          .contains(termName),
+                      "Open approval task disappeared from glossary feed before resolution"));
+    } finally {
+      if (approvalTaskThread != null) {
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.DELETE,
+                "/v1/feed/" + approvalTaskThread.getId(),
+                null,
+                RequestOptions.builder().build());
+      }
+      if (term != null) {
+        client
+            .glossaryTerms()
+            .delete(term.getId().toString(), java.util.Map.of("hardDelete", "true"));
+      }
+      client
+          .glossaries()
+          .delete(glossary.getId().toString(), java.util.Map.of("hardDelete", "true"));
+    }
+  }
+
+  private List<String> getOpenGlossaryTaskEntityNames(String glossaryFqn) throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", String.format("<#E::glossary::%s>", glossaryFqn))
+            .queryParam("type", "Task")
+            .queryParam("taskStatus", "Open")
+            .build();
+
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/feed", null, options);
+    JsonNode data = new ObjectMapper().readTree(response).path("data");
+
+    List<String> entityNames = new ArrayList<>();
+    if (data.isArray()) {
+      for (JsonNode taskNode : data) {
+        entityNames.add(taskNode.path("entityRef").path("name").asText());
+      }
+    }
+    return entityNames;
   }
 
   @Test
@@ -1237,6 +1358,51 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
+  void test_glossaryTermStatusTransitionUpdatesSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_status_search"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for search status propagation");
+
+    GlossaryTerm term = createEntity(request);
+    term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+
+    Awaitility.await("Glossary term status should be reflected in search")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollInterval(java.time.Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + updated.getId())
+                      .index("glossary_term_search_index")
+                      .size(5)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Glossary term should be searchable");
+
+              JsonNode source = null;
+              for (JsonNode hit : hits) {
+                if (updated.getId().toString().equals(hit.path("_id").asText())
+                    || updated.getId().toString().equals(hit.path("_source").path("id").asText())) {
+                  source = hit.path("_source");
+                  break;
+                }
+              }
+              assertNotNull(source, "Expected glossary term document in search hits");
+              assertEquals(updated.getEntityStatus().value(), source.path("entityStatus").asText());
+            });
+  }
+
+  @Test
   void test_commonPrefixTagLabelCount(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary = getOrCreateGlossary(ns);
@@ -1747,7 +1913,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Second term");
     GlossaryTerm term2 = createEntity(request2);
 
-    term2.setRelatedTerms(List.of(term1.getEntityReference()));
+    term2.setRelatedTerms(
+        List.of(
+            new TermRelation().withTerm(term1.getEntityReference()).withRelationType("relatedTo")));
     GlossaryTerm updated = patchEntity(term2.getId().toString(), term2);
     assertNotNull(updated.getRelatedTerms());
     assertTrue(updated.getRelatedTerms().size() >= 1);
@@ -2145,5 +2313,261 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated.getOwners());
     assertEquals(1, updated.getOwners().size());
     assertEquals(testUser2().getId(), updated.getOwners().get(0).getId());
+  }
+
+  /**
+   * Helper method to search glossary terms with pagination and filters.
+   * This is test-only code that directly calls the search API endpoint.
+   */
+  private ResultList<GlossaryTerm> searchGlossaryTerms(
+      OpenMetadataClient client,
+      String query,
+      String glossaryFqn,
+      String entityStatus,
+      Integer limit,
+      Integer offset) {
+    org.openmetadata.sdk.network.RequestOptions.Builder optionsBuilder =
+        org.openmetadata.sdk.network.RequestOptions.builder();
+
+    if (query != null) {
+      optionsBuilder.queryParam("q", query);
+    }
+    if (glossaryFqn != null) {
+      optionsBuilder.queryParam("glossaryFqn", glossaryFqn);
+    }
+    if (entityStatus != null) {
+      optionsBuilder.queryParam("entityStatus", entityStatus);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
+    }
+    if (offset != null) {
+      optionsBuilder.queryParam("offset", offset.toString());
+    }
+
+    return client
+        .getHttpClient()
+        .execute(
+            org.openmetadata.sdk.network.HttpMethod.GET,
+            "/v1/glossaryTerms/search",
+            null,
+            GlossaryTermResultList.class,
+            optionsBuilder.build());
+  }
+
+  /** Result list type for deserializing glossary term search results. */
+  private static class GlossaryTermResultList extends ResultList<GlossaryTerm> {}
+
+  @Test
+  void test_listGlossaryTermsWithEntityStatusFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a dedicated glossary for this test
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("status_list_glossary"))
+            .withDescription("Glossary for entityStatus list filter test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    // Create two terms - both start as APPROVED (default status when no reviewers)
+    CreateGlossaryTerm request1 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("list_approved_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that will stay approved");
+    GlossaryTerm approvedTerm = createEntity(request1);
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
+
+    CreateGlossaryTerm request2 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("list_draft_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that will be changed to draft");
+    GlossaryTerm draftTerm = createEntity(request2);
+    assertEquals(EntityStatus.APPROVED, draftTerm.getEntityStatus());
+
+    // Update second term to DRAFT status
+    draftTerm.setEntityStatus(EntityStatus.DRAFT);
+    GlossaryTerm updatedDraftTerm = client.glossaryTerms().update(draftTerm.getId(), draftTerm);
+    assertEquals(EntityStatus.DRAFT, updatedDraftTerm.getEntityStatus());
+
+    // List with APPROVED status filter - only approved term should be returned
+    ListParams approvedParams = new ListParams();
+    approvedParams.setLimit(100);
+    approvedParams.addQueryParam("glossary", glossary.getId().toString());
+    approvedParams.addQueryParam("entityStatus", EntityStatus.APPROVED.value());
+    ListResponse<GlossaryTerm> approvedTerms = client.glossaryTerms().list(approvedParams);
+
+    assertNotNull(approvedTerms);
+    assertNotNull(approvedTerms.getData());
+    java.util.List<GlossaryTerm> ourApprovedTerms =
+        approvedTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedDraftTerm.getName()))
+            .toList();
+    assertEquals(1, ourApprovedTerms.size(), "Only approved term should be returned from list API");
+    assertEquals(approvedTerm.getName(), ourApprovedTerms.getFirst().getName());
+
+    // List with DRAFT status filter - only draft term should be returned
+    ListParams draftParams = new ListParams();
+    draftParams.setLimit(100);
+    draftParams.addQueryParam("glossary", glossary.getId().toString());
+    draftParams.addQueryParam("entityStatus", EntityStatus.DRAFT.value());
+    ListResponse<GlossaryTerm> draftTerms = client.glossaryTerms().list(draftParams);
+
+    assertNotNull(draftTerms);
+    assertNotNull(draftTerms.getData());
+    java.util.List<GlossaryTerm> ourDraftTerms =
+        draftTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedDraftTerm.getName()))
+            .toList();
+    assertEquals(1, ourDraftTerms.size(), "Only draft term should be returned from list API");
+    assertEquals(updatedDraftTerm.getName(), ourDraftTerms.getFirst().getName());
+
+    // List with multiple status filter (APPROVED,DRAFT) - both terms should be returned
+    ListParams multiParams = new ListParams();
+    multiParams.setLimit(100);
+    multiParams.addQueryParam("glossary", glossary.getId().toString());
+    multiParams.addQueryParam("entityStatus", "Approved,Draft");
+    ListResponse<GlossaryTerm> multiStatusTerms = client.glossaryTerms().list(multiParams);
+
+    assertNotNull(multiStatusTerms);
+    assertNotNull(multiStatusTerms.getData());
+    java.util.List<GlossaryTerm> ourMultiTerms =
+        multiStatusTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedDraftTerm.getName()))
+            .toList();
+    assertEquals(
+        2,
+        ourMultiTerms.size(),
+        "Both terms should be returned with multi-status filter on list API");
+  }
+
+  @Test
+  void test_glossaryTermEntityStatusFiltering(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Step 1: Create a dedicated glossary for this test to avoid interference
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("status_filter_glossary"))
+            .withDescription("Glossary for entityStatus filtering test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    // Step 2: Create two terms - both should start as APPROVED (default status when no reviewers)
+    CreateGlossaryTerm request1 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("approved_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that will stay approved");
+    GlossaryTerm approvedTerm = client.glossaryTerms().create(request1);
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
+
+    CreateGlossaryTerm request2 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("review_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that will be changed to in review");
+    GlossaryTerm reviewTerm = client.glossaryTerms().create(request2);
+    assertEquals(EntityStatus.APPROVED, reviewTerm.getEntityStatus());
+
+    // Step 3: Update the second term to IN_REVIEW status
+    reviewTerm.setEntityStatus(EntityStatus.IN_REVIEW);
+    GlossaryTerm updatedReviewTerm = client.glossaryTerms().update(reviewTerm.getId(), reviewTerm);
+    assertEquals(EntityStatus.IN_REVIEW, updatedReviewTerm.getEntityStatus());
+
+    // Step 4: Search without entityStatus filter - both terms should be returned
+    ResultList<GlossaryTerm> allTerms =
+        searchGlossaryTerms(client, null, glossary.getFullyQualifiedName(), null, 1000, 0);
+
+    assertNotNull(allTerms);
+    assertNotNull(allTerms.getData());
+    // Should contain at least our 2 terms (may contain more if other tests created terms in this
+    // glossary)
+    long ourTermsCount =
+        allTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedReviewTerm.getName()))
+            .count();
+    assertEquals(2, ourTermsCount, "Both terms should be returned without entityStatus filter");
+
+    // Step 5: Search with APPROVED status - only the first term should be returned
+    ResultList<GlossaryTerm> approvedTerms =
+        searchGlossaryTerms(
+            client, null, glossary.getFullyQualifiedName(), EntityStatus.APPROVED.value(), 1000, 0);
+
+    assertNotNull(approvedTerms);
+    assertNotNull(approvedTerms.getData());
+
+    // Filter to only our test terms and verify only approved term is present
+    java.util.List<GlossaryTerm> ourApprovedTerms =
+        approvedTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedReviewTerm.getName()))
+            .toList();
+
+    assertEquals(
+        1, ourApprovedTerms.size(), "Only one term should be returned with APPROVED filter");
+    assertEquals(approvedTerm.getName(), ourApprovedTerms.getFirst().getName());
+    assertEquals(EntityStatus.APPROVED, ourApprovedTerms.getFirst().getEntityStatus());
+
+    // Step 6: Search with IN_REVIEW status - only the second term should be returned
+    ResultList<GlossaryTerm> reviewTerms =
+        searchGlossaryTerms(
+            client,
+            null,
+            glossary.getFullyQualifiedName(),
+            EntityStatus.IN_REVIEW.value(),
+            1000,
+            0);
+
+    assertNotNull(reviewTerms);
+    assertNotNull(reviewTerms.getData());
+
+    // Filter to only our test terms and verify only under review term is present
+    java.util.List<GlossaryTerm> ourReviewTerms =
+        reviewTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedReviewTerm.getName()))
+            .toList();
+
+    assertEquals(
+        1, ourReviewTerms.size(), "Only one term should be returned with IN_REVIEW filter");
+    assertEquals(updatedReviewTerm.getName(), ourReviewTerms.getFirst().getName());
+    assertEquals(EntityStatus.IN_REVIEW, ourReviewTerms.getFirst().getEntityStatus());
+
+    // Additional test: Multiple status filter (APPROVED,IN_REVIEW) - both terms should be returned
+    ResultList<GlossaryTerm> multiStatusTerms =
+        searchGlossaryTerms(
+            client, null, glossary.getFullyQualifiedName(), "Approved,In Review", 1000, 0);
+
+    assertNotNull(multiStatusTerms);
+    assertNotNull(multiStatusTerms.getData());
+
+    // Filter to only our test terms - both should be present
+    java.util.List<GlossaryTerm> ourMultiStatusTerms =
+        multiStatusTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedReviewTerm.getName()))
+            .toList();
+
+    assertEquals(
+        2, ourMultiStatusTerms.size(), "Both terms should be returned with multi-status filter");
   }
 }

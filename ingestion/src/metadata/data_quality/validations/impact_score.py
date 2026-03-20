@@ -77,6 +77,7 @@ DEFAULT_NORMALIZATION_FACTOR = 1.5  # Divisor to normalize scores to ~0-1 range
 DEFAULT_TOP_DIMENSIONS = (
     5  # Number of top dimensions to show before grouping as "Others"
 )
+MAX_TOP_DIMENSIONS = 50
 
 # Volume factor tiers for the impact score formula
 VOLUME_FACTOR_TIERS = [

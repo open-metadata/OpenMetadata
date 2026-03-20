@@ -257,15 +257,18 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
     sortOrder,
     queryFilter,
   } = payload;
+  const includeDeletedParam =
+    'includeDeleted' in payload ? payload.includeDeleted : false;
 
   const response = await APIClient.get<SearchResponse<SearchIndex>>(
-    '/search/nlq/query',
+    '/hybrid/nlq/search',
     {
       params: {
         q: query,
         index: searchIndex,
         size: pageSize,
         from: (pageNumber - 1) * pageSize,
+        deleted: includeDeletedParam,
         sort_field: sortField,
         sort_order: sortOrder,
         query_filter: JSON.stringify(queryFilter),

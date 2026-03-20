@@ -171,7 +171,7 @@ const DataQualityPage = () => {
                 {activeTab === DataQualityPageTabs.DASHBOARD &&
                   !isEmpty(addButtonContent) && (
                     <Dropdown
-                      className="m-l-md h-10"
+                      className="m-l-md"
                       menu={{
                         items: addButtonContent,
                       }}

@@ -13,7 +13,7 @@
 Datalake S3 Client
 """
 from functools import partial
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Optional, Set
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
@@ -21,7 +21,12 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 )
 from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
 from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.s3_utils import list_s3_objects
+
+logger = ingestion_logger()
+
+S3_COLD_STORAGE_CLASSES: Set[str] = {"GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"}
 
 
 class DatalakeS3Client(DatalakeBaseClient):
@@ -47,13 +52,30 @@ class DatalakeS3Client(DatalakeBaseClient):
             for bucket in self._client.list_buckets()["Buckets"]:
                 yield bucket["Name"]
 
-    def get_table_names(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:
+    def get_table_names(
+        self,
+        bucket_name: str,
+        prefix: Optional[str],
+        skip_cold_storage: bool = False,
+    ) -> Iterable[str]:
         kwargs = {"Bucket": bucket_name}
 
         if prefix:
             kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
 
         for key in list_s3_objects(self._client, **kwargs):
+            if skip_cold_storage:
+                storage_class = key.get("StorageClass", "STANDARD")
+                archive_status = key.get("ArchiveStatus", "")
+                if storage_class in S3_COLD_STORAGE_CLASSES or archive_status in {
+                    "ARCHIVE_ACCESS",
+                    "DEEP_ARCHIVE_ACCESS",
+                }:
+                    logger.debug(
+                        f"Skipping cold storage object: {key['Key']} "
+                        f"(StorageClass: {storage_class}, ArchiveStatus: {archive_status})"
+                    )
+                    continue
             yield key["Key"]
 
     def get_folders_prefix(

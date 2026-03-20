@@ -16,7 +16,17 @@ Validator Mixin for SQA tests cases
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, cast
 
-from sqlalchemy import Column, String, Table, case, func, inspect, literal, select
+from sqlalchemy import (
+    Column,
+    String,
+    Table,
+    case,
+    func,
+    inspect,
+    literal,
+    literal_column,
+    select,
+)
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement, FromClause
@@ -198,6 +208,12 @@ class SQAValidatorMixin:
         ('NULL', 'Others'). This prevents type mismatch errors when mixing numeric
         dimension columns with string labels.
 
+        Uses literal_column instead of literal to inline string constants directly
+        in the SQL. This avoids bind parameters in the CASE expression, which is
+        critical for Trino: when this expression appears in both SELECT and GROUP BY,
+        bind parameters get different positional indices, making Trino unable to
+        match the two expressions as equivalent (EXPRESSION_NOT_AGGREGATE error).
+
         Args:
             dimension_col: The dimension column to normalize
 
@@ -205,12 +221,13 @@ class SQAValidatorMixin:
             ColumnElement: Normalized dimension expression (CASE statement)
         """
         dimension_col_as_string = func.cast(dimension_col, String)
+        null_label = literal_column(f"'{DIMENSION_NULL_LABEL}'")
 
         normalized_dimension = case(
-            (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+            (dimension_col.is_(None), null_label),
             (
-                func.upper(dimension_col_as_string) == "NULL",
-                literal(DIMENSION_NULL_LABEL),
+                func.upper(dimension_col_as_string) == null_label,
+                null_label,
             ),
             else_=dimension_col_as_string,
         )
@@ -225,6 +242,7 @@ class SQAValidatorMixin:
         query_type: DataQualityQueryType,
         filter_clause: Optional[ColumnElement] = None,
         failed_count_builder: Optional[Callable] = None,
+        top_n: int = DEFAULT_TOP_DIMENSIONS,
     ):
         if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
             raise ValueError(
@@ -311,7 +329,7 @@ class SQAValidatorMixin:
             final_query = final_query.order_by(
                 getattr(final_metrics_cte.c, DIMENSION_IMPACT_SCORE_KEY).desc(),
                 getattr(final_metrics_cte.c, DIMENSION_VALUE_KEY).asc(),
-            ).limit(DEFAULT_TOP_DIMENSIONS + 1)
+            ).limit(top_n + 1)
 
         return final_query
 
@@ -325,6 +343,7 @@ class SQAValidatorMixin:
         others_metric_expressions_builder: Optional[
             Callable[[FromClause], Dict[str, ClauseElement]]
         ] = None,
+        top_n: int = DEFAULT_TOP_DIMENSIONS,
     ) -> List[Dict[str, Any]]:
         """Execute two-pass dimensional validation with metrics.
 
@@ -355,18 +374,16 @@ class SQAValidatorMixin:
             metric_expressions=metric_expressions,
             query_type=DataQualityQueryType.DIMENSIONAL,
             failed_count_builder=failed_count_builder,
+            top_n=top_n,
         )
 
         top_n_plus_one_results = self.runner.session.execute(
             top_n_plus_one_query
         ).fetchall()
 
-        result_dicts = [
-            dict(row._mapping)
-            for row in top_n_plus_one_results[:DEFAULT_TOP_DIMENSIONS]
-        ]
+        result_dicts = [dict(row._mapping) for row in top_n_plus_one_results[:top_n]]
 
-        if len(top_n_plus_one_results) > DEFAULT_TOP_DIMENSIONS:
+        if len(top_n_plus_one_results) > top_n:
             top_n_values = [row[DIMENSION_VALUE_KEY] for row in result_dicts]
 
             # Build custom source and metrics if builders provided
@@ -390,6 +407,7 @@ class SQAValidatorMixin:
                 query_type=DataQualityQueryType.OTHERS,
                 failed_count_builder=failed_count_builder,
                 filter_clause=others_filter,
+                top_n=top_n,
             )
 
             others_result = self.runner.session.execute(others_query).fetchone()

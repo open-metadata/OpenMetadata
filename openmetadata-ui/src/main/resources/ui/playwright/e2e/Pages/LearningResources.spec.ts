@@ -15,6 +15,7 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { LearningResourceClass } from '../../support/learning/LearningResourceClass';
+import { AdminClass } from '../../support/user/AdminClass';
 import {
   createNewPage,
   getApiContext,
@@ -27,7 +28,15 @@ import { settingClick, sidebarClick } from '../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 async function goToLearningResourcesAdmin(page: Page) {
-  await redirectToHomePage(page);
+  const admin = new AdminClass();
+  await page.goto('/');
+  await page.waitForLoadState('domcontentloaded');
+
+  if (page.url().includes('/signin')) {
+    await admin.login(page);
+  }
+
+  await page.waitForURL('**/my-data');
   await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('learning-resources-page')).toBeVisible();
@@ -337,22 +346,19 @@ test.describe(
         );
       });
 
-      await test.step(
-        'Click resource card and verify player opens',
-        async () => {
-          const resourceCard = page.getByTestId(
-            `learning-resource-card-PW_Player_Resource_${uniqueId}`
-          );
-          await expect(resourceCard).toBeVisible();
-          await resourceCard.click();
+      await test.step('Click resource card and verify player opens', async () => {
+        const resourceCard = page.getByTestId(
+          `learning-resource-card-PW_Player_Resource_${uniqueId}`
+        );
+        await expect(resourceCard).toBeVisible();
+        await resourceCard.click();
 
-          const playerDialog = page.getByRole('dialog');
-          await expect(playerDialog).toBeVisible();
-          await expect(
-            playerDialog.getByText(`PW Player Resource ${uniqueId}`)
-          ).toBeVisible();
-        }
-      );
+        const playerDialog = page.getByRole('dialog');
+        await expect(playerDialog).toBeVisible();
+        await expect(
+          playerDialog.getByText(`PW Player Resource ${uniqueId}`)
+        ).toBeVisible();
+      });
     });
   }
 );
@@ -421,27 +427,24 @@ test.describe('Learning Resources - Search and Filters', () => {
   }) => {
     const searchTerm = videoResource.data.name;
 
-    await test.step(
-      'Type search term and verify API receives search param',
-      async () => {
-        const searchResponse = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/learning/resources') &&
-            r.url().includes('search=') &&
-            r.request().method() === 'GET'
-        );
+    await test.step('Type search term and verify API receives search param', async () => {
+      const searchResponse = page.waitForResponse(
+        (r) =>
+          r.url().includes('/api/v1/learning/resources') &&
+          r.url().includes('search=') &&
+          r.request().method() === 'GET'
+      );
 
-        await page
-          .getByRole('textbox', { name: 'Search Resource' })
-          .fill(searchTerm);
-        const response = await searchResponse;
-        await waitForAllLoadersToDisappear(page);
+      await page
+        .getByRole('textbox', { name: 'Search Resource' })
+        .fill(searchTerm);
+      const response = await searchResponse;
+      await waitForAllLoadersToDisappear(page);
 
-        expect(response.url()).toContain(
-          `search=${encodeURIComponent(searchTerm)}`
-        );
-      }
-    );
+      expect(response.url()).toContain(
+        `search=${encodeURIComponent(searchTerm)}`
+      );
+    });
 
     await test.step('Verify search result is shown in table', async () => {
       await expect(
@@ -455,17 +458,10 @@ test.describe('Learning Resources - Search and Filters', () => {
   test('should send correct resourceType param when filtering by type', async ({
     page,
   }) => {
-    await test.step(
-      'Apply Video type filter and verify API param',
-      async () => {
-        const response = await applyLearningResourceFilter(
-          page,
-          'Type',
-          'Video'
-        );
-        expect(response.url()).toContain('resourceType=Video');
-      }
-    );
+    await test.step('Apply Video type filter and verify API param', async () => {
+      const response = await applyLearningResourceFilter(page, 'Type', 'Video');
+      expect(response.url()).toContain('resourceType=Video');
+    });
 
     await test.step('Verify filter chip is shown', async () => {
       await expect(
@@ -477,17 +473,14 @@ test.describe('Learning Resources - Search and Filters', () => {
   test('should send correct category param when filtering by category', async ({
     page,
   }) => {
-    await test.step(
-      'Apply Discovery category filter and verify API param',
-      async () => {
-        const response = await applyLearningResourceFilter(
-          page,
-          'Categories',
-          'Discovery'
-        );
-        expect(response.url()).toContain('category=Discovery');
-      }
-    );
+    await test.step('Apply Discovery category filter and verify API param', async () => {
+      const response = await applyLearningResourceFilter(
+        page,
+        'Categories',
+        'Discovery'
+      );
+      expect(response.url()).toContain('category=Discovery');
+    });
 
     await test.step('Verify filter chip is shown', async () => {
       await expect(page.getByTitle('Discovery')).toBeVisible();
@@ -497,17 +490,14 @@ test.describe('Learning Resources - Search and Filters', () => {
   test('should send correct pageId param when filtering by context', async ({
     page,
   }) => {
-    await test.step(
-      'Apply Glossary context filter and verify API param',
-      async () => {
-        const response = await applyLearningResourceFilter(
-          page,
-          'Context',
-          'glossary'
-        );
-        expect(response.url()).toContain('pageId=glossary');
-      }
-    );
+    await test.step('Apply Glossary context filter and verify API param', async () => {
+      const response = await applyLearningResourceFilter(
+        page,
+        'Context',
+        'glossary'
+      );
+      expect(response.url()).toContain('pageId=glossary');
+    });
 
     await test.step('Verify filter chip is shown', async () => {
       await expect(page.getByTitle('Glossary')).toBeVisible();
@@ -517,17 +507,14 @@ test.describe('Learning Resources - Search and Filters', () => {
   test('should send correct status param when filtering by status', async ({
     page,
   }) => {
-    await test.step(
-      'Apply Active status filter and verify API param',
-      async () => {
-        const response = await applyLearningResourceFilter(
-          page,
-          'Status',
-          'Active'
-        );
-        expect(response.url()).toContain('status=Active');
-      }
-    );
+    await test.step('Apply Active status filter and verify API param', async () => {
+      const response = await applyLearningResourceFilter(
+        page,
+        'Status',
+        'Active'
+      );
+      expect(response.url()).toContain('status=Active');
+    });
 
     await test.step('Verify filter chip is shown', async () => {
       await expect(page.getByTitle('Active')).toBeVisible();
@@ -613,23 +600,20 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
       });
 
-      await test.step(
-        'Navigate to Glossary and verify resource in learning drawer',
-        async () => {
-          await sidebarClick(page, SidebarItem.GLOSSARY);
-          await waitForAllLoadersToDisappear(page);
+      await test.step('Navigate to Glossary and verify resource in learning drawer', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await waitForAllLoadersToDisappear(page);
 
-          const learningIcon = page.getByTestId('learning-icon');
-          await expect(learningIcon).toBeVisible();
-          await learningIcon.click();
+        const learningIcon = page.getByTestId('learning-icon');
+        await expect(learningIcon).toBeVisible();
+        await learningIcon.click();
 
-          const drawer = page.getByTestId('learning-drawer');
-          await expect(drawer).toBeVisible();
-          await scrollDrawerToShowResource(page, resourceName);
-          await expect(drawer.getByText(resourceName)).toBeVisible();
-          await page.keyboard.press('Escape');
-        }
-      );
+        const drawer = page.getByTestId('learning-drawer');
+        await expect(drawer).toBeVisible();
+        await scrollDrawerToShowResource(page, resourceName);
+        await expect(drawer.getByText(resourceName)).toBeVisible();
+        await page.keyboard.press('Escape');
+      });
     });
   }
 );

@@ -29,11 +29,11 @@ export const updatePersonaDisplayName = async ({
     '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
   );
 
-  await page.waitForSelector('#name', { state: 'visible' });
+  await page.locator('#name').waitFor({ state: 'visible' });
 
   await expect(page.locator('#name')).toBeDisabled();
 
-  await page.waitForSelector('#displayName', { state: 'visible' });
+  await page.locator('#displayName').waitFor({ state: 'visible' });
   await page.fill('#displayName', displayName);
 
   await page.click('[data-testid="save-button"]');
@@ -58,11 +58,10 @@ export const checkPersonaInProfile = async (
   expectedPersonaName?: string
 ) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
-  await page.waitForSelector('[role="menu"].profile-dropdown', {
+  await page.locator('[role="menu"].profile-dropdown').waitFor({
     state: 'visible',
   });
   await page.getByTestId('user-name').click();
-  await page.waitForLoadState('networkidle');
 
   if (expectedPersonaName) {
     // Expect persona to be visible with specific name
@@ -107,13 +106,20 @@ export const navigateToPersonaWithPagination = async (
     // Check if element is visible on current page
     if (await locator.isVisible()) {
       if (click) {
-        const personaDetailsResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/personas/name/') &&
-            response.status() === 200
-        );
+        const personaDetailsResponse = page
+          .waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/personas/name/') &&
+              response.status() === 200,
+            { timeout: 30000 }
+          )
+          .catch(() => undefined);
+
         await locator.click();
         await personaDetailsResponse;
+        await expect(
+          page.getByRole('tab', { name: 'Customize UI' })
+        ).toBeVisible();
       }
 
       return;

@@ -83,7 +83,7 @@ def generate_test_cases(
             continue
 
         sampler_record = SamplerResponse(
-            table=test_case.table,
+            entity=test_case.table,
             sample_data=test_case.sample_data,
         )
 

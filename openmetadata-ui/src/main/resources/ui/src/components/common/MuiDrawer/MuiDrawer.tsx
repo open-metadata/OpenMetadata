@@ -15,7 +15,6 @@ import { CloseOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
-  CircularProgress,
   Drawer,
   IconButton,
   Switch,
@@ -24,6 +23,7 @@ import {
 } from '@mui/material';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../Loader/Loader';
 import { MuiDrawerProps } from './MuiDrawer.interface';
 
 const MuiDrawer: FC<MuiDrawerProps> = ({
@@ -172,9 +172,7 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
               data-testid="create-button"
               disabled={isLoading || isFormInvalid}
               startIcon={
-                isLoading ? (
-                  <CircularProgress color="inherit" size={16} />
-                ) : null
+                isLoading ? <Loader size="x-small" type="white" /> : null
               }
               sx={{
                 px: 3,

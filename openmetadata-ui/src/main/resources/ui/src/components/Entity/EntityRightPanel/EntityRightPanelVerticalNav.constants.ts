@@ -64,6 +64,7 @@ export const CUSTOM_PROPERTIES_TABS_SET = new Set<EntityType>([
   EntityType.TABLE,
   EntityType.TOPIC,
   EntityType.WORKSHEET,
+  EntityType.TABLE_COLUMN,
 ]);
 
 // Exported arrays for backward compatibility

@@ -501,7 +501,12 @@ const TagPage = () => {
       return [];
     }
 
-    const items = [
+    const items: Array<{
+      label: JSX.Element;
+      key: string;
+      children?: JSX.Element;
+      isHidden?: boolean;
+    }> = [
       {
         label: <TabsLabel id={TagTabs.OVERVIEW} name={t('label.overview')} />,
         key: 'overview',
@@ -590,21 +595,9 @@ const TagPage = () => {
       },
     ];
 
-    const recognizerTabContent = tagClassBase.getRecognizerTabContent(tagItem);
-    if (recognizerTabContent) {
-      items.push({
-        key: 'recognizer',
-        label: (
-          <TabsLabel
-            count={tagItem?.recognizers?.length || 0}
-            id="recognizer"
-            isActive={activeTab === TagTabs.RECOGNIZER}
-            name={t('label.recognizer-plural')}
-          />
-        ),
-        children: recognizerTabContent,
-      });
-    }
+    items.push(
+      ...tagClassBase.getAdditionalTagDetailPageTabs(tagItem, activeTab)
+    );
 
     return items;
   }, [

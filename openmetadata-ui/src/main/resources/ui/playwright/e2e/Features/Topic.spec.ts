@@ -17,6 +17,7 @@ import {
   copyAndGetClipboardText,
   testCopyLinkButton,
   validateCopiedLinkFormat,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 
 // use the admin user to login
@@ -63,7 +64,7 @@ test.describe('Topic entity specific tests ', () => {
   }) => {
     await topic.visitEntityPage(page);
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await testCopyLinkButton({
       page,
@@ -76,7 +77,7 @@ test.describe('Topic entity specific tests ', () => {
 
   test('Copy field link should have valid URL format', async ({ page }) => {
     await topic.visitEntityPage(page);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('topic-schema-fields-table')).toBeVisible();
 
@@ -107,14 +108,16 @@ test.describe('Topic entity specific tests ', () => {
     await expect(sidePanel).not.toBeVisible();
 
     // Verify URL does not contain the column part
-    await expect(page).toHaveURL(new RegExp(`/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`));
+    await expect(page).toHaveURL(
+      new RegExp(`/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`)
+    );
   });
 
   test('Copy nested field link should include full hierarchical path', async ({
     page,
   }) => {
     await topic.visitEntityPage(page);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('topic-schema-fields-table')).toBeVisible();
 
@@ -134,7 +137,10 @@ test.describe('Topic entity specific tests ', () => {
         const nestedCopyButton = nestedCopyButtons.nth(1);
         await expect(nestedCopyButton).toBeVisible();
 
-        const clipboardText = await copyAndGetClipboardText(page, nestedCopyButton);
+        const clipboardText = await copyAndGetClipboardText(
+          page,
+          nestedCopyButton
+        );
 
         // Verify the URL contains the topic FQN
         expect(clipboardText).toContain('/topic/');
@@ -144,7 +150,6 @@ test.describe('Topic entity specific tests ', () => {
 
         // Visit the copied link to verify it opens the side panel
         await page.goto(clipboardText);
-        await page.waitForLoadState('networkidle');
 
         // Verify side panel is open - wait for it to appear with a longer timeout
         const sidePanel = page.locator('.column-detail-panel');
@@ -155,7 +160,11 @@ test.describe('Topic entity specific tests ', () => {
         await expect(sidePanel).not.toBeVisible();
 
         // Verify URL does not contain the column part
-        await expect(page).toHaveURL(new RegExp(`/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`));
+        await expect(page).toHaveURL(
+          new RegExp(
+            `/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`
+          )
+        );
       }
     }
   });

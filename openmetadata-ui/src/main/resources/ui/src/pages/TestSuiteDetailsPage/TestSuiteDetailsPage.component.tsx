@@ -14,10 +14,10 @@
 import {
   Button,
   Dialog,
+  DialogTrigger,
   Modal,
   ModalOverlay,
   Tabs,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -574,37 +574,63 @@ const TestSuiteDetailsPage = () => {
                 suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />}
               />
             </div>
-            <div className="tw:flex tw:items-center tw:gap-1">
-              {(testSuitePermissions.EditAll ||
-                testSuitePermissions.EditTests) && (
+
+            {(testSuitePermissions.EditAll ||
+              testSuitePermissions.EditTests) && (
+              <DialogTrigger
+                isOpen={isTestCaseModalOpen}
+                onOpenChange={setIsTestCaseModalOpen}>
                 <Button
                   color="primary"
                   data-testid="add-test-case-btn"
-                  size="md"
-                  onPress={() => setIsTestCaseModalOpen(true)}>
+                  size="md">
                   {t('label.add-entity', {
                     entity: t('label.test-case-plural'),
                   })}
                 </Button>
-              )}
-              <ManageButton
-                isRecursiveDelete
-                afterDeleteAction={afterDeleteAction}
-                allowSoftDelete={false}
-                canDelete={permissions.hasDeletePermission}
-                deleted={testSuite?.deleted}
-                displayName={getEntityName(testSuite)}
-                editDisplayNamePermission={
-                  testSuitePermissions.EditAll ||
-                  testSuitePermissions.EditDisplayName
-                }
-                entityId={testSuite?.id}
-                entityName={testSuite?.fullyQualifiedName as string}
-                entityType={EntityType.TEST_SUITE}
-                extraDropdownContent={extraDropdownContent}
-                onEditDisplayName={handleDisplayNameChange}
-              />
-            </div>
+                <ModalOverlay>
+                  <Modal>
+                    <Dialog
+                      showCloseButton
+                      title={t('label.add-entity', {
+                        entity: t('label.test-case-plural'),
+                      })}
+                      onClose={() => setIsTestCaseModalOpen(false)}>
+                      <Dialog.Content>
+                        <AddTestCaseList
+                          existingTest={testSuite?.tests ?? []}
+                          getPopupContainer={(trigger) =>
+                            (trigger.closest(
+                              '[role="dialog"]'
+                            ) as HTMLElement) ?? document.body
+                          }
+                          selectedTest={selectedTestCases}
+                          onCancel={() => setIsTestCaseModalOpen(false)}
+                          onSubmit={handleAddTestCaseSubmit}
+                        />
+                      </Dialog.Content>
+                    </Dialog>
+                  </Modal>
+                </ModalOverlay>
+              </DialogTrigger>
+            )}
+            <ManageButton
+              isRecursiveDelete
+              afterDeleteAction={afterDeleteAction}
+              allowSoftDelete={false}
+              canDelete={permissions.hasDeletePermission}
+              deleted={testSuite?.deleted}
+              displayName={getEntityName(testSuite)}
+              editDisplayNamePermission={
+                testSuitePermissions.EditAll ||
+                testSuitePermissions.EditDisplayName
+              }
+              entityId={testSuite?.id}
+              entityName={testSuite?.fullyQualifiedName as string}
+              entityType={EntityType.TEST_SUITE}
+              extraDropdownContent={extraDropdownContent}
+              onEditDisplayName={handleDisplayNameChange}
+            />
           </div>
 
           <div className="test-suite-details-domain-owner-section tw:mt-3 tw:flex tw:flex-wrap tw:gap-4 tw:rounded-[12px] tw:border tw:border-gray-200 tw:bg-white tw:p-4 tw:sm:p-5">
@@ -656,31 +682,6 @@ const TestSuiteDetailsPage = () => {
               {tabs.pipelineTab.children}
             </Tabs.Panel>
           </Tabs>
-        </div>
-        <div className="tw:w-full">
-          <ModalOverlay
-            isOpen={isTestCaseModalOpen}
-            onOpenChange={setIsTestCaseModalOpen}>
-            <Modal className="tw:max-w-2xl tw:rounded-xl">
-              <Dialog className="tw:flex tw:max-h-[90vh] tw:w-full tw:flex-col tw:overflow-hidden tw:rounded-xl tw:bg-background-paper tw:p-6">
-                <Typography
-                  as="h2"
-                  className="tw:mb-4 tw:text-lg tw:font-semibold tw:text-body">
-                  {t('label.add-entity', {
-                    entity: t('label.test-case-plural'),
-                  })}
-                </Typography>
-                <div className="tw:flex-1 tw:overflow-y-auto">
-                  <AddTestCaseList
-                    existingTest={testSuite?.tests ?? []}
-                    selectedTest={selectedTestCases}
-                    onCancel={() => setIsTestCaseModalOpen(false)}
-                    onSubmit={handleAddTestCaseSubmit}
-                  />
-                </div>
-              </Dialog>
-            </Modal>
-          </ModalOverlay>
         </div>
       </div>
     </PageLayoutV1>

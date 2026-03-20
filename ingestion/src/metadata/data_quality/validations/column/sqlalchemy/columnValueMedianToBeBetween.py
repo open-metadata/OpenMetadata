@@ -19,7 +19,6 @@ from sqlalchemy import Column, select
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,
-    DIMENSION_VALUE_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValueMedianToBeBetween import (
     BaseColumnValueMedianToBeBetweenValidator,
@@ -52,12 +51,19 @@ class ColumnValueMedianToBeBetweenValidator(
         """
         return self.run_query_results(self.runner, metric, column)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        median_value = row.get(Metrics.median.name)
+        if median_value is None:
+            return None
+        return {Metrics.median.name: median_value}
+
     def _execute_dimensional_validation(
         self,
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for median using normalized CTE approach.
 
@@ -128,30 +134,11 @@ class ColumnValueMedianToBeBetweenValidator(
                     test_params
                 ),
                 failed_count_builder=failed_count_builder,
+                top_n=top_n,
             )
-            for row in result_rows:
-                median_value = row.get(Metrics.median.name)
-
-                if median_value is None:
-                    logger.debug(
-                        "Skipping dimension '%s=%s' with None median",
-                        dimension_col.name,
-                        row.get(DIMENSION_VALUE_KEY),
-                    )
-                    continue
-
-                metric_values = {Metrics.median.name: median_value}
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
