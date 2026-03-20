@@ -2,8 +2,15 @@ package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
@@ -51,7 +58,68 @@ class EmbeddingClientTest {
     assertEquals(1536, client1536.embed("test").length);
   }
 
-  static class MockEmbeddingClient implements EmbeddingClient {
+  @Test
+  void testCustomConcurrencyLimitEnforced() throws Exception {
+    int concurrencyLimit = 2;
+    CountDownLatch gate = new CountDownLatch(1);
+    AtomicInteger concurrentCount = new AtomicInteger(0);
+    AtomicInteger maxObservedConcurrent = new AtomicInteger(0);
+
+    EmbeddingClient client =
+        new EmbeddingClient(concurrencyLimit) {
+          @Override
+          protected float[] doEmbed(String text) {
+            int current = concurrentCount.incrementAndGet();
+            maxObservedConcurrent.accumulateAndGet(current, Math::max);
+            try {
+              gate.await();
+              Thread.sleep(50);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            } finally {
+              concurrentCount.decrementAndGet();
+            }
+            return new float[] {1.0f};
+          }
+
+          @Override
+          public int getDimension() {
+            return 1;
+          }
+
+          @Override
+          public String getModelId() {
+            return "concurrency-test";
+          }
+        };
+
+    int totalRequests = 20;
+    ExecutorService pool = Executors.newFixedThreadPool(totalRequests);
+    try {
+      List<CompletableFuture<float[]>> futures = new ArrayList<>();
+      for (int i = 0; i < totalRequests; i++) {
+        futures.add(CompletableFuture.supplyAsync(() -> client.embed("test"), pool));
+      }
+
+      gate.countDown();
+
+      for (CompletableFuture<float[]> f : futures) {
+        f.join();
+      }
+
+      assertTrue(
+          maxObservedConcurrent.get() <= concurrencyLimit,
+          "Max concurrent ("
+              + maxObservedConcurrent.get()
+              + ") exceeded limit ("
+              + concurrencyLimit
+              + ")");
+    } finally {
+      pool.shutdown();
+    }
+  }
+
+  static class MockEmbeddingClient extends EmbeddingClient {
     private final int dimension;
 
     MockEmbeddingClient(int dimension) {
@@ -59,7 +127,7 @@ class EmbeddingClientTest {
     }
 
     @Override
-    public float[] embed(String text) {
+    protected float[] doEmbed(String text) {
       float[] embedding = new float[dimension];
       int hash = text.hashCode();
       for (int i = 0; i < dimension; i++) {
