@@ -31,11 +31,11 @@ import {
   descriptionBoxReadOnly,
   uuid,
 } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
 import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
 } from './customProperty';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
@@ -99,7 +99,6 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     page.locator('.ant-tabs-tab-active').getByText('Teams')
   ).toBeVisible();
 
-
   await waitForAllLoadersToDisappear(page);
 
   const userListResponse = page.waitForResponse(
@@ -110,7 +109,9 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await page.getByTestId('owner-select-users-search-bar').waitFor({ state: 'visible' });
+  await page
+    .getByTestId('owner-select-users-search-bar')
+    .waitFor({ state: 'visible' });
 
   await page.click('[data-testid="owner-select-users-search-bar"]');
 
@@ -133,7 +134,9 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     .getByTestId('selectable-list-update-btn')
     .click();
 
-  await page.getByTestId('selectable-list-update-btn').waitFor({ state: 'detached' });
+  await page
+    .getByTestId('selectable-list-update-btn')
+    .waitFor({ state: 'detached' });
 };
 
 export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
@@ -145,7 +148,6 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
     page.locator('.ant-tabs-tab-active').getByText('Users')
   ).toBeVisible();
 
-
   await waitForAllLoadersToDisappear(page);
 
   await page
@@ -155,7 +157,9 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await page.getByTestId('owner-select-teams-search-bar').waitFor({ state: 'visible' });
+  await page
+    .getByTestId('owner-select-teams-search-bar')
+    .waitFor({ state: 'visible' });
 
   await page.click('[data-testid="owner-select-teams-search-bar"]');
 
@@ -177,7 +181,9 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
     .getByTestId('selectable-list-update-btn')
     .click();
 
-  await page.getByTestId('selectable-list-update-btn').waitFor({ state: 'detached' });
+  await page
+    .getByTestId('selectable-list-update-btn')
+    .waitFor({ state: 'detached' });
 };
 
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
@@ -366,7 +372,9 @@ export const fillCustomPropertyDetails = async (
 
   await page.getByTestId('save').click();
 
-  await page.getByTestId('custom-property-editor').waitFor({ state: 'detached' });
+  await page
+    .getByTestId('custom-property-editor')
+    .waitFor({ state: 'detached' });
 };
 
 export const fillExtensionDetails = async (
@@ -375,7 +383,9 @@ export const fillExtensionDetails = async (
 ) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.getByTestId('custom-property-editor').waitFor({ state: 'attached' });
+  await page
+    .getByTestId('custom-property-editor')
+    .waitFor({ state: 'attached' });
 
   // Verify header text
   await expect(page.getByTestId('header')).toContainText('Edit CustomProperty');
@@ -399,7 +409,9 @@ export const fillExtensionDetails = async (
 
   await page.getByTestId('save').click();
 
-  await page.getByTestId('custom-property-editor').waitFor({ state: 'detached' });
+  await page
+    .getByTestId('custom-property-editor')
+    .waitFor({ state: 'detached' });
 };
 
 export const fillGlossaryRowDetails = async (
@@ -1183,7 +1195,9 @@ export const performBulkDownload = async (page: Page, fileName: string) => {
   const downloadPromise = page.waitForEvent('download');
 
   await page.click('[data-testid="manage-button"]');
-  await page.getByTestId('manage-dropdown-list-container').waitFor({ state: 'visible' });
+  await page
+    .getByTestId('manage-dropdown-list-container')
+    .waitFor({ state: 'visible' });
   await page.click('[data-testid="export-button-title"]');
 
   await expect(page.locator('.ant-modal-wrap')).toBeVisible();

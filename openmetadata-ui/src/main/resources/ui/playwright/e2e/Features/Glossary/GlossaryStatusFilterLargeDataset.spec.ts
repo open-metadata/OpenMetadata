@@ -559,9 +559,10 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       await page.locator('.ant-btn-primary', { hasText: 'Save' }).click();
 
-      await page.locator(
-        'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
-      ).first().waitFor({ timeout: 10000 });
+      await page
+        .locator('tbody.ant-table-tbody > tr:not([aria-hidden="true"])')
+        .first()
+        .waitFor({ timeout: 10000 });
 
       const endTime = Date.now();
       const elapsed = endTime - startTime;

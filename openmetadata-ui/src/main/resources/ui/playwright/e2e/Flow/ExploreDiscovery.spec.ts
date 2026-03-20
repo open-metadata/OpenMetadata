@@ -19,7 +19,6 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 import { getJsonTreeObject } from '../../utils/exploreDiscovery';
 import { sidebarClick } from '../../utils/sidebar';

@@ -87,7 +87,8 @@ export const openEntityVersion = async (page: Page, version: string) => {
     .poll(
       async () => {
         const versionButton = page.getByTestId('version-button');
-        const buttonText = (await versionButton.textContent().catch(() => '')) ?? '';
+        const buttonText =
+          (await versionButton.textContent().catch(() => '')) ?? '';
 
         if (buttonText.includes(version)) {
           return buttonText;
@@ -107,7 +108,8 @@ export const openEntityVersion = async (page: Page, version: string) => {
 
   const versionDetailResponse = page.waitForResponse(
     (response) =>
-      response.url().includes(`/versions/${version}`) && response.status() === 200
+      response.url().includes(`/versions/${version}`) &&
+      response.status() === 200
   );
   await page.getByTestId('version-button').click();
   await versionDetailResponse;

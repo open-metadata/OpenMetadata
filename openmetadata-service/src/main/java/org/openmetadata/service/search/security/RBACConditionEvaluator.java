@@ -349,13 +349,18 @@ public class RBACConditionEvaluator {
     User user = (User) spelContext.lookupVariable("user");
     if (user == null || nullOrEmpty(user.getDomains())) {
       OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
-      collector.addMustNot(existsQuery); // Wrap existsQuery in a List
+      collector.addMustNot(existsQuery);
     } else {
+      List<OMQueryBuilder> domainQueries = new ArrayList<>();
       for (EntityReference domain : user.getDomains()) {
         String domainId = domain.getId().toString();
-        OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domains.id", domainId);
-        collector.addMust(domainQuery);
+        domainQueries.add(queryBuilderFactory.termQuery("domains.id", domainId));
       }
+      domainQueries.add(
+          queryBuilderFactory
+              .boolQuery()
+              .mustNot(List.of(queryBuilderFactory.existsQuery("domains.id"))));
+      collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
     }
   }
 

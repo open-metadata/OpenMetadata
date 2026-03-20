@@ -1252,7 +1252,9 @@ test.describe('User Profile Persona Interactions', () => {
         `Your Default Persona changed to ${persona1.responseData.displayName}`
       );
 
-      await adminPage.locator('.default-persona-text [data-testid="tag-chip"]').waitFor();
+      await adminPage
+        .locator('.default-persona-text [data-testid="tag-chip"]')
+        .waitFor();
     });
 
     // Test clicking on default persona chip to navigate to persona page

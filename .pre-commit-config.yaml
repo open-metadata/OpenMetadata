@@ -38,12 +38,3 @@ repos:
         language: script
         files: \.java$
         require_serial: true
-  - repo: local
-    hooks:
-      - id: lint-staged
-        name: lint-staged
-        description: Formats TS and JS code.
-        entry: scripts/lint-staged.sh
-        language: script
-        files: \.(js|jsx|ts|tsx)$
-        require_serial: true

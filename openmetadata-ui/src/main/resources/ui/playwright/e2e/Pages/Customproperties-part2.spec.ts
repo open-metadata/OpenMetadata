@@ -225,9 +225,7 @@ test.describe('Custom properties with custom property config', () => {
         for (const user of users) {
           const userName = user.getUserName();
           const displayName = user.getUserDisplayName();
-          const resultLocator = page.locator(
-            `[data-testid="${displayName}"]`
-          );
+          const resultLocator = page.locator(`[data-testid="${displayName}"]`);
 
           await expect(async () => {
             const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(

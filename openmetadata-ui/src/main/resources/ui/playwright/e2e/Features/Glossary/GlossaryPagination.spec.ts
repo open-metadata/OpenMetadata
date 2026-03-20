@@ -77,7 +77,9 @@ test.describe('Glossary tests', () => {
 
     // Test 1: Search for specific term
     const searchInput = page.getByPlaceholder(/search.*term/i);
-    const searchResponse = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const searchResponse = page.waitForResponse(
+      '**/api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('SearchTestTerm5');
 
     await searchResponse;
@@ -98,7 +100,9 @@ test.describe('Glossary tests', () => {
     await searchInput.clear();
     await clearResponse;
 
-    const partialSearchResponse = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const partialSearchResponse = page.waitForResponse(
+      '**/api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('TestTerm');
     await partialSearchResponse;
 
@@ -240,7 +244,9 @@ test.describe('Glossary tests', () => {
     const searchInput = page.getByPlaceholder(/search.*term/i);
 
     // Search for a term that doesn't exist
-    const noResultsRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const noResultsRes = page.waitForResponse(
+      '**/api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('NonExistentTermXYZ12345');
     await noResultsRes;
 

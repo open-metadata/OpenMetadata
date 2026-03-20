@@ -1162,7 +1162,6 @@ test.describe('Data Contract Inheritance', () => {
       );
       await page.getByTestId('delete-all-button').click();
       await removeResponse;
-
     });
 
     await test.step('Verify asset no longer shows inherited contract', async () => {

@@ -15,8 +15,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
-import { fillTagDetails, pressKeyXTimes } from './importUtils';
 import { waitForAllLoadersToDisappear } from './entity';
+import { fillTagDetails, pressKeyXTimes } from './importUtils';
 
 export const getFailedRowsData = (table: TableClass) => {
   const columns = table.entity.columns.map((col) => col.name);
@@ -624,7 +624,9 @@ export const performE2EExportImportFlow = async (
     const exportedFile = fs
       .readdirSync('downloads')
       .find((f: string) => f.includes(table.entity.name) && f.endsWith('.csv'));
-    await page.locator('[type="file"]').setInputFiles(['downloads/' + exportedFile]);
+    await page
+      .locator('[type="file"]')
+      .setInputFiles(['downloads/' + exportedFile]);
 
     await expect(page.locator('.rdg-header-row')).toBeVisible();
     await expect(page.getByTestId('add-row-btn')).toBeVisible();

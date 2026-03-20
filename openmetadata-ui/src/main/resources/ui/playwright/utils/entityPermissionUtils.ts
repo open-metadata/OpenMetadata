@@ -23,17 +23,17 @@ import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
 import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
+import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { SpreadsheetClass } from '../support/entity/SpreadsheetClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
-import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
-import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage } from './common';
 import { addCustomPropertiesForEntity } from './customProperty';
-import { settingClick, SettingOptionsType } from './sidebar';
 import { waitForAllLoadersToDisappear } from './entity';
+import { settingClick, SettingOptionsType } from './sidebar';
 
 // All operations across all entities
 export const ALL_OPERATIONS = [

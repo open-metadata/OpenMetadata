@@ -20,10 +20,7 @@ import { TopicClass } from '../../../support/entity/TopicClass';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import {
-  redirectToHomePage,
-  removeLandingBanner,
-} from '../../../utils/common';
+import { redirectToHomePage, removeLandingBanner } from '../../../utils/common';
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
@@ -246,15 +243,21 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       page,
       'KnowledgePanel.Domains',
       [
-        `[data-testid="domain-card-${domain.responseData.id ?? ''}"] .domain-card-count`,
-        `[data-testid="domain-card-${domain.responseData.id ?? ''}"] .domain-card-full-count`,
+        `[data-testid="domain-card-${
+          domain.responseData.id ?? ''
+        }"] .domain-card-count`,
+        `[data-testid="domain-card-${
+          domain.responseData.id ?? ''
+        }"] .domain-card-full-count`,
       ].join(', '),
       0
     );
     await verifyWidgetCountOnCurrentPage(
       page,
       'KnowledgePanel.DataProducts',
-      `[data-testid="data-product-card-${dataProduct.responseData.id ?? ''}"] [data-testid="data-product-asset-count"]`,
+      `[data-testid="data-product-card-${
+        dataProduct.responseData.id ?? ''
+      }"] [data-testid="data-product-asset-count"]`,
       0
     );
   });

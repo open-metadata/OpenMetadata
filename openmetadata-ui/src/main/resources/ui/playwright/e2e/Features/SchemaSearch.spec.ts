@@ -64,9 +64,9 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    await expect(
-      page.locator('[data-testid="entity-header-name"]')
-    ).toHaveText(serviceName);
+    await expect(page.locator('[data-testid="entity-header-name"]')).toHaveText(
+      serviceName
+    );
 
     const schemaResponse = page.waitForResponse('/api/v1/databaseSchemas?**');
     await page.click('[data-testid="databases"]');

@@ -59,7 +59,6 @@ test.describe('Glossary CRUD Operations', () => {
 
       await expect(page).toHaveURL(/\/glossary\//, { timeout: 10000 });
 
-
       await expect(page.getByTestId('entity-header-name')).toHaveText(
         glossaryName,
         { timeout: 10000 }
@@ -110,7 +109,6 @@ test.describe('Glossary CRUD Operations', () => {
       await createResponse;
 
       await expect(page).toHaveURL(/\/glossary\//, { timeout: 10000 });
-
 
       await expect(page.getByTestId('entity-header-name')).toHaveText(
         glossaryName,
@@ -264,7 +262,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-
       const ownerSection = page.locator(
         '[data-testid="glossary-right-panel-owner-link"]'
       );
@@ -328,7 +325,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-
       const reviewerSection = page.getByTestId('glossary-reviewer');
 
       if (
@@ -390,7 +386,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-
       const parentRow = page
         .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
         .first();
@@ -424,7 +419,6 @@ test.describe('Glossary CRUD Operations', () => {
 
             const confirmBtn = page.getByTestId('confirm-button');
             await confirmBtn.click();
-
           }
         }
       }
@@ -467,7 +461,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-
       const parentRow = page
         .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
         .first();
@@ -497,7 +490,6 @@ test.describe('Glossary CRUD Operations', () => {
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-
 
       const termRow = page
         .locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
@@ -542,7 +534,6 @@ test.describe('Glossary CRUD Operations', () => {
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-
 
       const parentRow = page
         .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
@@ -609,7 +600,9 @@ test.describe('Glossary CRUD Operations', () => {
         await tagInput.fill('PII');
 
         const tagOption = page.getByTestId('tag-PII.Sensitive');
-        await tagOption.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+        await tagOption
+          .waitFor({ state: 'visible', timeout: 5000 })
+          .catch(() => {});
 
         if (await tagOption.isVisible({ timeout: 2000 }).catch(() => false)) {
           await tagOption.click();
@@ -666,7 +659,6 @@ test.describe('Glossary CRUD Operations', () => {
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-
 
       const termRow = page
         .locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
@@ -730,7 +722,6 @@ test.describe('Glossary CRUD Operations', () => {
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-
 
       const tagsSection = page.getByTestId('tags-container');
 

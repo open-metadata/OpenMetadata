@@ -16,8 +16,8 @@ import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToExplorePage } from './common';
-import { openEntitySummaryPanel } from './entityPanel';
 import { waitForAllLoadersToDisappear } from './entity';
+import { openEntitySummaryPanel } from './entityPanel';
 
 export interface Bucket {
   key: string;

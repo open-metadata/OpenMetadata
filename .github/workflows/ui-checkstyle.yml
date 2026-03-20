@@ -12,9 +12,17 @@
 name: UI Checkstyle
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
     paths:
+      - "openmetadata-ui/src/main/resources/ui/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - ".github/workflows/ui-checkstyle.yml"
       - openmetadata-ui/src/main/resources/ui/playwright/**
       - openmetadata-ui/src/main/resources/ui/eslint.config.mjs
 
@@ -29,28 +37,57 @@ env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
 
 jobs:
-  playwright-lint:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 0: Authorize
+  # ──────────────────────────────────────────────────────────────────────────
+  authorize:
+    if: |
+      github.event_name == 'pull_request_target' && 
+      (github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Common setup steps reused across all parallel check jobs via a shared
+  # composite-like pattern: each job does its own checkout + yarn install
+  # (fast due to yarn cache from actions/setup-node).
+  # ──────────────────────────────────────────────────────────────────────────
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 1: Lint — ESLint + Prettier + Organise Imports (src)
+  # ──────────────────────────────────────────────────────────────────────────
+  lint-src:
+    needs: authorize
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
-
-      - name: Caching NPM dependencies
-        uses: actions/cache@v4
+      - uses: actions/setup-node@v4
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-node-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-yarn-
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: "${{ env.UI_WORKING_DIRECTORY }}/yarn.lock"
 
       - name: Install Antlr4 CLI
         run: sudo make install_antlr_cli
@@ -59,6 +96,641 @@ jobs:
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: yarn install --frozen-lockfile
 
-      - name: Playwright ESLint Check
+      - name: Get changed src files
+        id: changed-files
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          path: ${{ env.UI_WORKING_DIRECTORY }}
+          files_ignore: |
+            src/generated/**
+          files: |
+            src/**/*.{ts,tsx,js,jsx}
+
+      - name: ESLint + Prettier + Organise Imports
+        id: lint
+        if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn lint:playwright
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.added_modified_files }}
+        run: |
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No added or modified files to process."
+            exit 0
+          fi
+          yarn organize-imports:cli $CHANGED_FILES
+          yarn lint:base --fix $CHANGED_FILES
+          yarn pretty:base --write $CHANGED_FILES
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: Find existing lint comment
+        if: always()
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- check:lint-src -->'
+
+      - name: Post failure comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- check:lint-src -->
+            ### ❌ Lint Check Failed — ESLint + Prettier + Organise Imports (src)
+
+            The following files have style issues that need to be fixed:
+            ${{ steps.lint.outputs.changed_files }}
+
+            **Fix locally:**
+            ```bash
+            cd openmetadata-ui/src/main/resources/ui
+            yarn ui-checkstyle
+            ```
+          edit-mode: replace
+
+      - name: Delete comment on success
+        if: success() && steps.fc.outputs.comment-id != ''
+        uses: actions/github-script@v7
+        env:
+          COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
+        with:
+          script: |
+            github.rest.issues.deleteComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: process.env.COMMENT_ID
+            })
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 2: Licence Header Check (all changed files)
+  # ──────────────────────────────────────────────────────────────────────────
+  license-header:
+    needs: authorize
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: "${{ env.UI_WORKING_DIRECTORY }}/yarn.lock"
+
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+
+      - name: Install Yarn Packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install --frozen-lockfile
+
+      - name: Get all changed files
+        id: changed-files
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          path: ${{ env.UI_WORKING_DIRECTORY }}
+
+      - name: Licence Header Check
+        id: license
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        env:
+          CHANGED_FILES_ALL: ${{ steps.changed-files.outputs.added_modified_files }}
+        run: |
+          if [ -z "$CHANGED_FILES_ALL" ]; then
+            echo "No added or modified files to process."
+            exit 0
+          fi
+          yarn license-header-fix $CHANGED_FILES_ALL
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: Find existing licence comment
+        if: always()
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- check:license-header -->'
+
+      - name: Post failure comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- check:license-header -->
+            ### ❌ Licence Header Check Failed
+
+            The following files are missing or have outdated licence headers:
+            ${{ steps.license.outputs.changed_files }}
+
+            **Fix locally:**
+            ```bash
+            cd openmetadata-ui/src/main/resources/ui
+            yarn license-header-fix
+            ```
+          edit-mode: replace
+
+      - name: Delete comment on success
+        if: success() && steps.fc.outputs.comment-id != ''
+        uses: actions/github-script@v7
+        env:
+          COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
+        with:
+          script: |
+            github.rest.issues.deleteComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: process.env.COMMENT_ID
+            })
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 3: TypeScript Type Check (src)
+  # ──────────────────────────────────────────────────────────────────────────
+  tsc-src:
+    needs: authorize
+    if: false  # TODO: re-enable once tsc errors are resolved
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: "${{ env.UI_WORKING_DIRECTORY }}/yarn.lock"
+
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+
+      - name: Install Yarn Packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install --frozen-lockfile
+
+      - name: TypeScript Type Check (src)
+        id: tsc
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          if ! yarn tsc:check > /tmp/tsc_output.txt 2>&1; then
+            ERRORS=$(head -50 /tmp/tsc_output.txt | sed 's/`/\`/g')
+            echo "tsc_errors<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$ERRORS" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Find existing tsc comment
+        if: always()
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- check:tsc-src -->'
+
+      - name: Post failure comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- check:tsc-src -->
+            ### ❌ TypeScript Type Check Failed (src)
+
+            <details>
+            <summary>View type errors (first 50 lines)</summary>
+
+            ```
+            ${{ steps.tsc.outputs.tsc_errors }}
+            ```
+
+            </details>
+
+            **Fix locally:**
+            ```bash
+            cd openmetadata-ui/src/main/resources/ui
+            yarn tsc:check
+            ```
+          edit-mode: replace
+
+      - name: Delete comment on success
+        if: success() && steps.fc.outputs.comment-id != ''
+        uses: actions/github-script@v7
+        env:
+          COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
+        with:
+          script: |
+            github.rest.issues.deleteComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: process.env.COMMENT_ID
+            })
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 4: I18n Sync
+  # ──────────────────────────────────────────────────────────────────────────
+  i18n-sync:
+    needs: authorize
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: "${{ env.UI_WORKING_DIRECTORY }}/yarn.lock"
+
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+
+      - name: Install Yarn Packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install --frozen-lockfile
+
+      - name: I18n Sync
+        id: i18n
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          yarn i18n
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -20)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: Find existing i18n comment
+        if: always()
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- check:i18n-sync -->'
+
+      - name: Post failure comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- check:i18n-sync -->
+            ### ❌ I18n Sync Check Failed
+
+            Translation files are out of sync. Changed files:
+            ${{ steps.i18n.outputs.changed_files }}
+
+            **Fix locally:**
+            ```bash
+            cd openmetadata-ui/src/main/resources/ui
+            yarn i18n
+            ```
+          edit-mode: replace
+
+      - name: Delete comment on success
+        if: success() && steps.fc.outputs.comment-id != ''
+        uses: actions/github-script@v7
+        env:
+          COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
+        with:
+          script: |
+            github.rest.issues.deleteComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: process.env.COMMENT_ID
+            })
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 5: generate:app-docs
+  # ──────────────────────────────────────────────────────────────────────────
+  app-docs:
+    needs: authorize
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: "${{ env.UI_WORKING_DIRECTORY }}/yarn.lock"
+
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+
+      - name: Install Yarn Packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install --frozen-lockfile
+
+      - name: generate:app-docs
+        id: docs
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          yarn generate:app-docs
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -20)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: Find existing app-docs comment
+        if: always()
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- check:app-docs -->'
+
+      - name: Post failure comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- check:app-docs -->
+            ### ❌ App Docs Check Failed
+
+            Generated app docs are stale. Changed files:
+            ${{ steps.docs.outputs.changed_files }}
+
+            **Fix locally:**
+            ```bash
+            cd openmetadata-ui/src/main/resources/ui
+            yarn generate:app-docs
+            ```
+          edit-mode: replace
+
+      - name: Delete comment on success
+        if: success() && steps.fc.outputs.comment-id != ''
+        uses: actions/github-script@v7
+        env:
+          COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
+        with:
+          script: |
+            github.rest.issues.deleteComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: process.env.COMMENT_ID
+            })
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 6: Playwright — ESLint + Prettier + Organise Imports
+  # ──────────────────────────────────────────────────────────────────────────
+  lint-playwright:
+    needs: authorize
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: "${{ env.UI_WORKING_DIRECTORY }}/yarn.lock"
+
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+
+      - name: Install Yarn Packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install --frozen-lockfile
+
+      - name: Get changed Playwright files
+        id: changed-files
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          path: ${{ env.UI_WORKING_DIRECTORY }}
+          files_ignore: |
+            playwright/test-data/**
+          files: |
+            playwright/**/*.{ts,tsx,js,jsx}
+
+      - name: ESLint + Prettier + Organise Imports (playwright)
+        id: lint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.added_modified_files }}
+        run: |
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No added or modified files to process."
+            exit 0
+          fi
+          yarn organize-imports:cli $CHANGED_FILES
+          yarn lint:base --fix $CHANGED_FILES
+          yarn pretty:base --write $CHANGED_FILES
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+
+      - name: Find existing playwright lint comment
+        if: always()
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- check:lint-playwright -->'
+
+      - name: Post failure comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- check:lint-playwright -->
+            ### ❌ Playwright Lint Check Failed — ESLint + Prettier + Organise Imports
+
+            The following files have style issues that need to be fixed:
+            ${{ steps.lint.outputs.changed_files }}
+
+            **Fix locally:**
+            ```bash
+            cd openmetadata-ui/src/main/resources/ui
+            yarn ui-checkstyle:playwright
+            ```
+          edit-mode: replace
+
+      - name: Delete comment on success
+        if: success() && steps.fc.outputs.comment-id != ''
+        uses: actions/github-script@v7
+        env:
+          COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
+        with:
+          script: |
+            github.rest.issues.deleteComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: process.env.COMMENT_ID
+            })
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 7: Playwright — TypeScript Type Check
+  # ──────────────────────────────────────────────────────────────────────────
+  tsc-playwright:
+    needs: authorize
+    if: false  # TODO: re-enable once playwright tsc errors are resolved
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: "${{ env.UI_WORKING_DIRECTORY }}/yarn.lock"
+
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+
+      - name: Install Yarn Packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install --frozen-lockfile
+
+      - name: Get changed Playwright files
+        id: changed-files
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          path: ${{ env.UI_WORKING_DIRECTORY }}
+          files_ignore: |
+            playwright/test-data/**
+          files: |
+            playwright/**/*.{ts,tsx,js,jsx}
+
+      - name: TypeScript Type Check (playwright)
+        id: tsc
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No added or modified files to process."
+            exit 0
+          fi
+          if ! yarn tsc:playwright > /tmp/tsc_output.txt 2>&1; then
+            ERRORS=$(head -50 /tmp/tsc_output.txt | sed 's/`/\`/g')
+            echo "tsc_errors<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$ERRORS" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Find existing playwright tsc comment
+        if: always()
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: '<!-- check:tsc-playwright -->'
+
+      - name: Post failure comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- check:tsc-playwright -->
+            ### ❌ TypeScript Type Check Failed (playwright)
+
+            <details>
+            <summary>View type errors (first 50 lines)</summary>
+
+            ```
+            ${{ steps.tsc.outputs.tsc_errors }}
+            ```
+
+            </details>
+
+            **Fix locally:**
+            ```bash
+            cd openmetadata-ui/src/main/resources/ui
+            yarn tsc:playwright
+            ```
+          edit-mode: replace
+
+      - name: Delete comment on success
+        if: success() && steps.fc.outputs.comment-id != ''
+        uses: actions/github-script@v7
+        env:
+          COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
+        with:
+          script: |
+            github.rest.issues.deleteComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: process.env.COMMENT_ID
+            })
