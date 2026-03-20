@@ -85,8 +85,11 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
+import { formatContent } from '../../../utils/BlockEditorUtils';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getSanitizeContent } from '../../../utils/sanitize.utils';
+import { stringToDOMElement } from '../../../utils/StringsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
@@ -802,9 +805,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
       }
 
-      // Show actual description for child rows or single occurrences
-      // Strip HTML tags for display - React's JSX escaping handles XSS prevention
-      const displayValue = description.replace(/<[^>]*>/g, '');
+      const displayValue = (
+        stringToDOMElement(
+          getSanitizeContent(formatContent(description, 'client'))
+        ).textContent ?? ''
+      ).slice(0, 100);
 
       if (hasEdit) {
         return (
