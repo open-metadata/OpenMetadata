@@ -956,7 +956,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const renderColumnNameCellFinal = useCallback(
     (entity: ColumnGridRowData) => {
       const columnNameButtonClass = classNames(
-        'tw:flex tw:flex-1 tw:min-w-0 tw:items-center tw:justify-start tw:overflow-hidden',
+        'tw:flex tw:flex-1 tw:min-w-0 tw:items-center tw:justify-start tw:overflow-hidden tw:text-start',
         'tw:*:data-text:block tw:*:data-text:min-w-0 tw:*:data-text:w-full tw:*:data-text:truncate'
       );
 
