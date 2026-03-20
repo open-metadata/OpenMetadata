@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.utils.v1123;
+package org.openmetadata.service.migration.utils.v1124;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -99,7 +99,7 @@ public class MigrationUtil {
 
   public static void migrateWorkflowDefinitions() {
     LOG.info(
-        "Starting v1123 migration: converting include fields from map to array format in workflow trigger configurations");
+        "Starting v1124 migration: converting include fields from map to array format in workflow trigger configurations");
 
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
@@ -134,14 +134,13 @@ public class MigrationUtil {
     }
 
     LOG.info(
-        "Completed v1123 migration: {} of {} workflow definitions updated with array-based include fields",
+        "Completed v1124 migration: {} of {} workflow definitions updated with array-based include fields",
         totalUpdated,
         allWorkflows.size());
 
-    // Only throw exception if workflows needed migration but failed to update
     if (needsMigration > 0 && totalUpdated == 0) {
       throw new RuntimeException(
-          "v1123 migration: failed to update any workflow definitions out of "
+          "v1124 migration: failed to update any workflow definitions out of "
               + needsMigration
               + " that needed migration");
     }
@@ -159,7 +158,6 @@ public class MigrationUtil {
     if (node.isObject()) {
       ObjectNode obj = (ObjectNode) node;
 
-      // Check if this is a trigger config that needs migration
       if (needsIncludeFieldMigration(obj)) {
         return addIncludeField(obj);
       }
@@ -196,18 +194,15 @@ public class MigrationUtil {
   }
 
   private static boolean needsIncludeFieldMigration(ObjectNode obj) {
-    // Check if this object represents a trigger config for eventBasedEntity
     JsonNode typeNode = obj.get("type");
     JsonNode configNode = obj.get("config");
 
     if (typeNode != null && "eventBasedEntity".equals(typeNode.asText()) && configNode != null) {
-      // This is an eventBasedEntity trigger, check if config already has include field
       JsonNode includeNode = configNode.get("include");
       if (includeNode == null) {
-        return true; // Needs migration if include field is missing
+        return true;
       }
-      // Check if include field is in old map format and needs conversion to array
-      return includeNode.isObject(); // Needs migration if include is still an object
+      return includeNode.isObject();
     }
 
     return false;
@@ -222,10 +217,8 @@ public class MigrationUtil {
       JsonNode includeNode = configObj.get("include");
 
       if (includeNode == null) {
-        // Add empty include array if missing
         configObj.set("include", MAPPER.createArrayNode());
       } else if (includeNode.isObject()) {
-        // Convert old map format to array format
         ArrayNode includeArray = MAPPER.createArrayNode();
         includeNode.fieldNames().forEachRemaining(includeArray::add);
         configObj.set("include", includeArray);

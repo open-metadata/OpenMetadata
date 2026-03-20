@@ -17,7 +17,6 @@ import {
   copyAndGetClipboardText,
   testCopyLinkButton,
   validateCopiedLinkFormat,
-
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 

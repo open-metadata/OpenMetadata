@@ -218,11 +218,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         false
       );
       await page.click('[data-testid="manage-button"]');
-      await page.getByTestId('manage-dropdown-list-container').waitFor(
-        {
-          state: 'visible',
-        }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -250,9 +248,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       });
 
       // Verify no failures
-      await expect(
-        page.locator('[data-testid="failed-row"]')
-      ).toHaveText('0');
+      await expect(page.locator('[data-testid="failed-row"]')).toHaveText('0');
 
       // Update
       const updateButtonResponse = page.waitForResponse(
@@ -265,9 +261,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       await updateButtonResponse;
 
-      await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor(
-        { state: 'detached', timeout: 60000 }
-      );
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached', timeout: 60000 });
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
       await page.waitForTimeout(2000);
@@ -322,11 +318,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Re-open import dialog
       await page.click('[data-testid="manage-button"]');
-      await page.getByTestId('manage-dropdown-list-container').waitFor(
-        {
-          state: 'visible',
-        }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -405,11 +399,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import
       await page.click('[data-testid="manage-button"]');
-      await page.getByTestId('manage-dropdown-list-container').waitFor(
-        {
-          state: 'visible',
-        }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -431,9 +423,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       });
 
       // Verify validation passed with no failures
-      await expect(
-        page.locator('[data-testid="failed-row"]')
-      ).toHaveText('0');
+      await expect(page.locator('[data-testid="failed-row"]')).toHaveText('0');
 
       // Update
       const updateButtonResponse = page.waitForResponse(
@@ -445,9 +435,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await page.getByRole('button', { name: 'Update' }).click();
       await updateButtonResponse;
 
-      await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor(
-        { state: 'detached', timeout: 60000 }
-      );
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached', timeout: 60000 });
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
       await page.waitForTimeout(2000);
@@ -497,11 +487,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await performBulkDownload(page, serviceNameWithDot);
 
       await page.click('[data-testid="manage-button"]');
-      await page.getByTestId('manage-dropdown-list-container').waitFor(
-        {
-          state: 'visible',
-        }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -520,9 +508,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         timeout: 120000,
       });
 
-      await expect(
-        page.locator('[data-testid="failed-row"]')
-      ).toHaveText('0');
+      await expect(page.locator('[data-testid="failed-row"]')).toHaveText('0');
     });
 
     // Cleanup
@@ -591,11 +577,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import the exported CSV
       await page.click('[data-testid="manage-button"]');
-      await page.getByTestId('manage-dropdown-list-container').waitFor(
-        {
-          state: 'visible',
-        }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -614,9 +598,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       });
 
       // Verify no failures - this confirms column dots are handled
-      await expect(
-        page.locator('[data-testid="failed-row"]')
-      ).toHaveText('0');
+      await expect(page.locator('[data-testid="failed-row"]')).toHaveText('0');
     });
 
     // Cleanup
@@ -667,11 +649,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import
       await page.click('[data-testid="manage-button"]');
-      await page.getByTestId('manage-dropdown-list-container').waitFor(
-        {
-          state: 'visible',
-        }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -700,9 +680,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         timeout: 120000,
       });
 
-      await expect(
-        page.locator('[data-testid="failed-row"]')
-      ).toHaveText('0');
+      await expect(page.locator('[data-testid="failed-row"]')).toHaveText('0');
 
       // Update
       const updateButtonResponse = page.waitForResponse(
@@ -714,9 +692,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await page.getByRole('button', { name: 'Update' }).click();
       await updateButtonResponse;
 
-      await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor(
-        { state: 'detached', timeout: 60000 }
-      );
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached', timeout: 60000 });
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
       await page.waitForTimeout(2000);
@@ -786,11 +764,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import at database level
       await page.click('[data-testid="manage-button"]');
-      await page.getByTestId('manage-dropdown-list-container').waitFor(
-        {
-          state: 'visible',
-        }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -808,9 +784,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         timeout: 120000,
       });
 
-      await expect(
-        page.locator('[data-testid="failed-row"]')
-      ).toHaveText('0');
+      await expect(page.locator('[data-testid="failed-row"]')).toHaveText('0');
 
       // Update
       const updateButtonResponse = page.waitForResponse(
@@ -822,9 +796,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await page.getByRole('button', { name: 'Update' }).click();
       await updateButtonResponse;
 
-      await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor(
-        { state: 'detached', timeout: 60000 }
-      );
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached', timeout: 60000 });
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
       await page.waitForTimeout(2000);
@@ -895,11 +869,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
 
       // Import at schema level
       await page.click('[data-testid="manage-button"]');
-      await page.getByTestId('manage-dropdown-list-container').waitFor(
-        {
-          state: 'visible',
-        }
-      );
+      await page.getByTestId('manage-dropdown-list-container').waitFor({
+        state: 'visible',
+      });
       await page.click('[data-testid="import-button-title"]');
 
       const fileInput = page.getByTestId('upload-file-widget');
@@ -917,9 +889,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         timeout: 120000,
       });
 
-      await expect(
-        page.locator('[data-testid="failed-row"]')
-      ).toHaveText('0');
+      await expect(page.locator('[data-testid="failed-row"]')).toHaveText('0');
     });
 
     // Cleanup

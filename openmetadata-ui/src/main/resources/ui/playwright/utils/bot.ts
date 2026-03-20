@@ -19,9 +19,9 @@ import {
   uuid,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
-import { waitForAllLoadersToDisappear } from './entity';
 
 const botName = `a-bot-pw%test-${uuid()}`;
 

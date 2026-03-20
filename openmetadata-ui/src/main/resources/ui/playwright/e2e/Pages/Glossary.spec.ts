@@ -53,7 +53,6 @@ import {
   assignTag,
   updateDescription,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 import {
   addAssetToGlossaryTerm,
@@ -522,7 +521,9 @@ test.describe('Glossary tests', () => {
         await selectActiveGlossary(page, glossary2.data.displayName);
         await goToAssetsTab(page, glossaryTerm3.data.displayName);
 
-        await page.getByText("Looks like you haven't added any data assets yet.").waitFor();
+        await page
+          .getByText("Looks like you haven't added any data assets yet.")
+          .waitFor();
 
         await dashboardEntity.visitEntityPage(page);
 
@@ -544,9 +545,11 @@ test.describe('Glossary tests', () => {
         await glossaryRequest;
 
         await page.getByText(glossaryTerm1.data.displayName).click();
-        await page.locator(
-          `[data-testid="tag-selector"]:has-text("${glossaryTerm1.data.displayName}")`
-        ).waitFor();
+        await page
+          .locator(
+            `[data-testid="tag-selector"]:has-text("${glossaryTerm1.data.displayName}")`
+          )
+          .waitFor();
 
         // Select 2nd term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
@@ -562,9 +565,11 @@ test.describe('Glossary tests', () => {
 
         await page.getByText(glossaryTerm2.data.displayName).click();
 
-        await page.locator(
-          `[data-testid="tag-selector"]:has-text("${glossaryTerm2.data.displayName}")`
-        ).waitFor();
+        await page
+          .locator(
+            `[data-testid="tag-selector"]:has-text("${glossaryTerm2.data.displayName}")`
+          )
+          .waitFor();
 
         const patchRequest = page.waitForResponse(`/api/v1/dashboards/*`);
 
@@ -596,9 +601,11 @@ test.describe('Glossary tests', () => {
         await glossaryRequest3;
 
         await page.getByText(glossaryTerm3.data.displayName).click();
-        await page.locator(
-          `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
-        ).waitFor();
+        await page
+          .locator(
+            `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
+          )
+          .waitFor();
 
         // Select 2nd term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
@@ -614,9 +621,11 @@ test.describe('Glossary tests', () => {
 
         await page.getByText(glossaryTerm4.data.displayName).click();
 
-        await page.locator(
-          `[data-testid="tag-selector"]:has-text("${glossaryTerm4.data.displayName}")`
-        ).waitFor();
+        await page
+          .locator(
+            `[data-testid="tag-selector"]:has-text("${glossaryTerm4.data.displayName}")`
+          )
+          .waitFor();
 
         const patchRequest2 = page.waitForResponse(`/api/v1/dashboards/*`);
 
@@ -669,9 +678,11 @@ test.describe('Glossary tests', () => {
           .getByTestId(`tag-${glossaryTerm3.data.fullyQualifiedName}`)
           .click();
 
-        await page.locator(
-          `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
-        ).waitFor();
+        await page
+          .locator(
+            `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
+          )
+          .waitFor();
 
         const patchRequest3 = page.waitForResponse(`/api/v1/charts/*`);
 
@@ -1542,7 +1553,7 @@ test.describe('Glossary tests', () => {
         await verifyColumnsVisibility(page, checkboxLabels, true);
 
         await page.reload();
-  
+
         await verifyColumnsVisibility(page, checkboxLabels, true);
       });
 
@@ -1553,7 +1564,7 @@ test.describe('Glossary tests', () => {
         await verifyColumnsVisibility(page, checkboxLabels, false);
 
         await page.reload();
-  
+
         await verifyColumnsVisibility(page, checkboxLabels, false);
       });
 
@@ -1571,7 +1582,7 @@ test.describe('Glossary tests', () => {
         await verifyAllColumns(page, tableColumns, true);
 
         await page.reload();
-  
+
         await verifyAllColumns(page, tableColumns, true);
       });
 
@@ -1587,7 +1598,7 @@ test.describe('Glossary tests', () => {
         await verifyAllColumns(page, tableColumns, false);
 
         await page.reload();
-  
+
         await verifyAllColumns(page, tableColumns, false);
       });
     } finally {
@@ -2086,10 +2097,9 @@ test.describe('Glossary tests', () => {
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await waitForAllLoadersToDisappear(page);
-  
+
         await selectActiveGlossary(page, glossary.data.displayName);
         await waitForAllLoadersToDisappear(page);
-  
 
         await expect(page.getByTestId('entity-header-display-name')).toHaveText(
           glossary.data.displayName
@@ -2098,7 +2108,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Change application language to German', async () => {
         await waitForAllLoadersToDisappear(page);
-  
+
         const languageDropdown = page
           .locator('.nav-bar-side-items button.ant-dropdown-trigger')
           .filter({ hasText: 'EN' })
@@ -2111,16 +2121,14 @@ test.describe('Glossary tests', () => {
         await germanOption.click();
 
         await waitForAllLoadersToDisappear(page);
-  
       });
 
       await test.step('Open delete modal and verify delete confirmation', async () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await waitForAllLoadersToDisappear(page);
-  
+
         await selectActiveGlossary(page, glossary.data.displayName);
         await waitForAllLoadersToDisappear(page);
-  
 
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
@@ -2145,7 +2153,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Change language back to English', async () => {
         await waitForAllLoadersToDisappear(page);
-  
+
         const languageDropdown = page
           .locator('.nav-bar-side-items button.ant-dropdown-trigger')
           .filter({ hasText: 'DE' })

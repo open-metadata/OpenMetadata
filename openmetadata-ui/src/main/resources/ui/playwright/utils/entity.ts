@@ -373,14 +373,22 @@ export const addMultiOwner = async (data: {
 
   await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
 
-  await page.getByTestId('select-owner-tabs').getByTestId('loader').first().waitFor({ state: 'detached' });
+  await page
+    .getByTestId('select-owner-tabs')
+    .getByTestId('loader')
+    .first()
+    .waitFor({ state: 'detached' });
 
   await page
     .locator("[data-testid='select-owner-tabs']")
     .getByRole('tab', { name: 'Users' })
     .click();
 
-  await page.getByTestId('select-owner-tabs').getByTestId('loader').first().waitFor({ state: 'detached' });
+  await page
+    .getByTestId('select-owner-tabs')
+    .getByTestId('loader')
+    .first()
+    .waitFor({ state: 'detached' });
 
   const isClearButtonVisible = await page
     .getByTestId('select-owner-tabs')
@@ -395,7 +403,11 @@ export const addMultiOwner = async (data: {
       .getByRole('tab', { name: 'Users' })
       .click();
 
-    await page.getByTestId('select-owner-tabs').getByTestId('loader').first().waitFor({ state: 'detached' });
+    await page
+      .getByTestId('select-owner-tabs')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
   }
 
   if (clearAll && isMultipleOwners) {
@@ -419,7 +431,11 @@ export const addMultiOwner = async (data: {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
     await searchOwner;
-    await page.getByTestId('select-owner-tabs').getByTestId('loader').first().waitFor({ state: 'detached' });
+    await page
+      .getByTestId('select-owner-tabs')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
 
     const ownerItem = page.getByRole('listitem', {
       name: ownerName,
@@ -456,7 +472,9 @@ export const addMultiOwner = async (data: {
 
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('select-owner-tabs').waitFor({ state: 'detached' });
+      await page
+        .getByTestId('select-owner-tabs')
+        .waitFor({ state: 'detached' });
     }
   }
 
@@ -547,7 +565,9 @@ export const assignCertification = async (
   const tagsResponse = await certificationResponse;
   expect(tagsResponse.status()).toBe(200);
 
-  await page.locator('.certification-card-popover').waitFor({ state: 'visible' });
+  await page
+    .locator('.certification-card-popover')
+    .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 
   await readElementInListWithScroll(
@@ -581,7 +601,9 @@ export const assignCertification = async (
 
 export const removeCertification = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-certification').click();
-  await page.locator('.certification-card-popover').waitFor({ state: 'visible' });
+  await page
+    .locator('.certification-card-popover')
+    .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -640,7 +662,9 @@ export const updateDescription = async (
   await saveButton.click();
   await patchRequest;
   if (isModal) {
-    await page.locator('[role="dialog"].description-markdown-editor').waitFor({ state: 'hidden' });
+    await page
+      .locator('[role="dialog"].description-markdown-editor')
+      .waitFor({ state: 'hidden' });
   }
 
   // CRITICAL: Wait for UI to update after save
@@ -699,8 +723,7 @@ export const updateDescriptionForChildren = async (
   // Wait for API response — use a function predicate so we only match the
   // write request (PUT/PATCH) and never accidentally resolve on a concurrent
   const updateRequest =
-    entityEndpoint === 'tables' ||
-    entityEndpoint === 'dashboard/datamodels'
+    entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
       ? page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/columns/name/') &&
@@ -775,7 +798,10 @@ export const assignTag = async (
     .first()
     .click();
 
-  await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor({ state: 'visible' });
+  await page
+    .locator('.ant-select-dropdown')
+    .getByTestId('saveAssociatedTag')
+    .waitFor({ state: 'visible' });
 
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
 
@@ -784,7 +810,10 @@ export const assignTag = async (
   await page.getByTestId('saveAssociatedTag').click();
 
   await patchRequest;
-  await page.getByTestId('saveAssociatedTag').locator('[data-icon="loading"]').waitFor({ state: 'detached' });
+  await page
+    .getByTestId('saveAssociatedTag')
+    .locator('[data-icon="loading"]')
+    .waitFor({ state: 'detached' });
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
@@ -826,12 +855,14 @@ export const assignTagToChildren = async ({
 
   await page.getByTestId(`tag-${tag}`).click();
   const patchRequest =
-    entityEndpoint === 'tables' ||
-    entityEndpoint === 'dashboard/datamodels'
+    entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
       ? page.waitForResponse('/api/v1/columns/name/*')
       : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
 
-  await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor({ state: 'visible' });
+  await page
+    .locator('.ant-select-dropdown')
+    .getByTestId('saveAssociatedTag')
+    .waitFor({ state: 'visible' });
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
@@ -839,7 +870,10 @@ export const assignTagToChildren = async ({
 
   await patchRequest;
 
-  await page.getByTestId('saveAssociatedTag').locator('[data-icon="loading"]').waitFor({ state: 'detached' });
+  await page
+    .getByTestId('saveAssociatedTag')
+    .locator('[data-icon="loading"]')
+    .waitFor({ state: 'detached' });
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
@@ -868,7 +902,10 @@ export const removeTag = async (page: Page, tags: string[]) => {
       (response) => response.request().method() === 'PATCH'
     );
 
-    await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor({ state: 'visible' });
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId('saveAssociatedTag')
+      .waitFor({ state: 'visible' });
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
@@ -912,11 +949,13 @@ export const removeTagsFromChildren = async ({
       .click();
 
     const patchRequest =
-      entityEndpoint === 'tables' ||
-      entityEndpoint === 'dashboard/datamodels'
+      entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
         ? page.waitForResponse('/api/v1/columns/name/*')
         : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
-    await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor({ state: 'visible' });
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId('saveAssociatedTag')
+      .waitFor({ state: 'visible' });
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
@@ -960,7 +999,10 @@ export const assignGlossaryTerm = async (
 
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
-  await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor({ state: 'visible' });
+  await page
+    .locator('.ant-select-dropdown')
+    .getByTestId('saveAssociatedTag')
+    .waitFor({ state: 'visible' });
 
   await expect(
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
@@ -1111,11 +1153,13 @@ export const assignGlossaryTermToChildren = async ({
   );
   await glossaryTermTag.click();
 
-  await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor({ state: 'visible' });
+  await page
+    .locator('.ant-select-dropdown')
+    .getByTestId('saveAssociatedTag')
+    .waitFor({ state: 'visible' });
 
   const patchRequest =
-    entityEndpoint === 'tables' ||
-    entityEndpoint === 'dashboard/datamodels'
+    entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
       ? page.waitForResponse('/api/v1/columns/name/*')
       : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
 
@@ -1164,7 +1208,10 @@ export const removeGlossaryTerm = async (
       (response) => response.request().method() === 'PATCH'
     );
 
-    await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor({ state: 'visible' });
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId('saveAssociatedTag')
+      .waitFor({ state: 'visible' });
 
     await expect(
       page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
@@ -1214,12 +1261,14 @@ export const removeGlossaryTermFromChildren = async ({
       .click();
 
     const patchRequest =
-      entityEndpoint === 'tables' ||
-      entityEndpoint === 'dashboard/datamodels'
+      entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
         ? page.waitForResponse('/api/v1/columns/name/*')
         : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
 
-    await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor({ state: 'visible' });
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId('saveAssociatedTag')
+      .waitFor({ state: 'visible' });
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
@@ -1273,7 +1322,6 @@ export const unFollowEntity = async (
   page: Page,
   endpoint: EntityTypeEndpoint
 ) => {
-
   const followButton = page.getByTestId('entity-follow-button');
 
   await followButton.waitFor({ state: 'visible' });
@@ -1693,7 +1741,6 @@ export const checkForEditActions = async ({
 
     if (entityType.startsWith('services/')) {
       await page.getByRole('tab').nth(1).click();
-
 
       continue;
     }

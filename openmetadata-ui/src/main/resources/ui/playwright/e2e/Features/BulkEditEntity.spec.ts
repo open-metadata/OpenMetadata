@@ -140,7 +140,10 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Wait for grid cells to be ready for interaction
-      await page.locator('.rdg-cell[role="gridcell"]').first().waitFor({ state: 'visible' });
+      await page
+        .locator('.rdg-cell[role="gridcell"]')
+        .first()
+        .waitFor({ state: 'visible' });
 
       // Click on first cell and edit
 
@@ -184,7 +187,6 @@ test.describe('Bulk Edit Entity', () => {
       await toastNotification(page, /details updated successfully/);
 
       await page.click('[data-testid="databases"]');
-
 
       // Verify Details updated
       await expect(page.getByTestId('column-name')).toHaveText(
@@ -273,7 +275,10 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Wait for grid cells to be ready for interaction
-      await page.locator('.rdg-cell[role="gridcell"]').first().waitFor({ state: 'visible' });
+      await page
+        .locator('.rdg-cell[role="gridcell"]')
+        .first()
+        .waitFor({ state: 'visible' });
 
       // click on last row first cell
       await page.click('.rdg-cell[role="gridcell"]');
@@ -416,7 +421,10 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Wait for grid cells to be ready for interaction
-      await page.locator('.rdg-cell[role="gridcell"]').first().waitFor({ state: 'visible' });
+      await page
+        .locator('.rdg-cell[role="gridcell"]')
+        .first()
+        .waitFor({ state: 'visible' });
 
       // Click on first cell and edit
       await page.click('.rdg-cell[role="gridcell"]');
@@ -527,7 +535,10 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Wait for grid cells to be ready for interaction
-      await page.locator('.rdg-cell[role="gridcell"]').first().waitFor({ state: 'visible' });
+      await page
+        .locator('.rdg-cell[role="gridcell"]')
+        .first()
+        .waitFor({ state: 'visible' });
 
       // click on row first cell
       await page.click('.rdg-cell[role="gridcell"]');

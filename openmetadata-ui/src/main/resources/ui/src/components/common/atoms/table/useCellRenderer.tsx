@@ -41,7 +41,7 @@ export const useCellRenderer = <
 
   const defaultRenderers: CellRenderer<T> = useMemo(
     () => ({
-      entityName: (entity: any) => {
+      entityName: (entity: T) => {
         const entityName = getEntityName(entity);
 
         return (
@@ -61,7 +61,7 @@ export const useCellRenderer = <
           </Box>
         );
       },
-      owners: (entity: any, column?: ColumnConfig<T>) => {
+      owners: (entity: T, column?: ColumnConfig<T>) => {
         const owners = column?.getValue
           ? column.getValue(entity)
           : entity[column?.key || 'owners'];
@@ -123,7 +123,7 @@ export const useCellRenderer = <
           </Box>
         );
       },
-      tags: (entity: any, column?: ColumnConfig<T>) => {
+      tags: (entity: T, column?: ColumnConfig<T>) => {
         const tags = column?.getValue
           ? column.getValue(entity)
           : entity[column?.key || 'tags'];
@@ -141,7 +141,7 @@ export const useCellRenderer = <
       text: (entity: T, column?: ColumnConfig<T>) => {
         const value = column?.getValue
           ? column.getValue(entity)
-          : (entity as any)[column?.key || ''];
+          : (entity as Record<string, unknown>)[column?.key || ''];
 
         return (
           <Typography sx={{ fontSize: '0.875rem' }}>

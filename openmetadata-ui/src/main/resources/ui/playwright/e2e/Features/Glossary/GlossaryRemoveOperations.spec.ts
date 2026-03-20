@@ -17,7 +17,10 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { addMultiOwner, assignTag, removeTag,
+import {
+  addMultiOwner,
+  assignTag,
+  removeTag,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import {
@@ -328,9 +331,10 @@ test.describe('Glossary Remove Operations', () => {
       await page.getByTestId(`tag-${tagFqn}`).click();
 
       // Wait for save button and click
-      await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor(
-        { state: 'visible' }
-      );
+      await page
+        .locator('.ant-select-dropdown')
+        .getByTestId('saveAssociatedTag')
+        .waitFor({ state: 'visible' });
 
       await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
@@ -363,9 +367,10 @@ test.describe('Glossary Remove Operations', () => {
         .click();
 
       // Save the changes
-      await page.locator('.ant-select-dropdown').getByTestId('saveAssociatedTag').waitFor(
-        { state: 'visible' }
-      );
+      await page
+        .locator('.ant-select-dropdown')
+        .getByTestId('saveAssociatedTag')
+        .waitFor({ state: 'visible' });
 
       await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 

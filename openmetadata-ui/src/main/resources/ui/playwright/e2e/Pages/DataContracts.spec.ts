@@ -82,7 +82,6 @@ import {
   assignTag,
   assignTier,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';

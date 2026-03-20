@@ -20,11 +20,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  getApiContext,
-  redirectToHomePage,
-  uuid,
-} from '../../utils/common';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
 import {
   addAssetsToTag,
@@ -181,7 +177,6 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.locator('button[type="submit"]').click();
     await updateColor;
 
-
     await expect(adminPage.getByText(tag.data.name)).toBeVisible();
   });
 
@@ -239,11 +234,13 @@ test.describe('Tag Page with Admin Roles', () => {
           classification.responseData.name
       )}`
     );
-    await adminPage.getByTestId('tags-container').getByTestId('loader').first().waitFor(
-      {
+    await adminPage
+      .getByTestId('tags-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
         state: 'detached',
-      }
-    );
+      });
 
     await expect(adminPage.getByTestId('add-new-tag-button')).toBeVisible();
 
@@ -268,13 +265,17 @@ test.describe('Tag Page with Admin Roles', () => {
     const createdTagData = await createdTagResponse.json();
 
     await adminPage.goto(
-      `/tag/${encodeURIComponent(createdTagData.fullyQualifiedName ?? NEW_TAG.name)}`
+      `/tag/${encodeURIComponent(
+        createdTagData.fullyQualifiedName ?? NEW_TAG.name
+      )}`
     );
-    await adminPage.getByTestId('tags-container').getByTestId('loader').first().waitFor(
-      {
+    await adminPage
+      .getByTestId('tags-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
         state: 'detached',
-      }
-    );
+      });
 
     await expect(adminPage.getByTestId('domain-link')).toContainText(
       domain.data.displayName
@@ -367,9 +368,11 @@ test.describe('Tag Page with Admin Roles', () => {
     const openClassification = async () => {
       await redirectToHomePage(adminPage);
       await sidebarClick(adminPage, SidebarItem.TAGS);
-      await adminPage.locator('[data-testid="tags-container"] .table-container [data-testid="loader"]').waitFor(
-        { state: 'detached' }
-      );
+      await adminPage
+        .locator(
+          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
+        )
+        .waitFor({ state: 'detached' });
 
       const classificationEntry = adminPage
         .locator('[data-testid="side-panel-classification"]')
@@ -386,7 +389,9 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await openClassification();
 
-    const tagToggle = adminPage.getByTestId(tagToggleTestId).getByRole('switch');
+    const tagToggle = adminPage
+      .getByTestId(tagToggleTestId)
+      .getByRole('switch');
 
     // Verify toggle is enabled when classification is enabled
     await expect(tagToggle).toBeVisible({ timeout: 60000 });
@@ -411,9 +416,11 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload();
-      await adminPage.locator('[data-testid="tags-container"] .table-container [data-testid="loader"]').waitFor(
-        { state: 'detached' }
-      );
+      await adminPage
+        .locator(
+          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
+        )
+        .waitFor({ state: 'detached' });
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeDisabled();
 
@@ -434,9 +441,11 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload();
-      await adminPage.locator('[data-testid="tags-container"] .table-container [data-testid="loader"]').waitFor(
-        { state: 'detached' }
-      );
+      await adminPage
+        .locator(
+          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
+        )
+        .waitFor({ state: 'detached' });
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeEnabled();
     } finally {

@@ -2953,7 +2953,7 @@
     "schedule-entity-description": "Deze {{entity}} wordt herhaaldelijk uitgevoerd op basis van uw planning.",
     "schedule-for-ingestion-description": "Planning kan worden ingesteld op een uurlijkse, dagelijkse of wekelijkse cadans. De tijdzone is in UTC.",
     "scheduled-run-every": "Gepland om elke keer uit te voeren",
-    "schema-fields-not-found-in-entity": "{{count}} schemaveld(en) in het contract bestaan ​​niet in de entiteit:",
+    "schema-fields-not-found-in-entity": "{{count}} schemaveld(en) in het contract bestaan niet in de entiteit:",
     "schema-validation-passed": "Schemavalidatie geslaagd ({{count}} veld(en) geverifieerd)",
     "schema-validation-warning": "Schemavalidatie mislukt",
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM maakt automatisch gebruikers- en groepsbeheer mogelijk rechtstreeks vanuit uw SSO-provider.",

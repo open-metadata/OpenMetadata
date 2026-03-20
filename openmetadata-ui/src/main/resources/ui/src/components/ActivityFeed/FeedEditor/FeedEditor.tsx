@@ -60,7 +60,7 @@ Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
 Quill.register('modules/emoji-textarea', TextAreaEmoji, true);
 const Delta = Quill.import('delta');
 
-const strikethrough = (_node: any, delta: typeof Delta) => {
+const strikethrough = (_node: unknown, delta: typeof Delta) => {
   // @ts-ignore
   return 'compose' in delta && delta.compose instanceof Function
     ? // @ts-ignore
