@@ -107,8 +107,9 @@ public class AppScheduler {
         Executors.newScheduledThreadPool(
             1, Thread.ofPlatform().name("om-app-error-trigger-reset").factory());
     threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
+  }
 
-    // Start Scheduler
+  public void start() throws SchedulerException {
     this.scheduler.start();
   }
 

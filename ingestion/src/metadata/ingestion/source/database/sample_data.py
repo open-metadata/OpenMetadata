@@ -1622,7 +1622,7 @@ class SampleDataSource(
                 self.metadata.ingest_table_sample_data(
                     table_entity,
                     sample_data=SamplerResponse(
-                        table=table_entity,
+                        entity=table_entity,
                         sample_data=SampleData(
                             data=TableData(
                                 rows=table["sampleData"]["rows"],

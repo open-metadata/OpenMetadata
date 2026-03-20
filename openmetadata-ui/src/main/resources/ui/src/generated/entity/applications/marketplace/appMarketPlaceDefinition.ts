@@ -19,6 +19,11 @@ export interface AppMarketPlaceDefinition {
      */
     agentType?: AgentType;
     /**
+     * When true, the bot created for this application will have allowImpersonation enabled,
+     * allowing it to act on behalf of users.
+     */
+    allowBotImpersonation?: boolean;
+    /**
      * If true, multiple instances of this app can run concurrently. This is useful for apps
      * like QueryRunner that support parallel executions with different configurations.
      */

@@ -9,23 +9,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: py-tests
-on:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
-    paths-ignore:
-      - "ingestion/**"
-      - "openmetadata-service/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-
-permissions:
-  contents: read
-
-jobs:
-  py-run-tests:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        py-version: ['3.10', '3.11'] # , '3.12']
-    steps:
-      - run: 'echo "Step is not required"'
+services:
+  devcontainer:
+    build:
+      context: ../..
+      dockerfile: .devcontainer/dev/Dockerfile
+    volumes:
+      - ../..:/workspaces/OpenMetadata:cached
+    command: sleep infinity
+    depends_on:
+      openmetadata-server:
+        condition: service_started
+      ingestion:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    networks:
+      - local_app_net

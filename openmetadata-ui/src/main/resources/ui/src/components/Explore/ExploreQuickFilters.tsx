@@ -21,6 +21,7 @@ import { TIER_FQN_KEY } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getTags } from '../../rest/tagAPI';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
@@ -55,6 +56,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
   const [tierOptions, setTierOptions] = useState<SearchDropdownOption[]>();
   const { queryFilter } = useAdvanceSearch();
+  const { isNLPEnabled } = useSearchStore();
   const getStaticOptions = useCallback(
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
@@ -120,7 +122,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           JSON.stringify(combinedQueryFilter),
           independent,
           showDeleted,
-          optionPageSize
+          optionPageSize,
+          isNLPEnabled
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })
@@ -211,7 +214,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           value,
           JSON.stringify(combinedQueryFilter),
           independent,
-          showDeleted
+          showDeleted,
+          undefined,
+          isNLPEnabled
         );
 
         const buckets =

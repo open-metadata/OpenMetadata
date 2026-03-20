@@ -309,6 +309,19 @@ export const removeAssetsFromGlossaryTerm = async (
   return response.data;
 };
 
+export const getGlossaryTermAssets = async (
+  termId: string,
+  limit = 100,
+  offset = 0
+) => {
+  const response = await APIClient.get<PagingResponse<EntityReference[]>>(
+    `/glossaryTerms/${termId}/assets`,
+    { params: { limit, offset } }
+  );
+
+  return response.data;
+};
+
 export const searchGlossaryTerms = async (search: string, page = 1) => {
   const apiUrl = `/search/query?q=${search ?? ''}`;
 
@@ -391,4 +404,94 @@ export const getGlossaryTermChildrenLazy = async (
   });
 
   return data;
+};
+
+export interface TermRelation {
+  relationType: string;
+  term: EntityReference;
+}
+
+export interface TermRelationGraph {
+  nodes: Array<{
+    id: string;
+    name: string;
+    fullyQualifiedName: string;
+    displayName?: string;
+  }>;
+  edges: Array<{
+    from: string;
+    to: string;
+    relationType: string;
+  }>;
+}
+
+export const addTermRelation = async (
+  termId: string,
+  termRelation: TermRelation
+): Promise<GlossaryTerm> => {
+  const response = await APIClient.post<
+    TermRelation,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${termId}/relations`, termRelation);
+
+  return response.data;
+};
+
+export const removeTermRelation = async (
+  termId: string,
+  toTermId: string,
+  relationType?: string
+): Promise<GlossaryTerm> => {
+  const params: Record<string, string> = {};
+  if (relationType) {
+    params.relationType = relationType;
+  }
+  const response = await APIClient.delete<GlossaryTerm>(
+    `/glossaryTerms/${termId}/relations/${toTermId}`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getTermRelationGraph = async (
+  termId: string,
+  depth = 1,
+  relationTypes?: string[]
+): Promise<TermRelationGraph> => {
+  const params: Record<string, number | string> = { depth };
+  if (relationTypes && relationTypes.length > 0) {
+    params.relationTypes = relationTypes.join(',');
+  }
+  const response = await APIClient.get<TermRelationGraph>(
+    `/glossaryTerms/${termId}/relationsGraph`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getGlossaryTermRelationSettings = async () => {
+  const response = await APIClient.get(
+    '/system/settings/glossaryTermRelationSettings'
+  );
+
+  return response.data?.config_value;
+};
+
+export const updateGlossaryTermRelationSettings = async (settings: unknown) => {
+  const response = await APIClient.put('/system/settings', {
+    config_type: 'glossaryTermRelationSettings',
+    config_value: settings,
+  });
+
+  return response.data;
+};
+
+export const getRelationTypeUsageCounts = async (): Promise<
+  Record<string, number>
+> => {
+  const response = await APIClient.get('/glossaryTerms/relationTypes/usage');
+
+  return response.data;
 };

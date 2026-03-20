@@ -205,20 +205,22 @@ test.describe(
       );
       await adminPage.getByText('Navigation').click();
 
-      await test.step('hide navigation items and validate with persona', async () => {
-        // Hide Explore
-        await adminPage
-          .getByTestId('page-layout-v1')
-          .getByText('Explore')
-          .getByRole('switch')
-          .click();
-
-        await expect(
-          adminPage
+      await test.step(
+        'hide navigation items and validate with persona',
+        async () => {
+          // Hide Explore
+          await adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Explore')
+            .getByText('Explore', { exact: true })
             .getByRole('switch')
-        ).not.toBeChecked();
+            .click();
+
+          await expect(
+            adminPage
+              .getByTestId('page-layout-v1')
+              .getByText('Explore', { exact: true })
+              .getByRole('switch')
+          ).not.toBeChecked();
 
         // Hide Metrics
         await adminPage
@@ -267,20 +269,22 @@ test.describe(
         ]);
       });
 
-      await test.step('show navigation items and validate with persona', async () => {
-        // Show Explore
-        await adminPage
-          .getByTestId('page-layout-v1')
-          .getByText('Explore')
-          .getByRole('switch')
-          .click();
-
-        await expect(
-          adminPage
+      await test.step(
+        'show navigation items and validate with persona',
+        async () => {
+          // Show Explore
+          await adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Explore')
+            .getByText('Explore', { exact: true })
             .getByRole('switch')
-        ).toBeChecked();
+            .click();
+
+          await expect(
+            adminPage
+              .getByTestId('page-layout-v1')
+              .getByText('Explore', { exact: true })
+              .getByRole('switch')
+          ).toBeChecked();
 
         // Show Metrics
         await adminPage

@@ -675,15 +675,6 @@
       <artifactId>engine.io-server</artifactId>
       <version>6.2.1</version>
     </dependency>
-    <dependency>
-      <groupId>io.modelcontextprotocol.sdk</groupId>
-      <artifactId>mcp-bom</artifactId>
-      <type>pom</type>
-    </dependency>
-    <dependency>
-      <groupId>io.modelcontextprotocol.sdk</groupId>
-      <artifactId>mcp</artifactId>
-    </dependency>
     <!-- Jetty EE10 WebSocket dependencies for Jetty 12 / Dropwizard 5.0 -->
     <dependency>
       <groupId>org.eclipse.jetty.ee10.websocket</groupId>

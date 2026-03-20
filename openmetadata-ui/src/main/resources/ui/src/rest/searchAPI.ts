@@ -248,7 +248,17 @@ export const searchPreview = async (payload: PreviewSearchRequest) => {
 };
 
 export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
-  const { pageNumber = 1, pageSize = 10, query, searchIndex } = payload;
+  const {
+    pageNumber = 1,
+    pageSize = 10,
+    query,
+    searchIndex,
+    sortField,
+    sortOrder,
+    queryFilter,
+  } = payload;
+  const includeDeletedParam =
+    'includeDeleted' in payload ? payload.includeDeleted : false;
 
   const response = await APIClient.get<SearchResponse<SearchIndex>>(
     '/hybrid/nlq/search',
@@ -258,6 +268,10 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
         index: searchIndex,
         size: pageSize,
         from: (pageNumber - 1) * pageSize,
+        deleted: includeDeletedParam,
+        sort_field: sortField,
+        sort_order: sortOrder,
+        query_filter: JSON.stringify(queryFilter),
       },
     }
   );

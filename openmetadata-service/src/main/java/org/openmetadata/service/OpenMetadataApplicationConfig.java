@@ -154,6 +154,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("aiPlatformConfiguration")
   private AiPlatformConfiguration aiPlatformConfiguration;
 
+  @JsonProperty("mcpConfiguration")
+  private org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfiguration;
+
   @JsonProperty("rdf")
   private RdfConfiguration rdfConfiguration = new RdfConfiguration();
 

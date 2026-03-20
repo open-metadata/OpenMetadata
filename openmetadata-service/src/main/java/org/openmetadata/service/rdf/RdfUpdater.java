@@ -86,4 +86,36 @@ public class RdfUpdater {
     RdfRepository.reset();
     LOG.info("RDF updater disabled");
   }
+
+  public static void addGlossaryTermRelation(
+      java.util.UUID fromTermId, java.util.UUID toTermId, String relationType) {
+    if (rdfRepository != null && rdfRepository.isEnabled()) {
+      try {
+        rdfRepository.addGlossaryTermRelation(fromTermId, toTermId, relationType);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to add glossary term relation {} -> {} ({}) to RDF",
+            fromTermId,
+            toTermId,
+            relationType,
+            e);
+      }
+    }
+  }
+
+  public static void removeGlossaryTermRelation(
+      java.util.UUID fromTermId, java.util.UUID toTermId, String relationType) {
+    if (rdfRepository != null && rdfRepository.isEnabled()) {
+      try {
+        rdfRepository.removeGlossaryTermRelation(fromTermId, toTermId, relationType);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to remove glossary term relation {} -> {} ({}) from RDF",
+            fromTermId,
+            toTermId,
+            relationType,
+            e);
+      }
+    }
+  }
 }

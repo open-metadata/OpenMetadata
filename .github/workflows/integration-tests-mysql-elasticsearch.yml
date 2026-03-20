@@ -26,14 +26,6 @@ on:
       - "bootstrap/**"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-integration-tests/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-sdk/**"
-      - "common/**"
-      - "pom.xml"
-      - "bootstrap/**"
 
 permissions:
   contents: read
@@ -43,9 +35,34 @@ concurrency:
   group: integration-tests-mysql-es-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
-  integration-tests-mysql-elasticsearch:
+  # Detect whether relevant paths changed. When no matching files are modified
+  # the downstream job is skipped via its `if` condition.
+  # A job skipped by `if` reports as "Success", so required checks still pass.
+  changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
+    outputs:
+      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          filters: |
+            backend:
+              - 'openmetadata-service/**'
+              - 'openmetadata-integration-tests/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - 'openmetadata-sdk/**'
+              - 'common/**'
+              - 'pom.xml'
+              - 'bootstrap/**'
+
+  integration-tests-mysql-elasticsearch:
+    needs: changes
+    runs-on: ubuntu-latest
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main

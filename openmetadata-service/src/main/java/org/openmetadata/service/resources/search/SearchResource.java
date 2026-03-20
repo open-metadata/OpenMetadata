@@ -141,7 +141,7 @@ public class SearchResource {
           @QueryParam("q")
           String query,
       @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
-          @DefaultValue("table_search_index")
+          @DefaultValue("table")
           @QueryParam("index")
           String index,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
@@ -322,7 +322,7 @@ public class SearchResource {
       @Parameter(description = "NLQ query string in natural language") @QueryParam("q")
           String nlqQuery,
       @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
-          @DefaultValue("table_search_index")
+          @DefaultValue("table")
           @QueryParam("index")
           String index,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
@@ -454,7 +454,7 @@ public class SearchResource {
       @Parameter(description = "field name") @QueryParam("fieldName") String fieldName,
       @Parameter(description = "field value") @QueryParam("fieldValue") String fieldValue,
       @Parameter(description = "Search Index name, defaults to table_search_index")
-          @DefaultValue("table_search_index")
+          @DefaultValue("table")
           @QueryParam("index")
           String index,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
@@ -507,7 +507,7 @@ public class SearchResource {
   public Response aggregate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @DefaultValue("table_search_index") @QueryParam("index") String index,
+      @DefaultValue("table") @QueryParam("index") String index,
       @Parameter(description = "Field in an entity.") @QueryParam("field") String fieldName,
       @Parameter(description = "value for searching in aggregation")
           @DefaultValue("")

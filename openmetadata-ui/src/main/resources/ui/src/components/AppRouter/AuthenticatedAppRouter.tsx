@@ -185,6 +185,12 @@ const ExplorePageV1 = withSuspenseFallback(
   React.lazy(() => import('../../pages/ExplorePage/ExplorePageV1.component'))
 );
 
+const OntologyExplorerPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage')
+  )
+);
+
 const RequestDescriptionPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -341,6 +347,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<ExplorePageV1 pageTitle={t('label.explore')} />}
         path={ROUTES.EXPLORE_WITH_TAB}
+      />
+      <Route
+        element={<OntologyExplorerPage />}
+        path={ROUTES.ONTOLOGY_EXPLORER}
       />
       <Route
         element={

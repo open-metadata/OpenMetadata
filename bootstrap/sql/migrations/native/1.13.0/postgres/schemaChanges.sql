@@ -70,6 +70,9 @@ WHERE json->'config'->>'app' LIKE '%"preview"%';
 
 -- Clean up QRTZ tables to remove stale persisted job data that may contain old App JSON with 'preview'
 -- Delete FK children first, then parents. Using DELETE (not TRUNCATE) to respect FK constraints.
+-- NOTE: This migration must run with the application fully stopped.
+-- Deleting QRTZ_LOCKS and QRTZ_SCHEDULER_STATE while the scheduler is running
+-- will cause distributed lock failures and missed recovery.
 DELETE FROM QRTZ_SIMPLE_TRIGGERS;
 DELETE FROM QRTZ_CRON_TRIGGERS;
 DELETE FROM QRTZ_SIMPROP_TRIGGERS;
@@ -79,3 +82,17 @@ DELETE FROM QRTZ_JOB_DETAILS;
 DELETE FROM QRTZ_FIRED_TRIGGERS;
 DELETE FROM QRTZ_LOCKS;
 DELETE FROM QRTZ_SCHEDULER_STATE;
+
+-- Enable allowImpersonation for McpApplicationBot so it can record impersonation in audit logs
+UPDATE user_entity
+SET json = jsonb_set(json::jsonb, '{allowImpersonation}', 'true')::json
+WHERE name = 'mcpapplicationbot';
+
+-- Assign ApplicationBotImpersonationRole to the MCP bot user
+-- Relationship.HAS ordinal = 10
+INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+SELECT ue.id, re.id, 'user', 'role', 10
+FROM user_entity ue, role_entity re
+WHERE ue.name = 'mcpapplicationbot'
+  AND re.name = 'ApplicationBotImpersonationRole'
+ON CONFLICT DO NOTHING;

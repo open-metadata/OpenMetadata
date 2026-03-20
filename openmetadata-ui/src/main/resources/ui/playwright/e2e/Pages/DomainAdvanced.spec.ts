@@ -924,9 +924,7 @@ test.describe('Domain Search and Filter', () => {
 
       await searchBox.fill(`SearchTestDomain_${uniqueId}`);
 
-      await page.waitForResponse(
-        '/api/v1/search/query?q=*&index=domain_search_index*'
-      );
+      await page.waitForResponse('/api/v1/search/query?q=*&index=domain*');
 
       await waitForAllLoadersToDisappear(page);
 

@@ -8,10 +8,12 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -246,33 +248,23 @@ public class MigrationWorkflow {
    */
   public List<MigrationFile> getMigrationsToApply(
       List<String> executedMigrations, List<MigrationFile> availableMigrations) {
+    Set<String> executedSet = new HashSet<>(executedMigrations);
     List<MigrationFile> migrationsToApply = new ArrayList<>();
-    List<MigrationFile> nativeMigrationsToApply =
-        processNativeMigrations(executedMigrations, availableMigrations);
-    List<MigrationFile> extensionMigrationsToApply =
-        processExtensionMigrations(executedMigrations, availableMigrations);
-
-    migrationsToApply.addAll(nativeMigrationsToApply);
-    migrationsToApply.addAll(extensionMigrationsToApply);
+    migrationsToApply.addAll(processNativeMigrations(executedSet, availableMigrations));
+    migrationsToApply.addAll(processExtensionMigrations(executedSet, availableMigrations));
     return migrationsToApply;
   }
 
   private List<MigrationFile> processNativeMigrations(
-      List<String> executedMigrations, List<MigrationFile> availableMigrations) {
-    Stream<MigrationFile> availableNativeMigrations =
-        availableMigrations.stream().filter(migration -> !migration.isExtension);
-    Optional<String> maxMigration =
-        executedMigrations.stream().max(MigrationWorkflow::compareVersions);
-    if (maxMigration.isPresent()) {
-      return availableNativeMigrations
-          .filter(migration -> migration.biggerThan(maxMigration.get()))
-          .toList();
-    }
-    return availableNativeMigrations.toList();
+      Set<String> executedMigrations, List<MigrationFile> availableMigrations) {
+    return availableMigrations.stream()
+        .filter(migration -> !migration.isExtension)
+        .filter(migration -> !executedMigrations.contains(migration.version))
+        .toList();
   }
 
   private List<MigrationFile> processExtensionMigrations(
-      List<String> executedMigrations, List<MigrationFile> availableMigrations) {
+      Set<String> executedMigrations, List<MigrationFile> availableMigrations) {
     return availableMigrations.stream()
         .filter(migration -> migration.isExtension)
         .filter(migration -> !executedMigrations.contains(migration.version))
