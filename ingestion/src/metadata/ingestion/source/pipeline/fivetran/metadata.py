@@ -13,12 +13,20 @@ Fivetran source to extract metadata
 """
 
 import traceback
+from datetime import datetime
 from typing import Iterable, List, Optional, cast
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    PipelineStatus,
+    StatusType,
+    Task,
+    TaskStatus,
+)
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
@@ -29,6 +37,7 @@ from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
     SourceUrl,
+    Timestamp,
 )
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
@@ -46,9 +55,12 @@ from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.ingestion.source.pipeline.fivetran.models import FivetranPipelineDetails
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+MESSAGING_CONNECTOR_TYPES = {"confluent_cloud", "kafka"}
 
 
 class FivetranSource(PipelineServiceSource):
@@ -79,6 +91,7 @@ class FivetranSource(PipelineServiceSource):
             Task(
                 name=pipeline_details.pipeline_name,
                 displayName=pipeline_details.pipeline_display_name,
+                taskType="sync",
                 sourceUrl=source_url,
             )  # type: ignore
         ]
@@ -112,6 +125,47 @@ class FivetranSource(PipelineServiceSource):
         self, pipeline_details: FivetranPipelineDetails
     ) -> Optional[Iterable[Either[OMetaPipelineStatus]]]:
         """Method to get task & pipeline status"""
+        pipeline_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Pipeline,
+            service_name=self.context.get().pipeline_service,
+            pipeline_name=self.context.get().pipeline,
+        )
+        for timestamp_field, status_type in [
+            ("succeeded_at", StatusType.Successful),
+            ("failed_at", StatusType.Failed),
+        ]:
+            raw_ts = pipeline_details.source.get(timestamp_field)
+            if not raw_ts:
+                continue
+            try:
+                dt = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+                ts_ms = datetime_to_ts(dt)
+                task_status = [
+                    TaskStatus(
+                        name=pipeline_details.pipeline_name,
+                        executionStatus=status_type.value,
+                        startTime=Timestamp(ts_ms),
+                        endTime=Timestamp(ts_ms),
+                    )
+                ]
+                pipeline_status = PipelineStatus(
+                    executionStatus=status_type.value,
+                    taskStatus=task_status,
+                    timestamp=Timestamp(ts_ms),
+                )
+                yield Either(
+                    right=OMetaPipelineStatus(
+                        pipeline_fqn=pipeline_fqn,
+                        pipeline_status=pipeline_status,
+                    )
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error parsing {timestamp_field} for pipeline"
+                    f" [{self.get_pipeline_name(pipeline_details)}]: {exc}"
+                )
 
     def fetch_column_lineage(
         self,
@@ -152,13 +206,29 @@ class FivetranSource(PipelineServiceSource):
                 )
                 continue
 
+            dest_column_name = column_data.get("name_in_destination")
+            if not column_name or not dest_column_name:
+                logger.debug(
+                    f"Skipping column mapping for pipeline [{pipeline_name}] lineage"
+                    f" - source column [{column_name}] or destination column"
+                    f" [{dest_column_name}] name is None"
+                )
+                continue
+
             from_col = get_column_fqn(
                 table_entity=from_table_entity, column=column_name
             )
             to_col = get_column_fqn(
                 table_entity=to_table_entity,
-                column=column_data.get("name_in_destination"),
+                column=dest_column_name,
             )
+            if not from_col or not to_col:
+                logger.debug(
+                    f"Skipping column [{column_name}] -> [{dest_column_name}] for pipeline"
+                    f" [{pipeline_name}] lineage - column FQN could not be resolved"
+                )
+                continue
+
             col_lineage_arr.append(
                 ColumnLineage(
                     fromColumns=[from_col],
@@ -179,6 +249,9 @@ class FivetranSource(PipelineServiceSource):
         """
         self.client = cast(FivetranClient, self.client)
         pipeline_name = self.get_pipeline_name(pipeline_details)
+
+        source_connector_type = pipeline_details.source.get("service")
+        is_messaging_source = source_connector_type in MESSAGING_CONNECTOR_TYPES
 
         source_database_name = pipeline_details.source.get("config", {}).get("database")
         destination_database_name = pipeline_details.destination.get("config", {}).get(
@@ -211,23 +284,39 @@ class FivetranSource(PipelineServiceSource):
 
                 from_fqn = None
                 from_entity = None
-                for db_service_name in self.get_db_service_names() or "*":
-                    from_fqn = fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Table,
-                        table_name=source_table_name,
-                        database_name=source_database_name,
-                        schema_name=source_schema_name,
-                        service_name=db_service_name,
-                    )
-                    from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
-                    if from_entity:
-                        break
+                if is_messaging_source:
+                    for svc_name in self.get_messaging_service_names() or "*":
+                        from_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Topic,
+                            service_name=svc_name,
+                            topic_name=source_table_name,
+                        )
+                        from_entity = self.metadata.get_by_name(
+                            entity=Topic, fqn=from_fqn
+                        )
+                        if from_entity:
+                            break
+                else:
+                    for db_service_name in self.get_db_service_names() or "*":
+                        from_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Table,
+                            table_name=source_table_name,
+                            database_name=source_database_name,
+                            schema_name=source_schema_name,
+                            service_name=db_service_name,
+                        )
+                        from_entity = self.metadata.get_by_name(
+                            entity=Table, fqn=from_fqn
+                        )
+                        if from_entity:
+                            break
 
                 if not from_entity:
                     logger.debug(
                         f"Lineage skipped for pipeline [{pipeline_name}]"
-                        f" since source table [{from_fqn}] not found."
+                        f" since source entity [{from_fqn}] not found."
                     )
                     continue
 
@@ -253,23 +342,25 @@ class FivetranSource(PipelineServiceSource):
                     )
                     continue
 
-                # Prevent self-lineage loops (table -> same table)
+                # Prevent self-lineage loops (entity -> same entity)
                 if from_entity.id == to_entity.id:
                     logger.debug(
                         f"Lineage skipped for pipeline [{pipeline_name}]"
-                        f" - source and destination are the same table [{from_fqn}]."
+                        f" - source and destination are the same entity [{from_fqn}]."
                         f" Self-referencing lineage is not allowed."
                     )
                     continue
 
-                col_lineage_arr = self.fetch_column_lineage(
-                    pipeline_details=pipeline_details,
-                    schema_name=schema_name,
-                    schema_data=schema_data,
-                    table_name=table_name,
-                    from_table_entity=from_entity,
-                    to_table_entity=to_entity,
-                )
+                col_lineage_arr = []
+                if not is_messaging_source:
+                    col_lineage_arr = self.fetch_column_lineage(
+                        pipeline_details=pipeline_details,
+                        schema_name=schema_name,
+                        schema_data=schema_data,
+                        table_name=table_name,
+                        from_table_entity=from_entity,
+                        to_table_entity=to_entity,
+                    )
 
                 pipeline_fqn = fqn.build(
                     metadata=self.metadata,
@@ -290,10 +381,11 @@ class FivetranSource(PipelineServiceSource):
                     description=None,
                 )
 
+                from_entity_type = "topic" if is_messaging_source else "table"
                 yield Either(
                     right=AddLineageRequest(
                         edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=from_entity.id, type="table"),  # type: ignore
+                            fromEntity=EntityReference(id=from_entity.id, type=from_entity_type),  # type: ignore
                             toEntity=EntityReference(id=to_entity.id, type="table"),  # type: ignore
                             lineageDetails=lineage_details,
                         )

@@ -18,7 +18,11 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    StatusType,
+    Task,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -28,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.fivetran.metadata import (
     FivetranPipelineDetails,
@@ -81,6 +86,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
         Task(
             name="wackiness_remote_aiding_pointless",
             displayName="test <> postgres_rds",
+            taskType="sync",
             sourceUrl=SourceUrl(
                 "https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
             ),
@@ -367,3 +373,329 @@ class FivetranUnitTest(TestCase):
 
         finally:
             self.fivetran.metadata = original_metadata
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn"
+    )
+    def test_fetch_column_lineage_skips_none_column_name(self, mock_get_col_fqn):
+        mock_from_table = Mock()
+        mock_to_table = Mock()
+        self.client.get_connector_column_lineage.return_value = {
+            None: {"enabled": True, "name_in_destination": "dest_col"}
+        }
+
+        result = self.fivetran.fetch_column_lineage(
+            pipeline_details=EXPECTED_FIVETRAN_DETAILS,
+            schema_name="public",
+            schema_data={},
+            table_name="users",
+            from_table_entity=mock_from_table,
+            to_table_entity=mock_to_table,
+        )
+
+        assert result == []
+        mock_get_col_fqn.assert_not_called()
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn"
+    )
+    def test_fetch_column_lineage_skips_none_destination_name(self, mock_get_col_fqn):
+        mock_from_table = Mock()
+        mock_to_table = Mock()
+        self.client.get_connector_column_lineage.return_value = {
+            "src_col": {"enabled": True, "name_in_destination": None}
+        }
+
+        result = self.fivetran.fetch_column_lineage(
+            pipeline_details=EXPECTED_FIVETRAN_DETAILS,
+            schema_name="public",
+            schema_data={},
+            table_name="users",
+            from_table_entity=mock_from_table,
+            to_table_entity=mock_to_table,
+        )
+
+        assert result == []
+        mock_get_col_fqn.assert_not_called()
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn"
+    )
+    def test_fetch_column_lineage_skips_unresolved_fqn(self, mock_get_col_fqn):
+        mock_from_table = Mock()
+        mock_to_table = Mock()
+        self.client.get_connector_column_lineage.return_value = {
+            "src_col": {"enabled": True, "name_in_destination": "dest_col"}
+        }
+        mock_get_col_fqn.side_effect = [
+            "service.db.schema.table.src_col",
+            None,
+        ]
+
+        result = self.fivetran.fetch_column_lineage(
+            pipeline_details=EXPECTED_FIVETRAN_DETAILS,
+            schema_name="public",
+            schema_data={},
+            table_name="users",
+            from_table_entity=mock_from_table,
+            to_table_entity=mock_to_table,
+        )
+
+        assert result == []
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn"
+    )
+    def test_fetch_column_lineage_happy_path(self, mock_get_col_fqn):
+        mock_from_table = Mock()
+        mock_to_table = Mock()
+        self.client.get_connector_column_lineage.return_value = {
+            "src_col": {"enabled": True, "name_in_destination": "dest_col"}
+        }
+        mock_get_col_fqn.side_effect = [
+            "service.db.schema.table.src_col",
+            "service.db.schema.table.dest_col",
+        ]
+
+        result = self.fivetran.fetch_column_lineage(
+            pipeline_details=EXPECTED_FIVETRAN_DETAILS,
+            schema_name="public",
+            schema_data={},
+            table_name="users",
+            from_table_entity=mock_from_table,
+            to_table_entity=mock_to_table,
+        )
+
+        assert len(result) == 1
+        assert isinstance(result[0], ColumnLineage)
+        assert result[0].fromColumns[0].root == "service.db.schema.table.src_col"
+        assert result[0].toColumn.root == "service.db.schema.table.dest_col"
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
+    )
+    @patch("metadata.utils.fqn.build")
+    def test_yield_lineage_messaging_source_resolves_topic(
+        self, mock_build, mock_get_db_services, mock_get_msg_services
+    ):
+        mock_get_db_services.return_value = ["snowflake_service"]
+        mock_get_msg_services.return_value = ["kafka_service"]
+
+        mock_topic = Mock()
+        mock_topic.id = str(uuid4())
+        mock_dest_table = Mock()
+        mock_dest_table.id = str(uuid4())
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = str(uuid4())
+
+        messaging_details = FivetranPipelineDetails(
+            source={
+                "id": "confluent_connector",
+                "service": "confluent_cloud",
+                "schema": "confluent_cloud",
+                "config": {},
+            },
+            destination=mock_data.get("destination"),
+            group=mock_data.get("group"),
+            connector_id="confluent_connector",
+        )
+
+        def build_side_effect(metadata=None, entity_type=None, **kwargs):
+            service = kwargs.get("service_name", "")
+            if kwargs.get("topic_name"):
+                return f"{service}.{kwargs['topic_name']}"
+            parts = [
+                service,
+                kwargs.get("database_name", ""),
+                kwargs.get("schema_name", ""),
+                kwargs.get("table_name", ""),
+            ]
+            return ".".join(str(p) for p in parts if p)
+
+        mock_build.side_effect = build_side_effect
+
+        def get_by_name_side_effect(entity, fqn):
+            fqn_str = str(fqn)
+            if "kafka_service" in fqn_str:
+                return mock_topic
+            elif "snowflake_service" in fqn_str and "STOCK_TRADES" in fqn_str:
+                return mock_dest_table
+            elif "pipeline" in fqn_str or "fivetran" in fqn_str:
+                return mock_pipeline
+            return None
+
+        original_metadata = self.fivetran.metadata
+        mock_metadata = Mock()
+        mock_metadata.get_by_name = Mock(side_effect=get_by_name_side_effect)
+        self.fivetran.metadata = mock_metadata
+
+        try:
+            self.client.get_connector_schema_details.return_value = {
+                "topics": {
+                    "enabled": True,
+                    "name_in_destination": "confluent_cloud",
+                    "tables": {
+                        "STOCK_TRADES": {
+                            "enabled": True,
+                            "name_in_destination": "STOCK_TRADES",
+                        }
+                    },
+                }
+            }
+
+            result = list(
+                self.fivetran.yield_pipeline_lineage_details(messaging_details)
+            )
+
+            assert len(result) == 1
+            assert result[0].right is not None
+            lineage = result[0].right
+            assert lineage.edge.fromEntity.type == "topic"
+            assert lineage.edge.toEntity.type == "table"
+            assert str(lineage.edge.fromEntity.id.root) == mock_topic.id
+            assert str(lineage.edge.toEntity.id.root) == mock_dest_table.id
+        finally:
+            self.fivetran.metadata = original_metadata
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.fetch_column_lineage"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
+    )
+    @patch("metadata.utils.fqn.build")
+    def test_yield_lineage_messaging_source_skips_column_lineage(
+        self,
+        mock_build,
+        mock_get_db_services,
+        mock_get_msg_services,
+        mock_fetch_col_lineage,
+    ):
+        mock_get_db_services.return_value = ["snowflake_service"]
+        mock_get_msg_services.return_value = ["kafka_service"]
+
+        mock_topic = Mock()
+        mock_topic.id = str(uuid4())
+        mock_dest_table = Mock()
+        mock_dest_table.id = str(uuid4())
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = str(uuid4())
+
+        messaging_details = FivetranPipelineDetails(
+            source={
+                "id": "kafka_connector",
+                "service": "kafka",
+                "schema": "kafka",
+                "config": {},
+            },
+            destination=mock_data.get("destination"),
+            group=mock_data.get("group"),
+            connector_id="kafka_connector",
+        )
+
+        def build_side_effect(metadata=None, entity_type=None, **kwargs):
+            service = kwargs.get("service_name", "")
+            if kwargs.get("topic_name"):
+                return f"{service}.{kwargs['topic_name']}"
+            parts = [
+                service,
+                kwargs.get("database_name", ""),
+                kwargs.get("schema_name", ""),
+                kwargs.get("table_name", ""),
+            ]
+            return ".".join(str(p) for p in parts if p)
+
+        mock_build.side_effect = build_side_effect
+
+        def get_by_name_side_effect(entity, fqn):
+            fqn_str = str(fqn)
+            if "kafka_service" in fqn_str:
+                return mock_topic
+            elif "snowflake_service" in fqn_str:
+                return mock_dest_table
+            elif "pipeline" in fqn_str or "fivetran" in fqn_str:
+                return mock_pipeline
+            return None
+
+        original_metadata = self.fivetran.metadata
+        mock_metadata = Mock()
+        mock_metadata.get_by_name = Mock(side_effect=get_by_name_side_effect)
+        self.fivetran.metadata = mock_metadata
+
+        try:
+            self.client.get_connector_schema_details.return_value = {
+                "topics": {
+                    "enabled": True,
+                    "name_in_destination": "kafka_dest",
+                    "tables": {
+                        "events": {
+                            "enabled": True,
+                            "name_in_destination": "events",
+                        }
+                    },
+                }
+            }
+
+            result = list(
+                self.fivetran.yield_pipeline_lineage_details(messaging_details)
+            )
+
+            assert len(result) == 1
+            mock_fetch_col_lineage.assert_not_called()
+        finally:
+            self.fivetran.metadata = original_metadata
+
+    def test_task_has_sync_type(self):
+        pipeline = list(self.fivetran.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[
+            0
+        ].right
+        assert pipeline.tasks[0].taskType == "sync"
+
+    def test_pipeline_status_from_both_timestamps(self):
+        statuses = list(
+            self.fivetran.yield_pipeline_status(EXPECTED_FIVETRAN_DETAILS)
+        )
+        assert len(statuses) == 2
+        exec_statuses = {s.right.pipeline_status.executionStatus for s in statuses}
+        assert exec_statuses == {
+            StatusType.Successful,
+            StatusType.Failed,
+        }
+
+    def test_pipeline_status_from_succeeded_at_only(self):
+        details = FivetranPipelineDetails(
+            source={
+                **mock_data["source"],
+                "succeeded_at": "2022-07-25T08:34:31.425131Z",
+                "failed_at": None,
+            },
+            destination=mock_data["destination"],
+            group=mock_data["group"],
+            connector_id=mock_data["source"]["id"],
+        )
+        statuses = list(self.fivetran.yield_pipeline_status(details))
+        assert len(statuses) == 1
+        assert (
+            statuses[0].right.pipeline_status.executionStatus
+            == StatusType.Successful
+        )
+
+    def test_pipeline_status_no_timestamps(self):
+        details = FivetranPipelineDetails(
+            source={
+                **mock_data["source"],
+                "succeeded_at": None,
+                "failed_at": None,
+            },
+            destination=mock_data["destination"],
+            group=mock_data["group"],
+            connector_id=mock_data["source"]["id"],
+        )
+        statuses = list(self.fivetran.yield_pipeline_status(details))
+        assert len(statuses) == 0
