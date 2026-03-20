@@ -106,10 +106,10 @@ jobs:
 
       - name: ESLint + Prettier + Organise Imports
         id: lint
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.changed-files.outputs.any_modified == 'true'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         env:
-          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.added_modified_files }}
         run: |
           yarn organize-imports:cli $CHANGED_FILES
           yarn lint:base --fix $CHANGED_FILES
@@ -202,7 +202,7 @@ jobs:
 
       - name: Licence Header Check
         id: license
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.changed-files.outputs.any_modified == 'true'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         env:
           CHANGED_FILES_ALL: ${{ steps.changed-files.outputs.added_modified_files }}
@@ -558,7 +558,7 @@ jobs:
 
       - name: ESLint + Prettier + Organise Imports (playwright)
         id: lint
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.changed-files.outputs.any_modified == 'true'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         env:
           CHANGED_FILES: ${{ steps.changed-files.outputs.added_modified_files }}
@@ -659,7 +659,7 @@ jobs:
 
       - name: TypeScript Type Check (playwright)
         id: tsc
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.changed-files.outputs.any_modified == 'true'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
           if ! yarn tsc:playwright > /tmp/tsc_output.txt 2>&1; then
