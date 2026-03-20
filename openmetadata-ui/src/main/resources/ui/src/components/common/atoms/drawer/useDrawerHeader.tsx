@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SlideoutMenu } from '@openmetadata/ui-core-components';
+import { SlideoutMenu, Typography } from '@openmetadata/ui-core-components';
 import { ReactNode, useMemo } from 'react';
 
 export interface DrawerHeaderConfig {
@@ -29,11 +29,12 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
       <SlideoutMenu.Header onClose={showCloseButton ? onClose : undefined}>
         <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1">
           {typeof title === 'string' ? (
-            <h6
-              className="tw:text-lg tw:font-semibold"
-              data-testid="form-heading">
+            <Typography
+              data-testid="form-heading"
+              size="text-lg"
+              weight="semibold">
               {title}
-            </h6>
+            </Typography>
           ) : (
             title
           )}
