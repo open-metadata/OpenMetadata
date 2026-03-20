@@ -37,7 +37,7 @@ interface TableRowConfig<T> {
  * @stability Stable - Uses shared cell renderer
  * @complexity Low - Just table structure + shared rendering
  */
-export const useTableRow = <T extends { id: string }>(
+export const useTableRow = <T extends { id: string; name?: string }>(
   config: TableRowConfig<T>
 ) => {
   const { renderCell } = useCellRenderer({
@@ -50,7 +50,7 @@ export const useTableRow = <T extends { id: string }>(
     () => (
       <TableRow
         hover
-        data-testid={(config.entity as any).name}
+        data-testid={config.entity.name}
         sx={{ cursor: 'pointer' }}
         onClick={() => config.onEntityClick(config.entity)}>
         {config.enableSelection && (

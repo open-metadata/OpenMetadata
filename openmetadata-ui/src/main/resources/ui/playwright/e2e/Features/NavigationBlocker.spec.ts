@@ -136,7 +136,6 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Modal should disappear and navigate to settings
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
 
-
     // Should navigate to the settings page
     expect(adminPage.url()).toContain('settings');
 

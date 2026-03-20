@@ -12,6 +12,7 @@
  */
 
 import { Drawer } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 
 export interface DrawerConfig {
@@ -96,7 +97,7 @@ export const useDrawer = (config: DrawerConfig = {}) => {
   );
 
   const getDrawerSx = useMemo(() => {
-    const sx: any = {
+    const sx: SxProps<Theme> = {
       zIndex: config.zIndex || 1000, // Set default z-index to 1000
     };
 

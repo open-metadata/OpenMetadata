@@ -40,12 +40,9 @@ test(
 
     await page.keyboard.press('Enter');
 
-    await page
-      .getByTestId('search-container')
-      .getByTestId('loader')
-      .waitFor({
-        state: 'detached',
-      });
+    await page.getByTestId('search-container').getByTestId('loader').waitFor({
+      state: 'detached',
+    });
 
     await page.getByTestId('search-results').waitFor({
       state: 'visible',

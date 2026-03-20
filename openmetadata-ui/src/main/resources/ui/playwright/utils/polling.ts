@@ -37,8 +37,7 @@ export const waitForSearchIndexed = async (
 
     if (response.ok()) {
       const data = await response.json();
-      const totalHits =
-        data?.hits?.total?.value ?? data?.hits?.total ?? 0;
+      const totalHits = data?.hits?.total?.value ?? data?.hits?.total ?? 0;
 
       if (totalHits > 0) {
         return;

@@ -59,7 +59,9 @@ export class TeamClass {
     const teamName = this.responseData?.name ?? this.data.name;
     const expectedDisplayName =
       this.responseData?.displayName ?? this.data.displayName;
-    const directTeamPath = `/settings/members/teams/${encodeURIComponent(teamName)}`;
+    const directTeamPath = `/settings/members/teams/${encodeURIComponent(
+      teamName
+    )}`;
 
     await page.goto(directTeamPath, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
@@ -80,7 +82,9 @@ export class TeamClass {
 
     await searchTeam(page, expectedDisplayName);
 
-    const teamLink = page.getByRole('link', { name: expectedDisplayName }).first();
+    const teamLink = page
+      .getByRole('link', { name: expectedDisplayName })
+      .first();
     await expect(teamLink).toBeVisible({ timeout: 60000 });
     const teamHref = await teamLink.getAttribute('href');
 
@@ -91,7 +95,9 @@ export class TeamClass {
     }
 
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
-    await expect(page.getByTestId('team-heading')).toHaveText(expectedDisplayName);
+    await expect(page.getByTestId('team-heading')).toHaveText(
+      expectedDisplayName
+    );
   }
 
   async create(apiContext: APIRequestContext) {

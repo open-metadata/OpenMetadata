@@ -34,12 +34,11 @@ import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
 } from '../../utils/customProperty';
-import { addMultiOwner,
+import {
+  addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import {
-  selectActiveGlossary,
-} from '../../utils/glossary';
+import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
   fillGlossaryRowDetails,
@@ -238,17 +237,13 @@ test.describe('Glossary Bulk Import Export', () => {
       await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
       await page.getByTestId('processed-row').waitFor();
-      await expect(
-        page.locator('[data-testid="processed-row"]')
-      ).toHaveText('3');
+      await expect(page.locator('[data-testid="processed-row"]')).toHaveText(
+        '3'
+      );
 
-      await expect(
-        page.locator('[data-testid="passed-row"]')
-      ).toHaveText('3');
+      await expect(page.locator('[data-testid="passed-row"]')).toHaveText('3');
 
-      await expect(
-        page.locator('[data-testid="failed-row"]')
-      ).toHaveText('0');
+      await expect(page.locator('[data-testid="failed-row"]')).toHaveText('0');
 
       await expect(page.getByTestId('view-more-button')).toBeVisible();
 
@@ -275,7 +270,6 @@ test.describe('Glossary Bulk Import Export', () => {
     await test.step('delete custom properties', async () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
-
 
         await waitForAllLoadersToDisappear(page);
 

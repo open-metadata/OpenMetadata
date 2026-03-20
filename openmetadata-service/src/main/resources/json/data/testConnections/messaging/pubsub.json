@@ -1,0 +1,21 @@
+{
+    "name": "PubSub",
+    "displayName": "Google Cloud Pub/Sub Test Connection",
+    "description": "This Test Connection validates the access against GCP Pub/Sub and basic metadata extraction of topics.",
+    "steps": [
+        {
+            "name": "GetTopics",
+            "description": "List all the topics available in the GCP project.",
+            "errorMessage": "Failed to fetch topics. Please validate the GCP credentials, project ID, and ensure the service account has pubsub.topics.list permission.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "CheckSchemaRegistry",
+            "description": "Validate Pub/Sub Schema Registry access.",
+            "errorMessage": "Failed to access schema registry. Please validate the service account has pubsub.schemas.list permission.",
+            "shortCircuit": false,
+            "mandatory": false
+        }
+    ]
+}

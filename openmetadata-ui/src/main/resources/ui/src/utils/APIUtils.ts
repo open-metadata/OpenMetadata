@@ -97,7 +97,7 @@ export const omitDeep = <T>(
   obj: T,
   predicate: (value: string, key: string | number | symbol) => boolean
 ): T => {
-  return transform(obj as any, function (result, value, key) {
+  return transform(obj as object, function (result, value, key) {
     if (isObject(value)) {
       value = omitDeep(value, predicate) as unknown as string;
     }
@@ -106,7 +106,7 @@ export const omitDeep = <T>(
       if (isArray(obj) && isArray(result)) {
         result.push(value);
       } else {
-        (result as any)[key] = value;
+        (result as Record<string | number | symbol, unknown>)[key] = value;
       }
     }
   });

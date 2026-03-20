@@ -24,7 +24,6 @@ import {
   updateDisplayNameForEntity,
   validateCopiedLinkFormat,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 import {
   expandDatabaseInExploreTree,
@@ -63,7 +62,6 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
-
       await waitForAllLoadersToDisappear(page);
 
       await expect(

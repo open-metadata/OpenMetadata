@@ -1079,11 +1079,11 @@ test.describe(
 
         await page.fill('[id="root\\/testType"]', testCase.type);
         await page.getByTestId('tableRowInsertedCountToBeBetween').click();
-        await page.locator('[data-id="tableRowInsertedCountToBeBetween"]').waitFor(
-          {
+        await page
+          .locator('[data-id="tableRowInsertedCountToBeBetween"]')
+          .waitFor({
             state: 'visible',
-          }
-        );
+          });
 
         await expect(
           page.locator('[data-id="tableRowInsertedCountToBeBetween"]')
@@ -1098,9 +1098,11 @@ test.describe(
         );
 
         await page.click('#testCaseFormV1_params_columnName');
-        await page.locator(`.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`).waitFor(
-          { state: 'visible' }
-        );
+        await page
+          .locator(
+            `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`
+          )
+          .waitFor({ state: 'visible' });
         await page.click(
           `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`
         );

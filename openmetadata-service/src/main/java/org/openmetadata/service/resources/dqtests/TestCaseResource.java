@@ -42,6 +42,9 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequest;
+import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkAll;
+import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkByIds;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.teams.User;
@@ -54,6 +57,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -1141,7 +1145,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @PUT
   @Path("/logicalTestCases")
   @Operation(
-      operationId = "addTestCasesToLogicalTestSuite",
+      operationId = "addTestCasesToBundleTestSuite",
       summary = "Add test cases to a logical test suite",
       description = "Add test cases to a logical test suite.",
       responses = {
@@ -1168,22 +1172,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             null,
             false);
 
-    OperationContext editTestsOpContext =
-        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface testSuiteRC =
-        TestCaseResourceContext.builder().entity(testSuite).build();
-
-    OperationContext editAllOpContext =
-        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
-
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(editTestsOpContext, testSuiteRC),
-            new AuthRequest(editAllOpContext, testSuiteRC));
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    if (Boolean.TRUE.equals(testSuite.getBasic())) {
-      throw new IllegalArgumentException("You are trying to add test cases to a basic test suite.");
-    }
+    validateTestSuiteOps(testSuite, securityContext);
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
     if (testCaseIds == null || testCaseIds.isEmpty()) {
@@ -1196,7 +1185,69 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throw new IllegalArgumentException(
           "You are trying to add one or more test cases that do not exist.");
     }
-    return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+    return Response.fromResponse(
+            repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse())
+        .header("Deprecation", "true")
+        .header(
+            "Sunset",
+            "This endpoint will be removed in version 2.0. "
+                + "Use PUT /api/v1/dataQuality/testCases/logicalTestCases/bulk instead.")
+        .build();
+  }
+
+  @PUT
+  @Path("/logicalTestCases/bulk")
+  @Operation(
+      operationId = "addManyTestCasesToBundleTestSuite",
+      summary = "Add test cases to a logical test suite",
+      description = "Add test cases to a logical test suite.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully added test cases to the logical test suite.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuite.class)))
+      })
+  public Response addManyTestCasesToBundleTestSuite(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid BundleSuiteBulkAddRequest bundleSuiteBulkAddRequest) {
+
+    TestSuite testSuite =
+        Entity.getEntity(
+            Entity.TEST_SUITE,
+            bundleSuiteBulkAddRequest.getTestSuiteId(),
+            "domains,owners",
+            null,
+            false);
+
+    validateTestSuiteOps(testSuite, securityContext);
+    BundleSuiteBulkAddRequest.Mode mode = bundleSuiteBulkAddRequest.getMode();
+    if (mode.equals(BundleSuiteBulkAddRequest.Mode.IDS)) {
+      BundleSuiteBulkAddRequestBulkByIds bulkByIds =
+          JsonUtils.convertValue(
+              bundleSuiteBulkAddRequest.getSelection(), BundleSuiteBulkAddRequestBulkByIds.class);
+      List<UUID> testCaseIds = bulkByIds.getIds();
+      if (testCaseIds == null || testCaseIds.isEmpty()) {
+        return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE)
+            .toResponse();
+      }
+      int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
+      if (existingTestCaseCount != testCaseIds.size()) {
+        throw new IllegalArgumentException(
+            "You are trying to add one or more test cases that do not exist.");
+      }
+      return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+    }
+
+    BundleSuiteBulkAddRequestBulkAll bulkAll =
+        JsonUtils.convertValue(
+            bundleSuiteBulkAddRequest.getSelection(), BundleSuiteBulkAddRequestBulkAll.class);
+    return repository
+        .addAllTestCasesToLogicalTestSuite(testSuite, getExcludedIdsFromSelection(bulkAll))
+        .toResponse();
   }
 
   @GET
@@ -1512,6 +1563,34 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             authRequests);
 
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
+  }
+
+  private void validateTestSuiteOps(TestSuite testSuite, SecurityContext securityContext) {
+    OperationContext editTestsOpContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+    ResourceContextInterface testSuiteRC =
+        TestCaseResourceContext.builder().entity(testSuite).build();
+
+    OperationContext editAllOpContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(editTestsOpContext, testSuiteRC),
+            new AuthRequest(editAllOpContext, testSuiteRC));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException("You are trying to add test cases to a basic test suite.");
+    }
+  }
+
+  private List<UUID> getExcludedIdsFromSelection(BundleSuiteBulkAddRequestBulkAll bulkAll) {
+    if (bulkAll == null || bulkAll.getFilter() == null) {
+      return List.of();
+    }
+
+    org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
+    return filter.getExcludeIds();
   }
 
   @Override

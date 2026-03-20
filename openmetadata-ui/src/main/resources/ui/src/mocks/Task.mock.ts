@@ -16,7 +16,10 @@ import {
   DataType,
 } from '../generated/entity/data/container';
 import {
+  CardStyle,
   FeedbackType,
+  FieldOperation,
+  GeneratedBy,
   Post,
   RecognizerFeedback,
   TaskType,
@@ -57,6 +60,52 @@ export const TASK_FEED: Thread = {
     oldValue: '[]',
     suggestion:
       '[{"tagFQN":"PersonalData.SpecialCategory","source":"Classification","name":"SpecialCategory","description":"GDPR special category data is personal information of data subjects that is especially sensitive, the exposure of which could significantly impact the rights and freedoms of data subjects and potentially be used against them for unlawful discrimination."}]',
+  },
+};
+
+export const APPROVAL_TASK_FEED: Thread = {
+  id: '4569705b-78b9-448f-8d1a-060401f03d9d',
+  type: ThreadType.Task,
+  href: 'https://nbndatacatalogue-np.getcollate.io//v1/feed/4569705b-78b9-448f-8d1a-060401f03d9d',
+  threadTs: 1773708257515,
+  about:
+    '<#E::table::starburst.cdl.sharp_incnet.v_incnet_location::columns::location_id>',
+  entityRef: {
+    id: '1bf67076-346e-46a6-b7ad-4914d89f7a3a',
+    type: 'table',
+    name: 'v_incnet_location',
+    fullyQualifiedName: 'starburst.cdl.sharp_incnet.v_incnet_location',
+    displayName: 'v_incnet_location',
+    deleted: false,
+  },
+  domains: ['19cf92da-baa0-4000-84a1-3b8b25da8d01'],
+  generatedBy: GeneratedBy.User,
+  cardStyle: CardStyle.Default,
+  fieldOperation: FieldOperation.Updated,
+  createdBy: 'calebknight',
+  updatedAt: 1773708257515,
+  updatedBy: 'calebknight',
+  resolved: false,
+  message: 'this is a test, I am a very good programmer',
+  postsCount: 0,
+  posts: [],
+  reactions: [],
+  task: {
+    id: 1803,
+    type: TaskType.RequestApproval,
+    assignees: [
+      {
+        id: 'ce782180-36f6-4d4a-9fbe-ee6103d4146f',
+        type: 'user',
+        name: 'calebknight',
+        fullyQualifiedName: 'calebknight',
+        displayName: 'Caleb Knight',
+        deleted: false,
+      },
+    ],
+    status: ThreadTaskStatus.Open,
+    oldValue: 'this is a test suggestion',
+    suggestion: 'this is a different test suggestion2',
   },
 };
 

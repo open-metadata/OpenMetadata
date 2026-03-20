@@ -1625,6 +1625,49 @@ public interface CollectionDAO {
                 propertyNames = {"fromId", "toId", "fromEntity", "toEntity", "relation"})
             List<EntityRelationshipObject> values);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "SELECT :fromId, t.id, :fromEntity, :toEntity, :relation "
+                + "FROM <table> t",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "SELECT :fromId, t.id, :fromEntity, :toEntity, :relation "
+                + "FROM <table> t "
+                + "ON CONFLICT DO NOTHING",
+        connectionType = POSTGRES)
+    void bulkInsertAllToRelationship(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Define("table") String table);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "SELECT :fromId, t.id, :fromEntity, :toEntity, :relation "
+                + "FROM <table> t "
+                + "WHERE t.id NOT IN (<exclusionIds>)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "SELECT :fromId, t.id, :fromEntity, :toEntity, :relation "
+                + "FROM <table> t "
+                + "WHERE t.id NOT IN (<exclusionIds>) "
+                + "ON CONFLICT DO NOTHING",
+        connectionType = POSTGRES)
+    void bulkInsertAllToRelationshipWithExclusions(
+        @BindList("exclusionIds") List<String> excludedIds,
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Define("table") String table);
+
     @SqlUpdate(
         value =
             "DELETE FROM entity_relationship WHERE fromId = :fromId "

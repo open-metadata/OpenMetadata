@@ -13,7 +13,7 @@
 import { Typography } from 'antd';
 import { isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { parse, unparse } from 'papaparse';
-import { Column } from 'react-data-grid';
+import { Column, RenderCellProps } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -118,7 +118,7 @@ export const getColumnConfig = (
   },
   editable = false,
   isBulkEdit = false
-): Column<any> => {
+): Column<Record<string, unknown>> => {
   const colType = column.split('.').pop() ?? '';
   const disabledColumns = isBulkEdit
     ? CSV_DISABLED_COLUMNS.includes(colType)
@@ -136,13 +136,13 @@ export const getColumnConfig = (
       entityType,
       multipleOwner
     ),
-    renderCell: (data: any) =>
+    renderCell: (data: RenderCellProps<Record<string, unknown>>) =>
       renderColumnDataEditor(colType, {
-        value: data.row[column],
+        value: data.row[column] as string | undefined,
         data: { details: '', glossaryStatus: '' },
       }),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
-  } as Column<any>;
+  } as Column<Record<string, unknown>>;
 };
 
 export const getEntityColumnsAndDataSourceFromCSV = (

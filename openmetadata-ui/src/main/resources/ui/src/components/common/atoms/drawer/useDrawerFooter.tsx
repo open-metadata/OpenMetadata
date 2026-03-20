@@ -12,6 +12,7 @@
  */
 
 import { Box, Button } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { ReactNode, useMemo } from 'react';
 import Loader from '../../Loader/Loader';
 
@@ -31,7 +32,7 @@ export interface DrawerFooterConfig {
   secondaryButton?: DrawerFooterButton;
   customContent?: ReactNode;
   align?: 'left' | 'center' | 'right' | 'space-between';
-  sx?: any;
+  sx?: SxProps<Theme>;
 }
 
 /**

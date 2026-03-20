@@ -211,7 +211,6 @@ test('should persist quick filter on global search', async ({ page }) => {
   await page.getByTestId('searchBox').click();
   await page.keyboard.down('Enter');
 
-
   // expect the quick filter to be persisted
   await expect(
     page.getByRole('button', { name: 'Owners : No Owners' })
@@ -240,7 +239,6 @@ test('Filter by column entity type shows only column results', async ({
 
   await columnCheckbox.check();
   await page.getByTestId('update-btn').click();
-
 
   const quickFilter = page.getByTestId('search-dropdown-Data Assets');
   await expect(quickFilter).toContainText('tablecolumn');

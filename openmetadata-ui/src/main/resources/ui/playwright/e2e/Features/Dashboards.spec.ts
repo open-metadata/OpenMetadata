@@ -30,7 +30,6 @@ import {
   generateEntityChildren,
   removeTagsFromChildren,
   restoreEntity,
-
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
