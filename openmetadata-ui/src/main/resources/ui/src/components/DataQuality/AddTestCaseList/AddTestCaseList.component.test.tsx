@@ -70,6 +70,37 @@ jest.mock('../../../utils/CommonUtils', () => {
     getNameFromFQN: jest.fn().mockImplementation((fqn) => fqn),
   };
 });
+jest.mock('../../../utils/DataQuality/DataQualityUtils', () => ({
+  COLUMN_AGGREGATE_FIELD: 'columns.name.keyword',
+  getColumnNameFromColumnFilterKey: jest
+    .fn()
+    .mockImplementation((key: string) => key.split('::').pop()),
+  getSelectedOptionsFromKeys: jest
+    .fn()
+    .mockImplementation(
+      (
+        keys: string[],
+        options: { key: string; label: string }[],
+        labelTransform?: (key: string) => string
+      ) =>
+        keys.map((key) => {
+          const option = options.find((item) => item.key === key);
+
+          return {
+            key,
+            label: option?.label ?? labelTransform?.(key) ?? key,
+          };
+        })
+    ),
+  parseColumnAggregateBuckets: jest
+    .fn()
+    .mockImplementation((buckets: { key: string }[]) =>
+      buckets.map((bucket) => ({
+        key: bucket.key,
+        label: bucket.key.split('::').pop() ?? bucket.key,
+      }))
+    ),
+}));
 jest.mock('../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
 }));

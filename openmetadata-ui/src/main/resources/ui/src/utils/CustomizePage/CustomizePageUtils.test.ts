@@ -12,11 +12,13 @@
  */
 import { TabsProps } from 'antd';
 import { EntityTabs } from '../../enums/entity.enum';
-import { PageType, Tab } from '../../generated/system/ui/page';
+import { Page, PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import {
   checkIfExpandViewSupported,
   getDefaultTabs,
+  getDetailsTabWithNewLabel,
+  getLayoutFromCustomizedPage,
   getTabDisplayName,
   getTabLabelFromId,
   getTabLabelMapFromTabs,
@@ -144,7 +146,7 @@ describe('CustomizePageUtils', () => {
     });
 
     it('should return empty object for undefined tabs', () => {
-      const result = getTabLabelMapFromTabs(undefined);
+      const result = getTabLabelMapFromTabs();
 
       expect(result).toEqual({});
     });
@@ -203,11 +205,94 @@ describe('CustomizePageUtils', () => {
       expect(result).toHaveLength(2); // Terms and Activity Feed tabs
     });
 
+    it('should return tabs from glossaryTermClassBase for GlossaryTerm page type', () => {
+      const result = getDefaultTabs(PageType.GlossaryTerm);
+
+      expect(result).toBeDefined();
+      expect(result.length).toBeGreaterThan(0);
+      expect(result.some((t) => t.id === EntityTabs.OVERVIEW)).toBe(true);
+    });
+
+    it('should include standard GlossaryTerm tabs via glossaryTermClassBase', () => {
+      const result = getDefaultTabs(PageType.GlossaryTerm);
+      const ids = result.map((t) => t.id);
+
+      expect(ids).toContain(EntityTabs.OVERVIEW);
+      expect(ids).toContain(EntityTabs.GLOSSARY_TERMS);
+      expect(ids).toContain(EntityTabs.ASSETS);
+    });
+
     it('should return custom properties tab for unknown page type', () => {
       const result = getDefaultTabs('unknown-type');
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(EntityTabs.CUSTOM_PROPERTIES);
+    });
+  });
+
+  describe('getDetailsTabWithNewLabel', () => {
+    const defaultTabs = [
+      { key: EntityTabs.OVERVIEW, label: 'Overview' },
+      { key: EntityTabs.SCHEMA, label: 'Schema' },
+      { key: EntityTabs.ACTIVITY_FEED, label: 'Activity Feed', isHidden: true },
+    ];
+
+    it('filters out hidden tabs when no customizedTabs provided', () => {
+      const result = getDetailsTabWithNewLabel(defaultTabs);
+
+      expect(result.some((t) => t.key === EntityTabs.ACTIVITY_FEED)).toBe(
+        false
+      );
+      expect(result).toHaveLength(2);
+    });
+
+    it('returns all visible default tabs when customizedTabs is undefined', () => {
+      const result = getDetailsTabWithNewLabel(defaultTabs);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].key).toBe(EntityTabs.OVERVIEW);
+      expect(result[1].key).toBe(EntityTabs.SCHEMA);
+    });
+
+    it('returns only visible default tabs in version view regardless of customizedTabs', () => {
+      const customizedTabs: Tab[] = [
+        { id: EntityTabs.OVERVIEW, name: EntityTabs.OVERVIEW, layout: [] },
+      ];
+      const result = getDetailsTabWithNewLabel(
+        defaultTabs,
+        customizedTabs,
+        EntityTabs.OVERVIEW,
+        true
+      );
+
+      expect(result).toHaveLength(2);
+    });
+
+    it('reorders tabs to match customizedTabs order', () => {
+      const customizedTabs: Tab[] = [
+        { id: EntityTabs.SCHEMA, name: EntityTabs.SCHEMA, layout: [] },
+        { id: EntityTabs.OVERVIEW, name: EntityTabs.OVERVIEW, layout: [] },
+      ];
+      const result = getDetailsTabWithNewLabel(defaultTabs, customizedTabs);
+
+      expect(result[0].key).toBe(EntityTabs.SCHEMA);
+      expect(result[1].key).toBe(EntityTabs.OVERVIEW);
+    });
+
+    it('filters hidden tabs even when present in customizedTabs', () => {
+      const customizedTabs: Tab[] = [
+        { id: EntityTabs.OVERVIEW, name: EntityTabs.OVERVIEW, layout: [] },
+        {
+          id: EntityTabs.ACTIVITY_FEED,
+          name: EntityTabs.ACTIVITY_FEED,
+          layout: [],
+        },
+      ];
+      const result = getDetailsTabWithNewLabel(defaultTabs, customizedTabs);
+
+      expect(result.some((t) => t.key === EntityTabs.ACTIVITY_FEED)).toBe(
+        false
+      );
     });
   });
 
@@ -279,6 +364,105 @@ describe('CustomizePageUtils', () => {
       );
 
       expect(result).toEqual(widgets);
+    });
+  });
+
+  describe('getLayoutFromCustomizedPage', () => {
+    it('should return saved layout when it is non-empty', () => {
+      const savedLayout = [
+        { i: 'widget-1', x: 0, y: 0, w: 6, h: 3 },
+      ] as WidgetConfig[];
+      const customizedPage = {
+        pageType: PageType.GlossaryTerm,
+        tabs: [
+          {
+            id: EntityTabs.OVERVIEW,
+            name: EntityTabs.OVERVIEW,
+            layout: savedLayout,
+          },
+        ],
+      };
+
+      const result = getLayoutFromCustomizedPage(
+        PageType.GlossaryTerm,
+        EntityTabs.OVERVIEW,
+        customizedPage as unknown as Page
+      );
+
+      expect(result).toBe(savedLayout);
+    });
+
+    it('should fall back to default layout when saved layout is empty', () => {
+      const emptyLayout: WidgetConfig[] = [];
+      const customizedPage = {
+        pageType: PageType.GlossaryTerm,
+        tabs: [
+          {
+            id: EntityTabs.OVERVIEW,
+            name: EntityTabs.OVERVIEW,
+            layout: emptyLayout,
+          },
+        ],
+      };
+
+      const result = getLayoutFromCustomizedPage(
+        PageType.GlossaryTerm,
+        EntityTabs.OVERVIEW,
+        customizedPage as unknown as Page
+      );
+
+      // Should NOT return the empty saved layout — fallback to default
+      expect(result).not.toBe(emptyLayout);
+    });
+
+    it('should return default layout when customizedPage is null', () => {
+      const result = getLayoutFromCustomizedPage(
+        PageType.GlossaryTerm,
+        EntityTabs.OVERVIEW,
+        null
+      );
+
+      expect(result).not.toEqual([]);
+    });
+
+    it('should return default layout when customizedPage has no tabs', () => {
+      const customizedPage = {
+        pageType: PageType.GlossaryTerm,
+        tabs: [],
+      };
+
+      const result = getLayoutFromCustomizedPage(
+        PageType.GlossaryTerm,
+        EntityTabs.OVERVIEW,
+        customizedPage as unknown as Page
+      );
+
+      expect(result).not.toEqual([]);
+    });
+
+    it('should return default layout when isVersionView is true even with saved layout', () => {
+      const savedLayout = [
+        { i: 'widget-1', x: 0, y: 0, w: 6, h: 3 },
+      ] as WidgetConfig[];
+      const customizedPage = {
+        pageType: PageType.GlossaryTerm,
+        tabs: [
+          {
+            id: EntityTabs.OVERVIEW,
+            name: EntityTabs.OVERVIEW,
+            layout: savedLayout,
+          },
+        ],
+      };
+
+      const result = getLayoutFromCustomizedPage(
+        PageType.GlossaryTerm,
+        EntityTabs.OVERVIEW,
+        customizedPage as unknown as Page,
+        true
+      );
+
+      expect(result).not.toBe(savedLayout);
     });
   });
 });
