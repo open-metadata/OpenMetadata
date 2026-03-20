@@ -1133,3 +1133,130 @@ class FivetranUnitTest(TestCase):
         assert tasks[0].executionStatus == StatusType.Failed  # load
         assert tasks[1].executionStatus == StatusType.Failed  # process
         assert tasks[2].executionStatus == StatusType.Failed  # extract
+
+    def test_build_task_statuses_failed_extract_cascades_despite_write_events(self):
+        """Extract failure cascades to process/load even if write events exist (partial sync)."""
+        ts_start = datetime(2026, 3, 20, 8, 0, 0)
+        ts_extract = datetime(2026, 3, 20, 8, 0, 10)
+        ts_write_start = datetime(2026, 3, 20, 8, 0, 12)
+        ts_write_end = datetime(2026, 3, 20, 8, 0, 15)
+
+        sync = {
+            "sync_start_ts": ts_start,
+            "extract_end_ts": ts_extract,
+            "extract_data": {"status": "FAILURE"},
+            "write_start_min": ts_write_start,
+            "write_end_max": ts_write_end,
+            "sync_end_ts": datetime(2026, 3, 20, 8, 0, 16),
+            "sync_end_data": {"status": "FAILURE_WITH_TASK"},
+        }
+
+        tasks = FivetranSource._build_task_statuses_for_sync(sync)
+        assert tasks[2].executionStatus == StatusType.Failed  # extract
+        assert tasks[1].executionStatus == StatusType.Failed  # process cascades
+        assert tasks[0].executionStatus == StatusType.Failed  # load cascades
+
+    def test_build_task_statuses_failed_extract_cascades_despite_sync_stats(self):
+        """Extract failure cascades even when sync_stats would synthesize timestamps."""
+        ts_start = datetime(2026, 3, 20, 8, 0, 0)
+        ts_extract = datetime(2026, 3, 20, 8, 0, 10)
+
+        sync = {
+            "sync_start_ts": ts_start,
+            "extract_end_ts": ts_extract,
+            "extract_data": {"status": "FAILURE"},
+            "sync_end_ts": datetime(2026, 3, 20, 8, 0, 30),
+            "sync_end_data": {"status": "FAILURE_WITH_TASK"},
+            "sync_stats": {
+                "extract_time_s": 10,
+                "process_time_s": 6,
+                "load_time_s": 5,
+            },
+        }
+
+        tasks = FivetranSource._build_task_statuses_for_sync(sync)
+        assert tasks[2].executionStatus == StatusType.Failed  # extract
+        assert tasks[1].executionStatus == StatusType.Failed  # process cascades
+        assert tasks[0].executionStatus == StatusType.Failed  # load cascades
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
+    )
+    @patch("metadata.utils.fqn.build")
+    def test_yield_lineage_returns_early_when_pipeline_entity_not_found(
+        self, mock_build, mock_get_services
+    ):
+        mock_get_services.return_value = ["postgres_service"]
+
+        mock_source_table = Mock()
+        mock_source_table.id = str(uuid4())
+        mock_dest_table = Mock()
+        mock_dest_table.id = str(uuid4())
+
+        def build_side_effect(metadata, entity_type, **kwargs):
+            service = kwargs.get("service_name", "")
+            database = kwargs.get("database_name", "")
+            schema = kwargs.get("schema_name", "")
+            table = kwargs.get("table_name", "")
+            return ".".join(
+                str(part) for part in [service, database, schema, table] if part
+            )
+
+        mock_build.side_effect = build_side_effect
+
+        def get_by_name_side_effect(entity, fqn):
+            fqn_str = str(fqn)
+            if "table1" in fqn_str:
+                return mock_source_table
+            elif "table1_dest" in fqn_str:
+                return mock_dest_table
+            return None
+
+        original_metadata = self.fivetran.metadata
+        mock_metadata = Mock()
+        mock_metadata.get_by_name = Mock(side_effect=get_by_name_side_effect)
+        self.fivetran.metadata = mock_metadata
+
+        try:
+            self.client.get_connector_schema_details.return_value = {
+                "public": {
+                    "enabled": True,
+                    "name_in_destination": "public",
+                    "tables": {
+                        "table1": {
+                            "enabled": True,
+                            "name_in_destination": "table1_dest",
+                        },
+                        "table2": {
+                            "enabled": True,
+                            "name_in_destination": "table2_dest",
+                        },
+                    },
+                }
+            }
+            self.client.get_connector_column_lineage.return_value = {}
+
+            result = list(
+                self.fivetran.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)
+            )
+            assert len(result) == 0
+        finally:
+            self.fivetran.metadata = original_metadata
+
+    def test_schedule_interval_non_hour_divisible(self):
+        details = FivetranPipelineDetails(
+            source={"sync_frequency": 90, "schema": "test", "service": "postgres"},
+            destination=mock_data.get("destination"),
+            group=mock_data.get("group"),
+            connector_id="test_connector",
+        )
+        assert self.fivetran._get_schedule_interval(details) == "*/90 * * * *"
+
+    def test_schedule_interval_over_24_hours(self):
+        details = FivetranPipelineDetails(
+            source={"sync_frequency": 2880, "schema": "test", "service": "postgres"},
+            destination=mock_data.get("destination"),
+            group=mock_data.get("group"),
+            connector_id="test_connector",
+        )
+        assert self.fivetran._get_schedule_interval(details) == "0 0 * * *"

@@ -174,8 +174,10 @@ class FivetranSource(PipelineServiceSource):
         minutes = int(sync_freq)
         if minutes < 60:
             return f"*/{minutes} * * * *"
+        if minutes % 60 != 0:
+            return f"*/{minutes} * * * *"
         hours = minutes // 60
-        if hours == 24:
+        if hours >= 24:
             return "0 0 * * *"
         return f"0 */{hours} * * *"
 
@@ -294,18 +296,23 @@ class FivetranSource(PipelineServiceSource):
             else StatusType.Failed
         )
 
-        process_status = StatusType.Successful if write_start_min else StatusType.Failed
-
-        sync_end_status_str = sync_end_data.get("status", "")
-        load_status = (
-            StatusType.Successful
-            if sync_end_status_str == "SUCCESSFUL"
-            else StatusType.Failed
-            if sync_end_status_str
-            else StatusType.Successful
-            if sync_end
-            else StatusType.Failed
-        )
+        if extract_status == StatusType.Failed:
+            process_status = StatusType.Failed
+            load_status = StatusType.Failed
+        else:
+            process_status = (
+                StatusType.Successful if write_start_min else StatusType.Failed
+            )
+            sync_end_status_str = sync_end_data.get("status", "")
+            load_status = (
+                StatusType.Successful
+                if sync_end_status_str == "SUCCESSFUL"
+                else StatusType.Failed
+                if sync_end_status_str
+                else StatusType.Successful
+                if sync_end
+                else StatusType.Failed
+            )
 
         def _ts(dt) -> Optional[Timestamp]:
             if dt is None:
@@ -758,6 +765,11 @@ class FivetranSource(PipelineServiceSource):
                     pipeline_entity = self.metadata.get_by_name(
                         entity=Pipeline, fqn=pipeline_fqn
                     )
+                    if not pipeline_entity:
+                        logger.warning(
+                            f"Pipeline entity [{pipeline_fqn}] not found, skipping lineage."
+                        )
+                        return
 
                 lineage_details = LineageDetails(
                     pipeline=EntityReference(
