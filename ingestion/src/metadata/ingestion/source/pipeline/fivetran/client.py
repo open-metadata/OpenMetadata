@@ -14,8 +14,6 @@ Client to interact with fivetran apis
 import base64
 from typing import List, Optional
 
-from requests import Response
-
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
@@ -31,17 +29,15 @@ class FivetranClient:
 
     def __init__(self, config: FivetranConnection):
         self.config = config
-        api_token = str(
-            base64.b64encode(
-                f"{config.apiKey}:{config.apiSecret.get_secret_value()}".encode("ascii")
-            )
-        )
+        api_token = base64.b64encode(
+            f"{config.apiKey}:{config.apiSecret.get_secret_value()}".encode("ascii")
+        ).decode("ascii")
 
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(str(self.config.hostPort)),
             api_version="v1",
             auth_header="Authorization",
-            auth_token=lambda: (api_token[2:-1], 0),
+            auth_token=lambda: (api_token, 0),
             auth_token_mode="Basic",
             retry=20,
             retry_wait=60,
@@ -52,14 +48,22 @@ class FivetranClient:
 
     def run_paginator(self, path: str) -> List[dict]:
         response = self.client.get(f"{path}?limit={self.config.limit}")
+        if not response or not isinstance(response, dict):
+            return []
         data = response.get("data")
-        result = data.get("items")
+        if not data or not isinstance(data, dict):
+            return []
+        result = data.get("items", [])
         while data.get("next_cursor"):
             response = self.client.get(
                 f"{path}?limit={self.config.limit}&cursor={data['next_cursor']}"
             )
-            data = response["data"]
-            result.extend(data["items"])
+            if not response or not isinstance(response, dict):
+                break
+            data = response.get("data", {})
+            if not isinstance(data, dict):
+                break
+            result.extend(data.get("items", []))
         return result
 
     def list_groups(self) -> List[dict]:
@@ -79,21 +83,27 @@ class FivetranClient:
         Method returns connector details
         """
         response = self.client.get(f"/connectors/{connector_id}")
-        return response.get("data")
+        return response.get("data", {}) if isinstance(response, dict) else {}
 
     def get_destination_details(self, destination_id: str) -> dict:
         """
         Method returns destination details
         """
         response = self.client.get(f"/destinations/{destination_id}")
-        return response.get("data")
+        return response.get("data", {}) if isinstance(response, dict) else {}
 
     def get_connector_schema_details(self, connector_id: str) -> dict:
         """
-        Method returns destination details
+        Method returns connector schema details
         """
         response = self.client.get(f"/connectors/{connector_id}/schemas")
         return response.get("data", {}).get("schemas", {})
+
+    def get_connector_sync_history(self, connector_id: str) -> List[dict]:
+        """
+        Method returns sync history for a connector
+        """
+        return self.run_paginator(f"/connectors/{connector_id}/sync-history")
 
     def get_connector_column_lineage(
         self, connector_id: str, schema_name: str, table_name: str
@@ -101,7 +111,7 @@ class FivetranClient:
         """
         Method returns column lineage details for a table
         """
-        response: Optional[Response] = self.client.get(
+        response: Optional[dict] = self.client.get(
             f"/connectors/{connector_id}/schemas/{schema_name}/tables/{table_name}/columns"
         )
         return response.get("data", {}).get("columns", {})
