@@ -176,6 +176,17 @@ const ColumnGridTruncatingTagBadges: React.FC<
 const hasEditedValues = (r: ColumnGridRowData): boolean =>
   some(EDITED_ROW_KEYS, (key) => !isUndefined(r[key]));
 
+const getDescriptionPreview = (description?: string): string => {
+  if (!description) {
+    return '';
+  }
+
+  return (
+    stringToDOMElement(getSanitizeContent(formatContent(description, 'client')))
+      .textContent ?? ''
+  ).slice(0, 100);
+};
+
 interface ColumnOccurrenceTarget {
   columnFQN: string;
   entityType: string;
@@ -378,6 +389,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         columnName: child.name || '',
         displayName: child.displayName,
         description: child.description,
+        descriptionPreview: getDescriptionPreview(child.description),
         dataType: child.dataType,
         tags: child.tags,
         occurrenceCount: 1,
@@ -461,6 +473,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   columnName: item.columnName,
                   displayName: group.displayName,
                   description: group.description,
+                  descriptionPreview: getDescriptionPreview(group.description),
                   dataType: group.dataType,
                   tags: group.tags,
                   occurrenceCount: 1,
@@ -507,6 +520,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             columnName: item.columnName,
             displayName: group?.displayName,
             description: group?.description,
+            descriptionPreview: getDescriptionPreview(group?.description),
             dataType: group?.dataType,
             tags: aggregatedTags.length > 0 ? aggregatedTags : group?.tags,
             occurrenceCount: allOccurrences.length,
@@ -545,6 +559,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 columnName: item.columnName,
                 displayName: group.displayName,
                 description: group.description,
+                descriptionPreview: getDescriptionPreview(group.description),
                 dataType: group.dataType,
                 tags: group.tags,
                 occurrenceCount: 1,
@@ -575,6 +590,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             columnName: item.columnName,
             displayName: group?.displayName,
             description: group?.description,
+            descriptionPreview: getDescriptionPreview(group?.description),
             dataType: group?.dataType,
             tags: group?.tags,
             occurrenceCount: allOccurrences.length,
@@ -783,8 +799,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   const renderDescriptionCellAdapter = useCallback(
     (entity: ColumnGridRowData) => {
-      const description = entity.editedDescription ?? entity.description ?? '';
       const hasEdit = entity.editedDescription !== undefined;
+      const displayValue = hasEdit
+        ? entity.editedDescriptionPreview ?? ''
+        : entity.descriptionPreview ?? '';
 
       if (entity.hasCoverage && entity.metadataStatus) {
         const countText =
@@ -804,12 +822,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           </Typography>
         );
       }
-
-      const displayValue = (
-        stringToDOMElement(
-          getSanitizeContent(formatContent(description, 'client'))
-        ).textContent ?? ''
-      ).slice(0, 100);
 
       if (hasEdit) {
         return (
@@ -1157,6 +1169,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             ? {
                 ...row,
                 [fieldName]: value,
+                ...(field === 'description'
+                  ? {
+                      editedDescriptionPreview: getDescriptionPreview(
+                        value as string
+                      ),
+                    }
+                  : {}),
               }
             : row
         );
@@ -1183,6 +1202,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             ...r,
             editedDisplayName: undefined,
             editedDescription: undefined,
+            editedDescriptionPreview: undefined,
             editedTags: undefined,
           };
         }
@@ -1310,6 +1330,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           ...r,
           editedDisplayName: undefined,
           editedDescription: undefined,
+          editedDescriptionPreview: undefined,
           editedTags: undefined,
         }))
       );
