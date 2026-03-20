@@ -409,7 +409,8 @@ export class OverviewPageObject extends RightPanelBase {
           {
             timeout: 120000,
             intervals: [500, 1000, 2000],
-            message: 'Timed out waiting for owner search input to become visible',
+            message:
+              'Timed out waiting for owner search input to become visible',
           }
         )
         .toBe(true);

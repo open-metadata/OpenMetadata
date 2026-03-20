@@ -1377,7 +1377,9 @@ export const verifyDataProductsCount = async (
         },
       },
     });
-    const searchUrl = `/api/v1/search/query?q=&index=data_product_search_index&from=0&size=0&deleted=false&query_filter=${encodeURIComponent(queryFilter)}`;
+    const searchUrl = `/api/v1/search/query?q=&index=data_product_search_index&from=0&size=0&deleted=false&query_filter=${encodeURIComponent(
+      queryFilter
+    )}`;
 
     await expect
       .poll(
@@ -1467,10 +1469,8 @@ export const verifyPortCounts = async (
   expectedOutputCount: number
 ) => {
   const portsTab = page.getByTestId('input-output-ports-tab');
-  const inputPortCount = portsTab
-    .getByTestId('input-port-count')
-  const outputPortCount = portsTab
-     .getByTestId('output-port-count')
+  const inputPortCount = portsTab.getByTestId('input-port-count');
+  const outputPortCount = portsTab.getByTestId('output-port-count');
 
   await expect
     .poll(

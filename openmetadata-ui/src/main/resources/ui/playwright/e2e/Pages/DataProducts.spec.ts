@@ -173,9 +173,9 @@ test.describe('Data Products', () => {
 
     await test.step('Verify asset count', async () => {
       await waitForAllLoadersToDisappear(page);
-      await expect(
-        page.getByTestId('assets').getByTestId('count')
-      ).toHaveText('1');
+      await expect(page.getByTestId('assets').getByTestId('count')).toHaveText(
+        '1'
+      );
     });
 
     await test.step('Remove assets from data product', async () => {

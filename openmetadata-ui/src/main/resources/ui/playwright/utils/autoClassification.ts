@@ -14,8 +14,8 @@
 import { Page } from '@playwright/test';
 import MysqlIngestionClass from '../support/entity/ingestion/MySqlIngestionClass';
 import { getApiContext, toastNotification } from './common';
-import { visitServiceDetailsPage } from './service';
 import { waitForAllLoadersToDisappear } from './entity';
+import { visitServiceDetailsPage } from './service';
 
 export const addAndTriggerAutoClassificationPipeline = async (
   page: Page,

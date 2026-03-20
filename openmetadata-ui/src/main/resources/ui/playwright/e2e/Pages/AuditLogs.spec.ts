@@ -357,7 +357,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await removeUserButton.click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.locator('.ant-skeleton').first().waitFor({ state: 'detached' });
+      await page
+        .locator('.ant-skeleton')
+        .first()
+        .waitFor({ state: 'detached' });
 
       await expect(userFilterTag).not.toBeVisible();
 

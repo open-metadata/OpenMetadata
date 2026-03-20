@@ -693,7 +693,10 @@ test.describe('Glossary P3 Tests', () => {
             await expandIcon.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
             await expandIcon.click();
-            await page.locator('.ant-table-row').first().waitFor({ state: 'visible' });
+            await page
+              .locator('.ant-table-row')
+              .first()
+              .waitFor({ state: 'visible' });
           } else {
             break;
           }

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import type { Components, Theme } from "@mui/material/styles";
+import type {} from "@mui/x-date-pickers/themeAugmentation";
+import type { ThemeColors } from "../types";
 import { shadows } from "./shadows";
 import {
   BODY_FONT_SIZES,
@@ -19,8 +21,8 @@ import {
 } from './typography-constants';
 
 export const dataDisplayTheme = (
-  colors: any
-): Components<Theme> & Record<string, any> => ({
+  colors: ThemeColors
+): Components<Theme> => ({
   MuiCard: {
     styleOverrides: {
       root: {
@@ -179,14 +181,14 @@ export const dataDisplayTheme = (
     },
     variants: [
       {
-        props: { variant: "filled" as any },
+        props: { variant: "filled" },
         style: {
           borderRadius: "9999px",
         },
       },
 
       {
-        props: { variant: "filled" as any, size: "small" as any },
+        props: { variant: "filled", size: "small" },
         style: {
           padding: "2px 8px",
           fontSize: BODY_FONT_SIZES.CAPTION,
@@ -196,7 +198,7 @@ export const dataDisplayTheme = (
       },
 
       {
-        props: { variant: "filled" as any, color: "primary" as any },
+        props: { variant: "filled", color: "primary" },
         style: {
           backgroundColor: `${colors.brand[50]} !important`,
           color: `${colors.brand[700]} !important`,
@@ -204,7 +206,7 @@ export const dataDisplayTheme = (
         },
       },
       {
-        props: { variant: "filled" as any, color: "secondary" as any },
+        props: { variant: "filled", color: "secondary" },
         style: {
           backgroundColor: `${colors.gray[50]} !important`,
           color: `${colors.gray[700]} !important`,
@@ -212,7 +214,7 @@ export const dataDisplayTheme = (
         },
       },
       {
-        props: { variant: "filled" as any, color: "success" as any },
+        props: { variant: "filled", color: "success" },
         style: {
           backgroundColor: `${colors.success[50]} !important`,
           color: `${colors.success[700]} !important`,
@@ -220,7 +222,7 @@ export const dataDisplayTheme = (
         },
       },
       {
-        props: { variant: "filled" as any, color: "warning" as any },
+        props: { variant: "filled", color: "warning" },
         style: {
           backgroundColor: `${colors.warning[50]} !important`,
           color: `${colors.warning[700]} !important`,
@@ -228,7 +230,7 @@ export const dataDisplayTheme = (
         },
       },
       {
-        props: { variant: "filled" as any, color: "error" as any },
+        props: { variant: "filled", color: "error" },
         style: {
           backgroundColor: `${colors.error[50]} !important`,
           color: `${colors.error[700]} !important`,
@@ -237,7 +239,7 @@ export const dataDisplayTheme = (
       },
 
       {
-        props: { size: "large" as any },
+        props: { size: "large" },
         style: {
           padding: "4px 8px",
           fontSize: "1rem",
@@ -247,7 +249,7 @@ export const dataDisplayTheme = (
         },
       },
       {
-        props: { variant: "blueGray" as any },
+        props: { variant: "blueGray" },
         style: {
           backgroundColor: colors.blueGray[75],
           border: `1px solid ${colors.blueGray[150]}`,

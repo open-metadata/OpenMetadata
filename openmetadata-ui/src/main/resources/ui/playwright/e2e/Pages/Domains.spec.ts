@@ -79,7 +79,6 @@ import {
   unFollowEntity,
   waitForAllLoadersToDisappear,
   getEncodedFqn,
-
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {

@@ -15,14 +15,14 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { isEmpty, startCase } from 'lodash';
 import {
   ALERT_DESCRIPTION,
-  ALERT_WITH_PERMISSION_POLICY_DETAILS,
-  ALERT_WITH_PERMISSION_POLICY_NAME,
-  ALERT_WITH_PERMISSION_ROLE_DETAILS,
-  ALERT_WITH_PERMISSION_ROLE_NAME,
   ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
   ALERT_WITHOUT_PERMISSION_POLICY_NAME,
   ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
   ALERT_WITHOUT_PERMISSION_ROLE_NAME,
+  ALERT_WITH_PERMISSION_POLICY_DETAILS,
+  ALERT_WITH_PERMISSION_POLICY_NAME,
+  ALERT_WITH_PERMISSION_ROLE_DETAILS,
+  ALERT_WITH_PERMISSION_ROLE_NAME,
 } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { DELETE_TERM } from '../constant/common';
@@ -37,7 +37,11 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { getEntityDisplayName, getTextFromHtmlString, waitForAllLoadersToDisappear } from './entity';
+import {
+  getEntityDisplayName,
+  getTextFromHtmlString,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { validateFormNameFieldInput } from './form';
 import {
   addFilterWithUsersListInput,
@@ -1172,9 +1176,7 @@ export const checkRecentEventDetails = async ({
       // Open collapse
       await page.getByTestId(`event-collapse-${event.data[0].id}`).click();
 
-      await page
-        .getByTestId(`event-details-${event.data[0].id}`)
-        .waitFor();
+      await page.getByTestId(`event-details-${event.data[0].id}`).waitFor();
 
       // Check if table id is present in event details
       await expect(

@@ -41,7 +41,7 @@ import { patchClassification, patchTag } from '../rest/tagAPI';
 import { patchTeamDetail } from '../rest/teamsAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
 
-type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<any>;
+type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
 
 class EntityPatchClassBase {
   protected ENTITY_PATCH_API_MAP: Partial<
