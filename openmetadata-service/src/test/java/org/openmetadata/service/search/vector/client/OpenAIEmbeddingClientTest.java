@@ -415,6 +415,7 @@ class OpenAIEmbeddingClientTest {
           }
         };
 
+    int customConcurrencyLimit = 3;
     OpenAIEmbeddingClient client =
         new OpenAIEmbeddingClient(
             mockHttpClient,
@@ -422,7 +423,8 @@ class OpenAIEmbeddingClientTest {
             "test-model",
             3,
             "http://localhost:9999/v1/embeddings",
-            false);
+            false,
+            customConcurrencyLimit);
 
     int totalRequests = 30;
     ExecutorService pool = Executors.newFixedThreadPool(totalRequests);
@@ -441,11 +443,11 @@ class OpenAIEmbeddingClientTest {
       }
 
       assertTrue(
-          maxObservedConcurrent.get() <= EmbeddingClient.DEFAULT_MAX_CONCURRENT_REQUESTS,
+          maxObservedConcurrent.get() <= customConcurrencyLimit,
           "Max concurrent requests ("
               + maxObservedConcurrent.get()
               + ") exceeded limit ("
-              + EmbeddingClient.DEFAULT_MAX_CONCURRENT_REQUESTS
+              + customConcurrencyLimit
               + ")");
     } finally {
       pool.shutdown();

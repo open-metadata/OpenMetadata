@@ -78,6 +78,19 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
       int dimension,
       String endpoint,
       boolean isAzure) {
+    this(
+        httpClient, apiKey, modelId, dimension, endpoint, isAzure, DEFAULT_MAX_CONCURRENT_REQUESTS);
+  }
+
+  OpenAIEmbeddingClient(
+      HttpClient httpClient,
+      String apiKey,
+      String modelId,
+      int dimension,
+      String endpoint,
+      boolean isAzure,
+      int maxConcurrentRequests) {
+    super(maxConcurrentRequests);
     this.httpClient = httpClient;
     this.apiKey = apiKey;
     this.modelId = modelId;
