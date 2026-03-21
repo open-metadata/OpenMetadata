@@ -1306,8 +1306,6 @@ class KafkaconnectSource(PipelineServiceSource):
                         "${topic}", sanitized_topic
                     ).lower()
                     if resolved_table == dataset_details.table.lower():
-                        # resolved_table = pattern.replace('${topic}', topic_name).replace('.', '_').lower()
-                        # if resolved_table == dataset_details.table.lower():
                         logger.info(
                             f"Matched sink dataset table '{dataset_details.table}' to topic '{topic_name}' (case-insensitive)"
                         )
