@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useTheme } from '@mui/material';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { Edge } from 'reactflow';
 import { CanvasEdgeRenderer } from './CanvasEdgeRenderer.component';
@@ -83,19 +82,12 @@ jest.mock('../../../utils/EdgeMidpointUtils', () => ({
   calculateEdgeMidpoints: jest.fn(() => []),
 }));
 
-const mockTheme = {
-  palette: {
-    primary: { main: '#1890ff' },
-  },
-};
-
 describe('CanvasEdgeRenderer', () => {
   let reactFlowContainer: HTMLElement;
   let pane: HTMLElement;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useTheme as jest.Mock).mockReturnValue(mockTheme);
     mockUseLineageStore.isEditMode = false;
     mockGetEdgeAtPoint.mockReturnValue(null);
     mockRedraw.mockClear();
