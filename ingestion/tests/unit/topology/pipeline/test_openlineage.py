@@ -1755,9 +1755,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             "downstreamEdges": [],
         }
 
-        with patch.object(
-            self.open_lineage_source, "metadata"
-        ) as mock_metadata:
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
             mock_metadata.get_lineage_by_id.return_value = lineage_data
 
             self.open_lineage_source._cleanup_pipeline_as_node_edges(
@@ -1791,9 +1789,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             "downstreamEdges": [],
         }
 
-        with patch.object(
-            self.open_lineage_source, "metadata"
-        ) as mock_metadata:
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
             mock_metadata.get_lineage_by_id.return_value = lineage_data
 
             self.open_lineage_source._cleanup_pipeline_as_node_edges(
@@ -1829,9 +1825,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             ],
         }
 
-        with patch.object(
-            self.open_lineage_source, "metadata"
-        ) as mock_metadata:
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
             mock_metadata.get_lineage_by_id.return_value = lineage_data
 
             self.open_lineage_source._cleanup_pipeline_as_node_edges(

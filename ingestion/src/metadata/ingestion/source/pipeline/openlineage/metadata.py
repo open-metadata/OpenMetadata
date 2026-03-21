@@ -616,17 +616,27 @@ class OpenlineageSource(PipelineServiceSource):
                     if str(edge_entry[pipeline_field]) != pipeline_id:
                         continue
                     details = edge_entry.get("lineageDetails", {}) or {}
-                    if details.get("source") != Source.OpenLineage.value or details.get("pipeline"):
+                    if details.get("source") != Source.OpenLineage.value or details.get(
+                        "pipeline"
+                    ):
                         continue
                     dataset_id = str(edge_entry[dataset_field])
                     if dataset_id not in event_entity_map:
                         continue
                     from_ref, to_ref = (
-                        (EntityReference(id=dataset_id, type=event_entity_map[dataset_id]),
-                         EntityReference(id=pipeline_id, type="pipeline"))
+                        (
+                            EntityReference(
+                                id=dataset_id, type=event_entity_map[dataset_id]
+                            ),
+                            EntityReference(id=pipeline_id, type="pipeline"),
+                        )
                         if direction == "upstreamEdges"
-                        else (EntityReference(id=pipeline_id, type="pipeline"),
-                              EntityReference(id=dataset_id, type=event_entity_map[dataset_id]))
+                        else (
+                            EntityReference(id=pipeline_id, type="pipeline"),
+                            EntityReference(
+                                id=dataset_id, type=event_entity_map[dataset_id]
+                            ),
+                        )
                     )
                     self.metadata.delete_lineage_edge(
                         EntitiesEdge(fromEntity=from_ref, toEntity=to_ref)
@@ -668,9 +678,7 @@ class OpenlineageSource(PipelineServiceSource):
                                 )
                             )
                         else:
-                            logger.warning(
-                                f"Table entity not found for: {table_fqn}"
-                            )
+                            logger.warning(f"Table entity not found for: {table_fqn}")
                             self.status.warning(
                                 table_fqn, "Table entity not found in OpenMetadata"
                             )
@@ -717,7 +725,9 @@ class OpenlineageSource(PipelineServiceSource):
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
         if not pipeline_entity:
-            logger.warning(f"Pipeline entity not found for {pipeline_fqn}, skipping lineage")
+            logger.warning(
+                f"Pipeline entity not found for {pipeline_fqn}, skipping lineage"
+            )
             return
 
         event_has_no_outputs = not outputs
@@ -741,7 +751,8 @@ class OpenlineageSource(PipelineServiceSource):
                     dataset_node, pipeline_entity, direction=direction
                 ):
                     from_fqn, to_fqn = (
-                        (dataset_node.fqn.value, pipeline_fqn) if dataset_is_source
+                        (dataset_node.fqn.value, pipeline_fqn)
+                        if dataset_is_source
                         else (pipeline_fqn, dataset_node.fqn.value)
                     )
                     logger.info(
@@ -754,15 +765,15 @@ class OpenlineageSource(PipelineServiceSource):
                     )
                 else:
                     edge = (
-                        LineageEdge(from_node=dataset_node, to_node=pipeline_node) if dataset_is_source
+                        LineageEdge(from_node=dataset_node, to_node=pipeline_node)
+                        if dataset_is_source
                         else LineageEdge(from_node=pipeline_node, to_node=dataset_node)
                     )
                     edges.append(edge)
 
         if inputs and outputs and input_edges and output_edges:
             event_entity_map = {
-                str(node.uuid): node.node_type
-                for node in input_edges + output_edges
+                str(node.uuid): node.node_type for node in input_edges + output_edges
             }
             self._cleanup_pipeline_as_node_edges(pipeline_entity, event_entity_map)
 
@@ -781,11 +792,13 @@ class OpenlineageSource(PipelineServiceSource):
                             id=edge.to_node.uuid, type=edge.to_node.node_type
                         ),
                         lineageDetails=LineageDetails(
-                            pipeline=None
-                            if is_pipeline_endpoint
-                            else EntityReference(
-                                id=pipeline_entity.id.root,
-                                type="pipeline",
+                            pipeline=(
+                                None
+                                if is_pipeline_endpoint
+                                else EntityReference(
+                                    id=pipeline_entity.id.root,
+                                    type="pipeline",
+                                )
                             ),
                             description=f"Lineage extracted from OpenLineage job: {pipeline_details.job['name']}",
                             source=Source.OpenLineage,
