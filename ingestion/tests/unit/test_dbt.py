@@ -630,9 +630,7 @@ class DbtUnitTest(TestCase):
         )
         if hasattr(manifest_node, "column_name"):
             delattr(manifest_node, "column_name")
-        kwargs = getattr(
-            getattr(manifest_node, "test_metadata", None), "kwargs", None
-        )
+        kwargs = getattr(getattr(manifest_node, "test_metadata", None), "kwargs", None)
         if isinstance(kwargs, dict):
             kwargs.pop("column_name", None)
         dbt_test = {
@@ -674,9 +672,7 @@ class DbtUnitTest(TestCase):
             get_manifest_column_name(
                 SimpleNamespace(
                     column_name=None,
-                    test_metadata=SimpleNamespace(
-                        kwargs={"column_name": "MY_COLUMN"}
-                    ),
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "MY_COLUMN"}),
                 )
             ),
             "MY_COLUMN",
@@ -685,16 +681,12 @@ class DbtUnitTest(TestCase):
             get_manifest_column_name(
                 SimpleNamespace(
                     column_name="top",
-                    test_metadata=SimpleNamespace(
-                        kwargs={"column_name": "kw"}
-                    ),
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "kw"}),
                 )
             ),
             "top",
         )
-        self.assertIsNone(
-            get_manifest_column_name(SimpleNamespace(column_name=None))
-        )
+        self.assertIsNone(get_manifest_column_name(SimpleNamespace(column_name=None)))
 
     def test_dbt_compiled_query(self):
         expected_query = "sample customers compile code"
