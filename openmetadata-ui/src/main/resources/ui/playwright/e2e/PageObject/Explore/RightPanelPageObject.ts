@@ -1028,8 +1028,7 @@ export class RightPanelPageObject {
   /**
    * Wait for network idle
    */
-  async waitForNetworkIdle() {
-  }
+  async waitForNetworkIdle() {}
 
   /**
    * Verify text is visible in the panel

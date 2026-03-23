@@ -68,7 +68,7 @@ jobs:
 
       - name: Run Trivy Image Scan
         id: trivy_scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: "image"
           image-ref: openmetadata-ingestion:trivy

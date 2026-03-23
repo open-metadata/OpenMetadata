@@ -6,6 +6,7 @@ import json
 import uuid
 from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -47,6 +48,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_data_model_path,
     get_dbt_compiled_query,
     get_dbt_raw_query,
+    get_manifest_column_name,
     validate_custom_property_value,
     validate_date_time_format,
     validate_email_format,
@@ -628,6 +630,9 @@ class DbtUnitTest(TestCase):
         )
         if hasattr(manifest_node, "column_name"):
             delattr(manifest_node, "column_name")
+        kwargs = getattr(getattr(manifest_node, "test_metadata", None), "kwargs", None)
+        if isinstance(kwargs, dict):
+            kwargs.pop("column_name", None)
         dbt_test = {
             "manifest_node": manifest_node,
             "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
@@ -639,6 +644,49 @@ class DbtUnitTest(TestCase):
         self.assertIn(
             "<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers>", result[0]
         )
+
+    def test_dbt_generate_entity_link_column_from_test_metadata_kwargs(self):
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE
+        )
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.unique_orders_order_id.fed79b3a6e"
+        )
+        if hasattr(manifest_node, "column_name"):
+            delattr(manifest_node, "column_name")
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            [
+                "<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers::columns::order_id>"
+            ],
+            result,
+        )
+
+    def test_get_manifest_column_name(self):
+        self.assertEqual(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name=None,
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "MY_COLUMN"}),
+                )
+            ),
+            "MY_COLUMN",
+        )
+        self.assertEqual(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name="top",
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "kw"}),
+                )
+            ),
+            "top",
+        )
+        self.assertIsNone(get_manifest_column_name(SimpleNamespace(column_name=None)))
 
     def test_dbt_compiled_query(self):
         expected_query = "sample customers compile code"

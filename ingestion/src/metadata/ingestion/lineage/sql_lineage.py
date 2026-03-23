@@ -1177,7 +1177,17 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     # Find all root nodes (nodes with no incoming edges)
     root_nodes = [node for node in subtree if subtree.in_degree(node) == 0]
     # Find all leaf nodes (nodes with no outgoing edges)
-    leaf_nodes = [node for node in subtree if subtree.out_degree(node) == 0]
+    leaf_set = {node for node in subtree if subtree.out_degree(node) == 0}
+
+    # Isolated nodes have no edges at all (both root and leaf).
+    # nx.all_simple_paths(G, node, node) returns nothing for same source/target,
+    # so we handle them directly by emitting a single-element path.
+    isolated_nodes = [node for node in root_nodes if node in leaf_set]
+    for node in isolated_nodes:
+        paths.append([node])
+
+    # Only process roots that have at least one outgoing edge
+    non_isolated_roots = [node for node in root_nodes if node not in leaf_set]
 
     @calculate_execution_time(context="ProcessRootNode")
     @timeout(seconds=NODE_PROCESSING_TIMEOUT)
@@ -1192,9 +1202,9 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
         return node_paths
 
     # Find all simple paths from each root to each leaf
-    for root in root_nodes:
+    for root in non_isolated_roots:
         try:
-            root_paths = process_root_node(root, leaf_nodes)
+            root_paths = process_root_node(root, leaf_set)
             paths.extend(root_paths)
         except TimeoutError:
             logger.warning(

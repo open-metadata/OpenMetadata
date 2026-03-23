@@ -158,9 +158,8 @@ test.describe(
 
             if (incidentList.data?.length > 0) {
               const incident = incidentList.data.find(
-                (i: {
-                  testCaseReference?: { fullyQualifiedName?: string };
-                }) => i.testCaseReference?.fullyQualifiedName === testCaseFqn
+                (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
+                  i.testCaseReference?.fullyQualifiedName === testCaseFqn
               );
               if (incident) {
                 incidentId = incident.id;

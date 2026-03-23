@@ -77,9 +77,7 @@ test('Should render all classification detail sections after loading', async ({
   await expect(page.getByTestId('description-container')).toBeVisible();
   await expect(page.getByTestId('table')).toBeVisible();
   await expect(page.getByTestId('table')).toContainText(tag1.data.name);
-  await expect(
-    page.getByTestId('classification-owner-name')
-  ).toBeVisible();
+  await expect(page.getByTestId('classification-owner-name')).toBeVisible();
 });
 
 test('Should render correct content when switching between classifications', async ({

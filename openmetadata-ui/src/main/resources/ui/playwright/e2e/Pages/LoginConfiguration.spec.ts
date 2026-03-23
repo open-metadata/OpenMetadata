@@ -131,8 +131,8 @@ test.describe('Login configuration', () => {
     });
 
     // Assert the updated values
-    await expect(page.locator('[data-testid="max-login-fail-attampts"]')).toHaveText(
-      /3/
-    );
+    await expect(
+      page.locator('[data-testid="max-login-fail-attampts"]')
+    ).toHaveText(/3/);
   });
 });

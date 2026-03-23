@@ -153,6 +153,12 @@
           "type": "string",
           "default": "bedrock"
         },
+        "maxConcurrentEmbeddingRequests": {
+          "description": "Maximum number of concurrent embedding API requests. Controls the semaphore used to throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection limits.",
+          "type": "integer",
+          "default": 10,
+          "minimum": 1
+        },
         "providerClass": {
           "description": "Fully qualified class name of the NLQService implementation to use",
           "type": "string",

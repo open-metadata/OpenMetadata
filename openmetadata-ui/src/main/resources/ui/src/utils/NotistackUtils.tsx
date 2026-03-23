@@ -14,6 +14,7 @@ import { IconButton } from '@mui/material';
 import { X } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
+import type { EnqueueSnackbar } from 'notistack';
 import React from 'react';
 import NotificationMessage from '../components/common/atoms/notifications/NotificationMessage';
 import { ClientErrors } from '../enums/Axios.enum';
@@ -38,7 +39,7 @@ const CloseButton = ({ closeSnackbar }: { closeSnackbar?: () => void }) => (
  * @param anchorOrigin Optional position for the snackbar (defaults to top-right)
  */
 export const showNotistackError = (
-  enqueueSnackbar: any,
+  enqueueSnackbar: EnqueueSnackbar,
   error: AxiosError | string | React.ReactNode,
   fallbackText?: string,
   anchorOrigin?: {
@@ -112,7 +113,7 @@ export const showNotistackError = (
  * @param message success message
  */
 export const showNotistackSuccess = (
-  enqueueSnackbar: any,
+  enqueueSnackbar: EnqueueSnackbar,
   message: string | React.ReactNode,
   closeSnackbar?: (key?: string | number) => void
 ) => {
@@ -142,7 +143,7 @@ export const showNotistackSuccess = (
  * @param message info message
  */
 export const showNotistackInfo = (
-  enqueueSnackbar: any,
+  enqueueSnackbar: EnqueueSnackbar,
   message: string | React.ReactNode,
   closeSnackbar?: (key?: string | number) => void
 ) => {
@@ -172,7 +173,7 @@ export const showNotistackInfo = (
  * @param message warning message
  */
 export const showNotistackWarning = (
-  enqueueSnackbar: any,
+  enqueueSnackbar: EnqueueSnackbar,
   message: string | React.ReactNode,
   closeSnackbar?: (key?: string | number) => void
 ) => {

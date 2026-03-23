@@ -95,7 +95,6 @@ async function updateDescription(
   );
   await page.getByTestId('save').click();
   await patchResponse;
-
 }
 
 test.describe(

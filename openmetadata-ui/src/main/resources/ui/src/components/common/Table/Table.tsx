@@ -341,4 +341,4 @@ const Table = <T extends Record<string, unknown>>(
   );
 };
 
-export default forwardRef<HTMLDivElement, TableProps<any>>(Table);
+export default forwardRef<HTMLDivElement, TableProps<object>>(Table);

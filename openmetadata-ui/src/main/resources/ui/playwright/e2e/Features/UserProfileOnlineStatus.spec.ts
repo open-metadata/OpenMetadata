@@ -40,9 +40,7 @@ const createOrFetchUser = async (
   } catch {
     // User may already exist from a prior retry — fetch by email
     const email = encodeURIComponent(user.data.email);
-    const res = await apiContext.get(
-      `/api/v1/users?email=${email}&limit=1`
-    );
+    const res = await apiContext.get(`/api/v1/users?email=${email}&limit=1`);
 
     if (res.ok()) {
       const body = await res.json();
@@ -65,8 +63,12 @@ test.describe('User Profile Online Status', () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await activeUser.delete(apiContext).catch(() => {/* best effort */});
-    await inactiveUser.delete(apiContext).catch(() => {/* best effort */});
+    await activeUser.delete(apiContext).catch(() => {
+      /* best effort */
+    });
+    await inactiveUser.delete(apiContext).catch(() => {
+      /* best effort */
+    });
     await afterAction();
   });
 
@@ -202,11 +204,11 @@ test.describe('User Profile Online Status', () => {
     await expect(page.getByTestId('user-email-value')).toBeVisible();
 
     // Status should still be visible after navigating back
-    await expect(
-      page.getByTestId('user-online-status')
-    ).toBeVisible({ timeout: 10000 });
-    await expect(
-      page.getByTestId('user-online-status')
-    ).toContainText(/Online now|Active recently/);
+    await expect(page.getByTestId('user-online-status')).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByTestId('user-online-status')).toContainText(
+      /Online now|Active recently/
+    );
   });
 });

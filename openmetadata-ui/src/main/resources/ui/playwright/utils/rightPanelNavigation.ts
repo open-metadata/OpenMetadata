@@ -35,7 +35,13 @@ async function waitForCardVisibility(
         const card = page.getByTestId(cardTestId);
         const count = await card.count();
 
-        if (count > 0 && (await card.first().isVisible().catch(() => false))) {
+        if (
+          count > 0 &&
+          (await card
+            .first()
+            .isVisible()
+            .catch(() => false))
+        ) {
           return true;
         }
 
@@ -86,7 +92,9 @@ export async function navigateToTagAssetsAndOpenPanel(
   tag: TagClass,
   entityFqn: string
 ): Promise<void> {
-  const url = `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}/assets`;
+  const url = `/tag/${encodeURIComponent(
+    tag.responseData.fullyQualifiedName
+  )}/assets`;
   const tagCardTestId = `table-data-card_${entityFqn}`;
   const loadAssetsPage = async () => {
     await page.goto(url, { waitUntil: 'commit' });

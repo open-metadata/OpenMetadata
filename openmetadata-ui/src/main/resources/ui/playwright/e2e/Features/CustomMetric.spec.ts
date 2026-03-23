@@ -43,7 +43,9 @@ test('Table custom metric', async ({ page }) => {
 
     await page.click('[data-testid="profiler"]');
     await profilerResponse;
-    await page.getByTestId('profiler-add-table-test-btn').waitFor({ state: 'visible' });
+    await page
+      .getByTestId('profiler-add-table-test-btn')
+      .waitFor({ state: 'visible' });
     await createCustomMetric({
       page,
       metric: TABLE_CUSTOM_METRIC,
@@ -80,7 +82,9 @@ test('Column custom metric', async ({ page }) => {
     await table.visitEntityPage(page);
     await page.click('[data-testid="profiler"]');
     await profilerResponse;
-    await page.getByTestId('profiler-add-table-test-btn').waitFor({ state: 'visible' });
+    await page
+      .getByTestId('profiler-add-table-test-btn')
+      .waitFor({ state: 'visible' });
     await createCustomMetric({
       page,
       metric: COLUMN_CUSTOM_METRIC,
