@@ -277,7 +277,7 @@ jobs:
           make install_all install_test
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 

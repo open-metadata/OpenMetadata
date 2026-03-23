@@ -191,8 +191,7 @@ jobs:
         run: |
           source env/bin/activate
           cd ingestion
-          coverage combine
-          coverage xml -i
+          nox --no-venv -s combine-coverage
         shell: bash
 
       - name: Remove pom.xml
