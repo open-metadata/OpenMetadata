@@ -234,10 +234,20 @@ class SigmaApiClient:
         Fetch SQL queries for all elements in a workbook
         """
         try:
+            queries = []
             result = WorkbookQueriesResponse.model_validate(
                 self.client.get(f"/workbooks/{workbook_id}/queries")
             )
-            return result
+            if result:
+                queries.extend(result.entries)
+                while result.nextPage:
+                    data = {"page": int(result.nextPage)}
+                    result = WorkbookQueriesResponse.model_validate(
+                        self.client.get(f"/workbooks/{workbook_id}/queries", data=data)
+                    )
+                    if result:
+                        queries.extend(result.entries)
+                return WorkbookQueriesResponse(entries=queries, total=len(queries))
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch queries for workbook {workbook_id}: {exc}")

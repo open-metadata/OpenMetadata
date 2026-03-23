@@ -330,6 +330,48 @@ class SigmaSource(DashboardServiceSource):
                     )
                 )
 
+    def _yield_lineage_from_files_for_element(
+        self,
+        dashboard_details: WorkbookDetails,
+        data_model: Elements,
+        db_service_prefix: Optional[str] = None,
+    ):
+        """
+        Yield lineage using file-based API for a single element (fallback per element)
+        """
+        try:
+            data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
+            if not data_model_entity:
+                return
+
+            nodes = self.client.get_lineage_details(
+                dashboard_details.workbookId, data_model.elementId
+            )
+
+            if not nodes:
+                return
+
+            for node in nodes:
+                table_entity = self._get_table_entity_from_node(node, db_service_prefix)
+                if table_entity and data_model.columns:
+                    columns_list = data_model.columns
+                    column_lineage = self._get_column_lineage(
+                        table_entity, data_model_entity, columns_list
+                    )
+                    yield self._get_add_lineage_request(
+                        to_entity=data_model_entity,
+                        from_entity=table_entity,
+                        column_lineage=column_lineage,
+                    )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"{dashboard_details.name} Element {data_model.elementId} File-Based Lineage",
+                    error=f"Error in element file-based lineage fallback: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: WorkbookDetails,
@@ -338,6 +380,10 @@ class SigmaSource(DashboardServiceSource):
         """
         Yield dashboard lineage using SQL query parsing (primary) or file-based (fallback)
         """
+        if not dashboard_details:
+            logger.warning(f"Skipping lineage - dashboard details are None (API error)")
+            return
+
         queries_response = self.client.get_workbook_queries(
             dashboard_details.workbookId
         )
@@ -357,6 +403,8 @@ class SigmaSource(DashboardServiceSource):
                     entity=DatabaseService, fqn=db_service_name
                 )
 
+        queries_by_element = {q.elementId: q for q in queries_response.entries}
+
         for data_model in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(
@@ -365,16 +413,12 @@ class SigmaSource(DashboardServiceSource):
                 if not data_model_entity:
                     continue
 
-                query_obj = next(
-                    (
-                        q
-                        for q in queries_response.entries
-                        if q.elementId == data_model.elementId
-                    ),
-                    None,
-                )
+                query_obj = queries_by_element.get(data_model.elementId)
 
                 if not query_obj or not query_obj.sql:
+                    yield from self._yield_lineage_from_files_for_element(
+                        dashboard_details, data_model, db_service_prefix
+                    )
                     continue
 
                 lineage_parser = LineageParser(
@@ -383,7 +427,7 @@ class SigmaSource(DashboardServiceSource):
                         db_service_entity.serviceType.value
                     )
                     if db_service_entity
-                    else Dialect.SNOWFLAKE,
+                    else Dialect.ANSI,
                     parser_type=self.get_query_parser_type(),
                 )
 

@@ -468,3 +468,152 @@ class SigmaUnitTest(TestCase):
         self.assertEqual(len(response.entries), 1)
         self.assertEqual(response.total, 1)
         self.assertEqual(response.entries[0].elementId, "1")
+
+    @patch("metadata.ingestion.source.dashboard.sigma.client.TrackedREST")
+    def test_get_chart_details_pagination(self, mock_rest):
+        """
+        Test that get_chart_details includes elements from the first page
+        and handles pagination correctly
+        """
+        from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
+        from metadata.ingestion.source.dashboard.sigma.models import (
+            WorkBookPageResponse,
+            WorkBookPage,
+            ElementsResponse,
+        )
+
+        # Mock pages response - first page with entries, then paginated
+        first_page_response = WorkBookPageResponse(
+            entries=[
+                WorkBookPage(pageId="page1", name="Page 1"),
+                WorkBookPage(pageId="page2", name="Page 2"),
+            ],
+            nextPage="2",
+            total=4,
+        )
+        second_page_response = WorkBookPageResponse(
+            entries=[
+                WorkBookPage(pageId="page3", name="Page 3"),
+                WorkBookPage(pageId="page4", name="Page 4"),
+            ],
+            nextPage=None,
+            total=4,
+        )
+
+        # Mock elements response - elements for each page
+        page1_elements = ElementsResponse(
+            entries=[Elements(elementId="elem1", name="Element 1")],
+            total=1,
+        )
+        page2_elements = ElementsResponse(
+            entries=[Elements(elementId="elem2", name="Element 2")],
+            total=1,
+        )
+        page3_elements = ElementsResponse(
+            entries=[Elements(elementId="elem3", name="Element 3")],
+            total=1,
+        )
+        page4_elements = ElementsResponse(
+            entries=[Elements(elementId="elem4", name="Element 4")],
+            total=1,
+        )
+
+        # Setup mock client
+        mock_client_instance = MagicMock()
+        mock_rest.return_value = mock_client_instance
+
+        # Configure mock responses in order
+        mock_client_instance.get.side_effect = [
+            first_page_response.model_dump(),
+            page1_elements.model_dump(),
+            page2_elements.model_dump(),
+            second_page_response.model_dump(),
+            page3_elements.model_dump(),
+            page4_elements.model_dump(),
+        ]
+
+        # Create SigmaApiClient with mocked config
+        from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
+            SigmaConnection,
+        )
+        from pydantic import SecretStr
+
+        config = SigmaConnection(
+            clientId="test_id",
+            clientSecret=SecretStr("test_secret"),
+            hostPort="https://test.sigmacomputing.com",
+            apiVersion="v2",
+        )
+
+        # Override the client creation to use our mock
+        api_client = SigmaApiClient.__new__(SigmaApiClient)
+        api_client.config = config
+        api_client.client = mock_client_instance
+
+        # Execute
+        result = api_client.get_chart_details("workbook1")
+
+        # Verify all elements from all pages were included
+        assert result is not None
+        assert len(result) == 4
+        assert result[0].elementId == "elem1"
+        assert result[1].elementId == "elem2"
+        assert result[2].elementId == "elem3"
+        assert result[3].elementId == "elem4"
+
+    @patch("metadata.ingestion.source.dashboard.sigma.client.TrackedREST")
+    def test_get_chart_details_empty_page_elements(self, mock_rest):
+        """
+        Test that get_chart_details handles None/empty page element responses
+        """
+        from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
+        from metadata.ingestion.source.dashboard.sigma.models import (
+            WorkBookPageResponse,
+            WorkBookPage,
+        )
+
+        # Mock pages response with entries
+        pages_response = WorkBookPageResponse(
+            entries=[
+                WorkBookPage(pageId="page1", name="Page 1"),
+            ],
+            nextPage=None,
+            total=1,
+        )
+
+        # Setup mock client
+        mock_client_instance = MagicMock()
+        mock_rest.return_value = mock_client_instance
+
+        # First call returns pages, second call for elements returns None (simulating get_page_elements returning None)
+        mock_client_instance.get.side_effect = [
+            pages_response.model_dump(),
+            None,  # Simulates empty/error response for page elements
+        ]
+
+        # Create SigmaApiClient with mocked config
+        from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
+            SigmaConnection,
+        )
+        from pydantic import SecretStr
+
+        config = SigmaConnection(
+            clientId="test_id",
+            clientSecret=SecretStr("test_secret"),
+            hostPort="https://test.sigmacomputing.com",
+            apiVersion="v2",
+        )
+
+        # Override the client creation
+        api_client = SigmaApiClient.__new__(SigmaApiClient)
+        api_client.config = config
+        api_client.client = mock_client_instance
+
+        # Mock get_page_elements to return None
+        api_client.get_page_elements = MagicMock(return_value=None)
+
+        # Execute - should not raise exception
+        result = api_client.get_chart_details("workbook1")
+
+        # Should return empty list or handle gracefully
+        assert result == []
