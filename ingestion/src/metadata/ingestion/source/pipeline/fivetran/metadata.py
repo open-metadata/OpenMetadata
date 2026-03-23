@@ -346,7 +346,7 @@ class FivetranSource(PipelineServiceSource):
         pipeline_fqn: str,
     ) -> Optional[List[OMetaPipelineStatus]]:
         """Query fivetran_metadata.log in the destination warehouse for sync run history."""
-        dest_database = pipeline_details.destination.get("config", {}).get("database")
+        dest_database = (pipeline_details.destination.get("config") or {}).get("database")
         if not dest_database:
             return None
 
@@ -397,7 +397,7 @@ class FivetranSource(PipelineServiceSource):
             # Sort by sync_start descending and limit
             sorted_syncs = sorted(
                 syncs.items(),
-                key=lambda x: x[1].get("sync_start_ts", datetime.min),
+                key=lambda x: x[1].get("sync_start_ts", datetime.min.replace(tzinfo=timezone.utc)),
                 reverse=True,
             )[:MAX_SYNC_RUNS]
 
@@ -644,8 +644,8 @@ class FivetranSource(PipelineServiceSource):
         source_connector_type = pipeline_details.source.get("service")
         is_messaging_source = source_connector_type in MESSAGING_CONNECTOR_TYPES
 
-        source_database_name = pipeline_details.source.get("config", {}).get("database")
-        destination_database_name = pipeline_details.destination.get("config", {}).get(
+        source_database_name = (pipeline_details.source.get("config") or {}).get("database")
+        destination_database_name = (pipeline_details.destination.get("config") or {}).get(
             "database"
         )
 

@@ -494,7 +494,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         Get the list of messaging service names
         """
         return (
-            self.source_config.lineageInformation.messagingServiceNames or []
+            (self.source_config.lineageInformation.messagingServiceNames or [])
             if self.source_config.lineageInformation
             else []
         )
