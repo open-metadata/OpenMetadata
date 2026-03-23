@@ -182,3 +182,79 @@ class TestHiveMySQLMetastoreDialect(TestCase):
                 executed_query.upper(),
                 f"Query should not contain MySQL 8.0+ feature: {feature}",
             )
+
+
+class TestHiveMySQLMetastoreDialectGetTableNames:
+    """
+    Test get_table_names null-safe filtering in HiveMysqlMetaStoreDialect.
+
+    In SQL, NULL != 'VIRTUAL_VIEW' evaluates to NULL (not TRUE), so rows with
+    a NULL TBL_TYPE would be silently excluded without the IS NULL guard.
+    """
+
+    def setup_method(self):
+        self.dialect = HiveMysqlMetaStoreDialect()
+
+    def test_get_table_names_query_excludes_virtual_views(self):
+        mock_connection = Mock()
+        mock_connection.execute.return_value = [("table1",), ("table2",)]
+
+        result = self.dialect.get_table_names(mock_connection, schema="test_schema")
+
+        executed_query = str(mock_connection.execute.call_args[0][0])
+        assert "VIRTUAL_VIEW" in executed_query
+        assert "!=" in executed_query
+        assert result == ["table1", "table2"]
+
+    def test_get_table_names_query_includes_null_tbl_type(self):
+        mock_connection = Mock()
+        mock_connection.execute.return_value = []
+
+        self.dialect.get_table_names(mock_connection, schema="test_schema")
+
+        executed_query = str(mock_connection.execute.call_args[0][0])
+        assert "IS NULL" in executed_query.upper()
+        assert "TBL_TYPE" in executed_query
+
+    def test_get_table_names_query_uses_or_condition(self):
+        mock_connection = Mock()
+        mock_connection.execute.return_value = []
+
+        self.dialect.get_table_names(mock_connection, schema="test_schema")
+
+        executed_query = str(mock_connection.execute.call_args[0][0])
+        assert "OR" in executed_query.upper()
+        assert "TBL_TYPE" in executed_query
+        assert "VIRTUAL_VIEW" in executed_query
+        assert "IS NULL" in executed_query.upper()
+
+    def test_get_table_names_with_schema_joins_dbs(self):
+        mock_connection = Mock()
+        mock_connection.execute.return_value = [("my_table",)]
+
+        result = self.dialect.get_table_names(mock_connection, schema="my_schema")
+
+        executed_query = str(mock_connection.execute.call_args[0][0])
+        assert "DBS" in executed_query
+        assert "my_schema" in executed_query
+        assert result == ["my_table"]
+
+    def test_get_table_names_without_schema(self):
+        mock_connection = Mock()
+        mock_connection.execute.return_value = [("table_a",)]
+
+        result = self.dialect.get_table_names(mock_connection, schema=None)
+
+        executed_query = str(mock_connection.execute.call_args[0][0])
+        assert "TBL_TYPE" in executed_query
+        assert "IS NULL" in executed_query.upper()
+        assert "DBS" not in executed_query
+        assert result == ["table_a"]
+
+    def test_get_table_names_returns_empty_when_no_tables(self):
+        mock_connection = Mock()
+        mock_connection.execute.return_value = []
+
+        result = self.dialect.get_table_names(mock_connection, schema="empty_schema")
+
+        assert result == []

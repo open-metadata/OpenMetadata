@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -26,8 +26,8 @@ import {
   selectDataProduct,
   selectDomain,
 } from '../../utils/domain';
-import { sidebarClick } from '../../utils/sidebar';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{
   page: Page;
@@ -577,7 +577,7 @@ test.describe('Domain Form Validation', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
 
     await page.click('[data-testid="add-domain"]');
-    await page.locator('h6:has-text("Add Domain")').waitFor();
+    await page.getByTestId('form-heading').waitFor();
 
     await page.locator('#root\\/name').fill('Invalid@Name#Test');
     await page.locator('#root\\/displayName').fill('Test Domain');
@@ -593,7 +593,7 @@ test.describe('Domain Form Validation', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
 
     await page.click('[data-testid="add-domain"]');
-    await page.locator('h6:has-text("Add Domain")').waitFor();
+    await page.getByTestId('form-heading').waitFor();
 
     const longName = 'a'.repeat(150);
     await page.locator('#root\\/name').fill(longName);
@@ -609,7 +609,7 @@ test.describe('Domain Form Validation', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
 
     await page.click('[data-testid="add-domain"]');
-    await page.locator('h6:has-text("Add Domain")').waitFor();
+    await expect(page.getByTestId('form-heading')).toHaveText('Add Domain');
 
     await page.locator('#root\\/name').fill('ValidName');
     await page.locator('#root\\/displayName').fill('Valid Display Name');
