@@ -90,11 +90,13 @@ public class LineageCacheKeyTest {
 
     assertNotNull(key);
     assertEquals("table1", key.getFqn());
-    assertEquals(0, key.getUpstreamDepth());
-    assertEquals(0, key.getDownstreamDepth());
+    assertEquals(request.getUpstreamDepth(), key.getUpstreamDepth());
+    assertEquals(request.getDownstreamDepth(), key.getDownstreamDepth());
     assertEquals("", key.getQueryFilter());
     assertEquals("", key.getColumnFilter());
     assertEquals(Boolean.TRUE, key.getPreservePaths());
+    assertEquals("", key.getDirection());
+    assertEquals(Boolean.FALSE, key.getIsConnectedVia());
   }
 
   @Test

@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -27,10 +28,14 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.slf4j.MDC;
 
@@ -89,7 +94,7 @@ public class IndexingPipeline implements AutoCloseable {
     this.recreateContext = recreateCtx;
     long startTime = System.currentTimeMillis();
 
-    stats.set(initializeStats(entities));
+    stats.set(initializeStats(config, entities));
     listeners.onJobStarted(context);
 
     try {
@@ -374,7 +379,7 @@ public class IndexingPipeline implements AutoCloseable {
     return failed > 0 || (total > 0 && success < total);
   }
 
-  private Stats initializeStats(Set<String> entities) {
+  private Stats initializeStats(ReindexingConfiguration config, Set<String> entities) {
     Stats s = new Stats();
     s.setEntityStats(new org.openmetadata.schema.system.EntityStats());
     s.setJobStats(new StepStats());
@@ -383,7 +388,7 @@ public class IndexingPipeline implements AutoCloseable {
 
     int total = 0;
     for (String entityType : entities) {
-      int entityTotal = getTotalEntityRecords(entityType);
+      int entityTotal = getEntityTotal(entityType, config);
       total += entityTotal;
       StepStats es = new StepStats();
       es.setTotalRecords(entityTotal);
@@ -416,6 +421,36 @@ public class IndexingPipeline implements AutoCloseable {
     s.getProcessStats().setSuccessRecords(0);
     s.getProcessStats().setFailedRecords(0);
     return s;
+  }
+
+  private int getEntityTotal(String entityType, ReindexingConfiguration config) {
+    try {
+      if (!EntityReader.TIME_SERIES_ENTITIES.contains(entityType)) {
+        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+        return repository
+            .getDao()
+            .listCount(new ListFilter(org.openmetadata.schema.type.Include.ALL));
+      }
+
+      EntityTimeSeriesRepository<?> repository;
+      ListFilter listFilter = new ListFilter(null);
+      if (isDataInsightIndex(entityType)) {
+        listFilter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(entityType));
+        repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+      } else {
+        repository = Entity.getEntityTimeSeriesRepository(entityType);
+      }
+
+      long startTs = config != null ? config.getTimeSeriesStartTs(entityType) : -1;
+      if (startTs > 0) {
+        long endTs = System.currentTimeMillis();
+        return repository.getTimeSeriesDao().listCount(listFilter, startTs, endTs, false);
+      }
+      return repository.getTimeSeriesDao().listCount(listFilter);
+    } catch (Exception e) {
+      LOG.debug("Error getting total records for '{}'", entityType, e);
+      return 0;
+    }
   }
 
   private int getTotalEntityRecords(String entityType) {

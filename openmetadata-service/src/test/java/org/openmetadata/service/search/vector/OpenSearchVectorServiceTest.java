@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -219,6 +221,17 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
+  void testLegacyVectorSearchResponseConstructorLeavesPaginationFieldsUnset() {
+    DTOs.VectorSearchResponse response =
+        new DTOs.VectorSearchResponse(12L, List.of(Map.of("parentId", "parent1")));
+
+    assertEquals(12L, response.tookMillis);
+    assertEquals(1, response.hits.size());
+    assertNull(response.totalHits);
+    assertNull(response.hasMore);
+  }
+
+  @Test
   void testHitsWithoutParentIdFallBackToDocId() throws IOException {
     String openSearchResponse =
         """
@@ -334,6 +347,91 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
+  void testSearchFetchesAdditionalPagesUntilEnoughDistinctParentsAreAvailable() throws IOException {
+    String firstPage =
+        """
+        {
+          "hits": {
+            "total": {"value": 8},
+            "hits": [
+              {"_id": "c1", "_score": 0.95, "_source": {"parentId": "p1", "chunkIndex": 0}},
+              {"_id": "c2", "_score": 0.94, "_source": {"parentId": "p1", "chunkIndex": 1}},
+              {"_id": "c3", "_score": 0.93, "_source": {"parentId": "p1", "chunkIndex": 2}},
+              {"_id": "c4", "_score": 0.90, "_source": {"parentId": "p2", "chunkIndex": 0}},
+              {"_id": "c5", "_score": 0.89, "_source": {"parentId": "p2", "chunkIndex": 1}},
+              {"_id": "c6", "_score": 0.88, "_source": {"parentId": "p2", "chunkIndex": 2}}
+            ]
+          }
+        }
+        """;
+    String secondPage =
+        """
+        {
+          "hits": {
+            "total": {"value": 8},
+            "hits": [
+              {"_id": "c7", "_score": 0.87, "_source": {"parentId": "p3", "chunkIndex": 0}},
+              {"_id": "c8", "_score": 0.86, "_source": {"parentId": "p4", "chunkIndex": 0}}
+            ]
+          }
+        }
+        """;
+
+    mockOpenSearchResponses(firstPage, secondPage);
+
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 3, 0, 100, 0.0);
+
+    long distinctParents = results.hits.stream().map(r -> r.get("parentId")).distinct().count();
+    assertEquals(3, distinctParents, "Should fetch a second page to fill 3 distinct parents");
+    assertEquals(7, results.hits.size(), "Should return all chunks for the 3 selected parents");
+    assertEquals(8L, results.totalHits);
+    assertTrue(results.hasMore, "Should report additional parents beyond the returned page");
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, org.mockito.Mockito.times(2)).execute(captor.capture());
+    List<os.org.opensearch.client.opensearch.generic.Request> requests = captor.getAllValues();
+
+    String firstBody =
+        new String(
+            requests.get(0).getBody().orElseThrow().bodyAsBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
+    String secondBody =
+        new String(
+            requests.get(1).getBody().orElseThrow().bodyAsBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
+    assertTrue(firstBody.contains("\"from\":0"));
+    assertTrue(secondBody.contains("\"from\":6"));
+  }
+
+  @Test
+  void testSearchSetsHasMoreFalseWhenDistinctParentsAreExhausted() throws IOException {
+    String openSearchResponse =
+        """
+        {
+          "hits": {
+            "total": {"value": 3},
+            "hits": [
+              {"_id": "c1", "_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}},
+              {"_id": "c2", "_score": 0.8, "_source": {"parentId": "p2", "chunkIndex": 0}},
+              {"_id": "c3", "_score": 0.7, "_source": {"parentId": "p3", "chunkIndex": 0}}
+            ]
+          }
+        }
+        """;
+
+    mockOpenSearchResponse(openSearchResponse);
+
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 2, 1, 100, 0.0);
+
+    assertEquals(2L, results.hits.stream().map(r -> r.get("parentId")).distinct().count());
+    assertEquals(3L, results.totalHits);
+    assertEquals(Boolean.FALSE, results.hasMore);
+  }
+
+  @Test
   void testEnsureHybridSearchPipelineSendsCorrectRequest() throws IOException {
     mockOpenSearchResponse("{\"acknowledged\":true}");
 
@@ -377,14 +475,26 @@ class OpenSearchVectorServiceTest {
   }
 
   private void mockOpenSearchResponse(String responseJson) throws IOException {
-    Response mockResponse = mock(Response.class);
-    os.org.opensearch.client.opensearch.generic.Body mockBody =
-        mock(os.org.opensearch.client.opensearch.generic.Body.class);
+    mockOpenSearchResponses(responseJson);
+  }
 
-    when(mockGenericClient.execute(any())).thenReturn(mockResponse);
-    when(mockResponse.getStatus()).thenReturn(200);
-    when(mockResponse.getBody()).thenReturn(Optional.of(mockBody));
-    when(mockBody.bodyAsBytes())
-        .thenReturn(responseJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+  private void mockOpenSearchResponses(String... responseJsons) throws IOException {
+    Response[] responses = new Response[responseJsons.length];
+    for (int i = 0; i < responseJsons.length; i++) {
+      Response mockResponse = mock(Response.class);
+      os.org.opensearch.client.opensearch.generic.Body mockBody =
+          mock(os.org.opensearch.client.opensearch.generic.Body.class);
+      when(mockResponse.getStatus()).thenReturn(200);
+      when(mockResponse.getBody()).thenReturn(Optional.of(mockBody));
+      when(mockBody.bodyAsBytes())
+          .thenReturn(responseJsons[i].getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      responses[i] = mockResponse;
+    }
+    if (responses.length == 1) {
+      when(mockGenericClient.execute(any())).thenReturn(responses[0]);
+    } else {
+      when(mockGenericClient.execute(any()))
+          .thenReturn(responses[0], java.util.Arrays.copyOfRange(responses, 1, responses.length));
+    }
   }
 }
