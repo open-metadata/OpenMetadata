@@ -11,6 +11,28 @@
  *  limitations under the License.
  */
 
+import type { ThemeColors } from '../types';
+
+interface ButtonShadows {
+  XS: string;
+  XS_SKEUMORPHIC: (ringColor: string) => string;
+  XS_DISABLED: (ringColor: string) => string;
+}
+
+interface ColorVariantDisabled {
+  backgroundColor: string;
+  color: string;
+  boxShadow?: (shadows: ButtonShadows) => string;
+}
+
+interface ColorVariantConfig {
+  backgroundColor: string;
+  color: string;
+  boxShadow?: (shadows: ButtonShadows) => string;
+  hover: { backgroundColor: string; color: string };
+  disabled: ColorVariantDisabled;
+}
+
 export const buttonConstants = {
   shadows: {
     XS: '0px 1px 2px rgba(10, 13, 18, 0.05)',
@@ -18,7 +40,7 @@ export const buttonConstants = {
       `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${ringColor} inset, 0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset`,
     XS_DISABLED: (ringColor: string) =>
       `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${ringColor} inset`,
-  },
+  } satisfies ButtonShadows,
   iconStyles: {
     createIconColors: () => ({
       '& .MuiButton-startIcon svg, & .MuiButton-endIcon svg': {
@@ -91,10 +113,10 @@ export const buttonConstants = {
       large: { padding: '8px', iconSize: '24px' },
     },
     colorVariants: {
-      secondary: (colors: any) => ({
+      secondary: (colors: ThemeColors): ColorVariantConfig => ({
         backgroundColor: colors.white,
         color: colors.gray[400],
-        boxShadow: (shadows: any) => shadows.XS_SKEUMORPHIC(colors.gray[300]),
+        boxShadow: (shadows: ButtonShadows) => shadows.XS_SKEUMORPHIC(colors.gray[300]),
         hover: {
           backgroundColor: colors.gray[50],
           color: colors.gray[500],
@@ -102,10 +124,10 @@ export const buttonConstants = {
         disabled: {
           backgroundColor: colors.white,
           color: colors.gray[300],
-          boxShadow: (shadows: any) => shadows.XS_DISABLED(colors.gray[200]),
+          boxShadow: (shadows: ButtonShadows) => shadows.XS_DISABLED(colors.gray[200]),
         },
       }),
-      tertiary: (colors: any) => ({
+      tertiary: (colors: ThemeColors): ColorVariantConfig => ({
         backgroundColor: 'transparent',
         color: colors.gray[400],
         hover: {
@@ -138,17 +160,16 @@ export const createIconButtonSizeVariant = (
 
 export const createIconButtonColorVariant = (
   variant: 'secondary' | 'tertiary',
-  colors: any
+  colors: ThemeColors
 ) => {
-  const config = buttonConstants.iconButton.colorVariants[variant](colors);
+  const config: ColorVariantConfig = buttonConstants.iconButton.colorVariants[variant](colors);
 
   return {
     backgroundColor: config.backgroundColor,
     color: config.color,
-    ...(variant === 'secondary' &&
-      'boxShadow' in config && {
-        boxShadow: (config as any).boxShadow(buttonConstants.shadows),
-      }),
+    ...(config.boxShadow && {
+      boxShadow: config.boxShadow(buttonConstants.shadows),
+    }),
     ...(variant === 'tertiary' && { boxShadow: 'none' }),
     '&:hover': {
       backgroundColor: config.hover.backgroundColor,
@@ -158,12 +179,11 @@ export const createIconButtonColorVariant = (
       cursor: 'not-allowed',
       backgroundColor: config.disabled.backgroundColor,
       color: config.disabled.color,
-      ...(variant === 'secondary' &&
-        'boxShadow' in config.disabled && {
-          boxShadow: (config.disabled as any).boxShadow(
-            buttonConstants.shadows
-          ),
-        }),
+      ...(config.disabled.boxShadow && {
+        boxShadow: config.disabled.boxShadow(
+          buttonConstants.shadows
+        ),
+      }),
       ...(variant === 'tertiary' && { boxShadow: 'none' }),
     },
   };

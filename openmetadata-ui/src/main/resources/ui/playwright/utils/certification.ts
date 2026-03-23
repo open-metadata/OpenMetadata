@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { setClassificationDisabled, setTagDisabledByFqn } from './tag';
 import { waitForAllLoadersToDisappear } from './entity';
+import { setClassificationDisabled, setTagDisabledByFqn } from './tag';
 
 export { setTagDisabled, setTagDisabledByFqn } from './tag';
 

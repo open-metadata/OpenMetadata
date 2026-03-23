@@ -251,7 +251,6 @@ test.describe('Column Search Settings Tests', () => {
       /settings\/preferences\/search-settings\/column$/
     );
 
-
     const fieldContainers = page.getByTestId('field-container-header');
     const firstFieldContainer = fieldContainers.first();
     await firstFieldContainer.click();
@@ -308,13 +307,11 @@ test.describe('Column Search Settings Tests', () => {
       const columnCard = page.getByTestId('preferences.search-settings.column');
       await columnCard.click();
 
-
       const searchInput = page.getByTestId('searchbar');
       await searchInput.fill(uniqueColumnName);
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
       await previewResponse;
-
 
       const searchResultsContainer = page.locator('.search-results-container');
       const matchedCard = searchResultsContainer

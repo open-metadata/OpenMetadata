@@ -44,7 +44,6 @@ import {
 import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -205,22 +204,20 @@ test.describe(
       );
       await adminPage.getByText('Navigation').click();
 
-      await test.step(
-        'hide navigation items and validate with persona',
-        async () => {
-          // Hide Explore
-          await adminPage
+      await test.step('hide navigation items and validate with persona', async () => {
+        // Hide Explore
+        await adminPage
+          .getByTestId('page-layout-v1')
+          .getByText('Explore', { exact: true })
+          .getByRole('switch')
+          .click();
+
+        await expect(
+          adminPage
             .getByTestId('page-layout-v1')
             .getByText('Explore', { exact: true })
             .getByRole('switch')
-            .click();
-
-          await expect(
-            adminPage
-              .getByTestId('page-layout-v1')
-              .getByText('Explore', { exact: true })
-              .getByRole('switch')
-          ).not.toBeChecked();
+        ).not.toBeChecked();
 
         // Hide Metrics
         await adminPage
@@ -269,22 +266,20 @@ test.describe(
         ]);
       });
 
-      await test.step(
-        'show navigation items and validate with persona',
-        async () => {
-          // Show Explore
-          await adminPage
+      await test.step('show navigation items and validate with persona', async () => {
+        // Show Explore
+        await adminPage
+          .getByTestId('page-layout-v1')
+          .getByText('Explore', { exact: true })
+          .getByRole('switch')
+          .click();
+
+        await expect(
+          adminPage
             .getByTestId('page-layout-v1')
             .getByText('Explore', { exact: true })
             .getByRole('switch')
-            .click();
-
-          await expect(
-            adminPage
-              .getByTestId('page-layout-v1')
-              .getByText('Explore', { exact: true })
-              .getByRole('switch')
-          ).toBeChecked();
+        ).toBeChecked();
 
         // Show Metrics
         await adminPage
@@ -644,7 +639,9 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await waitForAllLoadersToDisappear(userPage);
         await waitForAllLoadersToDisappear(userPage);
 
-        await expect(userPage.getByRole('tab', { name: 'Custom Tab' })).toBeVisible();
+        await expect(
+          userPage.getByRole('tab', { name: 'Custom Tab' })
+        ).toBeVisible();
 
         const customTab = userPage
           .locator('main [role="tablist"]')

@@ -15,6 +15,7 @@ import {
   checkboxCheckedIcon,
   checkboxIndeterminateIcon,
 } from '../components/checkbox-icons';
+import type { ThemeColors } from '../types';
 import {
   BODY_FONT_SIZES,
   BODY_LINE_HEIGHTS,
@@ -22,7 +23,7 @@ import {
   COMPONENT_LINE_HEIGHTS,
 } from './typography-constants';
 
-export const formTheme = (colors: any) => ({
+export const formTheme = (colors: ThemeColors) => ({
   MuiTextField: {
     defaultProps: {
       variant: 'outlined' as const,

@@ -48,7 +48,7 @@ const TierCard = ({
   onClose,
   footerActionButtonsClassName,
 }: TierCardProps) => {
-  const popoverRef = useRef<any>(null);
+  const popoverRef = useRef<{ close: () => void } | null>(null);
   const [tiers, setTiers] = useState<Array<Tag>>([]);
   const [tierCardData, setTierCardData] = useState<Array<CardWithListItems>>(
     []

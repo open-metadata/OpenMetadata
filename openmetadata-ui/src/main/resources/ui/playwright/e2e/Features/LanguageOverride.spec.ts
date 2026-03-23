@@ -44,7 +44,9 @@ test.describe('Language Override Tests', () => {
 
     // navigate(0) triggers a full page reload when language changes
     await germanLocalePage.waitForLoadState('load');
-    await germanLocalePage.getByTestId('language-selector-button').waitFor({ state: 'visible' });
+    await germanLocalePage
+      .getByTestId('language-selector-button')
+      .waitFor({ state: 'visible' });
 
     await germanLocalePage.locator('[data-testid="dropdown-profile"]').click();
     await germanLocalePage

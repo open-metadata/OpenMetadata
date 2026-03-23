@@ -50,9 +50,9 @@ test.describe('Table Version Page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         .getByTestId('loader')
         .waitFor({ state: 'detached' });
 
-      await expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(
-        2
-      );
+      await expect(
+        page.getByTestId('entity-table').getByRole('row')
+      ).toHaveCount(2);
 
       await expect(
         page.getByTestId('entity-table').getByText('test_col_0250')

@@ -56,7 +56,10 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
-export const redirectToHomePage = async (page: Page, _waitForLoaders = true) => {
+export const redirectToHomePage = async (
+  page: Page,
+  _waitForLoaders = true
+) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
 

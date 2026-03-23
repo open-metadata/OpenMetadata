@@ -57,7 +57,6 @@ import {
   addOwner,
   assignGlossaryTerm,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 

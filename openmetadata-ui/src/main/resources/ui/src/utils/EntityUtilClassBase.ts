@@ -118,7 +118,7 @@ import {
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
-type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<any>;
+type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
 
 class EntityUtilClassBase {
   serviceTypeLookupMap: Map<string, string>;

@@ -14,8 +14,8 @@ import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
-import { waitForAllLoadersToDisappear } from './entity';
 import { EntityClass } from '../support/entity/EntityClass';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const getEntityFqn = (
   entityInstance: EntityClass

@@ -102,7 +102,6 @@ test.describe('Glossary Permissions', () => {
 
     const manageButtonElements = ['delete-button', 'rename-button'];
 
-
     for (const testId of directElements) {
       let element;
       if (testId === 'add-tag') {
@@ -162,7 +161,6 @@ test.describe('Glossary Permissions', () => {
     ];
 
     const manageButtonElements = ['delete-button', 'rename-button'];
-
 
     for (const testId of directElements) {
       let element;

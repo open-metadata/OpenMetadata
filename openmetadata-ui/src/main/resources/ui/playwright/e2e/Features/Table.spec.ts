@@ -26,7 +26,6 @@ import {
   getFirstRowColumnLink,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
-
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
@@ -82,9 +81,11 @@ test.describe(
       await page.click('[data-testid="test-cases"]');
 
       await listTestCasesResponse;
-      await page.getByTestId('test-case-container').getByTestId('loader').first().waitFor(
-        { state: 'detached' }
-      );
+      await page
+        .getByTestId('test-case-container')
+        .getByTestId('loader')
+        .first()
+        .waitFor({ state: 'detached' });
 
       await page.getByText('Name', { exact: true }).click();
       await page.getByTestId('searchbar').click();
@@ -96,9 +97,11 @@ test.describe(
       await page.getByTestId('searchbar').fill('temp-test-case');
 
       await testSearchResponse;
-      await page.getByTestId('test-case-container').getByTestId('loader').first().waitFor(
-        { state: 'detached' }
-      );
+      await page
+        .getByTestId('test-case-container')
+        .getByTestId('loader')
+        .first()
+        .waitFor({ state: 'detached' });
 
       await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
     });
@@ -114,9 +117,11 @@ test.describe(
       await page.click('[data-testid="test-cases"]');
 
       await listTestCasesResponse;
-      await page.getByTestId('test-case-container').getByTestId('loader').first().waitFor(
-        { state: 'detached' }
-      );
+      await page
+        .getByTestId('test-case-container')
+        .getByTestId('loader')
+        .first()
+        .waitFor({ state: 'detached' });
 
       await page.getByText('Name', { exact: true }).click();
 
@@ -129,9 +134,11 @@ test.describe(
       await page.getByTitle('Queued').locator('div').click();
 
       await filteredResults;
-      await page.getByTestId('test-case-container').getByTestId('loader').first().waitFor(
-        { state: 'detached' }
-      );
+      await page
+        .getByTestId('test-case-container')
+        .getByTestId('loader')
+        .first()
+        .waitFor({ state: 'detached' });
 
       await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
     });
@@ -174,9 +181,9 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
 
       // Verify page indicator is still the same after first navigation
-      await expect(
-        page.locator('[data-testid="page-indicator"]')
-      ).toHaveText(initialPageIndicator ?? '');
+      await expect(page.locator('[data-testid="page-indicator"]')).toHaveText(
+        initialPageIndicator ?? ''
+      );
 
       // Second navigation - click on second table link
       const secondLinkInColumn = getFirstRowColumnLink(page);
@@ -190,9 +197,9 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
 
       // Verify page indicator is still the same after second navigation
-      await expect(
-        page.locator('[data-testid="page-indicator"]')
-      ).toHaveText(initialPageIndicator ?? '');
+      await expect(page.locator('[data-testid="page-indicator"]')).toHaveText(
+        initialPageIndicator ?? ''
+      );
     });
 
     test('should persist page size', async ({ dataConsumerPage: page }) => {
@@ -419,11 +426,13 @@ test.describe(
       }
 
       await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
-      await page.locator('.ant-select-dropdown').getByTestId('loader').first().waitFor(
-        {
+      await page
+        .locator('.ant-select-dropdown')
+        .getByTestId('loader')
+        .first()
+        .waitFor({
           state: 'detached',
-        }
-      );
+        });
 
       await page
         .locator('[data-testid="tag-selector"] input')
@@ -453,11 +462,13 @@ test.describe(
         .getByTestId('search-bar-container')
         .getByTestId('searchbar')
         .fill('customer_id');
-      await page.getByTestId('entity-table').getByTestId('loader').first().waitFor(
-        {
+      await page
+        .getByTestId('entity-table')
+        .getByTestId('loader')
+        .first()
+        .waitFor({
           state: 'detached',
-        }
-      );
+        });
 
       await expect(
         page
@@ -468,11 +479,13 @@ test.describe(
       await page.click(`${rowSelector} [data-testid="edit-button"]`);
 
       await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
-      await page.locator('.ant-select-dropdown').getByTestId('loader').first().waitFor(
-        {
+      await page
+        .locator('.ant-select-dropdown')
+        .getByTestId('loader')
+        .first()
+        .waitFor({
           state: 'detached',
-        }
-      );
+        });
       await page
         .locator('[data-testid="tag-selector"] input')
         .fill(glossaryTerm.data.name);
@@ -523,11 +536,13 @@ test.describe(
         await page.click(`${rowSelector} [data-testid="edit-button"]`);
       }
 
-      await page.locator('.ant-select-dropdown:visible').getByTestId('loader').first().waitFor(
-        {
+      await page
+        .locator('.ant-select-dropdown:visible')
+        .getByTestId('loader')
+        .first()
+        .waitFor({
           state: 'detached',
-        }
-      );
+        });
       await page
         .locator('[data-testid="tag-selector"] input')
         .fill(testTag.data.name);
@@ -568,11 +583,13 @@ test.describe(
       );
 
       await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
-      await page.locator('.ant-select-dropdown').getByTestId('loader').first().waitFor(
-        {
+      await page
+        .locator('.ant-select-dropdown')
+        .getByTestId('loader')
+        .first()
+        .waitFor({
           state: 'detached',
-        }
-      );
+        });
       await page
         .locator('[data-testid="tag-selector"] input')
         .fill(testTag.data.name);

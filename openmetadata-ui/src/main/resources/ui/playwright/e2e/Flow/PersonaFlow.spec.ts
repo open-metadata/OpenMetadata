@@ -116,7 +116,6 @@ test.describe.serial('Persona operations', () => {
 
     await page.getByRole('button', { name: 'Create' }).click();
 
-
     await navigateToPersonaSettings(page);
 
     await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
@@ -360,7 +359,6 @@ test.describe.serial('Default persona setting and removal flow', () => {
       await adminPage.getByTestId('selectable-list-update-btn').click();
 
       await adminPage.getByRole('button', { name: 'Create' }).click();
-
 
       await navigateToPersonaSettings(adminPage);
 

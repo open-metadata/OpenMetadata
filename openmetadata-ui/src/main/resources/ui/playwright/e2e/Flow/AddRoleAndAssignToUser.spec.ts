@@ -66,9 +66,9 @@ test.describe.serial('Add role and assign it to the user', () => {
 
     await page.getByTestId('inactive-link').waitFor();
 
-    await expect(
-      page.locator('[data-testid="inactive-link"]')
-    ).toHaveText(roleName);
+    await expect(page.locator('[data-testid="inactive-link"]')).toHaveText(
+      roleName
+    );
     await expect(
       page.locator(
         '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
@@ -78,7 +78,6 @@ test.describe.serial('Add role and assign it to the user', () => {
 
   test('Create new user and assign new role to him', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.USERS);
-
 
     await page.click('[data-testid="add-user"]');
 

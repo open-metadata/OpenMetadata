@@ -277,7 +277,6 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await waitForAllLoadersToDisappear(page);
 
-
     await expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
   });
 
