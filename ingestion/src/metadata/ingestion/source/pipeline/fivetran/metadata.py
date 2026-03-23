@@ -199,7 +199,9 @@ class FivetranSource(PipelineServiceSource):
         ("failed_at", StatusType.Failed),
     ]
 
-    def _resolve_destination_service(self) -> Optional[DatabaseService]:
+    def _resolve_destination_service(
+        self, dest_service_type: str = ""
+    ) -> Optional[DatabaseService]:
         """Resolve the destination warehouse DatabaseService from the service registry."""
         for service_name in self.get_db_service_names() or []:
             try:
@@ -209,6 +211,12 @@ class FivetranSource(PipelineServiceSource):
                     fields=["connection"],
                 )
                 if service and service.connection and service.connection.config:
+                    if (
+                        dest_service_type
+                        and service.serviceType.value.lower()
+                        != dest_service_type.lower()
+                    ):
+                        continue
                     return service
             except Exception as exc:
                 logger.debug(f"Could not resolve service [{service_name}]: {exc}")
@@ -302,10 +310,13 @@ class FivetranSource(PipelineServiceSource):
             process_status = StatusType.Failed
             load_status = StatusType.Failed
         else:
-            process_status = (
-                StatusType.Successful if write_start_min else StatusType.Failed
-            )
             sync_end_status_str = sync_end_data.get("status", "")
+            sync_ended_successfully = sync_end_status_str == "SUCCESSFUL"
+            process_status = (
+                StatusType.Successful
+                if (write_start_min or sync_ended_successfully)
+                else StatusType.Failed
+            )
             load_status = (
                 StatusType.Successful
                 if sync_end_status_str == "SUCCESSFUL"
@@ -363,7 +374,7 @@ class FivetranSource(PipelineServiceSource):
             )
             return None
 
-        service = self._resolve_destination_service()
+        service = self._resolve_destination_service(dest_service_type)
         if not service:
             return None
 
