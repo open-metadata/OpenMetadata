@@ -349,3 +349,105 @@ export const ManySelectedItems: StoryObj = {
     );
   },
 };
+
+export const WithMaxVisibleItems: StoryObj = {
+  render: () => {
+    const selectedItems = useListData<SelectItemType>({
+      initialItems: [ITEMS[0], ITEMS[1], ITEMS[2], ITEMS[3], ITEMS[5], ITEMS[6]],
+    });
+
+    return (
+      <div style={{ width: 360 }} className="tw:flex tw:flex-col tw:gap-6">
+        <Autocomplete
+          label="Max 2 visible (6 selected → shows +4)"
+          items={ITEMS}
+          selectedItems={selectedItems}
+          placeholder="Add more..."
+          maxVisibleItems={2}
+        >
+          {(item) => (
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+          )}
+        </Autocomplete>
+
+        <Autocomplete
+          label="Max 3 visible (6 selected → shows +3)"
+          items={ITEMS}
+          selectedItems={selectedItems}
+          placeholder="Add more..."
+          maxVisibleItems={3}
+        >
+          {(item) => (
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+          )}
+        </Autocomplete>
+
+        <Autocomplete
+          label="No limit (all 6 visible)"
+          items={ITEMS}
+          selectedItems={selectedItems}
+          placeholder="Add more..."
+        >
+          {(item) => (
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+          )}
+        </Autocomplete>
+      </div>
+    );
+  },
+};
+
+const LONG_LABEL_ITEMS: SelectItemType[] = [
+  { id: "l1", label: "This is a very long label that should be truncated inside the chip" },
+  { id: "l2", label: "Another extremely long item name that overflows" },
+  { id: "l3", label: "Short" },
+  { id: "l4", label: "Medium length label here" },
+  { id: "l5", label: "Yet another very long tag name that goes on and on" },
+];
+
+export const WithLongLabels: StoryObj = {
+  render: () => {
+    const selectedItems = useListData<SelectItemType>({
+      initialItems: [LONG_LABEL_ITEMS[0], LONG_LABEL_ITEMS[1], LONG_LABEL_ITEMS[2]],
+    });
+
+    return (
+      <div style={{ width: 360 }}>
+        <Autocomplete
+          label="Long labels (truncated at 160px)"
+          items={LONG_LABEL_ITEMS}
+          selectedItems={selectedItems}
+          placeholder="Add more..."
+        >
+          {(item) => (
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+          )}
+        </Autocomplete>
+      </div>
+    );
+  },
+};
+
+export const WithLongLabelsAndMaxVisible: StoryObj = {
+  render: () => {
+    const selectedItems = useListData<SelectItemType>({
+      initialItems: [LONG_LABEL_ITEMS[0], LONG_LABEL_ITEMS[1], LONG_LABEL_ITEMS[2], LONG_LABEL_ITEMS[3], LONG_LABEL_ITEMS[4]],
+    });
+
+    return (
+      <div style={{ width: 360 }}>
+        <Autocomplete
+          label="Long labels + max 2 visible (5 selected → shows +3)"
+          items={LONG_LABEL_ITEMS}
+          selectedItems={selectedItems}
+          placeholder="Add more..."
+          maxVisibleItems={2}
+        >
+          {(item) => (
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+          )}
+        </Autocomplete>
+      </div>
+    );
+  },
+};
