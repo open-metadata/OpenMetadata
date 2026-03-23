@@ -289,11 +289,11 @@ class FivetranSource(PipelineServiceSource):
         extract_status = (
             StatusType.Successful
             if extract_status_str == "SUCCESS"
-            else StatusType.Failed
-            if extract_status_str
-            else StatusType.Successful
-            if extract_end
-            else StatusType.Failed
+            else (
+                StatusType.Failed
+                if extract_status_str
+                else StatusType.Successful if extract_end else StatusType.Failed
+            )
         )
 
         if extract_status == StatusType.Failed:
@@ -307,11 +307,11 @@ class FivetranSource(PipelineServiceSource):
             load_status = (
                 StatusType.Successful
                 if sync_end_status_str == "SUCCESSFUL"
-                else StatusType.Failed
-                if sync_end_status_str
-                else StatusType.Successful
-                if sync_end
-                else StatusType.Failed
+                else (
+                    StatusType.Failed
+                    if sync_end_status_str
+                    else StatusType.Successful if sync_end else StatusType.Failed
+                )
             )
 
         def _ts(dt) -> Optional[Timestamp]:
@@ -346,7 +346,9 @@ class FivetranSource(PipelineServiceSource):
         pipeline_fqn: str,
     ) -> Optional[List[OMetaPipelineStatus]]:
         """Query fivetran_metadata.log in the destination warehouse for sync run history."""
-        dest_database = (pipeline_details.destination.get("config") or {}).get("database")
+        dest_database = (pipeline_details.destination.get("config") or {}).get(
+            "database"
+        )
         if not dest_database:
             return None
 
@@ -397,7 +399,9 @@ class FivetranSource(PipelineServiceSource):
             # Sort by sync_start descending and limit
             sorted_syncs = sorted(
                 syncs.items(),
-                key=lambda x: x[1].get("sync_start_ts", datetime.min.replace(tzinfo=timezone.utc)),
+                key=lambda x: x[1].get(
+                    "sync_start_ts", datetime.min.replace(tzinfo=timezone.utc)
+                ),
                 reverse=True,
             )[:MAX_SYNC_RUNS]
 
@@ -644,10 +648,12 @@ class FivetranSource(PipelineServiceSource):
         source_connector_type = pipeline_details.source.get("service")
         is_messaging_source = source_connector_type in MESSAGING_CONNECTOR_TYPES
 
-        source_database_name = (pipeline_details.source.get("config") or {}).get("database")
-        destination_database_name = (pipeline_details.destination.get("config") or {}).get(
+        source_database_name = (pipeline_details.source.get("config") or {}).get(
             "database"
         )
+        destination_database_name = (
+            pipeline_details.destination.get("config") or {}
+        ).get("database")
 
         pipeline_entity = None
 
