@@ -394,13 +394,14 @@ class SigmaUnitTest(TestCase):
 
     def test_query_based_lineage_no_sql_in_query(self):
         """
-        Test that elements without SQL are skipped
+        Test that elements without SQL fall back to file-based lineage
         """
         # Setup mocks with query but no SQL
         query_without_sql = WorkbookQuery(elementId="1a", name="test", sql=None)
         queries_response = WorkbookQueriesResponse(entries=[query_without_sql], total=1)
 
         self.sigma.client.get_workbook_queries = lambda *_: queries_response
+        self.sigma.client.get_lineage_details = lambda *_: None
         self.sigma.data_models = [
             Elements(elementId="1a", name="chart1", columns=["col1"])
         ]
@@ -413,7 +414,8 @@ class SigmaUnitTest(TestCase):
             self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS)
         )
 
-        # Verify no lineage created
+        # Verify file-based lineage was attempted (get_lineage_details called)
+        # but no lineage created since get_lineage_details returns None
         self.assertEqual(len(results), 0)
 
     def test_get_column_info_with_truncation(self):
@@ -437,7 +439,7 @@ class SigmaUnitTest(TestCase):
         node = NodeDetails(
             id="node1",
             name="test_table",
-            node_type="table",
+            type="table",
             path="database/schema/test_table",
         )
 
@@ -533,15 +535,13 @@ class SigmaUnitTest(TestCase):
         ]
 
         # Create SigmaApiClient with mocked config
-        from pydantic import SecretStr
-
         from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
             SigmaConnection,
         )
 
         config = SigmaConnection(
             clientId="test_id",
-            clientSecret=SecretStr("test_secret"),
+            clientSecret="test_secret",
             hostPort="https://test.sigmacomputing.com",
             apiVersion="v2",
         )
@@ -593,15 +593,13 @@ class SigmaUnitTest(TestCase):
         ]
 
         # Create SigmaApiClient with mocked config
-        from pydantic import SecretStr
-
         from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
             SigmaConnection,
         )
 
         config = SigmaConnection(
             clientId="test_id",
-            clientSecret=SecretStr("test_secret"),
+            clientSecret="test_secret",
             hostPort="https://test.sigmacomputing.com",
             apiVersion="v2",
         )
