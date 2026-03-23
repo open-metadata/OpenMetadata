@@ -6201,8 +6201,9 @@ public interface CollectionDAO {
             new UsageStats()
                 .withCount(r.getInt("count30"))
                 .withPercentileRank(r.getDouble("percentile30"));
+        java.sql.Date usageDate = r.getDate("usageDate");
         return new UsageDetails()
-            .withDate(r.getString("usageDate"))
+            .withDate(usageDate != null ? usageDate.toString() : null)
             .withDailyStats(dailyStats)
             .withWeeklyStats(weeklyStats)
             .withMonthlyStats(monthlyStats);
@@ -6244,9 +6245,10 @@ public interface CollectionDAO {
             new UsageStats()
                 .withCount(r.getInt("count30"))
                 .withPercentileRank(r.getDouble("percentile30"));
+        java.sql.Date usageDate = r.getDate("usageDate");
         UsageDetails usageDetails =
             new UsageDetails()
-                .withDate(r.getString("usageDate"))
+                .withDate(usageDate != null ? usageDate.toString() : null)
                 .withDailyStats(dailyStats)
                 .withWeeklyStats(weeklyStats)
                 .withMonthlyStats(monthlyStats);
