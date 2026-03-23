@@ -311,11 +311,13 @@ class SigmaSource(DashboardServiceSource):
                     table_entity = self._get_table_entity_from_node(
                         node, db_service_prefix
                     )
-                    if table_entity and data_model.columns:
-                        columns_list = data_model.columns
-                        column_lineage = self._get_column_lineage(
-                            table_entity, data_model_entity, columns_list
-                        )
+                    if table_entity:
+                        column_lineage = None
+                        if data_model.columns:
+                            columns_list = data_model.columns
+                            column_lineage = self._get_column_lineage(
+                                table_entity, data_model_entity, columns_list
+                            )
                         yield self._get_add_lineage_request(
                             to_entity=data_model_entity,
                             from_entity=table_entity,
@@ -353,11 +355,13 @@ class SigmaSource(DashboardServiceSource):
 
             for node in nodes:
                 table_entity = self._get_table_entity_from_node(node, db_service_prefix)
-                if table_entity and data_model.columns:
-                    columns_list = data_model.columns
-                    column_lineage = self._get_column_lineage(
-                        table_entity, data_model_entity, columns_list
-                    )
+                if table_entity:
+                    column_lineage = None
+                    if data_model.columns:
+                        columns_list = data_model.columns
+                        column_lineage = self._get_column_lineage(
+                            table_entity, data_model_entity, columns_list
+                        )
                     yield self._get_add_lineage_request(
                         to_entity=data_model_entity,
                         from_entity=table_entity,
