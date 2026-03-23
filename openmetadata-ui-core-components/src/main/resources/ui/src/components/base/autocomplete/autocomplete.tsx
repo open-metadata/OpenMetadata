@@ -167,7 +167,9 @@ const InnerAutocomplete = ({ isDisabled, placeholder }: { isDisabled?: boolean; 
               color="gray"
               key={item.id}
               size="lg"
-              onButtonClick={() => !isDisabled && context.onRemove(new Set([item.id]))}
+              isDisabled={isDisabled}
+              onButtonClick={() => context.onRemove(new Set([item.id]))}
+              onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}
             >
               {renderChipIcon(item)}
               <div className="tw:min-w-0 tw:max-w-40">
