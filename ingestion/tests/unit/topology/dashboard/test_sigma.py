@@ -477,9 +477,9 @@ class SigmaUnitTest(TestCase):
         """
         from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
         from metadata.ingestion.source.dashboard.sigma.models import (
-            WorkBookPageResponse,
-            WorkBookPage,
             ElementsResponse,
+            WorkBookPage,
+            WorkBookPageResponse,
         )
 
         # Mock pages response - first page with entries, then paginated
@@ -533,10 +533,11 @@ class SigmaUnitTest(TestCase):
         ]
 
         # Create SigmaApiClient with mocked config
+        from pydantic import SecretStr
+
         from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
             SigmaConnection,
         )
-        from pydantic import SecretStr
 
         config = SigmaConnection(
             clientId="test_id",
@@ -568,8 +569,8 @@ class SigmaUnitTest(TestCase):
         """
         from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
         from metadata.ingestion.source.dashboard.sigma.models import (
-            WorkBookPageResponse,
             WorkBookPage,
+            WorkBookPageResponse,
         )
 
         # Mock pages response with entries
@@ -592,10 +593,11 @@ class SigmaUnitTest(TestCase):
         ]
 
         # Create SigmaApiClient with mocked config
+        from pydantic import SecretStr
+
         from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
             SigmaConnection,
         )
-        from pydantic import SecretStr
 
         config = SigmaConnection(
             clientId="test_id",
