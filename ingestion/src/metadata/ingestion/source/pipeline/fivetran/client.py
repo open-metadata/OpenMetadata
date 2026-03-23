@@ -97,6 +97,8 @@ class FivetranClient:
         Method returns connector schema details
         """
         response = self.client.get(f"/connectors/{connector_id}/schemas")
+        if not isinstance(response, dict):
+            return {}
         return response.get("data", {}).get("schemas", {})
 
     def get_connector_sync_history(self, connector_id: str) -> List[dict]:
@@ -111,7 +113,9 @@ class FivetranClient:
         """
         Method returns column lineage details for a table
         """
-        response: Optional[dict] = self.client.get(
+        response = self.client.get(
             f"/connectors/{connector_id}/schemas/{schema_name}/tables/{table_name}/columns"
         )
+        if not isinstance(response, dict):
+            return {}
         return response.get("data", {}).get("columns", {})

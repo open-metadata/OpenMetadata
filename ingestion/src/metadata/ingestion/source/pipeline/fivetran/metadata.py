@@ -14,7 +14,7 @@ Fivetran source to extract metadata
 
 import json
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, List, Optional, cast
 
 import sqlglot
@@ -380,7 +380,7 @@ class FivetranSource(PipelineServiceSource):
 
             query = FIVETRAN_LOG_QUERY.format(table=table_ref)
 
-            cutoff = datetime.utcnow() - timedelta(days=LOG_RETENTION_DAYS)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=LOG_RETENTION_DAYS)
 
             with engine.connect() as conn:
                 result = conn.execute(
