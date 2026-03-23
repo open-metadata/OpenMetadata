@@ -883,8 +883,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                       os.org.opensearch.client.opensearch._types
                                                           .BuiltinScriptLanguage.Painless))
                                           .source(UPDATE_COLUMN_LINEAGE_SCRIPT)
-                                          .params(params)))
-                      .refresh(Refresh.True));
+                                          .params(params))));
 
       LOG.info(
           "Successfully updated columns in upstream lineage for index: {}, updated: {}",
@@ -938,8 +937,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                       os.org.opensearch.client.opensearch._types
                                                           .BuiltinScriptLanguage.Painless))
                                           .source(DELETE_COLUMN_LINEAGE_SCRIPT)
-                                          .params(params)))
-                      .refresh(Refresh.True));
+                                          .params(params))));
 
       LOG.info(
           "Successfully deleted columns from upstream lineage for index: {}, updated: {}",

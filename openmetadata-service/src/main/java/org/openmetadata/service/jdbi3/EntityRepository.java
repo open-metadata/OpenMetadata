@@ -6036,6 +6036,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Setter private Set<String> patchedFields;
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
+    private boolean deferOpsEnabled = true;
 
     // Store the original FQN at construction time, before any modifications or revert.
     // This is needed because during change consolidation, revert() reassigns 'original' to
@@ -6121,7 +6122,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     protected final void deferReactOperation(Runnable operation) {
-      if (operation != null) {
+      if (operation != null && deferOpsEnabled) {
         deferredReactOperations.add(operation);
       }
     }
@@ -6311,7 +6312,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void incrementalChange() {
       changeDescription = new ChangeDescription();
-      updateInternal(false);
+      deferOpsEnabled = false;
+      try {
+        updateInternal(false);
+      } finally {
+        deferOpsEnabled = true;
+      }
       incrementalChangeDescription = changeDescription;
       incrementalChangeDescription.setPreviousVersion(original.getVersion());
       updated.setIncrementalChangeDescription(incrementalChangeDescription);
@@ -6319,7 +6325,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void incrementalChangeForImport() {
       changeDescription = new ChangeDescription();
-      updateInternalForImport(false);
+      deferOpsEnabled = false;
+      try {
+        updateInternalForImport(false);
+      } finally {
+        deferOpsEnabled = true;
+      }
       incrementalChangeDescription = changeDescription;
       incrementalChangeDescription.setPreviousVersion(original.getVersion());
       updated.setIncrementalChangeDescription(incrementalChangeDescription);
@@ -6383,14 +6394,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
             previous.getVersion());
         changeDescription = new ChangeDescription();
         updated = previous;
-        updateInternal(true);
-        LOG.info(
-            "In session change consolidation. Reverting to previous version {} completed",
-            previous.getVersion());
+        deferOpsEnabled = false;
+        try {
+          updateInternal(true);
+          LOG.info(
+              "In session change consolidation. Reverting to previous version {} completed",
+              previous.getVersion());
 
-        // Now go from original to updated
-        updated = updatedOld;
-        updateInternal();
+          // Now go from original to updated
+          updated = updatedOld;
+          updateInternal();
+        } finally {
+          deferOpsEnabled = true;
+        }
 
         // Finally, go from previous to the latest updated entity to consolidate changes
         original = previous;
@@ -6410,14 +6426,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
             previous.getVersion());
         changeDescription = new ChangeDescription();
         updated = previous;
-        updateInternalForImport(true);
-        LOG.info(
-            "In session change consolidation. Reverting to previous version {} completed",
-            previous.getVersion());
+        deferOpsEnabled = false;
+        try {
+          updateInternalForImport(true);
+          LOG.info(
+              "In session change consolidation. Reverting to previous version {} completed",
+              previous.getVersion());
 
-        // Now go from original to updated
-        updated = updatedOld;
-        updateInternalForImport();
+          // Now go from original to updated
+          updated = updatedOld;
+          updateInternalForImport();
+        } finally {
+          deferOpsEnabled = true;
+        }
 
         // Finally, go from previous to the latest updated entity to consolidate changes
         original = previous;

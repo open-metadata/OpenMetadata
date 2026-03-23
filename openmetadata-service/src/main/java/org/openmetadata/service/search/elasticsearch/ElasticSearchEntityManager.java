@@ -814,8 +814,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                           s ->
                               s.source(ss -> ss.scriptString(UPDATE_COLUMN_LINEAGE_SCRIPT))
                                   .lang(ScriptLanguage.Painless)
-                                  .params(params))
-                      .refresh(true));
+                                  .params(params)));
 
       LOG.info(
           "Successfully updated columns in upstream lineage for index: {}, updated: {}",
@@ -864,8 +863,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                           s ->
                               s.source(ss -> ss.scriptString(DELETE_COLUMN_LINEAGE_SCRIPT))
                                   .lang(ScriptLanguage.Painless)
-                                  .params(params))
-                      .refresh(true));
+                                  .params(params)));
 
       LOG.info(
           "Successfully deleted columns from upstream lineage for index: {}, updated: {}",
