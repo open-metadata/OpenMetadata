@@ -292,7 +292,9 @@ class FivetranSource(PipelineServiceSource):
             else (
                 StatusType.Failed
                 if extract_status_str
-                else StatusType.Successful if extract_end else StatusType.Failed
+                else StatusType.Successful
+                if extract_end
+                else StatusType.Failed
             )
         )
 
@@ -310,7 +312,9 @@ class FivetranSource(PipelineServiceSource):
                 else (
                     StatusType.Failed
                     if sync_end_status_str
-                    else StatusType.Successful if sync_end else StatusType.Failed
+                    else StatusType.Successful
+                    if sync_end
+                    else StatusType.Failed
                 )
             )
 
