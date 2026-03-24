@@ -53,7 +53,6 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATIONS,
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_TEST_GET_QUERIES_MAP,
-    REDSHIFT_TEST_PARTITION_DETAILS,
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
@@ -232,15 +231,6 @@ def test_connection(
         schema_clause="", table_clause="", limit_clause="LIMIT 1"
     )
 
-    def test_partition_details(engine_: Engine):
-        """Check if we have the right permissions to get partition details"""
-        with engine_.connect() as conn:
-            res = conn.execute(text(REDSHIFT_TEST_PARTITION_DETAILS)).fetchone()
-            if not all(res):
-                raise SourceConnectionException(
-                    f"We don't have the right permissions to get partition details - {res}"
-                )
-
     def test_get_queries_permissions(engine_: Engine):
         """Check if we have the right permissions to list queries"""
         redshift_instance_type = get_redshift_instance_type(engine_)
@@ -265,7 +255,6 @@ def test_connection(
         "GetDatabases": partial(
             test_query, statement=REDSHIFT_GET_DATABASE_NAMES, engine=engine
         ),
-        "GetPartitionTableDetails": partial(test_partition_details, engine),
     }
 
     result = test_connection_steps(
