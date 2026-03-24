@@ -186,6 +186,7 @@ public class TypeRegistry {
       TYPE_LAST_REFRESHED.put(entityType, System.currentTimeMillis());
     } catch (Exception e) {
       LOG.warn("Failed to refresh type '{}' from DB: {}", entityType, e.getMessage());
+      TYPE_LAST_REFRESHED.put(entityType, System.currentTimeMillis());
     }
   }
 
