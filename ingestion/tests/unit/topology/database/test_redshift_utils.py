@@ -14,8 +14,10 @@
 import unittest
 from unittest.mock import MagicMock, Mock
 
-from metadata.ingestion.source.database.redshift.utils import get_view_definition
-from metadata.ingestion.source.database.redshift.utils import _get_all_relation_info
+from metadata.ingestion.source.database.redshift.utils import (
+    _get_all_relation_info,
+    get_view_definition,
+)
 
 
 class TestGetViewDefinition(unittest.TestCase):
@@ -230,10 +232,6 @@ class TestGetViewDefinition(unittest.TestCase):
         )
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestGetAllRelationInfoCache(unittest.TestCase):
     """Test _get_all_relation_info single-schema cache"""
 
@@ -302,3 +300,7 @@ class TestGetAllRelationInfoCache(unittest.TestCase):
         self.assertEqual({k.name for k in r2}, {"t2"})
 
         self.assertEqual(self.mock_connection.execute.call_count, 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
