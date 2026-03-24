@@ -12,7 +12,6 @@
  */
 
 import { test as base, expect, Page } from '@playwright/test';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
@@ -84,7 +83,6 @@ test.describe('User with different Roles', () => {
 
   test(
     'Admin user can edit teams from the user profile',
-    PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
     async ({ adminPage }) => {
       test.slow();
       await redirectToUserPage(adminPage);

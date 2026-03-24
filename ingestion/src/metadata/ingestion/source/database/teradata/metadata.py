@@ -45,13 +45,18 @@ from metadata.ingestion.source.database.teradata.queries import (
     TERADATA_GET_STORED_PROCEDURES,
     TERADATA_SHOW_STORED_PROCEDURE,
 )
-from metadata.ingestion.source.database.teradata.utils import get_table_comment
+from metadata.ingestion.source.database.teradata.utils import (
+    get_columns,
+    get_table_comment,
+)
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 logger = ingestion_logger()
 
+get_columns._original = TeradataDialect.get_columns  # pylint: disable=protected-access
+TeradataDialect.get_columns = get_columns
 TeradataDialect.get_table_comment = get_table_comment
 TeradataDialect.get_all_table_comments = get_all_table_comments
 

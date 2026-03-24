@@ -16,7 +16,6 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   DOMAIN_TAGS,
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
 } from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
@@ -113,7 +112,6 @@ test.describe(
   {
     tag: [
       `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`,
-      PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ.tag,
     ],
   },
   () => {

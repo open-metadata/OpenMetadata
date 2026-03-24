@@ -25,7 +25,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -156,7 +155,6 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
 
 test(
   'Schema Table Pagination should work Properly',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   async ({ page }) => {
     const tableResponse = page.waitForResponse(`/api/v1/tables?limit=15**`);
 
