@@ -705,9 +705,7 @@ class DbtUnitTest(TestCase):
             get_manifest_column_name(
                 SimpleNamespace(
                     column_name=None,
-                    test_metadata=SimpleNamespace(
-                        kwargs={"column_name": "col<value>"}
-                    ),
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "col<value>"}),
                 )
             )
         )
