@@ -1,4 +1,4 @@
-import type { MouseEventHandler, ReactNode } from "react";
+import type { KeyboardEventHandler, MouseEventHandler, ReactNode } from "react";
 import { X as CloseX } from "@untitledui/icons";
 import { Dot } from "@/components/foundations/dot-icon";
 import { cx } from "@/utils/cx";
@@ -333,10 +333,18 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
      * The click event handler for the button.
      */
     onButtonClick?: MouseEventHandler<HTMLButtonElement>;
+    /**
+     * The keydown event handler for the button.
+     */
+    onButtonKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
+    /**
+     * Whether the button is disabled.
+     */
+    isDisabled?: boolean;
 }
 
 export const BadgeWithButton = <T extends BadgeTypes>(props: BadgeWithButtonProps<T>) => {
-    const { size = "md", color = "gray", type = "pill-color", icon: Icon = CloseX, buttonLabel, children } = props;
+    const { size = "md", color = "gray", type = "pill-color", icon: Icon = CloseX, buttonLabel, children, isDisabled, onButtonKeyDown } = props;
 
     const colors = withPillTypes[type];
 
@@ -363,9 +371,12 @@ export const BadgeWithButton = <T extends BadgeTypes>(props: BadgeWithButtonProp
             <button
                 type="button"
                 aria-label={buttonLabel}
+                disabled={isDisabled}
                 onClick={props.onButtonClick}
+                onKeyDown={onButtonKeyDown}
                 className={cx(
-                    "tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:p-0.5 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2",
+                    "tw:flex tw:items-center tw:justify-center tw:p-0.5 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2",
+                    isDisabled ? "tw:cursor-not-allowed tw:opacity-50" : "tw:cursor-pointer",
                     colors.styles[color].addonButton,
                     type === "pill-color" ? "tw:rounded-full" : "tw:rounded-[3px]",
                 )}
