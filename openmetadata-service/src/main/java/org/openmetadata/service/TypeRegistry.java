@@ -54,6 +54,7 @@ public class TypeRegistry {
   protected static final Map<String, Long> TYPE_LAST_REFRESHED = new ConcurrentHashMap<>();
 
   private static final long REFRESH_INTERVAL_MS = 900_000; // 15 minutes
+  private static final long CACHE_MISS_DEBOUNCE_MS = 30_000; // 30 seconds
 
   private TypeRegistry() {
     /* Singleton instance */
@@ -142,7 +143,7 @@ public class TypeRegistry {
   public Schema getSchema(String entityType, String propertyName) {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
     Schema schema = CUSTOM_PROPERTY_SCHEMAS.get(customPropertyFQN);
-    if (schema == null || isTypeStale(entityType)) {
+    if (isTypeStale(entityType) || (schema == null && shouldRefreshOnMiss(entityType))) {
       refreshTypeFromDB(entityType);
       schema = CUSTOM_PROPERTY_SCHEMAS.get(customPropertyFQN);
     }
@@ -153,6 +154,12 @@ public class TypeRegistry {
     Long lastRefreshed = TYPE_LAST_REFRESHED.get(entityType);
     return lastRefreshed == null
         || (System.currentTimeMillis() - lastRefreshed) > REFRESH_INTERVAL_MS;
+  }
+
+  private static boolean shouldRefreshOnMiss(String entityType) {
+    Long lastRefreshed = TYPE_LAST_REFRESHED.get(entityType);
+    return lastRefreshed == null
+        || (System.currentTimeMillis() - lastRefreshed) > CACHE_MISS_DEBOUNCE_MS;
   }
 
   private void refreshTypeFromDB(String entityType) {
@@ -208,7 +215,7 @@ public class TypeRegistry {
   public static String getCustomPropertyType(String entityType, String propertyName) {
     String fqn = getCustomPropertyFQN(entityType, propertyName);
     CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
-    if (property == null || isTypeStale(entityType)) {
+    if (isTypeStale(entityType) || (property == null && shouldRefreshOnMiss(entityType))) {
       TypeRegistry.instance().refreshTypeFromDB(entityType);
       property = CUSTOM_PROPERTIES.get(fqn);
     }
@@ -222,7 +229,7 @@ public class TypeRegistry {
   public static String getCustomPropertyConfig(String entityType, String propertyName) {
     String fqn = getCustomPropertyFQN(entityType, propertyName);
     CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
-    if (property == null || isTypeStale(entityType)) {
+    if (isTypeStale(entityType) || (property == null && shouldRefreshOnMiss(entityType))) {
       TypeRegistry.instance().refreshTypeFromDB(entityType);
       property = CUSTOM_PROPERTIES.get(fqn);
     }
