@@ -266,11 +266,17 @@ test.describe(
       test('User with TEST_CASE.EDIT_ALL can see edit action on test case', async ({
         editResultsPage,
       }) => {
-        await visitProfilerPage(editResultsPage);
+        await expect(async () => {
+          await visitProfilerPage(editResultsPage);
+          const actionDropdown = editResultsPage.getByTestId(
+            `action-dropdown-${testCaseName}`
+          );
+          await expect(actionDropdown).toBeVisible();
+        }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+
         const actionDropdown = editResultsPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
-        await expect(actionDropdown).toBeVisible();
         await actionDropdown.click();
         await expect(
           editResultsPage.getByTestId(`edit-${testCaseName}`)

@@ -199,6 +199,7 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
+  await expect(page.locator('[data-testid="tag-selector"]')).toBeVisible();
   await page.click('[data-testid="tag-selector"]');
   const waitForQueryResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
@@ -777,6 +778,10 @@ export const fillRowDetails = async (
   );
   await page.keyboard.press('Enter', { delay: 100 });
   await certificationResponse;
+
+  await page
+    .getByTestId('update-certification')
+    .waitFor({ state: 'visible' });
 
   const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
   await certRadioBtn.waitFor({ state: 'visible' });

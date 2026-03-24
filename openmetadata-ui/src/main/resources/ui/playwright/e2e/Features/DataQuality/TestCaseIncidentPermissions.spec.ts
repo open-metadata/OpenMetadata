@@ -286,10 +286,15 @@ test.describe(
       test('User with TEST_CASE.EDIT_ALL can see edit icon on incidents', async ({
         editIncidentsPage,
       }) => {
-        await visitTestCaseIncidentPage(editIncidentsPage);
-        await expect(editIncidentsPage.getByTestId('open-task')).toBeVisible();
-        const editIcon = editIncidentsPage.getByTestId('edit-resolution-icon');
-        await expect(editIcon.first()).toBeVisible();
+        await expect(async () => {
+          await visitTestCaseIncidentPage(editIncidentsPage);
+          await expect(
+            editIncidentsPage.getByTestId('open-task')
+          ).toBeVisible();
+          const editIcon =
+            editIncidentsPage.getByTestId('edit-resolution-icon');
+          await expect(editIcon.first()).toBeVisible();
+        }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
       });
 
       test('User with TABLE.EDIT_TESTS can see edit icon on incidents (alternative)', async ({

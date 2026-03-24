@@ -100,11 +100,14 @@ export const addOwner = async ({
   dataTestId?: string;
   initiatorId?: string;
 }) => {
+  const userListResponse =
+    type === 'Users'
+      ? page.waitForResponse('/api/v1/search/query?q=*&index=user&*')
+      : undefined;
+
   await page.getByTestId(initiatorId).click();
+
   if (type === 'Users') {
-    const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=user&*'
-    );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
   }
@@ -196,17 +199,24 @@ export const addOwnerWithoutValidation = async ({
   type?: 'Teams' | 'Users';
   initiatorId?: string;
 }) => {
+  const userListResponse =
+    type === 'Users'
+      ? page.waitForResponse('/api/v1/search/query?q=&index=user&*')
+      : undefined;
+
   await page.getByTestId(initiatorId).click();
+
   if (type === 'Users') {
     const usersTab = page.getByRole('tab', { name: type });
     const isTabAlreadySelected =
       (await usersTab.getAttribute('aria-selected')) === 'true';
 
     if (!isTabAlreadySelected) {
-      const userListResponse = page.waitForResponse(
-        '/api/v1/search/query?q=&index=user&*'
-      );
       await usersTab.click();
+    }
+    // Only await if tab was not already selected — if already selected,
+    // the API response arrived before the listener was registered
+    if (!isTabAlreadySelected) {
       await userListResponse;
     }
   }

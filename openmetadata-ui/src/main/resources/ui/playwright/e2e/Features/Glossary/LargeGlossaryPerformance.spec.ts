@@ -248,6 +248,15 @@ test.describe('Large Glossary Performance Tests', () => {
       return scrollContainer?.scrollTop || 0;
     });
 
+    // Capture scroll height before triggering infinite scroll
+    const scrollHeightBefore = await page.evaluate(() => {
+      const container = document.querySelector(
+        '.glossary-terms-scroll-container'
+      );
+
+      return container?.scrollHeight ?? 0;
+    });
+
     // Trigger infinite scroll
 
     await page.evaluate(() => {
@@ -263,6 +272,18 @@ test.describe('Large Glossary Performance Tests', () => {
     await page
       .locator('.glossary-terms-scroll-container [data-testid="loader"]')
       .waitFor({ state: 'detached' });
+
+    // Wait for content to settle — scrollHeight should increase after new items load
+    await page.waitForFunction(
+      (prevHeight) => {
+        const container = document.querySelector(
+          '.glossary-terms-scroll-container'
+        );
+
+        return container !== null && container.scrollHeight > prevHeight;
+      },
+      scrollHeightBefore
+    );
 
     // Scroll back to previous position
     await page.evaluate((scrollPos) => {

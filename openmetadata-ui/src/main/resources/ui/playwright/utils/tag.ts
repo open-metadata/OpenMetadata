@@ -55,13 +55,13 @@ export const visitClassificationPage = async (
   classificationName: string,
   classificationDisplayName: string
 ) => {
-  await redirectToHomePage(page);
   const classificationResponse = page.waitForResponse(
     '/api/v1/classifications?**'
   );
   const fetchTags = page.waitForResponse(
     `/api/v1/tags?*parent=${classificationName}**`
   );
+  await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 

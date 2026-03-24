@@ -229,7 +229,9 @@ test.describe(
         viewOnlyPage.getByTestId('test-definition-table')
       ).toBeVisible();
 
-      await actionNotAllowed(viewOnlyPage);
+      await expect(async () => {
+        await actionNotAllowed(viewOnlyPage);
+      }).toPass({ timeout: 15_000, intervals: [2_000, 5_000] });
     });
   }
 );

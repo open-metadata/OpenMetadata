@@ -440,16 +440,34 @@ export const permanentDeleteUser = async (
   // Wait for the loader to disappear
   await waitForAllLoadersToDisappear(page);
 
-  // Search the user
-  const searchUserResponse = page.waitForResponse('/api/v1/search/query*');
-  await page.fill('[data-testid="searchbar"]', username);
-  await searchUserResponse;
+  // Search the user and wait for delete button to appear (handles ES indexing lag)
+  const deleteButton = page.getByTestId(`delete-user-btn-${username}`);
 
-  // Wait for the loader to disappear
-  await waitForAllLoadersToDisappear(page);
+  await expect
+    .poll(
+      async () => {
+        const visible = await deleteButton.isVisible().catch(() => false);
+        if (visible) {
+          return true;
+        }
+        const searchRetry = page.waitForResponse('/api/v1/search/query*');
+        await page.fill('[data-testid="searchbar"]', '');
+        await page.fill('[data-testid="searchbar"]', username);
+        await searchRetry;
+        await waitForAllLoadersToDisappear(page);
+
+        return await deleteButton.isVisible().catch(() => false);
+      },
+      {
+        timeout: 60000,
+        intervals: [2000, 3000, 5000],
+        message: `Timed out waiting for delete button for user ${username}`,
+      }
+    )
+    .toBe(true);
 
   // Click on delete user button
-  await page.click(`[data-testid="delete-user-btn-${username}"]`);
+  await deleteButton.click();
 
   // Click on hard delete
   await page.click('[data-testid="hard-delete"]');

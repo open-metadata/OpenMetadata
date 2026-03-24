@@ -393,10 +393,29 @@ test.describe('Glossary Permissions', () => {
     });
 
     // Set up permissions with team as the principal
-    await initializePermissions(page, 'allow', [
+    const { role: teamRole } = await initializePermissions(page, 'allow', [
       'EditDescription',
       'EditOwners',
     ]);
+
+    // Assign the role to the team so testUser inherits permissions
+    await apiContext.patch(`/api/v1/teams/${teamId}`, {
+      data: [
+        {
+          op: 'add',
+          path: '/defaultRoles',
+          value: [
+            {
+              id: teamRole.responseData.id,
+              type: 'role',
+            },
+          ],
+        },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
 
     // Login as test user and verify permissions inherited from team
     await expect(async () => {
