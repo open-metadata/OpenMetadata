@@ -85,7 +85,7 @@ public class LineageGraphConfiguration {
             .withMediumGraphBatchSize(5000)
             .withLargeGraphBatchSize(1000)
             .withStreamingBatchSize(500)
-            .withEnableCaching(false)
+            .withEnableCaching(true)
             .withCacheTTLSeconds(300)
             .withMaxCachedGraphs(100)
             .withEnableProgressTracking(false)

@@ -730,9 +730,7 @@ public class OpenSearchSourceBuilderFactory
   }
 
   private OpenSearchRequestBuilder addAggregationV2(OpenSearchRequestBuilder searchRequestBuilder) {
-    searchSettings
-        .getGlobalSettings()
-        .getAggregations()
+    listOrEmpty(searchSettings.getGlobalSettings().getAggregations())
         .forEach(
             agg -> {
               os.org.opensearch.client.opensearch._types.aggregations.Aggregation termsAgg;

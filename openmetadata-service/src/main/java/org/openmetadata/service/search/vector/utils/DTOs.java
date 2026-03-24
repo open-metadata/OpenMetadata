@@ -25,11 +25,28 @@ public final class DTOs {
 
   @Data
   @NoArgsConstructor
-  @AllArgsConstructor
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class VectorSearchResponse {
     public long tookMillis;
     public List<Map<String, Object>> hits;
+
+    // Total raw hits returned by OpenSearch before parent-level grouping.
+    public Long totalHits;
+
+    // Indicates whether additional parent groups may be available after this page.
+    public Boolean hasMore;
+
+    public VectorSearchResponse(long tookMillis, List<Map<String, Object>> hits) {
+      this(tookMillis, hits, null, null);
+    }
+
+    public VectorSearchResponse(
+        long tookMillis, List<Map<String, Object>> hits, Long totalHits, Boolean hasMore) {
+      this.tookMillis = tookMillis;
+      this.hits = hits;
+      this.totalHits = totalHits;
+      this.hasMore = hasMore;
+    }
   }
 
   @Data

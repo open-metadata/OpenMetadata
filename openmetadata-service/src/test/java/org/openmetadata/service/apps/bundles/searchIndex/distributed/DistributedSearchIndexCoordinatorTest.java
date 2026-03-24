@@ -16,6 +16,7 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +34,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -132,6 +134,11 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             anyLong(),
             isNull()); // registrationDeadline (no longer used)
+  }
+
+  @Test
+  void testGetCollectionDAO_ReturnsInjectedDAO() {
+    assertSame(collectionDAO, coordinator.getCollectionDAO());
   }
 
   @Test
@@ -470,6 +477,26 @@ class DistributedSearchIndexCoordinatorTest {
   }
 
   @Test
+  void testUpdatePartitionProgress_UsesPartitionProgressValues() {
+    SearchIndexPartition partition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(UUID.randomUUID())
+            .entityType("table")
+            .cursor(120L)
+            .processedCount(100L)
+            .successCount(95L)
+            .failedCount(5L)
+            .build();
+
+    coordinator.updatePartitionProgress(partition);
+
+    verify(partitionDAO)
+        .updateProgress(
+            eq(partition.getId().toString()), eq(120L), eq(100L), eq(95L), eq(5L), anyLong());
+  }
+
+  @Test
   void testCompletePartition_Success() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
@@ -523,6 +550,55 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             any(),
             anyInt());
+  }
+
+  @Test
+  void testCompletePartition_RecordsTrackerCompletion() {
+    UUID jobId = UUID.randomUUID();
+    UUID partitionId = UUID.randomUUID();
+    EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
+    coordinator.setEntityCompletionTracker(tracker);
+
+    SearchIndexPartitionRecord record =
+        new SearchIndexPartitionRecord(
+            partitionId.toString(),
+            jobId.toString(),
+            "table",
+            0,
+            0,
+            5000,
+            5000,
+            7500,
+            50,
+            PartitionStatus.PROCESSING.name(),
+            2500,
+            2500,
+            2400,
+            100,
+            TEST_SERVER_ID,
+            System.currentTimeMillis() - 10000,
+            System.currentTimeMillis() - 10000,
+            null,
+            System.currentTimeMillis() - 1000,
+            null,
+            0,
+            0L);
+
+    when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+    when(jobDAO.findById(jobId.toString()))
+        .thenReturn(createJobRecord(jobId, IndexJobStatus.RUNNING, null, "{}"));
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
+        .thenReturn(List.of(mock(SearchIndexPartitionRecord.class)));
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
+        .thenReturn(List.of());
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name()))
+        .thenReturn(List.of());
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name()))
+        .thenReturn(List.of());
+
+    coordinator.completePartition(partitionId, 5000, 0);
+
+    verify(tracker).recordPartitionComplete("table", false);
   }
 
   @Test
@@ -1016,6 +1092,18 @@ class DistributedSearchIndexCoordinatorTest {
   }
 
   @Test
+  void testTryAcquireReindexLock_ExceptionReturnsFalse() {
+    UUID jobId = UUID.randomUUID();
+    when(lockDAO.tryAcquireLock(
+            anyString(), eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong(), anyLong()))
+        .thenThrow(new IllegalStateException("lock store unavailable"));
+
+    boolean result = coordinator.tryAcquireReindexLock(jobId);
+
+    assertFalse(result);
+  }
+
+  @Test
   void testReleaseReindexLock() {
     UUID jobId = UUID.randomUUID();
     doNothing().when(lockDAO).releaseLock(anyString(), eq(jobId.toString()));
@@ -1035,6 +1123,53 @@ class DistributedSearchIndexCoordinatorTest {
     boolean result = coordinator.refreshReindexLock(jobId);
 
     assertTrue(result);
+  }
+
+  @Test
+  void testTransferReindexLock_Success() {
+    UUID fromJobId = UUID.randomUUID();
+    UUID toJobId = UUID.randomUUID();
+    when(lockDAO.transferLock(
+            anyString(),
+            eq(fromJobId.toString()),
+            eq(toJobId.toString()),
+            eq(TEST_SERVER_ID),
+            anyLong(),
+            anyLong()))
+        .thenReturn(true);
+
+    boolean result = coordinator.transferReindexLock(fromJobId, toJobId);
+
+    assertTrue(result);
+  }
+
+  @Test
+  void testTransferReindexLock_Failure() {
+    UUID fromJobId = UUID.randomUUID();
+    UUID toJobId = UUID.randomUUID();
+    when(lockDAO.transferLock(
+            anyString(),
+            eq(fromJobId.toString()),
+            eq(toJobId.toString()),
+            eq(TEST_SERVER_ID),
+            anyLong(),
+            anyLong()))
+        .thenReturn(false);
+
+    boolean result = coordinator.transferReindexLock(fromJobId, toJobId);
+
+    assertFalse(result);
+  }
+
+  @Test
+  void testGetParticipatingServers_ReturnsAssignedServers() {
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.getAssignedServers(jobId.toString()))
+        .thenReturn(List.of("server-a", "server-b"));
+
+    List<String> result = coordinator.getParticipatingServers(jobId);
+
+    assertEquals(List.of("server-a", "server-b"), result);
   }
 
   @Test
@@ -1060,6 +1195,28 @@ class DistributedSearchIndexCoordinatorTest {
     List<SearchIndexJob> result = coordinator.getRecentJobs(null, 10);
 
     assertEquals(2, result.size());
+  }
+
+  @Test
+  void testUpdateStagedIndexMapping_SerializesMapping() {
+    UUID jobId = UUID.randomUUID();
+    Map<String, String> stagedMapping = Map.of("table", "staged_table");
+    ArgumentCaptor<String> mappingCaptor = ArgumentCaptor.forClass(String.class);
+
+    coordinator.updateStagedIndexMapping(jobId, stagedMapping);
+
+    verify(jobDAO)
+        .updateStagedIndexMapping(eq(jobId.toString()), mappingCaptor.capture(), anyLong());
+    assertEquals(stagedMapping, JsonUtils.readValue(mappingCaptor.getValue(), Map.class));
+  }
+
+  @Test
+  void testUpdateStagedIndexMapping_AllowsNullMapping() {
+    UUID jobId = UUID.randomUUID();
+
+    coordinator.updateStagedIndexMapping(jobId, null);
+
+    verify(jobDAO).updateStagedIndexMapping(eq(jobId.toString()), isNull(), anyLong());
   }
 
   @Test
@@ -1096,6 +1253,16 @@ class DistributedSearchIndexCoordinatorTest {
   }
 
   @Test
+  void testDeleteJob_NotFound() {
+    UUID jobId = UUID.randomUUID();
+    when(jobDAO.findById(jobId.toString())).thenReturn(null);
+
+    coordinator.deleteJob(jobId);
+
+    verify(jobDAO, never()).delete(anyString());
+  }
+
+  @Test
   void testDeleteJob_NonTerminalState() {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
@@ -1125,6 +1292,112 @@ class DistributedSearchIndexCoordinatorTest {
 
     assertThrows(IllegalStateException.class, () -> coordinator.deleteJob(jobId));
     verify(jobDAO, never()).delete(anyString());
+  }
+
+  @Test
+  void testGetJobWithAggregatedStats_PreservesStagedMappingAndBuildsServerStats() {
+    UUID jobId = UUID.randomUUID();
+    Map<String, String> stagedMapping = Map.of("table", "staged_table");
+    EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
+
+    SearchIndexJobRecord jobRecord =
+        createJobRecord(
+            jobId,
+            IndexJobStatus.RUNNING,
+            JsonUtils.pojoToJson(stagedMapping),
+            JsonUtils.pojoToJson(
+                Map.of(
+                    "table",
+                    Map.of(
+                        "entityType",
+                        "table",
+                        "totalRecords",
+                        10,
+                        "processedRecords",
+                        0,
+                        "successRecords",
+                        0,
+                        "failedRecords",
+                        0,
+                        "totalPartitions",
+                        1,
+                        "completedPartitions",
+                        0,
+                        "failedPartitions",
+                        0))));
+    when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new AggregatedStatsRecord(10, 7, 6, 1, 1, 1, 0, 0, 0));
+    when(partitionDAO.getEntityStats(jobId.toString()))
+        .thenReturn(List.of(new EntityStatsRecord("table", 10, 7, 6, 1, 1, 1, 0)));
+    when(partitionDAO.getServerStats(jobId.toString()))
+        .thenReturn(
+            List.of(
+                new CollectionDAO.SearchIndexPartitionDAO.ServerStatsRecord(
+                    TEST_SERVER_ID, 7, 6, 1, 1, 1, 0)));
+
+    SearchIndexJob result = coordinator.getJobWithAggregatedStats(jobId);
+
+    assertEquals(stagedMapping, result.getStagedIndexMapping());
+    assertNotNull(result.getServerStats());
+    assertEquals(1, result.getServerStats().size());
+    assertEquals(7, result.getServerStats().get(TEST_SERVER_ID).getProcessedRecords());
+    assertEquals(6, result.getSuccessRecords());
+    assertEquals(1, result.getFailedRecords());
+  }
+
+  @Test
+  void testForceCompleteProcessingPartitions_CancelsInFlightPartitions() {
+    UUID jobId = UUID.randomUUID();
+    List<SearchIndexPartitionRecord> processing =
+        List.of(
+            createPartitionRecord(jobId, "table", 0, PartitionStatus.PROCESSING),
+            createPartitionRecord(jobId, "user", 1, PartitionStatus.PROCESSING));
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
+        .thenReturn(processing);
+
+    coordinator.forceCompleteProcessingPartitions(jobId);
+
+    verify(partitionDAO, times(2))
+        .update(
+            anyString(),
+            eq(PartitionStatus.CANCELLED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            anyLong(),
+            eq("Force-cancelled during job stop"),
+            anyInt());
+  }
+
+  @Test
+  void testForceCompleteProcessingPartitions_NoInFlightPartitions() {
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
+        .thenReturn(List.of());
+
+    coordinator.forceCompleteProcessingPartitions(jobId);
+
+    verify(partitionDAO, never())
+        .update(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any(),
+            anyInt());
   }
 
   // Helper methods
@@ -1157,18 +1430,23 @@ class DistributedSearchIndexCoordinatorTest {
   }
 
   private SearchIndexJobRecord createJobRecord(IndexJobStatus status) {
+    return createJobRecord(UUID.randomUUID(), status, null, "{}");
+  }
+
+  private SearchIndexJobRecord createJobRecord(
+      UUID jobId, IndexJobStatus status, String stagedIndexMapping, String statsJson) {
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
     return new SearchIndexJobRecord(
-        UUID.randomUUID().toString(),
+        jobId.toString(),
         status.name(),
         JsonUtils.pojoToJson(jobConfig),
         "staged_123_",
-        null, // stagedIndexMapping
+        stagedIndexMapping,
         10000,
         status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? 10000 : 5000,
         status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? 9900 : 4900,
         status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? 100 : 100,
-        "{}",
+        statsJson,
         "admin",
         System.currentTimeMillis() - 60000,
         System.currentTimeMillis() - 50000,

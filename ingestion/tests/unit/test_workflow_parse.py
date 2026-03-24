@@ -288,7 +288,7 @@ class TestWorkflowParse(TestCase):
                         "type": "Glue",
                         "awsConfig": {
                             "awsSecretAccessKey": "aws secret access key",
-                            "awsRegion": "aws region",
+                            "awsRegion": "us-east-1",
                             "endPointURL": "https://glue.<region_name>.amazonaws.com/",
                         },
                         "random": "extra",

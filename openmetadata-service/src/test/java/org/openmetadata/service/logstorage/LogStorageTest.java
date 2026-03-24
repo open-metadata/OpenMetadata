@@ -60,7 +60,7 @@ public class LogStorageTest {
     mockLogs.put("after", "3");
     mockLogs.put("total", "100");
 
-    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), anyString()))
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
         .thenReturn(mockLogs);
 
     // Test getting logs

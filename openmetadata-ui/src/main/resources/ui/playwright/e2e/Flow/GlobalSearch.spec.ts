@@ -14,7 +14,6 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const DESCRIPTION_SEARCH =
   'The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.';
@@ -24,7 +23,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test(
   'searching for longer description should work',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   async ({ page }) => {
     await redirectToHomePage(page);
 

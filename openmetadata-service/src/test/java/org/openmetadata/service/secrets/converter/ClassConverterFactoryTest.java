@@ -60,6 +60,9 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEquals(34, ClassConverterFactory.getConverterMap().size());
+    int originalSize = ClassConverterFactory.getConverterMap().size();
+    ClassConverterFactory.getConverter(AirflowConnection.class);
+    ClassConverterFactory.getConverter(BigQueryConnection.class);
+    assertEquals(originalSize, ClassConverterFactory.getConverterMap().size());
   }
 }

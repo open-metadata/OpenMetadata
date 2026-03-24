@@ -15,12 +15,10 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.describe(
   'Table & Data Model columns table pagination',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     test('Page size should persist across different pages', async ({
       dataConsumerPage: page,

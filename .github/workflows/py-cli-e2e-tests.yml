@@ -18,7 +18,7 @@ on:
       e2e-tests:
         description: "E2E Tests to run"
         required: True
-        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
+        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
       debug:
         description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered [default, true or false]. Default will trigger only on main branch."
         required: False
@@ -45,11 +45,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]') }}
+        e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]') }}
     environment: test
 
     steps:
     - name: Free Disk Space (Ubuntu)
+      if: matrix.e2e-test != 'python-unittests'
       uses: jlumbroso/free-disk-space@main
       with:
         tool-cache: false
@@ -71,21 +72,47 @@ jobs:
         role-session-name: github-ci-aws-e2e-tests
         aws-region: ${{ secrets.E2E_AWS_REGION }}
 
+    - name: Setup Openmetadata Test Environment (without server)
+      if: matrix.e2e-test == 'python-unittests'
+      uses: ./.github/actions/setup-openmetadata-test-environment
+      with:
+        python-version: '3.10'
+        install-server: 'false'
+
     - name: Setup Openmetadata Test Environment
+      if: matrix.e2e-test != 'python-unittests'
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
         python-version: '3.10'
 
-
-    - name: Run Python Tests & record coverage
-      if: matrix.e2e-test == 'python'
-      id: python-e2e-test
+    - name: Run Python Unit Tests
+      if: matrix.e2e-test == 'python-unittests'
+      id: python-unittest
+      continue-on-error: true
       run: |
         source env/bin/activate
-        make coverage
+        cd ingestion
+        nox --no-venv -s unit-tests
+      shell: bash
+
+    - name: Rename coverage file for Python unit tests
+      if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
+      run: mv ingestion/.coverage .coverage.python-unittests
+
+    - name: Run Python Integration Tests
+      if: matrix.e2e-test == 'python-integration'
+      id: python-integration-test
+      continue-on-error: true
+      run: |
+        source env/bin/activate
+        cd ingestion
+        nox --no-venv -s integration-tests -- --standalone --durations=5
+      env:
+        TESTCONTAINERS_RYUK_DISABLED: true
+      shell: bash
 
     - name: Run CLI E2E Python Tests & record coverage
-      if: matrix.e2e-test != 'python'
+      if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration'
       id: e2e-test
       continue-on-error: true
       env:
@@ -163,47 +190,62 @@ jobs:
         coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*
         coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
 
-    - name: Upload coverage artifact for Python tests
-      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
+    - name: Upload coverage artifact for Python unit tests
+      if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.e2e-test }}
-        path: .coverage
+        path: .coverage.python-unittests
+        include-hidden-files: true
+
+    - name: Rename coverage file for Python integration tests
+      if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
+      run: mv ingestion/.coverage .coverage.python-integration
+
+    - name: Upload coverage artifact for Python integration tests
+      if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: .coverage.python-integration
+        include-hidden-files: true
 
     - name: Upload coverage artifact for CLI E2E tests
-      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
+      if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
+        include-hidden-files: true
 
     - name: Upload tests artifact
-      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
+      if: (steps.e2e-test.outcome == 'success' || steps.python-unittest.outcome == 'success' || steps.python-integration-test.outcome == 'success') && env.DEBUG == 'false'
       uses: actions/upload-artifact@v4
       with:
         name: tests-${{ matrix.e2e-test }}
         path: ingestion/junit/test-results-*.xml
 
     - name: Clean Up
+      if: matrix.e2e-test != 'python-unittests'
       run: |
         cd ./docker/development
         docker compose down --remove-orphans
         sudo rm -rf ${PWD}/docker-volume
-    
+
     - name: Slack on Failure
-      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success' && env.DEBUG == 'false'
+      if: (steps.e2e-test.outcome == 'failure' || steps.python-unittest.outcome == 'failure' || steps.python-integration-test.outcome == 'failure') && env.DEBUG == 'false'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
           {
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"         
-          }          
+            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure
-      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
+      if: steps.e2e-test.outcome == 'failure' || steps.python-unittest.outcome == 'failure' || steps.python-integration-test.outcome == 'failure'
       run: |
         exit 1
 
@@ -235,7 +277,7 @@ jobs:
           make install_all install_test
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 

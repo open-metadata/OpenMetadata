@@ -17,6 +17,7 @@ from functools import partial
 from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
 import boto3
+import botocore.session
 from boto3 import Session
 from botocore.credentials import RefreshableCredentials
 from botocore.session import get_session
@@ -43,6 +44,18 @@ class AWSServices(Enum):
     REDSHIFT = "redshift"
     REDSHIFT_SERVERLESS = "redshift-serverless"
     LAKE_FORMATION = "lakeformation"
+
+
+def _get_valid_aws_regions() -> set:
+    """Derive the valid AWS region set from botocore endpoint data."""
+    session = botocore.session.get_session()
+    regions = set()
+    for partition in session.get_available_partitions():
+        regions.update(session.get_available_regions("ec2", partition_name=partition))
+    return regions
+
+
+VALID_AWS_REGIONS = _get_valid_aws_regions()
 
 
 class AWSAssumeRoleException(Exception):
@@ -86,6 +99,17 @@ class AWSClient:
             if isinstance(config, AWSCredentials)
             else (AWSCredentials.model_validate(config) if config else config)
         )
+        if self.config and self.config.awsRegion:
+            region = self.config.awsRegion
+            if region not in VALID_AWS_REGIONS:
+                msg = f"Invalid AWS Region: '{region}'."
+                if any(
+                    region.startswith(r) and len(region) == len(r) + 1
+                    for r in VALID_AWS_REGIONS
+                ):
+                    msg += " This looks like an availability zone rather than a region."
+                msg += f" Expected one of:" f" {', '.join(sorted(VALID_AWS_REGIONS))}"
+                raise ValueError(msg)
 
     @staticmethod
     def get_assume_role_config(

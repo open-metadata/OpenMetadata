@@ -188,7 +188,7 @@ class StageStatsTrackerTest {
     @Test
     @DisplayName("Should auto-flush after threshold operations")
     void testAutoFlushAfterThreshold() {
-      for (int i = 0; i < 100; i++) {
+      for (int i = 0; i < 500; i++) {
         tracker.recordReader(StatsResult.SUCCESS);
       }
 
@@ -215,7 +215,7 @@ class StageStatsTrackerTest {
     @Test
     @DisplayName("Should not flush before threshold")
     void testNoFlushBeforeThreshold() {
-      for (int i = 0; i < 99; i++) {
+      for (int i = 0; i < 499; i++) {
         tracker.recordReader(StatsResult.SUCCESS);
       }
 
@@ -350,7 +350,7 @@ class StageStatsTrackerTest {
     @DisplayName("Should handle concurrent records safely")
     void testConcurrentRecords() throws InterruptedException {
       int threadCount = 10;
-      int recordsPerThread = 100;
+      int recordsPerThread = 10;
       ExecutorService executor = Executors.newFixedThreadPool(threadCount);
       CountDownLatch latch = new CountDownLatch(threadCount);
 

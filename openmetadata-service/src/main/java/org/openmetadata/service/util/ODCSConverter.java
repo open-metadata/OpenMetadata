@@ -93,7 +93,9 @@ public class ODCSConverter {
     if (contract.getSchema() != null && !contract.getSchema().isEmpty()) {
       ODCSSchemaElement tableObject = new ODCSSchemaElement();
       String entityName =
-          contract.getEntity() != null ? contract.getEntity().getName() : contract.getName();
+          contract.getEntity() != null && contract.getEntity().getName() != null
+              ? contract.getEntity().getName()
+              : contract.getName();
       tableObject.setName(entityName);
       tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
       tableObject.setPhysicalType("table");
@@ -669,6 +671,7 @@ public class ODCSConverter {
 
   private static ContractSLA convertODCSSLAToContract(List<ODCSSlaProperty> slaProperties) {
     ContractSLA sla = new ContractSLA();
+    sla.setTimezone(null);
 
     for (ODCSSlaProperty prop : slaProperties) {
       if (prop.getProperty() == null) continue;
