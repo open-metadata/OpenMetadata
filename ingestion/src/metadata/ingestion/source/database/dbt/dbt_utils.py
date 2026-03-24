@@ -646,13 +646,18 @@ def create_test_case_parameter_values(dbt_test):
     return None
 
 
-# Characters that are forbidden in entityLink column-name segments by the Pydantic
-# pattern (?u)^<#E::\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$.
-# When test_metadata.kwargs["column_name"] contains these chars it means dbt is
-# referencing a SQL expression (e.g. "date || '-' || order_id") rather than a
-# real column identifier.  Returning None in that case causes the test case to be
-# created at table level, which is semantically more accurate than pointing to a
-# column that does not actually exist in the table.
+# Subset of characters that are forbidden in entityLink column-name segments by
+# the Pydantic pattern
+#   (?u)^<#E::\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$.
+# The full pattern also treats unescaped ':' as reserved, but we intentionally
+# do not include ':' here because it may appear in valid identifiers and is
+# correctly handled (escaped) by the entity_link utilities when building the
+# final entityLink string.  When test_metadata.kwargs["column_name"] contains
+# any of these characters it typically means dbt is referencing a SQL expression
+# (e.g. "date || '-' || order_id") rather than a real column identifier.
+# Returning None in that case causes the test case to be created at table level,
+# which is semantically more accurate than pointing to a column that does not
+# actually exist in the table.
 _ENTITY_LINK_FORBIDDEN_CHARS = frozenset("|<>")
 
 
