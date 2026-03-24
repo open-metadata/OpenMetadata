@@ -15,7 +15,7 @@ import { Edge } from 'reactflow';
 const EDGE_COLOR_BRAND = 'var(--tw-color-brand-600)';
 const EDGE_COLOR_INDIGO = 'var(--tw-color-indigo-600)';
 const EDGE_COLOR_ERROR = 'var(--tw-color-error-600)';
-const EDGE_COLOR_DEFAULT = 'rgba(177, 177, 183)';
+const EDGE_COLOR_DEFAULT = 'rgb(177, 177, 183)';
 
 export interface EdgeStyle {
   stroke: string;
