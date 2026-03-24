@@ -59,7 +59,7 @@ describe('EdgeStyleUtils', () => {
       );
 
       expect(style).toEqual({
-        stroke: 'rgba(177, 177, 183)',
+        stroke: 'rgb(177, 177, 183)',
         opacity: 1,
         strokeWidth: 2,
       });
@@ -260,7 +260,7 @@ describe('EdgeStyleUtils', () => {
       );
 
       expect(style).toBeDefined();
-      expect(style.stroke).toBe('rgba(177, 177, 183)');
+      expect(style.stroke).toBe('rgb(177, 177, 183)');
     });
 
     it('requires both source and target columns for column lineage highlighting', () => {
