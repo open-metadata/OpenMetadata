@@ -270,6 +270,27 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
+  void testSendMessage_SafetyNetCatchesEntityNotFoundFromTrigger() throws Exception {
+    ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
+    EntityReference entityRef = createEntityReference();
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(entityRef);
+
+      doThrow(EntityNotFoundException.byMessage("table instance for test-id not found"))
+          .when(workflowHandler)
+          .triggerWithSignal(anyString(), anyMap());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+    }
+  }
+
+  @Test
   void testSendMessage_SkipsInvalidEventTypes() throws Exception {
     ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_DELETED);
 
