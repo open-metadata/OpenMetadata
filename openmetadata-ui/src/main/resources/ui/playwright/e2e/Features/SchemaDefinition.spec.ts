@@ -13,7 +13,6 @@
 import test, { expect } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const table = {
   term: 'dim___reserved__colon____reserved__arrow__address',
@@ -27,7 +26,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe(
   'Schema definition (views)',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     test.beforeEach('pre-requisite', async ({ page }) => {
       await redirectToHomePage(page);
