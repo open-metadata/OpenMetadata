@@ -12,9 +12,9 @@
  */
 import { expect, Page } from '@playwright/test';
 import {
-  DataContractSecuritySlaData,
   DATA_CONTRACT_DETAILS,
   DATA_CONTRACT_SECURITY_CONSUMER_DETAILS,
+  DataContractSecuritySlaData,
 } from '../constant/dataContracts';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
@@ -405,9 +405,12 @@ export const navigateToContractTab = async (page: Page) => {
 
 export const openContractActionsDropdown = async (page: Page) => {
   await page.getByTestId('manage-contract-actions').click();
-  await page.locator('.contract-action-dropdown').waitFor({
-    state: 'visible',
-  });
+  await page
+    .getByTestId('contract-edit-button')
+    .waitFor({ state: 'visible' })
+    .catch(() =>
+      page.getByTestId('export-contract-button').waitFor({ state: 'visible' })
+    );
 };
 
 export const clickAddContractButton = async (page: Page) => {

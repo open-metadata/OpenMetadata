@@ -35,84 +35,155 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ContractImportModal from './ODCSImportModal.component';
 
-const mockTheme = {
-  palette: {
-    grey: {
-      50: '#fafafa',
-      100: '#f5f5f5',
-    },
-    primary: {
-      main: '#1976d2',
-    },
-    divider: '#e0e0e0',
-    text: {
-      primary: '#212121',
-      secondary: '#757575',
-    },
-    action: {
-      hover: 'rgba(0, 0, 0, 0.04)',
-    },
-    allShades: {
-      success: {
-        50: '#e8f5e9',
-        500: '#4caf50',
-        700: '#388e3c',
-      },
-      error: {
-        50: '#ffebee',
-        100: '#ffcdd2',
-        600: '#e53935',
-      },
-      warning: {
-        50: '#fff8e1',
-        300: '#ffb74d',
-        600: '#fb8c00',
-        800: '#ef6c00',
-      },
-    },
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: ({
+    children,
+    color: _color,
+    size: _size,
+  }: {
+    children: React.ReactNode;
+    color?: string;
+    size?: string;
+  }) => <span>{children}</span>,
+  Button: ({
+    children,
+    onPress,
+    isDisabled,
+    isLoading: _isLoading,
+    iconLeading: Icon,
+    ...rest
+  }: {
+    children?: React.ReactNode;
+    onPress?: () => void;
+    isDisabled?: boolean;
+    isLoading?: boolean;
+    iconLeading?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+    [key: string]: unknown;
+  }) => {
+    const renderIcon = () => {
+      if (!Icon) {
+        return null;
+      }
+      // always use CloseIcon test id for simplicity
+
+      return <Icon data-testid="CloseIcon" />;
+    };
+
+    return (
+      <button disabled={isDisabled} {...rest} onClick={() => onPress?.()}>
+        {renderIcon()}
+        {children}
+      </button>
+    );
   },
-};
+  Dialog: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  Modal: ({
+    children,
+    className: _className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => <div>{children}</div>,
+  ModalOverlay: ({
+    children,
+    isOpen,
+    onOpenChange: _onOpenChange,
+  }: {
+    children: React.ReactNode;
+    isOpen: boolean;
+    onOpenChange?: (isOpen: boolean) => void;
+  }) => (isOpen ? <div>{children}</div> : null),
+  RadioButton: ({
+    value,
+    label: _label,
+    checked,
+    onChange,
+  }: {
+    value: string;
+    label?: string;
+    checked?: boolean;
+    onChange?: () => void;
+  }) => (
+    <input
+      checked={checked}
+      defaultChecked={value === 'merge'}
+      name="import-mode"
+      type="radio"
+      value={value}
+      onChange={onChange}
+    />
+  ),
+  RadioGroup: ({
+    children,
+    value,
+    onChange,
+  }: {
+    children: React.ReactNode;
+    value?: string;
+    onChange?: (value: string) => void;
+  }) => {
+    // clone children to pass checked and onChange
+    return (
+      <div>
+        {React.Children.map(children, (child) => {
+          if (React.isValidElement(child) && child.props.value) {
+            return React.cloneElement(child, {
+              checked: child.props.value === value,
+              onChange: () => onChange?.(child.props.value),
+            });
+          }
 
-jest.mock('@mui/material', () => {
-  const actualMui = jest.requireActual('@mui/material');
+          return child;
+        })}
+      </div>
+    );
+  },
+  Select: ({
+    items,
+    onSelectionChange,
+    selectedKey,
+    placeholder,
+    ...rest
+  }: {
+    items?: Array<{ id: string; label?: string }>;
+    onSelectionChange?: (key: string | null) => void;
+    selectedKey?: string | null;
+    placeholder?: string;
+    [key: string]: unknown;
+  }) => (
+    <select
+      value={selectedKey ?? ''}
+      onChange={(e) => onSelectionChange?.(e.target.value || null)}
+      {...rest}>
+      {placeholder && <option value="">{placeholder}</option>}
+      {items?.map((item) => (
+        <option key={item.id} value={item.id}>
+          {item.label}
+        </option>
+      ))}
+    </select>
+  ),
+  SelectItem: ({ children, id }: { children: React.ReactNode; id: string }) => (
+    <option value={id}>{children}</option>
+  ),
+  Typography: ({
+    children,
+    as: Component = 'div',
+    className,
+  }: {
+    children: React.ReactNode;
+    as?: React.ElementType;
+    className?: string;
+  }) => <Component className={className}>{children}</Component>,
+  Dot: () => <span data-testid="dot-icon" />, // simple dot icon mock
+}));
 
-  return {
-    ...actualMui,
-    useTheme: () => mockTheme,
-    Select: ({
-      children,
-      value,
-      onChange,
-      displayEmpty,
-    }: {
-      children: React.ReactNode;
-      value: string;
-      onChange: (e: { target: { value: string } }) => void;
-      displayEmpty?: boolean;
-    }) => (
-      <select
-        data-testid="object-selector"
-        value={value}
-        onChange={(e) => onChange({ target: { value: e.target.value } })}>
-        {displayEmpty && <option value="">Select Schema Object</option>}
-        {children}
-      </select>
-    ),
-    MenuItem: ({
-      children,
-      value,
-      disabled,
-    }: {
-      children: React.ReactNode;
-      value: string;
-      disabled?: boolean;
-    }) => (
-      <option disabled={disabled} value={value}>
-        {children}
-      </option>
-    ),
-  };
-});
+jest.mock('../../common/Loader/Loader', () => ({
+  __esModule: true,
+  default: () => <div data-testid="loader" />,
+}));
 
 jest.mock('../../../rest/contractAPI', () => ({
   createContract: jest.fn(),
@@ -646,9 +717,7 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const dropZone = screen
-        .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+      const dropZone = screen.getByTestId('drop-zone') as HTMLElement;
 
       await act(async () => {
         fireEvent.dragOver(dropZone, { preventDefault: jest.fn() });
@@ -669,9 +738,7 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const dropZone = screen
-        .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+      const dropZone = screen.getByTestId('drop-zone') as HTMLElement;
 
       await act(async () => {
         fireEvent.dragLeave(dropZone, { preventDefault: jest.fn() });
@@ -692,9 +759,7 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const dropZone = screen
-        .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+      const dropZone = screen.getByTestId('drop-zone') as HTMLElement;
 
       const file = new File([validODCSYaml], 'contract.yaml', {
         type: 'application/x-yaml',
@@ -723,9 +788,7 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const dropZone = screen
-        .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+      const dropZone = screen.getByTestId('drop-zone') as HTMLElement;
 
       const file = new File(['invalid'], 'contract.txt', {
         type: 'text/plain',
@@ -752,9 +815,7 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const dropZone = screen
-        .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+      const dropZone = screen.getByTestId('drop-zone') as HTMLElement;
 
       await act(async () => {
         fireEvent.drop(dropZone, {
@@ -795,7 +856,9 @@ describe('ContractImportModal', () => {
         expect(screen.getByText('contract.yaml')).toBeInTheDocument();
       });
 
-      const removeButton = screen.getByTestId('remove-file-button');
+      const removeButton = screen.getByTestId(
+        'remove-file-button'
+      ) as HTMLElement;
 
       await act(async () => {
         fireEvent.click(removeButton);
@@ -1415,12 +1478,12 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const objectSelector = screen.getByTestId('object-selector');
+        const objectSelector = screen.getByTestId('schema-object-select');
 
         expect(objectSelector).toBeInTheDocument();
       });
 
-      const objectSelector = screen.getByTestId('object-selector');
+      const objectSelector = screen.getByTestId('schema-object-select');
 
       await act(async () => {
         fireEvent.change(objectSelector, { target: { value: 'orders' } });

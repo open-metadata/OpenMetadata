@@ -70,10 +70,7 @@ export const importODCSYaml = async (
 
   // If existing contract, select mode
   if (options?.hasExistingContract && options?.mode) {
-    const modeRadio = page.locator(
-      `input[type="radio"][value="${options.mode}"]`
-    );
-    await modeRadio.click();
+    await page.getByTestId(`import-mode-${options.mode}`).click();
   }
 
   // Determine which API endpoint will be called based on mode

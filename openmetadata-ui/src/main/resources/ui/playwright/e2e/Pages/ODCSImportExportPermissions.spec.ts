@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ODCS_VALID_BASIC_YAML } from '../../constant/dataContracts';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -28,7 +29,6 @@ import {
   openODCSImportDropdown,
 } from '../../utils/odcsImportExport';
 import { test as base } from '../fixtures/pages';
-import { ODCS_VALID_BASIC_YAML } from '../../constant/dataContracts';
 
 // Policy rules for dataContract EditAll permissions
 const DATA_CONTRACT_EDIT_RULES = [
@@ -246,9 +246,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(page, tableWithContract);
 
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await page
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       await verifyContractButtonVisibility(page, {
         importOdcs: true,
         importOm: true,
@@ -265,9 +265,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(page, tableWithContract);
 
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await page
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       const download = await performODCSExport(page);
       expect(download.suggestedFilename()).toContain('.yaml');
     });
@@ -297,9 +297,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(dataConsumerPage, tableWithContract);
 
       await dataConsumerPage.getByTestId('manage-contract-actions').click();
-      await dataConsumerPage.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await dataConsumerPage
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
 
       await verifyContractButtonVisibility(dataConsumerPage, {
         importOdcs: false,
@@ -319,9 +319,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(dataConsumerPage, tableWithContract);
 
       await dataConsumerPage.getByTestId('manage-contract-actions').click();
-      await dataConsumerPage.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await dataConsumerPage
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       const download = await performODCSExport(dataConsumerPage);
       expect(download.suggestedFilename()).toContain('.yaml');
     });
@@ -338,9 +338,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(dataStewardPage, tableWithContract);
 
       await dataStewardPage.getByTestId('manage-contract-actions').click();
-      await dataStewardPage.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await dataStewardPage
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       await verifyContractButtonVisibility(dataStewardPage, {
         importOdcs: false,
         importOm: false,
@@ -359,9 +359,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(dataStewardPage, tableWithContract);
 
       await dataStewardPage.getByTestId('manage-contract-actions').click();
-      await dataStewardPage.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await dataStewardPage
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       const download = await performODCSExport(dataStewardPage);
       expect(download.suggestedFilename()).toContain('.yaml');
     });
@@ -378,9 +378,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(dataContractEditPage, tableWithContract);
 
       await dataContractEditPage.getByTestId('manage-contract-actions').click();
-      await dataContractEditPage.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await dataContractEditPage
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       await verifyContractButtonVisibility(dataContractEditPage, {
         importOdcs: true,
         importOm: true,
@@ -399,9 +399,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(dataContractEditPage, tableWithContract);
 
       await dataContractEditPage.getByTestId('manage-contract-actions').click();
-      await dataContractEditPage.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await dataContractEditPage
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       const download = await performODCSExport(dataContractEditPage);
       expect(download.suggestedFilename()).toContain('.yaml');
     });
@@ -455,9 +455,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(dataContractViewPage, tableWithContract);
 
       await dataContractViewPage.getByTestId('manage-contract-actions').click();
-      await dataContractViewPage.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await dataContractViewPage
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       await verifyContractButtonVisibility(dataContractViewPage, {
         importOdcs: false,
         importOm: false,
@@ -476,9 +476,9 @@ test.describe('ODCS Import/Export - RBAC Permissions', () => {
       await navigateToContractTab(dataContractViewPage, tableWithContract);
 
       await dataContractViewPage.getByTestId('manage-contract-actions').click();
-      await dataContractViewPage.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await dataContractViewPage
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       const download = await performODCSExport(dataContractViewPage);
       expect(download.suggestedFilename()).toContain('.yaml');
     });

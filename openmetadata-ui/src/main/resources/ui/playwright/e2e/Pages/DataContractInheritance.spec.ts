@@ -679,9 +679,9 @@ test.describe('Data Contract Inheritance', () => {
 
       // Click edit to add asset's own contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await page
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       await page.getByTestId('contract-edit-button').click();
 
       // Wait for edit form to load
@@ -727,9 +727,9 @@ test.describe('Data Contract Inheritance', () => {
     await test.step('Edit contract again to ADD its own SLA', async () => {
       // Click edit to modify contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await page
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       await page.getByTestId('contract-edit-button').click();
 
       // Wait for edit form to load
@@ -854,9 +854,9 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Click Edit on inherited contract - should open ADD form, not EDIT', async () => {
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await page
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       await page.getByTestId('contract-edit-button').click();
 
       // Wait for form to load
@@ -990,19 +990,18 @@ test.describe('Data Contract Inheritance', () => {
 
       // Open the contract actions menu
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
+      await page
+        .getByTestId('export-contract-button')
+        .waitFor({ state:ble' });
+await HaveAttribut'aria-disabled', 
       // Verify delete button is disabled for inherited contract
       const deleteButton = page.getByTestId('delete-contract-button');
       await expect(deleteButton).toBeVisible();
 
       // The delete button should have the 'disabled' class or be visually disabled
-      const deleteMenuItem = page
-        .locator('.contract-action-dropdown .ant-dropdown-menu-item')
-        .filter({ hasText: 'Delete' });
-      await expect(deleteMenuItem).toHaveAttribute('aria-disabled', 'true');
+      const deleteMenuItem = page.getByTestId('delete-contract-button');
+      const isDisabled = await deleteMenuItem.getAttribute('aria-disabled');
+      expect(isDisabled).toBe('true');
     });
   });
 
@@ -1057,9 +1056,9 @@ test.describe('Data Contract Inheritance', () => {
 
       // Open the contract actions menu
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await page
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
 
       // Click Run Now - this should trigger entity-based validation for inherited contracts
       const validateResponse = page.waitForResponse((response) => {
@@ -1230,9 +1229,9 @@ test.describe('Data Contract Inheritance', () => {
 
       // Click edit to add asset's own contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await page
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
       await page.getByTestId('contract-edit-button').click();
 
       await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1272,9 +1271,9 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Delete asset own contract', async () => {
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
+      await page
+        .getByTestId('export-contract-button')
+        .waitFor({ state: 'visible' });
 
       // Click delete
       const deleteResponse = page.waitForResponse((response) => {

@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import {
@@ -75,13 +76,19 @@ jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
 }));
 
 jest.mock('../../AlertBar/AlertBar', () => {
-  return function MockAlertBar({ message }: any) {
+  return function MockAlertBar({ message }: { message: string }) {
     return <div data-testid="alert-bar">{message}</div>;
   };
 });
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return function MockErrorPlaceHolder({ type, children }: any) {
+  return function MockErrorPlaceHolder({
+    type,
+    children,
+  }: {
+    type: string;
+    children?: React.ReactNode;
+  }) {
     return (
       <div data-testid="error-placeholder" data-type={type}>
         {children}
@@ -91,7 +98,11 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
 });
 
 jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
-  return function MockContractExecutionChart({ contract }: any) {
+  return function MockContractExecutionChart({
+    contract,
+  }: {
+    contract?: { name?: string };
+  }) {
     return (
       <div data-testid="contract-execution-chart">
         Chart for {contract?.name}
@@ -105,7 +116,11 @@ jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
 });
 
 jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
-  return function MockContractSecurityCard({ security }: any) {
+  return function MockContractSecurityCard({
+    security,
+  }: {
+    security?: { dataClassification?: string };
+  }) {
     return (
       <div data-testid="contract-security-card">
         ContractSecurityCard - {security?.dataClassification}
@@ -115,7 +130,11 @@ jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
 });
 
 jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
-  return function MockContractViewSwitchTab({ handleModeChange }: any) {
+  return function MockContractViewSwitchTab({
+    handleModeChange,
+  }: {
+    handleModeChange: (e: { target: { value: string } }) => void;
+  }) {
     return (
       <div data-testid="contract-view-switch-tab">
         <button
@@ -164,7 +183,11 @@ jest.mock('../ODCSImportModal', () => {
 });
 
 jest.mock('../ContractYaml/ContractYaml.component', () => {
-  return function MockContractYaml({ contract }: any) {
+  return function MockContractYaml({
+    contract,
+  }: {
+    contract?: { name?: string };
+  }) {
     return <div data-testid="contract-yaml">YAML for {contract?.name}</div>;
   };
 });
@@ -196,12 +219,18 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
 });
 
 jest.mock('../../common/Table/Table', () => {
-  return function MockTable({ dataSource, loading }: any) {
+  return function MockTable({
+    dataSource,
+    loading,
+  }: {
+    dataSource?: Array<{ id: string; name: string }>;
+    loading?: boolean;
+  }) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Data Length: {dataSource?.length || 0}</div>
-        {dataSource?.map((item: any) => (
+        {dataSource?.map((item) => (
           <div data-testid={`table-row-${item.id}`} key={item.id}>
             {item.name}
           </div>
@@ -252,6 +281,79 @@ jest.mock('@melloware/react-logviewer', () => {
   return {
     Loading: () => <div data-testid="loading">Loading...</div>,
   };
+});
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  let menuOnAction: ((key: string | number) => void) | undefined;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const MockButton = ({ children, onClick, 'data-testid': testId }: any) => (
+    <button data-testid={testId} onClick={onClick}>
+      {children}
+    </button>
+  );
+
+  const MockDropdownRoot = ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+
+  const MockDropdownPopover = ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+
+  const MockDropdownMenu = ({
+    children,
+    onAction,
+    'data-testid': testId,
+  }: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any) => {
+    menuOnAction = onAction;
+
+    return <div data-testid={testId}>{children}</div>;
+  };
+
+  const MockDropdownItem = ({
+    label,
+    id,
+    'data-testid': testId,
+    isDisabled,
+  }: {
+    label?: string;
+    id?: string | number;
+    'data-testid'?: string;
+    isDisabled?: boolean;
+    icon?: React.ElementType;
+    className?: string;
+  }) => (
+    <button
+      data-testid={testId}
+      disabled={isDisabled}
+      onClick={() =>
+        !isDisabled && menuOnAction && menuOnAction(id as string | number)
+      }>
+      {label}
+    </button>
+  );
+
+  const MockDropdownSeparator = () => <hr />;
+
+  const Dropdown = {
+    Root: MockDropdownRoot,
+    Popover: MockDropdownPopover,
+    Menu: MockDropdownMenu,
+    Item: MockDropdownItem,
+    Separator: MockDropdownSeparator,
+  };
+
+  const MockTooltip = ({
+    children,
+    title: _title,
+  }: {
+    children: React.ReactNode;
+    title?: string;
+  }) => <>{children}</>;
+
+  return { Button: MockButton, Dropdown, Tooltip: MockTooltip };
 });
 
 const mockOnEdit = jest.fn();
@@ -492,16 +594,12 @@ describe('ContractDetail', () => {
       fireEvent.click(screen.getByTestId('manage-contract-actions'));
       const deleteButton = screen.getByTestId('delete-contract-button');
 
-      // The delete menu item should have disabled class
-      expect(deleteButton).toHaveClass('disabled');
+      expect(deleteButton).toBeDisabled();
 
-      // Clicking should not call onDelete since the menu item is disabled
       mockOnDelete.mockClear();
       fireEvent.click(deleteButton);
 
-      // Note: The actual click prevention is handled by antd's Menu disabled prop,
-      // but we verify the disabled class is applied
-      expect(deleteButton.closest('[class*="disabled"]')).toBeTruthy();
+      expect(mockOnDelete).not.toHaveBeenCalled();
     });
 
     it('should not disable delete button for non-inherited contracts', () => {

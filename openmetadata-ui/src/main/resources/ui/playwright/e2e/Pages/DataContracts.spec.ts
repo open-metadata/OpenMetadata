@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test as base, expect, Page } from '@playwright/test';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -86,7 +87,6 @@ import {
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
@@ -902,9 +902,9 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       await test.step('Re-select some columns on page 1, save and validate', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
-          state: 'visible',
-        });
+        await page
+          .getByTestId('export-contract-button')
+          .waitFor({ state: 'visible' });
         await page.getByTestId('contract-edit-button').click();
 
         const columnResponse = page.waitForResponse(
@@ -1463,9 +1463,9 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     // Run Contract After Schema Change should Fail
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.locator('.contract-action-dropdown').waitFor({
-      state: 'visible',
-    });
+    await page
+      .getByTestId('export-contract-button')
+      .waitFor({ state: 'visible' });
 
     await page.getByTestId('contract-run-now-button').click();
 
@@ -1492,9 +1492,9 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.locator('.contract-action-dropdown').waitFor({
-      state: 'visible',
-    });
+    await page
+      .getByTestId('export-contract-button')
+      .waitFor({ state: 'visible' });
     await page.getByTestId('contract-edit-button').click();
 
     await page.getByRole('tab', { name: 'Schema' }).click();
@@ -2077,9 +2077,9 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         // Click to import via the modal
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
-          state: 'visible',
-        });
+        await page
+          .getByTestId('export-contract-button')
+          .waitFor({ state: 'visible' });
 
         await page.getByTestId('import-odcs-contract-button').click();
 
@@ -2160,9 +2160,9 @@ description:
       await test.step('Import again via modal with replace mode', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
-          state: 'visible',
-        });
+        await page
+          .getByTestId('export-contract-button')
+          .waitFor({ state: 'visible' });
 
         await page.getByTestId('import-odcs-contract-button').click();
 
@@ -2193,11 +2193,7 @@ description:
         ).toBeVisible();
 
         // Select replace mode
-        const replaceRadio = page.locator(
-          'input[type="radio"][value="replace"]'
-        );
-        await expect(replaceRadio).toBeVisible();
-        await replaceRadio.click();
+        await page.getByTestId('import-mode-replace').click();
 
         const importResponse = page.waitForResponse(
           '/api/v1/dataContracts/odcs/yaml**mode=replace**'
