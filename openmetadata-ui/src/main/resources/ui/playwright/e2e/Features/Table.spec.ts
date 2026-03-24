@@ -730,6 +730,19 @@ test.describe(
             response.url().includes('fields=') &&
             response.request().method() === 'GET'
         ),
+        page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(
+                `/api/v1/tables/name/${encodeURIComponent(
+                  createdTable.fullyQualifiedName
+                )}/columns`
+              ) &&
+            response.url().includes('profile') &&
+            response.request().method() === 'GET',
+          { timeout: 90_000 }
+        ),
         page.goto(clipboardText),
       ]);
       await waitForAllLoadersToDisappear(page);
