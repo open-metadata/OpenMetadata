@@ -355,9 +355,9 @@ public class SubscriptionUtil {
     Set<String> receiverList = new HashSet<>();
 
     if (category.equals(SubscriptionDestination.SubscriptionCategory.USERS)) {
-      if (nullOrEmpty(action.getReceivers())) {
+      if (action.getReceivers() == null || action.getReceivers().isEmpty()) {
         throw new IllegalArgumentException(
-            "Email Alert Invoked with Illegal Type and Settings. Emtpy or Null Users Recipients List");
+            "Email Alert Invoked with Illegal Type and Settings. Empty or Null Users Recipients List");
       }
       List<User> users =
           action.getReceivers().stream()
@@ -365,9 +365,9 @@ public class SubscriptionUtil {
               .toList();
       receiverList.addAll(getEmailOrWebhookEndpointForUsers(users, type));
     } else if (category.equals(SubscriptionDestination.SubscriptionCategory.TEAMS)) {
-      if (nullOrEmpty(action.getReceivers())) {
+      if (action.getReceivers() == null || action.getReceivers().isEmpty()) {
         throw new IllegalArgumentException(
-            "Email Alert Invoked with Illegal Type and Settings. Emtpy or Null Teams Recipients List");
+            "Email Alert Invoked with Illegal Type and Settings. Empty or Null Teams Recipients List");
       }
       List<Team> teams =
           action.getReceivers().stream()
@@ -491,7 +491,7 @@ public class SubscriptionUtil {
     Invocation.Builder result = SecurityUtil.addHeaders(target, authHeaders);
     // Prepare webhook headers, including HMAC signature if secret key is provided
     prepareWebhookHeaders(result, webhook, json);
-    return SecurityUtil.addHeaders(target, authHeaders);
+    return result;
   }
 
   public static void prepareWebhookHeaders(

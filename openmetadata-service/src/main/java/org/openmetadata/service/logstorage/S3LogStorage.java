@@ -525,8 +525,14 @@ public class S3LogStorage implements LogStorageInterface {
         List<String> lines = new ArrayList<>();
         String line;
         int lineNumber = 0;
-        int startLine =
-            afterCursor != null && !afterCursor.isEmpty() ? Integer.parseInt(afterCursor) : 0;
+        int startLine = 0;
+        if (afterCursor != null && !afterCursor.isEmpty()) {
+          try {
+            startLine = Integer.parseInt(afterCursor);
+          } catch (NumberFormatException ex) {
+            LOG.warn("Invalid cursor format: {}", afterCursor);
+          }
+        }
 
         while (lineNumber < startLine && (line = reader.readLine()) != null) {
           lineNumber++;
@@ -675,6 +681,7 @@ public class S3LogStorage implements LogStorageInterface {
   @Override
   public void deleteAllLogs(String pipelineFQN) throws IOException {
     String keyPrefix = buildKeyPrefix(pipelineFQN);
+    String streamKeyPrefix = pipelineFQN + "/";
 
     // Clean up active streams for this pipeline
     activeStreams
@@ -693,6 +700,10 @@ public class S3LogStorage implements LogStorageInterface {
               }
               return false;
             });
+
+    recentLogsCache.asMap().keySet().removeIf(streamKey -> streamKey.startsWith(streamKeyPrefix));
+    activeListeners.keySet().removeIf(streamKey -> streamKey.startsWith(streamKeyPrefix));
+    partialLogOffsets.keySet().removeIf(streamKey -> streamKey.startsWith(streamKeyPrefix));
 
     try {
       ListObjectsV2Request request =

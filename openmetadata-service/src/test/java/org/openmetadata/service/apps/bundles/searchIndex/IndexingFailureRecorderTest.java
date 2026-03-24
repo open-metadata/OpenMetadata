@@ -381,7 +381,7 @@ class IndexingFailureRecorderTest {
   class FailureStageTests {
 
     @Test
-    @DisplayName("Reader failures should have READER stage")
+    @DisplayName("Reader batch failures should have READER_EXCEPTION stage")
     @SuppressWarnings("unchecked")
     void testReaderFailureStage() {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
@@ -392,7 +392,7 @@ class IndexingFailureRecorderTest {
         recorder.recordReaderFailure("table", "Error");
 
         verify(failureDAO).insertBatch(captor.capture());
-        assertEquals("READER", captor.getValue().get(0).getFailureStage());
+        assertEquals("READER_EXCEPTION", captor.getValue().get(0).getFailureStage());
       }
     }
 
@@ -472,7 +472,7 @@ class IndexingFailureRecorderTest {
     }
 
     @Test
-    @DisplayName("Reader failures should have null entity ID and FQN")
+    @DisplayName("Reader batch failures should use synthetic entity identifiers")
     @SuppressWarnings("unchecked")
     void testReaderFailureNullEntityFields() {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
@@ -485,8 +485,8 @@ class IndexingFailureRecorderTest {
         verify(failureDAO).insertBatch(captor.capture());
         SearchIndexFailureRecord record = captor.getValue().get(0);
 
-        assertEquals(null, record.getEntityId());
-        assertEquals(null, record.getEntityFqn());
+        assertTrue(record.getEntityId() != null && !record.getEntityId().isEmpty());
+        assertEquals("BATCH_FAILED", record.getEntityFqn());
       }
     }
 

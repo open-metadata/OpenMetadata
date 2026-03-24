@@ -12,7 +12,7 @@
  */
 import { Col, Form, Row } from 'antd';
 import { FormProviderProps } from 'antd/lib/form/context';
-import { isEmpty, isString } from 'lodash';
+import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +21,6 @@ import {
   DEFAULT_SCHEDULE_CRON_DAILY,
   SCHEDULAR_OPTIONS,
 } from '../../../../constants/Schedular.constants';
-import { TestCase } from '../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
@@ -35,6 +34,7 @@ import { escapeESReservedCharacters } from '../../../../utils/StringsUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
+import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import {
   AddTestSuitePipelineProps,
   TestSuiteIngestionDataType,
@@ -129,14 +129,14 @@ const AddTestSuitePipeline = ({
       selectAllTestCases,
       raiseOnError,
     } = values;
+    const testCaseNames = normalizeSelectedTestProp(testCases);
+
     onSubmit({
       cron,
       enableDebugLog,
       name,
       selectAllTestCases,
-      testCases: testCases?.map((testCase: TestCase | string) =>
-        isString(testCase) ? testCase : testCase.name
-      ),
+      testCases: testCaseNames.length > 0 ? testCaseNames : undefined,
       raiseOnError,
     });
   };
@@ -146,6 +146,9 @@ const AddTestSuitePipeline = ({
     { forms }
   ) => {
     const form = forms['schedular-form'];
+    if (!form) {
+      return;
+    }
     const value = form.getFieldValue('selectAllTestCases');
     setSelectAllTestCases(value);
     if (value) {

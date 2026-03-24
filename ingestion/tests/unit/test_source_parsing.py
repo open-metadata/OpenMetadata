@@ -400,7 +400,7 @@ def test_glue():
                 "awsConfig": {
                     "awsAccessKeyId": "aws accessKey id",
                     "awsSecretAccessKey": "aws secret access key",
-                    "awsRegion": "aws region",
+                    "awsRegion": "us-east-1",
                     "endPointURL": "https://glue.region.amazonaws.com",
                 },
             }

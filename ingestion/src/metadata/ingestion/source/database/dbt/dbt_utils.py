@@ -646,6 +646,19 @@ def create_test_case_parameter_values(dbt_test):
     return None
 
 
+def get_manifest_column_name(manifest_node) -> Optional[str]:
+    column_name = getattr(manifest_node, "column_name", None)
+    if column_name:
+        return column_name
+    test_metadata = getattr(manifest_node, "test_metadata", None)
+    if not test_metadata:
+        return None
+    kwargs = getattr(test_metadata, "kwargs", None)
+    if isinstance(kwargs, dict):
+        return kwargs.get("column_name")
+    return None
+
+
 def generate_entity_link(dbt_test):
     """
     Method returns entity link
@@ -655,9 +668,7 @@ def generate_entity_link(dbt_test):
         entity_link.get_entity_link(
             Table,
             fqn=table_fqn,
-            column_name=manifest_node.column_name
-            if hasattr(manifest_node, "column_name")
-            else None,
+            column_name=get_manifest_column_name(manifest_node),
         )
         for table_fqn in dbt_test[DbtCommonEnum.UPSTREAM.value]
     ]

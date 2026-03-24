@@ -1010,7 +1010,10 @@ public class OpenSearchBulkSink implements BulkSink {
       } catch (InterruptedException e) {
         LOG.error("Interrupted while waiting for semaphore", e);
         Thread.currentThread().interrupt();
-        totalFailed.addAndGet(numberOfActions);
+        recordPermanentFailure(toFlush, numberOfActions, "Interrupted while waiting for semaphore");
+        if (metrics != null) {
+          metrics.decrementPendingBulkRequests();
+        }
         return;
       }
 
@@ -1025,8 +1028,7 @@ public class OpenSearchBulkSink implements BulkSink {
             "Circuit breaker OPEN - fail-fast for bulk request {} with {} actions",
             executionId,
             numberOfActions);
-        totalFailed.addAndGet(numberOfActions);
-        statsUpdater.run();
+        recordPermanentFailure(operations, numberOfActions, "Circuit breaker OPEN");
         activeBulkRequests.decrementAndGet();
         concurrentRequestSemaphore.release();
         ReindexingMetrics metrics = ReindexingMetrics.getInstance();
@@ -1125,47 +1127,51 @@ public class OpenSearchBulkSink implements BulkSink {
             TimeUnit.MILLISECONDS);
         return true;
       } else {
-        totalFailed.addAndGet(numberOfActions);
         LOG.error(
             "Bulk request {} failed completely after {} attempts with {} actions",
             executionId,
             attemptNumber + 1,
             numberOfActions,
             error);
-
-        // Report failures via callback, stats callback, and tracker
-        Map<String, Integer> failuresByType = new ConcurrentHashMap<>();
-        for (BulkOperation op : operations) {
-          String docId = getDocId(op);
-          if (docId != null) {
-            String entityType = docIdToEntityType.remove(docId);
-            if (entityType == null) {
-              entityType = extractEntityTypeFromIndex(getIndex(op));
-            }
-            failuresByType.merge(entityType, 1, Integer::sum);
-            // Record SINK failure via tracker
-            StageStatsTracker tracker = docIdToTracker.remove(docId);
-            if (tracker != null) {
-              tracker.recordSink(StatsResult.FAILED);
-            }
-            if (failureCallback != null) {
-              failureCallback.onFailure(
-                  entityType,
-                  docId,
-                  null,
-                  error.getMessage(),
-                  IndexingFailureRecorder.FailureStage.SINK);
-            }
-          }
-        }
-        if (statsCallback != null) {
-          for (Map.Entry<String, Integer> entry : failuresByType.entrySet()) {
-            statsCallback.onFailure(entry.getKey(), entry.getValue());
-          }
-        }
-        statsUpdater.run();
+        recordPermanentFailure(operations, numberOfActions, error.getMessage());
         return false;
       }
+    }
+
+    private void recordPermanentFailure(
+        List<BulkOperation> operations, int numberOfActions, String failureMessage) {
+      totalFailed.addAndGet(numberOfActions);
+
+      Map<String, Integer> failuresByType = new ConcurrentHashMap<>();
+      for (BulkOperation op : operations) {
+        String docId = getDocId(op);
+        if (docId == null) {
+          continue;
+        }
+
+        String entityType = docIdToEntityType.remove(docId);
+        if (entityType == null) {
+          entityType = extractEntityTypeFromIndex(getIndex(op));
+        }
+        failuresByType.merge(entityType, 1, Integer::sum);
+
+        StageStatsTracker tracker = docIdToTracker.remove(docId);
+        if (tracker != null) {
+          tracker.recordSink(StatsResult.FAILED);
+        }
+        if (failureCallback != null) {
+          failureCallback.onFailure(
+              entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
+        }
+      }
+
+      if (statsCallback != null) {
+        for (Map.Entry<String, Integer> entry : failuresByType.entrySet()) {
+          statsCallback.onFailure(entry.getKey(), entry.getValue());
+        }
+      }
+
+      statsUpdater.run();
     }
 
     private void handlePartialFailure(

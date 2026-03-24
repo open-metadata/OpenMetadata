@@ -12,6 +12,91 @@
  */
 @import (reference) '../../styles/variables.less';
 
+.domain-page-container {
+  background-color: @white;
+  border: 1px solid var(--tw-color-gray-blue-100);
+  border-radius: 6px;
+  margin-bottom: 20px;
+
+  .grid-container {
+    background: none;
+    padding-right: 1px;
+  }
+
+  .resizable-panels-layout {
+    background: none !important;
+  }
+
+  .custom-properties-card {
+    border: none;
+    padding: 0;
+  }
+
+  .assets-tab-container {
+    border: 1px solid var(--tw-color-gray-blue-100);
+  }
+
+  .grid-container > #KnowledgePanel\.LeftPanel {
+    border: none;
+    padding: 0;
+  }
+
+  .entity-header-title {
+    align-items: center;
+  }
+
+  .entity-header-name {
+    font-size: 20px;
+    line-height: 30px;
+  }
+
+  .entity-header-display-name {
+    font-size: 14px !important;
+    line-height: 20px !important;
+  }
+
+  .ant-btn.entity-follow-button {
+    padding: 2px 4px;
+  }
+
+  .entity-follow-button svg {
+    width: 12px;
+  }
+
+  .entity-follow-button > .ant-typography {
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  .copy-button svg {
+    width: 14px;
+  }
+
+  .left-panel-documentation-tab > .ant-card:first-child {
+    border: none;
+  }
+
+  .left-panel-documentation-tab
+    > .ant-card:first-child
+    > .ant-card-body:first-child {
+    padding: 0;
+  }
+
+  .right-panel-documentation-tab > .ant-card:first-child {
+    border: none;
+  }
+
+  .right-panel-documentation-tab
+    > .ant-card:first-child
+    > .ant-card-body:first-child {
+    padding: 0 0 0 18px;
+  }
+
+  &.domain-tree-view-variant {
+    border: none;
+  }
+}
+
 .domain-details-page-tabs {
   .announcement-card {
     margin-top: 4px;

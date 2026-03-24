@@ -522,10 +522,9 @@ export const createDomain = async (
   validate = false
 ) => {
   await page.click('[data-testid="add-domain"]');
+  await page.getByTestId('form-heading').waitFor({ timeout: 5000 });
 
-  await page.locator('h6:has-text("Add Domain")').waitFor({ timeout: 5000 });
-
-  await expect(page.locator('h6:has-text("Add Domain")')).toBeVisible();
+  await expect(page.getByTestId('form-heading')).toBeVisible();
 
   const saveButton = page.getByRole('button', { name: 'Save' });
 

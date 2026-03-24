@@ -80,16 +80,17 @@ public class MigrationUtil {
             // Parse and update the config with thresholds and output
             String updatedNodeJson = updateApprovalNodeWithThresholdsAndOutput(nodeJson);
 
-            // Convert back to node
-            WorkflowNodeDefinitionInterface updatedNode =
-                JsonUtils.readValue(updatedNodeJson, WorkflowNodeDefinitionInterface.class);
+            if (!jsonStructurallyEquals(nodeJson, updatedNodeJson)) {
+              WorkflowNodeDefinitionInterface updatedNode =
+                  JsonUtils.readValue(updatedNodeJson, WorkflowNodeDefinitionInterface.class);
 
-            // Replace the node in the list
-            int index = nodes.indexOf(node);
-            nodes.set(index, updatedNode);
+              // Replace the node in the list
+              int index = nodes.indexOf(node);
+              nodes.set(index, updatedNode);
 
-            workflowModified = true;
-            LOG.info("Updated ApproveGlossaryTerm node with thresholds and output field");
+              workflowModified = true;
+              LOG.info("Updated ApproveGlossaryTerm node with thresholds and output field");
+            }
             break;
           }
         }
@@ -613,5 +614,14 @@ public class MigrationUtil {
       LOG.error("Failed to update trigger to entityTypes array", e);
     }
     return false;
+  }
+
+  private static boolean jsonStructurallyEquals(String leftJson, String rightJson) {
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      return Objects.equals(mapper.readTree(leftJson), mapper.readTree(rightJson));
+    } catch (Exception e) {
+      return Objects.equals(leftJson, rightJson);
+    }
   }
 }

@@ -18,6 +18,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -27,7 +28,6 @@ public class RuleEngine {
 
   @Getter private static final RuleEngine instance = new RuleEngine();
   private final ThreadLocal<JsonLogic> jsonLogicThreadLocal;
-  private final DataContractRepository dataContractRepository;
 
   private RuleEngine() {
     this.jsonLogicThreadLocal =
@@ -37,8 +37,6 @@ public class RuleEngine {
               LogicOps.addCustomOps(jsonLogic);
               return jsonLogic;
             });
-    dataContractRepository =
-        (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
   }
 
   public Object apply(String rule, Map<String, Object> context) {
@@ -124,7 +122,7 @@ public class RuleEngine {
       rulesToEvaluate.addAll(getEnabledEntitySemantics());
     }
     if (enforceContract) {
-      DataContract entityContract = dataContractRepository.getEffectiveDataContract(facts);
+      DataContract entityContract = getEntityDataContractSafely(facts);
       if (entityContract != null
           && entityContract.getEntityStatus() == EntityStatus.APPROVED
           && !nullOrEmpty(entityContract.getSemantics())) {
@@ -166,11 +164,21 @@ public class RuleEngine {
   }
 
   private List<SemanticsRule> getEnabledEntitySemantics() {
-    return SettingsCache.getSetting(SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class)
-        .getEntitySemantics()
-        .stream()
-        .filter(SemanticsRule::getEnabled)
-        .toList();
+    try {
+      if (Entity.getSystemRepository() == null) {
+        return List.of();
+      }
+      EntityRulesSettings settings =
+          SettingsCache.getSetting(SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class);
+      if (settings == null || nullOrEmpty(settings.getEntitySemantics())) {
+        return List.of();
+      }
+      return settings.getEntitySemantics().stream().filter(SemanticsRule::getEnabled).toList();
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Entity rules settings unavailable, skipping platform semantics: {}", e.getMessage());
+      return List.of();
+    }
   }
 
   private void validateRule(Object facts, SemanticsRule rule) throws RuleValidationException {
@@ -187,7 +195,8 @@ public class RuleEngine {
 
   private DataContract getEntityDataContractSafely(EntityInterface entity) {
     try {
-      return dataContractRepository.getEffectiveDataContract(entity);
+      return ((DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT))
+          .getEffectiveDataContract(entity);
     } catch (Exception e) {
       LOG.debug("Failed to load data contracts for entity {}: {}", entity.getId(), e.getMessage());
       return null;

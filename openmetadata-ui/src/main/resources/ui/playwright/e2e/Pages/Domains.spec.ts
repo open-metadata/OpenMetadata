@@ -75,10 +75,10 @@ import {
   deleteAnnouncement,
   editAnnouncement,
   followEntity,
+  getEncodedFqn,
   replyAnnouncement,
   unFollowEntity,
   waitForAllLoadersToDisappear,
-  getEncodedFqn,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
@@ -1202,7 +1202,7 @@ test.describe('Domains', () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
         await waitForAllLoadersToDisappear(page);
         await page.click('[data-testid="add-domain"]');
-        await page.locator('h6:has-text("Add Domain")').waitFor({
+        await page.getByTestId('form-heading').waitFor({
           state: 'visible',
         });
       });

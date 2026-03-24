@@ -42,6 +42,7 @@ export interface ColumnGridRowData {
   columnName: string;
   displayName?: string;
   description?: string;
+  descriptionPreview?: string;
   dataType?: string;
   tags?: TagLabel[];
   occurrenceCount: number;
@@ -54,6 +55,7 @@ export interface ColumnGridRowData {
   group?: ColumnMetadataGroup;
   editedDisplayName?: string;
   editedDescription?: string;
+  editedDescriptionPreview?: string;
   editedTags?: TagLabel[];
   // Path information for display
   path?: string;
