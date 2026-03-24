@@ -170,6 +170,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String POD_PREFIX = "Pod: ";
   private static final String NAMESPACE_PREFIX = " in namespace: ";
   private static final String KUBERNETES_CLUSTER_PREFIX = "Kubernetes cluster - namespace: ";
+  private static final int KUBERNETES_NAME_MAX_LENGTH = 63;
   private static final String KUBERNETES_CLUSTER = "Kubernetes cluster";
   private static final String NO_LOGS_MESSAGE = "No logs available for pod: ";
   private static final String NO_PODS_MESSAGE = "No pods found for this pipeline";
@@ -904,9 +905,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
         // Only return jobs that are QUEUED (created but not started)
         if (isJobQueued(job)) {
           String runId =
-              job.getMetadata().getLabels() != null
-                  ? job.getMetadata().getLabels().get(LABEL_RUN_ID)
-                  : job.getMetadata().getName();
+              StringUtils.defaultIfBlank(
+                  job.getMetadata().getLabels() != null
+                      ? job.getMetadata().getLabels().get(LABEL_RUN_ID)
+                      : null,
+                  job.getMetadata().getName());
 
           Long startTime =
               job.getMetadata().getCreationTimestamp() != null
@@ -1006,7 +1009,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
   public PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow) {
     String workflowName = sanitizeName(workflow.getName());
     String runId = UUID.randomUUID().toString();
-    String jobName = "om-automation-" + workflowName + "-" + runId.substring(0, 8);
+    String jobName =
+        buildKubernetesName("om-automation-", workflow.getName(), "-" + runId.substring(0, 8));
 
     LOG.info("Running automation workflow: {} with runId: {}", workflowName, runId);
 
@@ -1028,7 +1032,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
   public PipelineServiceClientResponse runApplicationFlow(App application) {
     String appName = sanitizeName(application.getName());
     String runId = UUID.randomUUID().toString();
-    String jobName = "om-app-" + appName + "-" + runId.substring(0, 8);
+    String jobName =
+        buildKubernetesName("om-app-", application.getName(), "-" + runId.substring(0, 8));
 
     LOG.info("Running application: {} with runId: {}", appName, runId);
 
@@ -1217,7 +1222,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1ConfigMap buildConfigMap(IngestionPipeline pipeline, ServiceEntityInterface service) {
-    String name = CONFIG_MAP_PREFIX + sanitizeName(pipeline.getName());
+    String name = buildKubernetesName(CONFIG_MAP_PREFIX, pipeline.getName());
     String workflowConfig = buildWorkflowConfig(pipeline, service);
 
     return new V1ConfigMap()
@@ -1230,7 +1235,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1Secret buildSecret(IngestionPipeline pipeline) {
-    String name = SECRET_PREFIX + sanitizeName(pipeline.getName());
+    String name = buildKubernetesName(SECRET_PREFIX, pipeline.getName());
 
     Map<String, byte[]> secretData = new HashMap<>();
 
@@ -1251,7 +1256,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1CronJob buildCronJob(IngestionPipeline pipeline) {
-    String name = CRONJOB_PREFIX + sanitizeName(pipeline.getName());
+    String name = buildKubernetesName(CRONJOB_PREFIX, pipeline.getName());
     String schedule = convertToCronSchedule(pipeline.getAirflowConfig().getScheduleInterval());
 
     return new V1CronJob()
@@ -1277,10 +1282,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   @VisibleForTesting
   CronOMJob buildCronOMJob(IngestionPipeline pipeline) {
-    String name = CRONOMJOB_PREFIX + sanitizeName(pipeline.getName());
+    String name = buildKubernetesName(CRONOMJOB_PREFIX, pipeline.getName());
     String schedule = convertToCronSchedule(pipeline.getAirflowConfig().getScheduleInterval());
     String pipelineName = sanitizeName(pipeline.getName());
-    String configMapName = CONFIG_MAP_PREFIX + pipelineName;
+    String configMapName = buildKubernetesName(CONFIG_MAP_PREFIX, pipeline.getName());
     Map<String, String> labels = buildLabels(pipeline, "scheduled");
     // Use dynamic placeholder for pipelineRunId that will be replaced by CronOMJobReconciler at
     // runtime
@@ -1477,8 +1482,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       String runId,
       Map<String, Object> configOverride,
       ServiceEntityInterface service) {
-    String pipelineName = sanitizeName(pipeline.getName());
-    String jobName = JOB_PREFIX + pipelineName + "-" + runId.substring(0, 8);
+    String jobName =
+        buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8));
 
     return new V1Job()
         .metadata(
@@ -1547,8 +1552,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       Map<String, Object> configOverride,
       ServiceEntityInterface service) {
 
-    String pipelineName = sanitizeName(pipeline.getName());
-    String jobName = JOB_PREFIX + pipelineName + "-" + runId.substring(0, 8);
+    String jobName =
+        buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8));
 
     return OMJob.builder()
         .apiVersion(OMJOB_GROUP + "/" + OMJOB_VERSION)
@@ -1644,7 +1649,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
     envVars.add(
         new V1EnvVar()
             .name(ENV_JOB_NAME)
-            .value(JOB_PREFIX + pipelineName + "-" + runId.substring(0, 8)));
+            .value(
+                buildKubernetesName(JOB_PREFIX, pipeline.getName(), "-" + runId.substring(0, 8))));
     envVars.add(new V1EnvVar().name(ENV_NAMESPACE).value(k8sConfig.getNamespace()));
 
     addExtraEnvVars(envVars);
@@ -2227,6 +2233,28 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
 
     return sanitized;
+  }
+
+  private String buildKubernetesName(String prefix, String name) {
+    return buildKubernetesName(prefix, name, "");
+  }
+
+  private String buildKubernetesName(String prefix, String name, String suffix) {
+    String sanitized = sanitizeName(name);
+    int maxBaseLength = KUBERNETES_NAME_MAX_LENGTH - prefix.length() - suffix.length();
+    if (maxBaseLength < 1) {
+      throw new IllegalArgumentException("Kubernetes name prefix/suffix leaves no room for base");
+    }
+
+    if (sanitized.length() > maxBaseLength) {
+      sanitized = sanitized.substring(0, maxBaseLength).replaceAll("-+$", "");
+    }
+
+    if (sanitized.isEmpty()) {
+      sanitized = "p";
+    }
+
+    return prefix + sanitized + suffix;
   }
 
   private String getKubernetesVersion() {

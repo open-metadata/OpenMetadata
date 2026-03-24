@@ -25,10 +25,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.ContractSecurity;
 import org.openmetadata.schema.api.data.MaxLatency;
@@ -36,18 +39,25 @@ import org.openmetadata.schema.api.data.Policy;
 import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.api.data.Retention;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.data.TermsOfUse;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSLogicalTypeOptions;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSRole;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.Entity;
 
 class ODCSConverterTest {
 
@@ -517,6 +527,58 @@ class ODCSConverterTest {
   }
 
   @Test
+  void testFromODCS_ResolvesOwnersByNameAndTeamFallback() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSTeamMember namedUser = new ODCSTeamMember();
+    namedUser.setName("Alice Doe");
+    namedUser.setRole("owner");
+
+    ODCSTeamMember namedTeam = new ODCSTeamMember();
+    namedTeam.setUsername("missing-user");
+    namedTeam.setName("DataOps");
+    namedTeam.setRole("owner");
+
+    odcs.setTeam(List.of(namedUser, namedTeam));
+
+    EntityReference entityRef = new EntityReference().withId(UUID.randomUUID()).withType("table");
+
+    User user = Mockito.mock(User.class);
+    Team team = Mockito.mock(Team.class);
+    EntityReference userRef =
+        new EntityReference().withId(UUID.randomUUID()).withType("user").withName("Alice Doe");
+    EntityReference teamRef =
+        new EntityReference().withId(UUID.randomUUID()).withType("team").withName("DataOps");
+    Mockito.when(user.getEntityReference()).thenReturn(userRef);
+    Mockito.when(team.getEntityReference()).thenReturn(teamRef);
+
+    try (MockedStatic<Entity> mockedEntity = Mockito.mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.USER, "Alice Doe", "", Include.NON_DELETED))
+          .thenReturn(user);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.USER, "missing-user", "", Include.NON_DELETED))
+          .thenThrow(new RuntimeException("missing"));
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.USER, "DataOps", "", Include.NON_DELETED))
+          .thenThrow(new RuntimeException("not a user"));
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TEAM, "DataOps", "", Include.NON_DELETED))
+          .thenReturn(team);
+
+      DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+      assertNotNull(contract.getOwners());
+      assertEquals(List.of(userRef, teamRef), contract.getOwners());
+    }
+  }
+
+  @Test
   void testStatusMapping() {
     assertEquals(ODCSDataContract.OdcsStatus.DRAFT, getODCSStatus(EntityStatus.DRAFT));
     assertEquals(ODCSDataContract.OdcsStatus.ACTIVE, getODCSStatus(EntityStatus.APPROVED));
@@ -905,6 +967,34 @@ class ODCSConverterTest {
   }
 
   @Test
+  void testToODCS_FallsBackToContractNameAndExportsMetadata() {
+    DataContract contract = new DataContract();
+    contract.setName("fallback_contract");
+    contract.setVersion(null);
+    contract.setCreatedAt(1700000000000L);
+    contract.setTermsOfUse(new TermsOfUse().withContent("Use carefully"));
+
+    EntityReference entity = new EntityReference();
+    entity.setType("table");
+    entity.setFullyQualifiedName("service.database.schema.table");
+    entity.setDescription("Entity level description");
+    contract.setEntity(entity);
+    contract.setSchema(
+        List.of(new Column().withName("customer_id").withDataType(ColumnDataType.INT)));
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs.getId());
+    assertEquals("1.0.0", odcs.getVersion());
+    assertEquals("service.database", odcs.getDomain());
+    assertEquals("service.database.schema.table", odcs.getDataProduct());
+    assertEquals(new Date(1700000000000L), odcs.getContractCreatedTs());
+    assertEquals(List.of("terms-of-use"), odcs.getTags());
+    assertEquals("fallback_contract", odcs.getSchema().get(0).getName());
+    assertEquals("Entity level description", odcs.getSchema().get(0).getDescription());
+  }
+
+  @Test
   void testFromODCS_GeneratesContractName() {
     ODCSDataContract odcs = new ODCSDataContract();
     odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_0_2);
@@ -927,6 +1017,50 @@ class ODCSConverterTest {
   }
 
   @Test
+  void testFromODCS_WithLegacySchemaInvalidValuesAndGeneratedName() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId("not-a-uuid");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSSchemaElement legacyElement = new ODCSSchemaElement();
+    legacyElement.setName("legacy_col");
+    legacyElement.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    legacyElement.setPhysicalType("unsupported_type");
+    legacyElement.setUnique(true);
+    legacyElement.setLogicalTypeOptions(new ODCSLogicalTypeOptions().withMaxLength(32));
+    odcs.setSchema(List.of(legacyElement));
+
+    ODCSSlaProperty ignoredProperty = new ODCSSlaProperty();
+
+    ODCSSlaProperty freshness = new ODCSSlaProperty();
+    freshness.setProperty("freshness");
+    freshness.setValue("NaN");
+    freshness.setUnit("hrs");
+
+    ODCSSlaProperty availability = new ODCSSlaProperty();
+    availability.setProperty("availabilityTime");
+    availability.setValue("09:00");
+    availability.setValueExt("Mars/Phobos");
+
+    odcs.setSlaProperties(List.of(ignoredProperty, freshness, availability));
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, null);
+
+    assertNotNull(contract.getId());
+    assertTrue(contract.getName().startsWith("contract_"));
+    assertNull(contract.getEntity());
+    assertEquals(ColumnDataType.STRING, contract.getSchema().get(0).getDataType());
+    assertEquals(ColumnConstraint.UNIQUE, contract.getSchema().get(0).getConstraint());
+    assertEquals(32, contract.getSchema().get(0).getDataLength());
+    assertEquals(0, contract.getSla().getRefreshFrequency().getInterval());
+    assertEquals(RefreshFrequency.Unit.HOUR, contract.getSla().getRefreshFrequency().getUnit());
+    assertEquals("09:00", contract.getSla().getAvailabilityTime());
+    assertNull(contract.getSla().getTimezone());
+  }
+
+  @Test
   void testToODCS_WithDescription() {
     DataContract contract = new DataContract();
     contract.setId(UUID.randomUUID());
@@ -944,6 +1078,40 @@ class ODCSConverterTest {
     assertNotNull(odcs.getDescription());
     assertEquals(
         "This is a detailed description of the contract.", odcs.getDescription().getPurpose());
+  }
+
+  @Test
+  void testToODCS_DefaultsPolicyRoleAndMapsColumnClassification() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("classification_contract");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+    contract.setEntity(
+        new EntityReference().withId(UUID.randomUUID()).withType("table").withName("customers"));
+
+    Policy unnamedPolicy = new Policy();
+    unnamedPolicy.setIdentities(List.of("owner@example.com"));
+
+    ContractSecurity security = new ContractSecurity();
+    security.setPolicies(List.of(unnamedPolicy));
+    contract.setSecurity(security);
+
+    Column column =
+        new Column()
+            .withName("email")
+            .withDataType(ColumnDataType.STRING)
+            .withConstraint(ColumnConstraint.UNIQUE)
+            .withTags(List.of(new TagLabel().withTagFQN("Classification.Confidential")));
+    contract.setSchema(List.of(column));
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertEquals("data-consumer", odcs.getRoles().get(0).getRole());
+    assertEquals(List.of("owner@example.com"), odcs.getRoles().get(0).getFirstLevelApprovers());
+    ODCSSchemaElement exportedColumn = odcs.getSchema().get(0).getProperties().get(0);
+    assertTrue(exportedColumn.getUnique());
+    assertEquals("confidential", exportedColumn.getClassification());
+    assertEquals(List.of("Classification.Confidential"), exportedColumn.getTags());
   }
 
   @Test

@@ -196,7 +196,7 @@ class VectorSearchQueryBuilderTest {
     // Should have 2 filters: deleted=false + tags
     assertEquals(2, mustFilters.size());
 
-    // tags use a flat terms query on tags.tagFQN
+    // Second filter should be a flat terms query over tag FQNs
     JsonNode tagsFilter = mustFilters.get(1);
     assertTrue(tagsFilter.has("terms"));
 
@@ -204,6 +204,7 @@ class VectorSearchQueryBuilderTest {
     assertTrue(terms.has("tags.tagFQN"));
 
     JsonNode tagValues = terms.get("tags.tagFQN");
+    assertNotNull(tagValues);
     assertEquals(2, tagValues.size());
 
     // Verify both tag values are present
@@ -459,16 +460,13 @@ class VectorSearchQueryBuilderTest {
     // Should have 2 filters: deleted=false + customProperties
     assertEquals(2, mustFilters.size());
 
-    // Second filter should be match query with fuzziness
+    // Second filter should route through the typed custom properties nested path
     JsonNode customPropsFilter = mustFilters.get(1);
-    assertTrue(customPropsFilter.has("match"));
-
-    JsonNode matchQuery = customPropsFilter.get("match");
-    assertTrue(matchQuery.has("customProperties.department"));
-
-    JsonNode departmentQuery = matchQuery.get("customProperties.department");
-    assertEquals("engineering", departmentQuery.get("query").asText());
-    assertEquals("AUTO", departmentQuery.get("fuzziness").asText());
+    String filterJson = customPropsFilter.toString();
+    assertTrue(customPropsFilter.has("bool"));
+    assertTrue(filterJson.contains("\"path\":\"customPropertiesTyped\""));
+    assertTrue(filterJson.contains("\"customPropertiesTyped.name\":\"department\""));
+    assertTrue(filterJson.contains("\"engineering\""));
   }
 
   @Test
@@ -490,14 +488,13 @@ class VectorSearchQueryBuilderTest {
     // Should have 3 filters: deleted=false + 2 customProperties
     assertEquals(3, mustFilters.size());
 
-    // Verify all custom properties filters are present
+    // Verify all custom properties filters are present in the typed nested form
     String filtersJson = mustFilters.toString();
-    assertTrue(filtersJson.contains("customProperties.department"));
-    assertTrue(filtersJson.contains("customProperties.location"));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"department\""));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"location\""));
     assertTrue(filtersJson.contains("engineering"));
     assertTrue(filtersJson.contains("remote"));
-    assertTrue(filtersJson.contains("fuzziness"));
-    assertTrue(filtersJson.contains("AUTO"));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.textValue\""));
   }
 
   @Test
@@ -517,16 +514,12 @@ class VectorSearchQueryBuilderTest {
     // Should have 2 filters: deleted=false + customProperties
     assertEquals(2, mustFilters.size());
 
-    // Second filter should be exact term query for .name fields
+    // Second filter should preserve the custom property key inside the typed nested form
     JsonNode customPropsFilter = mustFilters.get(1);
-    assertTrue(customPropsFilter.has("term"));
-
-    JsonNode termQuery = customPropsFilter.get("term");
-    assertTrue(termQuery.has("customProperties.steward.name"));
-
-    // For .name fields, should use exact term matching, not fuzzy search
-    String nameValue = termQuery.get("customProperties.steward.name").asText();
-    assertEquals("John Doe", nameValue);
+    String filterJson = customPropsFilter.toString();
+    assertTrue(customPropsFilter.has("bool"));
+    assertTrue(filterJson.contains("\"customPropertiesTyped.name\":\"steward.name\""));
+    assertTrue(filterJson.contains("\"John Doe\""));
   }
 
   @Test
@@ -546,16 +539,12 @@ class VectorSearchQueryBuilderTest {
     // Should have 2 filters: deleted=false + customProperties
     assertEquals(2, mustFilters.size());
 
-    // Second filter should be exact term query for .name fields
+    // Second filter should preserve the full custom property key and value
     JsonNode customPropsFilter = mustFilters.get(1);
-    assertTrue(customPropsFilter.has("term"));
-
-    JsonNode termQuery = customPropsFilter.get("term");
-    assertTrue(termQuery.has("customProperties.owner.name"));
-
-    // For .name fields with special characters, should still use exact term matching
-    String nameValue = termQuery.get("customProperties.owner.name").asText();
-    assertEquals("O'Brien, \"Data\" Smith", nameValue);
+    String filterJson = customPropsFilter.toString();
+    assertTrue(customPropsFilter.has("bool"));
+    assertTrue(filterJson.contains("\"customPropertiesTyped.name\":\"owner.name\""));
+    assertTrue(filterJson.contains("O'Brien, \\\"Data\\\" Smith"));
   }
 
   @Test
@@ -578,29 +567,11 @@ class VectorSearchQueryBuilderTest {
     // Should have 3 filters: deleted=false + 2 customProperties
     assertEquals(3, mustFilters.size());
 
-    // Find the term query filter for .name field
-    JsonNode termFilter = null;
-    JsonNode matchFilter = null;
-
-    for (int i = 0; i < mustFilters.size(); i++) {
-      JsonNode filter = mustFilters.get(i);
-      if (filter.has("term") && filter.get("term").has("customProperties.steward.name")) {
-        termFilter = filter;
-      }
-      if (filter.has("match") && filter.get("match").has("customProperties.description")) {
-        matchFilter = filter;
-      }
-    }
-
-    // Verify .name field uses term query (exact match)
-    assertNotNull(termFilter, "Should have a term filter for .name field");
-    assertEquals("John Doe", termFilter.get("term").get("customProperties.steward.name").asText());
-
-    // Verify non-name field uses match query (fuzzy search)
-    assertNotNull(matchFilter, "Should have a match filter for non-name field");
-    JsonNode matchQuery = matchFilter.get("match").get("customProperties.description");
-    assertEquals("data warehouse", matchQuery.get("query").asText());
-    assertEquals("AUTO", matchQuery.get("fuzziness").asText());
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"steward.name\""));
+    assertTrue(filtersJson.contains("\"John Doe\""));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"description\""));
+    assertTrue(filtersJson.contains("\"data warehouse\""));
   }
 
   @Test
@@ -647,13 +618,10 @@ class VectorSearchQueryBuilderTest {
     assertEquals(2, mustFilters.size());
 
     JsonNode customPropsFilter = mustFilters.get(1);
-    assertTrue(customPropsFilter.has("match"));
-
-    JsonNode matchQuery = customPropsFilter.get("match");
-    assertTrue(matchQuery.has("customProperties.notes"));
-
-    JsonNode notesQuery = matchQuery.get("customProperties.notes");
-    assertEquals("test \"quoted\" value", notesQuery.get("query").asText());
+    String filterJson = customPropsFilter.toString();
+    assertTrue(customPropsFilter.has("bool"));
+    assertTrue(filterJson.contains("\"customPropertiesTyped.name\":\"notes\""));
+    assertTrue(filterJson.contains("test \\\"quoted\\\" value"));
   }
 
   @Test
@@ -685,13 +653,12 @@ class VectorSearchQueryBuilderTest {
     assertTrue(filtersJson.contains("tier"));
     assertTrue(filtersJson.contains("Tier.Tier1"));
 
-    // Verify custom properties filters with fuzzy matching
-    assertTrue(filtersJson.contains("customProperties.department"));
+    // Verify custom properties filters with typed nested matching
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"department\""));
     assertTrue(filtersJson.contains("engineering"));
-    assertTrue(filtersJson.contains("customProperties.cost_center"));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"cost_center\""));
     assertTrue(filtersJson.contains("12345"));
-    assertTrue(filtersJson.contains("fuzziness"));
-    assertTrue(filtersJson.contains("AUTO"));
+    assertTrue(filtersJson.contains("\"path\":\"customPropertiesTyped\""));
   }
 
   @Test

@@ -43,7 +43,6 @@ import {
 } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestSuite } from '../../../generated/api/tests/createTestSuite';
 import { LogLevels } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
@@ -52,7 +51,7 @@ import {
   deployIngestionPipelineById,
 } from '../../../rest/ingestionPipelineAPI';
 import {
-  addTestCaseToLogicalTestSuite,
+  addTestCasesToLogicalTestSuiteBulk,
   createTestSuites,
 } from '../../../rest/testAPI';
 import {
@@ -72,6 +71,7 @@ import AlertBar from '../../AlertBar/AlertBar';
 import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
 import '../AddDataQualityTest/components/TestCaseFormV1.less';
 import { AddTestCaseList } from '../AddTestCaseList/AddTestCaseList.component';
+import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
 import {
   BundleSuiteFormData,
   BundleSuiteFormProps,
@@ -105,9 +105,13 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
   // =============================================
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>(
-    initialValues?.testCases || []
-  );
+  const [testCaseSelectionPayload, setTestCaseSelectionPayload] =
+    useState<AddTestCaseListChangePayload>(() => ({
+      selectAll: false,
+      includeIds: [],
+      excludeIds: [],
+      testCases: [],
+    }));
 
   // =============================================
   // HOOKS - Memoized Values
@@ -192,11 +196,19 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
   // Initialize form values
   useEffect(() => {
     if (initialValues) {
+      const initialTestCases = initialValues.testCases || [];
+      const payload: AddTestCaseListChangePayload = {
+        selectAll: false,
+        includeIds: initialTestCases.map((tc) => tc.id ?? '').filter(Boolean),
+        excludeIds: [],
+        testCases: initialTestCases,
+      };
       form.setFieldsValue({
         name: initialValues.name || '',
         description: initialValues.description || '',
-        testCases: initialValues.testCases || [],
-      });
+        testCaseSelection: payload,
+      } as Record<string, unknown>);
+      setTestCaseSelectionPayload(payload);
     }
   }, [initialValues, form]);
 
@@ -204,9 +216,9 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
   // HOOKS - Callbacks
   // =============================================
   const handleTestCaseSelection = useCallback(
-    (testCases: TestCase[]) => {
-      setSelectedTestCases(testCases);
-      form.setFieldValue('testCases', testCases);
+    (payload: AddTestCaseListChangePayload) => {
+      setTestCaseSelectionPayload(payload);
+      form.setFieldValue('testCaseSelection', payload);
     },
     [form]
   );
@@ -275,9 +287,10 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
 
     const testSuite = await createTestSuites(testSuitePayload);
 
-    await addTestCaseToLogicalTestSuite({
-      testCaseIds: selectedTestCases.map((testCase) => testCase.id ?? ''),
-      testSuiteId: testSuite.id ?? '',
+    await addTestCasesToLogicalTestSuiteBulk(testSuite.id ?? '', {
+      selectAll: testCaseSelectionPayload.selectAll,
+      includeIds: testCaseSelectionPayload.includeIds,
+      excludeIds: testCaseSelectionPayload.excludeIds,
     });
 
     if (formData.enableScheduler && ingestionPipeline.Create) {
@@ -291,9 +304,9 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
     setIsSubmitting(true);
     setErrorMessage('');
     try {
-      const formData = {
+      const formData: BundleSuiteFormData = {
         ...values,
-        testCases: selectedTestCases,
+        testCaseSelection: testCaseSelectionPayload,
       };
 
       const testSuite = await createTestSuiteWithPipeline(formData);
@@ -367,7 +380,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           raiseOnError: true,
           cron: DEFAULT_SCHEDULE_CRON_DAILY,
           enableDebugLog: false,
-          ...initialValues,
+          name: initialValues?.name ?? '',
+          description: initialValues?.description ?? '',
         }}
         layout="vertical"
         onFinish={handleFormSubmit}
@@ -383,17 +397,30 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           data-testid="test-case-selection-card">
           <Form.Item
             label={t('label.test-case-plural')}
-            name="testCases"
+            name="testCaseSelection"
             rules={[
               {
-                required: true,
-                message: t('label.field-required', {
-                  field: t('label.test-case-plural'),
-                }),
+                validator: (_, value) => {
+                  const valid =
+                    value &&
+                    (value.selectAll || (value.includeIds?.length ?? 0) > 0);
+
+                  return valid
+                    ? Promise.resolve()
+                    : Promise.reject(
+                        new Error(
+                          t('label.field-required', {
+                            field: t('label.test-case-plural'),
+                          })
+                        )
+                      );
+                },
               },
             ]}>
             <AddTestCaseList
-              selectedTest={selectedTestCases.map((tc) => tc.name)}
+              selectedTest={(testCaseSelectionPayload.testCases ?? []).map(
+                (tc) => getEntityName(tc)
+              )}
               showButton={false}
               onChange={handleTestCaseSelection}
             />

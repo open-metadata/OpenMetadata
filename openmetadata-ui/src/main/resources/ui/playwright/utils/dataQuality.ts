@@ -125,7 +125,7 @@ export const addTestCaseToLogicalTestSuite = async (
 
   await page.click(`[data-testid="${testCaseName}"]`);
   const updateTestCase = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/logicalTestCases'
+    '/api/v1/dataQuality/testCases/logicalTestCases/bulk'
   );
   await page.click('[data-testid="submit"]');
   await updateTestCase;

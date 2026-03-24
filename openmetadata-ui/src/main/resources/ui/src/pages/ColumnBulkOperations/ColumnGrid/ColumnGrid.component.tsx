@@ -63,7 +63,6 @@ import {
   PAGE_SIZE_MEDIUM,
   SOCKET_EVENTS,
 } from '../../../constants/constants';
-import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -2270,13 +2269,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: drawerTitle,
-    anchor: 'right',
     width: '40%',
     closeOnEscape: true,
     testId: 'column-bulk-operations-form-drawer',
-    header: {
-      sx: DRAWER_HEADER_STYLING,
-    },
     onCancel: discardPendingEdits,
     form: drawerContent,
     onSubmit: handleBulkUpdate,

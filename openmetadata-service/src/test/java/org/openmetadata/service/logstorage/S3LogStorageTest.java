@@ -58,7 +58,11 @@ public class S3LogStorageTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName(testBucket)
-            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
+            .withAwsConfig(
+                new AWSCredentials()
+                    .withAwsRegion("us-east-1")
+                    .withAwsAccessKeyId("test-access-key")
+                    .withAwsSecretAccessKey("test-secret-key"))
             .withPrefix(testPrefix)
             .withEnableServerSideEncryption(true)
             .withStorageClass(LogStorageConfiguration.StorageClass.STANDARD_IA)
@@ -98,6 +102,25 @@ public class S3LogStorageTest {
     InputStream inputStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
     GetObjectResponse response = GetObjectResponse.builder().build();
     return new ResponseInputStream<>(response, AbortableInputStream.create(inputStream));
+  }
+
+  private void mockActiveStreamCreation() {
+    when(mockS3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
+    when(mockS3AsyncClient.putObject(any(PutObjectRequest.class), any(AsyncRequestBody.class)))
+        .thenReturn(CompletableFuture.completedFuture(PutObjectResponse.builder().build()));
+  }
+
+  private void mockMultipartUploadCompletion() {
+    when(mockS3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                UploadPartResponse.builder().eTag("test-etag").build()));
+    when(mockS3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+        .thenReturn(
+            CompletableFuture.completedFuture(CompleteMultipartUploadResponse.builder().build()));
   }
 
   @Test
@@ -258,8 +281,6 @@ public class S3LogStorageTest {
 
   @Test
   void testDeleteLogs() throws IOException {
-    String expectedKey = String.format("%s/%s/%s/logs.txt", testPrefix, testPipelineFQN, testRunId);
-
     // Mock delete object
     when(mockS3Client.deleteObject(any(DeleteObjectRequest.class)))
         .thenReturn(DeleteObjectResponse.builder().build());
@@ -267,8 +288,8 @@ public class S3LogStorageTest {
     // Test deleting logs
     assertDoesNotThrow(() -> s3LogStorage.deleteLogs(testPipelineFQN, testRunId));
 
-    // Verify delete was called
-    verify(mockS3Client, times(1)).deleteObject(any(DeleteObjectRequest.class));
+    // Verify both the log object and active marker are deleted.
+    verify(mockS3Client, times(2)).deleteObject(any(DeleteObjectRequest.class));
   }
 
   @Test
@@ -368,6 +389,14 @@ public class S3LogStorageTest {
             CompletableFuture.completedFuture(
                 CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
 
+    when(mockS3AsyncClient.putObject(any(PutObjectRequest.class), any(AsyncRequestBody.class)))
+        .thenReturn(CompletableFuture.completedFuture(PutObjectResponse.builder().build()));
+
+    when(mockS3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                UploadPartResponse.builder().eTag("test-etag").build()));
+
     when(mockS3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
         .thenReturn(
             CompletableFuture.completedFuture(CompleteMultipartUploadResponse.builder().build()));
@@ -381,5 +410,223 @@ public class S3LogStorageTest {
 
     // Verify that the multipart upload was completed
     verify(mockS3AsyncClient).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+  }
+
+  @Test
+  void testGetLogInputStreamUsesRecentLogsForActiveStream() throws IOException {
+    mockActiveStreamCreation();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "Line 1\nLine 2");
+
+    InputStream stream = s3LogStorage.getLogInputStream(testPipelineFQN, testRunId);
+
+    assertEquals("Line 1\nLine 2", new String(stream.readAllBytes(), StandardCharsets.UTF_8));
+    verify(mockS3Client, never()).getObject(any(GetObjectRequest.class));
+  }
+
+  @Test
+  void testGetLogsForActiveStreamUsesPartialFilePagination() throws IOException {
+    mockActiveStreamCreation();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "memory line 1\nmemory line 2");
+    when(mockS3Client.getObject(any(GetObjectRequest.class)))
+        .thenReturn(createResponseInputStream("Processed 1\nProcessed 2\nProcessed 3\n"));
+
+    Map<String, Object> result = s3LogStorage.getLogs(testPipelineFQN, testRunId, "1", 1);
+
+    assertEquals("Processed 2", result.get("logs"));
+    assertEquals("2", result.get("after"));
+    assertEquals(3L, result.get("total"));
+    assertEquals(true, result.get("streaming"));
+  }
+
+  @Test
+  void testGetLogsForActiveStreamFallsBackToMemoryCacheOnPartialMiss() throws IOException {
+    mockActiveStreamCreation();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "Line 1\nLine 2\nLine 3");
+    when(mockS3Client.getObject(any(GetObjectRequest.class)))
+        .thenThrow(NoSuchKeyException.builder().build());
+
+    Map<String, Object> result = s3LogStorage.getLogs(testPipelineFQN, testRunId, "bad-cursor", 2);
+
+    assertEquals("Line 1\nLine 2", result.get("logs"));
+    assertEquals("2", result.get("after"));
+    assertEquals(3L, result.get("total"));
+    assertEquals(true, result.get("streaming"));
+  }
+
+  @Test
+  void testRegisterLogListenerReplaysBufferedLogsAndStopsAfterUnregister() throws IOException {
+    mockActiveStreamCreation();
+    S3LogStorage.LogStreamListener listener = mock(S3LogStorage.LogStreamListener.class);
+
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "old-1\nold-2");
+    s3LogStorage.registerLogListener(testPipelineFQN, testRunId, listener);
+
+    verify(listener).onLogLine("old-1");
+    verify(listener).onLogLine("old-2");
+
+    clearInvocations(listener);
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "new-1\nnew-2");
+    verify(listener).onLogLine("new-1\nnew-2");
+
+    clearInvocations(listener);
+    s3LogStorage.unregisterLogListener(testPipelineFQN, testRunId, listener);
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "after-unregister");
+
+    verifyNoInteractions(listener);
+  }
+
+  @Test
+  void testDeleteAllLogsClearsRecentCacheAndDeletesPaginatedObjects() throws IOException {
+    mockActiveStreamCreation();
+    mockMultipartUploadCompletion();
+    UUID secondRunId = UUID.randomUUID();
+    String sanitizedPipeline = testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_");
+    String keyPrefix = String.format("%s/%s/", testPrefix, sanitizedPipeline);
+
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "first");
+    s3LogStorage.appendLogs(testPipelineFQN, secondRunId, "second");
+
+    when(mockS3Client.listObjectsV2(any(ListObjectsV2Request.class)))
+        .thenReturn(
+            ListObjectsV2Response.builder()
+                .contents(S3Object.builder().key(keyPrefix + testRunId + "/logs.txt").build())
+                .isTruncated(true)
+                .nextContinuationToken("page-2")
+                .build(),
+            ListObjectsV2Response.builder()
+                .contents(S3Object.builder().key(keyPrefix + secondRunId + "/logs.txt").build())
+                .isTruncated(false)
+                .build());
+    when(mockS3Client.deleteObjects(any(DeleteObjectsRequest.class)))
+        .thenReturn(DeleteObjectsResponse.builder().build());
+
+    s3LogStorage.deleteAllLogs(testPipelineFQN);
+
+    assertTrue(s3LogStorage.getRecentLogs(testPipelineFQN, testRunId, 10).isEmpty());
+    assertTrue(s3LogStorage.getRecentLogs(testPipelineFQN, secondRunId, 10).isEmpty());
+    verify(mockS3Client, times(2)).listObjectsV2(any(ListObjectsV2Request.class));
+    verify(mockS3Client, times(2)).deleteObjects(any(DeleteObjectsRequest.class));
+  }
+
+  @Test
+  void testAppendLogsTruncatesLongLinesAndCapsRecentLogBuffer() throws IOException {
+    mockActiveStreamCreation();
+    String oversizedLine = "x".repeat(10 * 1024 + 25);
+    StringBuilder manyLines = new StringBuilder();
+    for (int i = 0; i < 1005; i++) {
+      manyLines.append("line").append(i).append('\n');
+    }
+
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, oversizedLine);
+    List<String> initialLogs = s3LogStorage.getRecentLogs(testPipelineFQN, testRunId, 10);
+    assertEquals(1, initialLogs.size());
+    assertTrue(initialLogs.get(0).contains("[truncated 25 chars]"));
+
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, manyLines.toString());
+    List<String> recentLogs = s3LogStorage.getRecentLogs(testPipelineFQN, testRunId, 2000);
+
+    assertEquals(1000, recentLogs.size());
+    assertEquals("line5", recentLogs.get(0));
+    assertEquals("line1004", recentLogs.get(recentLogs.size() - 1));
+  }
+
+  @Test
+  void testGetLogsWithInvalidCursorFallsBackToBeginningForCompletedFile() throws IOException {
+    String logContent = "Line 1\nLine 2\nLine 3\n";
+
+    when(mockS3Client.headObject(any(HeadObjectRequest.class)))
+        .thenReturn(HeadObjectResponse.builder().contentLength((long) logContent.length()).build());
+    when(mockS3Client.getObject(any(GetObjectRequest.class)))
+        .thenReturn(createResponseInputStream(logContent));
+
+    Map<String, Object> result = s3LogStorage.getLogs(testPipelineFQN, testRunId, "bad-cursor", 2);
+
+    assertEquals("Line 1\nLine 2", result.get("logs"));
+    assertEquals("2", result.get("after"));
+    assertEquals((long) logContent.length(), result.get("total"));
+  }
+
+  @Test
+  void testGetLogOutputStreamAbortWithoutDataAndRejectsFurtherWrites() throws IOException {
+    when(mockS3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                CreateMultipartUploadResponse.builder().uploadId("test-upload-id").build()));
+    when(mockS3AsyncClient.abortMultipartUpload(any(AbortMultipartUploadRequest.class)))
+        .thenReturn(
+            CompletableFuture.completedFuture(AbortMultipartUploadResponse.builder().build()));
+
+    OutputStream outputStream = s3LogStorage.getLogOutputStream(testPipelineFQN, testRunId);
+    outputStream.close();
+
+    verify(mockS3AsyncClient).abortMultipartUpload(any(AbortMultipartUploadRequest.class));
+    assertThrows(IOException.class, () -> outputStream.write(1));
+  }
+
+  @Test
+  void testLogsExistWrapsUnexpectedHeadObjectErrors() {
+    when(mockS3Client.headObject(any(HeadObjectRequest.class)))
+        .thenThrow(new RuntimeException("boom"));
+
+    IOException exception =
+        assertThrows(IOException.class, () -> s3LogStorage.logsExist(testPipelineFQN, testRunId));
+
+    assertTrue(exception.getMessage().contains("Failed to check if logs exist in S3"));
+  }
+
+  @Test
+  void testInitializeFailsWhenBucketDoesNotExist() {
+    try (MockedStatic<S3Client> s3ClientMock = mockStatic(S3Client.class);
+        MockedStatic<S3AsyncClient> s3AsyncClientMock = mockStatic(S3AsyncClient.class)) {
+
+      S3ClientBuilder mockBuilder = mock(S3ClientBuilder.class);
+      when(S3Client.builder()).thenReturn(mockBuilder);
+      when(mockBuilder.region(any())).thenReturn(mockBuilder);
+      when(mockBuilder.credentialsProvider(any())).thenReturn(mockBuilder);
+      when(mockBuilder.build()).thenReturn(mockS3Client);
+
+      S3AsyncClientBuilder mockAsyncBuilder = mock(S3AsyncClientBuilder.class);
+      when(S3AsyncClient.builder()).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.region(any())).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.credentialsProvider(any())).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.build()).thenReturn(mockS3AsyncClient);
+
+      when(mockS3Client.headBucket(any(HeadBucketRequest.class)))
+          .thenThrow(NoSuchBucketException.builder().build());
+
+      S3LogStorage storage = new S3LogStorage();
+      Map<String, Object> config = new HashMap<>();
+      config.put("config", testConfig);
+
+      IOException exception = assertThrows(IOException.class, () -> storage.initialize(config));
+      assertTrue(exception.getMessage().contains("Failed to initialize S3LogStorage"));
+      assertTrue(exception.getCause().getMessage().contains("S3 bucket does not exist"));
+    }
+  }
+
+  @Test
+  void testInitializeFailsWhenCredentialsAreMissing() {
+    LogStorageConfiguration invalidConfig =
+        new LogStorageConfiguration()
+            .withType(LogStorageConfiguration.Type.S_3)
+            .withBucketName(testBucket)
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
+            .withPrefix(testPrefix);
+
+    try (MockedStatic<S3Client> s3ClientMock = mockStatic(S3Client.class);
+        MockedStatic<S3AsyncClient> s3AsyncClientMock = mockStatic(S3AsyncClient.class)) {
+
+      S3ClientBuilder mockBuilder = mock(S3ClientBuilder.class);
+      when(S3Client.builder()).thenReturn(mockBuilder);
+      when(mockBuilder.region(any())).thenReturn(mockBuilder);
+
+      S3LogStorage storage = new S3LogStorage();
+      Map<String, Object> config = new HashMap<>();
+      config.put("config", invalidConfig);
+
+      IOException exception = assertThrows(IOException.class, () -> storage.initialize(config));
+      assertTrue(exception.getCause() instanceof IllegalArgumentException);
+      assertTrue(exception.getCause().getMessage().contains("AWS credentials not configured"));
+    }
   }
 }

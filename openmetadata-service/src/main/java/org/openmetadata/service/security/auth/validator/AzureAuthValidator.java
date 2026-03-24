@@ -306,6 +306,11 @@ public class AzureAuthValidator {
   }
 
   private FieldError validatePublicClientId(String tenantId, String clientId) {
+    if (!isValidGuid(clientId)) {
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
+          "Invalid Azure client ID format. Must be a valid GUID");
+    }
     return validateClientIdViaTokenEndpoint(tenantId, clientId, "azure-public-client-id", "public");
   }
 

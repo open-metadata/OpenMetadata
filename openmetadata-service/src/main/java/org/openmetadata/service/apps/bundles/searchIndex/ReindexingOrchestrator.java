@@ -390,8 +390,11 @@ public class ReindexingOrchestrator {
     }
 
     if (jobData.getStats() != null) {
-      SuccessContext successContext =
-          new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
+      SuccessContext successContext = appRecord.getSuccessContext();
+      if (successContext == null) {
+        successContext = new SuccessContext();
+      }
+      successContext.withAdditionalProperty("stats", jobData.getStats());
 
       String distributedJobId = (String) resultMetadata.get("distributedJobId");
 
