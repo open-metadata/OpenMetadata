@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -247,6 +248,45 @@ class WorkflowEventConsumerTest {
           EventPublisherException.class, () -> consumer.sendMessage(event, Collections.emptySet()));
 
       assertEquals(3, callCount.get());
+    }
+  }
+
+  @Test
+  void testSendMessage_SkipsGracefullyWhenEntityDeleted() throws Exception {
+    ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_CREATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenThrow(EntityNotFoundException.byMessage("table instance for test-id not found"));
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_SafetyNetCatchesEntityNotFoundFromTrigger() throws Exception {
+    ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED);
+    EntityReference entityRef = createEntityReference();
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(entityRef);
+
+      doThrow(EntityNotFoundException.byMessage("table instance for test-id not found"))
+          .when(workflowHandler)
+          .triggerWithSignal(anyString(), anyMap());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
     }
   }
 
