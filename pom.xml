@@ -1013,9 +1013,11 @@
               <include>org.openmetadata.service.apps.*.java</include>
               <include>org.openmetadata.service.cache.*.java</include>
               <include>org.openmetadata.service.events.*.java</include>
+              <include>org.openmetadata.service.formatter.**.*.java</include>
               <include>org.openmetadata.service.governance.*.java</include>
               <include>org.openmetadata.service.jdbi3.*.java</include>
               <include>org.openmetadata.service.monitoring.*.java</include>
+              <include>org.openmetadata.service.notifications.**.*.java</include>
               <include>org.openmetadata.service.pipelineService.*.java</include>
               <include>org.openmetadata.service.resources.**.*.java</include>
               <include>org.openmetadata.service.rules.*.java</include>

@@ -551,7 +551,8 @@ export const DataAssetsHeader = ({
   const triggerAutoPilotApplicationButton = useMemo(() => {
     if (
       !SERVICE_TYPES.includes(entityType) ||
-      EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(entityType)
+      EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(entityType) ||
+      !permissions.Trigger
     ) {
       return null;
     }
@@ -582,6 +583,7 @@ export const DataAssetsHeader = ({
     isAutoPilotTriggering,
     triggerTheAutoPilotApplication,
     disableRunAgentsButtonMessage,
+    permissions.Trigger,
   ]);
 
   useEffect(() => {

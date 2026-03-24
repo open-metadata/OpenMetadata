@@ -28,7 +28,8 @@ let role: RolesClass;
 export const initializePermissions = async (
   page: Page,
   effect: 'allow' | 'deny',
-  operations: string[]
+  operations: string[],
+  resources: string[] = ['All']
 ) => {
   await redirectToHomePage(page);
   const { apiContext } = await getApiContext(page);
@@ -39,7 +40,7 @@ export const initializePermissions = async (
     ...VIEW_ALL_RULE,
     {
       name: `Global${effect}AllOperationsPolicy`,
-      resources: ['All'],
+      resources,
       operations,
       effect,
     },

@@ -30,7 +30,6 @@ import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -97,8 +96,7 @@ public final class RestUtil {
   }
 
   public static int compareDates(String date1, String date2) {
-    return LocalDateTime.parse(date1, DATE_FORMAT)
-        .compareTo(LocalDateTime.parse(date2, DATE_FORMAT));
+    return LocalDate.parse(date1, DATE_FORMAT).compareTo(LocalDate.parse(date2, DATE_FORMAT));
   }
 
   public static String today(int offsetDays) {

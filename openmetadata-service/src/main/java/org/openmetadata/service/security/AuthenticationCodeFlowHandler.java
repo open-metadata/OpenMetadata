@@ -294,7 +294,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         configuration.setMaxClockSkew(Integer.parseInt(maxClockSkew));
       }
 
-      String clientAuthenticationMethod = clientConfig.getClientAuthenticationMethod().value();
+      String clientAuthenticationMethod =
+          clientConfig.getClientAuthenticationMethod() != null
+              ? clientConfig.getClientAuthenticationMethod().value()
+              : null;
       if (CommonHelper.isNotBlank(clientAuthenticationMethod)) {
         configuration.setClientAuthenticationMethod(
             ClientAuthenticationMethod.parse(clientAuthenticationMethod));
@@ -334,6 +337,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if ("azure".equalsIgnoreCase(type)) {
         AzureAd2OidcConfiguration azureAdConfiguration =
             new AzureAd2OidcConfiguration(configuration);
+        azureAdConfiguration.setDisablePkce(configuration.isDisablePkce());
         String tenant = clientConfig.getTenant();
         if (CommonHelper.isNotBlank(tenant)) {
           azureAdConfiguration.setTenant(tenant);
