@@ -139,6 +139,11 @@ class DbtServiceTopology(ServiceTopology):
                 processor="process_dbt_domain",
                 nullable=True,
             ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_tags",
+                nullable=True,
+            ),
         ],
     )
     process_dbt_tests: Annotated[
@@ -402,6 +407,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
         """
         Method to process DBT custom properties using patch APIs
+        """
+
+    @abstractmethod
+    def process_dbt_tags(self, data_model_link: DataModelLink):
+        """
+        Method to process and apply DBT tags (including resource_tags) using patch APIs
         """
 
     def is_filtered(

@@ -12,7 +12,7 @@
 Models required for dbt 
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -38,12 +38,20 @@ class DbtFilteredModel(BaseModel):
 
 
 class DbtMetaOpenmetadata(BaseModel):
-    tier: Optional[str] = None
+    resource_tags: Optional[str] = None
     domain: Optional[str] = None
     glossary: Optional[List[str]] = None
-    customProperties: Optional[Dict[str, Any]] = None
+    businessProperties: Optional[Dict[str, Any]] = None
     tags: Optional[List[str]] = None
+    owner: Optional[Union[str, List[str]]] = None
 
 
 class DbtMeta(BaseModel):
-    openmetadata: Optional[DbtMetaOpenmetadata] = None
+    datacatalog: Optional[DbtMetaOpenmetadata] = None
+    # Flat structure support (for BigQuery/dbt native format)
+    domain: Optional[str] = None
+    owner: Optional[Union[str, List[str]]] = None
+    businessProperties: Optional[Dict[str, Any]] = None
+    resource_tags: Optional[str] = None
+    glossary: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
