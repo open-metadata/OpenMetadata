@@ -646,6 +646,16 @@ def create_test_case_parameter_values(dbt_test):
     return None
 
 
+# Characters that are forbidden in entityLink column-name segments by the Pydantic
+# pattern (?u)^<#E::\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$.
+# When test_metadata.kwargs["column_name"] contains these chars it means dbt is
+# referencing a SQL expression (e.g. "date || '-' || order_id") rather than a
+# real column identifier.  Returning None in that case causes the test case to be
+# created at table level, which is semantically more accurate than pointing to a
+# column that does not actually exist in the table.
+_ENTITY_LINK_FORBIDDEN_CHARS = frozenset("|<>")
+
+
 def get_manifest_column_name(manifest_node) -> Optional[str]:
     column_name = getattr(manifest_node, "column_name", None)
     if column_name:
@@ -655,7 +665,14 @@ def get_manifest_column_name(manifest_node) -> Optional[str]:
         return None
     kwargs = getattr(test_metadata, "kwargs", None)
     if isinstance(kwargs, dict):
-        return kwargs.get("column_name")
+        col = kwargs.get("column_name")
+        # SQL expressions such as "date || '-' || order_id" contain characters
+        # that are banned in entityLink strings.  These are not valid column
+        # identifiers, so skip them to avoid a Pydantic ValidationError on
+        # CreateTestCaseRequest.entityLink.
+        if col and any(c in col for c in _ENTITY_LINK_FORBIDDEN_CHARS):
+            return None
+        return col
     return None
 
 
