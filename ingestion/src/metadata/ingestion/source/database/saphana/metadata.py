@@ -102,19 +102,36 @@ class SaphanaSource(CommonDbSourceService):
                         text(SAPHANA_TABLE_FUNCTIONS),
                         {"schema_name": schema_name},
                     ).all()
-                for row in results:
-                    stored_procedure = SapHanaStoredProcedure.model_validate(
-                        row._asdict()
-                    )
-                    if self.is_stored_procedure_filtered(stored_procedure.name):
-                        continue
-                    yield stored_procedure
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Error fetching table functions for schema"
                     f" [{schema_name}]: {exc}"
                 )
+                return
+
+            for row in results:
+                try:
+                    stored_procedure = SapHanaStoredProcedure.model_validate(
+                        row._asdict()
+                    )
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
+                    yield stored_procedure
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error parsing table function row: {row} - {exc}"
+                    )
+                    self.status.failed(
+                        error=StackTraceError(
+                            name=row._asdict().get(
+                                "function_name", "UNKNOWN"
+                            ),
+                            error=f"Error parsing Table Function payload: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
     def yield_stored_procedure(
         self, stored_procedure: SapHanaStoredProcedure

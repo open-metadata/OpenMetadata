@@ -1021,7 +1021,8 @@ def _get_mapped_schema(
     """
     with engine.connect() as conn:
         result = conn.execute(
-            text(SAPHANA_SCHEMA_MAPPING.format(authoring_schema=schema_name))
+            text(SAPHANA_SCHEMA_MAPPING),
+            {"authoring_schema": schema_name},
         )
         row = result.fetchone()
         if row is not None:

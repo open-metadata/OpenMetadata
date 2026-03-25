@@ -1420,6 +1420,73 @@ def test_get_stored_procedures_disabled() -> None:
     assert len(results) == 0
 
 
+def test_get_stored_procedures_bad_row_does_not_abort() -> None:
+    """A single unparseable row should not abort the generator.
+
+    The try/except must be *inside* the for-loop so that remaining
+    rows are still yielded and the failure is surfaced via status.failed().
+    """
+    from metadata.ingestion.source.database.saphana.metadata import SaphanaSource
+
+    mock_source = MagicMock(spec=SaphanaSource)
+    mock_source.source_config = MagicMock()
+    mock_source.source_config.includeStoredProcedures = True
+
+    mock_context = MagicMock()
+    mock_context.database_schema = "SYSTEM"
+    mock_source.context = MagicMock()
+    mock_source.context.get.return_value = mock_context
+
+    class MockRow:
+        def __init__(self, data):
+            self._data = data
+
+        def _asdict(self):
+            return self._data
+
+    mock_rows = [
+        MockRow(
+            {
+                "function_name": "TF_GOOD_1",
+                "schema_name": "SYSTEM",
+                "definition": "...",
+            }
+        ),
+        # Bad row: missing required field 'function_name'
+        MockRow({"schema_name": "SYSTEM", "definition": "..."}),
+        MockRow(
+            {
+                "function_name": "TF_GOOD_2",
+                "schema_name": "SYSTEM",
+                "definition": "...",
+            }
+        ),
+    ]
+
+    mock_conn = MagicMock()
+    mock_result = MagicMock()
+    mock_result.all.return_value = mock_rows
+    mock_conn.execute.return_value = mock_result
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+    mock_source.engine = mock_engine
+
+    mock_source.is_stored_procedure_filtered = MagicMock(return_value=False)
+    mock_source.status = MagicMock()
+
+    results = list(SaphanaSource.get_stored_procedures(mock_source))
+
+    # Both good rows should be yielded — the bad row must not abort the generator
+    assert len(results) == 2
+    assert results[0].name == "TF_GOOD_1"
+    assert results[1].name == "TF_GOOD_2"
+
+    # The failure should have been surfaced
+    mock_source.status.failed.assert_called_once()
+
+
 def test_yield_stored_procedure_creates_request() -> None:
     """Test yield_stored_procedure produces a valid CreateStoredProcedureRequest.
     Follows the same pattern as test_yield_stored_procedure in test_mariadb.py.
