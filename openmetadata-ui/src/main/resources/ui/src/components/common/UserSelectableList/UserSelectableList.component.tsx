@@ -55,6 +55,9 @@ export const UserSelectableList = ({
   const botUserIds = useRef<Set<string>>(new Set());
 
   const fetchOptions = async (searchText: string, after?: string) => {
+    if (!after) {
+      botUserIds.current.clear();
+    }
     if (searchText) {
       try {
         const res = await searchQuery({
