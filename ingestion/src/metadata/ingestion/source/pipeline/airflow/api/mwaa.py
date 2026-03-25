@@ -106,7 +106,8 @@ class MWAAClient:
 
     def list_dag_runs(self, dag_id: str, limit: int = 10) -> Dict:
         """List DAG runs for a specific DAG"""
-        query_param = f"?limit={limit}" if limit is not None else ""
+        query_param = "?order_by=-start_date"
+        query_param += f"&limit={limit}" if limit is not None else ""
         return self._invoke_rest_api(
             f"/dags/{quote(dag_id, safe='')}/dagRuns{query_param}",
         )

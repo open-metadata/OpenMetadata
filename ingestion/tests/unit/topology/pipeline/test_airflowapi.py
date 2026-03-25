@@ -19,6 +19,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import HTTPError
 
 from metadata.generated.schema.entity.data.pipeline import PipelineState, StatusType
+from metadata.generated.schema.entity.utils.common.accessTokenConfig import AccessToken
 from metadata.ingestion.source.pipeline.airflow.api.client import AirflowApiClient
 from metadata.ingestion.source.pipeline.airflow.api.models import (
     AirflowApiDagDetails,
@@ -38,10 +39,7 @@ from metadata.utils.helpers import datetime_to_ts
 def _make_client(mock_rest_cls, api_version="v1"):
     """Create an AirflowApiClient with mocked TrackedREST using AccessToken auth."""
     mock_rest_cls.return_value = MagicMock()
-    auth_config = MagicMock()
-    auth_config.authType = "AccessToken"
-    auth_config.token = MagicMock()
-    auth_config.token.get_secret_value.return_value = "test_token"
+    auth_config = AccessToken(token="test_token")
     rest_config = MagicMock()
     rest_config.authConfig = auth_config
     rest_config.apiVersion = MagicMock()
@@ -82,10 +80,8 @@ def _make_source_and_dag(task_names=None):
     )
     source._build_tasks = lambda details: AirflowApiSource._build_tasks(source, details)
     source.register_record = MagicMock()
-    source.get_pipeline_state = (
-        lambda details: (
-            PipelineState.Inactive if details.is_paused else PipelineState.Active
-        )
+    source.get_pipeline_state = lambda details: (
+        (PipelineState.Inactive if details.is_paused else PipelineState.Active)
         if details.is_paused is not None
         else None
     )
