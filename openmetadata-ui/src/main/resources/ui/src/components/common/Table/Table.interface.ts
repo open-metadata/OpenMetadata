@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import { TableProps } from 'antd/lib/table';
+import type { DragAndDropHooks } from 'react-aria-components';
 import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
 import { SearchBarProps } from '../SearchBarComponent/SearchBar.component';
 
-export interface TableComponentProps<T> extends TableProps<T> {
+export interface TableComponentProps<T>
+  extends Omit<TableProps<T>, 'className'> {
   containerClassName?: string; // Applied to the table container
   resizableColumns?: boolean;
   /** Filter's in ReactNode that will be aligned with TableColumnFilter. Example: GlossaryTableFilter */
@@ -29,6 +31,11 @@ export interface TableComponentProps<T> extends TableProps<T> {
     showPagination: boolean;
   };
   entityType?: string;
+  /** CSS class applied to every data cell. Defaults to 'tw:py-2 tw:pl-4 tw:pr-2 tw:align-top'. */
+  cellClassName?: string;
+  /** React Aria drag-and-drop hooks returned by `useDragAndDrop`. */
+  dragAndDropHooks?: DragAndDropHooks;
+  'data-testid'?: string;
 }
 
 export interface TableColumnDropdownList {

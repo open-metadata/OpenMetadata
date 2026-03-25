@@ -935,7 +935,7 @@ test.describe('Glossary tests', () => {
         );
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('gridcell', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).not.toBeVisible();
@@ -943,7 +943,7 @@ test.describe('Glossary tests', () => {
         await performExpandAll(page);
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('gridcell', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).toBeVisible();
@@ -970,7 +970,7 @@ test.describe('Glossary tests', () => {
 
         // verify the term is moved back at parent level
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('gridcell', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).toBeVisible();
@@ -1021,7 +1021,7 @@ test.describe('Glossary tests', () => {
         );
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('gridcell', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).not.toBeVisible();
@@ -1029,7 +1029,7 @@ test.describe('Glossary tests', () => {
         await performExpandAll(page);
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('gridcell', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).toBeVisible();
@@ -1068,7 +1068,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('gridcell', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).not.toBeVisible();
@@ -1076,7 +1076,7 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('gridcell', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).toBeVisible();
@@ -1118,7 +1118,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('gridcell', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).not.toBeVisible();
@@ -1128,7 +1128,7 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('gridcell', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).toBeVisible();
@@ -1516,10 +1516,10 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm2.data.displayName })
+        page.getByRole('gridcell', { name: glossaryTerm2.data.displayName })
       ).toBeVisible();
       await expect(
-        page.getByRole('cell', { name: glossaryTerm3.data.displayName })
+        page.getByRole('gridcell', { name: glossaryTerm3.data.displayName })
       ).toBeVisible();
     } finally {
       await glossaryTerm3.delete(apiContext);
@@ -1697,15 +1697,15 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm1.data.displayName })
+        page.getByRole('gridcell', { name: glossaryTerm1.data.displayName })
       ).toBeVisible();
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm2.data.displayName })
+        page.getByRole('gridcell', { name: glossaryTerm2.data.displayName })
       ).toBeVisible();
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm3.data.displayName })
+        page.getByRole('gridcell', { name: glossaryTerm3.data.displayName })
       ).toBeVisible();
 
       await updateGlossaryTermDataFromTree(

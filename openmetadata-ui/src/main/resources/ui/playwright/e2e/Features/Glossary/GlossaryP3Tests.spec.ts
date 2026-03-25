@@ -215,7 +215,7 @@ test.describe('Glossary P3 Tests', () => {
       // Search should not crash - either shows results, table, or empty state
       const table = page.getByTestId('glossary-term-table');
       const emptyState = page.getByText(/no.*term.*found|no.*result/i);
-      const tableRows = page.locator('tbody .ant-table-row');
+      const tableRows = page.locator('tbody tr[role="row"]');
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- search results need time to render after special character input
       await page.waitForTimeout(1000);
@@ -687,7 +687,9 @@ test.describe('Glossary P3 Tests', () => {
       // If there are terms, try to expand some levels
       if (await table.isVisible({ timeout: 2000 }).catch(() => false)) {
         for (let i = 0; i < Math.min(termIds.length, 2); i++) {
-          const expandIcon = page.locator('.ant-table-row-expand-icon').first();
+          const expandIcon = page
+            .locator('[data-testid="expand-icon"]')
+            .first();
 
           if (
             await expandIcon.isVisible({ timeout: 2000 }).catch(() => false)

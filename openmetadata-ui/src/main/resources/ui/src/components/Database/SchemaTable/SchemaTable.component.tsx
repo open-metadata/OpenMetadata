@@ -104,7 +104,7 @@ import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
+import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
@@ -940,8 +940,8 @@ const SchemaTable = () => {
     <Row gutter={[0, 16]}>
       <Col id="schemaDetails" span={24}>
         <Table
-          className="align-table-filter-left"
           columns={columns}
+          containerClassName="align-table-filter-left"
           customPaginationProps={paginationProps}
           data-testid="entity-table"
           dataSource={tableColumns}

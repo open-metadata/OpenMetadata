@@ -306,6 +306,7 @@ const AsyncSelectList: FC<
       })}
       data-testid="tag-selector"
       defaultValue={defaultSelectedValues}
+      dropdownMatchSelectWidth={false}
       dropdownRender={dropdownRender}
       filterOption={false}
       mode={mode}

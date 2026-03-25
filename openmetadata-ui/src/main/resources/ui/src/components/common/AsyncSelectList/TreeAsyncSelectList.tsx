@@ -428,6 +428,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       })}
       data-testid="tag-selector"
       defaultValue={defaultSelectedValues}
+      dropdownMatchSelectWidth={false}
       dropdownRender={
         hasNoActionButtons ? (menu: ReactElement) => menu : dropdownRender
       }
@@ -452,8 +453,8 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
           />
         )
       }
-      open={open}
       // this popupClassName class is used to identify the dropdown in the playwright tests
+      open={open}
       popupClassName="async-tree-select-list-dropdown"
       showCheckedStrategy={TreeSelect.SHOW_ALL}
       style={{ width: '100%' }}

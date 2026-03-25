@@ -624,7 +624,7 @@ export function getTableExpandableConfig<T>(
         isDraggable && (
           <>
             <IconDrag className="drag-icon" />
-            <span className="expand-cell-empty-icon-container" />
+            <span className="tw:inline-flex tw:h-3 tw:w-2" />
           </>
         )
       ),

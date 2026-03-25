@@ -28,6 +28,18 @@ jest.mock('../../../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(() => <>LimitWrapper</>);
 });
 
+jest.mock('../../../common/Table/TableV2', () => {
+  return jest.fn().mockImplementation(({ dataSource }) => (
+    <table>
+      <tbody>
+        {(dataSource ?? []).map((_: unknown, i: number) => (
+          <tr key={i} />
+        ))}
+      </tbody>
+    </table>
+  ));
+});
+
 jest.mock('../../../../utils/StringsUtils', () => ({
   ...jest.requireActual('../../../../utils/StringsUtils'),
   stringToHTML: jest.fn((text) => text),

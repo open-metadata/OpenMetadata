@@ -344,11 +344,15 @@ const editGlossaryCustomProperty = async (
     await expect(
       page
         .getByTestId(propertyName)
-        .getByRole('columnheader', { name: columns[0] })
+        .getByRole('columnheader')
+        .filter({ hasText: columns[0] })
     ).toBeVisible();
 
     await expect(
-      page.getByTestId(propertyName).getByRole('cell', { name: values[0] })
+      page
+        .getByTestId(propertyName)
+        .getByRole('gridcell')
+        .filter({ hasText: values[0] })
     ).toBeVisible();
   }
 };

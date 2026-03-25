@@ -11,6 +11,86 @@
  *  limitations under the License.
  */
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  const React = require('react');
+  const Table = React.forwardRef(
+    (
+      { children, ...props }: Record<string, unknown>,
+      ref: React.Ref<HTMLTableElement>
+    ) => (
+      <table ref={ref} {...props}>
+        {children as React.ReactNode}
+      </table>
+    )
+  );
+  Table.Head = ({
+    children,
+    ...props
+  }: Record<string, unknown> & { children?: React.ReactNode }) => (
+    <th {...props}>{children}</th>
+  );
+  Table.Header = ({
+    children,
+    ...props
+  }: Record<string, unknown> & { children?: React.ReactNode }) => (
+    <thead {...props}>
+      <tr>{children}</tr>
+    </thead>
+  );
+  Table.Body = ({
+    children,
+    renderEmptyState,
+    ...props
+  }: Record<string, unknown> & {
+    children?: React.ReactNode;
+    renderEmptyState?: () => React.ReactNode;
+  }) => (
+    <tbody {...props}>
+      {React.Children.count(children) > 0 ? children : renderEmptyState?.()}
+    </tbody>
+  );
+  Table.Row = ({
+    children,
+    ...props
+  }: Record<string, unknown> & { children?: React.ReactNode }) => (
+    <tr {...props}>{children}</tr>
+  );
+  Table.Cell = ({
+    children,
+    ...props
+  }: Record<string, unknown> & { children?: React.ReactNode }) => (
+    <td {...props}>{children}</td>
+  );
+
+  const DropdownRoot = ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  const DropdownPopover = ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  const Dropdown = { Root: DropdownRoot, Popover: DropdownPopover };
+
+  const Button = ({
+    children,
+    ...props
+  }: Record<string, unknown> & { children?: React.ReactNode }) => (
+    <button {...props}>{children}</button>
+  );
+
+  return { Table, Dropdown, Button };
+});
+
+jest.mock('@untitledui/icons', () => {
+  const icon = () => <span>icon</span>;
+
+  return {
+    ArrowDown: icon,
+    ChevronDown: icon,
+    ChevronRight: icon,
+    ChevronSelectorVertical: icon,
+  };
+});
+
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
@@ -314,6 +394,10 @@ jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
 jest.mock('../TableDescription/TableDescription.component', () => {
   return jest.fn().mockReturnValue(<p>TableDescription</p>);
 });
+
+jest.mock('../../common/Table/DraggableMenu/DraggableMenuItem.component', () =>
+  jest.fn().mockReturnValue(<p>DraggableMenuItem</p>)
+);
 
 const mockTableScrollValue = jest.fn();
 

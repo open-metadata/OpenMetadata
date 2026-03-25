@@ -47,12 +47,6 @@
             .expand-icon {
               cursor: pointer;
             }
-
-            .expand-cell-empty-icon-container {
-              width: 8px;
-              height: 12px;
-              display: inline-flex;
-            }
           }
         }
         .ant-table-cell-row-hover {
@@ -137,6 +131,17 @@
           background: @active-color !important;
         }
       }
+    }
+  }
+}
+
+// TableV2 whole-table drop highlight — driven by React Aria's native data-drop-target
+[data-drop-target] table:not(.ant-table) {
+  border-collapse: collapse;
+  tbody {
+    border: 2px dashed @primary-color;
+    tr td {
+      background: @active-color !important;
     }
   }
 }

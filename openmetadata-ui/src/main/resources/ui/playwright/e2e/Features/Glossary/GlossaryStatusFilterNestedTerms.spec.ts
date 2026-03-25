@@ -155,19 +155,6 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     await page.locator('.ant-table-row').first().waitFor({ state: 'visible' });
   };
 
-  // Helper to collapse a specific term in the table
-  const collapseTerm = async (page: Page, termName: string) => {
-    const termRow = page.locator(`[data-row-key*="${termName}"]`).first();
-    const collapseIcon = termRow.locator(
-      '.ant-table-row-expand-icon.ant-table-row-expand-icon-expanded'
-    );
-
-    if (await collapseIcon.isVisible()) {
-      await collapseIcon.click();
-      await collapseIcon.waitFor({ state: 'detached' }).catch(() => {});
-    }
-  };
-
   // Helper to verify term is visible in table
   const verifyTermVisible = async (page: Page, displayName: string) => {
     const term = page.getByTestId(displayName);
@@ -214,9 +201,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
   // Helper to get row count
   const getRowCount = async (page: Page) => {
-    const rows = page.locator(
-      'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
-    );
+    const rows = page.locator('tbody tr[role="row"]:not([aria-hidden="true"])');
 
     return rows.count();
   };

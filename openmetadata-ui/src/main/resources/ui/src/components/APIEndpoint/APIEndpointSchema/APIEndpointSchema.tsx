@@ -59,7 +59,7 @@ import {
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import Table from '../../common/Table/Table';
+import Table from '../../common/Table/TableV2';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -467,8 +467,8 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     <Row gutter={[16, 16]}>
       <Col span={24}>
         <Table
-          className={classNames('align-table-filter-left')}
           columns={columns}
+          containerClassName={classNames('align-table-filter-left')}
           data-testid="schema-fields-table"
           dataSource={
             isVersionView ? activeSchemaFieldsDiff : activeSchemaFields

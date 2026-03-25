@@ -310,32 +310,75 @@ test.describe('Custom properties with custom property config', () => {
         });
       });
 
-      await test.step('Add 5 rows of data to table property', async () => {
+      const container = page.locator(
+        `[data-testid="custom-property-${propertyName}-card"]`
+      );
+
+      await test.step('Navigate to entity custom properties tab', async () => {
         await redirectToHomePage(page);
         await adminTestEntity.visitEntityPage(page);
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('custom_properties').click();
+      });
 
-        const container = page.locator(
-          `[data-testid="custom-property-${propertyName}-card"]`
-        );
+      await test.step('Add 1 row — container should not yet be scrollable', async () => {
         const editButton = container.getByTestId('edit-icon');
         await editButton.scrollIntoViewIfNeeded();
         await expect(editButton).toBeVisible();
         await expect(editButton).toBeEnabled();
         await editButton.click();
 
-        for (let i = 0; i < 5; i++) {
+        await page.getByTestId('add-new-row').click();
+        await expect(page.locator('.om-rdg')).toBeVisible();
+        await fillTableColumnInputDetails(
+          page,
+          'alpha',
+          entity.tableConfig.columns[0]
+        );
+        await fillTableColumnInputDetails(
+          page,
+          'beta',
+          entity.tableConfig.columns[1]
+        );
+
+        const patchResponse = page.waitForResponse(
+          `/api/v1/${entity.entityApiType}/*`
+        );
+        await page.getByTestId('update-table-type-property').click();
+        expect((await patchResponse).status()).toBe(200);
+        await waitForAllLoadersToDisappear(page);
+
+        const scrollContainer = container.locator(
+          '.custom-property-scrollable-container'
+        );
+        await expect(scrollContainer).toBeVisible();
+        const isScrollable = await scrollContainer.evaluate(
+          (el) => el.scrollHeight > el.clientHeight
+        );
+        expect(isScrollable).toBeFalsy();
+      });
+
+      await test.step('Add 2 more rows (3 total) — container should become scrollable', async () => {
+        const editButton = container.getByTestId('edit-icon');
+        await editButton.scrollIntoViewIfNeeded();
+        await expect(editButton).toBeVisible();
+        await editButton.click();
+
+        const additionalRows = [
+          { col1: 'gamma', col2: 'delta' },
+          { col1: 'epsilon', col2: 'zeta' },
+        ];
+        for (const row of additionalRows) {
           await page.getByTestId('add-new-row').click();
           await expect(page.locator('.om-rdg')).toBeVisible();
           await fillTableColumnInputDetails(
             page,
-            `row${i + 1}-col1`,
+            row.col1,
             entity.tableConfig.columns[0]
           );
           await fillTableColumnInputDetails(
             page,
-            `row${i + 1}-col2`,
+            row.col2,
             entity.tableConfig.columns[1]
           );
         }
@@ -346,21 +389,7 @@ test.describe('Custom properties with custom property config', () => {
         await page.getByTestId('update-table-type-property').click();
         expect((await patchResponse).status()).toBe(200);
         await waitForAllLoadersToDisappear(page);
-      });
 
-      await test.step('Verify row count (5) in property name', async () => {
-        const container = page.locator(
-          `[data-testid="custom-property-${propertyName}-card"]`
-        );
-        await expect(container.getByTestId('property-name')).toContainText(
-          '(5)'
-        );
-      });
-
-      await test.step('Verify .custom-property-scrollable-container is scrollable', async () => {
-        const container = page.locator(
-          `[data-testid="custom-property-${propertyName}-card"]`
-        );
         const scrollContainer = container.locator(
           '.custom-property-scrollable-container'
         );
@@ -371,10 +400,13 @@ test.describe('Custom properties with custom property config', () => {
         expect(isScrollable).toBeTruthy();
       });
 
-      await test.step('Verify expand/collapse toggle is hidden', async () => {
-        const container = page.locator(
-          `[data-testid="custom-property-${propertyName}-card"]`
+      await test.step('Verify row count (3) in property name', async () => {
+        await expect(container.getByTestId('property-name')).toContainText(
+          '(3)'
         );
+      });
+
+      await test.step('Verify expand/collapse toggle is hidden', async () => {
         await expect(
           container.getByTestId(`toggle-${propertyName}`)
         ).not.toBeVisible();

@@ -24,15 +24,15 @@ import {
   Popover,
   Row,
   Space,
-  TableProps,
   Tooltip,
 } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
+import { Operation } from 'fast-json-patch';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useInView } from 'react-intersection-observer';
 import { Link, useNavigate } from 'react-router-dom';
@@ -61,7 +61,11 @@ import {
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
   STATIC_VISIBLE_COLUMNS,
 } from '../../../constants/Glossary.contant';
-import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
+import {
+  DropZone,
+  useDragAndDrop,
+  Button as RACButton,
+} from 'react-aria-components';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
@@ -104,11 +108,10 @@ import {
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
-import Table from '../../common/Table/Table';
+import Table from '../../common/Table/TableV2';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import WorkflowHistory from '../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component';
@@ -153,7 +156,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState(true);
-  const [isTableHovered, setIsTableHovered] = useState(false);
+  const [draggingFqn, setDraggingFqn] = useState<string | null>(null);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
@@ -1250,7 +1253,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         record.fullyQualifiedName || ''
       );
 
-      return isNested || isExpanded ? 'glossary-nested-row' : '';
+      return classNames({
+        'glossary-nested-row': isNested || isExpanded,
+      });
     },
     [expandedRowKeys]
   );
@@ -1261,7 +1266,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         const isLoadMoreRow = record.isLoadMoreButton;
 
         if (isLoadMoreRow) {
-          return <span className="expand-cell-empty-icon-container" />;
+          return <span className="tw:inline-flex tw:h-3 tw:w-2" />;
         }
 
         const { children, childrenCount } = record;
@@ -1269,7 +1274,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
         return (childrenCount ?? children?.length ?? 0) > 0 ? (
           <>
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <RACButton
+              className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-move tw:inline-flex tw:mr-1"
+              slot="drag">
+              <IconDrag
+                className="drag-icon tw:visible"
+                height={12}
+                width={8}
+              />
+            </RACButton>
             {isLoading ? (
               <span className="m-r-xs expand-loader">
                 <Loader size="x-small" />
@@ -1286,8 +1299,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           </>
         ) : (
           <>
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
-            <span className="expand-cell-empty-icon-container" />
+            <RACButton
+              className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-move tw:inline-flex tw:mr-1"
+              slot="drag">
+              <IconDrag
+                className="drag-icon tw:visible"
+                height={12}
+                width={8}
+              />
+            </RACButton>
+            <span className="tw:inline-flex tw:h-3 tw:w-2" />
           </>
         );
       },
@@ -1358,20 +1379,31 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     []
   );
 
-  const handleTableHover = (value: boolean) => setIsTableHovered(value);
-
   const handleChangeGlossaryTerm = async () => {
     if (movedGlossaryTerm) {
-      setIsTableLoading(true);
-      const newTermData = {
-        ...movedGlossaryTerm.from,
-        parent: isUndefined(movedGlossaryTerm.to)
-          ? null
-          : {
-              fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
+      const jsonPatch: Operation[] = isUndefined(movedGlossaryTerm.to)
+        ? movedGlossaryTerm.from.parent
+          ? [{ op: 'remove', path: '/parent' }]
+          : []
+        : [
+            {
+              op: movedGlossaryTerm.from.parent ? 'replace' : 'add',
+              path: '/parent',
+              value: {
+                id: movedGlossaryTerm.to.id,
+                type: 'glossaryTerm',
+                fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
+              },
             },
-      };
-      const jsonPatch = compare(movedGlossaryTerm.from, newTermData);
+          ];
+
+      if (jsonPatch.length === 0) {
+        setIsModalOpen(false);
+
+        return;
+      }
+
+      setIsTableLoading(true);
 
       try {
         await patchGlossaryTerm(movedGlossaryTerm.from?.id || '', jsonPatch);
@@ -1381,31 +1413,75 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       } finally {
         setIsTableLoading(false);
         setIsModalOpen(false);
-        setIsTableHovered(false);
       }
     }
   };
 
-  const onTableRow: TableProps<ModifiedGlossaryTerm>['onRow'] = (
-    record,
-    index
-  ) =>
-    ({
-      index,
-      handleMoveRow,
-      handleTableHover,
-      record,
-    } as DraggableBodyRowProps<GlossaryTerm>);
+  const termsByFqn = useMemo(() => {
+    const map = new Map<string, ModifiedGlossaryTerm>();
+    const add = (terms: ModifiedGlossaryTerm[]) => {
+      for (const t of terms) {
+        if (t.fullyQualifiedName) {
+          map.set(t.fullyQualifiedName, t);
+        }
+        if (t.children?.length) {
+          add(t.children);
+        }
+      }
+    };
+    add(glossaryTerms);
 
-  const onTableHeader: TableProps<ModifiedGlossaryTerm>['onHeaderRow'] = () =>
-    ({
-      handleMoveRow,
-      handleTableHover,
-    } as DraggableBodyRowProps<GlossaryTerm>);
+    return map;
+  }, [glossaryTerms]);
+
+  const draggingRecord = useMemo(
+    () => (draggingFqn ? termsByFqn.get(draggingFqn) : null),
+    [draggingFqn, termsByFqn]
+  );
+
+  const { dragAndDropHooks } = useDragAndDrop({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getItems(keys: any) {
+      const key = String([...keys][0]);
+
+      flushSync(() => setDraggingFqn(key));
+
+      return [{ 'text/plain': key }];
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getDropOperation(target: any) {
+      if (target.type === 'item') {
+        const targetFqn = String(target.key);
+        if (
+          draggingFqn &&
+          (targetFqn === draggingFqn || targetFqn.startsWith(draggingFqn + '.'))
+        ) {
+          return 'cancel';
+        }
+
+        return 'move';
+      }
+
+      return 'cancel';
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async onItemDrop(e: any) {
+      const draggedFqn = await e.items[0].getText('text/plain');
+      const dropFqn = String(e.target.key);
+      const dragRecord = termsByFqn.get(draggedFqn);
+      const dropRecord = termsByFqn.get(dropFqn);
+
+      if (dragRecord && dropRecord && dragRecord.id !== dropRecord.id) {
+        handleMoveRow(dragRecord as GlossaryTerm, dropRecord as GlossaryTerm);
+      }
+    },
+    onDragEnd() {
+      setDraggingFqn(null);
+    },
+  });
 
   const onDragConfirmationModalClose = useCallback(() => {
     setIsModalOpen(false);
-    setIsTableHovered(false);
     setConfirmCheckboxChecked(false);
   }, []);
 
@@ -1534,28 +1610,45 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             position: 'relative',
           }}>
           {glossaryTerms.length > 0 ? (
-            <>
-              <Table
-                resizableColumns
-                className={classNames('drop-over-background', {
-                  'drop-over-table': isTableHovered,
-                })}
-                columns={columns}
-                components={TABLE_CONSTANTS}
-                data-testid="glossary-terms-table"
-                dataSource={filteredGlossaryTerms}
-                defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
-                expandable={expandableConfig}
-                extraTableFilters={extraTableFilters}
-                loading={isTableLoading || isExpandingAll}
-                pagination={false}
-                rowClassName={getRowClassName}
-                rowKey="fullyQualifiedName"
-                size="small"
-                staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
-                onHeaderRow={onTableHeader}
-                onRow={onTableRow}
-              />
+            <div>
+              <div className="tw:relative">
+                <DropZone
+                  getDropOperation={() =>
+                    draggingRecord?.parent ? 'move' : 'cancel'
+                  }
+                  onDrop={async (e) => {
+                    const item = e.items[0];
+                    const fqn =
+                      item.kind === 'text'
+                        ? await item.getText('text/plain')
+                        : null;
+                    if (!fqn) {
+                      return;
+                    }
+                    const dragRecord = termsByFqn.get(fqn);
+                    if (dragRecord) {
+                      handleMoveRow(dragRecord as GlossaryTerm);
+                    }
+                  }}>
+                  <Table
+                    resizableColumns
+                    columns={columns}
+                    containerClassName="drop-over-background glossary-terms-table"
+                    data-testid="glossary-terms-table"
+                    dataSource={filteredGlossaryTerms}
+                    defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+                    dragAndDropHooks={dragAndDropHooks}
+                    expandable={expandableConfig}
+                    extraTableFilters={extraTableFilters}
+                    loading={isTableLoading || isExpandingAll}
+                    pagination={false}
+                    rowClassName={getRowClassName}
+                    rowKey="fullyQualifiedName"
+                    size="small"
+                    staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
+                  />
+                </DropZone>
+              </div>
               {/* Show infinite scroll trigger if there are more results */}
               {((!searchTerm && paging.after !== undefined) ||
                 (searchTerm && searchPaging.hasMore)) && (
@@ -1566,18 +1659,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                   {isLoadingMore && <Loader size="small" />}
                 </div>
               )}
-            </>
+            </div>
           ) : (
             // Show empty state within the table container when search returns no results
             // This keeps the search bar and filters visible
             <Table
               resizableColumns
-              className="glossary-terms-table"
               columns={columns}
-              components={TABLE_CONSTANTS}
+              containerClassName="glossary-terms-table"
               data-testid="glossary-terms-table"
               dataSource={[]}
               defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+              dragAndDropHooks={dragAndDropHooks}
               expandable={expandableConfig}
               extraTableFilters={extraTableFilters}
               loading={isTableLoading}
@@ -1595,8 +1688,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               rowKey="fullyQualifiedName"
               size="small"
               staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
-              onHeaderRow={onTableHeader}
-              onRow={onTableRow}
             />
           )}
         </div>

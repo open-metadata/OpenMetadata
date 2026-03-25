@@ -107,9 +107,7 @@ test.describe('Glossary Bulk Operations', () => {
         await termCheckboxes.first().check();
 
         // Look for bulk action toolbar
-        const bulkActionBar = page.locator(
-          '[data-testid="bulk-actions"], .ant-table-selection'
-        );
+        const bulkActionBar = page.locator('[data-testid="bulk-actions"]');
 
         if (await bulkActionBar.isVisible()) {
           await expect(bulkActionBar).toBeVisible();
@@ -156,7 +154,7 @@ test.describe('Glossary Bulk Operations', () => {
       await expect(parentRow).toBeVisible();
 
       // Click on the expand icon within the parent row to show children
-      const expandIcon = parentRow.locator('.ant-table-row-expand-icon');
+      const expandIcon = parentRow.locator('[data-testid="expand-icon"]');
 
       if (await expandIcon.isVisible()) {
         await expandIcon.click();

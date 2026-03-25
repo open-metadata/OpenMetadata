@@ -80,7 +80,7 @@ export const createBot = async (page: Page) => {
   ).toBeVisible();
 
   await expect(
-    page.getByRole('cell', { name: BOT_DETAILS.description })
+    page.getByRole('gridcell', { name: BOT_DETAILS.description })
   ).toBeVisible();
 
   // Get created bot
@@ -115,7 +115,7 @@ export const deleteBot = async (page: Page) => {
 
   await toastNotification(page, /deleted successfully!/);
 
-  await expect(page.locator('.ant-table-tbody')).not.toContainText(botName);
+  await expect(page.locator('tbody')).not.toContainText(botName);
 };
 
 export const updateBotDetails = async (page: Page) => {
@@ -150,7 +150,9 @@ export const updateBotDetails = async (page: Page) => {
   ).toContainText(BOT_DETAILS.updatedBotName);
 
   await expect(
-    page.locator(`[data-row-key="${botName}"] [data-testid="markdown-parser"]`)
+    page.locator(
+      `tr[data-row-key="${botName}"] [data-testid="markdown-parser"]`
+    )
   ).toContainText(BOT_DETAILS.updatedDescription);
 };
 

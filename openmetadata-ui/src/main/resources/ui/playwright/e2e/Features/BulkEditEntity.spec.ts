@@ -591,7 +591,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Details updated
       await expect(
-        page.getByRole('cell', { name: 'Playwright Table column' })
+        page.getByRole('gridcell', { name: 'Playwright Table column' })
       ).toBeVisible();
 
       // Verify Tags

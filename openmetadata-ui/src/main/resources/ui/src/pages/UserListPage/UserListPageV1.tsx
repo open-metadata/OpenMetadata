@@ -24,7 +24,7 @@ import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidget
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import Table from '../../components/common/Table/Table';
+import Table from '../../components/common/Table/TableV2';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -518,8 +518,8 @@ const UserListPageV1 = () => {
 
         <Col span={24}>
           <Table
-            className="user-list-table"
             columns={columns}
+            containerClassName="user-list-table"
             customPaginationProps={{
               currentPage,
               isLoading: isDataLoading,

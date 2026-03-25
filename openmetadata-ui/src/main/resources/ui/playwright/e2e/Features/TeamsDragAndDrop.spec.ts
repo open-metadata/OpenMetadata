@@ -171,9 +171,7 @@ test.describe(
 
         // Verify the team is moved under the business team
         await openDragDropDropdown(page, droppableTeamName);
-        const movedTeam = page.locator(
-          `.ant-table-row-level-1[data-row-key="${teamNameGroup}"]`
-        );
+        const movedTeam = page.locator(`tr[data-row-key="${teamNameGroup}"]`);
 
         await expect(movedTeam).toBeVisible();
       });
@@ -183,17 +181,12 @@ test.describe(
       // Open department team dropdown as it is moved under it from last test
       await openDragDropDropdown(page, teamNameDepartment);
 
-      await dragAndDropElement(
-        page,
-        teamNameGroup,
-        '.ant-table-thead > tr',
-        true
-      );
+      await dragAndDropElement(page, teamNameGroup, 'thead tr', true);
       await confirmationDragAndDropTeam(page, teamNameGroup, 'Organization');
 
       // Verify the team is moved under the table level
       const movedTeam = page.locator(
-        `.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`
+        `tr[data-level="0"][data-row-key="${teamNameGroup}"]`
       );
       await movedTeam.scrollIntoViewIfNeeded();
 

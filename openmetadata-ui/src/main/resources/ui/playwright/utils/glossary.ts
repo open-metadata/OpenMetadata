@@ -1409,12 +1409,9 @@ export async function openColumnDropdown(page: Page): Promise<void> {
 
   await dropdownButton.click();
 
-  await page
-    .locator('.ant-dropdown [role="menu"]')
-    .getByTestId('column-dropdown-title')
-    .waitFor({
-      state: 'visible',
-    });
+  await page.waitForSelector('[data-testid="column-dropdown-title"]', {
+    state: 'visible',
+  });
 }
 
 export async function selectColumns(

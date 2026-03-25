@@ -47,6 +47,14 @@ jest.mock('../../../common/CopyToClipboardButton/CopyToClipboardButton', () =>
   jest.fn().mockReturnValue(<>CopyToClipboardButton</>)
 );
 
+jest.mock('@ant-design/icons/lib/components/Icon', () =>
+  jest.fn().mockReturnValue(<span data-testid="icon" />)
+);
+
+jest.mock('@melloware/react-logviewer', () => ({
+  LazyLog: jest.fn().mockReturnValue(<div />),
+}));
+
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
   Badge: jest.fn().mockReturnValue(<div>Badge</div>),

@@ -653,7 +653,7 @@ export const checkStewardPermissions = async (page: Page) => {
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
   await page
-    .getByRole('cell', { name: /user_id/i })
+    .getByRole('gridcell', { name: /user_id/i })
     .getByTestId('edit-displayName-button')
     .waitFor({ state: 'attached' });
 

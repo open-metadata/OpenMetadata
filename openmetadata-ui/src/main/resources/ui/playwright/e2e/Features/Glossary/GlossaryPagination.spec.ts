@@ -84,7 +84,7 @@ test.describe('Glossary tests', () => {
 
     await searchResponse;
     const table = page.getByTestId('glossary-terms-table');
-    const filteredTerms = await table.locator('tbody .ant-table-row').count();
+    const filteredTerms = await table.locator('tbody tr[role="row"]').count();
 
     expect(filteredTerms).toBe(1);
     await expect(
@@ -107,7 +107,7 @@ test.describe('Glossary tests', () => {
     await partialSearchResponse;
 
     const partialFilteredTerms = await table
-      .locator('tbody .ant-table-row')
+      .locator('tbody tr[role="row"]')
       .count();
 
     expect(partialFilteredTerms).toBeGreaterThan(0);
@@ -146,7 +146,7 @@ test.describe('Glossary tests', () => {
 
     const nestedTable = page.getByTestId('glossary-terms-table');
     const filteredTerms = await nestedTable
-      .locator('tbody .ant-table-row')
+      .locator('tbody tr[role="row"]')
       .count();
 
     expect(filteredTerms).toBe(5);
