@@ -120,14 +120,10 @@ class SaphanaSource(CommonDbSourceService):
                     yield stored_procedure
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error parsing table function row: {row} - {exc}"
-                    )
+                    logger.warning(f"Error parsing table function row: {row} - {exc}")
                     self.status.failed(
                         error=StackTraceError(
-                            name=row._asdict().get(
-                                "function_name", "UNKNOWN"
-                            ),
+                            name=row._asdict().get("function_name", "UNKNOWN"),
                             error=f"Error parsing Table Function payload: {exc}",
                             stackTrace=traceback.format_exc(),
                         )
