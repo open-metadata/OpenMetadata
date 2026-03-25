@@ -25,13 +25,19 @@ export const getEntityFqn = (
   ).entityResponseData?.fullyQualifiedName;
 };
 
-export const openEntitySummaryPanel = async (
-  page: Page,
-  entityName: string,
-  endpoint?: string,
-  fullyQualifiedName?: string,
-  exploreTab?: string
-) => {
+export const openEntitySummaryPanel = async ({
+  page,
+  entityName,
+  endpoint,
+  fullyQualifiedName,
+  exploreTab,
+}: {
+  page: Page;
+  entityName: string;
+  endpoint?: string;
+  fullyQualifiedName?: string;
+  exploreTab?: string;
+}) => {
   if (
     endpoint &&
     ENDPOINT_TO_FILTER_MAP[endpoint] &&
@@ -101,7 +107,7 @@ export async function navigateToExploreAndSelectTable(
     response.url().includes('/permissions')
   );
 
-  await openEntitySummaryPanel(page, entityName, endpoint);
+  await openEntitySummaryPanel({ page, entityName, endpoint });
 
   const permissionsResponse = await permissionsResponsePromise;
   expect(permissionsResponse.status()).toBe(200);
