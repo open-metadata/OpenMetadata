@@ -267,3 +267,50 @@ export const AllVariants: StoryObj = {
     </div>
   ),
 };
+
+const LONG_TEXT =
+  'This is a very long piece of text that will be truncated when the ellipsis prop is used. It keeps going and going to demonstrate the overflow behaviour of the Typography component with various ellipsis configurations.';
+
+export const EllipsisSingleLine: StoryObj = {
+  name: 'Ellipsis — single line (ellipsis={true})',
+  render: () => (
+    <div style={{ maxWidth: 300 }}>
+      <Typography as="p" ellipsis>
+        {LONG_TEXT}
+      </Typography>
+    </div>
+  ),
+};
+
+export const EllipsisMultiLine: StoryObj = {
+  name: 'Ellipsis — multi-line (rows=3)',
+  render: () => (
+    <div style={{ maxWidth: 300 }}>
+      <Typography as="p" ellipsis={{ rows: 3 }}>
+        {LONG_TEXT}
+      </Typography>
+    </div>
+  ),
+};
+
+export const EllipsisWithTooltip: StoryObj = {
+  name: 'Ellipsis — with tooltip',
+  render: () => (
+    <div style={{ maxWidth: 300 }}>
+      <Typography as="p" ellipsis={{ tooltip: LONG_TEXT }}>
+        {LONG_TEXT}
+      </Typography>
+    </div>
+  ),
+};
+
+export const EllipsisMultiLineWithTooltip: StoryObj = {
+  name: 'Ellipsis — multi-line with tooltip (rows=2)',
+  render: () => (
+    <div style={{ maxWidth: 300 }}>
+      <Typography as="p" ellipsis={{ rows: 2, tooltip: LONG_TEXT }}>
+        {LONG_TEXT}
+      </Typography>
+    </div>
+  ),
+};

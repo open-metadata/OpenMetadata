@@ -26,6 +26,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class SetApprovalAssigneesImpl implements JavaDelegate {
@@ -123,7 +124,8 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
             (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
         if (updatedBy != null && !updatedBy.trim().isEmpty()) {
           String updatedByEntityLink =
-              new MessageParser.EntityLink("user", updatedBy).getLinkString();
+              new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
+                  .getLinkString();
           boolean removed = assigneeList.remove(updatedByEntityLink);
           if (removed) {
             LOG.debug(
