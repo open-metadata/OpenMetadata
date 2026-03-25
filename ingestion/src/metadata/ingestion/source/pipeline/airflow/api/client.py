@@ -260,7 +260,6 @@ class AirflowApiClient:
 
         try:
             task_response = self.get_dag_tasks(dag_id)
-            task_response = self._parse_response(task_response)
             tasks_data = task_response.get("tasks", [])
         except Exception as exc:
             logger.warning(f"Could not fetch tasks for DAG {dag_id}: {exc}")
@@ -298,7 +297,6 @@ class AirflowApiClient:
 
         try:
             response = self.list_dag_runs(dag_id, limit=limit)
-            response = self._parse_response(response)
             runs_data = response.get("dag_runs", [])
         except Exception as exc:
             logger.warning(f"Could not fetch dag runs for {dag_id}: {exc}")
@@ -345,22 +343,3 @@ class AirflowApiClient:
             )
             for ti in instances_data
         ]
-
-    def _extract_mwaa_environment_name(self, host_url: str) -> str:
-        """
-        Extract MWAA environment name from host URL.
-
-        MWAA URLs have format: https://<env-id>.c2.airflow.<region>.on.aws
-        But for AWS CLI, we need the environment name, not the ID.
-
-        For now, this method expects the environment name to be provided via
-        a future configuration field, as it cannot be reliably extracted from URL.
-        """
-        # TODO: Add mwaaEnvironmentName field to schema and use it here
-        # For now, use a default that users must override
-        logger.warning(
-            "MWAA environment name should be provided in configuration. "
-            "Using default 'MyAirflowEnvironment-mwaa2'. "
-            "Please add 'mwaaEnvironmentName' field to your configuration."
-        )
-        return "MyAirflowEnvironment-mwaa2"
