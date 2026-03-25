@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cx } from '@/utils/cx';
 import type { HTMLAttributes, ReactNode } from 'react';
+import { cx } from '@/utils/cx';
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
 }
 
 export const Card = ({ className, children, ...props }: CardProps) => {
-    console.log('shser');
-
   return (
     <div
       {...props}
