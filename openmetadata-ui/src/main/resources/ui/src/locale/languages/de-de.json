@@ -2629,6 +2629,7 @@
     "invalid-string-length-error": "Das {{exportType}}-Bild konnte aufgrund einer zu großen {{entity}} nicht generiert werden.",
     "invalid-unix-epoch-time-milliseconds": "Ungültige Unix-Epochenzeit in Millisekunden",
     "invalid-url": "Ungültiges URL-Format",
+    "invalid-url-with-scheme": "Die URL muss ein Schema enthalten (z. B. http:// oder https://)",
     "inverse-relation-tooltip": "Geben Sie den Beziehungstyp an, der die Umkehrung dieser Beziehung darstellt (z.B. 'enger' ist die Umkehrung von 'breiter').",
     "issue-in-count-checks": "{{issue}} Problem(e) von {{count}} Prüfungen",
     "jwt-token": "Das von Ihnen generierte Token, das zum Zugriff auf die OpenMetadata-API verwendet werden kann.",

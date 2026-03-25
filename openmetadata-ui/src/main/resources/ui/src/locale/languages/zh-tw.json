@@ -2629,6 +2629,7 @@
     "invalid-string-length-error": "由於 {{entity}} 過大，無法產生 {{exportType}} 圖片。",
     "invalid-unix-epoch-time-milliseconds": "無效的 Unix 紀元時間（毫秒）",
     "invalid-url": "無效的URL格式",
+    "invalid-url-with-scheme": "URL 必須包含配置（例如 http:// 或 https://）",
     "inverse-relation-tooltip": "指定表示此關係逆向的關係類型（例如，'下位'是'上位'的逆向）。",
     "issue-in-count-checks": "{{count}} 個檢查中有 {{issue}} 個問題",
     "jwt-token": "您產生的權杖，可用於存取 OpenMetadata API。",

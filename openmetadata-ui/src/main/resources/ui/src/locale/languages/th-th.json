@@ -2629,6 +2629,7 @@
     "invalid-string-length-error": "ไม่สามารถสร้างภาพ {{exportType}} ได้เนื่องจาก {{entity}} ใหญ่เกินไป",
     "invalid-unix-epoch-time-milliseconds": "เวลายุค Unix ที่ไม่ถูกต้องในมิลลิวินาที",
     "invalid-url": "รูปแบบ URL ไม่ถูกต้อง",
+    "invalid-url-with-scheme": "URL ต้องมีรูปแบบ (เช่น http:// หรือ https://)",
     "inverse-relation-tooltip": "ระบุประเภทความสัมพันธ์ที่แสดงถึงความสัมพันธ์ผกผันของความสัมพันธ์นี้ (เช่น 'แคบกว่า' เป็นผกผันของ 'กว้างกว่า')",
     "issue-in-count-checks": "{{issue}} issue out of {{count}} checks",
     "jwt-token": "โทเค็นที่คุณสร้างขึ้นซึ่งสามารถใช้ในการเข้าถึง OpenMetadata API",

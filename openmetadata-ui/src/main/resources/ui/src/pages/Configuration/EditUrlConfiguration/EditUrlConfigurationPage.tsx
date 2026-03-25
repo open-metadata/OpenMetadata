@@ -140,10 +140,23 @@ const EditUrlConfigurationPage = () => {
         <Item
           label={t('label.open-metadata-url')}
           name="openMetadataUrl"
-          rules={[{ required: true }]}>
+          rules={[
+            {
+              required: true,
+              message: t('label.field-required', {
+                field: t('label.open-metadata-url'),
+              }),
+            },
+            {
+              // The Regex to catch missing http/https
+              pattern: /^https?:\/\/\S+/,
+              message: t('message.invalid-url-with-scheme'),
+            },
+          ]}>
           <Input
             data-testid="open-metadata-url-input"
             id="root/openMetadataUrl-input"
+            placeholder="https://example.com"
           />
         </Item>
         <Row justify="end">
