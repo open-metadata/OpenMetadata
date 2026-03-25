@@ -26,10 +26,10 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  testCompletePaginationWithSearch,
-  testPaginationNavigation,
-  uuid,
+    createNewPage,
+    testCompletePaginationWithSearch,
+    testPaginationNavigation,
+    uuid
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 

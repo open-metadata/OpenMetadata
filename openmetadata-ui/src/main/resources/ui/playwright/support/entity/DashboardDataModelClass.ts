@@ -13,9 +13,9 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
-  Column,
-  DashboardDataModel,
-  DataType,
+    Column,
+    DashboardDataModel,
+    DataType
 } from '../../../src/generated/entity/data/dashboardDataModel';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';

@@ -14,10 +14,10 @@ import test, { expect, Page, Response } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  clickOutside,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    clickOutside,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 

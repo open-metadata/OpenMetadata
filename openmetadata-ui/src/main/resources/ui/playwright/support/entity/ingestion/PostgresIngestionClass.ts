@@ -12,25 +12,25 @@
  */
 
 import {
-  Page,
-  PlaywrightTestArgs,
-  PlaywrightWorkerArgs,
-  TestType,
+    Page,
+    PlaywrightTestArgs,
+    PlaywrightWorkerArgs,
+    TestType
 } from '@playwright/test';
 import { POSTGRES } from '../../../constant/service';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../../utils/common';
 import {
-  visitEntityPage,
-  waitForAllLoadersToDisappear,
+    visitEntityPage,
+    waitForAllLoadersToDisappear
 } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-  checkServiceFieldSectionHighlighting,
-  Services,
+    checkServiceFieldSectionHighlighting,
+    Services
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 

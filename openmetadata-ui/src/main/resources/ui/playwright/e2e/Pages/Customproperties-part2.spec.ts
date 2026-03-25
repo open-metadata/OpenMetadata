@@ -16,17 +16,17 @@ import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  clickOutside,
-  createNewPage,
-  redirectToHomePage,
-  uuid,
+    clickOutside,
+    createNewPage,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  deleteCreatedProperty,
-  editCreatedProperty,
-  fillTableColumnInputDetails,
-  verifyCustomPropertyInAdvancedSearch,
+    addCustomPropertiesForEntity,
+    deleteCreatedProperty,
+    editCreatedProperty,
+    fillTableColumnInputDetails,
+    verifyCustomPropertyInAdvancedSearch
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';

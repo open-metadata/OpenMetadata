@@ -16,32 +16,32 @@ import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import {
+    addTestCaseListFilterByFirstColumn,
+    addTestCaseListFilterByStatus,
+    addTestCaseListFilterByTable,
+    addTestCaseListFilterByTestType,
+    addTestCaseListResetFilters,
+    addTestCaseListToggleSelectAll
+} from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  addTestCaseToLogicalTestSuite,
-  addTestSuitePipeline,
-  removeFirstNTestCasesFromLogicalTestSuite,
-} from '../../utils/dataQuality';
-import {
-  assignSingleSelectDomain,
-  descriptionBox,
-  redirectToHomePage,
-  removeSingleSelectDomain,
-  toastNotification,
-  uuid,
+    assignSingleSelectDomain,
+    descriptionBox,
+    redirectToHomePage,
+    removeSingleSelectDomain,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import {
-  addTestCaseListFilterByFirstColumn,
-  addTestCaseListFilterByStatus,
-  addTestCaseListFilterByTable,
-  addTestCaseListFilterByTestType,
-  addTestCaseListResetFilters,
-  addTestCaseListToggleSelectAll,
-} from '../../utils/addTestCaseList';
+    addTestCaseToLogicalTestSuite,
+    addTestSuitePipeline,
+    removeFirstNTestCasesFromLogicalTestSuite
+} from '../../utils/dataQuality';
 import {
-  addMultiOwner,
-  removeOwnersFromList,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    removeOwnersFromList,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 

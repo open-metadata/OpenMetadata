@@ -13,10 +13,10 @@
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 

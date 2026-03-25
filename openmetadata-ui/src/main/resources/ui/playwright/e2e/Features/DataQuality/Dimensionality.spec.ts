@@ -12,16 +12,16 @@
  */
 import test, { expect, Response } from '@playwright/test';
 import {
-  DOMAIN_TAGS,
-  PLAYWRIGHT_INGESTION_TAG_OBJ,
+    DOMAIN_TAGS,
+    PLAYWRIGHT_INGESTION_TAG_OBJ
 } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
-import { visitDataQualityTab } from '../../../utils/testCases';
 import {
-  ObservabilityFeature,
-  selectAddObservabilityFeature,
+    ObservabilityFeature,
+    selectAddObservabilityFeature
 } from '../../../utils/dataQuality';
+import { visitDataQualityTab } from '../../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

@@ -21,11 +21,11 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  FIELDS,
-  OPERATOR,
-  runRuleGroupTests,
-  runRuleGroupTestsWithNonExistingValue,
-  verifyAllConditions,
+    FIELDS,
+    OPERATOR,
+    runRuleGroupTests,
+    runRuleGroupTestsWithNonExistingValue,
+    verifyAllConditions
 } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';

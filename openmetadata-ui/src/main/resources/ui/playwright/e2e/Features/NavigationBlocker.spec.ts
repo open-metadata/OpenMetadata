@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  navigateToCustomizeLandingPage,
-  removeAndCheckWidget,
-  setUserDefaultPersona,
+    navigateToCustomizeLandingPage,
+    removeAndCheckWidget,
+    setUserDefaultPersona
 } from '../../utils/customizeLandingPage';
 
 const adminUser = new UserClass();

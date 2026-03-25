@@ -13,15 +13,15 @@
 
 import { expect, Page } from '@playwright/test';
 import {
-  cleanupWebSocketMock,
-  getWebSocketMock,
-  setupWebSocketMock,
+    cleanupWebSocketMock,
+    getWebSocketMock,
+    setupWebSocketMock
 } from './websocket';
 
 // Re-export WebSocket utilities for convenience
 export {
-  cleanupWebSocketMock as clearMockedWebSocket,
-  setupWebSocketMock as setupMockedWebSocket,
+    cleanupWebSocketMock as clearMockedWebSocket,
+    setupWebSocketMock as setupMockedWebSocket,
 };
 
 /**

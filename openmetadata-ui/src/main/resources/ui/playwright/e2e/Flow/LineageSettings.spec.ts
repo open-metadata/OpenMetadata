@@ -24,25 +24,25 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  clickOutside,
-  redirectToHomePage,
-  toastNotification,
+    clickOutside,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  applyPipelineFromModal,
-  connectEdgeBetweenNodesViaAPI,
-  editLineage,
-  editLineageClick,
-  fillLineageConfigForm,
-  performCollapse,
-  performExpand,
-  performZoomOut,
-  verifyColumnLayerActive,
-  verifyExpandHandleHover,
-  verifyNodePresent,
-  verifyPipelineDataInDrawer,
-  visitLineageTab,
+    applyPipelineFromModal,
+    connectEdgeBetweenNodesViaAPI,
+    editLineage,
+    editLineageClick,
+    fillLineageConfigForm,
+    performCollapse,
+    performExpand,
+    performZoomOut,
+    verifyColumnLayerActive,
+    verifyExpandHandleHover,
+    verifyNodePresent,
+    verifyPipelineDataInDrawer,
+    visitLineageTab
 } from '../../utils/lineage';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';

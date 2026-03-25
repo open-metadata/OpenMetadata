@@ -17,16 +17,16 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, uuid } from '../../../utils/common';
 import {
-  ALL_OPERATIONS,
-  createCustomPropertyForEntity,
-  entityConfig,
-  runCommonPermissionTests,
-  runEntitySpecificPermissionTests,
+    ALL_OPERATIONS,
+    createCustomPropertyForEntity,
+    entityConfig,
+    runCommonPermissionTests,
+    runEntitySpecificPermissionTests
 } from '../../../utils/entityPermissionUtils';
 import {
-  assignRoleToUser,
-  cleanupPermissions,
-  initializePermissions,
+    assignRoleToUser,
+    cleanupPermissions,
+    initializePermissions
 } from '../../../utils/permission';
 
 const adminUser = new UserClass();

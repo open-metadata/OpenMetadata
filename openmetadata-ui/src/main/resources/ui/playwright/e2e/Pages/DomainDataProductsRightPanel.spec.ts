@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '../../support/fixtures/userPages';
-import { Domain } from '../../support/domain/Domain';
 import { DataProduct } from '../../support/domain/DataProduct';
-import { ClassificationClass } from '../../support/tag/ClassificationClass';
-import { TagClass } from '../../support/tag/TagClass';
+import { Domain } from '../../support/domain/Domain';
+import { expect, test } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
-import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
-import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { navigateToDomainDataProductsAndOpenPanel } from '../../utils/rightPanelNavigation';
+import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
+import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 
 const domainEntity = new Domain();
 const dataProductEntity = new DataProduct([domainEntity]);

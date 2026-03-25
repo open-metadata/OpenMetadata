@@ -18,15 +18,15 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
-  addMultiOwner,
-  assignTag,
-  removeTag,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    assignTag,
+    removeTag,
+    waitForAllLoadersToDisappear
 } from '../../../utils/entity';
 import {
-  removeReviewer,
-  selectActiveGlossary,
-  selectActiveGlossaryTerm,
+    removeReviewer,
+    selectActiveGlossary,
+    selectActiveGlossaryTerm
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 

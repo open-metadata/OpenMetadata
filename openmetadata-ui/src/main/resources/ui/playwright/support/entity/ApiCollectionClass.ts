@@ -18,9 +18,9 @@ import { redirectToHomePage, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
+    EntityTypeEndpoint,
+    ResponseDataType,
+    ResponseDataWithServiceType
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 

@@ -19,17 +19,17 @@ import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  checkAssetsCount,
-  selectDataProduct,
-  selectDomain,
+    checkAssetsCount,
+    selectDataProduct,
+    selectDomain
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });

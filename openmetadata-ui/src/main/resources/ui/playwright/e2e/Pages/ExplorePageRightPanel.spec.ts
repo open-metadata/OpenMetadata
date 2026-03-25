@@ -11,41 +11,41 @@
  *  limitations under the License.
  */
 
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../support/access-control/RolesClass';
+import { Domain } from '../../support/domain/Domain';
+import { ContainerClass } from '../../support/entity/ContainerClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { expect, test as baseTest } from '../../support/fixtures/userPages';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import { uuid } from '../../utils/common';
+import { getCurrentMillis } from '../../utils/dateTime';
+import {
+    openColumnDetailPanel,
+    waitForAllLoadersToDisappear
+} from '../../utils/entity';
+import { getEntityFqn } from '../../utils/entityPanel';
+import { navigateToExploreAndSelectEntity } from '../../utils/explore';
+import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
 import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
-import { TableClass } from '../../support/entity/TableClass';
-import { ClassificationClass } from '../../support/tag/ClassificationClass';
-import { TagClass } from '../../support/tag/TagClass';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { uuid } from '../../utils/common';
-import { performAdminLogin } from '../../utils/admin';
-import { DashboardClass } from '../../support/entity/DashboardClass';
-import { DatabaseClass } from '../../support/entity/DatabaseClass';
-import { TopicClass } from '../../support/entity/TopicClass';
-import { PipelineClass } from '../../support/entity/PipelineClass';
-import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
-import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
-import { MlModelClass } from '../../support/entity/MlModelClass';
-import { ContainerClass } from '../../support/entity/ContainerClass';
-import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
-import { Domain } from '../../support/domain/Domain';
-import { UserClass } from '../../support/user/UserClass';
-import { navigateToExploreAndSelectEntity } from '../../utils/explore';
-import { getEntityFqn } from '../../utils/entityPanel';
-import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
-import { getCurrentMillis } from '../../utils/dateTime';
-import { PolicyClass } from '../../support/access-control/PoliciesClass';
-import { RolesClass } from '../../support/access-control/RolesClass';
-import {
-  openColumnDetailPanel,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
 
 const domainEntity = new Domain();
 const user1 = new UserClass();

@@ -15,8 +15,8 @@ import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
-  ObservabilityFeature,
-  selectAddObservabilityFeature,
+    ObservabilityFeature,
+    selectAddObservabilityFeature
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 

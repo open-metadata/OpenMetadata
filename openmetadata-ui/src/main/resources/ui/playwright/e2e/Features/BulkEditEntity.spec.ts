@@ -21,30 +21,30 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  descriptionBoxReadOnly,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    createNewPage,
+    descriptionBoxReadOnly,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
-  createColumnRowDetails,
-  createCustomPropertiesForEntity,
-  createDatabaseRowDetails,
-  createDatabaseSchemaRowDetails,
-  createGlossaryTermRowDetails,
-  createTableRowDetails,
-  fillDescriptionDetails,
-  fillGlossaryRowDetails,
-  fillGlossaryTermDetails,
-  fillRowDetails,
-  fillTagDetails,
-  pressKeyXTimes,
-  validateImportStatus,
+    createColumnRowDetails,
+    createCustomPropertiesForEntity,
+    createDatabaseRowDetails,
+    createDatabaseSchemaRowDetails,
+    createGlossaryTermRowDetails,
+    createTableRowDetails,
+    fillDescriptionDetails,
+    fillGlossaryRowDetails,
+    fillGlossaryTermDetails,
+    fillRowDetails,
+    fillTagDetails,
+    pressKeyXTimes,
+    validateImportStatus
 } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({

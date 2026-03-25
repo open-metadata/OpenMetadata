@@ -12,17 +12,17 @@
  */
 import test, { expect } from '@playwright/test';
 import {
-  clickOnDistKeySelector,
-  clickOnForeignKeySelector,
-  clickOnSortKeySelector,
-  clickOnUniqueKeySelector,
+    clickOnDistKeySelector,
+    clickOnForeignKeySelector,
+    clickOnSortKeySelector,
+    clickOnUniqueKeySelector
 } from '../../constant/tableConstraint';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  clickOutside,
-  createNewPage,
-  redirectToHomePage,
-  uuid,
+    clickOutside,
+    createNewPage,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 

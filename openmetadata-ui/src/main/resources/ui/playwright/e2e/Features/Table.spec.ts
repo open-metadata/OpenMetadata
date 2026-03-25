@@ -20,11 +20,11 @@ import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import {
-  assignTagToChildren,
-  copyAndGetClipboardText,
-  getFirstRowColumnLink,
-  removeTagsFromChildren,
-  waitForAllLoadersToDisappear,
+    assignTagToChildren,
+    copyAndGetClipboardText,
+    getFirstRowColumnLink,
+    removeTagsFromChildren,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';

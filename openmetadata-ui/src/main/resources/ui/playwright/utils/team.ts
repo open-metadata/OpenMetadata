@@ -18,16 +18,16 @@ import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  assignDomain,
-  descriptionBox,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    assignDomain,
+    descriptionBox,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from './common';
 import {
-  addMultiOwner,
-  addOwner,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    addOwner,
+    waitForAllLoadersToDisappear
 } from './entity';
 import { validateFormNameFieldInput } from './form';
 import { settingClick } from './sidebar';

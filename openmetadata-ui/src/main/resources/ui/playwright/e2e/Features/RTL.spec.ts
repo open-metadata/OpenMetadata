@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { toLower } from 'lodash';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { clickOutside, redirectToHomePage } from '../../utils/common';
 import {
-  followEntity,
-  validateFollowedEntityToWidget,
+    followEntity,
+    validateFollowedEntityToWidget
 } from '../../utils/entity';
 
 const user = new UserClass();

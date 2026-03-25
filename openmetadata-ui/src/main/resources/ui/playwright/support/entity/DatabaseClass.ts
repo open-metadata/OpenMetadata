@@ -15,24 +15,24 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
-  assignSingleSelectDomain,
-  removeSingleSelectDomain,
-  uuid,
-  verifyDomainLinkInCard,
+    assignSingleSelectDomain,
+    removeSingleSelectDomain,
+    uuid,
+    verifyDomainLinkInCard
 } from '../../utils/common';
 import {
-  addMultiOwner,
-  addOwner,
-  removeOwner,
-  updateOwner,
-  visitEntityPage,
+    addMultiOwner,
+    addOwner,
+    removeOwner,
+    updateOwner,
+    visitEntityPage
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { Domain } from '../domain/Domain';
 import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
+    EntityTypeEndpoint,
+    ResponseDataType,
+    ResponseDataWithServiceType
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 

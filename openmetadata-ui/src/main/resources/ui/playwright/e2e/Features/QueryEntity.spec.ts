@@ -14,13 +14,13 @@ import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  clickOutside,
-  createNewPage,
-  descriptionBox,
-  redirectToHomePage,
+    clickOutside,
+    createNewPage,
+    descriptionBox,
+    redirectToHomePage
 } from '../../utils/common';
-import { createQueryByTableName, queryFilters } from '../../utils/query';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { createQueryByTableName, queryFilters } from '../../utils/query';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

@@ -14,8 +14,8 @@ import test from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
-  createCustomMetric,
-  deleteCustomMetric,
+    createCustomMetric,
+    deleteCustomMetric
 } from '../../utils/customMetric';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 

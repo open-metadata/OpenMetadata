@@ -13,8 +13,8 @@
 
 import { expect } from '@playwright/test';
 import {
-  LONG_DESCRIPTION,
-  LONG_DESCRIPTION_END_TEXT,
+    LONG_DESCRIPTION,
+    LONG_DESCRIPTION_END_TEXT
 } from '../../constant/domain';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -28,22 +28,22 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-  visitGlossaryPage,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
+    visitGlossaryPage
 } from '../../utils/common';
 import {
-  selectDataProduct,
-  selectDomain,
-  verifyDescriptionRequiresScroll,
-  verifyEndOfDescriptionReachable,
+    selectDataProduct,
+    selectDomain,
+    verifyDescriptionRequiresScroll,
+    verifyEndOfDescriptionReachable
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.describe('Long Description Visibility', () => {
   test.slow(true);

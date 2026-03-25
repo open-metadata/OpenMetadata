@@ -14,16 +14,16 @@ import { APIRequestContext, test } from '@playwright/test';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  createApiEndpointEntity,
-  createContainerEntity,
-  createDataModelEntity,
-  createFileEntity,
-  createSearchIndexEntity,
-  createTableEntity,
-  createTopicEntity,
-  createWorksheetEntity,
-  verifyExpandCollapseForSummaryPanel,
-  verifyExpandCollapseNoDuplication,
+    createApiEndpointEntity,
+    createContainerEntity,
+    createDataModelEntity,
+    createFileEntity,
+    createSearchIndexEntity,
+    createTableEntity,
+    createTopicEntity,
+    createWorksheetEntity,
+    verifyExpandCollapseForSummaryPanel,
+    verifyExpandCollapseNoDuplication
 } from '../../utils/nestedColumnUpdatesUtils';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });

@@ -15,10 +15,10 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  addMultiOwner,
-  addOwner,
-  removeOwner,
-  updateOwner,
+    addMultiOwner,
+    addOwner,
+    removeOwner,
+    updateOwner
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 

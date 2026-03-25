@@ -11,28 +11,28 @@
  *  limitations under the License.
  */
 import {
-  expect,
-  Page,
-  PlaywrightTestArgs,
-  PlaywrightWorkerArgs,
-  TestType,
+    expect,
+    Page,
+    PlaywrightTestArgs,
+    PlaywrightWorkerArgs,
+    TestType
 } from '@playwright/test';
 import { env } from 'process';
 import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../../utils/common';
 import {
-  visitEntityPage,
-  waitForAllLoadersToDisappear,
+    visitEntityPage,
+    waitForAllLoadersToDisappear
 } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-  checkServiceFieldSectionHighlighting,
-  Services,
+    checkServiceFieldSectionHighlighting,
+    Services
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 

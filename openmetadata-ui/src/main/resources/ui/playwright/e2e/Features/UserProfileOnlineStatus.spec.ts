@@ -15,9 +15,9 @@ import { APIRequestContext, expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  redirectToHomePage,
-  visitOwnProfilePage,
+    createNewPage,
+    redirectToHomePage,
+    visitOwnProfilePage
 } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';

@@ -16,13 +16,13 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { Glossary } from '../../support/glossary/Glossary';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage
 } from '../../utils/common';
 import {
-  addMultiOwner,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { setupGlossaryAndTerms } from '../../utils/glossary';
 

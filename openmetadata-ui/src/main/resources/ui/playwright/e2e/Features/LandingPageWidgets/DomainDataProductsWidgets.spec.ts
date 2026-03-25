@@ -22,17 +22,17 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, removeLandingBanner } from '../../../utils/common';
 import {
-  addAndVerifyWidget,
-  setUserDefaultPersona,
-  verifyDataProductCountInDataProductWidget,
-  verifyDomainCountInDomainWidget,
+    addAndVerifyWidget,
+    setUserDefaultPersona,
+    verifyDataProductCountInDataProductWidget,
+    verifyDomainCountInDomainWidget
 } from '../../../utils/customizeLandingPage';
 import {
-  addAssetsToDataProduct,
-  addAssetsToDomain,
-  checkAssetsCount,
-  selectDataProduct,
-  selectDomain,
+    addAssetsToDataProduct,
+    addAssetsToDomain,
+    checkAssetsCount,
+    selectDataProduct,
+    selectDomain
 } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';

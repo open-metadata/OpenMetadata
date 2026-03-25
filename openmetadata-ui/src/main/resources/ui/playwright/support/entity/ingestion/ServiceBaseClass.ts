@@ -11,30 +11,30 @@
  *  limitations under the License.
  */
 import {
-  APIRequestContext,
-  expect,
-  Page,
-  PlaywrightTestArgs,
-  PlaywrightWorkerArgs,
-  TestType,
+    APIRequestContext,
+    expect,
+    Page,
+    PlaywrightTestArgs,
+    PlaywrightWorkerArgs,
+    TestType
 } from '@playwright/test';
 import { startCase } from 'lodash';
 import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
-  descriptionBox,
-  executeWithRetry,
-  getApiContext,
-  INVALID_NAMES,
-  NAME_VALIDATION_ERROR,
+    descriptionBox,
+    executeWithRetry,
+    getApiContext,
+    INVALID_NAMES,
+    NAME_VALIDATION_ERROR
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-  deleteService,
-  getServiceCategoryFromService,
-  makeRetryRequest,
-  Services,
-  testConnection,
+    deleteService,
+    getServiceCategoryFromService,
+    makeRetryRequest,
+    Services,
+    testConnection
 } from '../../../utils/serviceIngestion';
 import { ResponseDataType } from '../Entity.interface';
 

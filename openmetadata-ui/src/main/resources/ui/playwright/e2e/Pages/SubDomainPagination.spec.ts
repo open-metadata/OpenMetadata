@@ -15,13 +15,13 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage
 } from '../../utils/common';
 import { createSubDomain, selectDomain } from '../../utils/domain';
-import { sidebarClick } from '../../utils/sidebar';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

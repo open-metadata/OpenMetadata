@@ -12,8 +12,8 @@
  */
 import { expect, Page } from '@playwright/test';
 import {
-  DOMAIN_TAGS,
-  PLAYWRIGHT_INGESTION_TAG_OBJ,
+    DOMAIN_TAGS,
+    PLAYWRIGHT_INGESTION_TAG_OBJ
 } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
@@ -24,27 +24,27 @@ import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  assignSingleSelectDomain,
-  clickOutside,
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    assignSingleSelectDomain,
+    clickOutside,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../../utils/common';
+import {
+    ObservabilityFeature,
+    selectAddObservabilityFeature
+} from '../../../utils/dataQuality';
 import { getCurrentMillis } from '../../../utils/dateTime';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
-  deleteTestCase,
-  verifyIncidentBreadcrumbsFromTablePageRedirect,
-  visitDataQualityTab,
+    deleteTestCase,
+    verifyIncidentBreadcrumbsFromTablePageRedirect,
+    visitDataQualityTab
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
-import {
-  ObservabilityFeature,
-  selectAddObservabilityFeature,
-} from '../../../utils/dataQuality';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 const table1 = new TableClass();
 const table2 = new TableClass();

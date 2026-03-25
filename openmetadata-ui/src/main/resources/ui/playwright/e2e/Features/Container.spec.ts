@@ -16,12 +16,12 @@ import { ContainerClass } from '../../support/entity/ContainerClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import {
-  assignTagToChildren,
-  copyAndGetClipboardText,
-  removeTagsFromChildren,
-  testCopyLinkButton,
-  validateCopiedLinkFormat,
-  waitForAllLoadersToDisappear,
+    assignTagToChildren,
+    copyAndGetClipboardText,
+    removeTagsFromChildren,
+    testCopyLinkButton,
+    validateCopiedLinkFormat,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 

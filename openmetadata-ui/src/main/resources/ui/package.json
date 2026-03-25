@@ -39,7 +39,7 @@
     "pretty:playwright": "yarn pretty:base './playwright/**/*.{ts,tsx,js,jsx}' --write",
     "organize-imports:cli": "organize-imports-cli",
     "organize-imports": "yarn organize-imports:cli tsconfig[.*].json",
-    "organize-imports:playwright": "yarn organize-imports:cli './playwright/**/*.{ts,tsx,js,jsx}'",
+    "organize-imports:playwright": "yarn organize-imports:cli './playwright/tsconfig[.*].json'",
     "playwright:run": "playwright test",
     "playwright:open": "playwright test --ui",
     "playwright:codegen": "playwright codegen",

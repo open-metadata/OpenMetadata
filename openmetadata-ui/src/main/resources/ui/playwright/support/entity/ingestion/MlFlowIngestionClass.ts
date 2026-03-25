@@ -14,8 +14,8 @@ import { Page } from '@playwright/test';
 import { uuid } from '../../../utils/common';
 
 import {
-  checkServiceFieldSectionHighlighting,
-  Services,
+    checkServiceFieldSectionHighlighting,
+    Services
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 

@@ -22,9 +22,9 @@ import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionCl
 import { UserClass } from '../../support/user/UserClass';
 import { checkAutoPilotStatus } from '../../utils/AutoPilot';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { getServiceCategoryFromService } from '../../utils/serviceIngestion';

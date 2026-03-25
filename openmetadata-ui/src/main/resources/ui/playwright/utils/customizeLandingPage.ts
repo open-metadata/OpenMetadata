@@ -12,10 +12,10 @@
  */
 import { expect, Page } from '@playwright/test';
 import {
-  redirectToHomePage,
-  removeLandingBanner,
-  toastNotification,
-  visitOwnProfilePage,
+    redirectToHomePage,
+    removeLandingBanner,
+    toastNotification,
+    visitOwnProfilePage
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 

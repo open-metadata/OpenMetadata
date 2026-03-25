@@ -13,35 +13,35 @@
 import test, { expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
-  DEFAULT_POLICIES,
-  DESCRIPTION,
-  ERROR_MESSAGE_VALIDATION,
-  NEW_RULE_DESCRIPTION,
-  NEW_RULE_NAME,
-  POLICY_NAME,
-  RULE_DESCRIPTION,
-  RULE_DETAILS,
-  RULE_NAME,
-  UPDATED_DESCRIPTION,
-  UPDATED_POLICY_NAME,
-  UPDATED_RULE_NAME,
+    DEFAULT_POLICIES,
+    DESCRIPTION,
+    ERROR_MESSAGE_VALIDATION,
+    NEW_RULE_DESCRIPTION,
+    NEW_RULE_NAME,
+    POLICY_NAME,
+    RULE_DESCRIPTION,
+    RULE_DETAILS,
+    RULE_NAME,
+    UPDATED_DESCRIPTION,
+    UPDATED_POLICY_NAME,
+    UPDATED_RULE_NAME
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  PolicyClass,
-  PolicyRulesType,
+    PolicyClass,
+    PolicyRulesType
 } from '../../support/access-control/PoliciesClass';
 import {
-  closeFirstPopupAlert,
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    closeFirstPopupAlert,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import { getElementWithPagination } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

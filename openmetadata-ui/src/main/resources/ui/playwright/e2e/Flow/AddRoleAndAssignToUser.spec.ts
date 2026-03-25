@@ -14,11 +14,11 @@
 import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  createNewPage,
-  descriptionBox,
-  generateRandomUsername,
-  redirectToHomePage,
-  uuid,
+    createNewPage,
+    descriptionBox,
+    generateRandomUsername,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';

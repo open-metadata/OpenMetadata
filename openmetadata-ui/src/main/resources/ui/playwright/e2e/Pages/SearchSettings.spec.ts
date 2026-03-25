@@ -15,17 +15,17 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  mockEntitySearchSettings,
-  restoreDefaultSearchSettings,
-  setSliderValue,
+    mockEntitySearchSettings,
+    restoreDefaultSearchSettings,
+    setSliderValue
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
 

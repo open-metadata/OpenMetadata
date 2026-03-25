@@ -13,8 +13,8 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
-  DATA_CONSUMER_RULES,
-  DATA_STEWARD_RULES,
+    DATA_CONSUMER_RULES,
+    DATA_STEWARD_RULES
 } from '../../constant/permission';
 import { generateRandomUsername, uuid } from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';

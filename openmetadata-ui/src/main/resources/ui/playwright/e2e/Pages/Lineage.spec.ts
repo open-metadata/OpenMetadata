@@ -31,44 +31,40 @@ import { StorageServiceClass } from '../../support/entity/service/StorageService
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
-  clickOutside,
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
+    clickOutside,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-
-test.describe.configure({ mode: 'serial' });
 import {
-  activateColumnLayer,
-  addColumnLineage,
-  addPipelineBetweenNodes,
-  applyPipelineFromModal,
-  clickLineageNode,
-  connectEdgeBetweenNodes,
-  connectEdgeBetweenNodesViaAPI,
-  deleteEdge,
-  deleteNode,
-  editLineage,
-  editLineageClick,
-  performExpand,
-  performZoomOut,
-  rearrangeNodes,
-  removeColumnLineage,
-  setupEntitiesForLineage,
-  toggleLineageFilters,
-  updateLineageConfigFromModal,
-  verifyColumnLayerInactive,
-  verifyColumnLineageInCSV,
-  verifyExportLineageCSV,
-  verifyExportLineagePNG,
-  verifyLineageConfig,
-  verifyNodePresent,
-  verifyPlatformLineageForEntity,
-  visitLineageTab,
+    activateColumnLayer,
+    addColumnLineage,
+    addPipelineBetweenNodes,
+    applyPipelineFromModal,
+    clickLineageNode,
+    connectEdgeBetweenNodes,
+    connectEdgeBetweenNodesViaAPI,
+    deleteEdge,
+    deleteNode,
+    editLineage,
+    editLineageClick, performZoomOut,
+    rearrangeNodes,
+    removeColumnLineage,
+    setupEntitiesForLineage,
+    toggleLineageFilters, verifyColumnLayerInactive,
+    verifyColumnLineageInCSV,
+    verifyExportLineageCSV,
+    verifyExportLineagePNG,
+    verifyLineageConfig,
+    verifyNodePresent,
+    verifyPlatformLineageForEntity,
+    visitLineageTab
 } from '../../utils/lineage';
 import { sidebarClick } from '../../utils/sidebar';
+
+test.describe.configure({ mode: 'serial' });
 
 // use the admin user to login
 test.use({

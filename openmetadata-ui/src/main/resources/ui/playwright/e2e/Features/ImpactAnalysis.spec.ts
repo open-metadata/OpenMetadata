@@ -23,9 +23,9 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  connectEdgeBetweenNodesViaAPI,
-  updateLineageConfigFromModal,
-  visitLineageTab,
+    connectEdgeBetweenNodesViaAPI,
+    updateLineageConfigFromModal,
+    visitLineageTab
 } from '../../utils/lineage';
 import { test } from '../fixtures/pages';
 

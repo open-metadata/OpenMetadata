@@ -11,45 +11,41 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { test } from '../fixtures/pages';
 import {
-  generateODCSContract,
-  ODCS_INVALID_EMPTY_FILE_YAML,
-  ODCS_INVALID_MALFORMED_JSON,
-  ODCS_INVALID_MALFORMED_YAML,
-  ODCS_INVALID_MISSING_APIVERSION_YAML,
-  ODCS_INVALID_MISSING_KIND_YAML,
-  ODCS_INVALID_MISSING_STATUS_YAML,
-  ODCS_INVALID_SCHEMA_FIELDS_YAML,
-  ODCS_INVALID_WRONG_APIVERSION_YAML,
-  ODCS_INVALID_WRONG_KIND_YAML,
-  ODCS_VALID_BASIC_JSON,
-  ODCS_VALID_BASIC_YAML,
-  ODCS_VALID_DRAFT_STATUS_YAML,
-  ODCS_VALID_FULL_YAML,
-  ODCS_VALID_MULTI_OBJECT_SIMPLE_YAML,
-  ODCS_VALID_MULTI_OBJECT_YAML,
-  ODCS_VALID_QUALITY_RULES_BETWEEN_YAML,
-  ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML,
-  ODCS_WITH_QUALITY_RULES_YAML,
-  ODCS_VALID_WITH_TEAM_YAML,
-  ODCS_VALID_WITH_TIMESTAMPS_YAML,
-  ODCS_WITH_SLA_YAML,
+    generateODCSContract,
+    ODCS_INVALID_EMPTY_FILE_YAML,
+    ODCS_INVALID_MALFORMED_JSON,
+    ODCS_INVALID_MALFORMED_YAML,
+    ODCS_INVALID_MISSING_APIVERSION_YAML,
+    ODCS_INVALID_MISSING_KIND_YAML,
+    ODCS_INVALID_MISSING_STATUS_YAML,
+    ODCS_INVALID_SCHEMA_FIELDS_YAML,
+    ODCS_INVALID_WRONG_APIVERSION_YAML,
+    ODCS_INVALID_WRONG_KIND_YAML,
+    ODCS_VALID_BASIC_JSON,
+    ODCS_VALID_BASIC_YAML,
+    ODCS_VALID_DRAFT_STATUS_YAML,
+    ODCS_VALID_FULL_YAML,
+    ODCS_VALID_MULTI_OBJECT_SIMPLE_YAML,
+    ODCS_VALID_MULTI_OBJECT_YAML,
+    ODCS_VALID_QUALITY_RULES_BETWEEN_YAML,
+    ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML, ODCS_VALID_WITH_TEAM_YAML,
+    ODCS_VALID_WITH_TIMESTAMPS_YAML, ODCS_WITH_QUALITY_RULES_YAML, ODCS_WITH_SLA_YAML
 } from '../../constant/dataContracts';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
-import {
-  clickImportODCSButton,
-  importODCSYaml,
-  navigateToContractTab,
-  openODCSImportDropdown,
-} from '../../utils/odcsImportExport';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+    clickImportODCSButton,
+    importODCSYaml,
+    navigateToContractTab,
+    openODCSImportDropdown
+} from '../../utils/odcsImportExport';
+import { test } from '../fixtures/pages';
 
 test.describe('ODCS Import/Export', () => {
   test.slow(true);

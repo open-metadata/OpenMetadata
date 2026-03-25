@@ -13,9 +13,9 @@
 
 import { Page, test as base } from '@playwright/test';
 import {
-  INGESTION_PIPELINE_NAME,
-  TEST_CASE_NAME,
-  TEST_SUITE_NAME,
+    INGESTION_PIPELINE_NAME,
+    TEST_CASE_NAME,
+    TEST_SUITE_NAME
 } from '../../constant/alert';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
@@ -24,26 +24,26 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  commonCleanup,
-  commonPrerequisites,
-  createAlert,
-  deleteAlert,
-  generateAlertName,
-  inputBasicAlertInformation,
-  saveAlertAndVerifyResponse,
-  verifyAlertDetails,
-  visitAlertDetailsPage,
+    commonCleanup,
+    commonPrerequisites,
+    createAlert,
+    deleteAlert,
+    generateAlertName,
+    inputBasicAlertInformation,
+    saveAlertAndVerifyResponse,
+    verifyAlertDetails,
+    visitAlertDetailsPage
 } from '../../utils/alert';
 import { getApiContext } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  addExternalDestination,
-  checkAlertDetailsForWithPermissionUser,
-  checkAlertFlowForWithoutPermissionUser,
-  createCommonObservabilityAlert,
-  editObservabilityAlert,
-  getObservabilityCreationDetails,
-  visitObservabilityAlertPage,
+    addExternalDestination,
+    checkAlertDetailsForWithPermissionUser,
+    checkAlertFlowForWithoutPermissionUser,
+    createCommonObservabilityAlert,
+    editObservabilityAlert,
+    getObservabilityCreationDetails,
+    visitObservabilityAlertPage
 } from '../../utils/observabilityAlert';
 
 const table1 = new TableClass();

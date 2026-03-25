@@ -48,25 +48,25 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDataProduct,
-  assignDomain,
-  clickOutside,
-  descriptionBoxReadOnly,
-  redirectToHomePage,
-  toastNotification,
+    assignDataProduct,
+    assignDomain,
+    clickOutside,
+    descriptionBoxReadOnly,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
 import {
-  addMultiOwner,
-  assignGlossaryTerm,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    assignGlossaryTerm,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import {
-  createDatabaseRowDetails,
-  createDatabaseSchemaRowDetails,
-  createTableRowDetails,
-  fillRowDetails,
-  validateImportStatus,
+    createDatabaseRowDetails,
+    createDatabaseSchemaRowDetails,
+    createTableRowDetails,
+    fillRowDetails,
+    validateImportStatus
 } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { test } from '../fixtures/pages';

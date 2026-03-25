@@ -17,14 +17,14 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage
 } from '../../../utils/common';
 import {
-  openAddGlossaryTermModal,
-  performExpandAll,
-  selectActiveGlossary,
+    openAddGlossaryTermModal,
+    performExpandAll,
+    selectActiveGlossary
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 

@@ -17,9 +17,9 @@ import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  assignCertificationForWidget,
-  removeCertificationFromWidget,
-  removeTierFromWidget,
+    assignCertificationForWidget,
+    removeCertificationFromWidget,
+    removeTierFromWidget
 } from '../../utils/domain';
 import { assignTier, downVote, upVote } from '../../utils/entity';
 import { test } from '../fixtures/pages';

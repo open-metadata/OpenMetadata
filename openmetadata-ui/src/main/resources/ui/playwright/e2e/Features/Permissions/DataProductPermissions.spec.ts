@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -21,13 +21,13 @@ import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { addCustomPropertiesForEntity } from '../../../utils/customProperty';
 import { selectDataProduct } from '../../../utils/domain';
 import {
-  assignRoleToUser,
-  initializePermissions,
+    assignRoleToUser,
+    initializePermissions
 } from '../../../utils/permission';
 import {
-  settingClick,
-  SettingOptionsType,
-  sidebarClick,
+    settingClick,
+    SettingOptionsType,
+    sidebarClick
 } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();

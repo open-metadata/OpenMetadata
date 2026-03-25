@@ -14,14 +14,14 @@ import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import {
-  confirmationDragAndDropTeam,
-  dragAndDropElement,
-  openDragDropDropdown,
+    confirmationDragAndDropTeam,
+    dragAndDropElement,
+    openDragDropDropdown
 } from '../../utils/dragDrop';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';

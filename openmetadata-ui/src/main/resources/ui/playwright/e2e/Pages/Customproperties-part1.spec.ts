@@ -17,10 +17,10 @@ import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  deleteCreatedProperty,
-  editCreatedProperty,
-  verifyCustomPropertyInAdvancedSearch,
+    addCustomPropertiesForEntity,
+    deleteCreatedProperty,
+    editCreatedProperty,
+    verifyCustomPropertyInAdvancedSearch
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';

@@ -12,18 +12,18 @@
  */
 import { expect, Page, Response } from '@playwright/test';
 import {
-  DOMAIN_TAGS,
-  PLAYWRIGHT_INGESTION_TAG_OBJ,
+    DOMAIN_TAGS,
+    PLAYWRIGHT_INGESTION_TAG_OBJ
 } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
-  ObservabilityFeature,
-  selectAddObservabilityFeature,
+    ObservabilityFeature,
+    selectAddObservabilityFeature
 } from '../../../utils/dataQuality';
 import {
-  getEntityDisplayName,
-  waitForAllLoadersToDisappear,
+    getEntityDisplayName,
+    waitForAllLoadersToDisappear
 } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';

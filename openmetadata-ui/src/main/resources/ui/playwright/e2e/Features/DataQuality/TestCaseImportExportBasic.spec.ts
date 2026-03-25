@@ -21,23 +21,23 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { validateImportStatus } from '../../../utils/importUtils';
 import {
-  cancelBulkEditAndVerifyRedirect,
-  clickManageButton,
-  navigateToBulkEditPage,
-  navigateToGlobalDataQuality,
-  navigateToImportPage,
-  performTestCaseExport,
-  uploadCSVFile,
-  validateImportGrid,
-  verifyButtonVisibility,
-  verifyPageAccess,
-  visitDataQualityTab,
-  waitForImportAsyncResponse,
+    cancelBulkEditAndVerifyRedirect,
+    clickManageButton,
+    navigateToBulkEditPage,
+    navigateToGlobalDataQuality,
+    navigateToImportPage,
+    performTestCaseExport,
+    uploadCSVFile,
+    validateImportGrid,
+    verifyButtonVisibility,
+    verifyPageAccess,
+    visitDataQualityTab,
+    waitForImportAsyncResponse
 } from '../../../utils/testCases';
 import { test as base } from '../../fixtures/pages';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 // CSV test data as constants
 const VALID_TEST_CASES_CSV = `name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms

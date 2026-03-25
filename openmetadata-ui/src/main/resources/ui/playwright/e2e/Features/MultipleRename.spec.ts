@@ -21,9 +21,9 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  redirectToHomePage,
-  uuid,
-  visitGlossaryPage,
+    redirectToHomePage,
+    uuid,
+    visitGlossaryPage
 } from '../../utils/common';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';

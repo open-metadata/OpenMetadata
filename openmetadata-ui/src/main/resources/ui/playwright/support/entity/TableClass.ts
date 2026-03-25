@@ -14,23 +14,23 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import {
-  Column,
-  DataType,
-  Table,
+    Column,
+    DataType,
+    Table
 } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
 import {
-  visitEntityPage,
-  waitForAllLoadersToDisappear,
+    visitEntityPage,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
-  TestCaseData,
-  TestSuiteData,
+    EntityTypeEndpoint,
+    ResponseDataType,
+    ResponseDataWithServiceType,
+    TestCaseData,
+    TestSuiteData
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 

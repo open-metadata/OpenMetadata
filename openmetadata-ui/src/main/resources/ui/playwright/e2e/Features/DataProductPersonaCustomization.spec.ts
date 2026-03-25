@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 import {
-  APIRequestContext,
-  test as base,
-  expect,
-  Page,
+    APIRequestContext, expect,
+    Page, test as base
 } from '@playwright/test';
 import { ECustomizedGovernance } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -23,13 +21,13 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import {
-  getCustomizeDetailsDefaultTabs,
-  getCustomizeDetailsEntity,
+    getCustomizeDetailsDefaultTabs,
+    getCustomizeDetailsEntity
 } from '../../utils/customizeDetails';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';

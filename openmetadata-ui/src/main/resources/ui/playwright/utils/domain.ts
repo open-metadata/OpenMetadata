@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import test, {
-  APIRequestContext,
-  expect,
-  Locator,
-  Page,
+    APIRequestContext,
+    expect,
+    Locator,
+    Page
 } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
@@ -34,16 +34,16 @@ import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  clickOutside,
-  closeFirstPopupAlert,
-  descriptionBox,
-  getApiContext,
-  INVALID_NAMES,
-  NAME_MAX_LENGTH_VALIDATION_ERROR,
-  NAME_VALIDATION_ERROR,
-  readElementInListWithScroll,
-  redirectToHomePage,
-  uuid,
+    clickOutside,
+    closeFirstPopupAlert,
+    descriptionBox,
+    getApiContext,
+    INVALID_NAMES,
+    NAME_MAX_LENGTH_VALIDATION_ERROR,
+    NAME_VALIDATION_ERROR,
+    readElementInListWithScroll,
+    redirectToHomePage,
+    uuid
 } from './common';
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';

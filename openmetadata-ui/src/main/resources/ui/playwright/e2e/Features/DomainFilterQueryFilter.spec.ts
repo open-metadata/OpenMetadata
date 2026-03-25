@@ -21,19 +21,19 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
-  redirectToExplorePage,
-  redirectToHomePage,
+    getApiContext,
+    redirectToExplorePage,
+    redirectToHomePage
 } from '../../utils/common';
 import {
-  assignDomainToEntity,
-  checkAssetsCount,
-  navigateToSubDomain,
-  searchAndExpectEntityNotVisible,
-  searchAndExpectEntityVisible,
-  selectDomain,
-  selectDomainFromNavbar,
-  verifyActiveDomainIsDefault,
+    assignDomainToEntity,
+    checkAssetsCount,
+    navigateToSubDomain,
+    searchAndExpectEntityNotVisible,
+    searchAndExpectEntityVisible,
+    selectDomain,
+    selectDomainFromNavbar,
+    verifyActiveDomainIsDefault
 } from '../../utils/domain';
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';

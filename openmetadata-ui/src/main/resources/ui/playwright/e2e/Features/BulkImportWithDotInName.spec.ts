@@ -14,14 +14,14 @@ import { APIRequestContext, expect, test } from '@playwright/test';
 
 import { SERVICE_TYPE } from '../../constant/service';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import {
-  fillDescriptionDetails,
-  performBulkDownload,
+    fillDescriptionDetails,
+    performBulkDownload
 } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
 

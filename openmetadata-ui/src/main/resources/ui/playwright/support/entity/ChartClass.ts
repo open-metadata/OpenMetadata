@@ -16,13 +16,13 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import {
-  visitEntityPage,
-  visitEntityPageWithCustomSearchBox,
+    visitEntityPage,
+    visitEntityPageWithCustomSearchBox
 } from '../../utils/entity';
 import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
+    EntityTypeEndpoint,
+    ResponseDataType,
+    ResponseDataWithServiceType
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 

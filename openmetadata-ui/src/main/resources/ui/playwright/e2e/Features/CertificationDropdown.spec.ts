@@ -14,10 +14,10 @@ import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import {
-  closeCertificationDropdown,
-  openCertificationDropdown,
-  setCertificationClassificationDisabled,
-  setTagDisabled,
+    closeCertificationDropdown,
+    openCertificationDropdown,
+    setCertificationClassificationDisabled,
+    setTagDisabled
 } from '../../utils/certification';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 

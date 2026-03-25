@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -20,14 +20,14 @@ import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  redirectToHomePage,
-  removeLandingBanner,
-  uuid,
-  visitOwnProfilePage,
+    redirectToHomePage,
+    removeLandingBanner,
+    uuid,
+    visitOwnProfilePage
 } from '../../utils/common';
 import {
-  navigateToCustomizeLandingPage,
-  setUserDefaultPersona,
+    navigateToCustomizeLandingPage,
+    setUserDefaultPersona
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { editDisplayName } from '../../utils/user';

@@ -16,9 +16,9 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  CONDITIONS_MUST,
-  selectOption,
-  showAdvancedSearchDialog,
+    CONDITIONS_MUST,
+    selectOption,
+    showAdvancedSearchDialog
 } from '../../utils/advancedSearch';
 import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';

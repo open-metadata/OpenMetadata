@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -18,17 +18,17 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { redirectToHomePage, removeLandingBanner } from '../../utils/common';
 import {
-  addCuratedAssetPlaceholder,
-  ENTITY_TYPE_CONFIGS,
-  navigateToCustomizeLandingPage,
-  removeAndCheckWidget,
-  saveCustomizeLayoutPage,
-  selectAssetTypes,
-  setUserDefaultPersona,
+    addCuratedAssetPlaceholder,
+    ENTITY_TYPE_CONFIGS,
+    navigateToCustomizeLandingPage,
+    removeAndCheckWidget,
+    saveCustomizeLayoutPage,
+    selectAssetTypes,
+    setUserDefaultPersona
 } from '../../utils/customizeLandingPage';
 import {
-  getEntityDisplayName,
-  waitForAllLoadersToDisappear,
+    getEntityDisplayName,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 
 const adminUser = new UserClass();

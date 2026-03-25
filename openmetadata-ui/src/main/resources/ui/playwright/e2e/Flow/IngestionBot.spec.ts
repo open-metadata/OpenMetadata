@@ -16,15 +16,15 @@ import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  addAssetsToDomain,
-  addServicesToDomain,
-  selectDomain,
-  setupAssetsForDomain,
+    addAssetsToDomain,
+    addServicesToDomain,
+    selectDomain,
+    setupAssetsForDomain
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
 import { setToken } from '../../utils/tokenStorage';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const test = base.extend<{
   page: Page;

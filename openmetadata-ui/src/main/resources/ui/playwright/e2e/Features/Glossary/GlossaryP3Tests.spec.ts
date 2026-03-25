@@ -15,10 +15,10 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
-  createNewPage,
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
+    createNewPage,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { selectActiveGlossary } from '../../../utils/glossary';

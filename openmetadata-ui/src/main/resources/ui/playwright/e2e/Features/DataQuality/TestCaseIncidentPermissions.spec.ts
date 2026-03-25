@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
-  CONSUMER_LIKE_POLICY,
-  EDIT_INCIDENTS_POLICY,
-  TABLE_EDIT_INCIDENTS_POLICY,
-  TABLE_VIEW_INCIDENTS_POLICY,
-  VIEW_INCIDENTS_POLICY,
+    CONSUMER_LIKE_POLICY,
+    EDIT_INCIDENTS_POLICY,
+    TABLE_EDIT_INCIDENTS_POLICY,
+    TABLE_VIEW_INCIDENTS_POLICY,
+    VIEW_INCIDENTS_POLICY
 } from '../../../constant/dataQualityPermissions';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
@@ -25,9 +25,9 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
-import { getCurrentMillis } from '../../../utils/dateTime';
 
 // --- Objects ---
 const viewIncidentsPolicy = new PolicyClass();

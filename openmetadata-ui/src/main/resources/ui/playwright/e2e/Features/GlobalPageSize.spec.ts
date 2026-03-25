@@ -13,9 +13,9 @@
 import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.describe('Table & Data Model columns table pagination', () => {
   test('Page size should persist across different pages', async ({

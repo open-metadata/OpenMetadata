@@ -21,10 +21,10 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  redirectToHomePage,
-  uuid,
-  visitGlossaryPage,
+    createNewPage,
+    redirectToHomePage,
+    uuid,
+    visitGlossaryPage
 } from '../../utils/common';
 import { selectDomain } from '../../utils/domain';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';

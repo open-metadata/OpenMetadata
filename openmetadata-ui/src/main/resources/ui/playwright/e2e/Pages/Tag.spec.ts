@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -22,23 +23,22 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
 import {
-  addAssetsToTag,
-  editTagPageDescription,
-  fillTagForm,
-  LIMITED_USER_RULES,
-  NEW_TAG,
-  removeAssetsFromTag,
-  setupAssetsForTag,
-  submitForm,
-  validateForm,
-  verifyCertificationTagPageUI,
-  verifyEntityTypeFilterInTagAssets,
-  verifyTagPageUI,
+    addAssetsToTag,
+    editTagPageDescription,
+    fillTagForm,
+    LIMITED_USER_RULES,
+    NEW_TAG,
+    removeAssetsFromTag,
+    setupAssetsForTag,
+    submitForm,
+    validateForm,
+    verifyCertificationTagPageUI,
+    verifyEntityTypeFilterInTagAssets,
+    verifyTagPageUI
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
-import { sidebarClick } from '../../utils/sidebar';
-import { SidebarItem } from '../../constant/sidebar';
 
 base.describe.configure({ mode: 'serial' });
 

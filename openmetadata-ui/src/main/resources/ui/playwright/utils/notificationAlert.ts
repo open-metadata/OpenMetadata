@@ -21,21 +21,21 @@ import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  addEntityFQNFilter,
-  addEventTypeFilter,
-  addMultipleFilters,
-  checkRecentEventDetails,
-  inputBasicAlertInformation,
-  saveAlertAndVerifyResponse,
-  visitAlertDetailsPage,
-  visitEditAlertPage,
-  waitForRecentEventsToFinishExecution,
+    addEntityFQNFilter,
+    addEventTypeFilter,
+    addMultipleFilters,
+    checkRecentEventDetails,
+    inputBasicAlertInformation,
+    saveAlertAndVerifyResponse,
+    visitAlertDetailsPage,
+    visitEditAlertPage,
+    waitForRecentEventsToFinishExecution
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
 import {
-  addMultiOwner,
-  updateDescription,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    updateDescription,
+    waitForAllLoadersToDisappear
 } from './entity';
 import { addExternalDestination } from './observabilityAlert';
 import { sidebarClick } from './sidebar';

@@ -17,18 +17,18 @@ import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import {
-  createNewPage,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    createNewPage,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  setValueForProperty,
+    addCustomPropertiesForEntity,
+    setValueForProperty
 } from '../../utils/customProperty';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { setSliderValue } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

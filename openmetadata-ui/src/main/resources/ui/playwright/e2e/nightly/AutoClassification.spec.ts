@@ -17,9 +17,9 @@ import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionCl
 import { addAndTriggerAutoClassificationPipeline } from '../../utils/autoClassification';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage
 } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 

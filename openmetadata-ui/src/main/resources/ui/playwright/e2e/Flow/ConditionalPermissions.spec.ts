@@ -13,16 +13,16 @@
 import { Page, test as base } from '@playwright/test';
 import { startCase } from 'lodash';
 import {
-  assetsData,
-  userWithOwnerPermission,
-  userWithTagPermission,
+    assetsData,
+    userWithOwnerPermission,
+    userWithTagPermission
 } from '../../constant/conditionalPermissions';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  checkViewAllPermission,
-  conditionalPermissionsCleanup,
-  conditionalPermissionsPrerequisites,
-  getEntityFQN,
+    checkViewAllPermission,
+    conditionalPermissionsCleanup,
+    conditionalPermissionsPrerequisites,
+    getEntityFQN
 } from '../../utils/conditionalPermissions';
 
 const test = base.extend<{
