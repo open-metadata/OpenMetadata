@@ -20,7 +20,11 @@ import moment from 'moment';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
-import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import {
+  ERROR_MESSAGE,
+  NO_DATA_PLACEHOLDER,
+  TEXT_GREY_MUTED,
+} from '../constants/constants';
 import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getIsErrorMatch } from './CommonUtils';
@@ -53,7 +57,7 @@ export const commonUserDetailColumns = (
           <Tooltip title={t('label.bot')}>
             <SmartToyOutlined
               data-testid="bot-icon"
-              style={{ fontSize: 16, color: '#757575' }}
+              style={{ fontSize: 16, color: TEXT_GREY_MUTED }}
             />
           </Tooltip>
         )}

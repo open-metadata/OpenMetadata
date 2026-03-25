@@ -18,6 +18,7 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
+  TEXT_GREY_MUTED,
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
@@ -140,7 +141,7 @@ export const UserSelectableList = ({
           <Tooltip title={t('label.bot')}>
             <SmartToyOutlined
               data-testid="bot-indicator"
-              style={{ fontSize: 16, color: '#757575' }}
+              style={{ fontSize: 16, color: TEXT_GREY_MUTED }}
             />
           </Tooltip>
         )}
@@ -151,7 +152,7 @@ export const UserSelectableList = ({
         />
       </div>
     ),
-    []
+    [t]
   );
 
   return (
