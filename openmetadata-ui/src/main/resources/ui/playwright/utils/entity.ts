@@ -1053,6 +1053,15 @@ export const openColumnDetailPanel = async ({
       )
     : null;
 
+  const columnsProfileResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/tables/name/') &&
+      response.url().includes('/columns') &&
+      response.url().includes('profile') &&
+      response.request().method() === 'GET',
+    { timeout: 90_000 }
+  );
+
   if (entityType === 'MlModel') {
     const columnName = page
       .locator(`[${rowSelector}="${columnId}"]`)
@@ -1082,6 +1091,8 @@ export const openColumnDetailPanel = async ({
     const apiResponse = await apiResponsePromise;
     expect(apiResponse.status()).toBe(200);
   }
+
+  await columnsProfileResponsePromise;
 
   const panelContainer = page.locator('.column-detail-panel');
 

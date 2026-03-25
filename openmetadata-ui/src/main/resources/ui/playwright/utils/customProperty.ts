@@ -1147,8 +1147,24 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
 }) => {
   const testValue = getPropertyValues(propertyType, users).value;
 
+  const tableFqn = columnFqn.split('.').slice(0, -1).join('.');
+  const columnsProfileResponse = () =>
+    page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(
+            `/api/v1/tables/name/${encodeURIComponent(tableFqn)}/columns`
+          ) &&
+        response.url().includes('profile') &&
+        response.request().method() === 'GET',
+      { timeout: 90_000 }
+    );
+
   // 1. Navigate and Open Column Detail Panel
+  const initialColumnsResponse = columnsProfileResponse();
   await page.goto(`/table/${columnFqn}`, { waitUntil: 'domcontentloaded' });
+  await initialColumnsResponse;
   await waitForAllLoadersToDisappear(page);
   const sidePanel = page.locator('.column-detail-panel-container');
   await expect(sidePanel).toBeVisible();
@@ -1193,7 +1209,9 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
     propertyName
   );
 
+  const reloadColumnsResponse = columnsProfileResponse();
   await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadColumnsResponse;
   await waitForAllLoadersToDisappear(page);
   await expect(
     page.locator(
