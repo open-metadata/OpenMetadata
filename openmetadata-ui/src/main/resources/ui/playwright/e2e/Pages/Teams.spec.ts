@@ -198,7 +198,10 @@ test.describe('Teams Page', () => {
 
       // Click on add new user
       const fetchUsersResponse = page.waitForResponse(
-        '/api/v1/users?limit=25&isBot=false'
+        (response) =>
+          response.url().includes('/api/v1/users?limit=25') &&
+          response.request().method() === 'GET' &&
+          response.status() === 200
       );
       await page.locator('[data-testid="add-new-user"]').click();
       await fetchUsersResponse;
@@ -645,7 +648,10 @@ test.describe('Teams Page', () => {
     await page.locator('[data-testid="users"]').click();
 
     const fetchUsersResponse = page.waitForResponse(
-      '/api/v1/users?limit=25&isBot=false'
+      (response) =>
+        response.url().includes('/api/v1/users?limit=25') &&
+        response.request().method() === 'GET' &&
+        response.status() === 200
     );
     await page.locator('[data-testid="add-new-user"]').click();
     await fetchUsersResponse;
