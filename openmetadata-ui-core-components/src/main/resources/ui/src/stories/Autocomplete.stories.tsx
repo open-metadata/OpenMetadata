@@ -427,36 +427,36 @@ export const WithMaxVisibleItems: StoryObj = {
     });
 
     return (
-      <div style={{ width: 360 }} className="tw:flex tw:flex-col tw:gap-6">
+      <div className="tw:flex tw:flex-col tw:gap-6" style={{ width: 360 }}>
         <Autocomplete
+          items={ITEMS}
           label="Max 2 visible (6 selected → shows +4)"
-          items={ITEMS}
-          selectedItems={selectedItems}
+          maxVisibleItems={2}
           placeholder="Add more..."
-          maxVisibleItems={2}>
+          selectedItems={selectedItems}>
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+            <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
           )}
         </Autocomplete>
 
         <Autocomplete
+          items={ITEMS}
           label="Max 3 visible (6 selected → shows +3)"
-          items={ITEMS}
-          selectedItems={selectedItems}
+          maxVisibleItems={3}
           placeholder="Add more..."
-          maxVisibleItems={3}>
+          selectedItems={selectedItems}>
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+            <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
           )}
         </Autocomplete>
 
         <Autocomplete
-          label="No limit (all 6 visible)"
           items={ITEMS}
-          selectedItems={selectedItems}
-          placeholder="Add more...">
+          label="No limit (all 6 visible)"
+          placeholder="Add more..."
+          selectedItems={selectedItems}>
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+            <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
           )}
         </Autocomplete>
       </div>
@@ -488,12 +488,12 @@ export const WithLongLabels: StoryObj = {
     return (
       <div style={{ width: 360 }}>
         <Autocomplete
-          label="Long labels (truncated at 160px)"
           items={LONG_LABEL_ITEMS}
-          selectedItems={selectedItems}
-          placeholder="Add more...">
+          label="Long labels (truncated at 160px)"
+          placeholder="Add more..."
+          selectedItems={selectedItems}>
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+            <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
           )}
         </Autocomplete>
       </div>
@@ -516,13 +516,13 @@ export const WithLongLabelsAndMaxVisible: StoryObj = {
     return (
       <div style={{ width: 360 }}>
         <Autocomplete
-          label="Long labels + max 2 visible (5 selected → shows +3)"
           items={LONG_LABEL_ITEMS}
-          selectedItems={selectedItems}
+          label="Long labels + max 2 visible (5 selected → shows +3)"
+          maxVisibleItems={2}
           placeholder="Add more..."
-          maxVisibleItems={2}>
+          selectedItems={selectedItems}>
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
+            <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
           )}
         </Autocomplete>
       </div>

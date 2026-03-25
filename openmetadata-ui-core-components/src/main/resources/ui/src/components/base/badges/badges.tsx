@@ -508,11 +508,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
       )}>
       {children}
       <button
-        type="button"
         aria-label={buttonLabel}
-        disabled={isDisabled}
-        onClick={props.onButtonClick}
-        onKeyDown={onButtonKeyDown}
         className={cx(
           'tw:flex tw:items-center tw:justify-center tw:p-0.5 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2',
           isDisabled
@@ -520,7 +516,11 @@ export const BadgeWithButton = <T extends BadgeTypes>(
             : 'tw:cursor-pointer',
           colors.styles[color].addonButton,
           type === 'pill-color' ? 'tw:rounded-full' : 'tw:rounded-[3px]'
-        )}>
+        )}
+        disabled={isDisabled}
+        type="button"
+        onClick={props.onButtonClick}
+        onKeyDown={onButtonKeyDown}>
         <Icon className="tw:size-3 tw:stroke-[3px] tw:transition-inherit-all" />
       </button>
     </span>

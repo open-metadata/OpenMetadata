@@ -214,16 +214,16 @@ const InnerAutocomplete = ({
             context.renderTag(item, () => context.onRemove(new Set([item.id])))
           ) : (
             <BadgeWithButton
-              type="modern"
               color="gray"
+              isDisabled={isDisabled}
               key={item.id}
               size="lg"
-              isDisabled={isDisabled}
+              type="modern"
               onButtonClick={() => context.onRemove(new Set([item.id]))}
               onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}>
               {renderChipIcon(item)}
               <div className="tw:min-w-0 tw:max-w-40">
-                <Typography as="p" ellipsis weight="medium">
+                <Typography ellipsis as="p" weight="medium">
                   {item.label}
                 </Typography>
               </div>
@@ -232,7 +232,7 @@ const InnerAutocomplete = ({
         )}
 
       {overflowCount > 0 && (
-        <Badge type="modern" color="gray" size="lg">
+        <Badge color="gray" size="lg" type="modern">
           +{overflowCount}
         </Badge>
       )}
