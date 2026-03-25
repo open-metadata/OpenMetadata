@@ -154,8 +154,7 @@ const GLOSSARY_HEADER_MIX_ACCENT = 0.11;
 
 function parseColorToRgbTriplet(val: string): [number, number, number] | null {
   const v = val.trim();
-  const hexMatch = /^#([0-9a-fA-F]{6})$/;
-  const hex = v.match(hexMatch);
+  const hex = v.match(/^#([0-9a-fA-F]{6})$/);
   if (hex) {
     const h = hex[1];
 
@@ -193,23 +192,23 @@ function mixAccentLikeScale50(rgb: [number, number, number]): string {
  * For `var(--color-*-scale)` strokes, resolves `var(--color-*-50)`. For hex palette strokes, blends toward white.
  */
 export function glossaryComboHeaderFill(stroke: string): string {
-  const accent = typeof stroke === 'string' ? stroke : '#94a3b8';
-  const blendFromAccent = (): string => {
-    const resolved = accent.startsWith('var(')
-      ? getCanvasColor(accent, '#94a3b8')
-      : accent;
+  const blendTowardWhite = (): string => {
+    const resolved = stroke.startsWith('var(')
+      ? getCanvasColor(stroke, '#94a3b8')
+      : stroke;
     const rgb = parseColorToRgbTriplet(resolved);
 
     return rgb ? mixAccentLikeScale50(rgb) : '#f8fafc';
   };
-  if (accent.startsWith('var(')) {
-    const m = accent.match(/^var\((--color-[a-z0-9-]+)-\d{2,3}\)$/i);
+
+  if (stroke.startsWith('var(')) {
+    const m = stroke.match(/^var\((--color-[a-z0-9-]+)-\d{2,3}\)$/i);
     if (m) {
-      return getCanvasColor(`var(${m[1]}-50)`, blendFromAccent());
+      return getCanvasColor(`var(${m[1]}-50)`, blendTowardWhite());
     }
   }
 
-  return blendFromAccent();
+  return blendTowardWhite();
 }
 
 export const LABEL_PLACEMENT_BOTTOM = 'bottom';
@@ -260,7 +259,6 @@ export class GlossaryCombo extends RectCombo {
         typeof attributes.labelFontSize === 'number'
           ? attributes.labelFontSize
           : 12;
-      const normalizedFontWeight = COMBO_LABEL_FONT_WEIGHT;
       const x = headerX + COMBO_LABEL_PADDING_LEFT;
       const y = headerY + headerH / 2;
       const maxLabelWidth = Math.max(
@@ -285,7 +283,7 @@ export class GlossaryCombo extends RectCombo {
           text: truncatedLabelText,
           fill: labelFill,
           fontSize: labelFontSize,
-          fontWeight: normalizedFontWeight,
+          fontWeight: COMBO_LABEL_FONT_WEIGHT,
           textBaseline: 'middle',
           textAlign: 'left',
         },
@@ -476,20 +474,10 @@ export function buildDataModeTermNodeStyle(
   color: string,
   pos?: NodeStylePosition
 ): Record<string, unknown> {
-  const sz = DATA_MODE_TERM_NODE_SIZE;
   const resolvedColor = getColor(color, '#3b82f6');
 
-  const termShadowColor = getColor(
-    DATA_MODE_TERM_NODE_SHADOW_COLOR,
-    DATA_MODE_TERM_NODE_SHADOW_COLOR
-  );
-  const labelShadowColor = getColor(
-    DATA_MODE_TERM_LABEL_SHADOW_COLOR,
-    DATA_MODE_TERM_LABEL_SHADOW_COLOR
-  );
-
   return {
-    size: [sz, sz],
+    size: [DATA_MODE_TERM_NODE_SIZE, DATA_MODE_TERM_NODE_SIZE],
     fill: resolvedColor,
     stroke: NODE_FILL_DEFAULT,
     lineWidth: DATA_MODE_TERM_NODE_STROKE_WIDTH,
@@ -513,11 +501,11 @@ export function buildDataModeTermNodeStyle(
     labelBackgroundStroke: NODE_FILL_DEFAULT,
     labelBackgroundLineWidth: DATA_MODE_TERM_NODE_STROKE_WIDTH,
     labelBackgroundRadius: DATA_MODE_TERM_LABEL_BG_RADIUS,
-    labelBackgroundShadowColor: labelShadowColor,
+    labelBackgroundShadowColor: DATA_MODE_TERM_LABEL_SHADOW_COLOR,
     labelBackgroundShadowBlur: DATA_MODE_TERM_LABEL_SHADOW_BLUR,
     labelBackgroundShadowOffsetY: DATA_MODE_TERM_LABEL_SHADOW_OFFSET_Y,
     labelPadding: TERM_LABEL_BG_PADDING,
-    shadowColor: termShadowColor,
+    shadowColor: DATA_MODE_TERM_NODE_SHADOW_COLOR,
     shadowBlur: DATA_MODE_TERM_NODE_SHADOW_BLUR,
     shadowOffsetY: DATA_MODE_TERM_NODE_SHADOW_OFFSET_Y,
     ...(pos && { x: pos.x, y: pos.y }),

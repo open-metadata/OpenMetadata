@@ -118,7 +118,6 @@ const ASSET_RELATION_TYPE = 'hasGlossaryTerm';
 const ONTOLOGY_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:bg-primary tw:[background-image:radial-gradient(circle,rgba(148,163,184,0.22)_1px,transparent_1px)] tw:[background-size:14px_14px]';
 
-const ONTOLOGY_GRAPH_VIEWPORT_CLASS = `${ONTOLOGY_GRAPH_BACKDROP_CLASS} tw:relative tw:overflow-hidden`;
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-50 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
@@ -1437,103 +1436,106 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             />
           </Card>
 
-          {loading ? (
-            <div
-              className="tw:relative tw:flex tw:min-h-100 tw:flex-1 tw:flex-col tw:items-center tw:justify-center"
-              data-testid="ontology-graph-loading">
-              <div className={ONTOLOGY_GRAPH_BACKDROP_CLASS} />
+          <div
+            className={classNames(
+              ONTOLOGY_GRAPH_BACKDROP_CLASS,
+              'tw:overflow-hidden'
+            )}>
+            {loading ? (
               <div
-                aria-label={t('label.loading')}
-                className="tw:z-10 tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-[var(--color-bg-brand-solid)]"
-                role="status"
-              />
-              <Typography as="p" className="tw:mt-4 tw:z-10 tw:text-tertiary">
-                {t('label.loading-graph')}
-              </Typography>
-            </div>
-          ) : isHierarchyView &&
-            hierarchyGraphData &&
-            hierarchyGraphData.nodes.length > 0 &&
-            hierarchyGraphData.edges.length === 0 ? (
-            <div
-              className="tw:relative tw:flex tw:min-h-100 tw:flex-1 tw:flex-col tw:items-center tw:justify-center"
-              data-testid="ontology-graph-hierarchy-empty">
-              <div className={ONTOLOGY_GRAPH_BACKDROP_CLASS} />
-              <Typography
-                as="p"
-                className="tw:z-10 tw:text-center tw:text-tertiary">
-                {t('message.no-hierarchical-relations-found')}
-              </Typography>
-            </div>
-          ) : !graphDataToShow || graphDataToShow.nodes.length === 0 ? (
-            <div
-              className="tw:relative tw:flex tw:min-h-100 tw:flex-1 tw:flex-col tw:items-center tw:justify-center"
-              data-testid="ontology-graph-empty">
-              <div className={ONTOLOGY_GRAPH_BACKDROP_CLASS} />
-              <Typography
-                as="p"
-                className="tw:z-10 tw:text-center tw:text-tertiary">
-                {withoutOntologyAutocompleteAll(filters.glossaryIds).length >
-                  0 ||
-                withoutOntologyAutocompleteAll(filters.relationTypes).length > 0
-                  ? t('message.no-data-available-for-selected-filter')
-                  : t('message.no-glossary-terms-found')}
-              </Typography>
-            </div>
-          ) : (
-            <div className={ONTOLOGY_GRAPH_VIEWPORT_CLASS}>
-              {filters.searchQuery.trim() ? (
+                className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
+                data-testid="ontology-graph-loading">
                 <div
-                  aria-hidden
-                  className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-10 tw:bg-gray-950/6"
+                  aria-label={t('label.loading')}
+                  className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
+                  role="status"
                 />
-              ) : null}
-              <div className="tw:relative tw:z-20 tw:h-full tw:w-full tw:min-h-0">
-                <OntologyGraph
-                  edges={graphDataToShow.edges}
-                  expandedTermIds={
-                    explorationMode === 'data' ? expandedTermIds : undefined
-                  }
-                  explorationMode={
-                    isHierarchyView ? 'hierarchy' : explorationMode
-                  }
-                  focusNodeId={
-                    explorationMode === 'data'
-                      ? selectedNode?.id ?? entityId
-                      : entityId
-                  }
-                  glossaryColorMap={glossaryColorMap}
-                  graphSearchHighlight={graphSearchHighlight}
-                  hierarchyCombos={
-                    isHierarchyView && hierarchyGraphData
-                      ? hierarchyGraphData.combos.map((c) => ({
-                          id: c.id,
-                          label: c.label,
-                          glossaryId: c.glossaryId,
-                        }))
-                      : undefined
-                  }
-                  nodePositions={
-                    isHierarchyView
-                      ? hierarchyBakedPositions ?? undefined
-                      : savedPositions ?? undefined
-                  }
-                  nodes={graphDataToShow.nodes}
-                  ref={graphRef}
-                  selectedNodeId={
-                    explorationMode === 'data' && expandedTermIds.size > 1
-                      ? null
-                      : selectedNode?.id
-                  }
-                  settings={settings}
-                  onNodeClick={handleGraphNodeClick}
-                  onNodeContextMenu={handleGraphNodeContextMenu}
-                  onNodeDoubleClick={handleGraphNodeDoubleClick}
-                  onPaneClick={handleGraphPaneClick}
-                />
+                <Typography as="p" className="tw:mt-4 tw:text-tertiary">
+                  {t('label.loading-graph')}
+                </Typography>
               </div>
-            </div>
-          )}
+            ) : isHierarchyView &&
+              hierarchyGraphData !== null &&
+              hierarchyGraphData.edges.length === 0 ? (
+              <div
+                className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
+                data-testid="ontology-graph-hierarchy-empty">
+                <Typography
+                  as="p"
+                  className="tw:text-center tw:text-tertiary">
+                  {t('message.no-hierarchical-relations-found')}
+                </Typography>
+              </div>
+            ) : !graphDataToShow || graphDataToShow.nodes.length === 0 ? (
+              <div
+                className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
+                data-testid="ontology-graph-empty">
+                <Typography
+                  as="p"
+                  className="tw:text-center tw:text-tertiary">
+                  {withoutOntologyAutocompleteAll(filters.glossaryIds).length >
+                    0 ||
+                  withoutOntologyAutocompleteAll(filters.relationTypes).length >
+                    0
+                    ? t('message.no-data-available-for-selected-filter')
+                    : t('message.no-glossary-terms-found')}
+                </Typography>
+              </div>
+            ) : (
+              <>
+                {filters.searchQuery.trim() ? (
+                  <div
+                    aria-hidden
+                    className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-10 tw:bg-gray-950/6"
+                  />
+                ) : null}
+                <div className="tw:relative tw:z-20 tw:h-full tw:w-full tw:min-h-0">
+                  <OntologyGraph
+                    edges={graphDataToShow.edges}
+                    expandedTermIds={
+                      explorationMode === 'data' ? expandedTermIds : undefined
+                    }
+                    explorationMode={
+                      isHierarchyView ? 'hierarchy' : explorationMode
+                    }
+                    focusNodeId={
+                      explorationMode === 'data'
+                        ? selectedNode?.id ?? entityId
+                        : entityId
+                    }
+                    glossaryColorMap={glossaryColorMap}
+                    graphSearchHighlight={graphSearchHighlight}
+                    hierarchyCombos={
+                      isHierarchyView && hierarchyGraphData
+                        ? hierarchyGraphData.combos.map((c) => ({
+                            id: c.id,
+                            label: c.label,
+                            glossaryId: c.glossaryId,
+                          }))
+                        : undefined
+                    }
+                    nodePositions={
+                      isHierarchyView
+                        ? hierarchyBakedPositions ?? undefined
+                        : savedPositions ?? undefined
+                    }
+                    nodes={graphDataToShow.nodes}
+                    ref={graphRef}
+                    selectedNodeId={
+                      explorationMode === 'data' && expandedTermIds.size > 1
+                        ? null
+                        : selectedNode?.id
+                    }
+                    settings={settings}
+                    onNodeClick={handleGraphNodeClick}
+                    onNodeContextMenu={handleGraphNodeContextMenu}
+                    onNodeDoubleClick={handleGraphNodeDoubleClick}
+                    onPaneClick={handleGraphPaneClick}
+                  />
+                </div>
+              </>
+            )}
+          </div>
 
           {selectedNode && (
             <SlideoutMenu
