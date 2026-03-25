@@ -380,6 +380,49 @@ class OpenLineageEntityResolverTest {
     assertNull(field.getDescription());
   }
 
+  @Test
+  void isStorageDataset_detectsStorageSchemes() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    assertTrue(resolver.isStorageDataset("gs://my-bucket"));
+    assertTrue(resolver.isStorageDataset("s3://my-bucket"));
+    assertTrue(resolver.isStorageDataset("s3a://my-bucket"));
+    assertTrue(resolver.isStorageDataset("abfss://container@account.dfs.core.windows.net"));
+    assertTrue(resolver.isStorageDataset("abfs://container@account.dfs.core.windows.net"));
+    assertTrue(resolver.isStorageDataset("wasbs://container@account.blob.core.windows.net"));
+    assertTrue(resolver.isStorageDataset("adl://account.azuredatalakestore.net"));
+  }
+
+  @Test
+  void isStorageDataset_rejectsNonStorageSchemes() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    assertFalse(resolver.isStorageDataset("bigquery"));
+    assertFalse(resolver.isStorageDataset("postgresql://host:5432"));
+    assertFalse(resolver.isStorageDataset("mysql://host:3306"));
+    assertFalse(resolver.isStorageDataset(null));
+    assertFalse(resolver.isStorageDataset(""));
+  }
+
+  @Test
+  void isStorageDataset_caseInsensitive() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    assertTrue(resolver.isStorageDataset("GS://my-bucket"));
+    assertTrue(resolver.isStorageDataset("S3://my-bucket"));
+    assertTrue(resolver.isStorageDataset("ABFSS://container@account"));
+  }
+
+  @Test
+  void resolveContainer_nullInputs_returnsNull() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    assertNull(resolver.resolveContainer(null, "path"));
+    assertNull(resolver.resolveContainer("gs://bucket", null));
+    assertNull(resolver.resolveContainer("", "path"));
+    assertNull(resolver.resolveContainer("gs://bucket", ""));
+  }
+
   // Helper method to test data type mapping
   // This replicates the logic in OpenLineageEntityResolver.mapDataType
   private ColumnDataType mapTestDataType(String olType) {
