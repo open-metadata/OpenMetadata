@@ -149,13 +149,18 @@ test.describe('Ontology Explorer', () => {
       await expect(page.getByRole('tab', { name: 'Data' })).toBeVisible();
     });
 
-    test('should display view mode tabs (Overview, Hierarchy, Cross Glossary)', async ({
+    test('should display view mode select with Overview, Hierarchy and Cross Glossary options', async ({
       page,
     }) => {
-      await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible();
-      await expect(page.getByRole('tab', { name: 'Hierarchy' })).toBeVisible();
+      const viewModeSelect = page.getByTestId('view-mode-select');
+      await expect(viewModeSelect).toBeVisible();
+      await viewModeSelect.click();
+      await expect(page.getByRole('option', { name: 'Overview' })).toBeVisible();
       await expect(
-        page.getByRole('tab', { name: 'Cross Glossary' })
+        page.getByRole('option', { name: 'Hierarchy' })
+      ).toBeVisible();
+      await expect(
+        page.getByRole('option', { name: 'Cross Glossary' })
       ).toBeVisible();
     });
 
@@ -313,48 +318,51 @@ test.describe('Ontology Explorer', () => {
     });
   });
 
-  test.describe('View Mode - Filter Toolbar Tabs', () => {
+  test.describe('View Mode - Filter Toolbar Select', () => {
     test('should have Overview selected by default', async ({ page }) => {
-      await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
-        'aria-selected',
-        'true'
+      await expect(page.getByTestId('view-mode-select')).toContainText(
+        'Overview'
       );
     });
 
     test('should switch to Hierarchy view mode', async ({ page }) => {
       await waitForGraphLoaded(page);
-      await page.getByRole('tab', { name: 'Hierarchy' }).click();
-      await expect(
-        page.getByRole('tab', { name: 'Hierarchy' })
-      ).toHaveAttribute('aria-selected', 'true');
+      await page.getByTestId('view-mode-select').click();
+      await page.getByRole('option', { name: 'Hierarchy' }).click();
+      await expect(page.getByTestId('view-mode-select')).toContainText(
+        'Hierarchy'
+      );
     });
 
     test('should switch to Cross Glossary view mode', async ({ page }) => {
       await waitForGraphLoaded(page);
-      await page.getByRole('tab', { name: 'Cross Glossary' }).click();
-      await expect(
-        page.getByRole('tab', { name: 'Cross Glossary' })
-      ).toHaveAttribute('aria-selected', 'true');
+      await page.getByTestId('view-mode-select').click();
+      await page.getByRole('option', { name: 'Cross Glossary' }).click();
+      await expect(page.getByTestId('view-mode-select')).toContainText(
+        'Cross Glossary'
+      );
     });
 
     test('should return to Overview from Hierarchy', async ({ page }) => {
       await waitForGraphLoaded(page);
-      await page.getByRole('tab', { name: 'Hierarchy' }).click();
-      await page.getByRole('tab', { name: 'Overview' }).click();
-      await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
-        'aria-selected',
-        'true'
+      await page.getByTestId('view-mode-select').click();
+      await page.getByRole('option', { name: 'Hierarchy' }).click();
+      await page.getByTestId('view-mode-select').click();
+      await page.getByRole('option', { name: 'Overview' }).click();
+      await expect(page.getByTestId('view-mode-select')).toContainText(
+        'Overview'
       );
     });
 
-    test('should update active tab when view mode changes from Overview', async ({
+    test('should update selected option when view mode changes from Overview', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await page.getByRole('tab', { name: 'Hierarchy' }).click();
-      await expect(
-        page.getByRole('tab', { name: 'Hierarchy' })
-      ).toHaveAttribute('aria-selected', 'true');
+      await page.getByTestId('view-mode-select').click();
+      await page.getByRole('option', { name: 'Hierarchy' }).click();
+      await expect(page.getByTestId('view-mode-select')).toContainText(
+        'Hierarchy'
+      );
     });
   });
 
