@@ -83,6 +83,7 @@ COPY ingestion/operators/docker/*.py .
 # system. Creating the user ensures Python recognises UID 1000 and
 # enables the standard ~/.local install path.
 RUN groupadd -g 1000 openmetadata && useradd -m -u 1000 -g 1000 openmetadata
+RUN chown -R openmetadata:openmetadata /ingestion
 ENV HOME=/home/openmetadata
 USER openmetadata
 
