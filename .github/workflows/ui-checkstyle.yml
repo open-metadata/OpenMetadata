@@ -12,7 +12,7 @@
 name: UI Checkstyle
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
@@ -44,7 +44,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   authorize:
     if: |
-      github.event_name == 'pull_request' &&
+      github.event_name == 'pull_request_target' &&
       (github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     runs-on: ubuntu-latest
     steps:
@@ -152,7 +152,7 @@ jobs:
             ### ❌ Lint Check Failed — ESLint + Prettier + Organise Imports (src)
 
             The following files have style issues that need to be fixed:
-            ${{ steps.lint.outputs.changed_files }}
+            ${{ steps.changed-files.outputs.all_changed_files }}
 
             **Fix locally (fast — changed files only):**
             ```bash
@@ -251,7 +251,7 @@ jobs:
             ### ❌ Licence Header Check Failed
 
             The following files are missing or have outdated licence headers:
-            ${{ steps.license.outputs.changed_files }}
+            ${{ steps.changed-files.outputs.all_changed_files }}
 
             **Fix locally:**
             ```bash
@@ -613,7 +613,7 @@ jobs:
             ### ❌ Playwright Lint Check Failed — ESLint + Prettier + Organise Imports
 
             The following files have style issues that need to be fixed:
-            ${{ steps.lint.outputs.changed_files }}
+            ${{ steps.changed-files.outputs.all_changed_files }}
 
             **Fix locally (fast — changed files only):**
             ```bash
@@ -816,7 +816,7 @@ jobs:
             ### ❌ Lint Check Failed — ESLint + Prettier (core-components)
 
             The following files have style issues that need to be fixed:
-            ${{ steps.lint.outputs.changed_files }}
+            ${{ steps.changed-files.outputs.all_changed_files }}
 
             **Fix locally (fast — changed files only):**
             ```bash
