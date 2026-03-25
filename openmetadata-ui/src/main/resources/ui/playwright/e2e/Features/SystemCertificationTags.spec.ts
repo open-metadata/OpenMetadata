@@ -116,18 +116,20 @@ test.describe.serial('System Level Certification Tags', () => {
 
     await setCertificationClassificationDisabled(apiContext, true);
 
-
+    // Phase 1: Classification disabled -> system certification tags should NOT be visible
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await openCertificationDropdown(page);
 
-    // All system certification tags should NOT be visible
     for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
-      await expect(page.getByTestId(`radio-btn-${tagFqn}`)).not.toBeVisible();
+      await expect(
+        page.getByTestId(`radio-btn-${tagFqn}`)
+      ).not.toBeVisible();
     }
 
     await closeCertificationDropdown(page);
 
+    // Phase 2: Re-enable classification and verify tags become visible
     await setCertificationClassificationDisabled(apiContext, false);
 
     try {
@@ -135,7 +137,6 @@ test.describe.serial('System Level Certification Tags', () => {
       await table.visitEntityPage(page);
       await openCertificationDropdown(page);
 
-      // All system certification tags should be visible
       for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
         await expect(page.getByTestId(`radio-btn-${tagFqn}`)).toBeVisible();
       }
