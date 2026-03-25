@@ -85,6 +85,7 @@ COPY ingestion/operators/docker/*.py .
 RUN groupadd -g 1000 openmetadata && useradd -m -u 1000 -g 1000 openmetadata
 RUN chown -R openmetadata:openmetadata /ingestion
 ENV HOME=/home/openmetadata
+ENV PATH="/home/openmetadata/.local/bin:${PATH}"
 USER openmetadata
 
 # Disable pip cache dir
