@@ -364,7 +364,8 @@ export const navigateToExploreAndSelectEntity = async (
   page: Page,
   entityName: string,
   endpoint?: string,
-  fullyQualifiedName?: string
+  fullyQualifiedName?: string,
+  exploreTab?: string
 ) => {
   await redirectToExplorePage(page);
 
@@ -372,7 +373,13 @@ export const navigateToExploreAndSelectEntity = async (
     timeout: 30000,
   });
 
-  await openEntitySummaryPanel(page, entityName, endpoint, fullyQualifiedName);
+  await openEntitySummaryPanel(
+    page,
+    entityName,
+    endpoint,
+    fullyQualifiedName,
+    exploreTab
+  );
 };
 
 export const getFlatColumnCountOfTable = (

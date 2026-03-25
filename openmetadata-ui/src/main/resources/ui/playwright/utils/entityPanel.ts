@@ -29,7 +29,8 @@ export const openEntitySummaryPanel = async (
   page: Page,
   entityName: string,
   endpoint?: string,
-  fullyQualifiedName?: string
+  fullyQualifiedName?: string,
+  exploreTab?: string
 ) => {
   if (
     endpoint &&
@@ -60,6 +61,15 @@ export const openEntitySummaryPanel = async (
 
   await page.getByTestId('searchBox').press('Enter');
   await waitForAllLoadersToDisappear(page);
+
+  if (exploreTab) {
+    const tab = page
+      .getByTestId('explore-left-panel')
+      .getByRole('menuitem', { name: exploreTab });
+    await tab.waitFor({ state: 'visible' });
+    await tab.click();
+    await waitForAllLoadersToDisappear(page);
+  }
 
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
