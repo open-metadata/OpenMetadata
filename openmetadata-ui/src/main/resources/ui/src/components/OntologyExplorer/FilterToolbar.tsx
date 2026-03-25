@@ -14,7 +14,7 @@
 import {
   Autocomplete,
   Divider,
-  Tabs,
+  Select,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -168,7 +168,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
     [relationTypeItems, filters.relationTypes]
   );
 
-  const viewModeTabItems = useMemo(
+  const viewModeItems = useMemo(
     () =>
       VIEW_MODES.map(({ label, value }) => ({
         id: value,
@@ -179,7 +179,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
 
   return (
     <div className="tw:flex tw:w-full tw:items-center tw:gap-3">
-      {/* View Mode tabs — disabled in data mode */}
+      {/* View Mode dropdown — disabled in data mode */}
       <div
         className={
           'tw:flex tw:shrink-0 tw:items-center tw:gap-2' +
@@ -192,13 +192,13 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           weight="medium">
           {t('label.view-mode')}:
         </Typography>
-        <Tabs
-          className="tw:w-fit!"
-          selectedKey={filters.viewMode}
-          onSelectionChange={(key) => {
-            if (viewModeDisabled) {
-              return;
-            }
+        <Select
+          className="tw:w-36"
+          data-testid="view-mode-select"
+          items={viewModeItems}
+          size="sm"
+          value={filters.viewMode}
+          onChange={(key) => {
             const viewMode = VIEW_MODES.find(
               (m) => m.value === String(key)
             )?.value;
@@ -206,11 +206,10 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
               onViewModeChange?.(viewMode);
             }
           }}>
-          <Tabs.List items={viewModeTabItems} size="sm" type="button-border" />
-          {viewModeTabItems.map((item) => (
-            <Tabs.Panel className="tw:hidden" id={item.id} key={item.id} />
-          ))}
-        </Tabs>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
       </div>
 
       {/* Glossary filter */}
@@ -223,7 +222,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
             <Typography as="span" size="text-sm" weight="medium">
               {t('label.glossary')}:
             </Typography>
-            <div className="tw:w-44 tw:min-w-0">
+            <div className="tw:w-56">
               <Autocomplete
                 items={glossaryItems}
                 maxVisibleItems={1}
@@ -254,7 +253,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
             <Typography as="span" size="text-sm" weight="medium">
               {t('label.relationship-type')}:
             </Typography>
-            <div className="tw:w-44 tw:min-w-0">
+            <div className="tw:w-56">
               <Autocomplete
                 items={relationTypeItems}
                 maxVisibleItems={1}
