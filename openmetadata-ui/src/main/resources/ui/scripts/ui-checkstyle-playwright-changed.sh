@@ -26,23 +26,38 @@ UI_PREFIX="openmetadata-ui/src/main/resources/ui/"
 
 cd "$UI_DIR"
 
+declare -a FILES
+
 if [ "$#" -gt 0 ]; then
-  CHANGED_FILES="$*"
+  FILES=("$@")
 else
-  BASE=$(git -C "$REPO_ROOT" merge-base HEAD origin/main 2>/dev/null || echo "origin/main")
-  CHANGED_FILES=$(git -C "$REPO_ROOT" diff --name-only --diff-filter=ACM "$BASE" HEAD \
-    | grep "^${UI_PREFIX}playwright/" \
-    | grep -v 'playwright/test-data/' \
-    | grep -E '\.(ts|tsx|js|jsx)$' \
-    | sed "s|^${UI_PREFIX}||" \
-    | tr '\n' ' ')
+  if git -C "$REPO_ROOT" rev-parse --verify origin/main &>/dev/null; then
+    BASE=$(git -C "$REPO_ROOT" merge-base HEAD origin/main)
+  else
+    echo "origin/main not found locally — attempting to fetch..."
+    if git -C "$REPO_ROOT" fetch origin main --depth=1 2>/dev/null; then
+      BASE=$(git -C "$REPO_ROOT" merge-base HEAD origin/main)
+    else
+      echo "Fetch failed. Falling back to HEAD~1."
+      BASE=$(git -C "$REPO_ROOT" rev-parse HEAD~1 2>/dev/null \
+        || git -C "$REPO_ROOT" rev-parse HEAD)
+    fi
+  fi
+
+  mapfile -t FILES < <(
+    git -C "$REPO_ROOT" diff --name-only --diff-filter=ACM "$BASE" HEAD \
+      | grep "^${UI_PREFIX}playwright/" \
+      | grep -v 'playwright/test-data/' \
+      | grep -E '\.(ts|tsx|js|jsx)$' \
+      | sed "s|^${UI_PREFIX}||"
+  )
 fi
 
-if [ -z "${CHANGED_FILES// }" ]; then
+if [ "${#FILES[@]}" -eq 0 ]; then
   echo "No changed playwright files to process."
   exit 0
 fi
 
-yarn organize-imports:cli $CHANGED_FILES
-yarn lint:base --fix $CHANGED_FILES
-yarn pretty:base --write $CHANGED_FILES
+yarn organize-imports:cli "${FILES[@]}"
+yarn lint:base --fix "${FILES[@]}"
+yarn pretty:base --write "${FILES[@]}"
