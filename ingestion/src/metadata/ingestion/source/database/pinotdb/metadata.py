@@ -30,7 +30,7 @@ def get_type_custom(data_type, field_size):
         "int": types.BigInteger,
         "long": types.BigInteger,
         "float": types.Float,
-        "double": types.Numeric,
+        "double": types.DOUBLE,
         # BOOLEAN, is added after release 0.7.1.
         # In release 0.7.1 and older releases, BOOLEAN is equivalent to STRING.
         "boolean": types.Boolean,

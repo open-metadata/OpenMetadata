@@ -195,6 +195,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe.serial('Domain and Data Product Asset Counts', () => {
+  test.slow() // Slow Test
   test.beforeEach(async ({ page }, testInfo) => {
     await redirectToHomePage(page, false);
     await removeLandingBanner(page);
@@ -243,11 +244,9 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       page,
       'KnowledgePanel.Domains',
       [
-        `[data-testid="domain-card-${
-          domain.responseData.id ?? ''
+        `[data-testid="domain-card-${domain.responseData.id ?? ''
         }"] .domain-card-count`,
-        `[data-testid="domain-card-${
-          domain.responseData.id ?? ''
+        `[data-testid="domain-card-${domain.responseData.id ?? ''
         }"] .domain-card-full-count`,
       ].join(', '),
       0
@@ -255,8 +254,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await verifyWidgetCountOnCurrentPage(
       page,
       'KnowledgePanel.DataProducts',
-      `[data-testid="data-product-card-${
-        dataProduct.responseData.id ?? ''
+      `[data-testid="data-product-card-${dataProduct.responseData.id ?? ''
       }"] [data-testid="data-product-asset-count"]`,
       0
     );

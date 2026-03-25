@@ -185,6 +185,12 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
                 retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
             .run();
       }
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Skipping workflow event for {} {} - entity {} was deleted before processing",
+          eventType,
+          entityType,
+          event.getEntityId());
     } catch (Exception exc) {
       LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
@@ -213,7 +219,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       } catch (EntityNotFoundException e) {
         // Entity was deleted between event creation and processing - skip workflow trigger
         LOG.debug(
-            "Skipping workflow trigger for event {} on {}  - entity {} no longer exists",
+            "Skipping workflow trigger for event {} on {} - entity {} no longer exists",
             eventType,
             entityType,
             event.getEntityFullyQualifiedName());

@@ -3,6 +3,7 @@ import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { Popover } from '@/components/base/select/popover';
 import { type SelectItemType, SelectContext, sizes } from '@/components/base/select/select';
+import { Typography } from '@/components/foundations/typography';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
@@ -25,7 +26,7 @@ import {
 } from 'react-aria-components';
 import type { ListData } from 'react-stately';
 import { Avatar } from '../avatar/avatar';
-import { CloseButton } from '../buttons/close-button';
+import { Badge, BadgeWithButton } from '../badges/badges';
 import { AutocompleteItem } from './autocomplete-item';
 
 interface AutocompleteContextValue {
@@ -35,6 +36,7 @@ interface AutocompleteContextValue {
   onRemove: (keys: Set<Key>) => void;
   onInputChange: (value: string) => void;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
+  maxVisibleItems?: number;
 }
 
 const AutocompleteContext = createContext<AutocompleteContextValue>({
@@ -43,6 +45,7 @@ const AutocompleteContext = createContext<AutocompleteContextValue>({
   selectedItems: [],
   onRemove: () => {},
   onInputChange: () => {},
+  maxVisibleItems: undefined,
 });
 
 interface AutocompleteTriggerProps extends AriaGroupProps {
@@ -70,6 +73,7 @@ export interface AutocompleteProps
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   filterOption?: (item: SelectItemType, filterText: string) => boolean;
   onSearchChange?: (value: string) => void;
+  maxVisibleItems?: number;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
@@ -146,33 +150,42 @@ const InnerAutocomplete = ({ isDisabled, placeholder }: { isDisabled?: boolean; 
   };
 
   const isSelectionEmpty = context?.selectedItems?.length === 0;
+  const { maxVisibleItems } = context;
+  const allSelected = context?.selectedItems ?? [];
+  const visibleSelected = maxVisibleItems === undefined ? allSelected : allSelected.slice(0, maxVisibleItems);
+  const overflowCount = maxVisibleItems === undefined ? 0 : allSelected.length - visibleSelected.length;
 
   return (
     <div className="tw:relative tw:flex tw:w-full tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
       {!isSelectionEmpty &&
-        context?.selectedItems?.map((item) =>
+        visibleSelected.map((item) =>
           context.renderTag ? (
             context.renderTag(item, () => context.onRemove(new Set([item.id])))
           ) : (
-            <span
+            <BadgeWithButton
+              type="modern"
+              color="gray"
               key={item.id}
-              className="tw:flex tw:items-center tw:gap-1.5 tw:rounded-md tw:bg-primary tw:py-1.5 tw:px-2.5 tw:ring-1 tw:ring-primary tw:ring-inset"
+              size="lg"
+              isDisabled={isDisabled}
+              onButtonClick={() => context.onRemove(new Set([item.id]))}
+              onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}
             >
               {renderChipIcon(item)}
-              <p className="tw:truncate tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-secondary tw:select-none">
-                {item.label}
-              </p>
-
-              <CloseButton
-                size="sm"
-                isDisabled={isDisabled}
-                className="tw:ml-0.75 tw:h-auto tw:w-auto tw:p-0"
-                onKeyDown={(event) => handleTagKeyDown(event, item.id)}
-                onPress={() => context.onRemove(new Set([item.id]))}
-              />
-            </span>
+              <div className="tw:min-w-0 tw:max-w-40">
+                <Typography as="p" ellipsis weight="medium">
+                  {item.label}
+                </Typography>
+              </div>
+            </BadgeWithButton>
           ),
         )}
+
+      {overflowCount > 0 && (
+        <Badge type="modern" color="gray" size="lg">
+          +{overflowCount}
+        </Badge>
+      )}
 
       <div
         className={cx(
@@ -239,6 +252,7 @@ export const AutocompleteBase = ({
   renderTag,
   filterOption,
   onSearchChange,
+  maxVisibleItems,
   name: _name,
   className: _className,
   ...props
@@ -310,8 +324,16 @@ export const AutocompleteBase = ({
   const selectContextValue = useMemo(() => ({ size: 'sm' as const }), []);
 
   const autocompleteContextValue = useMemo(
-    () => ({ size: 'sm' as const, selectedKeys, selectedItems: internalSelected, onInputChange, onRemove, renderTag }),
-    [selectedKeys, internalSelected, onInputChange, onRemove, renderTag],
+    () => ({
+      size: 'sm' as const,
+      selectedKeys,
+      selectedItems: internalSelected,
+      onInputChange,
+      onRemove,
+      renderTag,
+      maxVisibleItems,
+    }),
+    [selectedKeys, internalSelected, onInputChange, onRemove, renderTag, maxVisibleItems],
   );
 
   return (

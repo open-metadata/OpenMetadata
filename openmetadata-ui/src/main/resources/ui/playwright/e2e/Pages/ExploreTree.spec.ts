@@ -12,7 +12,6 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -47,7 +46,7 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Explore Tree scenarios', () => {
   const table1 = new TableClass();
   const table2 = new TableClass();
 
@@ -327,7 +326,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   });
 });
 
-test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Explore page', () => {
   const table = EntityDataClass.table1;
   const dashboard = EntityDataClass.dashboard1;
   const apiEndpoint = EntityDataClass.apiEndpoint1;

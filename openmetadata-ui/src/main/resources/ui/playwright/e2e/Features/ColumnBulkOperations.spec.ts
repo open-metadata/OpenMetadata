@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, test } from '@playwright/test';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import {
@@ -173,7 +172,6 @@ function buildMockColumnGridResponse(columnName: string) {
 
 test.describe(
   'Column Bulk Operations - Page Load & Stats',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     test.beforeEach(async ({ page }) => {
       await visitColumnBulkOperationsPage(page);
@@ -228,7 +226,6 @@ test.describe(
 
 test.describe(
   'Column Bulk Operations - Filters & Search',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     test.beforeEach(async ({ page }) => {
       await visitColumnBulkOperationsPage(page);
@@ -527,7 +524,6 @@ test.describe(
 
 test.describe(
   'Column Bulk Operations - Selection & Edit Drawer',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     test.setTimeout(120000);
 
@@ -873,7 +869,6 @@ test.describe(
 
 test.describe(
   'Column Bulk Operations - Bulk Update Flow',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     test.setTimeout(120000);
 
@@ -1027,7 +1022,6 @@ test.describe(
 
 test.describe(
   'Column Bulk Operations - Nested STRUCT Columns',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     test.setTimeout(120000);
 
@@ -1122,7 +1116,6 @@ test.describe(
 
 test.describe(
   'Column Bulk Operations - Pagination',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     test('should navigate through pages', async ({ page }) => {
       await visitColumnBulkOperationsPage(page);
