@@ -347,6 +347,8 @@ public class WorkflowResourceIT {
     ListParams params = new ListParams();
     params.setLimit(100);
     ListResponse<Workflow> response = client.workflows().list(params);
+    assertNotNull(response);
+    assertNotNull(response.getData());
 
     for (Workflow workflow : response.getData()) {
       assertNull(
