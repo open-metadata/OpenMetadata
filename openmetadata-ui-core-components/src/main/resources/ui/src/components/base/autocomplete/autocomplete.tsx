@@ -77,8 +77,7 @@ interface AutocompleteTriggerProps extends AriaGroupProps {
 }
 
 export interface AutocompleteProps
-  extends
-    Omit<AriaComboBoxProps<SelectItemType>, 'children' | 'items'>,
+  extends Omit<AriaComboBoxProps<SelectItemType>, 'children' | 'items'>,
     RefAttributes<HTMLDivElement> {
   hint?: string;
   label?: string;
@@ -158,7 +157,7 @@ const InnerAutocomplete = ({
 
   const handleTagKeyDown = (
     event: KeyboardEvent<HTMLButtonElement>,
-    value: Key,
+    value: Key
   ) => {
     if (event.key === 'Tab') {
       return;
@@ -229,7 +228,7 @@ const InnerAutocomplete = ({
                 </Typography>
               </div>
             </BadgeWithButton>
-          ),
+          )
         )}
 
       {overflowCount > 0 && (
@@ -241,7 +240,7 @@ const InnerAutocomplete = ({
       <div
         className={cx(
           'tw:relative tw:flex tw:min-w-[20%] tw:flex-1 tw:flex-row tw:items-center',
-          !isSelectionEmpty && 'tw:ml-0.5',
+          !isSelectionEmpty && 'tw:ml-0.5'
         )}>
         <AriaInput
           className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-none tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
@@ -269,7 +268,7 @@ const AutocompleteTrigger = ({
           'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
           isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
           isFocusWithin && 'tw:ring-2 tw:ring-brand',
-          sizes[size].root,
+          sizes[size].root
         )
       }>
       {({ isDisabled }) => (
@@ -290,7 +289,7 @@ const AutocompleteTrigger = ({
 };
 
 const resolveSelectedItems = (
-  value: SelectItemType[] | ListData<SelectItemType>,
+  value: SelectItemType[] | ListData<SelectItemType>
 ): SelectItemType[] => (Array.isArray(value) ? value : value.items);
 
 export const AutocompleteBase = ({
@@ -315,7 +314,7 @@ export const AutocompleteBase = ({
   const { contains } = useFilter({ sensitivity: 'base' });
 
   const [internalSelected, setInternalSelected] = useState<SelectItemType[]>(
-    resolveSelectedItems(selectedItems),
+    resolveSelectedItems(selectedItems)
   );
   const selectedKeys = internalSelected.map((item) => item.id);
 
@@ -345,7 +344,7 @@ export const AutocompleteBase = ({
 
   const itemMap = useMemo(
     () => new Map(allItems.map((item) => [item.id, item])),
-    [allItems],
+    [allItems]
   );
 
   const onRemove = useCallback(
@@ -358,7 +357,7 @@ export const AutocompleteBase = ({
       onItemCleared?.(key);
       setFilterText('');
     },
-    [onItemCleared],
+    [onItemCleared]
   );
 
   const onSelectionChange = (id: Key | null) => {
@@ -381,7 +380,7 @@ export const AutocompleteBase = ({
       setFilterText(value);
       onSearchChange?.(value);
     },
-    [onSearchChange],
+    [onSearchChange]
   );
 
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -416,7 +415,7 @@ export const AutocompleteBase = ({
       onRemove,
       renderTag,
       maxVisibleItems,
-    ],
+    ]
   );
 
   return (
