@@ -11,8 +11,22 @@
  *  limitations under the License.
  */
 
-import type { ElementType, HTMLAttributes, ReactNode, Ref } from "react";
+import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
+import type { ElementType, HTMLAttributes, ReactNode, Ref } from "react";
+
+const lineClampClasses: Record<number, string> = {
+    1: "tw:line-clamp-1",
+    2: "tw:line-clamp-2",
+    3: "tw:line-clamp-3",
+    4: "tw:line-clamp-4",
+    5: "tw:line-clamp-5",
+    6: "tw:line-clamp-6",
+    7: "tw:line-clamp-7",
+    8: "tw:line-clamp-8",
+    9: "tw:line-clamp-9",
+    10: "tw:line-clamp-10",
+};
 
 type TypographyQuoteVariant = "default" | "centered-quote" | "minimal-quote";
 
@@ -31,6 +45,15 @@ type TypographySize =
 
 type TypographyWeight = "regular" | "medium" | "semibold" | "bold";
 
+type EllipsisRows = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+type TypographyEllipsis =
+    | boolean
+    | {
+          rows?: EllipsisRows;
+          tooltip?: ReactNode;
+      };
+
 interface TypographyProps extends HTMLAttributes<HTMLElement> {
     ref?: Ref<HTMLElement>;
     children?: ReactNode;
@@ -39,6 +62,7 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
     className?: string;
     size?: TypographySize;
     weight?: TypographyWeight;
+    ellipsis?: TypographyEllipsis;
 }
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
@@ -76,21 +100,49 @@ export const Typography = (props: TypographyProps) => {
         children,
         size,
         weight,
+        ellipsis,
+        style,
         ...otherProps
     } = props;
 
     const sizeClass = size ? sizeClasses[size] : undefined;
     const weightClass = weight ? weightClasses[weight] : undefined;
 
-    const innerClassName = cx(sizeClass, weightClass, className);
+    const ellipsisConfig = typeof ellipsis === "object" ? ellipsis : undefined;
+    const isEllipsis = !!ellipsis;
+    const ellipsisRows = ellipsisConfig?.rows ?? 1;
+    const ellipsisTooltip = ellipsisConfig?.tooltip;
+
+    const getEllipsisClassName = () => {
+        if (ellipsisRows <= 1) return "tw:truncate";
+        return lineClampClasses[ellipsisRows];
+    };
+
+    const ellipsisClassName = isEllipsis ? getEllipsisClassName() : undefined;
+
+    const innerClassName = cx(sizeClass, weightClass, className, ellipsisClassName);
+
+    if (ellipsisTooltip) {
+        return (
+            <Tooltip title={ellipsisTooltip}>
+                <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
+                    <div className={cx("prose", quoteStyles[quoteVariant])}>
+                        <Component {...otherProps} className={innerClassName} style={style}>
+                            {children}
+                        </Component>
+                    </div>
+                </TooltipTrigger>
+            </Tooltip>
+        );
+    }
 
     return (
         <div className={cx("prose", quoteStyles[quoteVariant])}>
-            <Component {...otherProps} className={innerClassName}>
+            <Component {...otherProps} className={innerClassName} style={style}>
                 {children}
             </Component>
         </div>
     );
 };
 
-export type { TypographyProps, TypographyQuoteVariant, TypographySize, TypographyWeight };
+export type { TypographyEllipsis, TypographyProps, TypographyQuoteVariant, TypographySize, TypographyWeight };
