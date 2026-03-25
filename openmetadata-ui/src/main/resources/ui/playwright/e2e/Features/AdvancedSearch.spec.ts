@@ -12,7 +12,6 @@
  */
 
 import { COMMON_TIER_TAG } from '../../constant/common';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -42,7 +41,7 @@ const topic2 = new TopicClass();
 
 test.describe(
   'Advanced Search',
-  { tag: ['@advanced-search', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ.tag] },
+  { tag: ['@advanced-search'] },
   () => {
     let searchCriteria: Record<string, Array<string>> = {};
 
