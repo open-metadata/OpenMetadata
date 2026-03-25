@@ -18,7 +18,10 @@ from unittest.mock import MagicMock, Mock, create_autospec, patch
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedure,
+    StoredProcedureType,
+)
 from metadata.generated.schema.entity.services.connections.database.sapHana.sapHanaSQLConnection import (
     SapHanaSQLConnection,
 )
@@ -1454,6 +1457,7 @@ def test_yield_stored_procedure_creates_request() -> None:
     assert isinstance(request, CreateStoredProcedureRequest)
     # EntityName encodes :: as __reserved__colon__ via replace_separators
     assert "TF_ORDERS" in str(request.name.root)
+    assert request.storedProcedureType == StoredProcedureType.Function
     assert (
         request.storedProcedureCode.code
         == "FUNCTION my-package::TF_ORDERS() RETURNS TABLE (ORDER_ID INT)"

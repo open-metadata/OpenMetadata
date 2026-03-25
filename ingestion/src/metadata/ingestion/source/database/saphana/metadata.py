@@ -127,6 +127,7 @@ class SaphanaSource(CommonDbSourceService):
                     language=Language.SQL,
                     code=stored_procedure.definition or "",
                 ),
+                storedProcedureType=stored_procedure.procedure_type,
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
@@ -142,7 +143,11 @@ class SaphanaSource(CommonDbSourceService):
             yield Either(
                 left=StackTraceError(
                     name=stored_procedure.name,
-                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    error=(
+                        f"Error yielding Stored Procedure"
+                        f" [{stored_procedure.procedure_type}:"
+                        f" {stored_procedure.name}]: {exc}"
+                    ),
                     stackTrace=traceback.format_exc(),
                 )
             )
