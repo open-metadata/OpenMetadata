@@ -1166,6 +1166,7 @@ const TeamDetailsV1 = ({
               <TabsLabel
                 id={tab.key}
                 isActive={currentTab === tab.key}
+                count={tab.count}
                 name={tab.label}
               />
             ) : (

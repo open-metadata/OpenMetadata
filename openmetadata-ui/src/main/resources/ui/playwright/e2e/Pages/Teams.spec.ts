@@ -199,7 +199,8 @@ test.describe('Teams Page', () => {
       // Click on add new user
       const fetchUsersResponse = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/users?limit=25') &&
+          response.url().includes('/api/v1/users') &&
+          response.url().includes('limit=25') &&
           response.request().method() === 'GET' &&
           response.status() === 200
       );
@@ -649,7 +650,8 @@ test.describe('Teams Page', () => {
 
     const fetchUsersResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/users?limit=25') &&
+        response.url().includes('/api/v1/users') &&
+        response.url().includes('limit=25') &&
         response.request().method() === 'GET' &&
         response.status() === 200
     );

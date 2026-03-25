@@ -436,7 +436,8 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
   const userName = user.data.email.split('@')[0];
   const fetchUsersResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/users?limit=25') &&
+      response.url().includes('/api/v1/users') &&
+      response.url().includes('limit=25') &&
       response.request().method() === 'GET' &&
       response.status() === 200
   );
@@ -522,7 +523,8 @@ export const addUserTeam = async (
 
   const fetchUsersResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/users?limit=25') &&
+      response.url().includes('/api/v1/users') &&
+      response.url().includes('limit=25') &&
       response.request().method() === 'GET' &&
       response.status() === 200
   );
