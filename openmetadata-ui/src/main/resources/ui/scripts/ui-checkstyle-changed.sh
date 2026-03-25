@@ -44,7 +44,10 @@ else
     fi
   fi
 
-  mapfile -t FILES < <(
+  FILES=()
+  while IFS= read -r file; do
+    FILES+=("$file")
+  done < <(
     git -C "$REPO_ROOT" diff --name-only --diff-filter=ACM "$BASE" HEAD \
       | grep "^${UI_PREFIX}src/" \
       | grep -v 'src/generated/' \
