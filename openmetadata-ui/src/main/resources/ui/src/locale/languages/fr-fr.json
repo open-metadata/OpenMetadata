@@ -923,7 +923,7 @@
     "help": "Aide",
     "helper": "Assistant",
     "here-lowercase": "ici",
-    "hey-comma-name": "Hey, {{name}}",
+    "hey-comma-name": "Hey, {{name}} 👋",
     "hide": "Masquer",
     "hide-all": "Tout masquer",
     "hide-deleted-entity": "Masquer les {{entity}} Supprimé·e·s",

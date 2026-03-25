@@ -923,7 +923,7 @@
     "help": "帮助",
     "helper": "助手",
     "here-lowercase": "这里",
-    "hey-comma-name": "Hey, {{name}}",
+    "hey-comma-name": "Hey, {{name}} 👋",
     "hide": "隐藏",
     "hide-all": "隐藏全部",
     "hide-deleted-entity": "隐藏已删除的{{entity}}",

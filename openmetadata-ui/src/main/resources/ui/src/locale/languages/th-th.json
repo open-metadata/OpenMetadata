@@ -923,7 +923,7 @@
     "help": "ช่วยเหลือ",
     "helper": "ผู้ช่วย",
     "here-lowercase": "ที่นี่",
-    "hey-comma-name": "Hey, {{name}}",
+    "hey-comma-name": "Hey, {{name}} 👋",
     "hide": "ซ่อน",
     "hide-all": "ซ่อนทั้งหมด",
     "hide-deleted-entity": "ซ่อน {{entity}} ที่ถูกลบ",

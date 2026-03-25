@@ -28,7 +28,6 @@ const MarketplaceGreetingBanner = () => {
         className="tw:mb-1 tw:mt-0"
         data-testid="greeting-text">
         {t('label.hey-comma-name', { name: displayName })}
-        {'\uD83D\uDC4B'}
       </Typography>
       <Typography as="p" className="tw:text-text-tertiary">
         {t('message.discover-data-products-subtitle')}

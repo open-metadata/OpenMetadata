@@ -35,7 +35,7 @@ export const useMarketplaceRecentSearches = () => {
       []
     );
 
-    return entries
+    return [...entries]
       .sort((a, b) => b.timestamp - a.timestamp)
       .map((entry) => entry.term);
   }, [currentUser, preferences]);

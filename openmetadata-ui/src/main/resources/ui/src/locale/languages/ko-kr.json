@@ -923,7 +923,7 @@
     "help": "도움말",
     "helper": "도우미",
     "here-lowercase": "여기",
-    "hey-comma-name": "Hey, {{name}}",
+    "hey-comma-name": "Hey, {{name}} 👋",
     "hide": "숨기기",
     "hide-all": "모두 숨기기",
     "hide-deleted-entity": "삭제된 {{entity}} 숨기기",

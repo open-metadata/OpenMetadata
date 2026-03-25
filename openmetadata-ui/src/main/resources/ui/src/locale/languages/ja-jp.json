@@ -923,7 +923,7 @@
     "help": "ヘルプ",
     "helper": "ヘルパー",
     "here-lowercase": "ここ",
-    "hey-comma-name": "Hey, {{name}}",
+    "hey-comma-name": "Hey, {{name}} 👋",
     "hide": "非表示",
     "hide-all": "すべて非表示",
     "hide-deleted-entity": "削除された{{entity}}を非表示",

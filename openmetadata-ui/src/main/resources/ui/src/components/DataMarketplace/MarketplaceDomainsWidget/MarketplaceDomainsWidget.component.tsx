@@ -141,7 +141,7 @@ const MarketplaceDomainsWidget = ({
       }
       navigate(navCtx.getDomainDetailsPath(domain.fullyQualifiedName ?? ''));
     },
-    [navigate, isEditView]
+    [navigate, isEditView, navCtx]
   );
 
   const cardList = useMemo(

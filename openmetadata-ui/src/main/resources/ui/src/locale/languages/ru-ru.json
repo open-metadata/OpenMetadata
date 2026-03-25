@@ -923,7 +923,7 @@
     "help": "Помощь",
     "helper": "Помощник",
     "here-lowercase": "здесь",
-    "hey-comma-name": "Hey, {{name}}",
+    "hey-comma-name": "Hey, {{name}} 👋",
     "hide": "Скрыть",
     "hide-all": "Скрыть все",
     "hide-deleted-entity": "Скрыть удаленные объекты «{{entity}}»",
