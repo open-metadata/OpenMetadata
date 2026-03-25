@@ -197,13 +197,16 @@ test.describe('User with Admin Roles', () => {
 
     await visitUserListPage(adminPage);
 
-    await test.step("User shouldn't be allowed to create User with same Email", async () => {
-      await checkForUserExistError(adminPage, {
-        name: updatedUserDetails.name,
-        email: updatedUserDetails.email,
-        password: updatedUserDetails.password,
-      });
-    });
+    await test.step(
+      "User shouldn't be allowed to create User with same Email",
+      async () => {
+        await checkForUserExistError(adminPage, {
+          name: updatedUserDetails.name,
+          email: updatedUserDetails.email,
+          password: updatedUserDetails.password,
+        });
+      }
+    );
 
     await permanentDeleteUser(
       adminPage,
@@ -636,12 +639,12 @@ test.describe('User Profile Feed Interactions', () => {
     const userDetailsResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/users/name/') &&
-        response.status() === 200
+        response.request().method() === 'GET'
     );
 
     await userNameElement.click();
-    await userDetailsResponse;
-
+    const userData = await userDetailsResponse;
+    expect(userData.status()).toBe(200);
     // redirecting on new page
 
     // Verify we navigated to the correct user's profile
@@ -1147,24 +1150,27 @@ test.describe('User Profile Persona Interactions', () => {
     await adminPage.getByTestId('persona-details-card').waitFor();
 
     // Test clicking on persona chip to navigate to persona page
-    await test.step('Navigate to persona page by clicking on persona chip', async () => {
-      const personaCard = adminPage.locator(
-        '[data-testid="persona-details-card"]'
-      );
-      const personaChip = personaCard
-        .locator('[data-testid="chip-container"] [data-testid="tag-chip"]')
-        .first();
-      const personaLink = personaChip.locator('a').first();
+    await test.step(
+      'Navigate to persona page by clicking on persona chip',
+      async () => {
+        const personaCard = adminPage.locator(
+          '[data-testid="persona-details-card"]'
+        );
+        const personaChip = personaCard
+          .locator('[data-testid="chip-container"] [data-testid="tag-chip"]')
+          .first();
+        const personaLink = personaChip.locator('a').first();
 
-      // Verify the persona link has text content
-      await expect(personaLink).not.toHaveText('');
+        // Verify the persona link has text content
+        await expect(personaLink).not.toHaveText('');
 
-      // Click the persona link to navigate
-      await personaLink.click();
+        // Click the persona link to navigate
+        await personaLink.click();
 
-      // Verify we're on the persona page
-      expect(adminPage.url()).toContain('/persona/');
-    });
+        // Verify we're on the persona page
+        expect(adminPage.url()).toContain('/persona/');
+      }
+    );
 
     // Navigate back to user profile for removal test
     await test.step('Navigate back to user profile', async () => {
@@ -1258,21 +1264,24 @@ test.describe('User Profile Persona Interactions', () => {
     });
 
     // Test clicking on default persona chip to navigate to persona page
-    await test.step('Navigate to persona page by clicking on default persona chip', async () => {
-      const defaultPersonaChip = adminPage
-        .locator('.default-persona-text [data-testid="tag-chip"]')
-        .first();
-      const personaLink = defaultPersonaChip.locator('a').first();
+    await test.step(
+      'Navigate to persona page by clicking on default persona chip',
+      async () => {
+        const defaultPersonaChip = adminPage
+          .locator('.default-persona-text [data-testid="tag-chip"]')
+          .first();
+        const personaLink = defaultPersonaChip.locator('a').first();
 
-      // Verify the persona link has text content
-      await expect(personaLink).not.toHaveText('');
+        // Verify the persona link has text content
+        await expect(personaLink).not.toHaveText('');
 
-      // Click the persona link to navigate
-      await personaLink.click();
+        // Click the persona link to navigate
+        await personaLink.click();
 
-      // Verify we're on the persona page
-      expect(adminPage.url()).toContain('/persona/');
-    });
+        // Verify we're on the persona page
+        expect(adminPage.url()).toContain('/persona/');
+      }
+    );
 
     // Navigate back to user profile for removal test
     await test.step('Navigate back to user profile', async () => {
