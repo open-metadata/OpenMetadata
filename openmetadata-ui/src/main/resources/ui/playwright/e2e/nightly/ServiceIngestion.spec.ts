@@ -27,10 +27,10 @@ import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/Redshi
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-    createNewPage,
-    getApiContext,
-    INVALID_NAMES,
-    redirectToHomePage
+  createNewPage,
+  getApiContext,
+  INVALID_NAMES,
+  redirectToHomePage,
 } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { makeRetryRequest } from '../../utils/serviceIngestion';

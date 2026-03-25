@@ -13,8 +13,8 @@
 
 import { expect } from '@playwright/test';
 import {
-    DOMAIN_TAGS,
-    PLAYWRIGHT_INGESTION_TAG_OBJ
+  DOMAIN_TAGS,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../constant/config';
 import { BundleTestSuiteClass } from '../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../support/entity/TableClass';

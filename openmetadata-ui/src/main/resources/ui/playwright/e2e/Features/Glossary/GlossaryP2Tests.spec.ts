@@ -16,9 +16,9 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-    descriptionBox,
-    getApiContext,
-    redirectToHomePage
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
 } from '../../../utils/common';
 import { selectActiveGlossary } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';

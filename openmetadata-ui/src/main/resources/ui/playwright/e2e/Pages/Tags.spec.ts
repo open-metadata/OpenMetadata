@@ -18,23 +18,23 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    clickOutside,
-    createNewPage,
-    descriptionBox,
-    redirectToHomePage,
-    uuid
+  clickOutside,
+  createNewPage,
+  descriptionBox,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
-    addMultiOwner,
-    removeOwner,
-    waitForAllLoadersToDisappear
+  addMultiOwner,
+  removeOwner,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
-    addTagToTableColumn,
-    setTagDisabled,
-    submitForm,
-    validateForm
+  addTagToTableColumn,
+  setTagDisabled,
+  submitForm,
+  validateForm,
 } from '../../utils/tag';
 
 const NEW_CLASSIFICATION = {

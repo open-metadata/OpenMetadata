@@ -12,8 +12,8 @@
  */
 import { expect, Page } from '@playwright/test';
 import {
-    DOMAIN_TAGS,
-    PLAYWRIGHT_INGESTION_TAG_OBJ
+  DOMAIN_TAGS,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../../constant/config';
 import { ResponseDataType } from '../../../support/entity/Entity.interface';
 import { TableClass } from '../../../support/entity/TableClass';

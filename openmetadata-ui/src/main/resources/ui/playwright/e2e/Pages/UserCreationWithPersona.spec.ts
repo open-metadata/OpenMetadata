@@ -16,10 +16,10 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import {
-    addUser,
-    permanentDeleteUser,
-    visitUserListPage,
-    visitUserProfilePage
+  addUser,
+  permanentDeleteUser,
+  visitUserListPage,
+  visitUserProfilePage,
 } from '../../utils/user';
 
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';

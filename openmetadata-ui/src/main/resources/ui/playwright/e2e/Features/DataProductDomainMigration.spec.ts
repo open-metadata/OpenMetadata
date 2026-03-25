@@ -17,16 +17,16 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage,
-    uuid
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
-    checkAssetsCount,
-    goToAssetsTab,
-    selectDataProduct,
-    verifyAssetsInDomain
+  checkAssetsCount,
+  goToAssetsTab,
+  selectDataProduct,
+  verifyAssetsInDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';

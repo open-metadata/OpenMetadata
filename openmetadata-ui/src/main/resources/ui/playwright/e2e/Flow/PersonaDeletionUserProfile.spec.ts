@@ -19,8 +19,8 @@ import { descriptionBox, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
-    navigateToPersonaSettings,
-    navigateToPersonaWithPagination
+  navigateToPersonaSettings,
+  navigateToPersonaWithPagination,
 } from '../../utils/persona';
 import { visitUserProfilePage } from '../../utils/user';
 import { test } from '../fixtures/pages';

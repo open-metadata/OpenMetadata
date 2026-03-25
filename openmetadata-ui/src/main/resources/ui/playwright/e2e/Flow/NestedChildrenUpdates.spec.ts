@@ -14,10 +14,10 @@ import { expect, Page, test } from '@playwright/test';
 import { nestedChildrenTestData } from '../../constant/nestedColumnUpdates';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
-    assignTagToChildren,
-    removeTagsFromChildren,
-    updateDescriptionForChildren,
-    updateDisplayNameForEntityChildren
+  assignTagToChildren,
+  removeTagsFromChildren,
+  updateDescriptionForChildren,
+  updateDisplayNameForEntityChildren,
 } from '../../utils/entity';
 import { getNestedColumnDetails } from '../../utils/nestedColumnUpdatesUtils';
 

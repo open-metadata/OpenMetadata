@@ -16,9 +16,9 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
-    getAuthContext,
-    getToken,
-    redirectToHomePage
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
 } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 

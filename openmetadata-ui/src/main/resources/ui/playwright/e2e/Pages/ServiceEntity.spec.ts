@@ -13,8 +13,8 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import {
-    CertificationSupportedServices,
-    FollowSupportedServices
+  CertificationSupportedServices,
+  FollowSupportedServices,
 } from '../../constant/service';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
@@ -32,14 +32,14 @@ import { StorageServiceClass } from '../../support/entity/service/StorageService
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    getApiContext,
-    getAuthContext,
-    getToken,
-    redirectToHomePage
+  getApiContext,
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
 } from '../../utils/common';
 import {
-    CustomPropertyTypeByName,
-    updateCustomPropertyInRightPanel
+  CustomPropertyTypeByName,
+  updateCustomPropertyInRightPanel,
 } from '../../utils/customProperty';
 
 const entities = {

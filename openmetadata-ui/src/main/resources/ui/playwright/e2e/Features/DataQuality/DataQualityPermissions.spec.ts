@@ -13,16 +13,16 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
-    CREATE_TEST_CASE_POLICY,
-    DELETE_TEST_CASE_POLICY,
-    EDIT_TESTS_ON_TEST_CASE_POLICY,
-    EDIT_TEST_CASE_POLICY,
-    TABLE_CREATE_TESTS_POLICY,
-    TABLE_EDIT_TESTS_POLICY,
-    TEST_CASE_VIEW_BASIC_POLICY,
-    TEST_SUITE_EDIT_ONLY_POLICY,
-    TEST_SUITE_POLICY,
-    VIEW_ALL_TEST_CASE_POLICY
+  CREATE_TEST_CASE_POLICY,
+  DELETE_TEST_CASE_POLICY,
+  EDIT_TESTS_ON_TEST_CASE_POLICY,
+  EDIT_TEST_CASE_POLICY,
+  TABLE_CREATE_TESTS_POLICY,
+  TABLE_EDIT_TESTS_POLICY,
+  TEST_CASE_VIEW_BASIC_POLICY,
+  TEST_SUITE_EDIT_ONLY_POLICY,
+  TEST_SUITE_POLICY,
+  VIEW_ALL_TEST_CASE_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
@@ -33,9 +33,12 @@ import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
 import {
-    visitTestSuiteDetailsPage,
-    visitTestSuitesPage, waitForPermissionsResponse,
-    waitForTableEntityPermissionsResponse, waitForTestCaseDetailsResponse, waitForTestCaseListResponse
+  visitTestSuiteDetailsPage,
+  visitTestSuitesPage,
+  waitForPermissionsResponse,
+  waitForTableEntityPermissionsResponse,
+  waitForTestCaseDetailsResponse,
+  waitForTestCaseListResponse,
 } from '../../../utils/testCases';
 
 // --- Objects ---

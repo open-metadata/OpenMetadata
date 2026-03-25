@@ -26,10 +26,10 @@ import { SearchIndexClass } from '../support/entity/SearchIndexClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import {
-    clickOutside,
-    getApiContext,
-    getEntityTypeSearchIndexMapping,
-    toastNotification
+  clickOutside,
+  getApiContext,
+  getEntityTypeSearchIndexMapping,
+  toastNotification,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { parseCSV } from './entityImport';

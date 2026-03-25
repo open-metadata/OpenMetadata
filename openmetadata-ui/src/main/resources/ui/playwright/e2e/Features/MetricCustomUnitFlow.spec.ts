@@ -14,14 +14,14 @@ import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import {
-    clickOutside,
-    descriptionBox,
-    redirectToHomePage,
-    uuid
+  clickOutside,
+  descriptionBox,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
-    removeUnitOfMeasurement,
-    updateUnitOfMeasurement
+  removeUnitOfMeasurement,
+  updateUnitOfMeasurement,
 } from '../../utils/metric';
 import { sidebarClick } from '../../utils/sidebar';
 

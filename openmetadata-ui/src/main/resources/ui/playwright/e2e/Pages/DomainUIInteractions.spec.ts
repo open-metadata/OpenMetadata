@@ -22,9 +22,9 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../utils/common';
 import {
-    checkAssetsCount,
-    selectDataProduct,
-    selectDomain
+  checkAssetsCount,
+  selectDataProduct,
+  selectDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';

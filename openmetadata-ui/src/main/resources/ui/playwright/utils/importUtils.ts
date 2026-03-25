@@ -15,25 +15,25 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
-    BULK_IMPORT_EXPORT_SQL_QUERY,
-    MAX_COLUMN_NAVIGATION_RETRIES,
-    RDG_ACTIVE_CELL_SELECTOR
+  BULK_IMPORT_EXPORT_SQL_QUERY,
+  MAX_COLUMN_NAVIGATION_RETRIES,
+  RDG_ACTIVE_CELL_SELECTOR,
 } from '../constant/bulkImportExport';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
-    CUSTOM_PROPERTIES_TYPES,
-    FIELD_VALUES_CUSTOM_PROPERTIES
+  CUSTOM_PROPERTIES_TYPES,
+  FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-    clickOutside,
-    descriptionBox,
-    descriptionBoxReadOnly,
-    uuid
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
 } from './common';
 import {
-    addCustomPropertiesForEntity,
-    fillTableColumnInputDetails
+  addCustomPropertiesForEntity,
+  fillTableColumnInputDetails,
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';

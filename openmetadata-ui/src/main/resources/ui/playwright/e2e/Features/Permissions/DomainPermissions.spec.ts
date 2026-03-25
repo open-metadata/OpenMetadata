@@ -19,14 +19,14 @@ import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { addCustomPropertiesForEntity } from '../../../utils/customProperty';
 import {
-    assignRoleToUser,
-    cleanupPermissions,
-    initializePermissions
+  assignRoleToUser,
+  cleanupPermissions,
+  initializePermissions,
 } from '../../../utils/permission';
 import {
-    settingClick,
-    SettingOptionsType,
-    sidebarClick
+  settingClick,
+  SettingOptionsType,
+  sidebarClick,
 } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();

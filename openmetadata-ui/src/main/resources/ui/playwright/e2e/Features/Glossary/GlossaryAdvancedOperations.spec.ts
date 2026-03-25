@@ -19,22 +19,22 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-    assignSingleSelectDomain,
-    clickOutside,
-    descriptionBox,
-    getApiContext,
-    redirectToHomePage,
-    removeSingleSelectDomain
+  assignSingleSelectDomain,
+  clickOutside,
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+  removeSingleSelectDomain,
 } from '../../../utils/common';
 import {
-    addMultiOwner,
-    waitForAllLoadersToDisappear
+  addMultiOwner,
+  waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import {
-    addMultiOwnerInDialog,
-    openAddGlossaryTermModal,
-    selectActiveGlossary,
-    selectActiveGlossaryTerm
+  addMultiOwnerInDialog,
+  openAddGlossaryTermModal,
+  selectActiveGlossary,
+  selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 

@@ -17,11 +17,11 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    changeTermHierarchyFromModal,
-    dragAndDropTerm,
-    performExpandAll,
-    selectActiveGlossary,
-    selectActiveGlossaryTerm
+  changeTermHierarchyFromModal,
+  dragAndDropTerm,
+  performExpandAll,
+  selectActiveGlossary,
+  selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 

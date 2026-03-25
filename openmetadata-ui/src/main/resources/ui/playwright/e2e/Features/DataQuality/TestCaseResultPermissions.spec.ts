@@ -13,9 +13,12 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
-    DELETE_RESULTS_POLICY,
-    EDIT_RESULTS_POLICY, PARTIAL_DELETE_TABLE_ONLY_POLICY, PARTIAL_DELETE_TC_ONLY_POLICY, TABLE_EDIT_RESULTS_POLICY,
-    VIEW_RESULTS_POLICY
+  DELETE_RESULTS_POLICY,
+  EDIT_RESULTS_POLICY,
+  PARTIAL_DELETE_TABLE_ONLY_POLICY,
+  PARTIAL_DELETE_TC_ONLY_POLICY,
+  TABLE_EDIT_RESULTS_POLICY,
+  VIEW_RESULTS_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';

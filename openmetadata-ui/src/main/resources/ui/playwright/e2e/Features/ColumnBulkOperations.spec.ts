@@ -14,10 +14,10 @@ import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-    createNewPage,
-    fullUuid,
-    redirectToHomePage,
-    uuid
+  createNewPage,
+  fullUuid,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';

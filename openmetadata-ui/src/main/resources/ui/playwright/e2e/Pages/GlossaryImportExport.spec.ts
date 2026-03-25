@@ -13,8 +13,8 @@
 import { expect, test } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
-    CUSTOM_PROPERTIES_TYPES,
-    FIELD_VALUES_CUSTOM_PROPERTIES
+  CUSTOM_PROPERTIES_TYPES,
+  FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -23,26 +23,26 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    closeFirstPopupAlert,
-    createNewPage,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  closeFirstPopupAlert,
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import {
-    addCustomPropertiesForEntity,
-    deleteCreatedProperty
+  addCustomPropertiesForEntity,
+  deleteCreatedProperty,
 } from '../../utils/customProperty';
 import {
-    addMultiOwner,
-    waitForAllLoadersToDisappear
+  addMultiOwner,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { selectActiveGlossary } from '../../utils/glossary';
 import {
-    createGlossaryTermRowDetails,
-    fillGlossaryRowDetails,
-    validateImportStatus
+  createGlossaryTermRowDetails,
+  fillGlossaryRowDetails,
+  validateImportStatus,
 } from '../../utils/importUtils';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 

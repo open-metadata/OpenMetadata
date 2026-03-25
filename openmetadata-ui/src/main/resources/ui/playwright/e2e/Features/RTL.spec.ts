@@ -18,8 +18,8 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { clickOutside, redirectToHomePage } from '../../utils/common';
 import {
-    followEntity,
-    validateFollowedEntityToWidget
+  followEntity,
+  validateFollowedEntityToWidget,
 } from '../../utils/entity';
 
 const user = new UserClass();

@@ -12,14 +12,14 @@
  */
 import { expect, Page } from '@playwright/test';
 import {
-    INVALID_NAMES,
-    NAME_MAX_LENGTH_VALIDATION_ERROR,
-    NAME_VALIDATION_ERROR
+  INVALID_NAMES,
+  NAME_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_VALIDATION_ERROR,
 } from '../constant/common';
 import { toastNotification } from './common';
 import {
-    ObservabilityFeature,
-    selectAddObservabilityFeature
+  ObservabilityFeature,
+  selectAddObservabilityFeature,
 } from './dataQuality';
 
 type CustomMetricDetails = {

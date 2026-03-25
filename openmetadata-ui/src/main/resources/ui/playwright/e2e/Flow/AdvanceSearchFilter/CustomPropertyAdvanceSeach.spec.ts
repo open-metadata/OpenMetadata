@@ -12,9 +12,9 @@
  */
 import { test } from '@playwright/test';
 import {
-    CP_BASE_VALUES,
-    CP_PARTIAL_SEARCH_VALUES,
-    CP_RANGE_VALUES
+  CP_BASE_VALUES,
+  CP_PARTIAL_SEARCH_VALUES,
+  CP_RANGE_VALUES,
 } from '../../../constant/customPropertyAdvancedSearch';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -22,11 +22,11 @@ import { TopicClass } from '../../../support/entity/TopicClass';
 import { showAdvancedSearchDialog } from '../../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import {
-    applyCustomPropertyFilter,
-    clearAdvancedSearchFilters,
-    CPASTestData,
-    setupCustomPropertyAdvancedSearchTest,
-    verifySearchResults
+  applyCustomPropertyFilter,
+  clearAdvancedSearchFilters,
+  CPASTestData,
+  setupCustomPropertyAdvancedSearchTest,
+  verifySearchResults,
 } from '../../../utils/customPropertyAdvancedSearchUtils';
 import { sidebarClick } from '../../../utils/sidebar';
 

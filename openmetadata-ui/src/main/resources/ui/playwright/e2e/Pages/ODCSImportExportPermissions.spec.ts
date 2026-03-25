@@ -18,15 +18,15 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    getApiContext,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import {
-    importODCSYaml,
-    navigateToContractTab,
-    openODCSImportDropdown
+  importODCSYaml,
+  navigateToContractTab,
+  openODCSImportDropdown,
 } from '../../utils/odcsImportExport';
 import { test as base } from '../fixtures/pages';
 

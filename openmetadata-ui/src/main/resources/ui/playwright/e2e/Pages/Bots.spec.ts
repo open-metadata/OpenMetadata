@@ -13,13 +13,13 @@
 import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
-    createBot,
-    deleteBot,
-    redirectToBotPage,
-    tokenExpirationForDays,
-    tokenExpirationUnlimitedDays,
-    updateBotDetails,
-    verifyGenerateTokenAPIContract
+  createBot,
+  deleteBot,
+  redirectToBotPage,
+  tokenExpirationForDays,
+  tokenExpirationUnlimitedDays,
+  updateBotDetails,
+  verifyGenerateTokenAPIContract,
 } from '../../utils/bot';
 
 // use the admin user to login

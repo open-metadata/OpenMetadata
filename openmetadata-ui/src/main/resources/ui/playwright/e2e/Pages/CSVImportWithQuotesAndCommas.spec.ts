@@ -15,9 +15,9 @@ import * as fs from 'fs';
 import { Glossary } from '../../support/glossary/Glossary';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
-    uploadCSVAndWaitForGrid,
-    validateImportStatus,
-    waitForImportGridLoadMaskToDisappear
+  uploadCSVAndWaitForGrid,
+  validateImportStatus,
+  waitForImportGridLoadMaskToDisappear,
 } from '../../utils/importUtils';
 
 const cleanupTempFile = (filePath: string | undefined): void => {

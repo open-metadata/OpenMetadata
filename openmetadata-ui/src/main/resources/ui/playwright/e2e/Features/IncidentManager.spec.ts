@@ -21,18 +21,18 @@ import { addMentionCommentInFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
-    clickOutside,
-    descriptionBox,
-    getApiContext,
-    redirectToHomePage
+  clickOutside,
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
 } from '../../utils/common';
 import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    acknowledgeTask,
-    addAssigneeFromPopoverWidget,
-    assignIncident,
-    triggerTestSuitePipelineAndWaitForSuccess,
-    visitProfilerTab
+  acknowledgeTask,
+  addAssigneeFromPopoverWidget,
+  assignIncident,
+  triggerTestSuitePipelineAndWaitForSuccess,
+  visitProfilerTab,
 } from '../../utils/incidentManager';
 import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';

@@ -14,8 +14,8 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { conditionalPermissionsEntityData } from '../constant/conditionalPermissions';
 import {
-    VIEW_ALL_WITH_IS_OWNER,
-    VIEW_ALL_WITH_MATCH_TAG_CONDITION
+  VIEW_ALL_WITH_IS_OWNER,
+  VIEW_ALL_WITH_MATCH_TAG_CONDITION,
 } from '../constant/permission';
 import { TableClass } from '../support/entity/TableClass';
 import { AssetTypes } from '../support/interfaces/ConditionalPermissions.interface';

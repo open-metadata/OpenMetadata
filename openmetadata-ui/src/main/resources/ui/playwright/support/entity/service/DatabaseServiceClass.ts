@@ -16,9 +16,9 @@ import { SERVICE_TYPE } from '../../../constant/service';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-    EntityTypeEndpoint,
-    ResponseDataType,
-    ServiceEntity
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ServiceEntity,
 } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
 

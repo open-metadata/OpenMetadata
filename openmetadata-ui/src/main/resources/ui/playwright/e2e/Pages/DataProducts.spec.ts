@@ -25,10 +25,10 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage } from '../../utils/common';
 import {
-    addAssetsToDataProduct,
-    createDataProductFromListPage,
-    removeAssetsFromDataProduct,
-    selectDataProduct
+  addAssetsToDataProduct,
+  createDataProductFromListPage,
+  removeAssetsFromDataProduct,
+  selectDataProduct,
 } from '../../utils/domain';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';

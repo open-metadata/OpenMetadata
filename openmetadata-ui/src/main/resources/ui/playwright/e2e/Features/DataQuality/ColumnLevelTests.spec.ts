@@ -14,15 +14,15 @@ import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
-    createNewPage,
-    descriptionBox,
-    redirectToHomePage
+  createNewPage,
+  descriptionBox,
+  redirectToHomePage,
 } from '../../../utils/common';
 import {
-    clickCreateTestCaseButton,
-    clickEditTestCaseButton,
-    clickUpdateButton,
-    visitCreateTestCasePanelFromEntityPage
+  clickCreateTestCaseButton,
+  clickEditTestCaseButton,
+  clickUpdateButton,
+  visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { deleteTestCase } from '../../../utils/testCases';

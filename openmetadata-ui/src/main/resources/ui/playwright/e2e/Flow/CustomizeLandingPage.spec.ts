@@ -16,17 +16,17 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    redirectToHomePage,
-    removeLandingBanner,
-    toastNotification
+  redirectToHomePage,
+  removeLandingBanner,
+  toastNotification,
 } from '../../utils/common';
 import {
-    checkAllDefaultWidgets,
-    navigateToCustomizeLandingPage,
-    openAddCustomizeWidgetModal,
-    removeAndCheckWidget,
-    saveCustomizeLayoutPage,
-    setUserDefaultPersona
+  checkAllDefaultWidgets,
+  navigateToCustomizeLandingPage,
+  openAddCustomizeWidgetModal,
+  removeAndCheckWidget,
+  saveCustomizeLayoutPage,
+  setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 

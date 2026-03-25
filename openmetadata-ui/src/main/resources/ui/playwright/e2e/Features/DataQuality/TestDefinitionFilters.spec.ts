@@ -14,16 +14,16 @@
 import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
-    ENTITY_TYPE_OPTIONS,
-    FILTER_LABELS,
-    TEST_PLATFORM_OPTIONS
+  ENTITY_TYPE_OPTIONS,
+  FILTER_LABELS,
+  TEST_PLATFORM_OPTIONS,
 } from '../../../constant/testDefinitionFilter';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    closeFilterDropdown,
-    navigateToTestLibrary,
-    openFilterDropdown,
-    toggleFilter
+  closeFilterDropdown,
+  navigateToTestLibrary,
+  openFilterDropdown,
+  toggleFilter,
 } from '../../../utils/testDefinitionFilter';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });

@@ -18,17 +18,17 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { redirectToHomePage, removeLandingBanner } from '../../utils/common';
 import {
-    addCuratedAssetPlaceholder,
-    ENTITY_TYPE_CONFIGS,
-    navigateToCustomizeLandingPage,
-    removeAndCheckWidget,
-    saveCustomizeLayoutPage,
-    selectAssetTypes,
-    setUserDefaultPersona
+  addCuratedAssetPlaceholder,
+  ENTITY_TYPE_CONFIGS,
+  navigateToCustomizeLandingPage,
+  removeAndCheckWidget,
+  saveCustomizeLayoutPage,
+  selectAssetTypes,
+  setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 import {
-    getEntityDisplayName,
-    waitForAllLoadersToDisappear
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 
 const adminUser = new UserClass();

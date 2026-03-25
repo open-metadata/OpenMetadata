@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import {
-    APIRequestContext, expect,
-    Page, test as base
+  APIRequestContext,
+  expect,
+  Page,
+  test as base,
 } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
@@ -43,32 +45,32 @@ import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    assignSingleSelectDomain,
-    descriptionBox,
-    generateRandomUsername,
-    getApiContext,
-    getAuthContext,
-    getToken,
-    redirectToHomePage,
-    removeSingleSelectDomain,
-    uuid,
-    verifyDomainPropagation
+  assignSingleSelectDomain,
+  descriptionBox,
+  generateRandomUsername,
+  getApiContext,
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
+  removeSingleSelectDomain,
+  uuid,
+  verifyDomainPropagation,
 } from '../../utils/common';
 import {
-    createCustomPropertyForEntity,
-    CustomProperty,
-    CustomPropertyTypeByName,
-    updateCustomPropertyInRightPanel,
-    verifyTableColumnCustomPropertyPersistence
+  createCustomPropertyForEntity,
+  CustomProperty,
+  CustomPropertyTypeByName,
+  updateCustomPropertyInRightPanel,
+  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
-    addMultiOwner,
-    closeColumnDetailPanel,
-    openColumnDetailPanel,
-    removeOwner,
-    removeOwnersFromList,
-    waitForAllLoadersToDisappear
+  addMultiOwner,
+  closeColumnDetailPanel,
+  openColumnDetailPanel,
+  removeOwner,
+  removeOwnersFromList,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
 import { visitServiceDetailsPage } from '../../utils/service';

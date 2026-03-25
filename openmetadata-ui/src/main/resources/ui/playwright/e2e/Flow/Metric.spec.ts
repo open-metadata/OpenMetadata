@@ -18,15 +18,15 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
-    addMetric,
-    removeGranularity,
-    removeMetricType,
-    removeUnitOfMeasurement,
-    updateExpression,
-    updateGranularity,
-    updateMetricType,
-    updateRelatedMetric,
-    updateUnitOfMeasurement
+  addMetric,
+  removeGranularity,
+  removeMetricType,
+  removeUnitOfMeasurement,
+  updateExpression,
+  updateGranularity,
+  updateMetricType,
+  updateRelatedMetric,
+  updateUnitOfMeasurement,
 } from '../../utils/metric';
 import { sidebarClick } from '../../utils/sidebar';
 

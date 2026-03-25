@@ -21,13 +21,13 @@ import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { addCustomPropertiesForEntity } from '../../../utils/customProperty';
 import { selectDataProduct } from '../../../utils/domain';
 import {
-    assignRoleToUser,
-    initializePermissions
+  assignRoleToUser,
+  initializePermissions,
 } from '../../../utils/permission';
 import {
-    settingClick,
-    SettingOptionsType,
-    sidebarClick
+  settingClick,
+  SettingOptionsType,
+  sidebarClick,
 } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();

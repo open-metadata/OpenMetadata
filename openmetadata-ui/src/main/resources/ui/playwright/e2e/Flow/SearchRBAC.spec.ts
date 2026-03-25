@@ -19,9 +19,9 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import {
-    enableDisableSearchRBAC,
-    searchForEntityShouldWork,
-    searchForEntityShouldWorkShowNoResult
+  enableDisableSearchRBAC,
+  searchForEntityShouldWork,
+  searchForEntityShouldWorkShowNoResult,
 } from '../../utils/searchRBAC';
 
 for (const entity of searchRBACEntities) {

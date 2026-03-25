@@ -15,9 +15,9 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
 } from '../../utils/common';
 import { createSubDomain, selectDomain } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';

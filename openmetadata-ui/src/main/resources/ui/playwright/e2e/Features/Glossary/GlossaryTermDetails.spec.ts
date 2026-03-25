@@ -15,17 +15,17 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
-    descriptionBox,
-    getApiContext,
-    redirectToHomePage
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
 } from '../../../utils/common';
 import {
-    addReferences,
-    addRelatedTerms,
-    addSynonyms,
-    openAddGlossaryTermModal,
-    selectActiveGlossary,
-    selectActiveGlossaryTerm
+  addReferences,
+  addRelatedTerms,
+  addSynonyms,
+  openAddGlossaryTermModal,
+  selectActiveGlossary,
+  selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 

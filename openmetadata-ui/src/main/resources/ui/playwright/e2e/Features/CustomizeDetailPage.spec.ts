@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 import {
-    APIRequestContext, expect,
-    Page, test as base
+  APIRequestContext,
+  expect,
+  Page,
+  test as base,
 } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
-    ECustomizedDataAssets,
-    ECustomizedGovernance
+  ECustomizedDataAssets,
+  ECustomizedGovernance,
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -26,22 +28,22 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    clickOutside,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification
+  clickOutside,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import {
-    getCustomizeDetailsDefaultTabs,
-    getCustomizeDetailsEntity
+  getCustomizeDetailsDefaultTabs,
+  getCustomizeDetailsEntity,
 } from '../../utils/customizeDetails';
 import {
-    checkDefaultStateForNavigationTree,
-    validateLeftSidebarWithHiddenItems
+  checkDefaultStateForNavigationTree,
+  validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
 import {
-    getEncodedFqn,
-    waitForAllLoadersToDisappear
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';

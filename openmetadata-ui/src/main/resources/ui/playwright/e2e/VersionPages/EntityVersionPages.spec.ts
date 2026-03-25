@@ -31,11 +31,11 @@ import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    descriptionBoxReadOnly,
-    getApiContext,
-    redirectToHomePage,
-    reloadAndWaitForNetworkIdle,
-    toastNotification
+  descriptionBoxReadOnly,
+  getApiContext,
+  redirectToHomePage,
+  reloadAndWaitForNetworkIdle,
+  toastNotification,
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
 

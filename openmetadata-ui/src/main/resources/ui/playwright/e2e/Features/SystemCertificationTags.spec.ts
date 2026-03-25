@@ -13,12 +13,12 @@
 import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-    closeCertificationDropdown,
-    openCertificationDropdown,
-    setAllSystemCertificationTagsDisabled,
-    setCertificationClassificationDisabled,
-    setTagDisabledByFqn,
-    SYSTEM_CERTIFICATION_TAGS
+  closeCertificationDropdown,
+  openCertificationDropdown,
+  setAllSystemCertificationTagsDisabled,
+  setCertificationClassificationDisabled,
+  setTagDisabledByFqn,
+  SYSTEM_CERTIFICATION_TAGS,
 } from '../../utils/certification';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 

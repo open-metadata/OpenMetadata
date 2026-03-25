@@ -20,15 +20,15 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage,
-    uuid
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
-    addAssetsToDataProduct,
-    checkAssetsCount,
-    selectDataProduct
+  addAssetsToDataProduct,
+  checkAssetsCount,
+  selectDataProduct,
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
 

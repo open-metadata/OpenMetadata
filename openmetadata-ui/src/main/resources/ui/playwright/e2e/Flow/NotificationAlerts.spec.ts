@@ -19,29 +19,29 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    commonCleanup,
-    commonPrerequisites,
-    createAlert,
-    deleteAlert,
-    generateAlertName,
-    inputBasicAlertInformation,
-    verifyAlertDetails,
-    visitAlertDetailsPage,
-    visitEditAlertPage
+  commonCleanup,
+  commonPrerequisites,
+  createAlert,
+  deleteAlert,
+  generateAlertName,
+  inputBasicAlertInformation,
+  verifyAlertDetails,
+  visitAlertDetailsPage,
+  visitEditAlertPage,
 } from '../../utils/alert';
 import { descriptionBox, getApiContext } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    addFilterWithUsersListInput,
-    addInternalDestination,
-    checkAlertDetailsForWithPermissionUser,
-    checkAlertFlowForWithoutPermissionUser,
-    createAlertForRecentEventsCheck,
-    createAlertWithMultipleFilters,
-    createConversationAlert,
-    createTaskAlert,
-    editSingleFilterAlert,
-    visitNotificationAlertPage
+  addFilterWithUsersListInput,
+  addInternalDestination,
+  checkAlertDetailsForWithPermissionUser,
+  checkAlertFlowForWithoutPermissionUser,
+  createAlertForRecentEventsCheck,
+  createAlertWithMultipleFilters,
+  createConversationAlert,
+  createTaskAlert,
+  editSingleFilterAlert,
+  visitNotificationAlertPage,
 } from '../../utils/notificationAlert';
 import { addExternalDestination } from '../../utils/observabilityAlert';
 

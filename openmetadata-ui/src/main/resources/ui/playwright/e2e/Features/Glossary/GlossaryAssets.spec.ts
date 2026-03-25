@@ -19,9 +19,9 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    addAssetToGlossaryTerm,
-    goToAssetsTab,
-    selectActiveGlossary
+  addAssetToGlossaryTerm,
+  goToAssetsTab,
+  selectActiveGlossary,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 

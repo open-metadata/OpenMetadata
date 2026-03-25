@@ -16,8 +16,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    addSampleDataViaApi,
-    navigateToSampleDataTab
+  addSampleDataViaApi,
+  navigateToSampleDataTab,
 } from '../../utils/sampleData';
 import { test } from '../fixtures/pages';
 

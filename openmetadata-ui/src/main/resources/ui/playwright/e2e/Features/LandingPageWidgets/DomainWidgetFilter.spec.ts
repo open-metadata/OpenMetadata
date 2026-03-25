@@ -15,13 +15,13 @@ import { expect, test } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import {
-    createNewPage,
-    redirectToExplorePage,
-    redirectToHomePage
+  createNewPage,
+  redirectToExplorePage,
+  redirectToHomePage,
 } from '../../../utils/common';
 import {
-    addAndVerifyWidget,
-    setUserDefaultPersona
+  addAndVerifyWidget,
+  setUserDefaultPersona,
 } from '../../../utils/customizeLandingPage';
 import { selectDomainFromNavbar } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';

@@ -17,8 +17,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
-    getEncodedFqn,
-    waitForAllLoadersToDisappear
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { getJsonTreeObject } from '../../utils/exploreDiscovery';
 import { sidebarClick } from '../../utils/sidebar';

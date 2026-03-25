@@ -23,13 +23,13 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
-    descriptionBox,
-    descriptionBoxReadOnly,
-    getApiContext,
-    NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
-    NAME_VALIDATION_ERROR,
-    redirectToHomePage,
-    uuid
+  descriptionBox,
+  descriptionBoxReadOnly,
+  getApiContext,
+  NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_VALIDATION_ERROR,
+  redirectToHomePage,
+  uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';

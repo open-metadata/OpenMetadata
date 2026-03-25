@@ -12,28 +12,28 @@
  */
 
 import {
-    expect,
-    Page,
-    PlaywrightTestArgs,
-    PlaywrightWorkerArgs,
-    TestType
+  expect,
+  Page,
+  PlaywrightTestArgs,
+  PlaywrightWorkerArgs,
+  TestType,
 } from '@playwright/test';
 import { DBT, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
 import {
-    getApiContext,
-    redirectToHomePage,
-    toastNotification
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../../utils/common';
 import {
-    visitEntityPage,
-    waitForAllLoadersToDisappear
+  visitEntityPage,
+  waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import { visitLineageTab } from '../../../utils/lineage';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-    checkServiceFieldSectionHighlighting,
-    Services
+  checkServiceFieldSectionHighlighting,
+  Services,
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';

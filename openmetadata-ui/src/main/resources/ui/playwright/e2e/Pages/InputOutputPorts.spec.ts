@@ -21,17 +21,17 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    getApiContext,
-    redirectToHomePage,
-    toastNotification
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import {
-    addInputPortToDataProduct,
-    addOutputPortToDataProduct,
-    expandLineageSection,
-    navigateToPortsTab,
-    selectDataProduct,
-    verifyPortCounts
+  addInputPortToDataProduct,
+  addOutputPortToDataProduct,
+  expandLineageSection,
+  navigateToPortsTab,
+  selectDataProduct,
+  verifyPortCounts,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';

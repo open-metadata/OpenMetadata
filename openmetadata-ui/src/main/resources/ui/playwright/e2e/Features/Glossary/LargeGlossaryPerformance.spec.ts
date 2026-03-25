@@ -13,13 +13,11 @@
 import test, { expect } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import {
-    createNewPage
-} from '../../../utils/common';
+import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    confirmationDragAndDropGlossary,
-    dragAndDropTerm
+  confirmationDragAndDropGlossary,
+  dragAndDropTerm,
 } from '../../../utils/glossary';
 
 test.use({

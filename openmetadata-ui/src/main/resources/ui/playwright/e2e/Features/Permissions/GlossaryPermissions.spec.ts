@@ -19,9 +19,9 @@ import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    assignRoleToUser,
-    cleanupPermissions,
-    initializePermissions
+  assignRoleToUser,
+  cleanupPermissions,
+  initializePermissions,
 } from '../../../utils/permission';
 import { sidebarClick } from '../../../utils/sidebar';
 

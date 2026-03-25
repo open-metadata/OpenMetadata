@@ -17,19 +17,19 @@ import * as path from 'path';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import {
-    CERT_FILE,
-    lookerFormDetails,
-    supersetFormDetails1,
-    supersetFormDetails2,
-    supersetFormDetails3,
-    supersetFormDetails4
+  CERT_FILE,
+  lookerFormDetails,
+  supersetFormDetails1,
+  supersetFormDetails2,
+  supersetFormDetails3,
+  supersetFormDetails4,
 } from '../../constant/serviceForm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    createNewPage,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';

@@ -14,8 +14,8 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
-    SERVICE_CREATOR_RULES,
-    SERVICE_VIEWER_RULES
+  SERVICE_CREATOR_RULES,
+  SERVICE_VIEWER_RULES,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -24,9 +24,9 @@ import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServi
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';

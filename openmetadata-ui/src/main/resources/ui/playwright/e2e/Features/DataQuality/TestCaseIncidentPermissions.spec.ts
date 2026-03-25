@@ -13,11 +13,11 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
-    CONSUMER_LIKE_POLICY,
-    EDIT_INCIDENTS_POLICY,
-    TABLE_EDIT_INCIDENTS_POLICY,
-    TABLE_VIEW_INCIDENTS_POLICY,
-    VIEW_INCIDENTS_POLICY
+  CONSUMER_LIKE_POLICY,
+  EDIT_INCIDENTS_POLICY,
+  TABLE_EDIT_INCIDENTS_POLICY,
+  TABLE_VIEW_INCIDENTS_POLICY,
+  VIEW_INCIDENTS_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';

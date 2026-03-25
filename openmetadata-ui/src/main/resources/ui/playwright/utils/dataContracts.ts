@@ -12,9 +12,9 @@
  */
 import { expect, Page } from '@playwright/test';
 import {
-    DataContractSecuritySlaData,
-    DATA_CONTRACT_DETAILS,
-    DATA_CONTRACT_SECURITY_CONSUMER_DETAILS
+  DataContractSecuritySlaData,
+  DATA_CONTRACT_DETAILS,
+  DATA_CONTRACT_SECURITY_CONSUMER_DETAILS,
 } from '../constant/dataContracts';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';

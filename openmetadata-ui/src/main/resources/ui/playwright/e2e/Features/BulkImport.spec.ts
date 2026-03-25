@@ -23,29 +23,29 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import {
-    createColumnRowDetails,
-    createCustomPropertiesForEntity,
-    createDatabaseRowDetails,
-    createDatabaseSchemaRowDetails,
-    createStoredProcedureRowDetails,
-    createTableRowDetails,
-    fillColumnDetails,
-    fillRecursiveColumnDetails,
-    fillRecursiveEntityTypeFQNDetails,
-    fillRowDetails,
-    fillStoredProcedureCode,
-    firstTimeGridAddRowAction,
-    performBulkDownload,
-    performColumnSelectAndDeleteOperation,
-    performDeleteOperationOnEntity,
-    pressKeyXTimes,
-    validateImportStatus
+  createColumnRowDetails,
+  createCustomPropertiesForEntity,
+  createDatabaseRowDetails,
+  createDatabaseSchemaRowDetails,
+  createStoredProcedureRowDetails,
+  createTableRowDetails,
+  fillColumnDetails,
+  fillRecursiveColumnDetails,
+  fillRecursiveEntityTypeFQNDetails,
+  fillRowDetails,
+  fillStoredProcedureCode,
+  firstTimeGridAddRowAction,
+  performBulkDownload,
+  performColumnSelectAndDeleteOperation,
+  performDeleteOperationOnEntity,
+  pressKeyXTimes,
+  validateImportStatus,
 } from '../../utils/importUtils';
 
 // use the admin user to login

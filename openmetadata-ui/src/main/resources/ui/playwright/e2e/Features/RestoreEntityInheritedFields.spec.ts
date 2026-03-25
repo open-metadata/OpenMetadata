@@ -26,13 +26,13 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    assignDataProduct,
-    assignSingleSelectDomain,
-    redirectToHomePage
+  assignDataProduct,
+  assignSingleSelectDomain,
+  redirectToHomePage,
 } from '../../utils/common';
 import {
-    softDeleteEntity,
-    waitForAllLoadersToDisappear
+  softDeleteEntity,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 

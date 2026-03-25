@@ -14,10 +14,10 @@ import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    clickOutside,
-    createNewPage,
-    descriptionBox,
-    redirectToHomePage
+  clickOutside,
+  createNewPage,
+  descriptionBox,
+  redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { createQueryByTableName, queryFilters } from '../../utils/query';

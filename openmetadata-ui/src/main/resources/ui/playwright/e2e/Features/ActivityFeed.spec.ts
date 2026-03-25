@@ -20,14 +20,14 @@ import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    redirectToHomePage,
-    removeLandingBanner,
-    uuid,
-    visitOwnProfilePage
+  redirectToHomePage,
+  removeLandingBanner,
+  uuid,
+  visitOwnProfilePage,
 } from '../../utils/common';
 import {
-    navigateToCustomizeLandingPage,
-    setUserDefaultPersona
+  navigateToCustomizeLandingPage,
+  setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { editDisplayName } from '../../utils/user';

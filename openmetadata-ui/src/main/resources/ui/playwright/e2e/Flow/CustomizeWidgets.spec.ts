@@ -21,27 +21,27 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    getApiContext,
-    redirectToHomePage,
-    removeLandingBanner
+  getApiContext,
+  redirectToHomePage,
+  removeLandingBanner,
 } from '../../utils/common';
 import {
-    addAndVerifyWidget,
-    removeAndVerifyWidget,
-    verifyWidgetEntityNavigation,
-    verifyWidgetFooterViewMore,
-    verifyWidgetHeaderNavigation
+  addAndVerifyWidget,
+  removeAndVerifyWidget,
+  verifyWidgetEntityNavigation,
+  verifyWidgetFooterViewMore,
+  verifyWidgetHeaderNavigation,
 } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
-    verifyActivityFeedFilters,
-    verifyDataFilters,
-    verifyDataProductsFilters,
-    verifyDomainsFilters,
-    verifyTaskFilters,
-    verifyTotalDataAssetsFilters
+  verifyActivityFeedFilters,
+  verifyDataFilters,
+  verifyDataProductsFilters,
+  verifyDomainsFilters,
+  verifyTaskFilters,
+  verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
 
 const adminUser = new UserClass();

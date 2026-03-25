@@ -28,9 +28,9 @@ import { StorageServiceClass } from '../../support/entity/service/StorageService
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    descriptionBoxReadOnly,
-    redirectToHomePage,
-    toastNotification
+  descriptionBoxReadOnly,
+  redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 

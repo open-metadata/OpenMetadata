@@ -20,14 +20,14 @@ import { performAdminLogin } from '../../../utils/admin';
 import { SERVICE_ENTITIES } from '../../../constant/service';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    ALL_OPERATIONS,
-    runCommonPermissionTests,
-    runEntitySpecificPermissionTests,
-    serviceEntityConfig
+  ALL_OPERATIONS,
+  runCommonPermissionTests,
+  runEntitySpecificPermissionTests,
+  serviceEntityConfig,
 } from '../../../utils/entityPermissionUtils';
 import {
-    assignRoleToUser,
-    initializePermissions
+  assignRoleToUser,
+  initializePermissions,
 } from '../../../utils/permission';
 
 const testUser = new UserClass();

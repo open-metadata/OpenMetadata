@@ -12,10 +12,10 @@
  */
 
 import {
-    APIRequestContext,
-    expect,
-    Page,
-    test as base
+  APIRequestContext,
+  expect,
+  Page,
+  test as base,
 } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
@@ -30,11 +30,11 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, uuid } from '../../utils/common';
 import {
-    addAssetsToDomain,
-    checkAssetsCount,
-    selectDataProduct,
-    selectDomain,
-    setupAssetsForDomain
+  addAssetsToDomain,
+  checkAssetsCount,
+  selectDataProduct,
+  selectDomain,
+  setupAssetsForDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';

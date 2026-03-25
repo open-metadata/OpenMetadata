@@ -12,27 +12,27 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-    CUSTOM_PROPERTY_INVALID_NAMES,
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
-    ENTITY_REFERENCE_PROPERTIES
+  CUSTOM_PROPERTY_INVALID_NAMES,
+  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+  ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-    EntityTypeEndpoint,
-    ENTITY_PATH
+  EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import {
-    clickOutside,
-    descriptionBox,
-    descriptionBoxReadOnly,
-    uuid
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
-    navigateToEntityPanelTab,
-    navigateToExploreAndSelectTable
+  navigateToEntityPanelTab,
+  navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
 

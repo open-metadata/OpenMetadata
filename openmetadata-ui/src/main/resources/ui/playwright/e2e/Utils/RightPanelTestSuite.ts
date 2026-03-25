@@ -18,7 +18,8 @@ import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObje
 import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
-    PageContext, RightPanelPageObject
+  PageContext,
+  RightPanelPageObject,
 } from '../PageObject/Explore/RightPanelPageObject';
 import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
 

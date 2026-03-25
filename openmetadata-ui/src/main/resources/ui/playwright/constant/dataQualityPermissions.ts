@@ -12,8 +12,8 @@
  */
 import { ResourceEntity } from '../../src/context/PermissionProvider/PermissionProvider.interface';
 import {
-    Effect,
-    Operation
+  Effect,
+  Operation,
 } from '../../src/generated/entity/policies/accessControl/rule';
 import { uuid } from '../utils/common';
 

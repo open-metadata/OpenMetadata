@@ -13,13 +13,13 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
 import {
-    getRandomFirstName,
-    uuid,
-    visitGlossaryPage
+  getRandomFirstName,
+  uuid,
+  visitGlossaryPage,
 } from '../../utils/common';
 import {
-    EntityReference,
-    EntityTypeEndpoint
+  EntityReference,
+  EntityTypeEndpoint,
 } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { GlossaryData, GlossaryResponseDataType } from './Glossary.interface';

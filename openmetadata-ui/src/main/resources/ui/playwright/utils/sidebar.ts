@@ -12,8 +12,8 @@
  */
 import { Page } from '@playwright/test';
 import {
-    SETTINGS_OPTIONS_PATH,
-    SETTING_CUSTOM_PROPERTIES_PATH
+  SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
 import { waitForAllLoadersToDisappear } from './entity';

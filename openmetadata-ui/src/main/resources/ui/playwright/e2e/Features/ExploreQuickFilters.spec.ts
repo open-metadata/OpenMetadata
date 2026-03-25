@@ -17,9 +17,9 @@ import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import {
-    clickOutside,
-    createNewPage,
-    redirectToHomePage
+  clickOutside,
+  createNewPage,
+  redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';

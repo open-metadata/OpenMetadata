@@ -17,8 +17,8 @@ import { enableDisableAutoPilotApplication } from './applications';
 import { getApiContext } from './common';
 import { updateJWTTokenExpiryTime } from './login';
 import {
-    updateDefaultDataConsumerPolicy,
-    updateDefaultOrganizationPolicy
+  updateDefaultDataConsumerPolicy,
+  updateDefaultOrganizationPolicy,
 } from './permission';
 import { removeOrganizationPolicyAndRole } from './team';
 

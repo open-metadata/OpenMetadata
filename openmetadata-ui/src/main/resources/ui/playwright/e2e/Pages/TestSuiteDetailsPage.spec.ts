@@ -14,18 +14,19 @@ import { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-    addTestCaseListFilterByFirstColumnInAddTestCasesDialog,
-    addTestCaseListFilterByStatusInAddTestCasesDialog,
-    addTestCaseListFilterByTableInAddTestCasesDialog,
-    addTestCaseListFilterByTestTypeInAddTestCasesDialog,
-    addTestCaseListResetFiltersInAddTestCasesDialog, ADD_TEST_CASE_SELECTION_CARD
+  addTestCaseListFilterByFirstColumnInAddTestCasesDialog,
+  addTestCaseListFilterByStatusInAddTestCasesDialog,
+  addTestCaseListFilterByTableInAddTestCasesDialog,
+  addTestCaseListFilterByTestTypeInAddTestCasesDialog,
+  addTestCaseListResetFiltersInAddTestCasesDialog,
+  ADD_TEST_CASE_SELECTION_CARD,
 } from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    descriptionBox,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { test } from '../fixtures/pages';

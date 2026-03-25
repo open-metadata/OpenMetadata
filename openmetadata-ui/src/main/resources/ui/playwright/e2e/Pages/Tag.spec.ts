@@ -25,18 +25,18 @@ import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
-    addAssetsToTag,
-    editTagPageDescription,
-    fillTagForm,
-    LIMITED_USER_RULES,
-    NEW_TAG,
-    removeAssetsFromTag,
-    setupAssetsForTag,
-    submitForm,
-    validateForm,
-    verifyCertificationTagPageUI,
-    verifyEntityTypeFilterInTagAssets,
-    verifyTagPageUI
+  addAssetsToTag,
+  editTagPageDescription,
+  fillTagForm,
+  LIMITED_USER_RULES,
+  NEW_TAG,
+  removeAssetsFromTag,
+  setupAssetsForTag,
+  submitForm,
+  validateForm,
+  verifyCertificationTagPageUI,
+  verifyEntityTypeFilterInTagAssets,
+  verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
 

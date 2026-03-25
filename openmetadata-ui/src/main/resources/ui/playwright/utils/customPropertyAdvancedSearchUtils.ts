@@ -13,8 +13,8 @@
 import { expect, Page } from '@playwright/test';
 import { isObject, isUndefined } from 'lodash';
 import {
-    CP_BASE_VALUES,
-    MULTISELECT_OPERATORS
+  CP_BASE_VALUES,
+  MULTISELECT_OPERATORS,
 } from '../constant/customPropertyAdvancedSearch';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TopicClass } from '../support/entity/TopicClass';

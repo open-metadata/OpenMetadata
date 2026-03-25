@@ -16,8 +16,8 @@ import ServiceBaseClass from '../support/entity/ingestion/ServiceBaseClass';
 import { getCurrentMillis, getDayAgoStartGMTinMillis } from './dateTime';
 import { getEncodedFqn } from './entity';
 import {
-    getServiceCategoryFromService,
-    makeRetryRequest
+  getServiceCategoryFromService,
+  makeRetryRequest,
 } from './serviceIngestion';
 
 export const checkAutoPilotStatus = async (

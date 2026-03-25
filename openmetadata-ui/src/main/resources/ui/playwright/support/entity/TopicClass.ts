@@ -13,9 +13,9 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
-    DataTypeTopic,
-    Field,
-    Topic
+  DataTypeTopic,
+  Field,
+  Topic,
 } from '../../../src/generated/entity/data/topic';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';

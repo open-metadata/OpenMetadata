@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import {
-    APIRequestContext, expect,
-    Page, test as base
+  APIRequestContext,
+  expect,
+  Page,
+  test as base,
 } from '@playwright/test';
 import {
-    EDIT_USER_FOR_TEAM_RULES,
-    OWNER_TEAM_RULES
+  EDIT_USER_FOR_TEAM_RULES,
+  OWNER_TEAM_RULES,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -29,35 +31,35 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    descriptionBox,
-    descriptionBoxReadOnly,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification,
-    uuid,
-    visitOwnProfilePage
+  descriptionBox,
+  descriptionBoxReadOnly,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+  visitOwnProfilePage,
 } from '../../utils/common';
 import {
-    addMultiOwner,
-    waitForAllLoadersToDisappear
+  addMultiOwner,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import {
-    addEmailTeam,
-    addTeamHierarchy,
-    addTeamOwnerToEntity,
-    addUserInTeam,
-    addUserTeam,
-    checkTeamTabCount,
-    createTeam,
-    executionOnOwnerGroupTeam,
-    executionOnOwnerTeam,
-    getNewTeamDetails,
-    hardDeleteTeam,
-    searchTeam,
-    softDeleteTeam,
-    verifyAssetsInTeamsPage,
-    verifyTeamListingAssetCount
+  addEmailTeam,
+  addTeamHierarchy,
+  addTeamOwnerToEntity,
+  addUserInTeam,
+  addUserTeam,
+  checkTeamTabCount,
+  createTeam,
+  executionOnOwnerGroupTeam,
+  executionOnOwnerTeam,
+  getNewTeamDetails,
+  hardDeleteTeam,
+  searchTeam,
+  softDeleteTeam,
+  verifyAssetsInTeamsPage,
+  verifyTeamListingAssetCount,
 } from '../../utils/team';
 
 base.describe.configure({ mode: 'serial' });

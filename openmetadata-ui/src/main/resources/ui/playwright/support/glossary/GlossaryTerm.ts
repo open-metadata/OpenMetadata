@@ -17,8 +17,8 @@ import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Glossary } from './Glossary';
 import {
-    GlossaryTermData,
-    GlossaryTermResponseDataType
+  GlossaryTermData,
+  GlossaryTermResponseDataType,
 } from './Glossary.interface';
 
 export class GlossaryTerm extends EntityClass {

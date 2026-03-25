@@ -21,9 +21,9 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
-    getApiContext,
-    redirectToHomePage,
-    testTableSorting
+  getApiContext,
+  redirectToHomePage,
+  testTableSorting,
 } from '../../utils/common';
 import { test } from '../fixtures/pages';
 

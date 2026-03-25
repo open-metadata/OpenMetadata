@@ -13,9 +13,9 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
-    DataType,
-    SearchIndex,
-    SearchIndexField
+  DataType,
+  SearchIndex,
+  SearchIndexField,
 } from '../../../src/generated/entity/data/searchIndex';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';

@@ -34,8 +34,8 @@ import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
-    openColumnDetailPanel,
-    waitForAllLoadersToDisappear
+  openColumnDetailPanel,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';

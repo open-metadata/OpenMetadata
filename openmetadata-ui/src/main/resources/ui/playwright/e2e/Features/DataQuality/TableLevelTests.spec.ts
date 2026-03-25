@@ -14,13 +14,13 @@ import { expect, Response, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
 } from '../../../utils/common';
 import {
-    clickUpdateButton,
-    visitCreateTestCasePanelFromEntityPage
+  clickUpdateButton,
+  visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
 import { deleteTestCase } from '../../../utils/testCases';
 

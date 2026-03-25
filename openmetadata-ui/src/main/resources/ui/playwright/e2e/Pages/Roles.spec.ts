@@ -15,16 +15,16 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import {
-    descriptionBox,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    getElementWithPagination,
-    removePolicyFromRole
+  getElementWithPagination,
+  removePolicyFromRole,
 } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 

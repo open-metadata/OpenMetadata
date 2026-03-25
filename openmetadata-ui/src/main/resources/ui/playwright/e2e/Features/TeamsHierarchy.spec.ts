@@ -15,9 +15,9 @@ import { DELETE_TERM } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { addTeamHierarchy, getNewTeamDetails } from '../../utils/team';

@@ -12,16 +12,16 @@
  */
 
 import {
-    LDAP_VISIBLE_FIELDS,
-    OIDC_COMMON_FIELDS,
-    SAML_VISIBLE_FIELDS,
-    SSO_COMMON_FIELDS
+  LDAP_VISIBLE_FIELDS,
+  OIDC_COMMON_FIELDS,
+  SAML_VISIBLE_FIELDS,
+  SSO_COMMON_FIELDS,
 } from '../../constant/ssoConfiguration';
 import { redirectToHomePage } from '../../utils/common';
 import {
-    enableSSOEditMode,
-    selectSSOProvider,
-    verifyProviderFields
+  enableSSOEditMode,
+  selectSSOProvider,
+  verifyProviderFields,
 } from '../../utils/sso';
 import { test } from '../fixtures/pages';
 

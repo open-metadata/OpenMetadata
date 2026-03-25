@@ -12,9 +12,9 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-    DATA_CONSUMER_RULES,
-    ORGANIZATION_POLICY_RULES,
-    VIEW_ALL_RULE
+  DATA_CONSUMER_RULES,
+  ORGANIZATION_POLICY_RULES,
+  VIEW_ALL_RULE,
 } from '../constant/permission';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
 import { RolesClass } from '../support/access-control/RolesClass';
