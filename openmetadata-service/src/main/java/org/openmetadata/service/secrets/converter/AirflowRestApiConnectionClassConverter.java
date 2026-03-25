@@ -18,6 +18,8 @@ import java.util.Map;
 import org.openmetadata.schema.entity.utils.common.AccessTokenConfig;
 import org.openmetadata.schema.entity.utils.common.BasicAuthConfig;
 import org.openmetadata.schema.entity.utils.common.GcpCredentialsConfig;
+import org.openmetadata.schema.entity.utils.common.MWAAAuthConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.pipeline.AirflowRestApiConnection;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -48,6 +50,14 @@ public class AirflowRestApiConnectionClassConverter extends ClassConverter {
       if (conn.getAuthConfig() instanceof GcpCredentialsConfig gcpCfg) {
         tryToConvertOrFail(gcpCfg.getCredentials(), List.of(GCPCredentials.class))
             .ifPresent(obj -> gcpCfg.setCredentials((GCPCredentials) obj));
+      }
+    } else if (authMap.containsKey("mwaaConfig")) {
+      tryToConvertOrFail(authMap, List.of(MWAAAuthConfig.class)).ifPresent(conn::setAuthConfig);
+      if (conn.getAuthConfig() instanceof MWAAAuthConfig mwaaCfg) {
+        if (mwaaCfg.getMwaaConfig() != null && mwaaCfg.getMwaaConfig().getAwsConfig() != null) {
+          tryToConvertOrFail(mwaaCfg.getMwaaConfig().getAwsConfig(), List.of(AWSCredentials.class))
+              .ifPresent(obj -> mwaaCfg.getMwaaConfig().setAwsConfig((AWSCredentials) obj));
+        }
       }
     }
 

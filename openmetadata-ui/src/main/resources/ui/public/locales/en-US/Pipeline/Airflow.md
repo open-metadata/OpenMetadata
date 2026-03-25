@@ -51,9 +51,9 @@ $$
 |---|---|
 | Self-hosted / Docker (ingestion runs on the host) | `http://localhost:8080` |
 | Self-hosted / Docker (ingestion runs inside Docker) | `http://host.docker.internal:8080` |
-| Google Cloud Composer | `https://<hash>-dot-<region>.composer.googleusercontent.com` |
-| Astronomer | `https://<deployment-name>.<astronomer-domain>/airflow` |
-| Amazon MWAA | The Airflow web server URL from the MWAA console |
+| Google Cloud Composer | `https://ko82752sdo9f7zjf811c682mw1e5uuc9-dot-us-east1.composer.googleusercontent.com` |
+| Astronomer | `https://cmn4c1zax823t00qf36gnlquw.ay.astronomer.run/v13jlquw/` |
+| Amazon MWAA | `https://a1234awd1-5324-6f89-9523-1sq41234adqa.c2.airflow.eu-north-1.on.aws` |
 
 For **Cloud Composer**, find the web server URL in GCP Console → **Composer → Environments → Open Airflow UI**. Copy the base URL (omit any trailing path).
 
@@ -126,6 +126,27 @@ For **Astronomer** deployments, use Access Token auth with a Deployment API toke
 4. Paste it in the **Token** field above.
 
 For self-hosted Airflow, you can generate an API token via the Airflow UI under **Admin → Users** or via the Airflow CLI.
+
+
+$$section
+
+### MWAA Configuration $(id="mwaaConfig")
+
+AWS credentials used to authenticate with Amazon Managed Workflows for Apache Airflow (MWAA).
+
+The authentication requires the MWAA Environment Name and an AWS configuration.
+
+#### Configuration Fields
+**MWAA Environment Name**: The name of the Amazon MWAA environment to connect to.
+**AWS Region**: The AWS region where the MWAA environment is deployed.
+**AWS Access Key ID**: The access key used to authenticate with AWS.
+**AWS Secret Access Key**: The secret key associated with the AWS access key.
+**AWS Session Token (Optional)**: Required when using temporary AWS credentials.
+**Assume Role ARN (Optional)**: ARN of IAM role to assume for cross-account access.
+**Assume Role Session Name (Optional)**: Session name for assumed role.
+**Endpoint URL (Optional)**: Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
+
+$$
 
 $$section
 ### GCP Credentials $(id="credentials")

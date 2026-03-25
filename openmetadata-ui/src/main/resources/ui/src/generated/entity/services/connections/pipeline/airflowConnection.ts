@@ -57,8 +57,8 @@ export interface AirflowConnectionClass {
      */
     apiVersion?: APIVersion;
     /**
-     * Choose an authentication method: Basic Auth (username/password), Access Token, or GCP
-     * Service Account (for Cloud Composer).
+     * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+     * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
      */
     authConfig?: AuthenticationConfiguration;
     /**
@@ -192,15 +192,18 @@ export enum APIVersion {
 }
 
 /**
- * Choose an authentication method: Basic Auth (username/password), Access Token, or GCP
- * Service Account (for Cloud Composer).
+ * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+ * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
  *
  * Username and password for Airflow API authentication.
  *
  * Static access token for Airflow API authentication.
  *
  * GCP credentials for Google Cloud Composer. Supports service account values, credentials
- * path, workload identity (external account), and ADC. Tokens are auto-refreshed at runtime.
+ * path, workload identity (external account), and ADC. Tokens are auto-refreshed at
+ * runtime.
+ *
+ * AWS MWAA (Managed Workflows for Apache Airflow) authentication configuration.
  */
 export interface AuthenticationConfiguration {
     /**
@@ -219,6 +222,10 @@ export interface AuthenticationConfiguration {
      * GCP credentials configuration.
      */
     credentials?: GCPCredentials;
+    /**
+     * MWAA credentials and environment configuration.
+     */
+    mwaaConfig?: MWAAConfiguration;
 }
 
 /**
@@ -341,24 +348,22 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 /**
- * Choose Auth Config Type.
- *
- * Common Database Connection Config
- *
- * IAM Auth Database Connection Config
- *
- * Azure Database Connection Config
+ * MWAA credentials and environment configuration.
  */
-export interface AuthConfigurationType {
+export interface MWAAConfiguration {
     /**
-     * Password to connect to source.
+     * AWS credentials for generating MWAA CLI token.
      */
-    password?:    string;
-    awsConfig?:   AWSCredentials;
-    azureConfig?: AzureCredentials;
+    awsConfig: AWSCredentials;
+    /**
+     * The name of your MWAA environment.
+     */
+    mwaaEnvironmentName: string;
 }
 
 /**
+ * AWS credentials for generating MWAA CLI token.
+ *
  * AWS credentials configs.
  */
 export interface AWSCredentials {
@@ -408,6 +413,24 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Choose Auth Config Type.
+ *
+ * Common Database Connection Config
+ *
+ * IAM Auth Database Connection Config
+ *
+ * Azure Database Connection Config
+ */
+export interface AuthConfigurationType {
+    /**
+     * Password to connect to source.
+     */
+    password?:    string;
+    awsConfig?:   AWSCredentials;
+    azureConfig?: AzureCredentials;
 }
 
 /**
@@ -497,6 +520,8 @@ export interface DataStorageConfig {
 }
 
 /**
+ * AWS credentials for generating MWAA CLI token.
+ *
  * AWS credentials configs.
  */
 export interface AwsCredentials {

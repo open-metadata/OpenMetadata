@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.utils.common.basicAuthConfig import BasicA
 from metadata.generated.schema.entity.utils.common.gcpCredentialsConfig import (
     GcpServiceAccount,
 )
+from metadata.generated.schema.entity.utils.common.mwaaAuthConfig import (
+    MwaaAuthentication,
+)
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.pipeline.airflow.api.auth import (
@@ -39,6 +42,7 @@ from metadata.ingestion.source.pipeline.airflow.api.models import (
     AirflowApiTask,
     AirflowApiTaskInstance,
 )
+from metadata.ingestion.source.pipeline.airflow.api.mwaa import MWAAClient
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -56,37 +60,54 @@ class AirflowApiClient:
 
         rest_config = config.connection
         auth_config = rest_config.authConfig
-        auth_token_mode = "Bearer"
 
-        if isinstance(auth_config, AccessToken):
-            auth_token_fn = build_access_token_callback(
-                auth_config.token.get_secret_value()
+        # Check if this is MWAA (AWS credentials)
+        if isinstance(auth_config, MwaaAuthentication):
+            # Use MWAA client for AWS managed Airflow
+            environment_name = auth_config.mwaaConfig.mwaaEnvironmentName
+            self.mwaa_client = MWAAClient(
+                auth_config.mwaaConfig.awsConfig, environment_name
             )
-        elif isinstance(auth_config, BasicAuth):
-            auth_token_fn, auth_token_mode = build_basic_auth_callback(
-                host=clean_uri(str(config.hostPort)),
-                username=auth_config.username,
-                password=auth_config.password.get_secret_value(),
+            self.client = None  # No need for TrackedREST client with MWAA
+        else:
+            # Use standard REST client for other authentication types
+            self.mwaa_client = None
+            auth_token_mode = "Bearer"
+
+            if isinstance(auth_config, AccessToken):
+                auth_token_fn = build_access_token_callback(
+                    auth_config.token.get_secret_value()
+                )
+            elif isinstance(auth_config, BasicAuth):
+                auth_token_fn, auth_token_mode = build_basic_auth_callback(
+                    host=clean_uri(str(config.hostPort)),
+                    username=auth_config.username,
+                    password=auth_config.password.get_secret_value(),
+                    verify=rest_config.verifySSL,
+                )
+            elif isinstance(auth_config, GcpServiceAccount):
+                auth_token_fn = build_gcp_token_callback(auth_config.credentials)
+            else:
+                auth_token_fn = None
+
+            client_config = ClientConfig(
+                base_url=clean_uri(str(config.hostPort)),
+                api_version="api",
+                auth_header="Authorization" if auth_token_fn else None,
+                auth_token=auth_token_fn,
+                auth_token_mode=auth_token_mode,
                 verify=rest_config.verifySSL,
             )
-        elif isinstance(auth_config, GcpServiceAccount):
-            auth_token_fn = build_gcp_token_callback(auth_config.credentials)
-        else:
-            auth_token_fn = None
-
-        client_config = ClientConfig(
-            base_url=clean_uri(str(config.hostPort)),
-            api_version="api",
-            auth_header="Authorization" if auth_token_fn else None,
-            auth_token=auth_token_fn,
-            auth_token_mode=auth_token_mode,
-            verify=rest_config.verifySSL,
-        )
-        self.client = TrackedREST(client_config, source_name="airflow_api")
+            self.client = TrackedREST(client_config, source_name="airflow_api")
 
     @property
     def api_version(self) -> str:
         if self._detected_version:
+            return self._detected_version
+
+        # Use MWAA client - no version detection needed
+        if self.mwaa_client:
+            self._detected_version = "v1"  # MWAA handles versioning internally
             return self._detected_version
 
         rest_config = self.config.connection
@@ -140,20 +161,32 @@ class AirflowApiClient:
         return response
 
     def get_version(self) -> dict:
+        if self.mwaa_client:
+            return self.mwaa_client.get_version()
+
         response = self.client.get(f"{self._prefix}/version")
         return self._parse_response(response)
 
     def list_dags(self, limit: int = 100, offset: int = 0) -> dict:
+        if self.mwaa_client:
+            return self.mwaa_client.list_dags(limit=limit, offset=offset)
+
         response = self.client.get(f"{self._prefix}/dags?limit={limit}&offset={offset}")
         return self._parse_response(response)
 
     def get_dag_tasks(self, dag_id: str) -> dict:
+        if self.mwaa_client:
+            return self.mwaa_client.get_dag_tasks(dag_id)
+
         response = self.client.get(
             f"{self._prefix}/dags/{quote(dag_id, safe='')}/tasks"
         )
         return self._parse_response(response)
 
     def list_dag_runs(self, dag_id: str, limit: int = 10) -> dict:
+        if self.mwaa_client:
+            return self.mwaa_client.list_dag_runs(dag_id, limit=limit)
+
         response = self.client.get(
             f"{self._prefix}/dags/{quote(dag_id, safe='')}/dagRuns"
             f"?limit={limit}&order_by=-{self._date_field}"
@@ -161,6 +194,9 @@ class AirflowApiClient:
         return self._parse_response(response)
 
     def get_task_instances(self, dag_id: str, dag_run_id: str) -> dict:
+        if self.mwaa_client:
+            return self.mwaa_client.get_task_instances(dag_id, dag_run_id)
+
         response = self.client.get(
             f"{self._prefix}/dags/{quote(dag_id, safe='')}"
             f"/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
@@ -190,9 +226,15 @@ class AirflowApiClient:
         return result
 
     def get_all_dags(self) -> List[dict]:
+        if self.mwaa_client:
+            return self.mwaa_client.get_all_dags()
+
         return self._paginate(f"{self._prefix}/dags", key="dags")
 
     def build_dag_details(self, dag_data: dict) -> AirflowApiDagDetails:
+        if self.mwaa_client:
+            return self.mwaa_client.build_dag_details(dag_data)
+
         dag_id = dag_data["dag_id"]
 
         tags_raw = dag_data.get("tags") or []
@@ -251,6 +293,9 @@ class AirflowApiClient:
         )
 
     def get_dag_runs(self, dag_id: str, limit: int = 10) -> List[AirflowApiDagRun]:
+        if self.mwaa_client:
+            return self.mwaa_client.get_dag_runs(dag_id, limit=limit)
+
         try:
             response = self.list_dag_runs(dag_id, limit=limit)
             response = self._parse_response(response)
@@ -276,6 +321,9 @@ class AirflowApiClient:
     def get_task_instances_for_run(
         self, dag_id: str, dag_run_id: str
     ) -> List[AirflowApiTaskInstance]:
+        if self.mwaa_client:
+            return self.mwaa_client.get_task_instances_for_run(dag_id, dag_run_id)
+
         try:
             path = (
                 f"{self._prefix}/dags/{quote(dag_id, safe='')}"
@@ -297,3 +345,22 @@ class AirflowApiClient:
             )
             for ti in instances_data
         ]
+
+    def _extract_mwaa_environment_name(self, host_url: str) -> str:
+        """
+        Extract MWAA environment name from host URL.
+
+        MWAA URLs have format: https://<env-id>.c2.airflow.<region>.on.aws
+        But for AWS CLI, we need the environment name, not the ID.
+
+        For now, this method expects the environment name to be provided via
+        a future configuration field, as it cannot be reliably extracted from URL.
+        """
+        # TODO: Add mwaaEnvironmentName field to schema and use it here
+        # For now, use a default that users must override
+        logger.warning(
+            "MWAA environment name should be provided in configuration. "
+            "Using default 'MyAirflowEnvironment-mwaa2'. "
+            "Please add 'mwaaEnvironmentName' field to your configuration."
+        )
+        return "MyAirflowEnvironment-mwaa2"

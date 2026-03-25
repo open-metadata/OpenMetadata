@@ -2818,6 +2818,8 @@ export interface DBTPrefixConfig {
  *
  * AWS credentials required to access the S3 file.
  *
+ * AWS credentials for generating MWAA CLI token.
+ *
  * AWS credentials configuration.
  *
  * Azure Cloud Credentials
@@ -5561,6 +5563,8 @@ export enum AuthMechanismEnum {
  *
  * AWS credentials required to access the S3 file.
  *
+ * AWS credentials for generating MWAA CLI token.
+ *
  * AWS credentials configuration.
  *
  * Authentication type to connect to Apache Ranger.
@@ -5742,6 +5746,8 @@ export interface AuthenticationTypeForTableau {
  * AWS credentials configs.
  *
  * AWS credentials required to access the S3 file.
+ *
+ * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
  */
@@ -6151,6 +6157,8 @@ export interface IcebergFileSystem {
  * AWS credentials configs.
  *
  * AWS credentials required to access the S3 file.
+ *
+ * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
  *
@@ -6589,8 +6597,8 @@ export interface ConfigConnection {
      */
     apiVersion?: APIVersion;
     /**
-     * Choose an authentication method: Basic Auth (username/password), Access Token, or GCP
-     * Service Account (for Cloud Composer).
+     * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+     * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
      */
     authConfig?: AuthenticationConfiguration;
     /**
@@ -6617,15 +6625,18 @@ export enum APIVersion {
 }
 
 /**
- * Choose an authentication method: Basic Auth (username/password), Access Token, or GCP
- * Service Account (for Cloud Composer).
+ * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+ * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
  *
  * Username and password for Airflow API authentication.
  *
  * Static access token for Airflow API authentication.
  *
  * GCP credentials for Google Cloud Composer. Supports service account values, credentials
- * path, workload identity (external account), and ADC. Tokens are auto-refreshed at runtime.
+ * path, workload identity (external account), and ADC. Tokens are auto-refreshed at
+ * runtime.
+ *
+ * AWS MWAA (Managed Workflows for Apache Airflow) authentication configuration.
  */
 export interface AuthenticationConfiguration {
     /**
@@ -6644,6 +6655,10 @@ export interface AuthenticationConfiguration {
      * GCP credentials configuration.
      */
     credentials?: GcpConfigClass;
+    /**
+     * MWAA credentials and environment configuration.
+     */
+    mwaaConfig?: MWAAConfiguration;
 }
 
 /**
@@ -6667,6 +6682,20 @@ export interface GcpConfigClass {
      * we enable the authenticated service account to impersonate another service account
      */
     gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
+}
+
+/**
+ * MWAA credentials and environment configuration.
+ */
+export interface MWAAConfiguration {
+    /**
+     * AWS credentials for generating MWAA CLI token.
+     */
+    awsConfig: AWSCredentials;
+    /**
+     * The name of your MWAA environment.
+     */
+    mwaaEnvironmentName: string;
 }
 
 /**
@@ -6733,6 +6762,8 @@ export interface DataStorageConfig {
  * AWS credentials configs.
  *
  * AWS credentials required to access the S3 file.
+ *
+ * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
  */

@@ -19,8 +19,8 @@ export interface AirflowRESTAPIConnection {
      */
     apiVersion?: APIVersion;
     /**
-     * Choose an authentication method: Basic Auth (username/password), Access Token, or GCP
-     * Service Account (for Cloud Composer).
+     * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+     * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
      */
     authConfig: AuthenticationConfiguration;
     /**
@@ -46,15 +46,18 @@ export enum APIVersion {
 }
 
 /**
- * Choose an authentication method: Basic Auth (username/password), Access Token, or GCP
- * Service Account (for Cloud Composer).
+ * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+ * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
  *
  * Username and password for Airflow API authentication.
  *
  * Static access token for Airflow API authentication.
  *
  * GCP credentials for Google Cloud Composer. Supports service account values, credentials
- * path, workload identity (external account), and ADC. Tokens are auto-refreshed at runtime.
+ * path, workload identity (external account), and ADC. Tokens are auto-refreshed at
+ * runtime.
+ *
+ * AWS MWAA (Managed Workflows for Apache Airflow) authentication configuration.
  */
 export interface AuthenticationConfiguration {
     /**
@@ -73,6 +76,10 @@ export interface AuthenticationConfiguration {
      * GCP credentials configuration.
      */
     credentials?: GCPCredentials;
+    /**
+     * MWAA credentials and environment configuration.
+     */
+    mwaaConfig?: MWAAConfiguration;
 }
 
 /**
@@ -192,6 +199,74 @@ export interface GCPImpersonateServiceAccountValues {
      */
     lifetime?: number;
     [property: string]: any;
+}
+
+/**
+ * MWAA credentials and environment configuration.
+ */
+export interface MWAAConfiguration {
+    /**
+     * AWS credentials for generating MWAA CLI token.
+     */
+    awsConfig: AWSCredentials;
+    /**
+     * The name of your MWAA environment.
+     */
+    mwaaEnvironmentName: string;
+}
+
+/**
+ * AWS credentials for generating MWAA CLI token.
+ *
+ * AWS credentials configs.
+ */
+export interface AWSCredentials {
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
 }
 
 /**

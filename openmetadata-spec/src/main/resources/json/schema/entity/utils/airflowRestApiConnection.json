@@ -23,7 +23,7 @@
     },
     "authConfig": {
       "title": "Authentication Configuration",
-      "description": "Choose an authentication method: Basic Auth (username/password), Access Token, or GCP Service Account (for Cloud Composer).",
+      "description": "Choose an authentication method: Basic Auth (username/password), Access Token, GCP Service Account (for Cloud Composer), or AWS Credentials (for MWAA).",
       "oneOf": [
         {
           "$ref": "./common/basicAuthConfig.json"
@@ -33,6 +33,9 @@
         },
         {
           "$ref": "./common/gcpCredentialsConfig.json"
+        },
+        {
+          "$ref": "./common/mwaaAuthConfig.json"
         }
       ]
     },
