@@ -43,7 +43,6 @@ import {
   verifyTaskFilters,
   verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -178,7 +177,6 @@ test.beforeEach(async ({ page }) => {
 
 test(
   'Activity Feed Widget',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   async ({ page }) => {
     test.slow(true);
 
@@ -224,7 +222,7 @@ test(
   }
 );
 
-test('Data Assets Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test('Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataAssets';
@@ -278,7 +276,7 @@ test('Data Assets Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   });
 });
 
-test('My Data Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test('My Data Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.MyData';
@@ -335,7 +333,7 @@ test('My Data Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   });
 });
 
-test.fixme('KPI Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test.fixme('KPI Widget', async ({ page }) => {
   test.slow(true);
 
   await test.step('Add KPI', async () => {
@@ -443,7 +441,6 @@ test.fixme('KPI Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
 
 test(
   'Total Data Assets Widget',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   async ({ page }) => {
     test.slow(true);
 
@@ -492,7 +489,6 @@ test(
 
 test(
   'Following Assets Widget',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   async ({ page }) => {
     test.slow(true);
 
@@ -563,7 +559,7 @@ test(
   }
 );
 
-test('Domains Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test('Domains Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.Domains';
@@ -616,7 +612,7 @@ test('Domains Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   });
 });
 
-test('My Tasks Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test('My Tasks Widget', async ({ page }) => {
   test.slow(true);
 
   await test.step('Create a task', async () => {
@@ -697,7 +693,6 @@ test('My Tasks Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
 
 test(
   'Data Products Widget',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   async ({ page }) => {
     test.slow(true);
 

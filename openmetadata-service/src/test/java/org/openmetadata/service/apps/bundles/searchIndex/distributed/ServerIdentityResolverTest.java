@@ -17,10 +17,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
 
 class ServerIdentityResolverTest {
 
@@ -132,5 +144,102 @@ class ServerIdentityResolverTest {
 
     // If it's a fallback ID, it should start with "om-server-"
     // If it's a Quartz ID, it could be various formats depending on Quartz AUTO setting
+  }
+
+  @Test
+  void testGetServerId_UsesQuartzInstanceIdWhenAvailable() throws SchedulerException {
+    AppScheduler appScheduler = mock(AppScheduler.class);
+    Scheduler scheduler = mock(Scheduler.class);
+    when(appScheduler.getScheduler()).thenReturn(scheduler);
+    when(scheduler.getSchedulerInstanceId()).thenReturn("quartz-node-1");
+
+    try (MockedStatic<AppScheduler> appSchedulerMock = mockStatic(AppScheduler.class)) {
+      appSchedulerMock.when(AppScheduler::getInstance).thenReturn(appScheduler);
+
+      ServerIdentityResolver resolver = ServerIdentityResolver.getInstance();
+
+      assertEquals("quartz-node-1", resolver.getServerId());
+      assertTrue(resolver.isThisServer("quartz-node-1"));
+    }
+  }
+
+  @Test
+  void testGetServerId_FallsBackToHostIdWhenSchedulerMissing() throws UnknownHostException {
+    AppScheduler appScheduler = mock(AppScheduler.class);
+    InetAddress inetAddress = mock(InetAddress.class);
+    when(appScheduler.getScheduler()).thenReturn(null);
+    when(inetAddress.getHostName()).thenReturn("resolver-host");
+
+    try (MockedStatic<AppScheduler> appSchedulerMock = mockStatic(AppScheduler.class);
+        MockedStatic<InetAddress> inetAddressMock = mockStatic(InetAddress.class)) {
+      appSchedulerMock.when(AppScheduler::getInstance).thenReturn(appScheduler);
+      inetAddressMock.when(InetAddress::getLocalHost).thenReturn(inetAddress);
+
+      String serverId = ServerIdentityResolver.getInstance().getServerId();
+
+      assertTrue(serverId.startsWith("om-server-resolver-host-"));
+    }
+  }
+
+  @Test
+  void testGetServerId_FallsBackToHostIdOnQuartzSchedulerException()
+      throws SchedulerException, UnknownHostException {
+    AppScheduler appScheduler = mock(AppScheduler.class);
+    Scheduler scheduler = mock(Scheduler.class);
+    InetAddress inetAddress = mock(InetAddress.class);
+    when(appScheduler.getScheduler()).thenReturn(scheduler);
+    when(scheduler.getSchedulerInstanceId()).thenThrow(new SchedulerException("quartz down"));
+    when(inetAddress.getHostName()).thenReturn("resolver-host");
+
+    try (MockedStatic<AppScheduler> appSchedulerMock = mockStatic(AppScheduler.class);
+        MockedStatic<InetAddress> inetAddressMock = mockStatic(InetAddress.class)) {
+      appSchedulerMock.when(AppScheduler::getInstance).thenReturn(appScheduler);
+      inetAddressMock.when(InetAddress::getLocalHost).thenReturn(inetAddress);
+
+      String serverId = ServerIdentityResolver.getInstance().getServerId();
+
+      assertTrue(serverId.startsWith("om-server-resolver-host-"));
+    }
+  }
+
+  @Test
+  void testGetServerId_UsesProcessHandleWhenRuntimeNameHasNoHost() throws UnknownHostException {
+    AppScheduler appScheduler = mock(AppScheduler.class);
+    RuntimeMXBean runtimeMXBean = mock(RuntimeMXBean.class);
+    InetAddress inetAddress = mock(InetAddress.class);
+    when(appScheduler.getScheduler()).thenReturn(null);
+    when(runtimeMXBean.getName()).thenReturn("plain-process-name");
+    when(inetAddress.getHostName()).thenReturn("resolver-host");
+
+    try (MockedStatic<AppScheduler> appSchedulerMock = mockStatic(AppScheduler.class);
+        MockedStatic<InetAddress> inetAddressMock = mockStatic(InetAddress.class);
+        MockedStatic<ManagementFactory> managementFactoryMock =
+            mockStatic(ManagementFactory.class)) {
+      appSchedulerMock.when(AppScheduler::getInstance).thenReturn(appScheduler);
+      inetAddressMock.when(InetAddress::getLocalHost).thenReturn(inetAddress);
+      managementFactoryMock.when(ManagementFactory::getRuntimeMXBean).thenReturn(runtimeMXBean);
+
+      String serverId = ServerIdentityResolver.getInstance().getServerId();
+
+      assertEquals("om-server-resolver-host-" + ProcessHandle.current().pid(), serverId);
+    }
+  }
+
+  @Test
+  void testGetServerId_FallsBackToGeneratedUuidWhenHostLookupFails() throws UnknownHostException {
+    try (MockedStatic<AppScheduler> appSchedulerMock = mockStatic(AppScheduler.class);
+        MockedStatic<InetAddress> inetAddressMock = mockStatic(InetAddress.class)) {
+      appSchedulerMock
+          .when(AppScheduler::getInstance)
+          .thenThrow(new IllegalStateException("scheduler unavailable"));
+      inetAddressMock
+          .when(InetAddress::getLocalHost)
+          .thenThrow(new UnknownHostException("unknown host"));
+
+      String serverId = ServerIdentityResolver.getInstance().getServerId();
+
+      assertTrue(serverId.startsWith("om-server-"));
+      UUID.fromString(serverId.substring("om-server-".length()));
+    }
   }
 }

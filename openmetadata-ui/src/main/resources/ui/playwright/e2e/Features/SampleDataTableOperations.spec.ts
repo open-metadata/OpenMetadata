@@ -12,7 +12,6 @@
  */
 
 import { expect } from '@playwright/test';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -24,7 +23,6 @@ import { test } from '../fixtures/pages';
 
 test.describe(
   'Sample Data Tab - Download and Delete Functionality',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     const tableWithData = new TableClass();
     const tableForDelete = new TableClass();

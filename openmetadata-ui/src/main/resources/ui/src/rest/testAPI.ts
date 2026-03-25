@@ -16,6 +16,10 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
+import {
+  BundleSuiteBulkAddRequestClass,
+  Mode as BundleSuiteBulkAddMode,
+} from '../generated/api/tests/bundleSuiteBulkAddRequest';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
@@ -210,6 +214,33 @@ export const addTestCaseToLogicalTestSuite = async (
     AddTestCaseToLogicalTestSuiteType,
     AxiosResponse<TestSuite>
   >(`${testCaseUrl}/logicalTestCases`, data);
+
+  return response.data;
+};
+
+export type AddTestCaseListSubmitPayload = {
+  selectAll: boolean;
+  includeIds: string[];
+  excludeIds: string[];
+};
+
+export const addTestCasesToLogicalTestSuiteBulk = async (
+  testSuiteId: string,
+  payload: AddTestCaseListSubmitPayload
+): Promise<TestSuite> => {
+  const request: BundleSuiteBulkAddRequestClass = {
+    testSuiteId,
+    mode: payload.selectAll
+      ? BundleSuiteBulkAddMode.All
+      : BundleSuiteBulkAddMode.IDS,
+    selection: payload.selectAll
+      ? { filter: { excludeIds: payload.excludeIds } }
+      : { ids: payload.includeIds },
+  };
+  const response = await APIClient.put<
+    BundleSuiteBulkAddRequestClass,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/logicalTestCases/bulk`, request);
 
   return response.data;
 };

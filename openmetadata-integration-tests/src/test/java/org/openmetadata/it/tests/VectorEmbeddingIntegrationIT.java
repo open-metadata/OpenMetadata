@@ -79,7 +79,7 @@ class VectorEmbeddingIntegrationIT {
       return;
     }
 
-    OpenSearchVectorService.init(openSearchClient, embeddingClient, "en");
+    OpenSearchVectorService.init(openSearchClient, embeddingClient);
     vectorService = OpenSearchVectorService.getInstance();
 
     mapper = new ObjectMapper();

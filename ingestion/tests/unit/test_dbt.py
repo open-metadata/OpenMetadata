@@ -687,6 +687,28 @@ class DbtUnitTest(TestCase):
             "top",
         )
         self.assertIsNone(get_manifest_column_name(SimpleNamespace(column_name=None)))
+        # SQL expressions in kwargs (e.g. Redshift's || concatenation operator)
+        # must not be used as column identifiers — they contain characters that
+        # are forbidden by the entityLink Pydantic pattern.
+        self.assertIsNone(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name=None,
+                    test_metadata=SimpleNamespace(
+                        kwargs={"column_name": "date || '-' || order_id"}
+                    ),
+                )
+            )
+        )
+        # Verify other forbidden chars (<, >) are also filtered
+        self.assertIsNone(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name=None,
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "col<value>"}),
+                )
+            )
+        )
 
     def test_dbt_compiled_query(self):
         expected_query = "sample customers compile code"
