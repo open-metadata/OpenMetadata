@@ -217,7 +217,9 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       {glossaryItems.length > 0 && (
         <>
           <Divider orientation="vertical" />
-          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
+          <div
+            className="tw:flex tw:shrink-0 tw:items-center tw:gap-2"
+            data-testid="glossary-filter-section">
             <Typography as="span" size="text-sm" weight="medium">
               {t('label.glossary')}:
             </Typography>
@@ -246,7 +248,9 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       {relationTypeItems.length > 0 && (
         <>
           <Divider orientation="vertical" />
-          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
+          <div
+            className="tw:flex tw:shrink-0 tw:items-center tw:gap-2"
+            data-testid="relation-type-filter-section">
             <Typography as="span" size="text-sm" weight="medium">
               {t('label.relationship-type')}:
             </Typography>
