@@ -104,15 +104,6 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     .waitFor({
       state: 'detached',
     });
-  const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=*&from=0&size=*'
-  );
-  const loaderPromise = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
   const searchBar = page.getByTestId('searchbar');
 
   await expect
@@ -122,19 +113,17 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
         await searchBar.fill('');
         await searchBar.fill(userName);
         await searchRequest;
-        await loaderPromise.catch(() => undefined);
+        await waitForAllLoadersToDisappear(page);
 
         return await page.getByTestId(userName).count();
       },
       {
         timeout: 60000,
-        intervals: [1000, 2000, 5000],
+        intervals: [2000, 3000, 5000],
         message: `Timed out waiting for user ${userName} to become visible in the user list`,
       }
     )
     .toBeGreaterThan(0);
-
-  await userResponse.catch(() => undefined);
   await page.getByTestId(userName).click();
 };
 

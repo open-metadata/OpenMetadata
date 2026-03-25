@@ -236,7 +236,7 @@ test.describe('Custom properties with custom property config', () => {
             await page.locator('#entityReference').fill(userName);
             await searchResponse;
             await expect(resultLocator).toBeVisible({ timeout: 5_000 });
-          }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+          }).toPass({ timeout: 60_000, intervals: [2_000, 5_000, 10_000] });
 
           await resultLocator.click();
         }

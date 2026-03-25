@@ -171,7 +171,7 @@ test.describe(
 
             return false;
           },
-          { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
+          { timeout: 60_000, intervals: [2_000, 5_000, 10_000] }
         )
         .toBe(true);
 

@@ -617,15 +617,12 @@ test.describe.serial('Team persona setting flow', () => {
 
       // Verify the user inherited the team's default persona
       await adminPage.getByTestId('persona-details-card').waitFor();
-      const defaultPersonaChip = adminPage
-        .locator(
-          '[data-testid="default-persona-chip"] [data-testid="tag-chip"]'
-        )
-        .first();
 
-      await expect(defaultPersonaChip).toContainText(
-        teamPersona.responseData.displayName
-      );
+      await expect(
+        adminPage.locator(
+          '[data-testid="default-persona-chip"] [data-testid="tag-chip"]'
+        ).filter({ hasText: teamPersona.responseData.displayName })
+      ).toBeVisible();
 
       // Verify the inherited icon is displayed
       await expect(

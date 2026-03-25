@@ -488,6 +488,7 @@ export const applyPipelineFromModal = async (
   );
 
   await clickEdgeBetweenNodes(page, fromNode, toNode);
+  await page.keyboard.press('Escape');
   await page.getByTestId('add-pipeline').click();
 
   const waitForSearchResponse = page.waitForResponse(

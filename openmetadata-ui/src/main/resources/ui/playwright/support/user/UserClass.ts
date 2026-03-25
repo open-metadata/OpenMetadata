@@ -54,6 +54,21 @@ export class UserClass {
       data: this.data,
     });
 
+    if (response.status() === 400) {
+      const errorBody = await response.json();
+      if (
+        errorBody.message?.includes('Already Exists') ||
+        errorBody.message?.includes('already exists')
+      ) {
+        const getResponse = await apiContext.get(
+          `/api/v1/users/name/${this.data.name}`
+        );
+        this.responseData = await getResponse.json();
+
+        return;
+      }
+    }
+
     if (!response.ok()) {
       throw new Error(
         `UserClass.create() failed with status ${response.status()}: ${await response.text()}`

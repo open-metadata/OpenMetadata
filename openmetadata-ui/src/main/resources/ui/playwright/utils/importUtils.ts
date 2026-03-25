@@ -773,18 +773,22 @@ export const fillRowDetails = async (
   await moveToNextColumnWithVerification(page);
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
-  const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?parent=Certification*'
-  );
-  await page.keyboard.press('Enter', { delay: 100 });
-  await certificationResponse;
+  await expect(async () => {
+    const certificationResponse = page.waitForResponse(
+      '/api/v1/tags?parent=Certification*'
+    );
+    await page.keyboard.press('Enter', { delay: 100 });
+    await certificationResponse;
 
-  await page
-    .getByTestId('update-certification')
-    .waitFor({ state: 'visible' });
+    await page
+      .getByTestId('update-certification')
+      .waitFor({ state: 'visible' });
+
+    const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
+    await certRadioBtn.waitFor({ state: 'visible', timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 
   const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
-  await certRadioBtn.waitFor({ state: 'visible' });
   await certRadioBtn.click();
   await page.getByTestId('update-certification').click();
 

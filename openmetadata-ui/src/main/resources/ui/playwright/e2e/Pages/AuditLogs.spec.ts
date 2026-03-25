@@ -309,6 +309,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const entityTypeFilter = page.getByTestId('search-dropdown-Entity Type');
       await entityTypeFilter.click();
 
+      await expect(
+        page.locator('.ant-dropdown-menu-item:visible').first()
+      ).toBeVisible();
+
       const auditLogResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/audit/logs') &&

@@ -72,13 +72,14 @@ export const visitEntityPage = async (data: {
     await page.getByTestId('welcome-screen-close-btn').click();
   }
 
-  await page.getByTestId('searchBox').fill(searchTerm);
-  await page.waitForResponse(
+  const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
       response.url().includes('exclude_source_fields')
   );
+  await page.getByTestId('searchBox').fill(searchTerm);
+  await searchResponse;
 
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await waitForAllLoadersToDisappear(page);
@@ -161,7 +162,7 @@ export const addOwner = async ({
           const searchRetry = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('user_search_index')
+              response.url().includes('index=user')
           );
           await ownerSearchInput.fill('');
           await ownerSearchInput.fill(owner);
@@ -213,10 +214,6 @@ export const addOwnerWithoutValidation = async ({
 
     if (!isTabAlreadySelected) {
       await usersTab.click();
-    }
-    // Only await if tab was not already selected — if already selected,
-    // the API response arrived before the listener was registered
-    if (!isTabAlreadySelected) {
       await userListResponse;
     }
   }
@@ -350,10 +347,9 @@ export const removeOwner = async ({
 
   await patchRequest;
 
-  await page
-    .getByTestId(dataTestId ?? 'owner-link')
-    .getByTestId(ownerName)
-    .waitFor({ state: 'hidden' });
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(ownerName)
+  ).toBeHidden();
 };
 
 export const addMultiOwner = async (data: {
@@ -791,9 +787,11 @@ export const assignTag = async (
     .first();
 
   await expect(tagButton).toBeVisible();
-  await tagButton.click();
 
-  await expect(page.locator('#tagsForm_tags')).toBeVisible();
+  await expect(async () => {
+    await tagButton.click();
+    await expect(page.locator('#tagsForm_tags')).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`

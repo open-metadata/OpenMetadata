@@ -1610,6 +1610,7 @@ export const removePortFromDataProduct = async (
  * Opens the manage menu, clicks rename, fills the new name and saves.
  */
 export const renameDomain = async (page: Page, newName: string) => {
+  await expect(page.getByTestId('manage-button')).toBeVisible();
   await page.getByTestId('manage-button').click();
   await page.getByTestId('rename-button-title').click();
 

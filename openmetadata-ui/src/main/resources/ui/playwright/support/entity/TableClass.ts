@@ -236,32 +236,53 @@ export class TableClass extends EntityClass {
         data: this.service,
       }
     );
-    if (!serviceResponse.ok()) {
+    let service;
+    if (serviceResponse.status() === 409) {
+      const getResponse = await apiContext.get(
+        `/api/v1/services/databaseServices/name/${this.service.name}`
+      );
+      service = await getResponse.json();
+    } else if (!serviceResponse.ok()) {
       throw new Error(
         `TableClass: service create failed (${serviceResponse.status()}): ${await serviceResponse.text()}`
       );
+    } else {
+      service = await serviceResponse.json();
     }
-    const service = await serviceResponse.json();
 
     const databaseResponse = await apiContext.post('/api/v1/databases', {
       data: { ...this.database, service: service.fullyQualifiedName },
     });
-    if (!databaseResponse.ok()) {
+    let database;
+    if (databaseResponse.status() === 409) {
+      const getResponse = await apiContext.get(
+        `/api/v1/databases/name/${service.fullyQualifiedName}.${this.database.name}`
+      );
+      database = await getResponse.json();
+    } else if (!databaseResponse.ok()) {
       throw new Error(
         `TableClass: database create failed (${databaseResponse.status()}): ${await databaseResponse.text()}`
       );
+    } else {
+      database = await databaseResponse.json();
     }
-    const database = await databaseResponse.json();
 
     const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
       data: { ...this.schema, database: database.fullyQualifiedName },
     });
-    if (!schemaResponse.ok()) {
+    let schema;
+    if (schemaResponse.status() === 409) {
+      const getResponse = await apiContext.get(
+        `/api/v1/databaseSchemas/name/${database.fullyQualifiedName}.${this.schema.name}`
+      );
+      schema = await getResponse.json();
+    } else if (!schemaResponse.ok()) {
       throw new Error(
         `TableClass: schema create failed (${schemaResponse.status()}): ${await schemaResponse.text()}`
       );
+    } else {
+      schema = await schemaResponse.json();
     }
-    const schema = await schemaResponse.json();
 
     const entityResponse = await apiContext.post('/api/v1/tables', {
       data: {
@@ -269,13 +290,19 @@ export class TableClass extends EntityClass {
         databaseSchema: schema.fullyQualifiedName,
       },
     });
-    if (!entityResponse.ok()) {
+    let entity;
+    if (entityResponse.status() === 409) {
+      const getResponse = await apiContext.get(
+        `/api/v1/tables/name/${schema.fullyQualifiedName}.${this.entity.name}`
+      );
+      entity = await getResponse.json();
+    } else if (!entityResponse.ok()) {
       throw new Error(
         `TableClass: table create failed (${entityResponse.status()}): ${await entityResponse.text()}`
       );
+    } else {
+      entity = await entityResponse.json();
     }
-
-    const entity = await entityResponse.json();
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;

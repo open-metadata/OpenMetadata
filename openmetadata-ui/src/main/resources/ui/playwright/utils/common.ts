@@ -594,6 +594,7 @@ export const closeFirstPopupAlert = async (page: Page) => {
 
   if ((await toastElement.count()) > 0) {
     await page.getByTestId('alert-icon-close').first().click();
+    await toastElement.first().waitFor({ state: 'detached', timeout: 5_000 }).catch(() => undefined);
   }
 };
 
