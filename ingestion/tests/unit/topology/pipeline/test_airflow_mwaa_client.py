@@ -354,7 +354,9 @@ class TestMWAAClientBasicMethods:
 
         assert result == expected_response
         mock_mwaa_client.invoke_rest_api.assert_called_once_with(
-            Name="test-env", Path="/dags/my_dag/dagRuns?limit=5", Method="GET"
+            Name="test-env",
+            Path="/dags/my_dag/dagRuns?order_by=-start_date&limit=5",
+            Method="GET",
         )
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
@@ -378,7 +380,9 @@ class TestMWAAClientBasicMethods:
         client.list_dag_runs("my_dag", limit=None)
 
         mock_mwaa_client.invoke_rest_api.assert_called_once_with(
-            Name="test-env", Path="/dags/my_dag/dagRuns", Method="GET"
+            Name="test-env",
+            Path="/dags/my_dag/dagRuns?order_by=-start_date",
+            Method="GET",
         )
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
