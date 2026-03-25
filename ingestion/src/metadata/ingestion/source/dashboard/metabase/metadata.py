@@ -16,7 +16,7 @@ from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.chart import Chart as LineageChart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -199,7 +199,7 @@ class MetabaseSource(DashboardServiceSource):
                     FullyQualifiedEntityName(
                         fqn.build(
                             self.metadata,
-                            entity_type=Chart,
+                            entity_type=LineageChart,
                             service_name=self.context.get().dashboard_service,
                             chart_name=chart,
                         )
@@ -415,8 +415,20 @@ class MetabaseSource(DashboardServiceSource):
                 fqn=to_fqn,
             )
 
+            chart_fqn = fqn.build(
+                self.metadata,
+                entity_type=LineageChart,
+                service_name=self.config.serviceName,
+                chart_name=str(chart_details.id),
+            )
+            chart_entity = self.metadata.get_by_name(
+                entity=LineageChart,
+                fqn=chart_fqn,
+            )
+
             for from_entity in from_entities or []:
                 yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+                yield self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
 
     def _yield_lineage_from_api(
         self,
@@ -474,5 +486,17 @@ class MetabaseSource(DashboardServiceSource):
             fqn=to_fqn,
         )
 
+        chart_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageChart,
+            service_name=self.config.serviceName,
+            chart_name=str(chart_details.id),
+        )
+        chart_entity = self.metadata.get_by_name(
+            entity=LineageChart,
+            fqn=chart_fqn,
+        )
+
         for from_entity in from_entities or []:
             yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+            yield self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)

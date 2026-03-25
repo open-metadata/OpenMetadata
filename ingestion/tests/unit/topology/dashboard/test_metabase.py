@@ -22,6 +22,7 @@ from unittest.mock import patch
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.chart import Chart as LineageChart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -78,6 +79,12 @@ Mock_DATABASE_SCHEMA_DEFAULT = "<default>"
 EXAMPLE_DASHBOARD = LineageDashboard(
     id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
     name="lineage_dashboard",
+    service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"),
+)
+
+EXAMPLE_CHART = LineageChart(
+    id="a1b2c3d4-1234-5678-abcd-ef0123456789",
+    name="lineage_chart",
     service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"),
 )
 
@@ -159,6 +166,20 @@ EXPECTED_LINEAGE = AddLineageRequest(
         toEntity=EntityReference(
             id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
             type="dashboard",
+        ),
+        lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
+    )
+)
+
+EXPECTED_CHART_LINEAGE = AddLineageRequest(
+    edge=EntitiesEdge(
+        fromEntity=EntityReference(
+            id="0bd6bd6f-7fea-4a98-98c7-3b37073629c7",
+            type="table",
+        ),
+        toEntity=EntityReference(
+            id="a1b2c3d4-1234-5678-abcd-ef0123456789",
+            type="chart",
         ),
         lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
     )
@@ -265,7 +286,6 @@ class MetabaseUnitTest(TestCase):
         self.assertEqual(EXPECTED_DASHBOARD, [res.right for res in results])
 
     @patch.object(fqn, "build", return_value=None)
-    @patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD)
     @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
     @patch.object(MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE)
     def test_yield_lineage(self, *_):
@@ -275,35 +295,64 @@ class MetabaseUnitTest(TestCase):
         self.metabase.client.get_database = lambda *_: None
         self.metabase.client.get_table = lambda *_: MetabaseTable(schema="test_schema", display_name="test_table")
 
-        # if no db service name then no lineage generated
-        result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_prefix=None
-        )
-        self.assertEqual(next(result).right, EXPECTED_LINEAGE)
+        # _yield_lineage_from_api: get_by_name called for dashboard then chart
+        # _yield_lineage_from_query: get_by_name called for dashboard then chart
+        # Total for MOCK_DASHBOARD_DETAILS (cards 1, 2): 4 calls → dashboard, chart, dashboard, chart
+        with patch.object(
+            OpenMetadata,
+            "get_by_name",
+            side_effect=[
+                EXAMPLE_DASHBOARD,
+                EXAMPLE_CHART,
+                EXAMPLE_DASHBOARD,
+                EXAMPLE_CHART,
+            ],
+        ):
+            result = self.metabase.yield_dashboard_lineage_details(
+                dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_prefix=None
+            )
+            lineage_results = [r.right for r in result if r.right is not None]
+            self.assertIn(EXPECTED_LINEAGE, lineage_results)
+            self.assertIn(EXPECTED_CHART_LINEAGE, lineage_results)
 
-        # test out _yield_lineage_from_api
-        mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
-        mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[0]]
-        result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard,
-            db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
-        )
-        self.assertEqual(next(result).right, EXPECTED_LINEAGE)
+        # test out _yield_lineage_from_api (card 1 only): 2 calls → dashboard, chart
+        with patch.object(
+            OpenMetadata,
+            "get_by_name",
+            side_effect=[EXAMPLE_DASHBOARD, EXAMPLE_CHART],
+        ):
+            mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
+            mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[0]]
+            result = self.metabase.yield_dashboard_lineage_details(
+                dashboard_details=mock_dashboard,
+                db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
+            )
+            lineage_results = [r.right for r in result if r.right is not None]
+            self.assertIn(EXPECTED_LINEAGE, lineage_results)
+            self.assertIn(EXPECTED_CHART_LINEAGE, lineage_results)
 
-        # test out _yield_lineage_from_query
-        mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[1]]
-        result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard,
-            db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
-        )
-        self.assertEqual(next(result).right, EXPECTED_LINEAGE)
+        # test out _yield_lineage_from_query (card 2 only): 2 calls → dashboard, chart
+        with patch.object(
+            OpenMetadata,
+            "get_by_name",
+            side_effect=[EXAMPLE_DASHBOARD, EXAMPLE_CHART],
+        ):
+            mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[1]]
+            result = self.metabase.yield_dashboard_lineage_details(
+                dashboard_details=mock_dashboard,
+                db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
+            )
+            lineage_results = [r.right for r in result if r.right is not None]
+            self.assertIn(EXPECTED_LINEAGE, lineage_results)
+            self.assertIn(EXPECTED_CHART_LINEAGE, lineage_results)
 
         # test out if no query type
-        mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[2]]
-        result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard, db_service_prefix="db.service.name"
-        )
-        self.assertEqual(list(result), [])
+        with patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD):
+            mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[2]]
+            result = self.metabase.yield_dashboard_lineage_details(
+                dashboard_details=mock_dashboard, db_service_prefix="db.service.name"
+            )
+            self.assertEqual(list(result), [])
 
     def test_include_owners_flag_enabled(self):
         """
