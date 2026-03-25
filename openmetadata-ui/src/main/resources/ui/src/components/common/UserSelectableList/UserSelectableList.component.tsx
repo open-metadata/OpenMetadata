@@ -27,11 +27,13 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
-import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../../utils/EntityUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
 import './user-select-dropdown.less';
