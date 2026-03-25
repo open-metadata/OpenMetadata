@@ -23,6 +23,9 @@ export async function waitForFirstPipelineStatusNotQueued(page: Page) {
     await page.reload();
     await waitForAllLoadersToDisappear(page);
 
+    await page.getByTestId('pipeline').click();
+    await waitForAllLoadersToDisappear(page);
+
     const row = page
       .getByRole('row')
       .filter({ has: page.getByTestId('logs-button') })

@@ -85,9 +85,6 @@ test.describe(
       });
 
       await test.step('Open Pipeline tab and click Logs for first pipeline', async () => {
-        await page.getByTestId('pipeline').click();
-        await waitForAllLoadersToDisappear(page);
-
         await waitForFirstPipelineStatusNotQueued(page);
 
         const pipelinesResponse = page.waitForResponse(
