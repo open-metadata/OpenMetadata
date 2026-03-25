@@ -69,7 +69,8 @@
     "lint:fix": "eslint src/ --fix",
     "pretty": "prettier --write src/",
     "pretty:base": "prettier --config './.prettierrc.yaml' --ignore-path './.prettierignore'",
-    "pretty:check": "prettier --check src/"
+    "pretty:check": "prettier --check src/",
+    "ui-checkstyle:changed": "bash scripts/ui-checkstyle-changed.sh"
   },
   "author": "OpenMetadata",
   "license": "Apache-2.0",

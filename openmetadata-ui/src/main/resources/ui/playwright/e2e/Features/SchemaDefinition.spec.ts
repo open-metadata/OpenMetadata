@@ -24,31 +24,26 @@ const query =
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe(
-  'Schema definition (views)',
-  () => {
-    test.beforeEach('pre-requisite', async ({ page }) => {
-      await redirectToHomePage(page);
-    });
+test.describe('Schema definition (views)', () => {
+  test.beforeEach('pre-requisite', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
-    test('Verify schema definition (views) of table entity', async ({
+  test('Verify schema definition (views) of table entity', async ({ page }) => {
+    await visitEntityPage({
       page,
-    }) => {
-      await visitEntityPage({
-        page,
-        searchTerm: table.term,
-        dataTestId: `${table.serviceName}-${table.term}`,
-      });
-
-      await page.click('[data-testid="schema_definition"]');
-      await page
-        .locator('.CodeMirror-line > [role="presentation"]')
-        .first()
-        .waitFor();
-
-      await expect(
-        page.locator('.CodeMirror-line > [role="presentation"]')
-      ).toContainText(query);
+      searchTerm: table.term,
+      dataTestId: `${table.serviceName}-${table.term}`,
     });
-  }
-);
+
+    await page.click('[data-testid="schema_definition"]');
+    await page
+      .locator('.CodeMirror-line > [role="presentation"]')
+      .first()
+      .waitFor();
+
+    await expect(
+      page.locator('.CodeMirror-line > [role="presentation"]')
+    ).toContainText(query);
+  });
+});
