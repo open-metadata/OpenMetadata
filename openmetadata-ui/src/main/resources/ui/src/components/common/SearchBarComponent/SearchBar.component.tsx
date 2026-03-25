@@ -77,6 +77,7 @@ const Searchbar = ({
     setLoadingState((pre) => (pre !== 'waiting' ? 'waiting' : pre));
     debounceOnSearch();
   };
+  console.log('dsgsdg');
 
   return (
     <div

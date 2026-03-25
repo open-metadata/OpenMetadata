@@ -163,6 +163,7 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         },
       ],
     });
+    console.log('here');
 
     // Add Tier To the topic 1
     await topic1.patch({
