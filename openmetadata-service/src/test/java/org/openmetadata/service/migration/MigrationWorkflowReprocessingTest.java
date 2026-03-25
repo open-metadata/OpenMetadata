@@ -103,6 +103,19 @@ class MigrationWorkflowReprocessingTest {
   }
 
   @Test
+  void testCopyWithReprocessingDoesNotDuplicateParsedStatements() throws IOException {
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn(null);
+    MigrationFile file = createMigrationDir("1.12.3", "ALTER TABLE test ADD COLUMN a INT;");
+    file.parseSQLFiles();
+
+    MigrationFile copied = file.copyWithReprocessing(true);
+    copied.parseSQLFiles();
+
+    assertEquals(1, copied.getSchemaChanges().size());
+    assertTrue(copied.isReprocessing());
+  }
+
+  @Test
   void testVersionComparison() throws IOException {
     MigrationFile v1123 = createMigrationDir("1.12.3", "");
     assertFalse(v1123.biggerThan("1.12.3"));

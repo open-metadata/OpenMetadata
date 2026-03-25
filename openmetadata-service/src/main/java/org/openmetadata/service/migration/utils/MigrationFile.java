@@ -65,6 +65,8 @@ public class MigrationFile implements Comparable<MigrationFile> {
   }
 
   public void parseSQLFiles() {
+    schemaChanges.clear();
+    postDDLScripts.clear();
     final ParsingContext parsingContext = new ParsingContext();
     Configuration configuration = new ClassicConfiguration();
     Parser parser = new PostgreSQLParser(configuration, parsingContext);

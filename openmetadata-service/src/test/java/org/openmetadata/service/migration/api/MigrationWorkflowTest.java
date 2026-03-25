@@ -39,6 +39,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationWorkflowContext;
+import org.openmetadata.service.migration.utils.FlywayMigrationFile;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 class MigrationWorkflowTest {
@@ -276,6 +277,25 @@ class MigrationWorkflowTest {
   }
 
   @Test
+  void flywayCopyWithReprocessingDoesNotDuplicateParsedStatements() throws Exception {
+    Path flywayRoot = Files.createDirectories(tempDir.resolve("flyway"));
+    Path postgresDir = Files.createDirectories(flywayRoot.resolve("org.postgresql.Driver"));
+    Path sqlFile = postgresDir.resolve("v001__baseline.sql");
+    Files.writeString(sqlFile, "CREATE TABLE sample(id INTEGER);");
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn(null);
+
+    FlywayMigrationFile file =
+        new FlywayMigrationFile(sqlFile.toFile(), migrationDAO, ConnectionType.POSTGRES, config);
+    file.parseSQLFiles();
+
+    MigrationFile copied = file.copyWithReprocessing(true);
+    copied.parseSQLFiles();
+
+    assertEquals(1, copied.getSchemaChanges().size());
+    assertTrue(copied.isReprocessing());
+  }
+
+  @Test
   void migrateFlywayToServerChangeLogsSkipsWhenAlreadyMigrated() throws Exception {
     when(handle.createQuery(anyString()).mapTo(Integer.class).one()).thenReturn(1);
 
@@ -394,7 +414,7 @@ class MigrationWorkflowTest {
             createMigrationFile("1.11.11", false),
             createMigrationFile("1.12.0", false),
             createMigrationFile("1.12.1", false),
-            createMigrationFile("1.12.1-collate", false),
+            createMigrationFile("1.12.1-collate", true),
             createMigrationFile("1.12.2", false));
 
     MigrationWorkflow workflow =
@@ -404,21 +424,28 @@ class MigrationWorkflowTest {
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
-    List<String> versions = result.stream().map(m -> m.version).toList();
-    assertEquals(List.of("1.12.1", "1.12.1-collate", "1.12.2"), versions);
-    assertTrue(result.get(0).isReprocessing());
-    assertFalse(result.get(1).isReprocessing());
+    List<String> nativeVersions =
+        result.stream().filter(m -> !m.isExtension).map(m -> m.version).toList();
+    List<String> extensionVersions =
+        result.stream().filter(m -> m.isExtension).map(m -> m.version).toList();
+
+    assertEquals(List.of("1.12.1", "1.12.2"), nativeVersions);
+    assertEquals(List.of("1.12.1-collate"), extensionVersions);
+    assertTrue(result.stream().anyMatch(m -> m.version.equals("1.12.1") && m.isReprocessing()));
+    assertTrue(
+        result.stream().anyMatch(m -> m.version.equals("1.12.1-collate") && !m.isReprocessing()));
   }
 
   @Test
-  void getMigrationsToApplyPrefersBaseVersionOverCollateForReprocessing() throws Exception {
+  void getMigrationsToApplyReprocessesCurrentNativeAndExtensionVersionsSeparately()
+      throws Exception {
     List<String> executedMigrations = List.of("1.11.10", "1.12.0", "1.12.1", "1.12.1-collate");
     List<MigrationFile> availableMigrations =
         List.of(
             createMigrationFile("1.11.10", false),
             createMigrationFile("1.12.0", false),
             createMigrationFile("1.12.1", false),
-            createMigrationFile("1.12.1-collate", false),
+            createMigrationFile("1.12.1-collate", true),
             createMigrationFile("1.12.2", false));
 
     MigrationWorkflow workflow =
@@ -428,10 +455,17 @@ class MigrationWorkflowTest {
     List<MigrationFile> result =
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
-    List<String> versions = result.stream().map(m -> m.version).toList();
-    assertEquals(List.of("1.12.1", "1.12.2"), versions);
-    assertTrue(result.get(0).isReprocessing());
-    assertFalse(result.get(1).isReprocessing());
+    List<String> nativeVersions =
+        result.stream().filter(m -> !m.isExtension).map(m -> m.version).toList();
+    List<String> extensionVersions =
+        result.stream().filter(m -> m.isExtension).map(m -> m.version).toList();
+
+    assertEquals(List.of("1.12.1", "1.12.2"), nativeVersions);
+    assertEquals(List.of("1.12.1-collate"), extensionVersions);
+    assertTrue(result.stream().anyMatch(m -> m.version.equals("1.12.1") && m.isReprocessing()));
+    assertTrue(
+        result.stream().anyMatch(m -> m.version.equals("1.12.1-collate") && m.isReprocessing()));
+    assertTrue(result.stream().anyMatch(m -> m.version.equals("1.12.2") && !m.isReprocessing()));
   }
 
   @Test

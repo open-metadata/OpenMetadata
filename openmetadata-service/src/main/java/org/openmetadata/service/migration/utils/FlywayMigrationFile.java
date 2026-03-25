@@ -54,6 +54,8 @@ public class FlywayMigrationFile extends MigrationFile {
 
   @Override
   public void parseSQLFiles() {
+    schemaChanges.clear();
+    postDDLScripts.clear();
     if (sqlFile.exists() && sqlFile.isFile()) {
       try {
         final ParsingContext parsingContext = new ParsingContext();
