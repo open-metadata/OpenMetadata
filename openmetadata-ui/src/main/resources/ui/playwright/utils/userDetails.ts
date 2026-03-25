@@ -33,10 +33,7 @@ export const redirectToUserPage = async (page: Page) => {
   await clickOutside(page);
 };
 
-export const openTeamEditorAndSelect = async (
-  page: Page,
-  teamName: string
-) => {
+export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   const teamHierarchyResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/teams/hierarchy?isJoinable=false') &&

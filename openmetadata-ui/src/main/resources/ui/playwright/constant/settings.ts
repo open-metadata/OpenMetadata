@@ -257,7 +257,8 @@ export const SETTINGS_OPTIONS_PATH = {
   // Governance
   [GlobalSettingOptions.GLOSSARY_TERM_RELATIONS]: [
     GlobalSettingsMenuCategory.GOVERNANCE,
-    `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.GLOSSARY_TERM_RELATIONS}`],
+    `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.GLOSSARY_TERM_RELATIONS}`,
+  ],
   // Learning Resources
   [GlobalSettingOptions.LEARNING_RESOURCES]: [
     GlobalSettingsMenuCategory.PREFERENCES,

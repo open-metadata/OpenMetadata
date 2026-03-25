@@ -65,7 +65,6 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
-
   await page
     .getByTestId('tags-container')
     .locator('.table-container')
@@ -136,7 +135,6 @@ export const addAssetsToTag = async (
       await expect
         .poll(
           async () => {
-
             return assetSelectionModal
               .locator(`[data-testid="table-data-card_${fqn}"]`)
               .count();

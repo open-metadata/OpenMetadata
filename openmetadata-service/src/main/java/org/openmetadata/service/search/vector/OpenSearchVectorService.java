@@ -37,8 +37,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     this.embeddingClient = embeddingClient;
   }
 
-  public static synchronized void init(
-      OpenSearchClient client, EmbeddingClient embeddingClient, String language) {
+  public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
     if (instance != null) {
       LOG.warn("OpenSearchVectorService already initialized, reinitializing");
     }
@@ -141,31 +140,36 @@ public class OpenSearchVectorService implements VectorIndexService {
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embed(query);
-      int overFetchSize = (from + size) * OVER_FETCH_MULTIPLIER;
-
-      String queryJson =
-          VectorSearchQueryBuilder.build(queryVector, overFetchSize, 0, k, filters, threshold);
-      String aliasName = getSearchAlias();
-      String responseBody = executeGenericRequest("POST", "/" + aliasName + "/_search", queryJson);
-
-      JsonNode root = MAPPER.readTree(responseBody);
-      JsonNode hitsNode = root.path("hits").path("hits");
-
       LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
-      for (JsonNode hit : hitsNode) {
-        double score = hit.path("_score").asDouble(0.0);
-        // When threshold > 0, OpenSearch already applies min_score at the KNN query level.
-        // This post-filter acts as a safety net for the no-threshold case (k-based retrieval),
-        // where low-scoring neighbors may still be returned to fill the k count.
-        if (score < threshold) {
-          continue;
+      int rawOffset = 0;
+      long totalHits = -1L;
+      boolean exhausted = false;
+      int requestedParents = from + size + 1; // Fetch one extra parent so hasMore is accurate.
+      int overFetchSize = Math.max(requestedParents * OVER_FETCH_MULTIPLIER, OVER_FETCH_MULTIPLIER);
+      if (threshold <= 0.0) {
+        overFetchSize = Math.min(overFetchSize, k);
+      }
+
+      String aliasName = getSearchAlias();
+      while (!exhausted && byParent.size() < requestedParents) {
+        String queryJson =
+            VectorSearchQueryBuilder.build(
+                queryVector, overFetchSize, rawOffset, k, filters, threshold);
+        String responseBody =
+            executeGenericRequest("POST", "/" + aliasName + "/_search", queryJson);
+
+        JsonNode root = MAPPER.readTree(responseBody);
+        JsonNode hitsNode = root.path("hits").path("hits");
+        totalHits = extractTotalHits(root);
+
+        int pageHitCount = collectSearchHits(hitsNode, threshold, byParent);
+        if (pageHitCount == 0) {
+          exhausted = true;
+          break;
         }
 
-        Map<String, Object> hitMap = MAPPER.convertValue(hit.path("_source"), Map.class);
-        hitMap.put("_score", score);
-
-        String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
-        byParent.computeIfAbsent(parentId, kVal -> new ArrayList<>()).add(hitMap);
+        rawOffset += pageHitCount;
+        exhausted = totalHits >= 0 ? rawOffset >= totalHits : pageHitCount < overFetchSize;
       }
 
       List<Map<String, Object>> results = new ArrayList<>();
@@ -183,12 +187,49 @@ public class OpenSearchVectorService implements VectorIndexService {
         parentCount++;
       }
 
+      boolean hasMore = byParent.size() > (from + parentCount);
       long tookMillis = System.currentTimeMillis() - start;
-      return new VectorSearchResponse(tookMillis, results);
+      return new VectorSearchResponse(
+          tookMillis, results, totalHits >= 0 ? totalHits : null, hasMore);
     } catch (Exception e) {
       LOG.error("Vector search failed: {}", e.getMessage(), e);
       throw new RuntimeException("Vector search failed", e);
     }
+  }
+
+  private static int collectSearchHits(
+      JsonNode hitsNode,
+      double threshold,
+      LinkedHashMap<String, List<Map<String, Object>>> byParent) {
+    int pageHitCount = 0;
+    for (JsonNode hit : hitsNode) {
+      pageHitCount++;
+      double score = hit.path("_score").asDouble(0.0);
+      // When threshold > 0, OpenSearch already applies min_score at the KNN query level.
+      // This post-filter acts as a safety net for the no-threshold case (k-based retrieval),
+      // where low-scoring neighbors may still be returned to fill the k count.
+      if (score < threshold) {
+        continue;
+      }
+
+      Map<String, Object> hitMap = MAPPER.convertValue(hit.path("_source"), Map.class);
+      hitMap.put("_score", score);
+
+      String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
+      byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>()).add(hitMap);
+    }
+    return pageHitCount;
+  }
+
+  private static long extractTotalHits(JsonNode root) {
+    JsonNode totalNode = root.path("hits").path("total");
+    if (totalNode.isIntegralNumber()) {
+      return totalNode.asLong(-1L);
+    }
+    if (totalNode.isObject()) {
+      return totalNode.path("value").asLong(-1L);
+    }
+    return -1L;
   }
 
   public String getExistingFingerprint(String indexName, String entityId) {

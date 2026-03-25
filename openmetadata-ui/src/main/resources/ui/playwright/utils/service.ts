@@ -56,10 +56,9 @@ export const visitServiceDetailsPage = async (
     await page.getByRole('tab').nth(1).click();
   }
 
-
   if (verifyHeader) {
-    await expect(
-      page.locator('[data-testid="entity-header-name"]')
-    ).toHaveText(service.displayName);
+    await expect(page.locator('[data-testid="entity-header-name"]')).toHaveText(
+      service.displayName
+    );
   }
 };

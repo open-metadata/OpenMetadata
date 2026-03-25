@@ -120,4 +120,56 @@ describe('searchAPI tests', () => {
 
     expect(res.hits.hits[0]._source.type).toBe('table');
   });
+
+  it('nlqSearch should forward query_filter', async () => {
+    const mockGet = jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ data: mockTableSearchResponse })
+      );
+
+    jest.mock('./index', () => ({
+      get: mockGet,
+    }));
+
+    const { nlqSearch } = require('./searchAPI');
+
+    await nlqSearch({
+      query: 'show tables',
+      searchIndex: SearchIndex.TABLE,
+      queryFilter: {
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  entityType: 'table',
+                },
+              },
+            ],
+          },
+        },
+      },
+      pageNumber: 1,
+      pageSize: 10,
+    });
+
+    const [, config] = mockGet.mock.calls[0];
+
+    expect(config.params.query_filter).toBe(
+      JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  entityType: 'table',
+                },
+              },
+            ],
+          },
+        },
+      })
+    );
+  });
 });

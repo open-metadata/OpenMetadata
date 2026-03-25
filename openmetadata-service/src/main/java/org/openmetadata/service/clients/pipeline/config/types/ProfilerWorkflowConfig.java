@@ -46,12 +46,16 @@ public class ProfilerWorkflowConfig implements WorkflowConfigTypeStrategy {
     if (metrics != null && !metrics.isEmpty()) {
       List<String> metricNames = new ArrayList<String>();
       for (MetricType metric : metrics) {
-        metricNames.add(metric.value());
+        if (metric != null) {
+          metricNames.add(metric.value());
+        }
       }
-      Map<String, Object> profilerDef = new HashMap<>();
-      profilerDef.put("name", "ingestion-profiler");
-      profilerDef.put("metrics", metricNames);
-      componentConfig.setAdditionalProperty("profiler", profilerDef);
+      if (!metricNames.isEmpty()) {
+        Map<String, Object> profilerDef = new HashMap<>();
+        profilerDef.put("name", "ingestion-profiler");
+        profilerDef.put("metrics", metricNames);
+        componentConfig.setAdditionalProperty("profiler", profilerDef);
+      }
     }
 
     return new Processor().withType("orm-profiler").withConfig(componentConfig);

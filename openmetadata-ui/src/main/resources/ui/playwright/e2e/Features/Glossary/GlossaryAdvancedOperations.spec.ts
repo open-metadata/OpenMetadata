@@ -26,7 +26,8 @@ import {
   redirectToHomePage,
   removeSingleSelectDomain,
 } from '../../../utils/common';
-import { addMultiOwner,
+import {
+  addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import {

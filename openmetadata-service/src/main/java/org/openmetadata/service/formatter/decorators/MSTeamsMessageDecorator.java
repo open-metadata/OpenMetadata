@@ -175,7 +175,9 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     body.add(columnSet);
     body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(facts).build());
     body.addAll(messageTextBlocks); // Add the containers with message TextBlocks
-    body.add(createEntityLink(outgoingMessage.getEntityUrl()));
+    if (!nullOrEmpty(outgoingMessage.getEntityUrl())) {
+      body.add(createEntityLink(outgoingMessage.getEntityUrl()));
+    }
     body.add(footerMessage);
 
     Attachment attachment =
@@ -286,7 +288,9 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
       body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(sampleDataFacts).build());
     }
 
-    body.add(createEntityLink(outgoingMessage.getEntityUrl()));
+    if (!nullOrEmpty(outgoingMessage.getEntityUrl())) {
+      body.add(createEntityLink(outgoingMessage.getEntityUrl()));
+    }
 
     body.add(footerMessage);
 

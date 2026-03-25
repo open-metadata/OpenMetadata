@@ -11,12 +11,20 @@
  *  limitations under the License.
  */
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
-import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
+import {
+  AddTestCaseListSubmitPayload,
+  ListTestCaseParamsBySearch,
+} from '../../../rest/testAPI';
+
+export interface AddTestCaseListChangePayload
+  extends AddTestCaseListSubmitPayload {
+  testCases: TestCase[];
+}
 
 export interface AddTestCaseModalProps {
   onCancel?: () => void;
-  onSubmit?: (testCases: TestCase[]) => void | Promise<void>;
-  onChange?: (testCases: TestCase[]) => void;
+  onSubmit?: (payload: AddTestCaseListSubmitPayload) => void | Promise<void>;
+  onChange?: (payload: AddTestCaseListChangePayload) => void;
   existingTest?: EntityReference[];
   cancelText?: string;
   submitText?: string;

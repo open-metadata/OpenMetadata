@@ -25,7 +25,8 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../../utils/common';
-import { visitEntityPage,
+import {
+  visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import { visitLineageTab } from '../../../utils/lineage';

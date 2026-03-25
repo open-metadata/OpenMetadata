@@ -159,8 +159,7 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
             <Card
               bordered={false}
               className="custom-navigation-tree-container"
-              title="Navigation Menus"
-            >
+              title="Navigation Menus">
               <Tree
                 autoExpandParent
                 blockNode

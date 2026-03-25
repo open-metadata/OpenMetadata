@@ -6,6 +6,7 @@ import static org.openmetadata.service.util.TestUtils.simulateWork;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.ArrayList;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,8 @@ public class MetricsErrorHandlingTest {
   @BeforeEach
   void setUp() {
     Metrics.globalRegistry.clear();
-    Metrics.globalRegistry.getRegistries().forEach(Metrics.globalRegistry::remove);
+    // Clear all registries to avoid conflicts
+    new ArrayList<>(Metrics.globalRegistry.getRegistries()).forEach(Metrics.globalRegistry::remove);
 
     SimpleMeterRegistry registry = new SimpleMeterRegistry();
     Metrics.addRegistry(registry);

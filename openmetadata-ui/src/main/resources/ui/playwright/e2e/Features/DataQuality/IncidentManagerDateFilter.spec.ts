@@ -225,6 +225,134 @@ test.describe(
 );
 
 /**
+ * Incident Manager Date Field Sort Dropdown
+ * @description Tests the date field sort dropdown (Created At / Updated At) on the Incidents tab.
+ */
+test.describe(
+  'Incident Manager - Date Field Sort Dropdown',
+  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Incident_Manager` },
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      const incidentListResponse = page.waitForResponse((response) =>
+        response
+          .url()
+          .includes(
+            '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
+          )
+      );
+      await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+      const response = await incidentListResponse;
+      expect(response.status()).toBe(200);
+    });
+
+    test('should show "Created At" as the default sort field label', async ({
+      page,
+    }) => {
+      // The trigger button should show the default label
+      const sortTrigger = page.locator('.sorting-dropdown');
+      await expect(sortTrigger).toBeVisible();
+      await expect(sortTrigger).toContainText('Created at');
+    });
+
+    test('should open sort field dropdown on click', async ({ page }) => {
+      const sortTrigger = page.locator('.sorting-dropdown');
+      await sortTrigger.click();
+
+      // Dropdown menu should appear with both options
+      await expect(
+        page.getByRole('menuitemradio', { name: 'Created at' })
+      ).toBeVisible();
+      await expect(
+        page.getByRole('menuitemradio', { name: 'Updated at' })
+      ).toBeVisible();
+    });
+
+    test('should switch to "Updated At" and call API with dateField=updatedAt', async ({
+      page,
+    }) => {
+      const sortTrigger = page.locator('.sorting-dropdown');
+      await sortTrigger.click();
+
+      // Intercept the API call triggered by the selection change
+      // Select Updated at
+      const apiResponsePromise = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
+            ) && response.url().includes('dateField=updatedAt')
+      );
+      await page.getByRole('menuitemradio', { name: 'Updated at' }).click();
+
+      const apiResponse = await apiResponsePromise;
+      expect(apiResponse.status()).toBe(200);
+
+      // Trigger should now show Updated at
+      await expect(sortTrigger).toContainText('Updated at');
+
+      // URL should contain dateField=updatedAt
+      await expect(page).toHaveURL(/dateField=updatedAt/);
+    });
+
+    test('should switch back to "Created at" and call API with dateField=timestamp', async ({
+      page,
+    }) => {
+      // First switch to Updated at
+      const sortTrigger = page.locator('.sorting-dropdown');
+      await sortTrigger.click();
+      const updatedAtRes = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
+            ) && response.url().includes('dateField=updatedAt')
+      );
+      await page.getByRole('menuitemradio', { name: 'Updated at' }).click();
+      await updatedAtRes;
+
+      // Now switch back to Created at
+      await sortTrigger.click();
+      const createdAtRes = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
+            ) && response.url().includes('dateField=timestamp')
+      );
+      await page.getByRole('menuitemradio', { name: 'Created at' }).click();
+      await createdAtRes;
+
+      await expect(sortTrigger).toContainText('Created at');
+      await expect(page).toHaveURL(/dateField=timestamp/);
+    });
+
+    test('should close sort dropdown after selecting an option', async ({
+      page,
+    }) => {
+      const sortTrigger = page.locator('.sorting-dropdown');
+      await sortTrigger.click();
+
+      // Menu should be visible
+      await expect(
+        page.getByRole('menuitemradio', { name: 'Updated at' })
+      ).toBeVisible();
+
+      // Select an option
+      await page.getByRole('menuitemradio', { name: 'Updated at' }).click();
+
+      // Menu should close
+      await expect(
+        page.getByRole('menuitemradio', { name: 'Updated at' })
+      ).not.toBeVisible();
+    });
+  }
+);
+
+/**
  * Incident Manager Date Filter - Sidebar Navigation
  * @description Tests the date filter functionality when accessing Incident Manager from the sidebar.
  */

@@ -32,7 +32,7 @@ export interface CalloutOptions {
    * Custom HTML attributes that should be added to the rendered HTML tag.
    */
   HTMLAttributes: {
-    [key: string]: any;
+    [key: string]: string | boolean | number | undefined;
   };
 }
 

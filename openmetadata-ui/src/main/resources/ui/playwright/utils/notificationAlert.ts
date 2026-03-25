@@ -32,7 +32,11 @@ import {
   waitForRecentEventsToFinishExecution,
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
-import { addMultiOwner, updateDescription, waitForAllLoadersToDisappear } from './entity';
+import {
+  addMultiOwner,
+  updateDescription,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { addExternalDestination } from './observabilityAlert';
 import { sidebarClick } from './sidebar';
 

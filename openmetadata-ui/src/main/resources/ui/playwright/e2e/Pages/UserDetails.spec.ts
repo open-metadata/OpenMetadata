@@ -12,7 +12,6 @@
  */
 
 import { test as base, expect, Page } from '@playwright/test';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
@@ -84,7 +83,6 @@ test.describe('User with different Roles', () => {
 
   test(
     'Admin user can edit teams from the user profile',
-    PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
     async ({ adminPage }) => {
       test.slow();
       await redirectToUserPage(adminPage);
@@ -153,7 +151,6 @@ test.describe('User with different Roles', () => {
 
     await adminPage.getByText(team.responseData.displayName).first().click();
 
-
     const domainResponse = adminPage.waitForResponse((response) =>
       response.url().includes('/api/v1/domains/hierarchy')
     );
@@ -194,7 +191,6 @@ test.describe('User with different Roles', () => {
     await teamsResponse;
 
     await visitUserProfilePage(adminPage, user3.getUserName());
-
 
     // Wait for the team to be visible in the teams section
     await adminPage

@@ -30,6 +30,7 @@ import {
 const mockUseCustomLocation = jest.fn();
 const mockQueryFilter = {};
 const mockUseAdvanceSearch = jest.fn();
+const mockUseSearchStore = jest.fn();
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => ({
   __esModule: true,
@@ -44,6 +45,10 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('./AdvanceSearchProvider/AdvanceSearchProvider.component', () => ({
   useAdvanceSearch: () => mockUseAdvanceSearch(),
+}));
+
+jest.mock('../../hooks/useSearchStore', () => ({
+  useSearchStore: () => mockUseSearchStore(),
 }));
 
 const mockOnFieldValueSelect = jest.fn();
@@ -169,6 +174,7 @@ describe('ExploreQuickFilters component', () => {
     jest.clearAllMocks();
     mockUseCustomLocation.mockReturnValue({ search: '' });
     mockUseAdvanceSearch.mockReturnValue({ queryFilter: mockQueryFilter });
+    mockUseSearchStore.mockReturnValue({ isNLPEnabled: false });
     (getAggregationOptions as jest.Mock).mockImplementation(
       mockGetAggregationOptions
     );
@@ -312,6 +318,8 @@ describe('ExploreQuickFilters component', () => {
           'test',
           '{"query":{"bool":{"must":[{"match":{"deleted":false}}]}}}',
           false,
+          false,
+          undefined,
           false
         );
       });
@@ -345,7 +353,8 @@ describe('ExploreQuickFilters component', () => {
           expect.any(String),
           false,
           false,
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -379,7 +388,8 @@ describe('ExploreQuickFilters component', () => {
           expect.any(String),
           false,
           false,
-          50
+          50,
+          false
         );
       });
     });
@@ -529,6 +539,8 @@ describe('ExploreQuickFilters component', () => {
           'test',
           expect.any(String),
           false,
+          false,
+          undefined,
           false
         );
       });
@@ -574,7 +586,37 @@ describe('ExploreQuickFilters component', () => {
           'test',
           expect.any(String),
           true,
+          false,
+          undefined,
           false
+        );
+      });
+    });
+
+    it('should call NLQ aggregate endpoint when NLP is enabled', async () => {
+      mockUseSearchStore.mockReturnValue({ isNLPEnabled: true });
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(<ExploreQuickFilters {...mockProps} aggregations={undefined} />);
+
+      const searchButton = screen.getByTestId('onSearch-database.name');
+
+      await act(async () => {
+        userEvent.click(searchButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'database.name',
+          'test',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          true
         );
       });
     });
@@ -725,6 +767,8 @@ describe('ExploreQuickFilters component', () => {
           expect.anything(),
           expect.any(String),
           expect.anything(),
+          expect.anything(),
+          undefined,
           expect.anything()
         );
       });
@@ -757,6 +801,8 @@ describe('ExploreQuickFilters component', () => {
           'test',
           expect.any(String),
           false,
+          false,
+          undefined,
           false
         );
       });

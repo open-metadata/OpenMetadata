@@ -307,7 +307,9 @@ test.describe('Ontology Explorer', () => {
       await expect(page.getByTestId('graph-settings-close')).not.toBeVisible();
     });
 
-    test('should display layout options in settings panel', async ({ page }) => {
+    test('should display layout options in settings panel', async ({
+      page,
+    }) => {
       await page.getByTestId('ontology-graph-settings').click();
       await expect(page.getByText('Layout')).toBeVisible();
     });
@@ -348,9 +350,10 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await page.getByRole('tab', { name: 'Hierarchy' }).click();
       await page.getByRole('tab', { name: 'Overview' }).click();
-      await expect(
-        page.getByRole('tab', { name: 'Overview' })
-      ).toHaveAttribute('aria-selected', 'true');
+      await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
     });
 
     test('should activate clear-filters when view mode changes from Overview', async ({
@@ -394,9 +397,10 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await page.getByRole('tab', { name: 'Hierarchy' }).click();
       await page.getByTestId('ontology-clear-filters').click();
-      await expect(
-        page.getByRole('tab', { name: 'Overview' })
-      ).toHaveAttribute('aria-selected', 'true');
+      await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
     });
 
     test('should reset search query when clear filters is clicked', async ({
@@ -439,8 +443,7 @@ test.describe('Ontology Explorer', () => {
       ).toBeVisible();
       await expect(
         page.getByRole('menuitemradio', {
-          name:
-            glossary.responseData.displayName ?? glossary.responseData.name,
+          name: glossary.responseData.displayName ?? glossary.responseData.name,
         })
       ).toBeVisible();
     });
@@ -453,8 +456,7 @@ test.describe('Ontology Explorer', () => {
       await glossarySection.getByRole('button').click();
       await page
         .getByRole('menuitemradio', {
-          name:
-            glossary.responseData.displayName ?? glossary.responseData.name,
+          name: glossary.responseData.displayName ?? glossary.responseData.name,
         })
         .click();
       await expect(page.getByTestId('ontology-clear-filters')).toBeVisible();
@@ -469,8 +471,7 @@ test.describe('Ontology Explorer', () => {
       await dropdownBtn.click();
       await page
         .getByRole('menuitemradio', {
-          name:
-            glossary.responseData.displayName ?? glossary.responseData.name,
+          name: glossary.responseData.displayName ?? glossary.responseData.name,
         })
         .click();
       await page.getByTestId('ontology-clear-filters').click();
@@ -508,9 +509,7 @@ test.describe('Ontology Explorer', () => {
       const count = await allItems.count();
       if (count > 1) {
         await allItems.nth(1).click();
-        await expect(
-          page.getByTestId('ontology-clear-filters')
-        ).toBeVisible();
+        await expect(page.getByTestId('ontology-clear-filters')).toBeVisible();
       }
     });
   });
@@ -592,9 +591,9 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     await waitForGraphLoaded(page);
     await applyGlossaryFilter(page, glossaryName);
 
-    await expect(
-      page.getByTestId('ontology-explorer-stats')
-    ).toContainText(/0\s*Relations?/i);
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /0\s*Relations?/i
+    );
 
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);
@@ -618,9 +617,9 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     await page.getByTestId('refresh').click();
     await waitForGraphLoaded(page);
 
-    await expect(
-      page.getByTestId('ontology-explorer-stats')
-    ).toContainText(/1\s*Relations?/i);
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /1\s*Relations?/i
+    );
 
     const apiContext2 = await getAuthContext(await getToken(page));
     await syncTerm1.patch(apiContext2, [
@@ -631,8 +630,8 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     await page.getByTestId('refresh').click();
     await waitForGraphLoaded(page);
 
-    await expect(
-      page.getByTestId('ontology-explorer-stats')
-    ).toContainText(/0\s*Relations?/i);
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /0\s*Relations?/i
+    );
   });
 });

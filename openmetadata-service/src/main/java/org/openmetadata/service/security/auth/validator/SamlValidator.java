@@ -181,7 +181,9 @@ public class SamlValidator {
       } else if (message.contains("callback")) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.SAML_SP_CALLBACK, message);
-      } else if (message.contains("IdP Entity ID")) {
+      } else if (message.contains("IdP Entity ID")
+          || message.contains("Okta Entity ID")
+          || message.contains("tenant ID")) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.SAML_IDP_ENTITY_ID, message);
       } else if (message.contains("IdP X509 Certificate")) {

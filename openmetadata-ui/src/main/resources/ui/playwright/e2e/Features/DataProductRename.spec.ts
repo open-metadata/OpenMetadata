@@ -155,7 +155,6 @@ test.describe('Data Product Rename', () => {
       )
       .click();
 
-
     // Navigate back to data product and verify assets tab still shows the asset
     await page.goBack();
 
@@ -330,7 +329,6 @@ test.describe('Data Product Rename', () => {
           `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
         )
         .click();
-
 
       // Navigate back and verify assets still there
       await page.goBack();

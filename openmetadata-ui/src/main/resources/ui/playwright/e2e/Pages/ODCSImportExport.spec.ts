@@ -1649,7 +1649,9 @@ version: "1.0.0"`;
       });
 
       // Open the dropdown to see all options
-      await page.getByTestId('schema-object-select').waitFor({ state: 'visible' });
+      await page
+        .getByTestId('schema-object-select')
+        .waitFor({ state: 'visible' });
       await page.getByTestId('schema-object-select').click();
 
       // Verify all three objects from the multi-object YAML are listed
@@ -1769,7 +1771,6 @@ version: "1.0.0"`;
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-
       // Verify SLA card is now visible after adding SLA
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
         timeout: 10000,
@@ -1856,7 +1857,6 @@ version: "1.0.0"`;
       );
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
-
 
       // Step 3: Export as ODCS YAML
       const downloadPromise = page.waitForEvent('download');
