@@ -12,10 +12,12 @@
 SAP Hana lineage module
 """
 from enum import Enum
+from typing import Optional
 
 from pydantic import Field, computed_field
 from typing_extensions import Annotated
 
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -33,6 +35,7 @@ class ViewType(Enum):
     # Artificially set to define calculationView internal models. This won't come from the ACTIVE_OBJECT table
     LOGICAL = "logical"
     DATA_BASE_TABLE = "table"
+    TABLE_FUNCTION = "TABLE_FUNCTION"
 
 
 class SapHanaLineageModel(BaseModel):
@@ -64,3 +67,12 @@ class SapHanaLineageModel(BaseModel):
             schema_name=SYS_BIC_SCHEMA_NAME,
             table_name=self.name,
         )
+
+
+class SapHanaStoredProcedure(BaseModel):
+    """SAP HANA stored procedure list query results"""
+
+    name: str = Field(..., alias="function_name")
+    schema_name: str = Field(...)
+    definition: Optional[str] = Field(None)
+    procedure_type: str = Field(default=StoredProcedureType.Function.value)
