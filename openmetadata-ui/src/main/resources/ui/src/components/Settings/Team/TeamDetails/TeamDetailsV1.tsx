@@ -1164,9 +1164,9 @@ const TeamDetailsV1 = ({
           label:
             typeof tab.label === 'string' ? (
               <TabsLabel
+                count={tab.count}
                 id={tab.key}
                 isActive={currentTab === tab.key}
-                count={tab.count}
                 name={tab.label}
               />
             ) : (
