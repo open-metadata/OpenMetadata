@@ -10,34 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Button } from "../components/base/buttons/button";
-import { Select } from "../components/base/select/select";
-import { Typography } from "../components/foundations/typography";
-import { Popover, PopoverTrigger } from "../components/application/popover/popover";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Button } from '../components/base/buttons/button';
+import { Select } from '../components/base/select/select';
+import { Typography } from '../components/foundations/typography';
+import {
+  Popover,
+  PopoverTrigger,
+} from '../components/application/popover/popover';
 
 const COUNTRY_ITEMS = [
-  { id: "us", label: "United States" },
-  { id: "gb", label: "United Kingdom" },
-  { id: "ca", label: "Canada" },
-  { id: "au", label: "Australia" },
-  { id: "de", label: "Germany" },
+  { id: 'us', label: 'United States' },
+  { id: 'gb', label: 'United Kingdom' },
+  { id: 'ca', label: 'Canada' },
+  { id: 'au', label: 'Australia' },
+  { id: 'de', label: 'Germany' },
 ];
 
 const ROLE_ITEMS = [
-  { id: "admin", label: "Admin", supportingText: "(full access)" },
-  { id: "editor", label: "Editor" },
-  { id: "viewer", label: "Viewer", supportingText: "(read only)" },
-  { id: "guest", label: "Guest", isDisabled: true },
+  { id: 'admin', label: 'Admin', supportingText: '(full access)' },
+  { id: 'editor', label: 'Editor' },
+  { id: 'viewer', label: 'Viewer', supportingText: '(read only)' },
+  { id: 'guest', label: 'Guest', isDisabled: true },
 ];
 
 const meta = {
-  title: "Components/Popover",
+  title: 'Components/Popover',
   component: Popover,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Popover>;
 
 export default meta;
@@ -67,9 +70,12 @@ export const WithSelectContent: StoryObj = {
           <Typography>
             <h4>Select a country</h4>
           </Typography>
-          <Select label="Country" placeholder="Select a country" items={COUNTRY_ITEMS}>
+          <Select
+            items={COUNTRY_ITEMS}
+            label="Country"
+            placeholder="Select a country">
             {(item) => (
-              <Select.Item key={item.id} id={item.id} textValue={item.label}>
+              <Select.Item id={item.id} key={item.id} textValue={item.label}>
                 {item.label}
               </Select.Item>
             )}
@@ -90,29 +96,39 @@ export const WithMultipleSelects: StoryObj = {
             <h4>Access settings</h4>
             <p>Configure the user's region and role.</p>
           </Typography>
-          <Select label="Country" placeholder="Select a country" items={COUNTRY_ITEMS}>
+          <Select
+            items={COUNTRY_ITEMS}
+            label="Country"
+            placeholder="Select a country">
             {(item) => (
-              <Select.Item key={item.id} id={item.id} textValue={item.label}>
+              <Select.Item id={item.id} key={item.id} textValue={item.label}>
                 {item.label}
               </Select.Item>
             )}
           </Select>
           <Select
-            label="Role"
-            placeholder="Select a role"
             hint="Role determines access level."
             items={ROLE_ITEMS}
-          >
+            label="Role"
+            placeholder="Select a role">
             {(item) => (
-              <Select.Item key={item.id} id={item.id} textValue={item.label} isDisabled={item.isDisabled}>
+              <Select.Item
+                id={item.id}
+                isDisabled={item.isDisabled}
+                key={item.id}
+                textValue={item.label}>
                 {item.label}
                 {item.supportingText && (
-                  <span className="tw:text-tertiary tw:text-sm tw:ml-1">{item.supportingText}</span>
+                  <span className="tw:text-tertiary tw:text-sm tw:ml-1">
+                    {item.supportingText}
+                  </span>
                 )}
               </Select.Item>
             )}
           </Select>
-          <Button color="primary" className="tw:w-full">Apply</Button>
+          <Button className="tw:w-full" color="primary">
+            Apply
+          </Button>
         </div>
       </Popover>
     </PopoverTrigger>
@@ -138,12 +154,12 @@ export const WithArrow: StoryObj = {
 export const Placements: StoryObj = {
   render: () => (
     <div className="tw:grid tw:grid-cols-2 tw:gap-6 tw:p-16">
-      {(["top", "bottom", "left", "right"] as const).map((placement) => (
+      {(['top', 'bottom', 'left', 'right'] as const).map((placement) => (
         <PopoverTrigger key={placement}>
-          <Button color="secondary" size="sm" className="tw:capitalize">
+          <Button className="tw:capitalize" color="secondary" size="sm">
             {placement}
           </Button>
-          <Popover placement={placement} arrow>
+          <Popover arrow placement={placement}>
             <div className="tw:px-4 tw:py-3">
               <Typography>
                 <p>

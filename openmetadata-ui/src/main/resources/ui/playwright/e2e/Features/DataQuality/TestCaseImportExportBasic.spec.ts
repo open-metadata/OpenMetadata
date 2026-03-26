@@ -14,15 +14,14 @@ import { expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import {
-  DOMAIN_TAGS,
-} from '../../../constant/config';
+import { DOMAIN_TAGS } from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { validateImportStatus } from '../../../utils/importUtils';
 import {
   cancelBulkEditAndVerifyRedirect,
@@ -39,7 +38,6 @@ import {
   waitForImportAsyncResponse,
 } from '../../../utils/testCases';
 import { test as base } from '../../fixtures/pages';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 // CSV test data as constants
 const VALID_TEST_CASES_CSV = `name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms
@@ -110,9 +108,7 @@ const getFqn = (table: TableClass): string => {
 test.describe(
   'Test Case Bulk Import/Export - Admin User',
   {
-    tag: [
-      `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`,
-    ],
+    tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`],
   },
   () => {
     const table = new TableClass();

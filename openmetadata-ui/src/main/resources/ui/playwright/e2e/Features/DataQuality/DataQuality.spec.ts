@@ -32,7 +32,12 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
+import {
+  ObservabilityFeature,
+  selectAddObservabilityFeature,
+} from '../../../utils/dataQuality';
 import { getCurrentMillis } from '../../../utils/dateTime';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,
@@ -40,11 +45,6 @@ import {
   visitDataQualityTab,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
-import {
-  ObservabilityFeature,
-  selectAddObservabilityFeature,
-} from '../../../utils/dataQuality';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 const table1 = new TableClass();
 const table2 = new TableClass();

@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Card } from "../components/base/card/card";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Card } from '../components/base/card/card';
 
 const meta = {
-  title: "Components/Card",
+  title: 'Components/Card',
   component: Card,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Card>;
 
 export default meta;
@@ -29,7 +29,9 @@ export const Default: Story = {
   render: () => (
     <Card>
       <div className="tw:p-6">
-        <h2 className="tw:text-lg tw:font-semibold tw:text-primary">Card title</h2>
+        <h2 className="tw:text-lg tw:font-semibold tw:text-primary">
+          Card title
+        </h2>
         <p className="tw:mt-2 tw:text-sm tw:text-secondary">
           This is a basic card with default styles applied.
         </p>
@@ -43,9 +45,12 @@ export const WithImage: Story = {
     <Card>
       <div className="tw:h-40 tw:bg-gradient-to-br tw:from-blue-400 tw:to-purple-500" />
       <div className="tw:p-6">
-        <h2 className="tw:text-lg tw:font-semibold tw:text-primary">Card with image</h2>
+        <h2 className="tw:text-lg tw:font-semibold tw:text-primary">
+          Card with image
+        </h2>
         <p className="tw:mt-2 tw:text-sm tw:text-secondary">
-          Content below an image that overflows the card edges cleanly due to overflow-hidden.
+          Content below an image that overflows the card edges cleanly due to
+          overflow-hidden.
         </p>
       </div>
     </Card>
@@ -56,9 +61,12 @@ export const WithFooter: Story = {
   render: () => (
     <Card>
       <div className="tw:p-6">
-        <h2 className="tw:text-lg tw:font-semibold tw:text-primary">Card with footer</h2>
+        <h2 className="tw:text-lg tw:font-semibold tw:text-primary">
+          Card with footer
+        </h2>
         <p className="tw:mt-2 tw:text-sm tw:text-secondary">
-          Cards can contain any content including headers, body text, and footers.
+          Cards can contain any content including headers, body text, and
+          footers.
         </p>
       </div>
       <div className="tw:border-t tw:border-secondary tw:px-6 tw:py-4">
@@ -72,7 +80,9 @@ export const CustomWidth: Story = {
   render: () => (
     <Card className="tw:max-w-80">
       <div className="tw:p-6">
-        <h2 className="tw:text-lg tw:font-semibold tw:text-primary">Narrower card</h2>
+        <h2 className="tw:text-lg tw:font-semibold tw:text-primary">
+          Narrower card
+        </h2>
         <p className="tw:mt-2 tw:text-sm tw:text-secondary">
           The max-width can be overridden via className.
         </p>

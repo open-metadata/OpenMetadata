@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import {
   EDIT_USER_FOR_TEAM_RULES,

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test as base, Browser, Page } from '@playwright/test';
+import { Browser, expect, Page, test as base } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
 
 const test = base.extend<{ germanLocalePage: Page }>({
