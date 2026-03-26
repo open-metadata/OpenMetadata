@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { GapValues } from '@/components';
+
 /**
  * Static map of gap values to Tailwind classes.
  * Use this instead of dynamic template literals (e.g. `tw:gap-${gap}`)
  * so that Tailwind's static scanner can detect all variants at build time.
  */
-export const gapClassMapping: Record<number, string> = {
+export const gapClassMapping: Record<GapValues, string> = {
   0: 'tw:gap-0',
   1: 'tw:gap-1',
   2: 'tw:gap-2',
@@ -54,7 +56,7 @@ export const gapClassMapping: Record<number, string> = {
  * Use this instead of dynamic template literals (e.g. `tw:gap-y-${gap}`)
  * so that Tailwind's static scanner can detect all variants at build time.
  */
-export const rowGapClassMapping: Record<number, string> = {
+export const rowGapClassMapping: Record<GapValues, string> = {
   0: 'tw:gap-y-0',
   1: 'tw:gap-y-1',
   2: 'tw:gap-y-2',
@@ -92,7 +94,7 @@ export const rowGapClassMapping: Record<number, string> = {
  * Use this instead of dynamic template literals (e.g. `tw:gap-x-${gap}`)
  * so that Tailwind's static scanner can detect all variants at build time.
  */
-export const colGapClassMapping: Record<number, string> = {
+export const colGapClassMapping: Record<GapValues, string> = {
   0: 'tw:gap-x-0',
   1: 'tw:gap-x-1',
   2: 'tw:gap-x-2',

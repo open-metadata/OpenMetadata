@@ -22,6 +22,37 @@ type Direction = 'row' | 'col' | 'row-reverse' | 'col-reverse';
 type Align = 'start' | 'center' | 'end' | 'stretch' | 'baseline';
 type Justify = 'start' | 'center' | 'end' | 'between' | 'around' | 'evenly';
 type Wrap = 'wrap' | 'nowrap' | 'wrap-reverse';
+export type GapValues =
+  | 0
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9
+  | 10
+  | 11
+  | 12
+  | 14
+  | 16
+  | 20
+  | 24
+  | 28
+  | 32
+  | 36
+  | 40
+  | 44
+  | 48
+  | 52
+  | 56
+  | 60
+  | 64
+  | 72
+  | 80
+  | 96;
 
 const DIRECTION_CLASS: Record<Direction, string> = {
   row: 'tw:flex-row',
@@ -58,9 +89,9 @@ export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
   align?: Align;
   justify?: Justify;
   wrap?: Wrap;
-  gap?: number;
-  rowGap?: number;
-  colGap?: number;
+  gap?: GapValues;
+  rowGap?: GapValues;
+  colGap?: GapValues;
   inline?: boolean;
   children?: ReactNode;
 }

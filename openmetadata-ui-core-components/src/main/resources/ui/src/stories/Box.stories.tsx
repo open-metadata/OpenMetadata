@@ -10,38 +10,58 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import React from "react";
-import { Box } from "../components/base/box/box";
+import type { Meta, StoryObj } from '@storybook/react';
+import React from 'react';
+import { Box } from '../components/base/box/box';
 
 const meta = {
-  title: "Components/Box",
+  title: 'Components/Box',
   component: Box,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     direction: {
       control: false,
-      table: { type: { summary: '"row" | "col" | "row-reverse" | "col-reverse"' } },
+      table: {
+        type: { summary: '"row" | "col" | "row-reverse" | "col-reverse"' },
+      },
     },
     align: {
       control: false,
-      table: { type: { summary: '"start" | "center" | "end" | "stretch" | "baseline"' } },
+      table: {
+        type: {
+          summary: '"start" | "center" | "end" | "stretch" | "baseline"',
+        },
+      },
     },
     justify: {
       control: false,
-      table: { type: { summary: '"start" | "center" | "end" | "between" | "around" | "evenly"' } },
+      table: {
+        type: {
+          summary:
+            '"start" | "center" | "end" | "between" | "around" | "evenly"',
+        },
+      },
     },
     wrap: {
       control: false,
       table: { type: { summary: '"wrap" | "nowrap" | "wrap-reverse"' } },
     },
-    gap: { control: false, table: { type: { summary: "number | string" } } },
-    rowGap: { control: false, table: { type: { summary: "number | string" } } },
-    colGap: { control: false, table: { type: { summary: "number | string" } } },
-    inline: { control: false, table: { type: { summary: "boolean" } } },
+    gap: {
+      control: false,
+      table: { type: { summary: '0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 14 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 72 | 80 | 96' } },
+    },
+    rowGap: {
+      control: false,
+      table: { type: { summary: '0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 14 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 72 | 80 | 96' } },
+    },
+    colGap: {
+      control: false,
+      table: { type: { summary: '0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 14 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 72 | 80 | 96' } },
+    },
+    inline: { control: false, table: { type: { summary: 'boolean' } } },
   },
 } satisfies Meta<typeof Box>;
 
@@ -74,9 +94,9 @@ export const Default: Story = {
 
 export const Directions: StoryObj = {
   render: () => (
-    <div style={{ width: 500, display: "flex", flexDirection: "column", gap: 24 }}>
-      {(["row", "col", "row-reverse", "col-reverse"] as const).map((dir) => (
-        <div key={dir} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ width: 500, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {(['row', 'col', 'row-reverse', 'col-reverse'] as const).map((dir) => (
+        <div key={dir} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Label>direction="{dir}"</Label>
           <Box direction={dir} gap={2}>
             <Tile>A</Tile>
@@ -91,11 +111,11 @@ export const Directions: StoryObj = {
 
 export const AlignItems: StoryObj = {
   render: () => (
-    <div style={{ width: 500, display: "flex", flexDirection: "column", gap: 24 }}>
-      {(["start", "center", "end", "stretch", "baseline"] as const).map((align) => (
-        <div key={align} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ width: 500, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {(['start', 'center', 'end', 'stretch', 'baseline'] as const).map((align) => (
+        <div key={align} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Label>align="{align}"</Label>
-          <Box align={align} gap={2} style={{ height: 80, border: "1px dashed #d0d5dd", borderRadius: 8, padding: 8 }}>
+          <Box align={align} gap={2} style={{ height: 80, border: '1px dashed #d0d5dd', borderRadius: 8, padding: 8 }}>
             <Tile>Short</Tile>
             <div className="tw:rounded tw:bg-blue-100 tw:p-3 tw:text-center tw:text-sm tw:font-medium tw:text-blue-700" style={{ paddingTop: 20, paddingBottom: 20 }}>
               Tall
@@ -110,11 +130,11 @@ export const AlignItems: StoryObj = {
 
 export const JustifyContent: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {(["start", "center", "end", "between", "around", "evenly"] as const).map((justify) => (
-        <div key={justify} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {(['start', 'center', 'end', 'between', 'around', 'evenly'] as const).map((justify) => (
+        <div key={justify} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Label>justify="{justify}"</Label>
-          <Box justify={justify} style={{ width: 400, border: "1px dashed #d0d5dd", borderRadius: 8, padding: 8 }}>
+          <Box justify={justify} style={{ width: 400, border: '1px dashed #d0d5dd', borderRadius: 8, padding: 8 }}>
             <Tile>A</Tile>
             <Tile>B</Tile>
             <Tile>C</Tile>
@@ -125,28 +145,11 @@ export const JustifyContent: StoryObj = {
   ),
 };
 
-export const GapNumeric: StoryObj = {
-  render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {([2, 4, 8] as const).map((gap) => (
-        <div key={gap} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <Label>gap={gap}</Label>
-          <Box gap={gap}>
-            <Tile>One</Tile>
-            <Tile>Two</Tile>
-            <Tile>Three</Tile>
-          </Box>
-        </div>
-      ))}
-    </div>
-  ),
-};
-
 export const GapScale: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {([1, 2, 4, 6, 8, 12, 16] as const).map((gap) => (
-        <div key={gap} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div key={gap} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Label>gap={gap}</Label>
           <Box gap={gap}>
             <Tile>One</Tile>
@@ -161,8 +164,8 @@ export const GapScale: StoryObj = {
 
 export const RowAndColGap: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <Label>rowGap={4} (vertical gap between rows)</Label>
         <Box direction="col" rowGap={4} style={{ width: 300 }}>
           <Box gap={2}>
@@ -179,7 +182,7 @@ export const RowAndColGap: StoryObj = {
           </Box>
         </Box>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <Label>colGap={6} (horizontal gap between columns)</Label>
         <Box colGap={6} style={{ width: 300 }}>
           <Tile>Left</Tile>
@@ -193,12 +196,12 @@ export const RowAndColGap: StoryObj = {
 
 export const Wrap: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {(["wrap", "nowrap", "wrap-reverse"] as const).map((w) => (
-        <div key={w} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {(['wrap', 'nowrap', 'wrap-reverse'] as const).map((w) => (
+        <div key={w} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Label>wrap="{w}"</Label>
-          <Box wrap={w} gap={2} style={{ width: 200, border: "1px dashed #d0d5dd", borderRadius: 8, padding: 8 }}>
-            {["One", "Two", "Three", "Four", "Five"].map((n) => (
+          <Box wrap={w} gap={2} style={{ width: 200, border: '1px dashed #d0d5dd', borderRadius: 8, padding: 8 }}>
+            {['One', 'Two', 'Three', 'Four', 'Five'].map((n) => (
               <Tile key={n}>{n}</Tile>
             ))}
           </Box>
@@ -211,14 +214,14 @@ export const Wrap: StoryObj = {
 export const Inline: StoryObj = {
   render: () => (
     <div style={{ maxWidth: 500 }}>
-      <p className="tw:text-sm tw:text-secondary" style={{ margin: "0 0 16px 0" }}>
+      <p className="tw:text-sm tw:text-secondary" style={{ margin: '0 0 16px 0' }}>
         Block flex (default): takes full width.
       </p>
       <Box gap={2} className="tw:mb-4">
         <Tile>A</Tile>
         <Tile>B</Tile>
       </Box>
-      <p className="tw:text-sm tw:text-secondary" style={{ margin: "16px 0" }}>
+      <p className="tw:text-sm tw:text-secondary" style={{ margin: '16px 0' }}>
         Inline flex: sits inside text flow —{" "}
         <Box inline gap={1} className="tw:align-middle">
           <Tile>X</Tile>
