@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { HTMLAttributes, ReactNode } from 'react';
 import { cx } from '@/utils/cx';
+import type { HTMLAttributes, ReactNode } from 'react';
 
 export type DividerOrientation = 'horizontal' | 'vertical';
 export type DividerLabelAlignment = 'start' | 'center' | 'end';
 
-export interface DividerProps extends HTMLAttributes<HTMLDivElement> {
+export interface DividerProps extends HTMLAttributes<HTMLHRElement> {
   orientation?: DividerOrientation;
   label?: ReactNode;
   labelAlign?: DividerLabelAlignment;
@@ -31,38 +31,35 @@ export const Divider = ({
 }: DividerProps) => {
   if (orientation === 'vertical') {
     return (
-      <div
+      <hr
         {...props}
         aria-orientation="vertical"
         className={cx(
           'tw:self-stretch tw:w-px tw:shrink-0 tw:bg-border-secondary',
           className
         )}
-        role="separator"
       />
     );
   }
 
   if (!label) {
     return (
-      <div
+      <hr
         {...props}
         aria-orientation="horizontal"
         className={cx(
           'tw:w-full tw:h-px tw:shrink-0 tw:bg-border-secondary',
           className
         )}
-        role="separator"
       />
     );
   }
 
   return (
-    <div
+    <hr
       {...props}
       aria-orientation="horizontal"
-      className={cx('tw:flex tw:items-center tw:w-full tw:gap-2', className)}
-      role="separator">
+      className={cx('tw:flex tw:items-center tw:w-full tw:gap-2', className)}>
       {labelAlign !== 'start' && (
         <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
       )}
@@ -72,7 +69,7 @@ export const Divider = ({
       {labelAlign !== 'end' && (
         <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
       )}
-    </div>
+    </hr>
   );
 };
 
