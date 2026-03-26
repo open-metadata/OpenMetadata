@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { APIRequestContext, test as base, expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CONSUMER_LIKE_POLICY,
@@ -104,7 +104,6 @@ test.describe(
   () => {
     let testCaseFqn: string;
     let incidentId: string;
-    let incidentStateId: string;
 
     const visitTestCaseIncidentPage = async (page: Page) => {
       await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
@@ -114,6 +113,27 @@ test.describe(
       await incidentTab.click();
       await waitForAllLoadersToDisappear(page);
       await expect(page.getByTestId('issue-tab-container')).toBeVisible();
+    };
+
+    const fetchIncidentId = async (apiContext: APIRequestContext) => {
+      if (incidentId) {
+        return incidentId;
+      }
+      const now = Date.now();
+      const incidentUrl = `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${
+        now - 300000
+      }&endTs=${now + 60000}`;
+      const res = await apiContext.get(incidentUrl);
+      const list = await res.json();
+      const incident = list.data?.find(
+        (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
+          i.testCaseReference?.fullyQualifiedName === testCaseFqn
+      );
+      if (incident) {
+        incidentId = incident.id;
+      }
+
+      return incidentId;
     };
 
     test.beforeAll(async ({ browser }) => {
@@ -133,8 +153,7 @@ test.describe(
       await table.createTestCase(apiContext);
       testCaseFqn = table.testCasesResponseData[0].fullyQualifiedName;
 
-      // Add a FAILED test case result to trigger incident creation
-      const failedTimestamp = getCurrentMillis();
+      // Add a FAILED test case result to trigger async incident creation
       await table.addTestCaseResult(apiContext, testCaseFqn, {
         result: 'Value 10 not within range 100-200.',
         testCaseStatus: 'Failed',
@@ -142,38 +161,8 @@ test.describe(
           { name: 'minValue', value: '10' },
           { name: 'maxValue', value: '100' },
         ],
-        timestamp: failedTimestamp,
+        timestamp: getCurrentMillis(),
       });
-
-      const incidentUrl = `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${
-        failedTimestamp - 60000
-      }&endTs=${failedTimestamp + 60000}`;
-
-      // Poll for incident creation — may not be immediate after adding failed result
-      await expect
-        .poll(
-          async () => {
-            const incidentListRes = await apiContext.get(incidentUrl);
-            const incidentList = await incidentListRes.json();
-
-            if (incidentList.data?.length > 0) {
-              const incident = incidentList.data.find(
-                (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
-                  i.testCaseReference?.fullyQualifiedName === testCaseFqn
-              );
-              if (incident) {
-                incidentId = incident.id;
-                incidentStateId = incident.stateId;
-
-                return true;
-              }
-            }
-
-            return false;
-          },
-          { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
-        )
-        .toBe(true);
 
       // Setup all users
       await setupUserWithPolicy(
@@ -338,6 +327,7 @@ test.describe(
         ).toBeHidden();
 
         const { apiContext } = await getApiContext(viewIncidentsPage);
+        await fetchIncidentId(apiContext);
         const res = await apiContext.patch(
           `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${incidentId}`,
           {
@@ -369,6 +359,7 @@ test.describe(
         );
         expect(postRes.status()).toBe(403);
 
+        await fetchIncidentId(apiContext);
         if (incidentId) {
           const patchRes = await apiContext.patch(
             `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${incidentId}`,

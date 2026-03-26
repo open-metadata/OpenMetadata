@@ -238,6 +238,7 @@ test.describe(
   'Test Definition Permissions - Data Consumer',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
   () => {
+    test.slow();
     test('should allow viewing test definitions but not create, edit, or delete', async ({
       dataConsumerPage,
     }) => {

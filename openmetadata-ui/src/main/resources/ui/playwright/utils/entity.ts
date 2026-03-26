@@ -197,35 +197,27 @@ export const addOwnerWithoutValidation = async ({
   initiatorId?: string;
 }) => {
   await page.getByTestId(initiatorId).click();
+
   if (type === 'Users') {
     const usersTab = page.getByRole('tab', { name: type });
     const isTabAlreadySelected =
       (await usersTab.getAttribute('aria-selected')) === 'true';
 
     if (!isTabAlreadySelected) {
-      const userListResponse = page.waitForResponse(
-        '/api/v1/search/query?q=&index=user&*'
-      );
       await usersTab.click();
-      await userListResponse;
     }
   }
   await waitForAllLoadersToDisappear(page);
 
-  const ownerSearchBar = await page
-    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
-    .isVisible();
-
-  if (!ownerSearchBar) {
-    await page.getByRole('tab', { name: type }).click();
-  }
+  const ownerSearchBar = page.getByTestId(
+    `owner-select-${lowerCase(type)}-search-bar`
+  );
+  await expect(ownerSearchBar).toBeVisible();
 
   const searchUser = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
-  await page
-    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
-    .fill(owner);
+  await ownerSearchBar.fill(owner);
   await searchUser;
 
   if (type === 'Teams') {

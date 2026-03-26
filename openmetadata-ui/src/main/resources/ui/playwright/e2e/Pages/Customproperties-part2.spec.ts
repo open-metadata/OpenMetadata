@@ -223,17 +223,18 @@ test.describe('Custom properties with custom property config', () => {
         await editButton.click();
 
         for (const user of users) {
-          const userName = user.getUserName();
+          const searchTerm = user.data.firstName;
           const displayName = user.getUserDisplayName();
           const resultLocator = page.locator(`[data-testid="${displayName}"]`);
 
           await expect(async () => {
             const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
-              userName
+              searchTerm
             )}*`;
-            const searchResponse = page.waitForResponse(searchApi);
+
             await page.locator('#entityReference').clear();
-            await page.locator('#entityReference').fill(userName);
+            const searchResponse = page.waitForResponse(searchApi);
+            await page.locator('#entityReference').fill(searchTerm);
             await searchResponse;
             await expect(resultLocator).toBeVisible({ timeout: 5_000 });
           }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });

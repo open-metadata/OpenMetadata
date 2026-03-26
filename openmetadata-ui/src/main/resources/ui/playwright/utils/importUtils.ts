@@ -199,7 +199,7 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.click('[data-testid="tag-selector"]');
+  // await page.click('[data-testid="tag-selector"]');
   const waitForQueryResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
@@ -772,14 +772,18 @@ export const fillRowDetails = async (
   await moveToNextColumnWithVerification(page);
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
-  const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?parent=Certification*'
-  );
-  await page.keyboard.press('Enter', { delay: 100 });
-  await certificationResponse;
-
   const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
-  await certRadioBtn.waitFor({ state: 'visible' });
+
+  await expect(async () => {
+    const certificationResponse = page.waitForResponse(
+      '/api/v1/tags?parent=Certification*'
+    );
+    await page.keyboard.press('Enter', { delay: 100 });
+    await certificationResponse;
+
+    await expect(certRadioBtn).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 30000, intervals: [2000, 3000, 5000] });
+
   await certRadioBtn.click();
   await page.getByTestId('update-certification').click();
 
