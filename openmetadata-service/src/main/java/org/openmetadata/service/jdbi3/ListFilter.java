@@ -13,6 +13,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -37,6 +38,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getIncludeCondition(tableName));
     conditions.add(getDatabaseCondition(tableName));
     conditions.add(getDatabaseSchemaCondition(tableName));
+    conditions.add(getTableNameRegexCondition(tableName));
     conditions.add(getServiceCondition(tableName));
     conditions.add(getServiceTypeCondition(tableName));
     conditions.add(getPipelineTypeCondition(tableName));
@@ -247,23 +249,53 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getDatabaseCondition(String tableName) {
     String database = queryParams.get("database");
-    return database == null ? "" : getFqnPrefixCondition(tableName, database, "database");
+    String databaseRegex = queryParams.get("databaseRegex");
+    if (nullOrEmpty(database) && nullOrEmpty(databaseRegex)) {
+      return "";
+    }
+    String hashCondition = "TRUE";
+    String regexCondition = "TRUE";
+    if (!nullOrEmpty(database)) {
+      hashCondition = getFqnPrefixCondition(tableName, database, "database");
+    }
+    if (!nullOrEmpty(databaseRegex)) {
+      regexCondition = getFqnRegexCondition(tableName, databaseRegex, "database");
+    }
+    return String.format("(%s AND %s)", hashCondition, regexCondition);
   }
 
   public String getDatabaseSchemaCondition(String tableName) {
     String databaseSchema = queryParams.get("databaseSchema");
-    if (databaseSchema == null) {
+    String databaseSchemaRegex = queryParams.get("databaseSchemaRegex");
+    if (nullOrEmpty(databaseSchema) && nullOrEmpty(databaseSchemaRegex)) {
       return "";
     }
-
-    if (!nullOrEmpty(tableName)
-        && (tableName.equals("table_entity") || tableName.equals("stored_procedure_entity"))) {
-      String databaseSchemaHash = FullyQualifiedName.buildHash(databaseSchema);
-      queryParams.put("databaseSchemaHashExact", databaseSchemaHash);
-      return String.format("%s.databaseSchemaHash = :databaseSchemaHashExact", tableName);
+    String hashCondition = "TRUE";
+    String regexCondition = "TRUE";
+    if (!nullOrEmpty(databaseSchema)) {
+      if (!nullOrEmpty(tableName)
+          && (tableName.equals("table_entity") || tableName.equals("stored_procedure_entity"))) {
+        String databaseSchemaHash = FullyQualifiedName.buildHash(databaseSchema);
+        queryParams.put("databaseSchemaHashExact", databaseSchemaHash);
+        // Exact hash match — regex is not applied for these entity tables
+        return String.format("%s.databaseSchemaHash = :databaseSchemaHashExact", tableName);
+      }
+      hashCondition = getFqnPrefixCondition(tableName, databaseSchema, "databaseSchema");
     }
 
-    return getFqnPrefixCondition(tableName, databaseSchema, "databaseSchema");
+    if (!nullOrEmpty(databaseSchemaRegex)) {
+      regexCondition = getFqnRegexCondition(tableName, databaseSchemaRegex, "databaseSchema");
+    }
+
+    return String.format("(%s AND %s)", hashCondition, regexCondition);
+  }
+
+  public String getTableNameRegexCondition(String tableName) {
+    String tableParamRegex = queryParams.get("tableRegex");
+    if (nullOrEmpty(tableParamRegex)) {
+      return "";
+    }
+    return getFqnRegexCondition(tableName, tableParamRegex, "table");
   }
 
   public String getServiceCondition(String tableName) {
@@ -603,6 +635,39 @@ public class ListFilter extends Filter<ListFilter> {
     return tableName == null
         ? String.format("fqnHash LIKE :%s", paramName + "Hash")
         : String.format("%s.fqnHash LIKE :%s", tableName, paramName + "Hash");
+  }
+
+  private String getFqnRegexCondition(String tableName, String regex, String paramName) {
+    String fieldPath = queryParams.get(paramName + "RegexField");
+    if (nullOrEmpty(fieldPath)) {
+      fieldPath = "name";
+    }
+    if (Boolean.parseBoolean(queryParams.get("regexFilterByFqn"))) {
+      int lastDot = fieldPath.lastIndexOf(".name");
+      if (lastDot == -1) {
+        fieldPath = "fullyQualifiedName";
+      } else {
+        fieldPath = fieldPath.substring(0, lastDot) + ".fullyQualifiedName";
+      }
+    }
+    boolean exclude = RegexMode.EXCLUDE.value().equalsIgnoreCase(queryParams.get("regexMode"));
+    queryParams.put(paramName + "Regex", regex);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      String expr =
+          tableName == null
+              ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s'))", fieldPath)
+              : String.format("JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.%s'))", tableName, fieldPath);
+      String operator = exclude ? "NOT REGEXP" : "REGEXP";
+      return String.format("%s %s :%s", expr, operator, paramName + "Regex");
+    } else {
+      String pgPath = "{" + fieldPath.replace(".", ",") + "}";
+      String expr =
+          tableName == null
+              ? String.format("json #>> '%s'", pgPath)
+              : String.format("%s.json #>> '%s'", tableName, pgPath);
+      String operator = exclude ? "!~" : "~";
+      return String.format("%s %s :%s", expr, operator, paramName + "Regex");
+    }
   }
 
   private String getWebhookTypePrefixCondition(String tableName, String typePrefix) {

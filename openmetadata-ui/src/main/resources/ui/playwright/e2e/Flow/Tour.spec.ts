@@ -194,9 +194,9 @@ test.describe(
         .locator('.whats-new-alert-close')
         .click();
       await page.getByText('Take a product tour to get started!').click();
+      await page.waitForURL('**/tour');
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await page.waitForURL('**/tour');
 
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,

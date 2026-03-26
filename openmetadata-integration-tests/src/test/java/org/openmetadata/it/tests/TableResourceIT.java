@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -83,6 +84,8 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.DatabaseSchemas;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -4766,6 +4769,312 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             "Historical version should contain UNIQUE constraint type");
       }
     }
+  }
+
+  @Test
+  void testRegexListTable(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("custom_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("custom_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    DatabaseSchema schema2 =
+        DatabaseSchemas.create().name("new_schema").in(database.getFullyQualifiedName()).execute();
+    CreateTable createTable =
+        new CreateTable()
+            .withName("regex_listing")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(ColumnBuilder.of("code", "VARCHAR").dataLength(50).build()));
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("regex_listing_2")
+            .withDatabaseSchema(schema2.getFullyQualifiedName())
+            .withColumns(List.of(ColumnBuilder.of("code", "VARCHAR").dataLength(50).build()));
+    SdkClients.adminClient().tables().createOrUpdate(createTable);
+    SdkClients.adminClient().tables().createOrUpdate(createTable2);
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            "custom.*")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "List response should not be empty");
+    assertTrue(
+        tables.stream().allMatch(t -> t.getDatabaseSchema().getName().startsWith("custom")),
+        "All returned tables should have a schema name starting with 'custom'");
+  }
+
+  @Test
+  void testRegexListTable_tableRegex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("tbl_regex_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("tbl_regex_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("orders_us")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("orders_eu")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("customers")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "tableRegex",
+                            ".*orders.*")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "Should find tables matching orders regex");
+    assertTrue(
+        tables.stream().allMatch(t -> t.getName().contains("orders")),
+        "All returned tables should contain 'orders' in name");
+  }
+
+  @Test
+  void testRegexListTable_noMatch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("nomatch_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("nomatch_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("my_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            ".*nonexistent.*")));
+    assertTrue(response.getData().isEmpty(), "No tables should match a nonexistent schema regex");
+  }
+
+  @Test
+  void testRegexListTable_combinedSchemaAndTableRegex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("combo_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema prodSchema =
+        DatabaseSchemas.create().name("prod_schema").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchema devSchema =
+        DatabaseSchemas.create().name("dev_schema").in(database.getFullyQualifiedName()).execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("users_active")
+                .withDatabaseSchema(prodSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("users_inactive")
+                .withDatabaseSchema(prodSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("users_active")
+                .withDatabaseSchema(devSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            ".*prod.*",
+                            "tableRegex",
+                            ".*active$")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "Should find tables matching both schema and table regex");
+    assertTrue(
+        tables.stream().allMatch(t -> t.getDatabaseSchema().getName().contains("prod")),
+        "All returned tables should be in a prod schema");
+    assertTrue(
+        tables.stream().allMatch(t -> t.getName().endsWith("active")),
+        "All returned tables should end with 'active'");
+  }
+
+  @Test
+  void testRegexListTable_regexOnlyNoExactFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("regexonly_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("regexonly_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("target_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(Map.of("databaseSchemaRegex", ".*regexonly_schema")));
+    assertFalse(
+        response.getData().isEmpty(), "Should find tables using regex without exact filter");
+    assertTrue(
+        response.getData().stream()
+            .allMatch(t -> t.getDatabaseSchema().getName().equals("regexonly_schema")),
+        "All returned tables should be in regexonly_schema");
+  }
+
+  @Test
+  void testRegexListTable_excludeMode(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("exclude_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("exclude_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("keep_this")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("remove_this")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "tableRegex",
+                            "remove.*",
+                            "regexMode",
+                            "exclude")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "Should return tables not matching the exclude regex");
+    assertTrue(
+        tables.stream().noneMatch(t -> t.getName().startsWith("remove")),
+        "Excluded tables should not appear in results");
+  }
+
+  @Test
+  void testRegexListTable_excludeSchemaRegex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("excl_schema_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema keepSchema =
+        DatabaseSchemas.create().name("prod_schema").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchema excludeSchema =
+        DatabaseSchemas.create().name("temp_schema").in(database.getFullyQualifiedName()).execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("prod_table")
+                .withDatabaseSchema(keepSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("temp_table")
+                .withDatabaseSchema(excludeSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            "temp.*",
+                            "regexMode",
+                            "exclude")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "Should return tables not in excluded schemas");
+    assertTrue(
+        tables.stream().noneMatch(t -> t.getDatabaseSchema().getName().startsWith("temp")),
+        "Tables in temp_schema should not appear in results");
   }
 
   // ===================================================================
