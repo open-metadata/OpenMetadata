@@ -53,7 +53,7 @@ class MWAAClient:
         Invoke MWAA REST API using AWS MWAA invoke_rest_api method.
 
         Args:
-            path: API path (e.g., "/api/v1/dags")
+            path: API path (e.g., "/dags")
             method: HTTP method (GET, POST, etc.)
             body: Request body for POST/PUT requests
             query: Query parameters

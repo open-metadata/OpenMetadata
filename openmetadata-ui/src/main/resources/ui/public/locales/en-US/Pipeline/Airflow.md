@@ -80,6 +80,7 @@ Select the authentication method for the Airflow REST API. Pick one of the three
 - **Basic Auth**: Enter a username and password. For Airflow 3.x, a short-lived JWT is automatically exchanged at startup; for Airflow 2.x, HTTP Basic auth is used directly.
 - **Access Token**: Paste a static bearer token you have generated in Airflow.
 - **GCP Service Account**: Recommended for **Google Cloud Composer**. GCP OAuth2 tokens are fetched and auto-refreshed at runtime via `google-auth` — tokens never expire mid-run.
+- **MWAA Configuration**: AWS credentials used to authenticate with Amazon Managed Workflows for Apache Airflow (MWAA).
 
 $$
 
