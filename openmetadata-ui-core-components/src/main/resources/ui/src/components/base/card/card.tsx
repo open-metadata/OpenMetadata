@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { HTMLAttributes, ReactNode } from "react";
-import { cx } from "@/utils/cx";
+import type { HTMLAttributes, ReactNode } from 'react';
+import { cx } from '@/utils/cx';
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
@@ -22,13 +22,12 @@ export const Card = ({ className, children, ...props }: CardProps) => {
     <div
       {...props}
       className={cx(
-        "tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:relative tw:overflow-hidden tw:rounded-xl tw:ring-1 tw:ring-inset tw:ring-secondary tw:bg-primary",
-        className,
-      )}
-    >
+        'tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:relative tw:overflow-hidden tw:rounded-xl tw:ring-1 tw:ring-inset tw:ring-secondary tw:bg-primary',
+        className
+      )}>
       {children}
     </div>
   );
 };
 
-Card.displayName = "Card";
+Card.displayName = 'Card';

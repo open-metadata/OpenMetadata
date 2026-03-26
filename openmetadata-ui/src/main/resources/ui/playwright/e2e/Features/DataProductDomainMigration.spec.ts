@@ -28,8 +28,8 @@ import {
   selectDataProduct,
   verifyAssetsInDomain,
 } from '../../utils/domain';
-import { sidebarClick } from '../../utils/sidebar';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

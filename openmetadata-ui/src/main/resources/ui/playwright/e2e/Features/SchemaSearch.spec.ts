@@ -14,8 +14,8 @@ import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { settingClick } from '../../utils/sidebar';
 
 const table = new TableClass();
 
