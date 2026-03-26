@@ -266,6 +266,8 @@ test.describe(
       test('User with TEST_CASE.EDIT_ALL can see edit action on test case', async ({
         editResultsPage,
       }) => {
+        // Retry navigation + assertion — backend permission cache may not
+        // have propagated immediately after role assignment in beforeAll
         await expect(async () => {
           await visitProfilerPage(editResultsPage);
           const actionDropdown = editResultsPage.getByTestId(

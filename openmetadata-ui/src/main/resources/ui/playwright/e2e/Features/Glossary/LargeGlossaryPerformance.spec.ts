@@ -240,22 +240,17 @@ test.describe('Large Glossary Performance Tests', () => {
       }
     });
 
-    const scrollPositionBeforeLoad = await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
-      );
+    const { scrollPositionBeforeLoad, scrollHeightBefore } =
+      await page.evaluate(() => {
+        const container = document.querySelector(
+          '.glossary-terms-scroll-container'
+        );
 
-      return scrollContainer?.scrollTop || 0;
-    });
-
-    // Capture scroll height before triggering infinite scroll
-    const scrollHeightBefore = await page.evaluate(() => {
-      const container = document.querySelector(
-        '.glossary-terms-scroll-container'
-      );
-
-      return container?.scrollHeight ?? 0;
-    });
+        return {
+          scrollPositionBeforeLoad: container?.scrollTop || 0,
+          scrollHeightBefore: container?.scrollHeight ?? 0,
+        };
+      });
 
     // Trigger infinite scroll
 

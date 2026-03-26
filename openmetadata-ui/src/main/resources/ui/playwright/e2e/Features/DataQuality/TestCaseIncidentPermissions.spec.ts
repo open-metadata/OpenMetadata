@@ -290,6 +290,8 @@ test.describe(
       test('User with TEST_CASE.EDIT_ALL can see edit icon on incidents', async ({
         editIncidentsPage,
       }) => {
+        // Retry navigation + assertion — backend permission cache may not
+        // have propagated immediately after role assignment in beforeAll
         await expect(async () => {
           await visitTestCaseIncidentPage(editIncidentsPage);
           await expect(

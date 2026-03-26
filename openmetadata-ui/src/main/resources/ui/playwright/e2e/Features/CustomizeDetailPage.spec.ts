@@ -65,7 +65,7 @@ const test = base.extend<{
     await waitForAllLoadersToDisappear(adminPage);
 
     const welcomeClose = adminPage.getByTestId('welcome-screen-close-btn');
-    if (await welcomeClose.isVisible().catch(() => false)) {
+    if (await welcomeClose.isVisible()) {
       await welcomeClose.click();
     }
     await closeFirstPopupAlert(adminPage);
@@ -79,7 +79,7 @@ const test = base.extend<{
     await waitForAllLoadersToDisappear(page);
 
     const welcomeClose = page.getByTestId('welcome-screen-close-btn');
-    if (await welcomeClose.isVisible().catch(() => false)) {
+    if (await welcomeClose.isVisible()) {
       await welcomeClose.click();
     }
     await closeFirstPopupAlert(page);

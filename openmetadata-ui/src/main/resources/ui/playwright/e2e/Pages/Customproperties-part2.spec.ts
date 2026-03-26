@@ -29,6 +29,7 @@ import {
   verifyCustomPropertyInAdvancedSearch,
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 type CustomPropertyEntity =
@@ -97,7 +98,8 @@ test.describe('Custom properties with custom property config', () => {
   const adminTestEntity = new TableClass();
   const users: UserClass[] = [];
 
-  test.beforeAll('Setup test data', async ({ browser }) => {
+  test.beforeAll('Setup test data', async ({ browser }, testInfo) => {
+    testInfo.setTimeout(180_000);
     const { apiContext, afterAction } = await createNewPage(browser);
     await adminTestEntity.create(apiContext);
     for (let i = 0; i < 5; i++) {
@@ -105,6 +107,16 @@ test.describe('Custom properties with custom property config', () => {
       await user.create(apiContext);
       users.push(user);
     }
+    await Promise.all(
+      users.map((user) =>
+        waitForSearchIndexed(
+          apiContext,
+          user.getUserName(),
+          'user_search_index',
+          { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+        )
+      )
+    );
     await afterAction();
   });
 

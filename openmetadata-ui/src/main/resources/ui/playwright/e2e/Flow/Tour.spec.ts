@@ -197,7 +197,7 @@ test.describe(
       const alertClose = page
         .getByTestId('whats-new-alert-card')
         .locator('.whats-new-alert-close');
-      if (await alertClose.isVisible().catch(() => false)) {
+      if (await alertClose.isVisible()) {
         await alertClose.click();
       }
 

@@ -200,22 +200,22 @@ export const addOwnerWithoutValidation = async ({
   type?: 'Teams' | 'Users';
   initiatorId?: string;
 }) => {
-  const userListResponse =
-    type === 'Users'
-      ? page.waitForResponse('/api/v1/search/query?q=&index=user&*')
-      : undefined;
-
-  await page.getByTestId(initiatorId).click();
-
   if (type === 'Users') {
+    const userListResponse = page.waitForResponse(
+      '/api/v1/search/query?q=&index=user&*'
+    );
+    await page.getByTestId(initiatorId).click();
+
     const usersTab = page.getByRole('tab', { name: type });
     const isTabAlreadySelected =
       (await usersTab.getAttribute('aria-selected')) === 'true';
 
     if (!isTabAlreadySelected) {
       await usersTab.click();
-      await userListResponse;
     }
+    await userListResponse;
+  } else {
+    await page.getByTestId(initiatorId).click();
   }
   await waitForAllLoadersToDisappear(page);
 
