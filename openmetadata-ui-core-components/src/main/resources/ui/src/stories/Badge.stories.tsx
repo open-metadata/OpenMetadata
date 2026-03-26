@@ -211,7 +211,10 @@ export const BlueDarkTag: StoryObj = {
       <BadgeWithDot color="blue-dark" type="pill-color">
         Tag with Dot
       </BadgeWithDot>
-      <BadgeWithIcon color="blue-dark" iconLeading={HelpCircle} type="pill-color">
+      <BadgeWithIcon
+        color="blue-dark"
+        iconLeading={HelpCircle}
+        type="pill-color">
         Tag with Icon
       </BadgeWithIcon>
       <BadgeWithButton color="blue-dark" type="pill-color">

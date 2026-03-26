@@ -20,7 +20,6 @@ export type BadgeColors =
   | 'orange'
   | 'blue-dark';
 
-
 export type FlagTypes =
   | 'AD'
   | 'AE'

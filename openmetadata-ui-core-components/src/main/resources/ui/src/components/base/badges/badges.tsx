@@ -88,9 +88,6 @@ export const filledColors: Record<
     addonButton:
       'tw:hover:bg-utility-orange-100 tw:text-utility-orange-400 tw:hover:text-utility-orange-500',
   },
-  /**
-   * Used for tag badges.
-   */
   'blue-dark': {
     root: 'tw:bg-utility-blue-dark-50 tw:text-utility-gray-700 tw:ring-utility-gray-blue-200',
     addon: 'tw:text-utility-gray-700',
