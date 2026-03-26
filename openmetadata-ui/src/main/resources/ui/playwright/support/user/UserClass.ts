@@ -63,6 +63,11 @@ export class UserClass {
         const getResponse = await apiContext.get(
           `/api/v1/users/name/${this.data.name}`
         );
+        if (!getResponse.ok()) {
+          throw new Error(
+            `UserClass: user fetch failed (${getResponse.status()}): ${await getResponse.text()}`
+          );
+        }
         this.responseData = await getResponse.json();
 
         return;

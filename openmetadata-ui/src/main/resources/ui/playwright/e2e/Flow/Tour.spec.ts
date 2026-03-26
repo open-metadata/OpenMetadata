@@ -21,7 +21,7 @@ const user = new UserClass();
 const waitForTourBadgeWithRetry = async (
   page: Page,
   maxAttempts = 3,
-  timeout = 20000
+  timeout = 30000
 ) => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -33,9 +33,12 @@ const waitForTourBadgeWithRetry = async (
       return; // Success
     } catch (e) {
       if (attempt < maxAttempts) {
-        await page.reload();
+        // Re-navigate to /tour instead of just reloading — a plain reload
+        // may land on the home page if the tour URL was lost
+        await page.goto('/tour');
         await waitForAllLoadersToDisappear(page);
         await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+        await page.locator('#feedWidgetData').waitFor({ timeout: 10000 });
       } else {
         throw e;
       }
@@ -189,16 +192,23 @@ test.describe(
     });
 
     test('Tour should work from welcome screen', async ({ page }) => {
-      await page
+      test.slow();
+
+      const alertClose = page
         .getByTestId('whats-new-alert-card')
-        .locator('.whats-new-alert-close')
-        .click();
-      await page.getByText('Take a product tour to get started!').click();
+        .locator('.whats-new-alert-close');
+      if (await alertClose.isVisible().catch(() => false)) {
+        await alertClose.click();
+      }
+
+      const tourLink = page.getByText('Take a product tour to get started!');
+      await expect(tourLink).toBeVisible({ timeout: 10_000 });
+      await tourLink.click();
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await page.waitForURL('**/tour');
 
-      await page.locator('#feedWidgetData').waitFor();
+      await page.locator('#feedWidgetData').waitFor({ timeout: 15_000 });
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
       await waitForTourBadgeWithRetry(page);

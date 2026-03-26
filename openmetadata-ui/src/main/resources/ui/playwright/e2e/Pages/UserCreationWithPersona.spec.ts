@@ -15,11 +15,11 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addUser,
   permanentDeleteUser,
   visitUserListPage,
-  visitUserProfilePage,
 } from '../../utils/user';
 
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
@@ -52,7 +52,34 @@ test.describe('Create user with persona', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ],
     });
 
-    await visitUserProfilePage(page, userWithPersonaName);
+    // Navigate to user profile — search with retry to handle ES indexing lag
+    await visitUserListPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    const searchBar = page.getByTestId('searchbar');
+    const userRow = page.getByTestId(userWithPersonaName);
+
+    await expect
+      .poll(
+        async () => {
+          const searchRequest = page.waitForResponse('/api/v1/search/query*');
+          await searchBar.fill('');
+          await searchBar.fill(userWithPersonaName);
+          await searchRequest;
+          await waitForAllLoadersToDisappear(page);
+
+          return await userRow.count();
+        },
+        {
+          timeout: 30_000,
+          intervals: [2_000, 3_000, 5_000],
+        }
+      )
+      .toBeGreaterThan(0);
+
+    await userRow.click();
+    await waitForAllLoadersToDisappear(page);
+
     const expectedPersonaName =
       persona1.responseData.displayName ?? persona1.responseData.name;
     await expect(

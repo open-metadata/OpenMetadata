@@ -29,6 +29,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  closeFirstPopupAlert,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -61,12 +62,28 @@ const test = base.extend<{
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
     await adminUser.login(adminPage);
+    await waitForAllLoadersToDisappear(adminPage);
+
+    const welcomeClose = adminPage.getByTestId('welcome-screen-close-btn');
+    if (await welcomeClose.isVisible().catch(() => false)) {
+      await welcomeClose.click();
+    }
+    await closeFirstPopupAlert(adminPage);
+
     await use(adminPage);
     await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await user.login(page);
+    await waitForAllLoadersToDisappear(page);
+
+    const welcomeClose = page.getByTestId('welcome-screen-close-btn');
+    if (await welcomeClose.isVisible().catch(() => false)) {
+      await welcomeClose.click();
+    }
+    await closeFirstPopupAlert(page);
+
     await use(page);
     await page.close();
   },

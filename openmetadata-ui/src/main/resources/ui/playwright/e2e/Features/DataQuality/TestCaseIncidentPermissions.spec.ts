@@ -116,7 +116,8 @@ test.describe(
       await expect(page.getByTestId('issue-tab-container')).toBeVisible();
     };
 
-    test.beforeAll(async ({ browser }) => {
+    test.beforeAll(async ({ browser }, testInfo) => {
+      testInfo.setTimeout(180_000);
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);
@@ -154,6 +155,9 @@ test.describe(
         .poll(
           async () => {
             const incidentListRes = await apiContext.get(incidentUrl);
+            if (!incidentListRes.ok()) {
+              return false;
+            }
             const incidentList = await incidentListRes.json();
 
             if (incidentList.data?.length > 0) {

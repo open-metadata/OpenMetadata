@@ -241,6 +241,11 @@ export class TableClass extends EntityClass {
       const getResponse = await apiContext.get(
         `/api/v1/services/databaseServices/name/${this.service.name}`
       );
+      if (!getResponse.ok()) {
+        throw new Error(
+          `TableClass: service fetch failed (${getResponse.status()}): ${await getResponse.text()}`
+        );
+      }
       service = await getResponse.json();
     } else if (!serviceResponse.ok()) {
       throw new Error(
@@ -258,6 +263,11 @@ export class TableClass extends EntityClass {
       const getResponse = await apiContext.get(
         `/api/v1/databases/name/${service.fullyQualifiedName}.${this.database.name}`
       );
+      if (!getResponse.ok()) {
+        throw new Error(
+          `TableClass: database fetch failed (${getResponse.status()}): ${await getResponse.text()}`
+        );
+      }
       database = await getResponse.json();
     } else if (!databaseResponse.ok()) {
       throw new Error(
@@ -275,6 +285,11 @@ export class TableClass extends EntityClass {
       const getResponse = await apiContext.get(
         `/api/v1/databaseSchemas/name/${database.fullyQualifiedName}.${this.schema.name}`
       );
+      if (!getResponse.ok()) {
+        throw new Error(
+          `TableClass: schema fetch failed (${getResponse.status()}): ${await getResponse.text()}`
+        );
+      }
       schema = await getResponse.json();
     } else if (!schemaResponse.ok()) {
       throw new Error(
@@ -295,6 +310,11 @@ export class TableClass extends EntityClass {
       const getResponse = await apiContext.get(
         `/api/v1/tables/name/${schema.fullyQualifiedName}.${this.entity.name}`
       );
+      if (!getResponse.ok()) {
+        throw new Error(
+          `TableClass: table fetch failed (${getResponse.status()}): ${await getResponse.text()}`
+        );
+      }
       entity = await getResponse.json();
     } else if (!entityResponse.ok()) {
       throw new Error(

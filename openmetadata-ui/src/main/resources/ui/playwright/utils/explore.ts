@@ -128,10 +128,9 @@ export const selectDataAssetFilter = async (
   page: Page,
   filterValue: string
 ) => {
-  await page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
-  );
-  await page.getByRole('button', { name: 'Data Assets' }).click();
+  const dataAssetsButton = page.getByRole('button', { name: 'Data Assets' });
+  await expect(dataAssetsButton).toBeVisible({ timeout: 30_000 });
+  await dataAssetsButton.click();
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
   );

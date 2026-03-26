@@ -361,13 +361,11 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('filters-button').click();
     await page.getByTestId('search-dropdown-Tier').click();
 
-    await expect(
-      page.getByTitle(EntityDataClass.tierTag1.responseData.displayName)
-    ).toBeVisible();
-
-    await page
-      .getByTitle(EntityDataClass.tierTag1.responseData.displayName)
-      .click();
+    const tierOption = page.getByRole('menuitem', {
+      name: new RegExp(EntityDataClass.tierTag1.responseData.displayName),
+    });
+    await expect(tierOption).toBeVisible({ timeout: 30_000 });
+    await tierOption.click();
     const filterResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
