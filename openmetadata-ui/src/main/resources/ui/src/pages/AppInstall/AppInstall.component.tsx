@@ -48,6 +48,7 @@ import { EntityReference } from '../../generated/entity/type';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
+import { getAppConfig } from '../../utils/AppConfigUtils';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
@@ -188,7 +189,7 @@ const AppInstall = () => {
   const onSubmit = async (updatedValue: WorkflowExtraConfig) => {
     const { cron } = updatedValue;
     const data: CreateAppRequest = {
-      appConfiguration: appConfiguration ?? appData?.appConfiguration,
+      appConfiguration: appConfiguration ?? getAppConfig(appData),
       appSchedule: {
         scheduleTimeline: isEmpty(cron)
           ? ScheduleTimeline.None
@@ -318,7 +319,8 @@ const AppInstall = () => {
   return (
     <PageLayoutV1
       className="app-install-page"
-      pageTitle={t('label.application-plural')}>
+      pageTitle={t('label.application-plural')}
+    >
       {pluginComponent ? (
         // Render plugin's custom app details component
         React.createElement(pluginComponent)

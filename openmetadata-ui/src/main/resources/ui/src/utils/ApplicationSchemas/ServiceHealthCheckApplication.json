@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/serviceHealthCheckConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Service Health Check Configuration",
+  "type": "object",
+  "description": "Configuration for the Service Health Check application.",
+  "properties": {
+    "delaySeconds": {
+      "title": "Health Check Delay (seconds)",
+      "description": "Duration in seconds the health check will run before completing. Useful for testing stop/interrupt functionality.",
+      "type": "integer",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 60
+    }
+  },
+  "additionalProperties": false
+}

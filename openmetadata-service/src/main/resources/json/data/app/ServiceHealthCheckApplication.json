@@ -1,0 +1,9 @@
+{
+  "name": "ServiceHealthCheckApplication",
+  "displayName": "Service Health Check",
+  "boundType": "Service",
+  "configuration": {
+    "serviceAppConfig": []
+  },
+  "supportsInterrupt": true
+}

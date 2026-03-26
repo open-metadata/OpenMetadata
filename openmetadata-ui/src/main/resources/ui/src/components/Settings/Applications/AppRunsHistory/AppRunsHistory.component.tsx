@@ -42,6 +42,7 @@ import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationRuns } from '../../../../rest/applicationAPI';
+import { getAppConfig } from '../../../../utils/AppConfigUtils';
 import { getStatusTypeForApplication } from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
@@ -125,7 +126,7 @@ const AppRunsHistory = forwardRef(
           id: `${appData.id ?? appData.name ?? 'app'}-current-config`,
           appId: appData.id,
           appName: appData.name,
-          config: appData.appConfiguration ?? {},
+          config: getAppConfig(appData) ?? {},
           isSynthetic: true,
           runType: 'CurrentConfig',
           startTime: appData.updatedAt,

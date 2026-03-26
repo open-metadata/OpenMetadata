@@ -129,6 +129,42 @@
         }
       ]
     },
+    "appBoundConfiguration": {
+      "description": "Configuration for the application based on its bound type.",
+      "javaType": "org.openmetadata.schema.entity.app.AppBoundConfiguration",
+      "type": "object",
+      "properties": {
+        "globalAppConfig": {
+          "description": "Configuration for Global Application.",
+          "$ref": "./globalAppConfig.json"
+        },
+        "serviceAppConfig": {
+          "description": "Configuration for Service Application.",
+          "type": "array",
+          "items": {
+            "$ref": "./serviceAppConfig.json"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "appBoundType": {
+      "javaType": "org.openmetadata.schema.entity.app.AppBoundType",
+      "description": "This schema defines the scope of the application.",
+      "type": "string",
+      "enum": [
+        "Global",
+        "Service"
+      ],
+      "javaEnums": [
+        {
+          "name": "Global"
+        },
+        {
+          "name": "Service"
+        }
+      ]
+    },
     "executionContext": {
       "description": "Execution Configuration.",
       "oneOf": [
@@ -312,6 +348,15 @@
       "description": "If the app run can be interrupted as part of the execution.",
       "type": "boolean",
       "default": false
+    },
+    "boundType": {
+      "description": "This schema defines the scope of the application.",
+      "$ref": "#/definitions/appBoundType",
+      "default": "Global"
+    },
+    "configuration": {
+      "description": "Configuration for the application based on its bound type.",
+      "$ref": "#/definitions/appBoundConfiguration"
     },
     "eventSubscriptions": {
       "description": "Event Subscriptions for the Application.",

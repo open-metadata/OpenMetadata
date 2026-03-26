@@ -23,6 +23,7 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
+import { getAppSchedule } from '../../../../utils/AppConfigUtils';
 import { getCronDefaultValue } from '../../../../utils/SchedularUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
@@ -82,7 +83,7 @@ const AppSchedule = ({
   }, [appData]);
 
   const cronString = useMemo(() => {
-    const cronExpression = (appData.appSchedule as AppScheduleClass)
+    const cronExpression = (getAppSchedule(appData) as AppScheduleClass)
       ?.cronExpression;
     if (cronExpression) {
       return cronstrue.toString(cronExpression, {
@@ -152,11 +153,11 @@ const AppSchedule = ({
         pipelineSchedules
       ),
       initialData: {
-        cron: (appData.appSchedule as AppScheduleClass)?.cronExpression,
+        cron: (getAppSchedule(appData) as AppScheduleClass)?.cronExpression,
       },
       defaultCron: getCronDefaultValue(appData?.name ?? ''),
     };
-  }, [appData.name, appData.appType, appData.appSchedule, pipelineSchedules]);
+  }, [appData, pipelineSchedules]);
 
   const translatedSchedularOptions = useMemo(
     () =>
@@ -180,7 +181,7 @@ const AppSchedule = ({
     <>
       <Row>
         <Col className="flex-col" flex="auto">
-          {appData.appSchedule && (
+          {getAppSchedule(appData) && (
             <>
               <div className="d-flex items-center gap-2">
                 <Typography.Text className="right-panel-label">
@@ -189,8 +190,8 @@ const AppSchedule = ({
                 <Typography.Text
                   className="font-medium"
                   data-testid="schedule-type">
-                  {(appData.appSchedule as AppScheduleClass).scheduleTimeline ??
-                    ''}
+                  {(getAppSchedule(appData) as AppScheduleClass)
+                    .scheduleTimeline ?? ''}
                 </Typography.Text>
               </div>
 

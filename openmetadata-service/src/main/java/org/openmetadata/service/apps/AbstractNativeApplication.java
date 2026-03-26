@@ -40,6 +40,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
@@ -47,21 +48,16 @@ import org.quartz.SchedulerException;
 
 @Getter
 @Slf4j
-public class AbstractNativeApplication implements NativeApplication {
+public class AbstractNativeApplication extends AbstractNativeApplicationBase {
   protected Set<String> getFieldsToEncryptDecrypt() {
     return Set.of();
   }
-
-  protected CollectionDAO collectionDAO;
-  private App app;
-  protected SearchRepository searchRepository;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
 
   public AbstractNativeApplication(CollectionDAO collectionDAO, SearchRepository searchRepository) {
-    this.collectionDAO = collectionDAO;
-    this.searchRepository = searchRepository;
+    super(collectionDAO, searchRepository);
   }
 
   @Override
@@ -74,7 +70,7 @@ public class AbstractNativeApplication implements NativeApplication {
   public void install(String installedBy) {
     // If the app does not have any Schedule Return without scheduling
     if (Boolean.TRUE.equals(app.getDeleted())
-        || (app.getAppSchedule() == null)
+        || (AppBoundConfigurationUtil.getAppSchedule(app) == null)
         || Set.of(ScheduleType.NoSchedule, ScheduleType.OnlyManual)
             .contains(app.getScheduleType())) {
       LOG.debug("App {} does not support scheduling.", app.getName());
@@ -115,7 +111,8 @@ public class AbstractNativeApplication implements NativeApplication {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
       // Trigger the application with the provided configuration payload
-      Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
+      Map<String, Object> appConfig =
+          JsonUtils.getMap(AppBoundConfigurationUtil.getAppConfiguration(app));
       if (config != null) {
         appConfig.putAll(config);
       }
@@ -124,6 +121,11 @@ public class AbstractNativeApplication implements NativeApplication {
     } else {
       throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
+  }
+
+  @Override
+  protected void triggerApplication(Map<String, Object> config) {
+    AppScheduler.getInstance().triggerOnDemandApplication(app, config);
   }
 
   /**
@@ -150,10 +152,11 @@ public class AbstractNativeApplication implements NativeApplication {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
       updateAppConfig(
           ingestionPipelineRepository,
-          JsonUtils.getMap(this.getApp().getAppConfiguration()),
+          JsonUtils.getMap(AppBoundConfigurationUtil.getAppConfiguration(this.getApp())),
           updatedBy);
     } catch (EntityNotFoundException ex) {
-      Map<String, Object> config = JsonUtils.getMap(this.getApp().getAppConfiguration());
+      Map<String, Object> config =
+          JsonUtils.getMap(AppBoundConfigurationUtil.getAppConfiguration(this.getApp()));
       createAndBindIngestionPipeline(ingestionPipelineRepository, config);
     }
   }
@@ -247,10 +250,15 @@ public class AbstractNativeApplication implements NativeApplication {
                         new ApplicationPipeline()
                             .withSourcePythonClass(this.getApp().getSourcePythonClass())
                             .withAppConfig(decryptedConfig)
-                            .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
+                            .withAppPrivateConfig(
+                                AppBoundConfigurationUtil.getPrivateConfiguration(this.getApp()))))
             .withAirflowConfig(
                 new AirflowConfig()
-                    .withScheduleInterval(this.getApp().getAppSchedule().getCronExpression()))
+                    .withScheduleInterval(
+                        AppBoundConfigurationUtil.getAppSchedule(this.getApp()) != null
+                            ? AppBoundConfigurationUtil.getAppSchedule(this.getApp())
+                                .getCronExpression()
+                            : null))
             .withService(service);
 
     // Get Pipeline
@@ -299,11 +307,13 @@ public class AbstractNativeApplication implements NativeApplication {
     App jobApp =
         appRepository.getByName(
             null, appName, appRepository.getFields("bot"), Include.NON_DELETED, true);
-    ;
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
-    jobApp.setAppConfiguration(
+    Object appConfigMap =
         JsonUtils.getMapFromJson(
-            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
+            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG));
+    if (appConfigMap != null) {
+      AppBoundConfigurationUtil.setAppConfiguration(jobApp, appConfigMap);
+    }
     // Initialise the Application
     this.init(jobApp);
 

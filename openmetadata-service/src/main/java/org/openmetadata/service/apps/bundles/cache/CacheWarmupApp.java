@@ -36,7 +36,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.cache.CachedEntityDao;
@@ -47,13 +46,14 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.interfaces.Source;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class CacheWarmupApp extends AbstractNativeApplication {
+public class CacheWarmupApp extends org.openmetadata.service.apps.AbstractGlobalNativeApplication {
 
   private static final String ALL = "all";
   private static final String POISON_PILL = "__POISON_PILL__";
@@ -97,7 +97,9 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
+    jobData =
+        JsonUtils.convertValue(
+            AppBoundConfigurationUtil.getAppConfiguration(app), EventPublisherJob.class);
   }
 
   @Override
@@ -136,7 +138,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     if (jobName.equals(ON_DEMAND_JOB)) {
       Map<String, Object> jsonAppConfig =
           JsonUtils.convertValue(jobData, new TypeReference<Map<String, Object>>() {});
-      getApp().setAppConfiguration(jsonAppConfig);
+      AppBoundConfigurationUtil.setAppConfiguration(getApp(), jsonAppConfig);
     }
   }
 
@@ -147,8 +149,9 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       return JsonUtils.readValue(appConfigJson, EventPublisherJob.class);
     }
 
-    if (getApp() != null && getApp().getAppConfiguration() != null) {
-      return JsonUtils.convertValue(getApp().getAppConfiguration(), EventPublisherJob.class);
+    if (getApp() != null && AppBoundConfigurationUtil.getAppConfiguration(getApp()) != null) {
+      return JsonUtils.convertValue(
+          AppBoundConfigurationUtil.getAppConfiguration(getApp()), EventPublisherJob.class);
     }
 
     throw new AppException("JobData is not initialized");

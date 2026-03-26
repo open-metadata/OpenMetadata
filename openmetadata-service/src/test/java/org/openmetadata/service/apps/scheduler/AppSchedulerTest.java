@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.scheduler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -286,5 +287,164 @@ class AppSchedulerTest {
     assertNotEquals(identity1, identity2);
     assertTrue(identity1.contains(workflowId1));
     assertTrue(identity2.contains(workflowId2));
+  }
+
+  // --- Tests for isJobForApp ---
+
+  @Test
+  void testIsJobForApp_exactMatch() {
+    assertTrue(AppScheduler.isJobForApp("SearchIndexApp", "SearchIndexApp"));
+  }
+
+  @Test
+  void testIsJobForApp_onDemandJob() {
+    assertTrue(AppScheduler.isJobForApp("SearchIndexApp-OnDemandJob", "SearchIndexApp"));
+  }
+
+  @Test
+  void testIsJobForApp_serviceBoundJob() {
+    UUID serviceId = UUID.randomUUID();
+    assertTrue(AppScheduler.isJobForApp("SearchIndexApp-" + serviceId, "SearchIndexApp"));
+  }
+
+  @Test
+  void testIsJobForApp_serviceBoundOnDemandJob() {
+    UUID serviceId = UUID.randomUUID();
+    assertTrue(
+        AppScheduler.isJobForApp("SearchIndexApp-" + serviceId + "-OnDemandJob", "SearchIndexApp"));
+  }
+
+  @Test
+  void testIsJobForApp_differentApp() {
+    assertFalse(AppScheduler.isJobForApp("DataInsightsApp", "SearchIndexApp"));
+  }
+
+  @Test
+  void testIsJobForApp_prefixCollision() {
+    // "SearchIndexAppExtended" should NOT match "SearchIndexApp"
+    assertFalse(AppScheduler.isJobForApp("SearchIndexAppExtended", "SearchIndexApp"));
+  }
+
+  @Test
+  void testIsJobForApp_prefixCollisionWithSuffix() {
+    // "SearchIndexAppExtended-OnDemandJob" should NOT match "SearchIndexApp"
+    assertFalse(AppScheduler.isJobForApp("SearchIndexAppExtended-OnDemandJob", "SearchIndexApp"));
+  }
+
+  // --- Tests for deleteAllApplicationJobs ---
+
+  @Test
+  void testDeleteAllApplicationJobs_deletesGlobalAndServiceBound() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    UUID serviceId1 = UUID.randomUUID();
+    UUID serviceId2 = UUID.randomUUID();
+
+    java.util.Set<JobKey> jobKeys =
+        java.util.Set.of(
+            new JobKey("TestApp", AppScheduler.APPS_JOB_GROUP),
+            new JobKey("TestApp-OnDemandJob", AppScheduler.APPS_JOB_GROUP),
+            new JobKey("TestApp-" + serviceId1, AppScheduler.APPS_JOB_GROUP),
+            new JobKey("TestApp-" + serviceId2, AppScheduler.APPS_JOB_GROUP),
+            new JobKey("TestApp-" + serviceId1 + "-OnDemandJob", AppScheduler.APPS_JOB_GROUP),
+            new JobKey("OtherApp", AppScheduler.APPS_JOB_GROUP),
+            new JobKey("OtherApp-OnDemandJob", AppScheduler.APPS_JOB_GROUP));
+
+    when(mockScheduler.getJobKeys(any())).thenReturn(jobKeys);
+    when(mockScheduler.unscheduleJob(any())).thenReturn(true);
+    when(mockScheduler.deleteJob(any())).thenReturn(true);
+
+    App app = new App().withName("TestApp");
+    appScheduler.deleteAllApplicationJobs(app);
+
+    // Should delete 5 jobs belonging to TestApp, not the 2 OtherApp jobs
+    ArgumentCaptor<JobKey> deleteCaptor = ArgumentCaptor.forClass(JobKey.class);
+    verify(mockScheduler, times(5)).deleteJob(deleteCaptor.capture());
+
+    List<String> deletedJobNames =
+        deleteCaptor.getAllValues().stream().map(JobKey::getName).toList();
+    assertTrue(deletedJobNames.contains("TestApp"));
+    assertTrue(deletedJobNames.contains("TestApp-OnDemandJob"));
+    assertTrue(deletedJobNames.contains("TestApp-" + serviceId1));
+    assertTrue(deletedJobNames.contains("TestApp-" + serviceId2));
+    assertTrue(deletedJobNames.contains("TestApp-" + serviceId1 + "-OnDemandJob"));
+    assertFalse(deletedJobNames.contains("OtherApp"));
+    assertFalse(deletedJobNames.contains("OtherApp-OnDemandJob"));
+  }
+
+  // --- Tests for service-bound on-demand triggering ---
+
+  @Test
+  void testServiceBoundTrigger_createsCorrectJobIdentity() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    UUID serviceId = UUID.randomUUID();
+
+    App serviceBoundApp =
+        new App()
+            .withId(UUID.randomUUID())
+            .withName("MetadataIngestion")
+            .withFullyQualifiedName("MetadataIngestion")
+            .withClassName("org.openmetadata.service.resources.apps.TestApp")
+            .withAllowConcurrentExecution(false)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true));
+
+    String scheduledJobId = "MetadataIngestion-" + serviceId;
+    String onDemandJobId = "MetadataIngestion-" + serviceId + "-OnDemandJob";
+
+    when(mockScheduler.getJobDetail(new JobKey(scheduledJobId, AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
+    when(mockScheduler.getJobDetail(new JobKey(onDemandJobId, AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class))).thenReturn(null);
+
+    appScheduler.triggerOnDemandApplicationForService(serviceBoundApp, serviceId, new HashMap<>());
+
+    ArgumentCaptor<JobDetail> jobCaptor = ArgumentCaptor.forClass(JobDetail.class);
+    verify(mockScheduler).scheduleJob(jobCaptor.capture(), any(Trigger.class));
+
+    JobDetail capturedJob = jobCaptor.getValue();
+    assertEquals(onDemandJobId, capturedJob.getKey().getName());
+    assertEquals(serviceId.toString(), capturedJob.getJobDataMap().getString("serviceId"));
+    assertEquals("MetadataIngestion", capturedJob.getJobDataMap().getString("appName"));
+  }
+
+  @Test
+  void testServiceBoundTrigger_blocksWhenServiceJobRunning() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    UUID serviceId = UUID.randomUUID();
+
+    App serviceBoundApp =
+        new App()
+            .withId(UUID.randomUUID())
+            .withName("MetadataIngestion")
+            .withFullyQualifiedName("MetadataIngestion")
+            .withClassName("org.openmetadata.service.resources.apps.TestApp")
+            .withAllowConcurrentExecution(false)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true));
+
+    String scheduledJobId = "MetadataIngestion-" + serviceId;
+    String onDemandJobId = "MetadataIngestion-" + serviceId + "-OnDemandJob";
+
+    JobDetail scheduledJobDetail =
+        JobBuilder.newJob(Job.class)
+            .withIdentity(scheduledJobId, AppScheduler.APPS_JOB_GROUP)
+            .build();
+
+    when(mockScheduler.getJobDetail(new JobKey(scheduledJobId, AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(scheduledJobDetail);
+    when(mockScheduler.getJobDetail(new JobKey(onDemandJobId, AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
+
+    JobExecutionContext mockExecContext = mock(JobExecutionContext.class);
+    when(mockExecContext.getJobDetail()).thenReturn(scheduledJobDetail);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(mockExecContext));
+
+    assertThrows(
+        UnhandledServerException.class,
+        () ->
+            appScheduler.triggerOnDemandApplicationForService(
+                serviceBoundApp, serviceId, new HashMap<>()));
+
+    verify(mockScheduler, never()).scheduleJob(any(JobDetail.class), any(Trigger.class));
   }
 }

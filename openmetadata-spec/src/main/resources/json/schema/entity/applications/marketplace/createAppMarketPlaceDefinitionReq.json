@@ -142,6 +142,11 @@
       "type": "boolean",
       "default": false
     },
+    "boundType": {
+      "description": "This schema defines the scope of the application — Global or Service-bound.",
+      "$ref": "../app.json#/definitions/appBoundType",
+      "default": "Global"
+    },
     "allowBotImpersonation": {
       "description": "When true, the bot created for this application will have allowImpersonation enabled, allowing it to act on behalf of users.",
       "type": "boolean",

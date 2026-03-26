@@ -53,6 +53,10 @@ export interface App {
      */
     bot?: EntityReference;
     /**
+     * This schema defines the scope of the application.
+     */
+    boundType?: AppBoundType;
+    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -60,6 +64,10 @@ export interface App {
      * Fully Qualified ClassName for the Schedule
      */
     className: string;
+    /**
+     * Configuration for the application based on its bound type.
+     */
+    configuration?: AppBoundConfiguration;
     /**
      * When `true` indicates the entity has been soft deleted.
      */
@@ -644,6 +652,9 @@ export interface Action {
  *
  * Bot User Associated with this application.
  *
+ * References to pipelines deployed for this database service to extract metadata, usage,
+ * lineage etc..
+ *
  * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
  * at runtime based on the Ingestion Agent of the service.
  */
@@ -756,6 +767,9 @@ export enum MetadataAttribute {
  * the relationship of a table `belongs to a` database.
  *
  * Bot User Associated with this application.
+ *
+ * References to pipelines deployed for this database service to extract metadata, usage,
+ * lineage etc..
  *
  * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
  * at runtime based on the Ingestion Agent of the service.
@@ -1327,6 +1341,14 @@ export enum AppType {
 }
 
 /**
+ * This schema defines the scope of the application.
+ */
+export enum AppBoundType {
+    Global = "Global",
+    Service = "Service",
+}
+
+/**
  * Change that lead to this version of the entity.
  *
  * Description of the change.
@@ -1389,6 +1411,133 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * Configuration for the application based on its bound type.
+ */
+export interface AppBoundConfiguration {
+    /**
+     * Configuration for Global Application.
+     */
+    globalAppConfig?: GlobalAppConfig;
+    /**
+     * Configuration for Service Application.
+     */
+    serviceAppConfig?: ServiceAppConfig[];
+}
+
+/**
+ * Configuration for Global Application.
+ *
+ * Global Configuration for platform-wide applications
+ */
+export interface GlobalAppConfig {
+    /**
+     * Application Configuration object.
+     */
+    config?: any[] | boolean | number | null | CollateAIAppConfig | string;
+    /**
+     * Event Subscriptions for the Application.
+     */
+    eventSubscriptions?: EntityReference[];
+    /**
+     * References to pipelines deployed for this database service to extract metadata, usage,
+     * lineage etc..
+     */
+    pipeline?: EntityReference;
+    /**
+     * Application Private configuration loaded at runtime.
+     */
+    privateConfig?: PrivateConfig;
+    /**
+     * In case the app supports scheduling, list of different app schedules
+     */
+    schedule?: ScheduleClass;
+}
+
+/**
+ * Application Private configuration loaded at runtime.
+ *
+ * Private Configuration for the CollateAI External Application.
+ */
+export interface PrivateConfig {
+    /**
+     * Collate Server public URL. WAII will use this information to interact with the server.
+     * E.g., https://sandbox.getcollate.io
+     */
+    collateURL?: string;
+    /**
+     * Limits for the CollateAI Application.
+     */
+    limits?: AppLimitsConfig;
+    /**
+     * WAII API Token
+     */
+    token?: string;
+    /**
+     * WAII API host URL
+     */
+    waiiInstance?: string;
+    [property: string]: any;
+}
+
+/**
+ * Limits for the CollateAI Application.
+ *
+ * Private Configuration for the App Limits.
+ */
+export interface AppLimitsConfig {
+    /**
+     * The records of the limits.
+     */
+    actions: { [key: string]: number };
+    /**
+     * The start of this limit cycle. DEPRECATED: Use central billingCycleStart from
+     * LimitsConfiguration in openmetadata.yaml
+     */
+    billingCycleStart?: Date;
+}
+
+/**
+ * In case the app supports scheduling, list of different app schedules
+ *
+ * This schema defines the type of AppSchedule.
+ */
+export interface ScheduleClass {
+    /**
+     * Cron Expression in case of Custom scheduled Trigger
+     */
+    cronExpression?:  string;
+    scheduleTimeline: ScheduleTimeline;
+}
+
+/**
+ * Service Configuration for service-bound applications
+ */
+export interface ServiceAppConfig {
+    /**
+     * Application Configuration object.
+     */
+    config?: any[] | boolean | number | null | CollateAIAppConfig | string;
+    /**
+     * Event Subscriptions for the Application.
+     */
+    eventSubscriptions?: EntityReference[];
+    /**
+     * References to pipelines deployed for this database service to extract metadata, usage,
+     * lineage etc..
+     */
+    pipeline?: EntityReference;
+    /**
+     * Application Private configuration loaded at runtime.
+     */
+    privateConfig?: PrivateConfig;
+    /**
+     * In case the app supports scheduling, list of different app schedules
+     */
+    schedule?:  ScheduleClass;
+    serviceRef: EntityReference;
 }
 
 /**
@@ -1674,49 +1823,6 @@ export enum VerifySSL {
  */
 export enum Permissions {
     All = "All",
-}
-
-/**
- * Application Private configuration loaded at runtime.
- *
- * Private Configuration for the CollateAI External Application.
- */
-export interface PrivateConfig {
-    /**
-     * Collate Server public URL. WAII will use this information to interact with the server.
-     * E.g., https://sandbox.getcollate.io
-     */
-    collateURL?: string;
-    /**
-     * Limits for the CollateAI Application.
-     */
-    limits?: AppLimitsConfig;
-    /**
-     * WAII API Token
-     */
-    token?: string;
-    /**
-     * WAII API host URL
-     */
-    waiiInstance?: string;
-    [property: string]: any;
-}
-
-/**
- * Limits for the CollateAI Application.
- *
- * Private Configuration for the App Limits.
- */
-export interface AppLimitsConfig {
-    /**
-     * The records of the limits.
-     */
-    actions: { [key: string]: number };
-    /**
-     * The start of this limit cycle. DEPRECATED: Use central billingCycleStart from
-     * LimitsConfiguration in openmetadata.yaml
-     */
-    billingCycleStart?: Date;
 }
 
 /**

@@ -53,6 +53,11 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
             .withAgentType(marketPlaceDefinition.getAgentType())
             .withScheduleType(marketPlaceDefinition.getScheduleType())
             .withAppConfiguration(createAppRequest.getAppConfiguration())
+            .withBoundType(
+                createAppRequest.getBoundType() != null
+                    ? createAppRequest.getBoundType()
+                    : marketPlaceDefinition.getBoundType())
+            .withConfiguration(createAppRequest.getConfiguration())
             .withRuntime(marketPlaceDefinition.getRuntime())
             .withPermission(marketPlaceDefinition.getPermission())
             .withAppSchedule(createAppRequest.getAppSchedule())

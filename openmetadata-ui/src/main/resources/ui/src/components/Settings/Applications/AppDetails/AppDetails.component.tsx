@@ -61,6 +61,11 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
+import {
+  getAppConfig,
+  updateAppConfig,
+  updateAppSchedule,
+} from '../../../../utils/AppConfigUtils';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -247,8 +252,7 @@ const AppDetails = () => {
 
       const updatedFormData = formatFormDataForSubmit(formData);
       const updatedData = {
-        ...appData,
-        appConfiguration: updatedFormData,
+        ...updateAppConfig(appData, updatedFormData),
         ...(ingestionRunner && { ingestionRunner }),
       };
 
@@ -274,15 +278,12 @@ const AppDetails = () => {
 
   const onAppScheduleSave = async (cron: string) => {
     if (appData) {
-      const updatedData = {
-        ...appData,
-        appSchedule: {
-          scheduleTimeline: isEmpty(cron)
-            ? ScheduleTimeline.None
-            : ScheduleTimeline.Custom,
-          ...(cron ? { cronExpression: cron } : {}),
-        },
-      };
+      const updatedData = updateAppSchedule(appData, {
+        scheduleTimeline: isEmpty(cron)
+          ? ScheduleTimeline.None
+          : ScheduleTimeline.Custom,
+        ...(cron ? { cronExpression: cron } : {}),
+      });
 
       const jsonPatch = compare(appData, updatedData);
 
@@ -349,7 +350,7 @@ const AppDetails = () => {
       applicationsClassBase.getApplicationConfigurationComponent();
 
     const tabConfiguration =
-      appData?.appConfiguration && appData.allowConfiguration && jsonSchema
+      getAppConfig(appData) && appData.allowConfiguration && jsonSchema
         ? [
             {
               label: (
@@ -451,7 +452,8 @@ const AppDetails = () => {
   return (
     <PageLayoutV1
       className="app-details-page-layout"
-      pageTitle={t('label.application-plural')}>
+      pageTitle={t('label.application-plural')}
+    >
       <Row>
         <Col className="d-flex" flex="auto">
           <Button
@@ -459,7 +461,8 @@ const AppDetails = () => {
             icon={<LeftOutlined />}
             size="small"
             type="text"
-            onClick={onBrowseAppsClick}>
+            onClick={onBrowseAppsClick}
+          >
             <Typography.Text className="font-medium">
               {t('label.browse-app-plural')}
             </Typography.Text>
@@ -478,12 +481,14 @@ const AppDetails = () => {
               overlayStyle={{ width: '350px' }}
               placement="bottomRight"
               trigger={['click']}
-              onOpenChange={setShowActions}>
+              onOpenChange={setShowActions}
+            >
               <Tooltip
                 placement="topRight"
                 title={t('label.manage-entity', {
                   entity: t('label.application'),
-                })}>
+                })}
+              >
                 <Button
                   className="glossary-manage-dropdown-button p-x-xs"
                   data-testid="manage-button"
@@ -532,7 +537,8 @@ const AppDetails = () => {
                     <Typography.Link
                       className="text-xs"
                       href={appData?.developerUrl}
-                      target="_blank">
+                      target="_blank"
+                    >
                       <Space>{t('label.visit-developer-website')}</Space>
                     </Typography.Link>
                   </div>

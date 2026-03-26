@@ -22,6 +22,49 @@ SET json = JSON_SET(
 )
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.preview');
 
+-- Migrate installed_apps to new configuration structure (internal apps only)
+-- External apps keep flat format (appConfiguration, appSchedule, privateConfiguration)
+UPDATE installed_apps
+SET json = JSON_SET(
+    json,
+    '$.boundType', 'Global',
+    '$.configuration', JSON_OBJECT(
+        'globalAppConfig', JSON_OBJECT(
+            'config', COALESCE(JSON_EXTRACT(json, '$.appConfiguration'), JSON_OBJECT()),
+            'schedule', JSON_EXTRACT(json, '$.appSchedule'),
+            'privateConfig', JSON_EXTRACT(json, '$.privateConfiguration')
+        )
+    )
+)
+WHERE (JSON_CONTAINS_PATH(json, 'one', '$.appConfiguration')
+   OR JSON_CONTAINS_PATH(json, 'one', '$.appSchedule')
+   OR JSON_CONTAINS_PATH(json, 'one', '$.privateConfiguration'))
+   AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.appType')), 'internal') != 'external';
+
+-- Remove old fields from installed_apps (internal apps only)
+UPDATE installed_apps
+SET json = JSON_REMOVE(json, '$.appConfiguration', '$.appSchedule', '$.privateConfiguration')
+WHERE (JSON_CONTAINS_PATH(json, 'one', '$.appConfiguration')
+   OR JSON_CONTAINS_PATH(json, 'one', '$.appSchedule')
+   OR JSON_CONTAINS_PATH(json, 'one', '$.privateConfiguration'))
+   AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.appType')), 'internal') != 'external';
+
+-- Add default boundType to apps_marketplace for apps that don't have it yet
+UPDATE apps_marketplace
+SET json = JSON_SET(json, '$.boundType', 'Global')
+WHERE NOT JSON_CONTAINS_PATH(json, 'one', '$.boundType');
+
+-- Add boundType to any installed apps that still don't have it (safety fallback)
+UPDATE installed_apps
+SET json = JSON_SET(json, '$.boundType', 'Global')
+WHERE NOT JSON_CONTAINS_PATH(json, 'one', '$.boundType');
+
+-- Add appBoundType virtual column to installed_apps table for fast querying by app type
+ALTER TABLE installed_apps
+ADD COLUMN IF NOT EXISTS appBoundType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.boundType') STORED;
+
+CREATE INDEX IF NOT EXISTS installed_apps_app_bound_type_index ON installed_apps(appBoundType);
+
 -- Reduce deadlocks for entity_usage upserts by making the unique key follow the lookup predicate
 -- (id, usageDate) instead of (usageDate, id).
 SET @migrate_usage_date_idx_sql := (

@@ -1,0 +1,20 @@
+{
+  "name": "ServiceHealthCheckApplication",
+  "displayName": "Service Health Check",
+  "description": "A simple service-bound test application that performs a health check for a specific service. Used for verifying service-bound app infrastructure including per-service scheduling, triggering, stopping, and run history filtering.",
+  "appType": "internal",
+  "appScreenshots": [],
+  "developer": "OpenMetadata",
+  "developerUrl": "https://open-metadata.org",
+  "privacyPolicyUrl": "https://open-metadata.org",
+  "supportEmail": "support@open-metadata.org",
+  "scheduleType": "ScheduledOrManual",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.serviceHealthCheck.ServiceHealthCheckApp",
+  "runtime": {
+    "enabled": true
+  },
+  "supportsInterrupt": true,
+  "boundType": "Service",
+  "appConfiguration": {}
+}

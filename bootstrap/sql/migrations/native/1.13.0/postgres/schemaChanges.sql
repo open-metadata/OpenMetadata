@@ -22,6 +22,48 @@ SET json = (json - 'preview') || jsonb_build_object(
 )
 WHERE jsonb_exists(json, 'preview');
 
+-- Migrate installed_apps to new configuration structure (internal apps only)
+-- External apps keep flat format (appConfiguration, appSchedule, privateConfiguration)
+UPDATE installed_apps
+SET json = json || jsonb_build_object(
+    'boundType', 'Global',
+    'configuration', jsonb_build_object(
+        'globalAppConfig', jsonb_build_object(
+            'config', COALESCE(json -> 'appConfiguration', '{}'::jsonb),
+            'schedule', json -> 'appSchedule',
+            'privateConfig', json -> 'privateConfiguration'
+        )
+    )
+)
+WHERE (jsonb_exists(json, 'appConfiguration')
+   OR jsonb_exists(json, 'appSchedule')
+   OR jsonb_exists(json, 'privateConfiguration'))
+   AND COALESCE(json->>'appType', 'internal') != 'external';
+
+-- Remove old fields from installed_apps (internal apps only)
+UPDATE installed_apps
+SET json = json - 'appConfiguration' - 'appSchedule' - 'privateConfiguration'
+WHERE (jsonb_exists(json, 'appConfiguration')
+   OR jsonb_exists(json, 'appSchedule')
+   OR jsonb_exists(json, 'privateConfiguration'))
+   AND COALESCE(json->>'appType', 'internal') != 'external';
+
+-- Add default boundType to apps_marketplace for apps that don't have it yet
+UPDATE apps_marketplace
+SET json = jsonb_set(json, '{boundType}', '"Global"'::jsonb)
+WHERE NOT jsonb_exists(json, 'boundType');
+
+-- Add boundType to any installed apps that still don't have it (safety fallback)
+UPDATE installed_apps
+SET json = jsonb_set(json, '{boundType}', '"Global"'::jsonb)
+WHERE NOT jsonb_exists(json, 'boundType');
+
+-- Add appBoundType virtual column to installed_apps table for fast querying by app type
+ALTER TABLE installed_apps
+ADD COLUMN IF NOT EXISTS appBoundType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'boundType') STORED;
+
+CREATE INDEX IF NOT EXISTS installed_apps_app_bound_type_index ON installed_apps(appBoundType);
+
 -- Reduce deadlocks for entity_usage upserts by reordering the unique constraint columns
 -- to (id, usageDate) so that row-level locks follow the lookup predicate order.
 DO $$

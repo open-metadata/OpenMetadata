@@ -69,6 +69,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
+    conditions.add(getAppBoundTypeCondition());
+    conditions.add(getAppServiceIdCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getEntityStatusCondition(tableName));
     String condition = addCondition(conditions);
@@ -186,6 +188,32 @@ public class ListFilter extends Filter<ListFilter> {
       } else {
         return String.format("json->>'agentType' IN (%s)", inCondition);
       }
+    }
+  }
+
+  private String getAppBoundTypeCondition() {
+    String boundType = queryParams.get("boundType");
+    if (boundType == null || boundType.trim().isEmpty()) {
+      return "";
+    }
+    queryParams.put("boundTypeParam", boundType);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.boundType')) = :boundTypeParam";
+    } else {
+      return "json->>'boundType' = :boundTypeParam";
+    }
+  }
+
+  private String getAppServiceIdCondition() {
+    String serviceId = queryParams.get("serviceId");
+    if (serviceId == null || serviceId.trim().isEmpty()) {
+      return "";
+    }
+    queryParams.put("serviceIdParam", serviceId);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "JSON_SEARCH(json, 'one', :serviceIdParam, NULL, '$.configuration.serviceAppConfig[*].serviceRef.id') IS NOT NULL";
+    } else {
+      return "EXISTS (SELECT 1 FROM jsonb_array_elements(json->'configuration'->'serviceAppConfig') elem WHERE elem->'serviceRef'->>'id' = :serviceIdParam)";
     }
   }
 

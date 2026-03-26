@@ -15,7 +15,7 @@ import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.AbstractNativeApplicationBase;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.limits.Limits;
@@ -253,7 +253,7 @@ public class McpServer implements McpServerProvider {
   private String getMcpBotName() {
     if (mcpBotName == null) {
       try {
-        AbstractNativeApplication mcpApp =
+        AbstractNativeApplicationBase mcpApp =
             ApplicationContext.getInstance().getAppIfExists(MCP_APP_NAME);
         if (mcpApp != null && mcpApp.getApp().getBot() != null) {
           mcpBotName = mcpApp.getApp().getBot().getName();

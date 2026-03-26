@@ -22,6 +22,7 @@ import {
   EntityReference,
 } from '../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { getAppConfig } from '../../../../utils/AppConfigUtils';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
@@ -63,7 +64,7 @@ const ApplicationConfiguration = ({
       capitalizeOptionLabel
       useSelectWidget
       cancelText={t('label.back')}
-      formData={appData?.appConfiguration ?? {}}
+      formData={getAppConfig(appData as App) ?? {}}
       hideCancelButton={!onCancel}
       isLoading={isLoading}
       okText={t('label.save')}

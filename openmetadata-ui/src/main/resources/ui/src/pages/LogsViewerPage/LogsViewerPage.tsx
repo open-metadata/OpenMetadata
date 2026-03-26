@@ -65,6 +65,7 @@ import {
   getIngestionPipelineByFqn,
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
+import { getAppSchedule } from '../../utils/AppConfigUtils';
 import { ExtraInfoLabel } from '../../utils/DataAssetsHeader.utils';
 import {
   getEpochMillisForPastDays,
@@ -290,7 +291,7 @@ const LogsViewerPage = () => {
   }, [isApplicationType, appRuns, ingestionDetails]);
 
   const logSummaries = useMemo(() => {
-    const scheduleClass = appData?.appSchedule as AppScheduleClass;
+    const scheduleClass = getAppSchedule(appData) as AppScheduleClass;
 
     return {
       Type:

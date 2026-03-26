@@ -47,6 +47,14 @@
       "type": "boolean",
       "default": false
     },
+    "boundType": {
+      "description": "This schema defines the scope of the application.",
+      "$ref": "./app.json#/definitions/appBoundType"
+    },
+    "configuration": {
+      "description": "Configuration for the application based on its bound type.",
+      "$ref": "./app.json#/definitions/appBoundConfiguration"
+    },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline. It will be defined at runtime based on the Ingestion Agent of the service.",
       "$ref": "../../type/entityReference.json"

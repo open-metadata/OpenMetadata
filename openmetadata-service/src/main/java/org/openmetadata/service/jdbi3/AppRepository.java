@@ -35,6 +35,7 @@ import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -60,6 +61,7 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void setFields(App entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
+    AppBoundConfigurationUtil.migrateFromLegacyConfiguration(entity);
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.withBot(getBotUser(entity));
@@ -81,16 +83,25 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void prepare(App entity, boolean update) {
+    // Normalize configuration: internal apps use only nested structure, external use flat
+    if (!AppBoundConfigurationUtil.isExternalApp(entity)) {
+      // Ensure any flat fields are migrated into the nested structure
+      AppBoundConfigurationUtil.migrateFromLegacyConfiguration(entity);
+      // Clear flat fields — internal apps store config only in nested structure
+      entity.setAppConfiguration(null);
+      entity.setAppSchedule(null);
+      entity.setPrivateConfiguration(null);
+    }
+
     // Encrypt sensitive fields in appConfiguration before saving
-    if (entity.getAppConfiguration() != null && entity.getClassName() != null) {
+    if (AppBoundConfigurationUtil.getAppConfiguration(entity) != null
+        && entity.getClassName() != null) {
       try {
         org.openmetadata.service.apps.ApplicationHandler handler =
             org.openmetadata.service.apps.ApplicationHandler.getInstance();
         if (handler != null) {
-          App encryptedApp =
-              handler.appWithEncryptedAppConfiguration(
-                  entity, Entity.getCollectionDAO(), Entity.getSearchRepository());
-          entity.setAppConfiguration(encryptedApp.getAppConfiguration());
+          handler.appWithEncryptedAppConfiguration(
+              entity, Entity.getCollectionDAO(), Entity.getSearchRepository());
         }
       } catch (Exception e) {
         LOG.debug(
@@ -564,12 +575,28 @@ public class AppRepository extends EntityRepository<App> {
           "appConfiguration",
           () -> {
             recordChange(
-                "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
+                "appConfiguration",
+                AppBoundConfigurationUtil.getAppConfiguration(original),
+                AppBoundConfigurationUtil.getAppConfiguration(updated));
           });
       compareAndUpdate(
           "appSchedule",
           () -> {
-            recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
+            recordChange(
+                "appSchedule",
+                AppBoundConfigurationUtil.getAppSchedule(original),
+                AppBoundConfigurationUtil.getAppSchedule(updated));
+          });
+      compareAndUpdate(
+          "configuration",
+          () -> {
+            recordChange(
+                "configuration", original.getConfiguration(), updated.getConfiguration(), true);
+          });
+      compareAndUpdate(
+          "boundType",
+          () -> {
+            recordChange("boundType", original.getBoundType(), updated.getBoundType());
           });
       compareAndUpdate(
           "bot",

@@ -19,7 +19,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -27,9 +26,10 @@ import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 
 @Slf4j
-public class AutoPilotApp extends AbstractNativeApplication {
+public class AutoPilotApp extends org.openmetadata.service.apps.AbstractGlobalNativeApplication {
   private static final String WORKFLOW_NAME = "AutoPilotWorkflow";
   protected AutoPilotAppConfig config;
 
@@ -53,7 +53,8 @@ public class AutoPilotApp extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     this.config =
-        JsonUtils.convertValue(this.getApp().getAppConfiguration(), AutoPilotAppConfig.class);
+        JsonUtils.convertValue(
+            AppBoundConfigurationUtil.getAppConfiguration(getApp()), AutoPilotAppConfig.class);
   }
 
   @Override
@@ -68,7 +69,8 @@ public class AutoPilotApp extends AbstractNativeApplication {
   @Override
   public void triggerOnDemand(Map<String, Object> config) {
     // Trigger the application with the provided configuration payload
-    Map<String, Object> appConfig = JsonUtils.getMap(getApp().getAppConfiguration());
+    Map<String, Object> appConfig =
+        JsonUtils.getMap(AppBoundConfigurationUtil.getAppConfiguration(getApp()));
     if (config != null) {
       appConfig.putAll(config);
     }

@@ -50,6 +50,10 @@ export interface AppMarketPlaceDefinition {
      */
     appType: AppType;
     /**
+     * This schema defines the scope of the application — Global or Service-bound.
+     */
+    boundType?: AppBoundType;
+    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -1286,6 +1290,16 @@ export enum Type {
 export enum AppType {
     External = "external",
     Internal = "internal",
+}
+
+/**
+ * This schema defines the scope of the application — Global or Service-bound.
+ *
+ * This schema defines the scope of the application.
+ */
+export enum AppBoundType {
+    Global = "Global",
+    Service = "Service",
 }
 
 /**

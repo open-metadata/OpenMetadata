@@ -1,8 +1,17 @@
 {
   "name": "DataContractValidationApplication",
   "displayName": "Data Contract Validation",
-  "appSchedule": {
-    "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 * * *"
+  "configuration": {
+    "globalAppConfig": {
+      "config": {
+        "type": "AutoPilotApplication",
+        "active": true,
+        "entityLink": null
+      },
+      "schedule": {
+        "scheduleTimeline": "Custom",
+        "cronExpression": "0 0 * * *"
+      }
+    }
   }
 }

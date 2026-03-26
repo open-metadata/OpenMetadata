@@ -12,6 +12,7 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.searchIndex.listeners.QuartzProgressListener;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.quartz.JobExecutionContext;
 
 public class QuartzOrchestratorContext implements OrchestratorContext {
@@ -76,13 +77,15 @@ public class QuartzOrchestratorContext implements OrchestratorContext {
 
   @Override
   public Map<String, Object> getAppConfiguration() {
-    return app != null ? JsonUtils.getMap(app.getAppConfiguration()) : null;
+    return app != null
+        ? JsonUtils.getMap(AppBoundConfigurationUtil.getAppConfiguration(app))
+        : null;
   }
 
   @Override
   public void updateAppConfiguration(Map<String, Object> config) {
     if (app != null) {
-      app.setAppConfiguration(config);
+      AppBoundConfigurationUtil.setAppConfiguration(app, config);
     }
   }
 

@@ -3,8 +3,11 @@ package org.openmetadata.service.apps.scheduler;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.SERVICE_ID;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +15,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
@@ -22,6 +26,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -54,6 +59,10 @@ public class OmAppJobListener implements JobListener {
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
+      String serviceIdStr =
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICE_ID);
+      UUID serviceId = serviceIdStr != null ? UUID.fromString(serviceIdStr) : null;
+
       App jobApp =
           repository.getByName(
               null, appName, repository.getFields("bot"), Include.NON_DELETED, true);
@@ -63,15 +72,25 @@ public class OmAppJobListener implements JobListener {
         LOG.info("App {} has null ID after findByName", appName);
       } else {
         LOG.info("App {} has ID: {}", appName, jobApp.getId());
+        if (serviceId != null) {
+          LOG.info("Executing service-bound app {} for service {}", appName, serviceId);
+        }
       }
 
-      ApplicationConfig appConfig =
-          JsonUtils.convertValue(jobApp.getAppConfiguration(), ApplicationConfig.class);
+      // Get configuration based on whether this is service-bound or global
+      Object configObject;
+      if (serviceId != null) {
+        configObject = AppBoundConfigurationUtil.getAppConfiguration(jobApp, serviceId);
+      } else {
+        configObject = AppBoundConfigurationUtil.getAppConfiguration(jobApp);
+      }
+
+      ApplicationConfig appConfig = JsonUtils.convertValue(configObject, ApplicationConfig.class);
       ApplicationConfig overrideConfig =
           JsonUtils.convertValue(
               jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY),
               ApplicationConfig.class);
-      if (overrideConfig != null) {
+      if (overrideConfig != null && appConfig != null) {
         appConfig.getAdditionalProperties().putAll(overrideConfig.getAdditionalProperties());
       }
 
@@ -80,6 +99,15 @@ public class OmAppJobListener implements JobListener {
       // Cache appId to avoid repeated repository lookups during status updates
       dataMap.put(APP_ID, jobApp.getId());
       long jobStartTime = System.currentTimeMillis();
+
+      // Get schedule based on service context
+      AppSchedule scheduleInfo;
+      if (serviceId != null) {
+        scheduleInfo = AppBoundConfigurationUtil.getAppSchedule(jobApp, serviceId);
+      } else {
+        scheduleInfo = AppBoundConfigurationUtil.getAppSchedule(jobApp);
+      }
+
       AppRunRecord runRecord =
           new AppRunRecord()
               .withAppId(jobApp.getId())
@@ -88,8 +116,17 @@ public class OmAppJobListener implements JobListener {
               .withTimestamp(jobStartTime)
               .withRunType(runType)
               .withStatus(AppRunRecord.Status.RUNNING)
-              .withScheduleInfo(jobApp.getAppSchedule())
+              .withScheduleInfo(scheduleInfo)
               .withConfig(JsonUtils.getMap(appConfig));
+
+      // Add serviceId to run record if this is a service-bound execution
+      if (serviceId != null) {
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("serviceId", serviceId.toString());
+        runRecord.withProperties(properties);
+        // Also add to services array so existing DB queries can filter by service
+        runRecord.withServices(List.of(new EntityReference().withId(serviceId)));
+      }
 
       boolean update = false;
       if (jobExecutionContext.isRecovering()) {
@@ -135,6 +172,20 @@ public class OmAppJobListener implements JobListener {
             JsonUtils.convertObjects(
                 jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD),
                 EntityReference.class));
+      }
+
+      // Ensure service-bound serviceId is preserved in the services list for DB filtering
+      String svcIdStr = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICE_ID);
+      if (svcIdStr != null) {
+        UUID svcId = UUID.fromString(svcIdStr);
+        List<EntityReference> currentServices =
+            runRecord.getServices() != null
+                ? new ArrayList<>(runRecord.getServices())
+                : new ArrayList<>();
+        if (currentServices.stream().noneMatch(ref -> svcId.equals(ref.getId()))) {
+          currentServices.add(new EntityReference().withId(svcId));
+          runRecord.setServices(currentServices);
+        }
       }
 
       // Check if the job was stopped/interrupted

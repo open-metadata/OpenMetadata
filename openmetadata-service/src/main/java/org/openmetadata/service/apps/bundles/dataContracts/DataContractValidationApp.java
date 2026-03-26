@@ -21,7 +21,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.DataProductRepository;
@@ -32,7 +31,8 @@ import org.openmetadata.service.util.RestUtil;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class DataContractValidationApp extends AbstractNativeApplication {
+public class DataContractValidationApp
+    extends org.openmetadata.service.apps.AbstractGlobalNativeApplication {
 
   private final Stats stats = new Stats();
   private JobExecutionContext jobExecutionContext;

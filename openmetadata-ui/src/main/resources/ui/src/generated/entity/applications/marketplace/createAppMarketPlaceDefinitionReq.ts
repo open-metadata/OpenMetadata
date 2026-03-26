@@ -50,6 +50,10 @@ export interface CreateAppMarketPlaceDefinitionReq {
      */
     appType: AppType;
     /**
+     * This schema defines the scope of the application — Global or Service-bound.
+     */
+    boundType?: AppBoundType;
+    /**
      * Full Qualified ClassName for the the application. Use can use
      * 'org.openmetadata.service.apps.AbstractNativeApplication' if you don't have one yet.
      */
@@ -1244,6 +1248,16 @@ export enum Type {
 export enum AppType {
     External = "external",
     Internal = "internal",
+}
+
+/**
+ * This schema defines the scope of the application — Global or Service-bound.
+ *
+ * This schema defines the scope of the application.
+ */
+export enum AppBoundType {
+    Global = "Global",
+    Service = "Service",
 }
 
 /**

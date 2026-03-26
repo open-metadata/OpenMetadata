@@ -47,6 +47,7 @@ public class AppMarketPlaceMapper
             .withSupportsInterrupt(create.getSupportsInterrupt())
             .withEventSubscriptions(create.getEventSubscriptions())
             .withSupportsIngestionRunner(create.getSupportsIngestionRunner())
+            .withBoundType(create.getBoundType())
             .withAllowBotImpersonation(create.getAllowBotImpersonation());
 
     // Validate App

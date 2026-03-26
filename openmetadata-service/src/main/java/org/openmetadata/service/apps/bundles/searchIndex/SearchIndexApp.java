@@ -13,14 +13,14 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class SearchIndexApp extends AbstractNativeApplication {
+public class SearchIndexApp extends org.openmetadata.service.apps.AbstractGlobalNativeApplication {
 
   public static class ReindexingException extends RuntimeException {
     public ReindexingException(String message) {
@@ -53,7 +53,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
+    jobData =
+        JsonUtils.convertValue(
+            AppBoundConfigurationUtil.getAppConfiguration(app), EventPublisherJob.class);
   }
 
   @Override
