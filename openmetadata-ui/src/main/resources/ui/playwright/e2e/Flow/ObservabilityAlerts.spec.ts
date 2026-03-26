@@ -263,141 +263,144 @@ for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
     });
   });
 }
-// Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
-test.fixme(
-  'Alert operations for a user with and without permissions',
-  async ({ page, userWithPermissionsPage, userWithoutPermissionsPage }) => {
-    test.slow();
+test('Alert operations for a user with and without permissions', async ({
+  page,
+  userWithPermissionsPage,
+  userWithoutPermissionsPage,
+}) => {
+  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
 
-    const ALERT_NAME = generateAlertName();
-    const { apiContext } = await getApiContext(page);
-    await visitObservabilityAlertPage(userWithPermissionsPage);
+  test.fixme(!process.env.PLAYWRIGHT_IS_OSS, 'Skipping in AUT environment');
+  test.slow();
 
-    await test.step('Create and trigger alert', async () => {
-      await inputBasicAlertInformation({
-        page: userWithPermissionsPage,
-        name: ALERT_NAME,
-        sourceName: SOURCE_NAME_3,
-        sourceDisplayName: SOURCE_DISPLAY_NAME_3,
-        createButtonId: 'create-observability',
-      });
-      await userWithPermissionsPage.click('[data-testid="add-filters"]');
+  const ALERT_NAME = generateAlertName();
+  const { apiContext } = await getApiContext(page);
+  await visitObservabilityAlertPage(userWithPermissionsPage);
 
-      // Select filter
-      await userWithPermissionsPage.click('[data-testid="filter-select-0"]');
-      await userWithPermissionsPage.click(
-        '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
-      );
-      await userWithPermissionsPage
-        .locator('.ant-select-dropdown:visible')
-        .waitFor({ state: 'hidden' });
+  await test.step('Create and trigger alert', async () => {
+    await inputBasicAlertInformation({
+      page: userWithPermissionsPage,
+      name: ALERT_NAME,
+      sourceName: SOURCE_NAME_3,
+      sourceDisplayName: SOURCE_DISPLAY_NAME_3,
+      createButtonId: 'create-observability',
+    });
+    await userWithPermissionsPage.click('[data-testid="add-filters"]');
 
-      // Search and select filter input value
-      const searchOptions = userWithPermissionsPage.waitForResponse(
-        '/api/v1/search/query?q=*'
-      );
-      await userWithPermissionsPage.fill(
-        `[data-testid="fqn-list-select"] [role="combobox"]`,
-        table1.entity.name,
-        {
-          force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
-        }
-      );
+    // Select filter
+    await userWithPermissionsPage.click('[data-testid="filter-select-0"]');
+    await userWithPermissionsPage.click(
+      '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
+    );
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
 
-      await searchOptions;
+    // Search and select filter input value
+    const searchOptions = userWithPermissionsPage.waitForResponse(
+      '/api/v1/search/query?q=*'
+    );
+    await userWithPermissionsPage.fill(
+      `[data-testid="fqn-list-select"] [role="combobox"]`,
+      table1.entity.name,
+      {
+        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
+      }
+    );
 
-      await userWithPermissionsPage.click(
-        `.ant-select-dropdown:visible [title="${table1.entity.name}"]`
-      );
+    await searchOptions;
 
-      // Wait for the filter dropdown to fully close before proceeding
-      await userWithPermissionsPage
-        .locator('.ant-select-dropdown:visible')
-        .waitFor({ state: 'hidden' });
+    await userWithPermissionsPage.click(
+      `.ant-select-dropdown:visible [title="${table1.entity.name}"]`
+    );
 
-      // Check if option is selected
-      await test
-        .expect(
-          userWithPermissionsPage.locator(
-            `[data-testid="fqn-list-select"] [title="${table1.entity.name}"]`
-          )
+    // Wait for the filter dropdown to fully close before proceeding
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
+
+    // Check if option is selected
+    await test
+      .expect(
+        userWithPermissionsPage.locator(
+          `[data-testid="fqn-list-select"] [title="${table1.entity.name}"]`
         )
-        .toBeAttached();
+      )
+      .toBeAttached();
 
-      await userWithPermissionsPage.click('[data-testid="add-trigger"]');
+    await userWithPermissionsPage.click('[data-testid="add-trigger"]');
 
-      // Select action
-      await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
+    // Select action
+    await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
 
-      // Adding the dropdown visibility check to avoid flakiness here
-      await userWithPermissionsPage
-        .locator(`.ant-select-dropdown:visible`)
-        .waitFor({
-          state: 'visible',
-        });
-      await userWithPermissionsPage.click(
-        '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
-      );
-      await userWithPermissionsPage
-        .locator(`.ant-select-dropdown:visible`)
-        .waitFor({
-          state: 'hidden',
-        });
-
-      await userWithPermissionsPage.click(
-        '[data-testid="add-destination-button"]'
-      );
-      await addExternalDestination({
-        page: userWithPermissionsPage,
-        destinationNumber: 0,
-        category: 'Slack',
-        input: 'https://slack.com',
+    // Adding the dropdown visibility check to avoid flakiness here
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
+        state: 'visible',
+      });
+    await userWithPermissionsPage.click(
+      '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
+    );
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
+        state: 'hidden',
       });
 
-      // Click save
-      data.alertDetails = await saveAlertAndVerifyResponse(
-        userWithPermissionsPage
-      );
+    await userWithPermissionsPage.click(
+      '[data-testid="add-destination-button"]'
+    );
+    await addExternalDestination({
+      page: userWithPermissionsPage,
+      destinationNumber: 0,
+      category: 'Slack',
+      input: 'https://slack.com',
+    });
 
-      // Trigger alert
-      await table1.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/columns/4',
-            value: {
-              name: 'new_field',
-              dataType: 'VARCHAR',
-              dataLength: 100,
-              dataTypeDisplay: 'varchar(100)',
-            },
+    // Click save
+    data.alertDetails = await saveAlertAndVerifyResponse(
+      userWithPermissionsPage
+    );
+
+    // Trigger alert
+    await table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/columns/4',
+          value: {
+            name: 'new_field',
+            dataType: 'VARCHAR',
+            dataLength: 100,
+            dataTypeDisplay: 'varchar(100)',
           },
-        ],
-      });
+        },
+      ],
     });
+  });
 
-    await test.step('Checks for user without permission', async () => {
-      await checkAlertFlowForWithoutPermissionUser({
-        page: userWithoutPermissionsPage,
-        alertDetails: data.alertDetails,
-        sourceName: SOURCE_NAME_3,
-        table: table1,
-      });
+  await test.step('Checks for user without permission', async () => {
+    await checkAlertFlowForWithoutPermissionUser({
+      page: userWithoutPermissionsPage,
+      alertDetails: data.alertDetails,
+      sourceName: SOURCE_NAME_3,
+      table: table1,
     });
+  });
 
-    await test.step('Check alert details page and Recent Events tab', async () => {
-      await checkAlertDetailsForWithPermissionUser({
-        page: userWithPermissionsPage,
-        alertDetails: data.alertDetails,
-        sourceName: SOURCE_NAME_3,
-        table: table1,
-        user: user2,
-      });
+  await test.step('Check alert details page and Recent Events tab', async () => {
+    await checkAlertDetailsForWithPermissionUser({
+      page: userWithPermissionsPage,
+      alertDetails: data.alertDetails,
+      sourceName: SOURCE_NAME_3,
+      table: table1,
+      user: user2,
     });
+  });
 
-    await test.step('Delete alert', async () => {
-      await deleteAlert(userWithPermissionsPage, data.alertDetails, false);
-    });
-  }
-);
+  await test.step('Delete alert', async () => {
+    await deleteAlert(userWithPermissionsPage, data.alertDetails, false);
+  });
+});
