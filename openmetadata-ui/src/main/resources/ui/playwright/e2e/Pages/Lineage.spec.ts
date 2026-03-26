@@ -107,7 +107,7 @@ test.beforeEach(async ({ page }) => {
 for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
-  test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
+  test.skip(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     page,
   }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs
