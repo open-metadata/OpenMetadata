@@ -39,6 +39,8 @@ import { UserTag } from '../UserTag/UserTag.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
 
+type UserReferenceWithBotFlag = EntityReference & { isBot?: boolean };
+
 export const UserSelectableList = ({
   hasPermission,
   selectedUsers = [],
@@ -54,23 +56,37 @@ export const UserSelectableList = ({
   const { currentUser } = useApplicationStore();
   const botUserIds = useRef<Set<string>>(new Set());
 
-  // Pre-populate botUserIds from selectedUsers so already-selected bot users
-  // show the bot indicator even if they don't appear in the first fetched page.
-  type UserReferenceWithBotFlag = EntityReference & { isBot?: boolean };
-  useEffect(() => {
-    if (!includeBot) {
-      return;
-    }
+  const seedBotsFromSelected = useCallback(() => {
     (selectedUsers as UserReferenceWithBotFlag[]).forEach((user) => {
       if (user.isBot && user.id) {
         botUserIds.current.add(user.id);
       }
     });
-  }, [includeBot, selectedUsers]);
+  }, [selectedUsers]);
+
+  useEffect(() => {
+    if (includeBot) {
+      seedBotsFromSelected();
+    }
+  }, [includeBot, seedBotsFromSelected]);
+
+  const trackBots = useCallback(
+    (users: Array<{ id: string; isBot?: boolean }>) => {
+      users.forEach((user) => {
+        if (user.isBot && user.id) {
+          botUserIds.current.add(user.id);
+        }
+      });
+    },
+    []
+  );
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (!after) {
       botUserIds.current.clear();
+      if (includeBot) {
+        seedBotsFromSelected();
+      }
     }
     if (searchText) {
       try {
@@ -87,11 +103,7 @@ export const UserSelectableList = ({
         const users = formatUsersResponse(res.hits.hits);
 
         if (includeBot) {
-          users.forEach((user) => {
-            if (user.isBot) {
-              botUserIds.current.add(user.id);
-            }
-          });
+          trackBots(users);
         }
 
         const data = getEntityReferenceListFromEntities(users, EntityType.USER);
@@ -116,11 +128,7 @@ export const UserSelectableList = ({
         });
 
         if (includeBot) {
-          data.forEach((user) => {
-            if (user.isBot) {
-              botUserIds.current.add(user.id);
-            }
-          });
+          trackBots(data);
         }
 
         const filterData = getEntityReferenceListFromEntities(
