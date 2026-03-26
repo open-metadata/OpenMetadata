@@ -1135,19 +1135,19 @@ export const validateColumnCustomProperty = async (
 export const verifyTableColumnCustomPropertyPersistence = async ({
   page,
   columnFqn,
+  tableFqn,
   propertyName,
   propertyType,
   users,
 }: {
   page: Page;
   columnFqn: string;
+  tableFqn: string;
   propertyName: string;
   propertyType: string;
   users: Record<string, string>;
 }) => {
   const testValue = getPropertyValues(propertyType, users).value;
-
-  const tableFqn = columnFqn.split('.').slice(0, -1).join('.');
   const columnsProfileResponse = () =>
     page.waitForResponse(
       (response) =>
