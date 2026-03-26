@@ -434,7 +434,10 @@ test('Alert operations for a user with and without permissions', async ({
   userWithoutPermissionsPage,
 }) => {
   // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
-  test.fixme(!process.env.PLAYWRIGHT_IS_OSS, 'Skipping in AUT environment');
+  test.fixme(
+    process.env.PLAYWRIGHT_IS_OSS !== 'true',
+    'Skipping in AUT environment'
+  );
 
   test.slow();
   const ALERT_NAME = generateAlertName();
