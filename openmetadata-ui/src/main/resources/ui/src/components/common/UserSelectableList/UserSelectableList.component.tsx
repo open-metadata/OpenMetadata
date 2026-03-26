@@ -12,7 +12,7 @@
  */
 import { SmartToyOutlined } from '@mui/icons-material';
 import { Button, Popover, Tooltip } from 'antd';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
@@ -53,6 +53,20 @@ export const UserSelectableList = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const botUserIds = useRef<Set<string>>(new Set());
+
+  // Pre-populate botUserIds from selectedUsers so already-selected bot users
+  // show the bot indicator even if they don't appear in the first fetched page.
+  type UserReferenceWithBotFlag = EntityReference & { isBot?: boolean };
+  useEffect(() => {
+    if (!includeBot) {
+      return;
+    }
+    (selectedUsers as UserReferenceWithBotFlag[]).forEach((user) => {
+      if (user.isBot && user.id) {
+        botUserIds.current.add(user.id);
+      }
+    });
+  }, [includeBot, selectedUsers]);
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (!after) {
@@ -145,8 +159,10 @@ export const UserSelectableList = ({
         {botUserIds.current.has(item.id) && (
           <Tooltip title={t('label.bot')}>
             <SmartToyOutlined
+              aria-label={t('label.bot')}
               data-testid="bot-indicator"
               style={{ fontSize: 16, color: TEXT_GREY_MUTED }}
+              titleAccess={t('label.bot')}
             />
           </Tooltip>
         )}

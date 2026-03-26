@@ -56,8 +56,10 @@ export const commonUserDetailColumns = (
         {record.isBot && (
           <Tooltip title={t('label.bot')}>
             <SmartToyOutlined
+              aria-label={t('label.bot')}
               data-testid="bot-icon"
               style={{ fontSize: 16, color: TEXT_GREY_MUTED }}
+              titleAccess={t('label.bot')}
             />
           </Tooltip>
         )}
