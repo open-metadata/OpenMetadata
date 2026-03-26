@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import {
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
-} from '../../constant/config';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';

@@ -10,17 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edit01, Settings01, Trash01 } from "@untitledui/icons";
-import type { Meta, StoryObj } from "@storybook/react";
-import { ButtonGroup, ButtonGroupItem } from "../components/base/button-group/button-group";
+import { Edit01, Settings01, Trash01 } from '@untitledui/icons';
+import type { Meta, StoryObj } from '@storybook/react';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+} from '../components/base/button-group/button-group';
 
 const meta = {
-  title: "Components/ButtonGroup",
+  title: 'Components/ButtonGroup',
   component: ButtonGroup,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof ButtonGroup>;
 
 export default meta;
@@ -38,7 +41,7 @@ export const Default: Story = {
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <ButtonGroup size="sm">
         <ButtonGroupItem id="sm1">Small 1</ButtonGroupItem>
         <ButtonGroupItem id="sm2">Small 2</ButtonGroupItem>
@@ -61,9 +64,15 @@ export const Sizes: StoryObj = {
 export const WithIcons: StoryObj = {
   render: () => (
     <ButtonGroup>
-      <ButtonGroupItem id="edit" iconLeading={Edit01}>Edit</ButtonGroupItem>
-      <ButtonGroupItem id="settings" iconLeading={Settings01}>Settings</ButtonGroupItem>
-      <ButtonGroupItem id="delete" iconLeading={Trash01}>Delete</ButtonGroupItem>
+      <ButtonGroupItem iconLeading={Edit01} id="edit">
+        Edit
+      </ButtonGroupItem>
+      <ButtonGroupItem iconLeading={Settings01} id="settings">
+        Settings
+      </ButtonGroupItem>
+      <ButtonGroupItem iconLeading={Trash01} id="delete">
+        Delete
+      </ButtonGroupItem>
     </ButtonGroup>
   ),
 };
@@ -71,9 +80,9 @@ export const WithIcons: StoryObj = {
 export const IconOnly: StoryObj = {
   render: () => (
     <ButtonGroup>
-      <ButtonGroupItem id="edit-icon" iconLeading={Edit01} />
-      <ButtonGroupItem id="settings-icon" iconLeading={Settings01} />
-      <ButtonGroupItem id="delete-icon" iconLeading={Trash01} />
+      <ButtonGroupItem iconLeading={Edit01} id="edit-icon" />
+      <ButtonGroupItem iconLeading={Settings01} id="settings-icon" />
+      <ButtonGroupItem iconLeading={Trash01} id="delete-icon" />
     </ButtonGroup>
   ),
 };
@@ -82,7 +91,9 @@ export const WithDisabled: StoryObj = {
   render: () => (
     <ButtonGroup>
       <ButtonGroupItem id="opt1">Option 1</ButtonGroupItem>
-      <ButtonGroupItem id="opt2" isDisabled>Disabled</ButtonGroupItem>
+      <ButtonGroupItem isDisabled id="opt2">
+        Disabled
+      </ButtonGroupItem>
       <ButtonGroupItem id="opt3">Option 3</ButtonGroupItem>
     </ButtonGroup>
   ),

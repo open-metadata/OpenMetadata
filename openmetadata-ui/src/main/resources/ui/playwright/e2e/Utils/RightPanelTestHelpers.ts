@@ -13,8 +13,8 @@
 
 import { Page } from '@playwright/test';
 import { EntityClass } from '../../support/entity/EntityClass';
-import { RightPanelTestSuite, TestOptions } from './RightPanelTestSuite';
 import { PageContext } from '../PageObject/Explore/RightPanelPageObject';
+import { RightPanelTestSuite, TestOptions } from './RightPanelTestSuite';
 
 export async function runRightPanelTestsForEntityDetailsPage(
   page: Page,

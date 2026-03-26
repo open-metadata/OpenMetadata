@@ -214,6 +214,8 @@ export interface ServiceConnection {
  *
  * Mssql Database Connection Config
  *
+ * Microsoft Access Database Connection Config
+ *
  * Mysql Database Connection Config
  *
  * SQLite Database Connection Config
@@ -916,6 +918,9 @@ export interface ConfigObject {
     redashVersion?: string;
     /**
      * Choose between API or database connection fetch metadata from superset.
+     *
+     * Choose between local file system path (object) or S3 bucket location (object) for Access
+     * database files.
      *
      * Choose between Database connection or HDB User Store connection.
      *
@@ -2274,6 +2279,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to exclude or include charts that matches the pattern.
  *
+ * Regex to only fetch containers that matches the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -2298,8 +2305,6 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude glossaries that match the pattern.
  *
  * Regex exclude pipelines.
- *
- * Regex to only fetch containers that matches the pattern.
  *
  * Regex to filter MuleSoft applications by name.
  *
@@ -3582,6 +3587,14 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Mysql Database Connection Config
  *
+ * Choose between local file system path (object) or S3 bucket location (object) for Access
+ * database files.
+ *
+ * Local filesystem path to a single Access database file or a directory containing Access
+ * files.
+ *
+ * S3 Connection.
+ *
  * Choose between Database connection or HDB User Store connection.
  *
  * Sap Hana Database SQL Connection Config
@@ -3740,6 +3753,25 @@ export interface ConfigConnection {
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
+    /**
+     * Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g.
+     * ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be
+     * ingested.
+     */
+    localFilePath?: string;
+    awsConfig?:     AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?: string[];
+    /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?: FilterPattern;
     /**
      * HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port>
      * <USERNAME> <PASSWORD>`
@@ -4038,6 +4070,8 @@ export enum SSLMode {
  * Service Type
  *
  * Service type.
+ *
+ * S3 service type
  */
 export enum ConnectionType {
     Backend = "Backend",
@@ -4045,6 +4079,7 @@ export enum ConnectionType {
     Mysql = "Mysql",
     Postgres = "Postgres",
     RESTAPI = "RestAPI",
+    S3 = "S3",
     SQLite = "SQLite",
 }
 
@@ -4549,7 +4584,7 @@ export interface S3Connection {
     /**
      * Service Type
      */
-    type?: S3Type;
+    type?: S3ConnectionType;
 }
 
 /**
@@ -4557,7 +4592,7 @@ export interface S3Connection {
  *
  * S3 service type
  */
-export enum S3Type {
+export enum S3ConnectionType {
     S3 = "S3",
 }
 
@@ -5005,6 +5040,7 @@ export enum PurpleType {
     Metabase = "Metabase",
     MetadataES = "MetadataES",
     MicroStrategy = "MicroStrategy",
+    MicrosoftAccess = "MicrosoftAccess",
     MicrosoftFabric = "MicrosoftFabric",
     MicrosoftFabricPipeline = "MicrosoftFabricPipeline",
     Mlflow = "Mlflow",

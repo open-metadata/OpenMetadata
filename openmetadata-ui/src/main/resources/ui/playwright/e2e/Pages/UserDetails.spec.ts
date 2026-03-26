@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
@@ -81,42 +81,41 @@ test.describe('User with different Roles', () => {
     await afterAction();
   });
 
-  test(
-    'Admin user can edit teams from the user profile',
-    async ({ adminPage }) => {
-      test.slow();
-      await redirectToUserPage(adminPage);
+  test('Admin user can edit teams from the user profile', async ({
+    adminPage,
+  }) => {
+    test.slow();
+    await redirectToUserPage(adminPage);
 
-      // Check if the avatar is visible
-      await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
+    // Check if the avatar is visible
+    await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
 
-      const teamsListResponse = adminPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/teams/hierarchy') &&
-          response.request().method() === 'GET'
-      );
+    const teamsListResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/teams/hierarchy') &&
+        response.request().method() === 'GET'
+    );
 
-      await adminPage.getByTestId('edit-teams-button').click();
-      await teamsListResponse;
+    await adminPage.getByTestId('edit-teams-button').click();
+    await teamsListResponse;
 
-      await adminPage.locator('.ant-tree-select-dropdown').waitFor({
-        state: 'visible',
-      });
+    await adminPage.locator('.ant-tree-select-dropdown').waitFor({
+      state: 'visible',
+    });
 
-      const teamOption = adminPage
-        .locator('[title="' + team.responseData.displayName + '"]')
-        .first();
+    const teamOption = adminPage
+      .locator('[title="' + team.responseData.displayName + '"]')
+      .first();
 
-      await expect(teamOption).toBeVisible();
-      await teamOption.click();
+    await expect(teamOption).toBeVisible();
+    await teamOption.click();
 
-      await adminPage.getByTestId('teams-edit-save-btn').click();
+    await adminPage.getByTestId('teams-edit-save-btn').click();
 
-      await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
-        team.responseData.displayName ?? team.data.displayName
-      );
-    }
-  );
+    await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
+      team.responseData.displayName ?? team.data.displayName
+    );
+  });
 
   test('Create team with domain and verify visibility of inherited domain in user profile after team removal', async ({
     adminPage,

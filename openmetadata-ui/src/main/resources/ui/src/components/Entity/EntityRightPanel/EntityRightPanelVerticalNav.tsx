@@ -19,6 +19,7 @@ import { ReactComponent as ExploreIcon } from '../../../assets/svg/explore-verti
 import { ReactComponent as PlatformLineageIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-platform-lineage.svg';
 import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-schema.svg';
 import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
+import { ReactComponent as RelationsNavIcon } from '../../../assets/svg/ic_relations.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   hasCustomPropertiesTab,
@@ -40,10 +41,31 @@ const EntityRightPanelVerticalNav: React.FC<
   verticalNavConatinerclassName,
   isSideDrawer = false,
   isColumnDetailPanel = false,
+  ontologyExplorerNav = false,
+  appendOntologyRelationsTab = false,
 }) => {
   const { t } = useTranslation();
 
   const getTabItems = () => {
+    if (ontologyExplorerNav) {
+      return [
+        {
+          key: EntityRightPanelTab.OVERVIEW,
+          icon: <ExploreIcon />,
+          label: t('label.overview'),
+          'data-testid': 'overview-tab',
+        },
+        {
+          key: EntityRightPanelTab.RELATIONS,
+          icon: (
+            <RelationsNavIcon className="tw:h-[18px] tw:w-[18px] tw:shrink-0 tw:text-quaternary" />
+          ),
+          label: t('label.relation-plural'),
+          'data-testid': 'ontology-relations-tab',
+        },
+      ];
+    }
+
     const items = [
       {
         key: EntityRightPanelTab.OVERVIEW,
@@ -92,6 +114,15 @@ const EntityRightPanelVerticalNav: React.FC<
         icon: <CustomPropertiesIcon />,
         label: t('label.custom-property'),
         'data-testid': 'custom-properties-tab',
+      });
+    }
+
+    if (appendOntologyRelationsTab) {
+      items.push({
+        key: EntityRightPanelTab.RELATIONS,
+        icon: <RelationsNavIcon />,
+        label: t('label.relation-plural'),
+        'data-testid': 'ontology-relations-tab',
       });
     }
 

@@ -12,8 +12,8 @@
  */
 import { expect, test } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
-import { columnPaginationTable } from '../../utils/table';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { columnPaginationTable } from '../../utils/table';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

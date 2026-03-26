@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ODCS_VALID_BASIC_YAML } from '../../constant/dataContracts';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -28,7 +29,6 @@ import {
   openODCSImportDropdown,
 } from '../../utils/odcsImportExport';
 import { test as base } from '../fixtures/pages';
-import { ODCS_VALID_BASIC_YAML } from '../../constant/dataContracts';
 
 // Policy rules for dataContract EditAll permissions
 const DATA_CONTRACT_EDIT_RULES = [

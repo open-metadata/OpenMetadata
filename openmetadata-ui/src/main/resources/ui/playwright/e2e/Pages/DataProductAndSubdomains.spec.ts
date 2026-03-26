@@ -24,12 +24,12 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   checkAssetsCount,
   selectDataProduct,
   selectDomain,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });

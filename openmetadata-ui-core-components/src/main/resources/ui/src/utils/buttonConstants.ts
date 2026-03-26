@@ -116,7 +116,8 @@ export const buttonConstants = {
       secondary: (colors: ThemeColors): ColorVariantConfig => ({
         backgroundColor: colors.white,
         color: colors.gray[400],
-        boxShadow: (shadows: ButtonShadows) => shadows.XS_SKEUMORPHIC(colors.gray[300]),
+        boxShadow: (shadows: ButtonShadows) =>
+          shadows.XS_SKEUMORPHIC(colors.gray[300]),
         hover: {
           backgroundColor: colors.gray[50],
           color: colors.gray[500],
@@ -124,7 +125,8 @@ export const buttonConstants = {
         disabled: {
           backgroundColor: colors.white,
           color: colors.gray[300],
-          boxShadow: (shadows: ButtonShadows) => shadows.XS_DISABLED(colors.gray[200]),
+          boxShadow: (shadows: ButtonShadows) =>
+            shadows.XS_DISABLED(colors.gray[200]),
         },
       }),
       tertiary: (colors: ThemeColors): ColorVariantConfig => ({
@@ -162,7 +164,8 @@ export const createIconButtonColorVariant = (
   variant: 'secondary' | 'tertiary',
   colors: ThemeColors
 ) => {
-  const config: ColorVariantConfig = buttonConstants.iconButton.colorVariants[variant](colors);
+  const config: ColorVariantConfig =
+    buttonConstants.iconButton.colorVariants[variant](colors);
 
   return {
     backgroundColor: config.backgroundColor,
@@ -180,9 +183,7 @@ export const createIconButtonColorVariant = (
       backgroundColor: config.disabled.backgroundColor,
       color: config.disabled.color,
       ...(config.disabled.boxShadow && {
-        boxShadow: config.disabled.boxShadow(
-          buttonConstants.shadows
-        ),
+        boxShadow: config.disabled.boxShadow(buttonConstants.shadows),
       }),
       ...(variant === 'tertiary' && { boxShadow: 'none' }),
     },
