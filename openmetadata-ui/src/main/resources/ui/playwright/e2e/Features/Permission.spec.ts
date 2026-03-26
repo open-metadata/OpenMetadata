@@ -18,8 +18,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
-import { validateViewPermissions } from '../../utils/permission';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { validateViewPermissions } from '../../utils/permission';
 
 const policy = new PolicyClass();
 const policy2 = new PolicyClass();

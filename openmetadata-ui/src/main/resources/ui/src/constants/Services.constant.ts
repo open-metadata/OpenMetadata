@@ -464,6 +464,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.StarRocks,
   DriveServiceType.SFTP,
   DatabaseServiceType.Informix,
+  DatabaseServiceType.MicrosoftAccess,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

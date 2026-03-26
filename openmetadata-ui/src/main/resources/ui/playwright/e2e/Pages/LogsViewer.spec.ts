@@ -21,6 +21,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForFirstPipelineStatusNotQueued } from '../../utils/logsViewer';
 import { test } from '../fixtures/pages';
 
 const table = new TableClass();
@@ -54,6 +55,7 @@ test.describe(
       page,
     }) => {
       test.slow();
+      test.setTimeout(6 * 60 * 1000);
 
       await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
         await redirectToHomePage(page);
@@ -83,8 +85,7 @@ test.describe(
       });
 
       await test.step('Open Pipeline tab and click Logs for first pipeline', async () => {
-        await page.getByTestId('pipeline').click();
-        await waitForAllLoadersToDisappear(page);
+        await waitForFirstPipelineStatusNotQueued(page);
 
         const pipelinesResponse = page.waitForResponse(
           (r) =>

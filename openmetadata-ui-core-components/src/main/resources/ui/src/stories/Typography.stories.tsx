@@ -12,7 +12,10 @@
  */
 import type { Meta, StoryObj } from '@storybook/react';
 import type { CSSProperties } from 'react';
-import type { TypographySize, TypographyWeight } from '../components/foundations/typography';
+import type {
+  TypographySize,
+  TypographyWeight,
+} from '../components/foundations/typography';
 import { Typography } from '../components/foundations/typography';
 
 const meta = {
@@ -33,7 +36,8 @@ export const Default: Story = {
       <>
         <h1>Heading 1</h1>
         <p>
-          This is a paragraph with <strong>bold text</strong> and <em>italic text</em>.
+          This is a paragraph with <strong>bold text</strong> and{' '}
+          <em>italic text</em>.
         </p>
       </>
     ),
@@ -72,11 +76,12 @@ export const Paragraphs: StoryObj = {
     <div style={{ maxWidth: 600 }}>
       <Typography>
         <p>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore
-          magna aliqua.
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua.
         </p>
         <p>
-          Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+          Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+          nisi ut aliquip ex ea commodo consequat.
         </p>
       </Typography>
     </div>
@@ -115,7 +120,8 @@ export const Links: StoryObj = {
     <div style={{ maxWidth: 400 }}>
       <Typography>
         <p>
-          Visit the <a href="#">OpenMetadata documentation</a> to learn more about the platform.
+          Visit the <a href="#">OpenMetadata documentation</a> to learn more
+          about the platform.
         </p>
       </Typography>
     </div>
@@ -180,13 +186,20 @@ export const AsArticle: StoryObj = {
     <div style={{ maxWidth: 500 }}>
       <Typography as="article">
         <h1>Article Title</h1>
-        <p>This Typography component renders the inner element as an article.</p>
+        <p>
+          This Typography component renders the inner element as an article.
+        </p>
       </Typography>
     </div>
   ),
 };
 
-const ALL_SIZES: { value: TypographySize; px: number; lineHeight: number; letterSpacing?: string }[] = [
+const ALL_SIZES: {
+  value: TypographySize;
+  px: number;
+  lineHeight: number;
+  letterSpacing?: string;
+}[] = [
   { value: 'display-2xl', px: 72, lineHeight: 90, letterSpacing: '-2%' },
   { value: 'display-xl', px: 60, lineHeight: 72, letterSpacing: '-2%' },
   { value: 'display-lg', px: 48, lineHeight: 60, letterSpacing: '-2%' },
@@ -200,14 +213,23 @@ const ALL_SIZES: { value: TypographySize; px: number; lineHeight: number; letter
   { value: 'text-xs', px: 12, lineHeight: 18 },
 ];
 
-const ALL_WEIGHTS: { label: string; fontWeight: number; value: TypographyWeight }[] = [
+const ALL_WEIGHTS: {
+  label: string;
+  fontWeight: number;
+  value: TypographyWeight;
+}[] = [
   { label: 'Regular', fontWeight: 400, value: 'regular' },
   { label: 'Medium', fontWeight: 500, value: 'medium' },
   { label: 'Semibold', fontWeight: 600, value: 'semibold' },
   { label: 'Bold', fontWeight: 700, value: 'bold' },
 ];
 
-const metaStyle: CSSProperties = { fontSize: '11px', color: '#98a2b3', fontWeight: 400, lineHeight: 1.4 };
+const metaStyle: CSSProperties = {
+  fontSize: '11px',
+  color: '#98a2b3',
+  fontWeight: 400,
+  lineHeight: 1.4,
+};
 const thStyle: CSSProperties = {
   textAlign: 'left',
   padding: '0 48px 12px 0',
@@ -215,16 +237,26 @@ const thStyle: CSSProperties = {
   color: '#344054',
   fontSize: '12px',
 };
-const tdMetaStyle: CSSProperties = { padding: '20px 48px 20px 0', verticalAlign: 'top' };
+const tdMetaStyle: CSSProperties = {
+  padding: '20px 48px 20px 0',
+  verticalAlign: 'top',
+};
 
 export const AllVariants: StoryObj = {
   name: 'All Variants',
   parameters: { layout: 'padded' },
   render: () => (
     <div style={{ padding: '32px', fontFamily: 'Inter, sans-serif' }}>
-      <p style={{ fontSize: '12px', color: '#667085', marginBottom: '24px', marginTop: 0 }}>
-        Font size tokens and weight variants available on the <code style={{ fontSize: '11px' }}>Typography</code>{' '}
-        component via <code style={{ fontSize: '11px' }}>size</code> and{' '}
+      <p
+        style={{
+          fontSize: '12px',
+          color: '#667085',
+          marginBottom: '24px',
+          marginTop: 0,
+        }}>
+        Font size tokens and weight variants available on the{' '}
+        <code style={{ fontSize: '11px' }}>Typography</code> component via{' '}
+        <code style={{ fontSize: '11px' }}>size</code> and{' '}
         <code style={{ fontSize: '11px' }}>weight</code> props.
       </p>
       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -246,10 +278,19 @@ export const AllVariants: StoryObj = {
           {ALL_SIZES.map(({ value: size, px, lineHeight, letterSpacing }) => (
             <tr key={size} style={{ borderTop: '1px solid #f2f4f7' }}>
               <td style={{ ...tdMetaStyle, whiteSpace: 'nowrap' }}>
-                <div style={{ fontSize: '12px', color: '#344054', fontWeight: 500 }}>{size}</div>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: '#344054',
+                    fontWeight: 500,
+                  }}>
+                  {size}
+                </div>
                 <div style={metaStyle}>Size: {px}px</div>
                 <div style={metaStyle}>Line height: {lineHeight}px</div>
-                {letterSpacing && <div style={metaStyle}>Letter spacing: {letterSpacing}</div>}
+                {letterSpacing && (
+                  <div style={metaStyle}>Letter spacing: {letterSpacing}</div>
+                )}
               </td>
               {ALL_WEIGHTS.map(({ value: weight }) => (
                 <td key={weight} style={tdMetaStyle}>
@@ -275,7 +316,7 @@ export const EllipsisSingleLine: StoryObj = {
   name: 'Ellipsis — single line (ellipsis={true})',
   render: () => (
     <div style={{ maxWidth: 300 }}>
-      <Typography as="p" ellipsis>
+      <Typography ellipsis as="p">
         {LONG_TEXT}
       </Typography>
     </div>

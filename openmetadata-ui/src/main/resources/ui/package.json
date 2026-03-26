@@ -38,8 +38,8 @@
     "pretty:src": "yarn pretty:base './src/**/*.{js,jsx,ts,tsx,json}' --write",
     "pretty:playwright": "yarn pretty:base './playwright/**/*.{ts,tsx,js,jsx}' --write",
     "organize-imports:cli": "organize-imports-cli",
-    "organize-imports": "yarn organize-imports:cli './src/**/*.{ts,tsx,js,jsx}'",
-    "organize-imports:playwright": "yarn organize-imports:cli './playwright/**/*.{ts,tsx,js,jsx}'",
+    "organize-imports": "yarn organize-imports:cli tsconfig[.*].json",
+    "organize-imports:playwright": "yarn organize-imports:cli './playwright/tsconfig[.*].json'",
     "playwright:run": "playwright test",
     "playwright:open": "playwright test --ui",
     "playwright:codegen": "playwright codegen",
@@ -48,7 +48,9 @@
     "tsc:check": "tsc --noEmit",
     "tsc:playwright": "tsc --project playwright/tsconfig.json --noEmit",
     "ui-checkstyle": "yarn organize-imports && yarn lint:fix && yarn pretty && yarn license-header-fix && yarn i18n && yarn generate:app-docs",
-    "ui-checkstyle:playwright": "yarn organize-imports:playwright && yarn lint:playwright --fix && yarn pretty:playwright"
+    "ui-checkstyle:changed": "bash scripts/ui-checkstyle-changed.sh",
+    "ui-checkstyle:playwright": "yarn organize-imports:playwright && yarn lint:playwright --fix && yarn pretty:playwright",
+    "ui-checkstyle:playwright:changed": "bash scripts/ui-checkstyle-playwright-changed.sh"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",

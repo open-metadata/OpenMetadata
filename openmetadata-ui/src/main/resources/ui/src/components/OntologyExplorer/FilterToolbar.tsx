@@ -12,14 +12,16 @@
  */
 
 import {
-  Button,
-  Dropdown,
-  Tabs,
+  Autocomplete,
+  Divider,
+  Select,
   Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
 import React, { useCallback, useMemo } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { ONTOLOGY_AUTOCOMPLETE_ALL_ID } from './OntologyExplorer.constants';
 import {
   FilterToolbarProps,
   GraphViewMode,
@@ -41,79 +43,132 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const handleGlossaryChange = useCallback(
-    (key: React.Key | null) => {
-      const isAll = key === null || String(key) === '__all__';
+  const handleGlossaryInserted = useCallback(
+    (key: Key) => {
+      const id = String(key);
+      if (filters.glossaryIds.includes(id)) {
+        return;
+      }
+      if (id === ONTOLOGY_AUTOCOMPLETE_ALL_ID) {
+        onFiltersChange({
+          ...filters,
+          glossaryIds: [ONTOLOGY_AUTOCOMPLETE_ALL_ID],
+        });
+
+        return;
+      }
       onFiltersChange({
         ...filters,
-        glossaryIds: isAll ? [] : [String(key)],
+        glossaryIds: [
+          ...filters.glossaryIds.filter(
+            (g) => g !== ONTOLOGY_AUTOCOMPLETE_ALL_ID
+          ),
+          id,
+        ],
       });
     },
     [filters, onFiltersChange]
   );
 
-  const handleRelationTypeChange = useCallback(
-    (key: React.Key | null) => {
-      const isAll = key === null || String(key) === '__all__';
+  const handleGlossaryCleared = useCallback(
+    (key: Key) => {
+      const id = String(key);
       onFiltersChange({
         ...filters,
-        relationTypes: isAll ? [] : [String(key)],
+        glossaryIds: filters.glossaryIds.filter((g) => g !== id),
       });
     },
     [filters, onFiltersChange]
   );
 
-  const handleClearFilters = useCallback(() => {
-    onFiltersChange({
-      viewMode: 'overview',
-      glossaryIds: [],
-      relationTypes: [],
-      showIsolatedNodes: true,
-      showCrossGlossaryOnly: false,
-      searchQuery: '',
-    });
-  }, [onFiltersChange]);
+  const handleRelationTypeInserted = useCallback(
+    (key: Key) => {
+      const id = String(key);
+      if (filters.relationTypes.includes(id)) {
+        return;
+      }
+      if (id === ONTOLOGY_AUTOCOMPLETE_ALL_ID) {
+        onFiltersChange({
+          ...filters,
+          relationTypes: [ONTOLOGY_AUTOCOMPLETE_ALL_ID],
+        });
 
-  const hasActiveFilters = useMemo(() => {
-    return (
-      filters.viewMode !== 'overview' ||
-      filters.glossaryIds.length > 0 ||
-      filters.relationTypes.length > 0 ||
-      filters.searchQuery.length > 0 ||
-      !filters.showIsolatedNodes ||
-      filters.showCrossGlossaryOnly
-    );
-  }, [filters]);
+        return;
+      }
+      onFiltersChange({
+        ...filters,
+        relationTypes: [
+          ...filters.relationTypes.filter(
+            (rt) => rt !== ONTOLOGY_AUTOCOMPLETE_ALL_ID
+          ),
+          id,
+        ],
+      });
+    },
+    [filters, onFiltersChange]
+  );
+
+  const handleRelationTypeCleared = useCallback(
+    (key: Key) => {
+      const id = String(key);
+      onFiltersChange({
+        ...filters,
+        relationTypes: filters.relationTypes.filter((rt) => rt !== id),
+      });
+    },
+    [filters, onFiltersChange]
+  );
+
+  const glossaryAllOnlySelected = filters.glossaryIds.includes(
+    ONTOLOGY_AUTOCOMPLETE_ALL_ID
+  );
 
   const glossaryItems = useMemo(
     () => [
       {
-        id: '__all__',
+        id: ONTOLOGY_AUTOCOMPLETE_ALL_ID,
         label: t('label.all'),
       },
       ...glossaries.map((g) => ({
         id: g.id ?? '',
         label: g.displayName || g.name,
+        isDisabled: glossaryAllOnlySelected,
       })),
     ],
-    [glossaries, t]
+    [glossaries, t, glossaryAllOnlySelected]
+  );
+
+  const selectedGlossaryItems = useMemo(
+    () => glossaryItems.filter((g) => filters.glossaryIds.includes(g.id)),
+    [glossaryItems, filters.glossaryIds]
+  );
+
+  const relationTypeAllOnlySelected = filters.relationTypes.includes(
+    ONTOLOGY_AUTOCOMPLETE_ALL_ID
   );
 
   const relationTypeItems = useMemo(
     () => [
       {
-        id: '__all__',
+        id: ONTOLOGY_AUTOCOMPLETE_ALL_ID,
         label: t('label.all'),
       },
       ...relationTypes.map((rt) => ({
         id: rt.name,
         label: rt.displayName || rt.name,
+        isDisabled: relationTypeAllOnlySelected,
       })),
     ],
-    [relationTypes, t]
+    [relationTypes, t, relationTypeAllOnlySelected]
   );
 
-  const viewModeTabItems = useMemo(
+  const selectedRelationTypeItems = useMemo(
+    () =>
+      relationTypeItems.filter((rt) => filters.relationTypes.includes(rt.id)),
+    [relationTypeItems, filters.relationTypes]
+  );
+
+  const viewModeItems = useMemo(
     () =>
       VIEW_MODES.map(({ label, value }) => ({
         id: value,
@@ -124,22 +179,26 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
 
   return (
     <div className="tw:flex tw:w-full tw:items-center tw:gap-3">
-      {/* View Mode tabs — disabled in data mode */}
+      {/* View Mode dropdown — disabled in data mode */}
       <div
         className={
           'tw:flex tw:shrink-0 tw:items-center tw:gap-2' +
           (viewModeDisabled ? ' tw:pointer-events-none tw:opacity-50' : '')
         }>
-        <span className="tw:whitespace-nowrap tw:text-sm tw:font-medium tw:text-gray-600">
+        <Typography
+          as="span"
+          className="tw:whitespace-nowrap tw:text-gray-600"
+          size="text-sm"
+          weight="medium">
           {t('label.view-mode')}:
-        </span>
-        <Tabs
-          className="tw:w-fit!"
-          selectedKey={filters.viewMode}
-          onSelectionChange={(key) => {
-            if (viewModeDisabled) {
-              return;
-            }
+        </Typography>
+        <Select
+          className="tw:w-36"
+          data-testid="view-mode-select"
+          items={viewModeItems}
+          size="sm"
+          value={filters.viewMode}
+          onChange={(key) => {
             const viewMode = VIEW_MODES.find(
               (m) => m.value === String(key)
             )?.value;
@@ -147,36 +206,39 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
               onViewModeChange?.(viewMode);
             }
           }}>
-          <Tabs.List items={viewModeTabItems} size="sm" type="button-border" />
-          {viewModeTabItems.map((item) => (
-            <Tabs.Panel className="tw:hidden" id={item.id} key={item.id} />
-          ))}
-        </Tabs>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
       </div>
 
       {/* Glossary filter */}
       {glossaryItems.length > 0 && (
         <>
-          <div className="tw:h-5 tw:w-px tw:shrink-0 tw:bg-gray-200" />
-          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
-            <span className="tw:whitespace-nowrap tw:text-sm tw:font-medium tw:text-gray-600">
+          <Divider orientation="vertical" />
+          <div
+            className="tw:flex tw:shrink-0 tw:items-center tw:gap-2"
+            data-testid="glossary-filter-section">
+            <Typography as="span" size="text-sm" weight="medium">
               {t('label.glossary')}:
-            </span>
-            <Dropdown.Root>
-              <Button color="secondary" iconTrailing={ChevronDown} size="sm">
-                {glossaryItems.find((g) => g.id === filters.glossaryIds[0])
-                  ?.label ?? t('label.all')}
-              </Button>
-              <Dropdown.Popover className="tw:min-w-45">
-                <Dropdown.Menu
-                  items={glossaryItems}
-                  onAction={(key) => handleGlossaryChange(key)}>
-                  {(item) => (
-                    <Dropdown.Item id={item.id} label={item.label ?? ''} />
-                  )}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
+            </Typography>
+            <div className="tw:w-56">
+              <Autocomplete
+                items={glossaryItems}
+                maxVisibleItems={1}
+                placeholder={t('label.all')}
+                selectedItems={selectedGlossaryItems}
+                onItemCleared={handleGlossaryCleared}
+                onItemInserted={handleGlossaryInserted}>
+                {(item) => (
+                  <Autocomplete.Item
+                    id={item.id}
+                    isDisabled={item.isDisabled}
+                    label={item.label ?? ''}
+                  />
+                )}
+              </Autocomplete>
+            </div>
           </div>
         </>
       )}
@@ -184,27 +246,30 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       {/* Relation type filter */}
       {relationTypeItems.length > 0 && (
         <>
-          <div className="tw:h-5 tw:w-px tw:shrink-0 tw:bg-gray-200" />
-          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
-            <span className="tw:whitespace-nowrap tw:text-sm tw:font-medium tw:text-gray-600">
+          <Divider orientation="vertical" />
+          <div
+            className="tw:flex tw:shrink-0 tw:items-center tw:gap-2"
+            data-testid="relation-type-filter-section">
+            <Typography as="span" size="text-sm" weight="medium">
               {t('label.relationship-type')}:
-            </span>
-            <Dropdown.Root>
-              <Button color="secondary" iconTrailing={ChevronDown} size="sm">
-                {relationTypeItems.find(
-                  (r) => r.id === filters.relationTypes[0]
-                )?.label ?? t('label.all')}
-              </Button>
-              <Dropdown.Popover className="tw:min-w-45">
-                <Dropdown.Menu
-                  items={relationTypeItems}
-                  onAction={(key) => handleRelationTypeChange(key)}>
-                  {(item) => (
-                    <Dropdown.Item id={item.id} label={item.label ?? ''} />
-                  )}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
+            </Typography>
+            <div className="tw:w-56">
+              <Autocomplete
+                items={relationTypeItems}
+                maxVisibleItems={1}
+                placeholder={t('label.all')}
+                selectedItems={selectedRelationTypeItems}
+                onItemCleared={handleRelationTypeCleared}
+                onItemInserted={handleRelationTypeInserted}>
+                {(item) => (
+                  <Autocomplete.Item
+                    id={item.id}
+                    isDisabled={item.isDisabled}
+                    label={item.label ?? ''}
+                  />
+                )}
+              </Autocomplete>
+            </div>
           </div>
         </>
       )}
@@ -221,20 +286,6 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           onFiltersChange({ ...filters, showIsolatedNodes: checked })
         }
       />
-
-      {/* Clear filters — pushed to far right */}
-      {hasActiveFilters && (
-        <div className="tw:ml-auto tw:shrink-0">
-          <Button
-            className="tw:!border-none tw:!bg-transparent tw:!px-0 tw:text-[14px] tw:font-medium tw:text-[#535862]"
-            color="tertiary"
-            data-testid="ontology-clear-filters"
-            size="sm"
-            onClick={handleClearFilters}>
-            {`${t('label.clear')} ${t('label.all')}`}
-          </Button>
-        </div>
-      )}
     </div>
   );
 };

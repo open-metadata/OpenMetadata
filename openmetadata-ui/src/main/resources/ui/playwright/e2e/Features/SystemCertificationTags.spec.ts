@@ -132,7 +132,6 @@ test.describe.serial('System Level Certification Tags', () => {
       await table.visitEntityPage(page);
       await openCertificationDropdown(page);
 
-
       for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
         await expect(page.getByTestId(`radio-btn-${tagFqn}`)).toBeVisible();
       }

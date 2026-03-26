@@ -10,26 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   DELETE_RESULTS_POLICY,
   EDIT_RESULTS_POLICY,
-  PARTIAL_DELETE_TC_ONLY_POLICY,
   PARTIAL_DELETE_TABLE_ONLY_POLICY,
+  PARTIAL_DELETE_TC_ONLY_POLICY,
   TABLE_EDIT_RESULTS_POLICY,
   VIEW_RESULTS_POLICY,
 } from '../../../constant/dataQualityPermissions';
-import { DOMAIN_TAGS } from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
 import { waitForTestCaseDetailsResponse } from '../../../utils/testCases';
-import { getCurrentMillis } from '../../../utils/dateTime';
 
 // --- Objects ---
 const viewResultsPolicy = new PolicyClass();

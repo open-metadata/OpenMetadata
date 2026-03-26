@@ -24,7 +24,8 @@ export const SnackbarContent = styled(MaterialDesignContent)(({ theme }) => ({
     boxShadow: '0px 1px 2px rgba(10, 13, 18, 0.05)',
     fontSize: '0.875rem',
     padding: '12px 16px',
-    fontFamily: 'var(--font-inter, "Inter"), -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+    fontFamily:
+      'var(--font-inter, "Inter"), -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
 
     // Hide default notistack icons only (not our custom icons)
     '& > #notistack-snackbar > svg:first-child': {

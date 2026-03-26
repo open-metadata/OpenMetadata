@@ -13,45 +13,42 @@
 import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
-test.describe(
-  'Table & Data Model columns table pagination',
-  () => {
-    test('Page size should persist across different pages', async ({
-      dataConsumerPage: page,
-    }) => {
-      await page.goto(
-        '/table/sample_data.ecommerce_db.shopify.performance_test_table'
-      );
+test.describe('Table & Data Model columns table pagination', () => {
+  test('Page size should persist across different pages', async ({
+    dataConsumerPage: page,
+  }) => {
+    await page.goto(
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+    );
 
-      await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page);
 
-      // Change page size to 25
-      await page.getByTestId('page-size-selection-dropdown').click();
-      await page.getByRole('menuitem', { name: '25 / Page' }).click();
+    // Change page size to 25
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '25 / Page' }).click();
 
-      await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page);
 
-      // Go to Explore Page
-      await sidebarClick(page, SidebarItem.EXPLORE);
+    // Go to Explore Page
+    await sidebarClick(page, SidebarItem.EXPLORE);
 
-      await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByText('25 / page')).toBeVisible();
+    await expect(page.getByText('25 / page')).toBeVisible();
 
-      // Change page size to 50
-      await page.locator('.ant-pagination-options-size-changer').click();
-      await page.getByTitle('50 / Page').click();
+    // Change page size to 50
+    await page.locator('.ant-pagination-options-size-changer').click();
+    await page.getByTitle('50 / Page').click();
 
-      // Go to Users Page
-      await settingClick(page, GlobalSettingOptions.USERS);
+    // Go to Users Page
+    await settingClick(page, GlobalSettingOptions.USERS);
 
-      await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByText('50 / page')).toBeVisible();
-    });
-  }
-);
+    await expect(page.getByText('50 / page')).toBeVisible();
+  });
+});
