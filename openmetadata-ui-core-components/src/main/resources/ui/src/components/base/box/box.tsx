@@ -22,6 +22,7 @@ type Direction = 'row' | 'col' | 'row-reverse' | 'col-reverse';
 type Align = 'start' | 'center' | 'end' | 'stretch' | 'baseline';
 type Justify = 'start' | 'center' | 'end' | 'between' | 'around' | 'evenly';
 type Wrap = 'wrap' | 'nowrap' | 'wrap-reverse';
+
 export type GapValues =
   | 0
   | 1
@@ -109,9 +110,11 @@ export const Box = ({
   children,
   ...props
 }: BoxProps) => {
-  const gapValue = gap ? gapClassMapping[gap] : undefined;
-  const rowGapValue = rowGap ? rowGapClassMapping[rowGap] : undefined;
-  const colGapValue = colGap ? colGapClassMapping[colGap] : undefined;
+  const gapClassName = gap === undefined ? undefined : gapClassMapping[gap];
+  const rowGapClassName =
+    rowGap === undefined ? undefined : rowGapClassMapping[rowGap];
+  const colGapClassName =
+    colGap === undefined ? undefined : colGapClassMapping[colGap];
 
   return (
     <div
@@ -122,9 +125,9 @@ export const Box = ({
         align ? ALIGN_CLASS[align] : undefined,
         justify ? JUSTIFY_CLASS[justify] : undefined,
         wrap ? WRAP_CLASS[wrap] : undefined,
-        gapValue,
-        rowGapValue,
-        colGapValue,
+        gapClassName,
+        rowGapClassName,
+        colGapClassName,
         className,
       )}>
       {children}

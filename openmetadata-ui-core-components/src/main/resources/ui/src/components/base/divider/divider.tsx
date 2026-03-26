@@ -38,7 +38,6 @@ export const Divider = ({
           'tw:self-stretch tw:w-px tw:shrink-0 tw:bg-border-secondary',
           className,
         )}
-        role="separator"
       />
     );
   }
@@ -52,17 +51,15 @@ export const Divider = ({
           'tw:w-full tw:h-px tw:shrink-0 tw:bg-border-secondary',
           className,
         )}
-        role="separator"
       />
     );
   }
 
   return (
-    <div
+    <hr
       {...props}
       aria-orientation="horizontal"
-      className={cx('tw:flex tw:items-center tw:w-full tw:gap-2', className)}
-      role="separator">
+      className={cx('tw:flex tw:items-center tw:w-full tw:gap-2', className)}>
       {labelAlign !== 'start' && (
         <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
       )}
@@ -72,7 +69,7 @@ export const Divider = ({
       {labelAlign !== 'end' && (
         <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
       )}
-    </div>
+    </hr>
   );
 };
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { GapValues } from '@/components';
+import type { GapValues } from '@/components';
 
 /**
  * Static map of gap values to Tailwind classes.
