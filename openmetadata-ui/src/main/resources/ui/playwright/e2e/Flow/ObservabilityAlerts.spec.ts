@@ -314,11 +314,6 @@ test('Alert operations for a user with and without permissions', async ({
       `.ant-select-dropdown:visible [title="${table1.entity.name}"]`
     );
 
-    // Wait for the filter dropdown to fully close before proceeding
-    await userWithPermissionsPage
-      .locator('.ant-select-dropdown:visible')
-      .waitFor({ state: 'hidden' });
-
     // Check if option is selected
     await test
       .expect(
@@ -328,7 +323,13 @@ test('Alert operations for a user with and without permissions', async ({
       )
       .toBeAttached();
 
+    // Clicking add-trigger closes the fqn-list-select dropdown (multi-select stays open until click outside)
     await userWithPermissionsPage.click('[data-testid="add-trigger"]');
+
+    // Wait for the fqn-list-select dropdown to fully close before opening the trigger dropdown
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
 
     // Select action
     await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
