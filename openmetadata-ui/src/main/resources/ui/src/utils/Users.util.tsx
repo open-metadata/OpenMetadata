@@ -95,8 +95,7 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}
-              >
+                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
                 {getEntityName(team)}
               </Link>
             ))}
@@ -109,16 +108,14 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}
-                      >
+                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
                         {getEntityName(team)}
                       </Link>
                     ))}
                   </Space>
                 }
                 overlayClassName="w-40"
-                trigger="click"
-              >
+                trigger="click">
                 <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
                   listLength - LIST_CAP
                 } more`}</Tag>
@@ -150,8 +147,7 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}
-              >
+                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
                 {getEntityName(role)}
               </Link>
             ))}
@@ -164,16 +160,14 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}
-                      >
+                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
                         {getEntityName(role)}
                       </Link>
                     ))}
                   </Space>
                 }
                 overlayClassName="w-40"
-                trigger="click"
-              >
+                trigger="click">
                 <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
                   listLength - LIST_CAP
                 } more`}</Tag>
