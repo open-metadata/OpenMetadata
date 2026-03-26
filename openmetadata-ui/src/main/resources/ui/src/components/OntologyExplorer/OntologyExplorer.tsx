@@ -118,7 +118,6 @@ const ASSET_RELATION_TYPE = 'hasGlossaryTerm';
 const ONTOLOGY_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:bg-primary tw:[background-image:radial-gradient(circle,rgba(148,163,184,0.22)_1px,transparent_1px)] tw:[background-size:14px_14px]';
 
-
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-50 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
 
@@ -1460,9 +1459,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               <div
                 className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
                 data-testid="ontology-graph-hierarchy-empty">
-                <Typography
-                  as="p"
-                  className="tw:text-center tw:text-tertiary">
+                <Typography as="p" className="tw:text-center tw:text-tertiary">
                   {t('message.no-hierarchical-relations-found')}
                 </Typography>
               </div>
@@ -1470,9 +1467,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               <div
                 className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
                 data-testid="ontology-graph-empty">
-                <Typography
-                  as="p"
-                  className="tw:text-center tw:text-tertiary">
+                <Typography as="p" className="tw:text-center tw:text-tertiary">
                   {withoutOntologyAutocompleteAll(filters.glossaryIds).length >
                     0 ||
                   withoutOntologyAutocompleteAll(filters.relationTypes).length >

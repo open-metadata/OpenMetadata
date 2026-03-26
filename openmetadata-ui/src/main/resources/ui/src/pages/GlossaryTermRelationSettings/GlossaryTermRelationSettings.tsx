@@ -667,9 +667,7 @@ function GlossaryTermRelationSettingsPage() {
                               </Typography>
                             </div>
                           ) : (
-                            <Typography
-                              as="span"
-                              className="tw:text-tertiary">
+                            <Typography as="span" className="tw:text-tertiary">
                               —
                             </Typography>
                           )}

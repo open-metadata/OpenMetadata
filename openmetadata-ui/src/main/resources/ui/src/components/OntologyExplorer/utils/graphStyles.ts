@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Rect as GRect, Group, Text as GText } from '@antv/g';
+import { Group, Rect as GRect, Text as GText } from '@antv/g';
 import {
   ExtensionCategory,
   RectCombo,

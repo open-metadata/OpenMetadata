@@ -155,7 +155,9 @@ test.describe('Ontology Explorer', () => {
       const viewModeSelect = page.getByTestId('view-mode-select');
       await expect(viewModeSelect).toBeVisible();
       await viewModeSelect.click();
-      await expect(page.getByRole('option', { name: 'Overview' })).toBeVisible();
+      await expect(
+        page.getByRole('option', { name: 'Overview' })
+      ).toBeVisible();
       await expect(
         page.getByRole('option', { name: 'Hierarchy' })
       ).toBeVisible();
@@ -436,7 +438,9 @@ test.describe('Ontology Explorer', () => {
         const itemText = await allItems.nth(1).textContent();
         await allItems.nth(1).click();
         if (itemText) {
-          await expect(relationSection.getByText(itemText.trim())).toBeVisible();
+          await expect(
+            relationSection.getByText(itemText.trim())
+          ).toBeVisible();
         }
       }
     });

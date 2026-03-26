@@ -13,8 +13,8 @@
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
 import {
-  DATA_MODE_ASSET_EDGE_STROKE_COLOR,
   DATA_MODE_ASSET_CIRCLE_SIZE,
+  DATA_MODE_ASSET_EDGE_STROKE_COLOR,
   DATA_MODE_TERM_NODE_SIZE,
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,

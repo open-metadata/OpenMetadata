@@ -217,4 +217,3 @@ export interface BuildGraphDataProps {
   hierarchyCombos?: HierarchyComboInfo[];
   graphSearchHighlight?: GraphSearchHighlightInput | null;
 }
-
