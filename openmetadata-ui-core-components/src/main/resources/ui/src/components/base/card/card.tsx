@@ -12,7 +12,7 @@
  */
 import { cx, sortCx } from '@/utils/cx';
 import type { HTMLAttributes, ReactNode } from 'react';
-import { createContext, forwardRef, useContext } from 'react';
+import { createContext, forwardRef, useContext, useMemo } from 'react';
 
 // ─── Size context ──────────────────────────────────────────────────────────────
 
@@ -178,8 +178,10 @@ const CardBase = forwardRef<HTMLDivElement, CardProps>(
     },
     ref
   ) => {
+    const contextValue = useMemo(() => ({ size }), [size]);
+
     return (
-      <CardContext.Provider value={{ size }}>
+      <CardContext.Provider value={contextValue}>
         <div
           ref={ref}
           {...props}
@@ -190,7 +192,7 @@ const CardBase = forwardRef<HTMLDivElement, CardProps>(
             isClickable && cardStyles.interactive.root,
             isClickable && cardStyles.interactiveVariants[variant].root,
             isSelected && cardStyles.selected.root,
-            className
+            className,
           )}>
           {children}
         </div>
