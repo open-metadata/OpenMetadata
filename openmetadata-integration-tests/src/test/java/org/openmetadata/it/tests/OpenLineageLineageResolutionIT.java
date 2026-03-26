@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
@@ -31,6 +32,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.sdk.fluent.DatabaseSchemas;
+import org.openmetadata.sdk.fluent.DatabaseServices;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.LineageAPI;
 import org.openmetadata.sdk.fluent.OpenLineage;
 import org.openmetadata.sdk.fluent.Tables;
@@ -42,31 +52,84 @@ import org.openmetadata.sdk.fluent.wrappers.FluentTable;
  * <p>Verifies that OL COMPLETE events with input/output datasets are resolved to existing OM table
  * entities and lineage edges are created with source=OpenLineage.
  *
- * <p>Depends on sample data being ingested (sample_data service with ecommerce_db tables).
+ * <p>Creates its own test entities (service, database, schema, tables) to avoid depending on sample
+ * data being loaded externally.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @ExtendWith(TestNamespaceExtension.class)
 public class OpenLineageLineageResolutionIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final String SRC_FQN = "sample_data.ecommerce_db.shopify.raw_order";
-  private static final String TGT_FQN = "sample_data.ecommerce_db.shopify.fact_order";
+  private static final List<Column> DEFAULT_COLUMNS =
+      List.of(
+          new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+          new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+
+  private static String srcFqn;
+  private static String tgtFqn;
+  private static String serviceName;
+  private static String schemaFqn;
 
   @BeforeAll
   static void setup() {
     OpenLineage.setDefaultClient(SdkClients.adminClient());
     Tables.setDefaultClient(SdkClients.adminClient());
     LineageAPI.setDefaultClient(SdkClients.adminClient());
+    DatabaseServices.setDefaultClient(SdkClients.adminClient());
+    Databases.setDefaultClient(SdkClients.adminClient());
+    DatabaseSchemas.setDefaultClient(SdkClients.adminClient());
+
+    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+    serviceName = "ol_test_svc_" + uniqueId;
+
+    DatabaseService service =
+        DatabaseServices.builder()
+            .name(serviceName)
+            .connection(
+                DatabaseServices.postgresConnection()
+                    .hostPort("localhost:5432")
+                    .username("test")
+                    .build())
+            .description("Test service for OpenLineage resolution tests")
+            .create();
+
+    Database db =
+        Databases.create().name("ecommerce_db").in(service.getFullyQualifiedName()).execute();
+
+    DatabaseSchema schema =
+        DatabaseSchemas.create().name("shopify").in(db.getFullyQualifiedName()).execute();
+
+    schemaFqn = schema.getFullyQualifiedName();
+
+    Table rawOrder =
+        Tables.create()
+            .name("raw_order")
+            .inSchema(schemaFqn)
+            .withColumns(DEFAULT_COLUMNS)
+            .execute();
+    srcFqn = rawOrder.getFullyQualifiedName();
+
+    Table factOrder =
+        Tables.create()
+            .name("fact_order")
+            .inSchema(schemaFqn)
+            .withColumns(DEFAULT_COLUMNS)
+            .execute();
+    tgtFqn = factOrder.getFullyQualifiedName();
+
+    Tables.create().name("raw_customer").inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    Tables.create().name("dim_address").inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
   }
 
   @Test
   @Order(1)
   void testSampleDataTablesExist() {
-    FluentTable src = Tables.findByName(SRC_FQN).fetch();
-    assertNotNull(src, "Source table " + SRC_FQN + " must exist in sample data");
+    FluentTable src = Tables.findByName(srcFqn).fetch();
+    assertNotNull(src, "Source table " + srcFqn + " must exist");
 
-    FluentTable tgt = Tables.findByName(TGT_FQN).fetch();
-    assertNotNull(tgt, "Target table " + TGT_FQN + " must exist in sample data");
+    FluentTable tgt = Tables.findByName(tgtFqn).fetch();
+    assertNotNull(tgt, "Target table " + tgtFqn + " must exist");
   }
 
   @Test
@@ -78,8 +141,8 @@ public class OpenLineageLineageResolutionIT {
             .withEventTime(Instant.now().toString())
             .withJob(ns.prefix("ol_resolution_job"), ns.prefix("namespace"))
             .withRun(UUID.randomUUID().toString())
-            .addInput("ecommerce_db.shopify.raw_order", "sample_data")
-            .addOutput("ecommerce_db.shopify.fact_order", "sample_data")
+            .addInput("ecommerce_db.shopify.raw_order", serviceName)
+            .addOutput("ecommerce_db.shopify.fact_order", serviceName)
             .send();
 
     assertNotNull(response);
@@ -95,12 +158,12 @@ public class OpenLineageLineageResolutionIT {
   @SuppressWarnings("unchecked")
   void testLineageEdgeHasOpenLineageSource() throws Exception {
     LineageAPI.LineageGraph lineageGraph =
-        LineageAPI.for$("table", SRC_FQN).upstream(0).downstream(3).fetch();
+        LineageAPI.forName$("table", srcFqn).upstream(0).downstream(3).fetch();
 
     assertNotNull(lineageGraph);
     Map<String, Object> lineage = MAPPER.readValue(lineageGraph.getRaw(), Map.class);
     var downstreamEdges = (java.util.List<?>) lineage.get("downstreamEdges");
-    assertNotNull(downstreamEdges, "Expected downstream edges from " + SRC_FQN);
+    assertNotNull(downstreamEdges, "Expected downstream edges from " + srcFqn);
 
     boolean hasOlEdge =
         downstreamEdges.stream()
@@ -121,8 +184,8 @@ public class OpenLineageLineageResolutionIT {
             .withEventTime(Instant.now().toString())
             .withJob(ns.prefix("start_only_job"), ns.prefix("namespace"))
             .withRun(UUID.randomUUID().toString())
-            .addInput("ecommerce_db.shopify.raw_order", "sample_data")
-            .addOutput("ecommerce_db.shopify.fact_order", "sample_data")
+            .addInput("ecommerce_db.shopify.raw_order", serviceName)
+            .addOutput("ecommerce_db.shopify.fact_order", serviceName)
             .send();
 
     JsonNode json = MAPPER.readTree(response);
@@ -157,9 +220,9 @@ public class OpenLineageLineageResolutionIT {
             .withEventTime(Instant.now().toString())
             .withJob(ns.prefix("multi_io_job"), ns.prefix("namespace"))
             .withRun(UUID.randomUUID().toString())
-            .addInput("ecommerce_db.shopify.raw_order", "sample_data")
-            .addInput("ecommerce_db.shopify.raw_customer", "sample_data")
-            .addOutput("ecommerce_db.shopify.dim_address", "sample_data")
+            .addInput("ecommerce_db.shopify.raw_order", serviceName)
+            .addInput("ecommerce_db.shopify.raw_customer", serviceName)
+            .addOutput("ecommerce_db.shopify.dim_address", serviceName)
             .send();
 
     JsonNode json = MAPPER.readTree(response);
