@@ -16,6 +16,10 @@ export interface GraphSearchHighlightInput {
 }
 
 function textMatches(query: string, value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
   return includes(toLower(value), query);
 }
 
@@ -95,10 +99,7 @@ export function computeGraphSearchHighlight(
 
   const entityIncidentEdgeKeys = new Set<string>();
   edges.forEach((e) => {
-    if (
-      entityMatchedNodeIds.has(e.from) ||
-      entityMatchedNodeIds.has(e.to)
-    ) {
+    if (entityMatchedNodeIds.has(e.from) || entityMatchedNodeIds.has(e.to)) {
       entityIncidentEdgeKeys.add(ontologyEdgeKey(e));
     }
   });
