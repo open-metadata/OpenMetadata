@@ -117,15 +117,14 @@ export const ButtonGroup = ({
   className,
   ...otherProps
 }: ButtonGroupProps) => {
-
-const contextValue = useMemo(() => ({ size }), [size]);
+  const contextValue = useMemo(() => ({ size }), [size]);
 
   return (
     <ButtonGroupContext.Provider value={contextValue}>
       <AriaToggleButtonGroup
         className={cx(
           'tw:relative tw:z-0 tw:inline-flex tw:w-max tw:-space-x-px tw:rounded-lg tw:shadow-xs',
-          className,
+          className
         )}
         selectionMode="single"
         {...otherProps}>

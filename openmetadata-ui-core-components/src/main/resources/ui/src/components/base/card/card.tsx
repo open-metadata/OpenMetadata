@@ -192,7 +192,7 @@ const CardBase = forwardRef<HTMLDivElement, CardProps>(
             isClickable && cardStyles.interactive.root,
             isClickable && cardStyles.interactiveVariants[variant].root,
             isSelected && cardStyles.selected.root,
-            className,
+            className
           )}>
           {children}
         </div>
