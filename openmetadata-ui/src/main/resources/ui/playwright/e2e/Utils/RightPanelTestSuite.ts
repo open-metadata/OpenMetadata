@@ -12,16 +12,16 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import {
-  RightPanelPageObject,
-  PageContext,
-} from '../PageObject/Explore/RightPanelPageObject';
-import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
-import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
-import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
-import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
-import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { EntityClass } from '../../support/entity/EntityClass';
+import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
+import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
+import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
+import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
+import {
+  PageContext,
+  RightPanelPageObject,
+} from '../PageObject/Explore/RightPanelPageObject';
+import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
 
 export interface TestOptions {
   skipTabs?: string[];

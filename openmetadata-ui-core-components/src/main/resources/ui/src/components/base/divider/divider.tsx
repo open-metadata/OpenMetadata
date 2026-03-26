@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { HTMLAttributes, ReactNode } from "react";
-import { cx } from "@/utils/cx";
+import type { HTMLAttributes, ReactNode } from 'react';
+import { cx } from '@/utils/cx';
 
-export type DividerOrientation = "horizontal" | "vertical";
-export type DividerLabelAlignment = "start" | "center" | "end";
+export type DividerOrientation = 'horizontal' | 'vertical';
+export type DividerLabelAlignment = 'start' | 'center' | 'end';
 
 export interface DividerProps extends HTMLAttributes<HTMLDivElement> {
   orientation?: DividerOrientation;
@@ -23,22 +23,22 @@ export interface DividerProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const Divider = ({
-  orientation = "horizontal",
+  orientation = 'horizontal',
   label,
-  labelAlign = "center",
+  labelAlign = 'center',
   className,
   ...props
 }: DividerProps) => {
-  if (orientation === "vertical") {
+  if (orientation === 'vertical') {
     return (
       <div
         {...props}
-        role="separator"
         aria-orientation="vertical"
         className={cx(
-          "tw:self-stretch tw:w-px tw:shrink-0 tw:bg-border-secondary",
-          className,
+          'tw:self-stretch tw:w-px tw:shrink-0 tw:bg-border-secondary',
+          className
         )}
+        role="separator"
       />
     );
   }
@@ -47,12 +47,12 @@ export const Divider = ({
     return (
       <div
         {...props}
-        role="separator"
         aria-orientation="horizontal"
         className={cx(
-          "tw:w-full tw:h-px tw:shrink-0 tw:bg-border-secondary",
-          className,
+          'tw:w-full tw:h-px tw:shrink-0 tw:bg-border-secondary',
+          className
         )}
+        role="separator"
       />
     );
   }
@@ -60,24 +60,20 @@ export const Divider = ({
   return (
     <div
       {...props}
-      role="separator"
       aria-orientation="horizontal"
-      className={cx(
-        "tw:flex tw:items-center tw:w-full tw:gap-2",
-        className,
-      )}
-    >
-      {labelAlign !== "start" && (
+      className={cx('tw:flex tw:items-center tw:w-full tw:gap-2', className)}
+      role="separator">
+      {labelAlign !== 'start' && (
         <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
       )}
       <span className="tw:shrink-0 tw:text-xs tw:font-medium tw:text-tertiary">
         {label}
       </span>
-      {labelAlign !== "end" && (
+      {labelAlign !== 'end' && (
         <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
       )}
     </div>
   );
 };
 
-Divider.displayName = "Divider";
+Divider.displayName = 'Divider';

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CONSUMER_LIKE_POLICY,
@@ -25,9 +25,9 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
-import { getCurrentMillis } from '../../../utils/dateTime';
 
 // --- Objects ---
 const viewIncidentsPolicy = new PolicyClass();

@@ -38,10 +38,10 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import { getElementWithPagination } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

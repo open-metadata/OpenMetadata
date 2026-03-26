@@ -1,16 +1,13 @@
-@import "./typography.css";
+@import './typography.css';
 
 @theme static {
   /* FONT FAMILY */
-  --font-body:
-    theme(--font-inter, "Inter"), -apple-system, "Segoe UI", Roboto, Arial,
-    sans-serif;
-  --font-display:
-    theme(--font-inter, "Inter"), -apple-system, "Segoe UI", Roboto, Arial,
-    sans-serif;
-  --font-mono:
-    ui-monospace, "Roboto Mono", SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  --font-body: theme(--font-inter, 'Inter'), -apple-system, 'Segoe UI', Roboto,
+    Arial, sans-serif;
+  --font-display: theme(--font-inter, 'Inter'), -apple-system, 'Segoe UI',
+    Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, 'Roboto Mono', SFMono-Regular, Menlo, Monaco,
+    Consolas, 'Liberation Mono', 'Courier New', monospace;
 
   /* Keep Tailwind scale stable regardless of host/root rem size. */
   --spacing: 4px;
@@ -75,47 +72,39 @@
 
   /* SHADOW */
   --shadow-xs: 0px 1px 2px rgba(10, 13, 18, 0.05);
-  --shadow-sm:
-    0px 1px 3px rgba(10, 13, 18, 0.1), 0px 1px 2px -1px rgba(10, 13, 18, 0.1);
-  --shadow-md:
-    0px 4px 6px -1px rgba(10, 13, 18, 0.1),
+  --shadow-sm: 0px 1px 3px rgba(10, 13, 18, 0.1),
+    0px 1px 2px -1px rgba(10, 13, 18, 0.1);
+  --shadow-md: 0px 4px 6px -1px rgba(10, 13, 18, 0.1),
     0px 2px 4px -2px rgba(10, 13, 18, 0.06);
-  --shadow-lg:
-    0px 12px 16px -4px rgba(10, 13, 18, 0.08),
+  --shadow-lg: 0px 12px 16px -4px rgba(10, 13, 18, 0.08),
     0px 4px 6px -2px rgba(10, 13, 18, 0.03),
     0px 2px 2px -1px rgba(10, 13, 18, 0.04);
-  --shadow-xl:
-    0px 20px 24px -4px rgba(10, 13, 18, 0.08),
+  --shadow-xl: 0px 20px 24px -4px rgba(10, 13, 18, 0.08),
     0px 8px 8px -4px rgba(10, 13, 18, 0.03),
     0px 3px 3px -1.5px rgba(10, 13, 18, 0.04);
-  --shadow-2xl:
-    0px 24px 48px -12px rgba(10, 13, 18, 0.18),
+  --shadow-2xl: 0px 24px 48px -12px rgba(10, 13, 18, 0.18),
     0px 4px 4px -2px rgba(10, 13, 18, 0.04);
-  --shadow-3xl:
-    0px 32px 64px -12px rgba(10, 13, 18, 0.14),
+  --shadow-3xl: 0px 32px 64px -12px rgba(10, 13, 18, 0.14),
     0px 5px 5px -2.5px rgba(10, 13, 18, 0.04);
 
-  --shadow-skeumorphic:
-    0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset,
+  --shadow-skeumorphic: 0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset,
     0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset;
   --shadow-xs-skeumorphic: theme(--shadow-skeumorphic), theme(--shadow-xs);
 
-  --shadow-modern-mockup-inner-lg:
-    0px 0px 3.765px 1.255px rgba(10, 13, 18, 0.08) inset,
+  --shadow-modern-mockup-inner-lg: 0px 0px 3.765px 1.255px
+      rgba(10, 13, 18, 0.08) inset,
     0px 0px 2.51px 1.255px rgba(10, 13, 18, 0.03) inset;
-  --shadow-modern-mockup-inner-md:
-    0px 0px 1.692px 0.564px rgba(10, 13, 18, 0.08) inset,
+  --shadow-modern-mockup-inner-md: 0px 0px 1.692px 0.564px
+      rgba(10, 13, 18, 0.08) inset,
     0px 0px 1.128px 0.564px rgba(10, 13, 18, 0.03) inset;
-  --shadow-modern-mockup-inner-sm:
-    0px 0px 4.48px 1.493px rgba(10, 13, 18, 0.08) inset,
+  --shadow-modern-mockup-inner-sm: 0px 0px 4.48px 1.493px rgba(10, 13, 18, 0.08)
+      inset,
     0px 0px 2.987px 1.493px rgba(10, 13, 18, 0.03) inset;
 
-  --shadow-modern-mockup-outer-lg:
-    0px 7.529px 10.039px -2.51px rgba(10, 13, 18, 0.08),
+  --shadow-modern-mockup-outer-lg: 0px 7.529px 10.039px -2.51px rgba(10, 13, 18, 0.08),
     0px 2.51px 3.765px -1.255px rgba(10, 13, 18, 0.03),
     0px 1.255px 1.255px -0.627px rgba(10, 13, 18, 0.04);
-  --shadow-modern-mockup-outer-md:
-    0px 3.385px 4.513px -1.128px rgba(10, 13, 18, 0.08),
+  --shadow-modern-mockup-outer-md: 0px 3.385px 4.513px -1.128px rgba(10, 13, 18, 0.08),
     0px 1.128px 1.692px -0.564px rgba(10, 13, 18, 0.03),
     0px 0.564px 0.564px -0.282px rgba(10, 13, 18, 0.04);
 
