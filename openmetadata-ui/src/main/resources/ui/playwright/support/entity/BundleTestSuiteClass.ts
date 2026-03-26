@@ -12,8 +12,8 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
-import { ResponseDataType } from './Entity.interface';
 import { uuid } from '../../utils/common';
+import { ResponseDataType } from './Entity.interface';
 
 export class BundleTestSuiteClass {
   bundleTestSuiteResponseData: ResponseDataType = {} as ResponseDataType;

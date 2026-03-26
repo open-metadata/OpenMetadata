@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { test } from '../fixtures/pages';
 import {
   generateODCSContract,
   ODCS_INVALID_EMPTY_FILE_YAML,
@@ -31,25 +30,25 @@ import {
   ODCS_VALID_MULTI_OBJECT_YAML,
   ODCS_VALID_QUALITY_RULES_BETWEEN_YAML,
   ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML,
-  ODCS_WITH_QUALITY_RULES_YAML,
   ODCS_VALID_WITH_TEAM_YAML,
   ODCS_VALID_WITH_TIMESTAMPS_YAML,
+  ODCS_WITH_QUALITY_RULES_YAML,
   ODCS_WITH_SLA_YAML,
 } from '../../constant/dataContracts';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  descriptionBox,
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickImportODCSButton,
   importODCSYaml,
   navigateToContractTab,
   openODCSImportDropdown,
 } from '../../utils/odcsImportExport';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { test } from '../fixtures/pages';
 
 test.describe('ODCS Import/Export', () => {
   test.slow(true);

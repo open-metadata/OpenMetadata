@@ -38,8 +38,6 @@ import {
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-
-test.describe.configure({ mode: 'serial' });
 import {
   activateColumnLayer,
   addColumnLineage,
@@ -52,13 +50,11 @@ import {
   deleteNode,
   editLineage,
   editLineageClick,
-  performExpand,
   performZoomOut,
   rearrangeNodes,
   removeColumnLineage,
   setupEntitiesForLineage,
   toggleLineageFilters,
-  updateLineageConfigFromModal,
   verifyColumnLayerInactive,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
@@ -69,6 +65,8 @@ import {
   visitLineageTab,
 } from '../../utils/lineage';
 import { sidebarClick } from '../../utils/sidebar';
+
+test.describe.configure({ mode: 'serial' });
 
 // use the admin user to login
 test.use({

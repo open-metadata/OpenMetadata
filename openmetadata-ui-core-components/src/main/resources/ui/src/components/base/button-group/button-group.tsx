@@ -8,7 +8,6 @@ import {
   createContext,
   isValidElement,
   useContext,
-  useMemo,
 } from 'react';
 import {
   ToggleButton as AriaToggleButton,
@@ -49,7 +48,7 @@ export const styles = sortCx({
 
 type ButtonSize = keyof typeof styles.sizes;
 
-const ButtonGroupContext = createContext<{ size: ButtonSize } | null>(null);
+const ButtonGroupContext = createContext<{ size: ButtonSize }>({ size: 'md' });
 
 interface ButtonGroupItemProps
   extends ToggleButtonProps, RefAttributes<HTMLButtonElement> {
@@ -81,9 +80,9 @@ export const ButtonGroupItem = ({
   return (
     <AriaToggleButton
       {...otherProps}
-      data-icon-only={isIcon ? true : undefined}
+      className={cx(styles.common.root, styles.sizes[size].root, className)}
       data-icon-leading={IconLeading ? true : undefined}
-      className={cx(styles.common.root, styles.sizes[size].root, className)}>
+      data-icon-only={isIcon ? true : undefined}>
       {isReactComponent(IconLeading) && (
         <IconLeading
           className={cx(styles.common.icon, styles.sizes[size].icon)}
@@ -117,16 +116,14 @@ export const ButtonGroup = ({
   className,
   ...otherProps
 }: ButtonGroupProps) => {
-  const contextValue = useMemo(() => ({ size }), [size]);
-
   return (
-    <ButtonGroupContext.Provider value={contextValue}>
+    <ButtonGroupContext.Provider value={{ size }}>
       <AriaToggleButtonGroup
-        selectionMode="single"
         className={cx(
           'tw:relative tw:z-0 tw:inline-flex tw:w-max tw:-space-x-px tw:rounded-lg tw:shadow-xs',
           className,
         )}
+        selectionMode="single"
         {...otherProps}>
         {children}
       </AriaToggleButtonGroup>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { cx, sortCx } from '@/utils/cx';
-import type { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useContext } from 'react';
 
 // ─── Size context ──────────────────────────────────────────────────────────────
@@ -100,13 +100,14 @@ const CardHeader = ({
   ...props
 }: CardHeaderProps) => {
   const { size } = useContext(CardContext);
+
   return (
     <div
       {...props}
       className={cx(
         'tw:flex tw:items-start tw:justify-between tw:gap-4 tw:border-b tw:border-secondary',
         sizes[size].padding,
-        className
+        className,
       )}>
       {(title || subtitle) && (
         <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
@@ -128,6 +129,7 @@ CardHeader.displayName = 'Card.Header';
 
 const CardContent = ({ children, className, ...props }: CardContentProps) => {
   const { size } = useContext(CardContext);
+
   return (
     <div {...props} className={cx(sizes[size].padding, className)}>
       {children}
@@ -138,13 +140,14 @@ CardContent.displayName = 'Card.Content';
 
 const CardFooter = ({ children, className, ...props }: CardFooterProps) => {
   const { size } = useContext(CardContext);
+
   return (
     <div
       {...props}
       className={cx(
         'tw:border-t tw:border-secondary',
         sizes[size].padding,
-        className
+        className,
       )}>
       {children}
     </div>
@@ -175,7 +178,7 @@ const CardBase = forwardRef<HTMLDivElement, CardProps>(
       isSelected = false,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <CardContext.Provider value={{ size }}>
@@ -189,13 +192,13 @@ const CardBase = forwardRef<HTMLDivElement, CardProps>(
             isClickable && cardStyles.interactive.root,
             isClickable && cardStyles.interactiveVariants[variant].root,
             isSelected && cardStyles.selected.root,
-            className
+            className,
           )}>
           {children}
         </div>
       </CardContext.Provider>
     );
-  }
+  },
 );
 
 CardBase.displayName = 'Card';

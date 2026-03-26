@@ -40,19 +40,19 @@ export default defineConfig(({ mode }) => {
           return html
             .replace(
               /(<script[^>]*src=["'])(\.\/)?assets\//g,
-              '$1${basePath}assets/'
+              '$1${basePath}assets/',
             )
             .replace(
               /(<link[^>]*href=["'])(\.\/)?assets\//g,
-              '$1${basePath}assets/'
+              '$1${basePath}assets/',
             )
             .replace(
               /(<img[^>]*src=["'])(\.\/)?assets\//g,
-              '$1${basePath}assets/'
+              '$1${basePath}assets/',
             )
             .replace(
               /(<img[^>]*src=["'])(\.\/)?images\//g,
-              '$1${basePath}images/'
+              '$1${basePath}images/',
             );
         },
       },
@@ -92,7 +92,7 @@ export default defineConfig(({ mode }) => {
         antd: path.resolve(__dirname, 'node_modules/antd'),
         '@deuex-solutions/react-tour': path.resolve(
           __dirname,
-          'node_modules/@deuex-solutions/react-tour/dist/reacttour.min.js'
+          'node_modules/@deuex-solutions/react-tour/dist/reacttour.min.js',
         ),
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.less', '.svg'],
@@ -117,6 +117,7 @@ export default defineConfig(({ mode }) => {
     },
 
     css: {
+      preprocessorMaxWorkers: 1, // Disable parallel Less processing to avoid race conditions in CI
       preprocessorOptions: {
         less: {
           javascriptEnabled: true,

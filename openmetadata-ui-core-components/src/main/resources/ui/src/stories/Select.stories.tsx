@@ -10,24 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Select } from "../components/base/select/select";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Select } from '../components/base/select/select';
 
 const ITEMS = [
-  { id: "1", label: "Option 1" },
-  { id: "2", label: "Option 2" },
-  { id: "3", label: "Option 3", isDisabled: true },
-  { id: "4", label: "Option 4", supportingText: "(recommended)" },
-  { id: "5", label: "Option 5" },
+  { id: '1', label: 'Option 1' },
+  { id: '2', label: 'Option 2' },
+  { id: '3', label: 'Option 3', isDisabled: true },
+  { id: '4', label: 'Option 4', supportingText: '(recommended)' },
+  { id: '5', label: 'Option 5' },
 ];
 
 const meta = {
-  title: "Components/Select",
+  title: 'Components/Select',
   component: Select,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Select>;
 
 export default meta;
@@ -36,14 +36,13 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: () => (
     <div style={{ width: 280 }}>
-      <Select placeholder="Select an option" items={ITEMS}>
+      <Select items={ITEMS} placeholder="Select an option">
         {(item) => (
           <Select.Item
-            key={item.id}
             id={item.id}
-            textValue={item.label}
             isDisabled={item.isDisabled}
-          >
+            key={item.id}
+            textValue={item.label}>
             {item.label}
           </Select.Item>
         )}
@@ -55,9 +54,9 @@ export const Default: Story = {
 export const WithLabel: StoryObj = {
   render: () => (
     <div style={{ width: 280 }}>
-      <Select label="Country" placeholder="Select a country" items={ITEMS}>
+      <Select items={ITEMS} label="Country" placeholder="Select a country">
         {(item) => (
-          <Select.Item key={item.id} id={item.id} textValue={item.label}>
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
             {item.label}
           </Select.Item>
         )}
@@ -70,13 +69,12 @@ export const WithHint: StoryObj = {
   render: () => (
     <div style={{ width: 280 }}>
       <Select
-        label="Role"
-        placeholder="Select a role"
         hint="Your role determines your access level."
         items={ITEMS}
-      >
+        label="Role"
+        placeholder="Select a role">
         {(item) => (
-          <Select.Item key={item.id} id={item.id} textValue={item.label}>
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
             {item.label}
           </Select.Item>
         )}
@@ -87,17 +85,18 @@ export const WithHint: StoryObj = {
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 280 }}>
-      <Select size="sm" placeholder="Small select" items={ITEMS}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 280 }}>
+      <Select items={ITEMS} placeholder="Small select" size="sm">
         {(item) => (
-          <Select.Item key={item.id} id={item.id} textValue={item.label}>
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
             {item.label}
           </Select.Item>
         )}
       </Select>
-      <Select size="md" placeholder="Medium select" items={ITEMS}>
+      <Select items={ITEMS} placeholder="Medium select" size="md">
         {(item) => (
-          <Select.Item key={item.id} id={item.id} textValue={item.label}>
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
             {item.label}
           </Select.Item>
         )}
@@ -110,13 +109,12 @@ export const Disabled: StoryObj = {
   render: () => (
     <div style={{ width: 280 }}>
       <Select
-        label="Disabled Select"
-        placeholder="Cannot select"
         isDisabled
         items={ITEMS}
-      >
+        label="Disabled Select"
+        placeholder="Cannot select">
         {(item) => (
-          <Select.Item key={item.id} id={item.id} textValue={item.label}>
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
             {item.label}
           </Select.Item>
         )}
@@ -128,12 +126,13 @@ export const Disabled: StoryObj = {
 export const WithSupportingText: StoryObj = {
   render: () => (
     <div style={{ width: 300 }}>
-      <Select label="Plan" placeholder="Choose plan" items={ITEMS}>
+      <Select items={ITEMS} label="Plan" placeholder="Choose plan">
         {(item) => (
-          <Select.Item key={item.id} id={item.id} textValue={item.label}>
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
             {item.label}
             {item.supportingText && (
-              <span style={{ marginLeft: 8, color: "gray", fontSize: "0.875rem" }}>
+              <span
+                style={{ marginLeft: 8, color: 'gray', fontSize: '0.875rem' }}>
                 {item.supportingText}
               </span>
             )}

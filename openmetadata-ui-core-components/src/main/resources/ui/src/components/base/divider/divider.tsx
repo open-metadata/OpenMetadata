@@ -13,8 +13,8 @@
 import { cx } from '@/utils/cx';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-export type DividerOrientation = "horizontal" | "vertical";
-export type DividerLabelAlignment = "start" | "center" | "end";
+export type DividerOrientation = 'horizontal' | 'vertical';
+export type DividerLabelAlignment = 'start' | 'center' | 'end';
 
 export interface DividerProps extends HTMLAttributes<HTMLHRElement> {
   orientation?: DividerOrientation;
@@ -23,13 +23,13 @@ export interface DividerProps extends HTMLAttributes<HTMLHRElement> {
 }
 
 export const Divider = ({
-  orientation = "horizontal",
+  orientation = 'horizontal',
   label,
-  labelAlign = "center",
+  labelAlign = 'center',
   className,
   ...props
 }: DividerProps) => {
-  if (orientation === "vertical") {
+  if (orientation === 'vertical') {
     return (
       <hr
         {...props}
@@ -38,6 +38,7 @@ export const Divider = ({
           'tw:self-stretch tw:w-px tw:shrink-0 tw:bg-border-secondary',
           className,
         )}
+        role="separator"
       />
     );
   }
@@ -51,6 +52,7 @@ export const Divider = ({
           'tw:w-full tw:h-px tw:shrink-0 tw:bg-border-secondary',
           className,
         )}
+        role="separator"
       />
     );
   }
@@ -58,24 +60,20 @@ export const Divider = ({
   return (
     <div
       {...props}
-      role="separator"
       aria-orientation="horizontal"
-      className={cx(
-        "tw:flex tw:items-center tw:w-full tw:gap-2",
-        className,
-      )}
-    >
-      {labelAlign !== "start" && (
+      className={cx('tw:flex tw:items-center tw:w-full tw:gap-2', className)}
+      role="separator">
+      {labelAlign !== 'start' && (
         <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
       )}
       <span className="tw:shrink-0 tw:text-xs tw:font-medium tw:text-tertiary">
         {label}
       </span>
-      {labelAlign !== "end" && (
+      {labelAlign !== 'end' && (
         <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
       )}
     </div>
   );
 };
 
-Divider.displayName = "Divider";
+Divider.displayName = 'Divider';

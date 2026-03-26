@@ -63,7 +63,14 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "yarn clean && yarn build",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "lint": "eslint src/",
+    "lint:base": "eslint --no-error-on-unmatched-pattern",
+    "lint:fix": "eslint src/ --fix",
+    "pretty": "prettier --write src/",
+    "pretty:base": "prettier --config './.prettierrc.yaml' --ignore-path './.prettierignore'",
+    "pretty:check": "prettier --check src/",
+    "ui-checkstyle:changed": "bash scripts/ui-checkstyle-changed.sh"
   },
   "author": "OpenMetadata",
   "license": "Apache-2.0",
@@ -134,7 +141,15 @@
     "terser": "^5.0.0",
     "typescript": "^5.0.0",
     "vite": "^7.1.11",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "@eslint/js": "^9.18.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.37.3",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^17.4.0",
+    "typescript-eslint": "^8.20.0",
+    "prettier": "2.8.8"
   },
   "resolutions": {
     "rollup": "4.59.0",

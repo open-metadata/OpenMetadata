@@ -168,6 +168,59 @@ const TabListContext = createContext<
   type: 'button-brand',
 });
 
+interface TabComponentProps extends AriaTabProps {
+  /** The label of the tab. */
+  label?: ReactNode;
+  /** The children of the tab. */
+  children?: ReactNode | ((props: AriaTabRenderProps) => ReactNode);
+  /** The badge displayed next to the label. */
+  badge?: number | string;
+}
+
+export const Tab = (props: TabComponentProps) => {
+  const { label, children, badge, ...otherProps } = props;
+  const {
+    size = 'sm',
+    type = 'button-brand',
+    fullWidth,
+  } = useContext(TabListContext);
+
+  return (
+    <AriaTab
+      {...otherProps}
+      className={(prop) =>
+        cx(
+          'tw:z-10 tw:flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-md tw:whitespace-nowrap tw:text-quaternary tw:transition tw:duration-100 tw:ease-linear',
+          'group-orientation-vertical:tw:justify-start',
+          fullWidth && 'tw:w-full tw:flex-1',
+          sizes[size][type],
+          getTabStyles(prop)[type],
+          typeof props.className === 'function'
+            ? props.className(prop)
+            : props.className,
+        )
+      }>
+      {(state) => (
+        <Fragment>
+          {typeof children === 'function' ? children(state) : children || label}
+          {badge && (
+            <Badge
+              className={cx(
+                'tw:hidden tw:transition-inherit-all tw:md:flex',
+                size === 'sm' && 'tw:-my-px',
+              )}
+              color={getColorStyles(state)[type] as BadgeColors}
+              size={size}
+              type="pill-color">
+              {badge}
+            </Badge>
+          )}
+        </Fragment>
+      )}
+    </AriaTab>
+  );
+};
+
 export const TabList = <K extends Orientation>({
   size = 'sm',
   type = 'button-brand',
@@ -181,13 +234,13 @@ export const TabList = <K extends Orientation>({
 
   const orientation = orientationProp ?? context?.orientation ?? 'horizontal';
 
-  const tabListContextValue = useMemo(
+  const contextValues = useMemo(
     () => ({ size, type, orientation, fullWidth }),
     [size, type, orientation, fullWidth],
   );
 
   return (
-    <TabListContext.Provider value={tabListContextValue}>
+    <TabListContext.Provider value={contextValues}>
       <AriaTabList
         {...(otherProps as AriaTabListProps<TabComponentProps>)}
         className={(state) =>
@@ -228,59 +281,6 @@ export const TabPanel = (props: ComponentPropsWithRef<typeof AriaTabPanel>) => {
         )
       }
     />
-  );
-};
-
-interface TabComponentProps extends AriaTabProps {
-  /** The label of the tab. */
-  label?: ReactNode;
-  /** The children of the tab. */
-  children?: ReactNode | ((props: AriaTabRenderProps) => ReactNode);
-  /** The badge displayed next to the label. */
-  badge?: number | string;
-}
-
-export const Tab = (props: TabComponentProps) => {
-  const { label, children, badge, ...otherProps } = props;
-  const {
-    size = 'sm',
-    type = 'button-brand',
-    fullWidth,
-  } = useContext(TabListContext);
-
-  return (
-    <AriaTab
-      {...otherProps}
-      className={(prop) =>
-        cx(
-          'tw:z-10 tw:flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-md tw:whitespace-nowrap tw:text-quaternary tw:transition tw:duration-100 tw:ease-linear',
-          'group-orientation-vertical:tw:justify-start',
-          fullWidth && 'tw:w-full tw:flex-1',
-          sizes[size][type],
-          getTabStyles(prop)[type],
-          typeof props.className === 'function'
-            ? props.className(prop)
-            : props.className,
-        )
-      }>
-      {(state) => (
-        <Fragment>
-          {typeof children === 'function' ? children(state) : children || label}
-          {badge != null && (
-            <Badge
-              size={size}
-              type="pill-color"
-              color={getColorStyles(state)[type] as BadgeColors}
-              className={cx(
-                'tw:hidden tw:transition-inherit-all tw:md:flex',
-                size === 'sm' && 'tw:-my-px',
-              )}>
-              {badge}
-            </Badge>
-          )}
-        </Fragment>
-      )}
-    </AriaTab>
   );
 };
 

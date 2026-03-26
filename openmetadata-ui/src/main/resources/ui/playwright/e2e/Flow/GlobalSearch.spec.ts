@@ -21,48 +21,45 @@ const DESCRIPTION_SEARCH =
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test(
-  'searching for longer description should work',
-  async ({ page }) => {
-    await redirectToHomePage(page);
+test('searching for longer description should work', async ({ page }) => {
+  await redirectToHomePage(page);
 
-    await sidebarClick(page, SidebarItem.EXPLORE);
+  await sidebarClick(page, SidebarItem.EXPLORE);
 
-    await page.getByTestId('global-search-selector').click();
-    await page.getByTestId('global-search-select-option-Table').click();
+  await page.getByTestId('global-search-selector').click();
+  await page.getByTestId('global-search-select-option-Table').click();
 
-    await page
-      .getByTestId('navbar-search-container')
-      .getByTestId('searchBox')
-      .fill(DESCRIPTION_SEARCH);
+  await page
+    .getByTestId('navbar-search-container')
+    .getByTestId('searchBox')
+    .fill(DESCRIPTION_SEARCH);
 
-    await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
 
-    await page.getByTestId('search-container').getByTestId('loader').waitFor({
-      state: 'detached',
-    });
+  await page.getByTestId('search-container').getByTestId('loader').waitFor({
+    state: 'detached',
+  });
 
-    await page.getByTestId('search-results').waitFor({
-      state: 'visible',
-    });
+  await page.getByTestId('search-results').waitFor({
+    state: 'visible',
+  });
 
-    await expect(
-      page
-        .getByTestId('search-results')
-        .getByTestId(
-          'table-data-card_sample_data.ecommerce_db.shopify.dim_customer'
-        )
-    ).toBeVisible();
+  await expect(
+    page
+      .getByTestId('search-results')
+      .getByTestId(
+        'table-data-card_sample_data.ecommerce_db.shopify.dim_customer'
+      )
+  ).toBeVisible();
 
-    await expect(
-      page
-        .getByTestId('search-results')
-        .getByTestId(
-          'table-data-card_sample_data.ecommerce_db.shopify.dim_customer'
-        )
-        .getByTestId('entity-link')
-    ).toHaveText('dim_customer');
+  await expect(
+    page
+      .getByTestId('search-results')
+      .getByTestId(
+        'table-data-card_sample_data.ecommerce_db.shopify.dim_customer'
+      )
+      .getByTestId('entity-link')
+  ).toHaveText('dim_customer');
 
-    await expect(page.getByTestId('alert-bar')).not.toBeVisible();
-  }
-);
+  await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+});

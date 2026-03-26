@@ -14,6 +14,7 @@
 import { expect, test } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import {
   CERT_FILE,
@@ -32,7 +33,6 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
-import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const SERVICE_NAMES = {
   service1: `PlaywrightService_${uuid()}`,
