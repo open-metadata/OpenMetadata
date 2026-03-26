@@ -199,17 +199,20 @@ export function useGraphDataBuilder({
 
   const graphData = useMemo(() => {
     const searchHighlightActive = Boolean(graphSearchHighlight?.active);
-    const searchNodeSet = searchHighlightActive
-      ? new Set(graphSearchHighlight?.highlightedNodeIds ?? [])
-      : null;
-    const searchEdgeSet = searchHighlightActive
-      ? new Set(graphSearchHighlight?.highlightedEdgeKeys ?? [])
-      : null;
-    const searchGlossarySet =
-      searchHighlightActive &&
-      (graphSearchHighlight?.highlightedGlossaryIds.length ?? 0) > 0
-        ? new Set(graphSearchHighlight?.highlightedGlossaryIds ?? [])
-        : null;
+    let searchNodeSet: Set<string> | null = null;
+    let searchEdgeSet: Set<string> | null = null;
+    let searchGlossarySet: Set<string> | null = null;
+
+    if (searchHighlightActive) {
+      searchNodeSet = new Set(graphSearchHighlight?.highlightedNodeIds ?? []);
+      searchEdgeSet = new Set(graphSearchHighlight?.highlightedEdgeKeys ?? []);
+
+      if ((graphSearchHighlight?.highlightedGlossaryIds.length ?? 0) > 0) {
+        searchGlossarySet = new Set(
+          graphSearchHighlight?.highlightedGlossaryIds ?? []
+        );
+      }
+    }
 
     let nodesForGraph: OntologyNode[];
     let edgesForGraph: MergedEdge[];

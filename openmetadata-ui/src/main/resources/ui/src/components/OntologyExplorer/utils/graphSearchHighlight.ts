@@ -3,6 +3,7 @@
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  */
+import { includes, toLower } from 'lodash';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
 import { OntologyEdge, OntologyNode } from '../OntologyExplorer.interface';
@@ -15,11 +16,7 @@ export interface GraphSearchHighlightInput {
 }
 
 function textMatches(query: string, value: string | undefined): boolean {
-  if (!value) {
-    return false;
-  }
-
-  return value.toLowerCase().includes(query);
+  return includes(toLower(value), query);
 }
 
 export function ontologyEdgeKey(edge: OntologyEdge): string {
