@@ -49,10 +49,10 @@ const CustomTabsComponent: React.FC<CustomTabsArgs> = (args) => {
   const { tabs: tabsProp, ...tabsProps } = args;
   const tabs = useMemo(
     () => tabsProp || CUSTOM_TABS_DEFAULT_ARGS.tabs || [],
-    [tabsProp],
+    [tabsProp]
   );
   const [value, setValue] = useState<string>(
-    (args.value as string) || tabs[0]?.value || 'tab1',
+    (args.value as string) || tabs[0]?.value || 'tab1'
   );
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export const CustomTabs: StorybookComponent<CustomTabsArgs> = Object.assign(
   {
     args: CUSTOM_TABS_DEFAULT_ARGS,
     argTypes: CUSTOM_TABS_ARG_TYPES,
-  },
+  }
 );
 
 // Basic Common Tabs Example

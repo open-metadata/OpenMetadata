@@ -51,7 +51,8 @@ type ButtonSize = keyof typeof styles.sizes;
 const ButtonGroupContext = createContext<{ size: ButtonSize }>({ size: 'md' });
 
 interface ButtonGroupItemProps
-  extends ToggleButtonProps, RefAttributes<HTMLButtonElement> {
+  extends ToggleButtonProps,
+    RefAttributes<HTMLButtonElement> {
   iconLeading?: FC<{ className?: string }> | ReactNode;
   iconTrailing?: FC<{ className?: string }> | ReactNode;
   onClick?: () => void;
@@ -69,7 +70,7 @@ export const ButtonGroupItem = ({
 
   if (!context) {
     throw new Error(
-      'ButtonGroupItem must be used within a ButtonGroup component',
+      'ButtonGroupItem must be used within a ButtonGroup component'
     );
   }
 
@@ -103,8 +104,7 @@ export const ButtonGroupItem = ({
 };
 
 interface ButtonGroupProps
-  extends
-    Omit<ToggleButtonGroupProps, 'orientation'>,
+  extends Omit<ToggleButtonGroupProps, 'orientation'>,
     RefAttributes<HTMLDivElement> {
   size?: ButtonSize;
   className?: string;
@@ -121,7 +121,7 @@ export const ButtonGroup = ({
       <AriaToggleButtonGroup
         className={cx(
           'tw:relative tw:z-0 tw:inline-flex tw:w-max tw:-space-x-px tw:rounded-lg tw:shadow-xs',
-          className,
+          className
         )}
         selectionMode="single"
         {...otherProps}>

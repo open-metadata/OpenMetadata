@@ -73,10 +73,8 @@ export const cardStyles = sortCx({
 
 // ─── Sub-component interfaces ──────────────────────────────────────────────────
 
-export interface CardHeaderProps extends Omit<
-  HTMLAttributes<HTMLDivElement>,
-  'title'
-> {
+export interface CardHeaderProps
+  extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   title?: ReactNode;
   subtitle?: ReactNode;
   extra?: ReactNode;
@@ -107,7 +105,7 @@ const CardHeader = ({
       className={cx(
         'tw:flex tw:items-start tw:justify-between tw:gap-4 tw:border-b tw:border-secondary',
         sizes[size].padding,
-        className,
+        className
       )}>
       {(title || subtitle) && (
         <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
@@ -147,7 +145,7 @@ const CardFooter = ({ children, className, ...props }: CardFooterProps) => {
       className={cx(
         'tw:border-t tw:border-secondary',
         sizes[size].padding,
-        className,
+        className
       )}>
       {children}
     </div>
@@ -178,7 +176,7 @@ const CardBase = forwardRef<HTMLDivElement, CardProps>(
       isSelected = false,
       ...props
     },
-    ref,
+    ref
   ) => {
     return (
       <CardContext.Provider value={{ size }}>
@@ -192,13 +190,13 @@ const CardBase = forwardRef<HTMLDivElement, CardProps>(
             isClickable && cardStyles.interactive.root,
             isClickable && cardStyles.interactiveVariants[variant].root,
             isSelected && cardStyles.selected.root,
-            className,
+            className
           )}>
           {children}
         </div>
       </CardContext.Provider>
     );
-  },
+  }
 );
 
 CardBase.displayName = 'Card';

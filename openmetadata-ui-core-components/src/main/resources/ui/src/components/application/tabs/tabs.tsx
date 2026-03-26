@@ -46,38 +46,38 @@ const getTabStyles = ({
     'tw:outline-focus-ring',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
     (isSelected || isHovered) &&
-      'tw:bg-brand-primary_alt tw:text-brand-secondary',
+      'tw:bg-brand-primary_alt tw:text-brand-secondary'
   ),
   'button-gray': cx(
     'tw:outline-focus-ring',
     isHovered && 'tw:bg-primary_hover tw:text-secondary',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
-    isSelected && 'tw:bg-active tw:text-secondary',
+    isSelected && 'tw:bg-active tw:text-secondary'
   ),
   'button-border': cx(
     'tw:outline-focus-ring',
     (isSelected || isHovered) &&
       'tw:bg-primary_alt tw:text-secondary tw:shadow-sm',
-    isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
+    isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
   ),
   'button-minimal': cx(
     'tw:rounded-lg tw:outline-focus-ring',
     isHovered && 'tw:text-secondary',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
     isSelected &&
-      'tw:bg-primary_alt tw:text-secondary tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset',
+      'tw:bg-primary_alt tw:text-secondary tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset'
   ),
   underline: cx(
     'tw:rounded-none tw:border-b-2 tw:border-transparent tw:outline-focus-ring',
     (isSelected || isHovered) &&
       'tw:border-fg-brand-primary_alt tw:text-brand-secondary',
-    isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
+    isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
   ),
   line: cx(
     'tw:rounded-none tw:border-l-2 tw:border-transparent tw:outline-focus-ring',
     (isSelected || isHovered) &&
       'tw:border-fg-brand-primary_alt tw:text-brand-secondary',
-    isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
+    isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
   ),
 });
 
@@ -112,7 +112,7 @@ const getHorizontalStyles = ({
   'button-gray': 'tw:gap-1',
   'button-border': cx(
     'tw:gap-1 tw:rounded-[10px] tw:bg-secondary_alt tw:p-1 tw:ring-1 tw:ring-secondary tw:ring-inset',
-    size === 'md' && 'tw:rounded-xl tw:p-1.5',
+    size === 'md' && 'tw:rounded-xl tw:p-1.5'
   ),
   'button-minimal':
     'tw:gap-0.5 tw:rounded-lg tw:bg-secondary_alt tw:ring-1 tw:ring-inset tw:ring-secondary',
@@ -197,7 +197,7 @@ export const Tab = (props: TabComponentProps) => {
           getTabStyles(prop)[type],
           typeof props.className === 'function'
             ? props.className(prop)
-            : props.className,
+            : props.className
         )
       }>
       {(state) => (
@@ -207,7 +207,7 @@ export const Tab = (props: TabComponentProps) => {
             <Badge
               className={cx(
                 'tw:hidden tw:transition-inherit-all tw:md:flex',
-                size === 'sm' && 'tw:-my-px',
+                size === 'sm' && 'tw:-my-px'
               )}
               color={getColorStyles(state)[type] as BadgeColors}
               size={size}
@@ -236,7 +236,7 @@ export const TabList = <K extends Orientation>({
 
   const contextValues = useMemo(
     () => ({ size, type, orientation, fullWidth }),
-    [size, type, orientation, fullWidth],
+    [size, type, orientation, fullWidth]
   );
 
   return (
@@ -259,7 +259,7 @@ export const TabList = <K extends Orientation>({
               type === 'underline' &&
               'tw:relative tw:before:absolute tw:before:inset-x-0 tw:before:bottom-0 tw:before:h-px tw:before:bg-border-secondary',
 
-            typeof className === 'function' ? className(state) : className,
+            typeof className === 'function' ? className(state) : className
           )
         }>
         {children ?? ((item) => <Tab {...item}>{item.children}</Tab>)}
@@ -277,7 +277,7 @@ export const TabPanel = (props: ComponentPropsWithRef<typeof AriaTabPanel>) => {
           'tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
           typeof props.className === 'function'
             ? props.className(state)
-            : props.className,
+            : props.className
         )
       }
     />
@@ -295,7 +295,7 @@ export const Tabs = ({
       className={(state) =>
         cx(
           'tw:flex tw:w-full tw:flex-col',
-          typeof className === 'function' ? className(state) : className,
+          typeof className === 'function' ? className(state) : className
         )
       }
     />

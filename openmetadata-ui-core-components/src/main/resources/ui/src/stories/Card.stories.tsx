@@ -158,7 +158,7 @@ export const Variants: StoryObj = {
               </Card.Content>
             </Card>
           </div>
-        ),
+        )
       )}
     </div>
   ),
@@ -177,7 +177,7 @@ export const Colors: StoryObj = {
               </Card.Content>
             </Card>
           </div>
-        ),
+        )
       )}
     </div>
   ),

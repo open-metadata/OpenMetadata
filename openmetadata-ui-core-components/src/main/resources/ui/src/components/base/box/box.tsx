@@ -128,7 +128,7 @@ export const Box = ({
         gapClassName,
         rowGapClassName,
         colGapClassName,
-        className,
+        className
       )}>
       {children}
     </div>

@@ -51,15 +51,30 @@ const meta = {
     },
     gap: {
       control: false,
-      table: { type: { summary: '0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 14 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 72 | 80 | 96' } },
+      table: {
+        type: {
+          summary:
+            '0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 14 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 72 | 80 | 96',
+        },
+      },
     },
     rowGap: {
       control: false,
-      table: { type: { summary: '0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 14 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 72 | 80 | 96' } },
+      table: {
+        type: {
+          summary:
+            '0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 14 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 72 | 80 | 96',
+        },
+      },
     },
     colGap: {
       control: false,
-      table: { type: { summary: '0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 14 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 72 | 80 | 96' } },
+      table: {
+        type: {
+          summary:
+            '0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 14 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 | 48 | 52 | 56 | 60 | 64 | 72 | 80 | 96',
+        },
+      },
     },
     inline: { control: false, table: { type: { summary: 'boolean' } } },
   },
@@ -94,9 +109,12 @@ export const Default: Story = {
 
 export const Directions: StoryObj = {
   render: () => (
-    <div style={{ width: 500, display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div
+      style={{ width: 500, display: 'flex', flexDirection: 'column', gap: 24 }}>
       {(['row', 'col', 'row-reverse', 'col-reverse'] as const).map((dir) => (
-        <div key={dir} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div
+          key={dir}
+          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Label>direction="{dir}"</Label>
           <Box direction={dir} gap={2}>
             <Tile>A</Tile>
@@ -111,19 +129,34 @@ export const Directions: StoryObj = {
 
 export const AlignItems: StoryObj = {
   render: () => (
-    <div style={{ width: 500, display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {(['start', 'center', 'end', 'stretch', 'baseline'] as const).map((align) => (
-        <div key={align} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Label>align="{align}"</Label>
-          <Box align={align} gap={2} style={{ height: 80, border: '1px dashed #d0d5dd', borderRadius: 8, padding: 8 }}>
-            <Tile>Short</Tile>
-            <div className="tw:rounded tw:bg-blue-100 tw:p-3 tw:text-center tw:text-sm tw:font-medium tw:text-blue-700" style={{ paddingTop: 20, paddingBottom: 20 }}>
-              Tall
-            </div>
-            <Tile>Mid</Tile>
-          </Box>
-        </div>
-      ))}
+    <div
+      style={{ width: 500, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {(['start', 'center', 'end', 'stretch', 'baseline'] as const).map(
+        (align) => (
+          <div
+            key={align}
+            style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Label>align="{align}"</Label>
+            <Box
+              align={align}
+              gap={2}
+              style={{
+                height: 80,
+                border: '1px dashed #d0d5dd',
+                borderRadius: 8,
+                padding: 8,
+              }}>
+              <Tile>Short</Tile>
+              <div
+                className="tw:rounded tw:bg-blue-100 tw:p-3 tw:text-center tw:text-sm tw:font-medium tw:text-blue-700"
+                style={{ paddingTop: 20, paddingBottom: 20 }}>
+                Tall
+              </div>
+              <Tile>Mid</Tile>
+            </Box>
+          </div>
+        )
+      )}
     </div>
   ),
 };
@@ -131,16 +164,27 @@ export const AlignItems: StoryObj = {
 export const JustifyContent: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {(['start', 'center', 'end', 'between', 'around', 'evenly'] as const).map((justify) => (
-        <div key={justify} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Label>justify="{justify}"</Label>
-          <Box justify={justify} style={{ width: 400, border: '1px dashed #d0d5dd', borderRadius: 8, padding: 8 }}>
-            <Tile>A</Tile>
-            <Tile>B</Tile>
-            <Tile>C</Tile>
-          </Box>
-        </div>
-      ))}
+      {(['start', 'center', 'end', 'between', 'around', 'evenly'] as const).map(
+        (justify) => (
+          <div
+            key={justify}
+            style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Label>justify="{justify}"</Label>
+            <Box
+              justify={justify}
+              style={{
+                width: 400,
+                border: '1px dashed #d0d5dd',
+                borderRadius: 8,
+                padding: 8,
+              }}>
+              <Tile>A</Tile>
+              <Tile>B</Tile>
+              <Tile>C</Tile>
+            </Box>
+          </div>
+        )
+      )}
     </div>
   ),
 };
@@ -149,7 +193,9 @@ export const GapScale: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {([1, 2, 4, 6, 8, 12, 16] as const).map((gap) => (
-        <div key={gap} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div
+          key={gap}
+          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Label>gap={gap}</Label>
           <Box gap={gap}>
             <Tile>One</Tile>
@@ -198,9 +244,19 @@ export const Wrap: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {(['wrap', 'nowrap', 'wrap-reverse'] as const).map((w) => (
-        <div key={w} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div
+          key={w}
+          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Label>wrap="{w}"</Label>
-          <Box wrap={w} gap={2} style={{ width: 200, border: '1px dashed #d0d5dd', borderRadius: 8, padding: 8 }}>
+          <Box
+            gap={2}
+            style={{
+              width: 200,
+              border: '1px dashed #d0d5dd',
+              borderRadius: 8,
+              padding: 8,
+            }}
+            wrap={w}>
             {['One', 'Two', 'Three', 'Four', 'Five'].map((n) => (
               <Tile key={n}>{n}</Tile>
             ))}
@@ -214,19 +270,21 @@ export const Wrap: StoryObj = {
 export const Inline: StoryObj = {
   render: () => (
     <div style={{ maxWidth: 500 }}>
-      <p className="tw:text-sm tw:text-secondary" style={{ margin: '0 0 16px 0' }}>
+      <p
+        className="tw:text-sm tw:text-secondary"
+        style={{ margin: '0 0 16px 0' }}>
         Block flex (default): takes full width.
       </p>
-      <Box gap={2} className="tw:mb-4">
+      <Box className="tw:mb-4" gap={2}>
         <Tile>A</Tile>
         <Tile>B</Tile>
       </Box>
       <p className="tw:text-sm tw:text-secondary" style={{ margin: '16px 0' }}>
-        Inline flex: sits inside text flow —{" "}
-        <Box inline gap={1} className="tw:align-middle">
+        Inline flex: sits inside text flow —{' '}
+        <Box inline className="tw:align-middle" gap={1}>
           <Tile>X</Tile>
           <Tile>Y</Tile>
-        </Box>{" "}
+        </Box>{' '}
         — continues inline.
       </p>
     </div>
@@ -237,16 +295,14 @@ export const Composition: StoryObj = {
   render: () => (
     <div style={{ width: 400 }}>
       <Box
-        direction="col"
-        gap={4}
         className="tw:rounded-xl tw:ring-1 tw:ring-inset tw:ring-secondary tw:bg-primary tw:overflow-hidden"
-      >
+        direction="col"
+        gap={4}>
         <Box
-          justify="between"
           align="center"
-          gap={3}
           className="tw:px-4 tw:pt-4"
-        >
+          gap={3}
+          justify="between">
           <Box direction="col" gap={1}>
             <span className="tw:text-sm tw:font-semibold tw:text-primary">
               Dataset: orders
@@ -259,18 +315,19 @@ export const Composition: StoryObj = {
             Active
           </div>
         </Box>
-        <Box direction="col" gap={2} className="tw:px-4">
+        <Box className="tw:px-4" direction="col" gap={2}>
           <span className="tw:text-sm tw:text-secondary">
             This card layout is built entirely from nested Box primitives using
             direction, justify, align, and gap.
           </span>
         </Box>
         <Box
-          justify="end"
-          gap={2}
           className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
-        >
-          <span className="tw:text-xs tw:text-tertiary">3 columns · 1.2M rows</span>
+          gap={2}
+          justify="end">
+          <span className="tw:text-xs tw:text-tertiary">
+            3 columns · 1.2M rows
+          </span>
         </Box>
       </Box>
     </div>
