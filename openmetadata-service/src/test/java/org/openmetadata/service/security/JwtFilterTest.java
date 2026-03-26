@@ -15,9 +15,12 @@ package org.openmetadata.service.security;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,6 +30,7 @@ import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.Claim;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.SecurityContext;
@@ -46,7 +50,9 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 class JwtFilterTest {
 
@@ -70,7 +76,7 @@ class JwtFilterTest {
     Jwk mockJwk = mock(Jwk.class);
     when(mockJwk.getPublicKey()).thenReturn(keyPair.getPublic());
     jwkProvider = mock(JwkProvider.class);
-    when(jwkProvider.get(algorithm.getSigningKeyId())).thenReturn(mockJwk);
+    when(jwkProvider.get(any())).thenReturn(mockJwk);
 
     // This is needed by JwtFilter for some metadata, not very important
     URI uri = URI.create("POST:http://localhost:8080/login");
@@ -81,7 +87,12 @@ class JwtFilterTest {
     List<String> principalClaims = List.of("sub", "email");
     String domain = "openmetadata.org";
     boolean enforcePrincipalDomain = false;
-    jwtFilter = new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain);
+    // Use explicit empty overrides so the shared filter never reads from the
+    // SecurityConfigurationManager singleton — keeps these tests independent of
+    // any state other classes might leave behind in the singleton.
+    jwtFilter =
+        new JwtFilter(
+            jwkProvider, principalClaims, domain, enforcePrincipalDomain, "", "", null, null);
   }
 
   @Test
@@ -251,6 +262,508 @@ class JwtFilterTest {
     Exception exception =
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("personal access token"));
+  }
+
+  @Test
+  void testAudienceValidationSuccess() {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub"), "openmetadata.org", false, "my-client-id", null);
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withAudience("my-client-id")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    filter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testAudienceValidationWithMultipleAudiences() {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub"), "openmetadata.org", false, "my-client-id", null);
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withAudience("other-client", "my-client-id")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    filter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testAudienceValidationRejectsWrongAudience() {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub"), "openmetadata.org", false, "my-client-id", null);
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withAudience("different-client-id")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    Exception exception = assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("audience mismatch"));
+  }
+
+  @Test
+  void testAudienceValidationRejectsMissingAudience() {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub"), "openmetadata.org", false, "my-client-id", null);
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    Exception exception = assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("audience mismatch"));
+  }
+
+  @Test
+  void testAudienceValidationRejectsMultipleNonMatchingAudiences() {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub"), "openmetadata.org", false, "my-client-id", null);
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withAudience("client-a", "client-b", "client-c")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    Exception exception = assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("audience mismatch"));
+  }
+
+  @Test
+  void testIssuerValidationSuccess() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            null,
+            "https://auth.example.com");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("https://auth.example.com")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    filter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testIssuerValidationRejectsWrongIssuer() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            null,
+            "https://auth.example.com");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("https://evil.example.com")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    Exception exception = assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("issuer mismatch"));
+  }
+
+  @Test
+  void testIssuerValidationRejectsMissingIssuer() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            null,
+            "https://auth.example.com");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    Exception exception = assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("issuer mismatch"));
+  }
+
+  @Test
+  void testCombinedAudienceAndIssuerValidation() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            "my-client-id",
+            "https://auth.example.com");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withAudience("my-client-id")
+            .withIssuer("https://auth.example.com")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    filter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testCombinedValidationRejectsWrongIssuerWithCorrectAudience() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            "my-client-id",
+            "https://auth.example.com");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withAudience("my-client-id")
+            .withIssuer("https://evil.example.com")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    Exception exception = assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("issuer mismatch"));
+  }
+
+  @Test
+  void testCombinedValidationRejectsWrongAudienceWithCorrectIssuer() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            "my-client-id",
+            "https://auth.example.com");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withAudience("wrong-client-id")
+            .withIssuer("https://auth.example.com")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    Exception exception = assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("audience mismatch"));
+  }
+
+  @Test
+  void testValidationSkippedWhenNotConfigured() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withAudience("any-client-id")
+            .withIssuer("https://any-issuer.com")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    jwtFilter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testIssuerValidationWithTrailingSlash() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            null,
+            "https://auth.example.com/");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("https://auth.example.com")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    filter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testIssuerValidationHostCaseInsensitive() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            null,
+            "https://Auth.Example.COM");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("https://auth.example.com")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    filter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testNormalizeIssuerTrailingSlash() {
+    assertEquals(
+        "https://auth.example.com", JwtFilter.normalizeIssuer("https://auth.example.com/"));
+    assertEquals("https://auth.example.com", JwtFilter.normalizeIssuer("https://auth.example.com"));
+    assertEquals(
+        "https://auth.example.com/v2.0",
+        JwtFilter.normalizeIssuer("https://auth.example.com/v2.0/"));
+    assertNull(JwtFilter.normalizeIssuer(null));
+  }
+
+  @Test
+  void testNormalizeIssuerHostCaseOnlyPathPreserved() {
+    assertEquals("https://auth.example.com", JwtFilter.normalizeIssuer("https://Auth.Example.COM"));
+    assertEquals(
+        "https://auth.example.com/realms/MyRealm",
+        JwtFilter.normalizeIssuer("https://Auth.Example.COM/realms/MyRealm"));
+    assertEquals(
+        "https://idp.example.com/tenant-id/v2.0",
+        JwtFilter.normalizeIssuer("https://IDP.Example.COM/tenant-id/v2.0/"));
+  }
+
+  @Test
+  void testInternalBotTokenBypassesIssuerValidation() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            "my-client-id",
+            "https://auth.example.com",
+            "open-metadata.org",
+            "internal-kid");
+
+    String jwt =
+        JWT.create()
+            .withKeyId("internal-kid")
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("open-metadata.org")
+            .withClaim("sub", "ingestion-bot")
+            .withClaim("isBot", true)
+            .sign(algorithm);
+
+    Map<String, Claim> claims = filter.validateJwtAndGetClaims(jwt);
+    assertEquals("ingestion-bot", claims.get("sub").asString());
+  }
+
+  @Test
+  void testInternalTokenTypeBypassesIssuerAndAudienceValidation() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            "my-client-id",
+            "https://auth.example.com",
+            "open-metadata.org",
+            "internal-kid");
+
+    String jwt =
+        JWT.create()
+            .withKeyId("internal-kid")
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("open-metadata.org")
+            .withAudience("not-my-client")
+            .withClaim("sub", "sam")
+            .withClaim("tokenType", "PERSONAL_ACCESS")
+            .sign(algorithm);
+
+    Map<String, Claim> claims = filter.validateJwtAndGetClaims(jwt);
+    assertEquals("sam", claims.get("sub").asString());
+  }
+
+  @Test
+  void testExternalTokenForgingInternalIssuerWithoutKid_RejectedByAudienceCheck() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            "my-client-id",
+            "https://auth.example.com",
+            "open-metadata.org",
+            "internal-kid");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("open-metadata.org")
+            .withAudience("attacker-client")
+            .withClaim("sub", "attacker")
+            .withClaim("tokenType", "PERSONAL_ACCESS")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    Exception exception = assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertTrue(
+        exception.getMessage().toLowerCase(Locale.ROOT).contains("issuer mismatch")
+            || exception.getMessage().toLowerCase(Locale.ROOT).contains("audience mismatch"));
+  }
+
+  @Test
+  void testExternalTokenWithoutInternalClaimsStillValidated() {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub"),
+            "openmetadata.org",
+            false,
+            "my-client-id",
+            "https://auth.example.com");
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("https://evil.example.com")
+            .withAudience("my-client-id")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    Exception exception = assertThrows(AuthenticationException.class, () -> filter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("issuer mismatch"));
+  }
+
+  @Test
+  void testIssuerValidation_FallbackRetryRecoversAfterStartupFailure_AllowsToken() {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub"), "openmetadata.org", false, null, null);
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("https://auth.example.com/v2.0")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    SecurityConfigurationManager mockManager = mock(SecurityConfigurationManager.class);
+    when(mockManager.getResolvedOidcIssuer())
+        .thenReturn("https://auth.example.com")
+        .thenReturn("https://auth.example.com/v2.0");
+    when(mockManager.refreshResolvedOidcIssuerIfStale()).thenReturn(true);
+
+    try (MockedStatic<SecurityConfigurationManager> mgrMock =
+        mockStatic(SecurityConfigurationManager.class)) {
+      mgrMock.when(SecurityConfigurationManager::getInstance).thenReturn(mockManager);
+      mgrMock.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(null);
+
+      ContainerRequestContext context = createRequestContextWithJwt(jwt);
+      filter.filter(context);
+
+      ArgumentCaptor<SecurityContext> securityContextArgument =
+          ArgumentCaptor.forClass(SecurityContext.class);
+      verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+      assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+    }
+  }
+
+  @Test
+  void testIssuerValidation_FallbackRetryStillMismatch_Rejects() {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub"), "openmetadata.org", false, null, null);
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withIssuer("https://evil.example.com")
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    SecurityConfigurationManager mockManager = mock(SecurityConfigurationManager.class);
+    when(mockManager.getResolvedOidcIssuer()).thenReturn("https://auth.example.com");
+    when(mockManager.refreshResolvedOidcIssuerIfStale()).thenReturn(true);
+
+    try (MockedStatic<SecurityConfigurationManager> mgrMock =
+        mockStatic(SecurityConfigurationManager.class)) {
+      mgrMock.when(SecurityConfigurationManager::getInstance).thenReturn(mockManager);
+      mgrMock.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(null);
+
+      ContainerRequestContext context = createRequestContextWithJwt(jwt);
+      Exception exception =
+          assertThrows(AuthenticationException.class, () -> filter.filter(context));
+      assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("issuer mismatch"));
+    }
   }
 
   /**

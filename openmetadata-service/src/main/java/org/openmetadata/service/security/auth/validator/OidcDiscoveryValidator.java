@@ -317,6 +317,61 @@ public class OidcDiscoveryValidator {
     return DiscoveryDocument.fromJson(response.getBody());
   }
 
+  /**
+   * Returns the OIDC discovery document URI for the given config. Preference order:
+   * (1) explicit {@code oidcConfig.discoveryUri}; (2) {@code authConfig.authority +
+   * /.well-known/openid-configuration}; (3) {@code oidcConfig.serverUrl + /.well-known/...}.
+   * Returns null when none of those are configured. Using the explicit discoveryUri when available
+   * lets providers whose discovery endpoint differs from their authority URL (e.g., Azure AD
+   * {@code .../{tenant}/v2.0/.well-known/openid-configuration}) be resolved correctly.
+   */
+  public static String extractDiscoveryUri(
+      AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
+    if (oidcConfig != null && !nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+      return oidcConfig.getDiscoveryUri();
+    }
+    if (authConfig != null && !nullOrEmpty(authConfig.getAuthority())) {
+      String authority = authConfig.getAuthority();
+      if (!authority.endsWith("/")) {
+        authority += "/";
+      }
+      return authority + ".well-known/openid-configuration";
+    }
+    if (oidcConfig != null && !nullOrEmpty(oidcConfig.getServerUrl())) {
+      String serverUrl = oidcConfig.getServerUrl();
+      if (!serverUrl.endsWith("/")) {
+        serverUrl += "/";
+      }
+      return serverUrl + ".well-known/openid-configuration";
+    }
+    return null;
+  }
+
+  /**
+   * Resolves the OIDC issuer claim value from the discovery document referenced by the auth
+   * config. Returns null on any failure (no discovery URI, network error, non-200, malformed JSON,
+   * missing issuer). The caller decides whether to fall back to the authority URL.
+   */
+  public static String resolveIssuer(
+      AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
+    String discoveryUri = extractDiscoveryUri(authConfig, oidcConfig);
+    if (nullOrEmpty(discoveryUri)) {
+      return null;
+    }
+    try {
+      DiscoveryDocument doc = fetchDiscoveryDocument(discoveryUri);
+      if (nullOrEmpty(doc.issuer)) {
+        LOG.warn("OIDC discovery document at {} missing 'issuer' field", discoveryUri);
+        return null;
+      }
+      return doc.issuer;
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to resolve OIDC issuer from discovery at {}: {}", discoveryUri, e.getMessage());
+      return null;
+    }
+  }
+
   private String determineFieldPathFromErrors(List<String> errors) {
     // Join all errors to analyze them
     String allErrors = String.join(" ", errors).toLowerCase();

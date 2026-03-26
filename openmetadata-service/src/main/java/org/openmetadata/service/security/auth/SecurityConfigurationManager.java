@@ -13,13 +13,16 @@
 
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.core.setup.Environment;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
@@ -27,12 +30,14 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 
 @Slf4j
 public class SecurityConfigurationManager {
@@ -49,9 +54,14 @@ public class SecurityConfigurationManager {
     private static final SecurityConfigurationManager INSTANCE = new SecurityConfigurationManager();
   }
 
+  private static final long OIDC_ISSUER_RESOLVE_THROTTLE_MS = 60_000L;
+
   private volatile AuthenticationConfiguration currentAuthConfig;
   private volatile AuthorizerConfiguration currentAuthzConfig;
   private volatile MCPConfiguration currentMcpConfig;
+  private volatile String resolvedOidcIssuer;
+  private volatile boolean oidcIssuerFromDiscovery;
+  private final AtomicLong lastOidcIssuerResolveAttemptMillis = new AtomicLong(0L);
   private final List<ConfigurationChangeListener> listeners = new CopyOnWriteArrayList<>();
 
   public void setCurrentAuthConfig(AuthenticationConfiguration authConfig) {
@@ -123,6 +133,8 @@ public class SecurityConfigurationManager {
     currentMcpConfig =
         SettingsCache.getSettingOrDefault(
             MCP_CONFIGURATION, config.getMcpConfiguration(), MCPConfiguration.class);
+
+    resolveOidcIssuerForCurrentConfig();
   }
 
   public SecurityConfiguration getCurrentSecurityConfig() {
@@ -157,6 +169,8 @@ public class SecurityConfigurationManager {
       }
 
       application.reinitializeAuthSystem(appConfig, environment);
+
+      resolveOidcIssuerForCurrentConfig();
 
       notifyListeners();
 
@@ -238,5 +252,78 @@ public class SecurityConfigurationManager {
   public static boolean isConfidentialClient() {
     AuthenticationConfiguration authConfig = getCurrentAuthConfig();
     return authConfig != null && ClientType.CONFIDENTIAL.equals(authConfig.getClientType());
+  }
+
+  public String getResolvedOidcIssuer() {
+    return resolvedOidcIssuer;
+  }
+
+  public boolean isOidcIssuerFromDiscovery() {
+    return oidcIssuerFromDiscovery;
+  }
+
+  /**
+   * Re-attempts OIDC issuer resolution from the discovery document when the cached value is a
+   * fallback (not from discovery) and the retry throttle has expired. Returns true if a fresh
+   * attempt was made, false if the call was a no-op (already resolved from discovery, not
+   * configured for OIDC, or throttled).
+   */
+  public boolean refreshResolvedOidcIssuerIfStale() {
+    if (oidcIssuerFromDiscovery || !isOidc()) {
+      return false;
+    }
+    long now = System.currentTimeMillis();
+    long lastAttempt = lastOidcIssuerResolveAttemptMillis.get();
+    if (now - lastAttempt < OIDC_ISSUER_RESOLVE_THROTTLE_MS) {
+      return false;
+    }
+    if (!lastOidcIssuerResolveAttemptMillis.compareAndSet(lastAttempt, now)) {
+      return false;
+    }
+    resolveOidcIssuerInternal();
+    return true;
+  }
+
+  private void resolveOidcIssuerForCurrentConfig() {
+    if (isOidc()) {
+      resolveOidcIssuerInternal();
+    } else {
+      resolvedOidcIssuer = null;
+      oidcIssuerFromDiscovery = false;
+      lastOidcIssuerResolveAttemptMillis.set(0L);
+    }
+  }
+
+  private void resolveOidcIssuerInternal() {
+    AuthenticationConfiguration authConfig = currentAuthConfig;
+    if (authConfig == null) {
+      return;
+    }
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    String fromDiscovery = OidcDiscoveryValidator.resolveIssuer(authConfig, oidcConfig);
+    if (fromDiscovery != null) {
+      resolvedOidcIssuer = fromDiscovery;
+      oidcIssuerFromDiscovery = true;
+      LOG.info("Resolved OIDC issuer from discovery: {}", fromDiscovery);
+      return;
+    }
+    String authority = authConfig.getAuthority();
+    if (!nullOrEmpty(authority)) {
+      resolvedOidcIssuer = authority;
+      oidcIssuerFromDiscovery = false;
+      LOG.warn(
+          "OIDC issuer fallback to authority URL '{}': discovery unreachable or malformed",
+          authority);
+    } else {
+      resolvedOidcIssuer = null;
+      oidcIssuerFromDiscovery = false;
+    }
+  }
+
+  @VisibleForTesting
+  void resetOidcIssuerResolutionState() {
+    resolvedOidcIssuer = null;
+    oidcIssuerFromDiscovery = false;
+    lastOidcIssuerResolveAttemptMillis.set(0L);
   }
 }

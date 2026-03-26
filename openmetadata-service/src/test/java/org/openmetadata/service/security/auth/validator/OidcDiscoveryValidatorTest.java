@@ -651,6 +651,126 @@ public class OidcDiscoveryValidatorTest {
     }
   }
 
+  @Test
+  void testResolveIssuer_NullInputs_ReturnsNull() {
+    assertNull(OidcDiscoveryValidator.resolveIssuer(null, null));
+  }
+
+  @Test
+  void testResolveIssuer_NoAuthorityNoDiscoveryUri_ReturnsNull() {
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setAuthority("");
+    assertNull(OidcDiscoveryValidator.resolveIssuer(auth, null));
+  }
+
+  @Test
+  void testResolveIssuer_AuthorityBasedDiscoverySuccess_ReturnsIssuer() {
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setAuthority("https://auth.example.com");
+    String discoveryResponse = "{\"issuer\": \"https://auth.example.com\"}";
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      mockedHttp
+          .when(
+              () ->
+                  ValidationHttpUtil.safeGet(
+                      "https://auth.example.com/.well-known/openid-configuration"))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, discoveryResponse));
+
+      assertEquals("https://auth.example.com", OidcDiscoveryValidator.resolveIssuer(auth, null));
+    }
+  }
+
+  @Test
+  void testResolveIssuer_ExplicitDiscoveryUriWinsOverAuthority_AzureV2() {
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setAuthority("https://login.microsoftonline.com/contoso");
+    OidcClientConfig oidc = new OidcClientConfig();
+    oidc.setDiscoveryUri(
+        "https://login.microsoftonline.com/contoso/v2.0/.well-known/openid-configuration");
+    String discoveryResponse = "{\"issuer\": \"https://login.microsoftonline.com/contoso/v2.0\"}";
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      mockedHttp
+          .when(
+              () ->
+                  ValidationHttpUtil.safeGet(
+                      "https://login.microsoftonline.com/contoso/v2.0/.well-known/openid-configuration"))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, discoveryResponse));
+
+      assertEquals(
+          "https://login.microsoftonline.com/contoso/v2.0",
+          OidcDiscoveryValidator.resolveIssuer(auth, oidc));
+    }
+  }
+
+  @Test
+  void testResolveIssuer_MissingIssuerField_ReturnsNull() {
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setAuthority("https://auth.example.com");
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      mockedHttp
+          .when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(
+              new ValidationHttpUtil.HttpResponseData(
+                  200, "{\"jwks_uri\": \"https://auth.example.com/keys\"}"));
+
+      assertNull(OidcDiscoveryValidator.resolveIssuer(auth, null));
+    }
+  }
+
+  @Test
+  void testResolveIssuer_HttpError_ReturnsNull() {
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setAuthority("https://unreachable.example.com");
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      mockedHttp
+          .when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(503, "Service Unavailable"));
+
+      assertNull(OidcDiscoveryValidator.resolveIssuer(auth, null));
+    }
+  }
+
+  @Test
+  void testResolveIssuer_AuthorityTrailingSlash_BuildsSameDiscoveryUrl() {
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setAuthority("https://auth.example.com/");
+    String discoveryResponse = "{\"issuer\": \"https://auth.example.com\"}";
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      mockedHttp
+          .when(
+              () ->
+                  ValidationHttpUtil.safeGet(
+                      "https://auth.example.com/.well-known/openid-configuration"))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, discoveryResponse));
+
+      assertEquals("https://auth.example.com", OidcDiscoveryValidator.resolveIssuer(auth, null));
+    }
+  }
+
+  @Test
+  void testResolveIssuer_ServerUrlFallbackWhenNoAuthority_ReturnsIssuer() {
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    OidcClientConfig oidc = new OidcClientConfig();
+    oidc.setServerUrl("https://server.example.com");
+    String discoveryResponse = "{\"issuer\": \"https://server.example.com\"}";
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      mockedHttp
+          .when(
+              () ->
+                  ValidationHttpUtil.safeGet(
+                      "https://server.example.com/.well-known/openid-configuration"))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, discoveryResponse));
+
+      assertEquals("https://server.example.com", OidcDiscoveryValidator.resolveIssuer(auth, oidc));
+    }
+  }
+
   private String invokeMapClientAuthMethod(String method) throws Exception {
     Method mapMethod =
         OidcDiscoveryValidator.class.getDeclaredMethod("mapClientAuthMethod", String.class);

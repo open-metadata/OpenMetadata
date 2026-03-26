@@ -47,6 +47,7 @@ import java.net.URL;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -64,7 +65,9 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 
 @Slf4j
@@ -87,6 +90,11 @@ public class JwtFilter implements ContainerRequestFilter {
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
+  private String expectedClientId;
+  private String expectedIssuer;
+  private String internalJwtIssuer;
+  private String internalJwtKid;
+  private volatile String[] normalizedIssuerCache;
 
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
@@ -134,6 +142,36 @@ public class JwtFilter implements ContainerRequestFilter {
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
     this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
     this.tokenValidationAlgorithm = authenticationConfiguration.getTokenValidationAlgorithm();
+    this.expectedClientId = null;
+    this.expectedIssuer = null;
+    this.internalJwtIssuer = null;
+    this.internalJwtKid = null;
+  }
+
+  static String normalizeIssuer(String issuer) {
+    if (issuer == null) {
+      return null;
+    }
+    String normalized = issuer.trim();
+    while (normalized.endsWith("/")) {
+      normalized = normalized.substring(0, normalized.length() - 1);
+    }
+    try {
+      URI uri = URI.create(normalized);
+      if (uri.getScheme() != null && uri.getHost() != null) {
+        return new URI(
+                uri.getScheme().toLowerCase(Locale.ROOT),
+                null,
+                uri.getHost().toLowerCase(Locale.ROOT),
+                uri.getPort(),
+                uri.getRawPath(),
+                uri.getRawQuery(),
+                uri.getRawFragment())
+            .toString();
+      }
+    } catch (Exception ignored) {
+    }
+    return normalized;
   }
 
   @VisibleForTesting
@@ -142,11 +180,67 @@ public class JwtFilter implements ContainerRequestFilter {
       List<String> jwtPrincipalClaims,
       String principalDomain,
       boolean enforcePrincipalDomain) {
+    this(
+        jwkProvider, jwtPrincipalClaims, principalDomain, enforcePrincipalDomain, null, null, null);
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      String expectedClientId,
+      String expectedIssuer) {
+    this(
+        jwkProvider,
+        jwtPrincipalClaims,
+        principalDomain,
+        enforcePrincipalDomain,
+        expectedClientId,
+        expectedIssuer,
+        null);
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      String expectedClientId,
+      String expectedIssuer,
+      String internalJwtIssuer) {
+    this(
+        jwkProvider,
+        jwtPrincipalClaims,
+        principalDomain,
+        enforcePrincipalDomain,
+        expectedClientId,
+        expectedIssuer,
+        internalJwtIssuer,
+        null);
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      String expectedClientId,
+      String expectedIssuer,
+      String internalJwtIssuer,
+      String internalJwtKid) {
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
+    this.expectedClientId = expectedClientId;
+    this.expectedIssuer = expectedIssuer;
+    this.internalJwtIssuer = internalJwtIssuer;
+    this.internalJwtKid = internalJwtKid;
   }
 
   @SneakyThrows
@@ -273,10 +367,99 @@ public class JwtFilter implements ContainerRequestFilter {
           "Invalid token. Token verification failed. Public key mismatch.", runtimeException);
     }
 
+    String resolvedInternalKid = currentInternalJwtKid();
+    String resolvedInternalIssuer = currentInternalJwtIssuer();
+    boolean isInternalToken =
+        resolvedInternalKid != null
+            && resolvedInternalKid.equals(jwt.getKeyId())
+            && resolvedInternalIssuer != null
+            && resolvedInternalIssuer.equals(jwt.getIssuer());
+
+    if (!isInternalToken) {
+      String tokenIssuer = jwt.getIssuer();
+      String normalizedTokenIssuer = tokenIssuer == null ? null : normalizeIssuer(tokenIssuer);
+      String normalizedExpectedIssuer = currentNormalizedExpectedIssuer();
+
+      if (!nullOrEmpty(normalizedExpectedIssuer)) {
+        boolean matches =
+            normalizedTokenIssuer != null && normalizedTokenIssuer.equals(normalizedExpectedIssuer);
+
+        if (!matches
+            && expectedIssuer == null
+            && SecurityConfigurationManager.getInstance().refreshResolvedOidcIssuerIfStale()) {
+          normalizedExpectedIssuer = currentNormalizedExpectedIssuer();
+          matches =
+              normalizedExpectedIssuer != null
+                  && normalizedTokenIssuer != null
+                  && normalizedTokenIssuer.equals(normalizedExpectedIssuer);
+        }
+
+        if (!matches) {
+          LOG.warn(
+              "Token issuer mismatch. Expected: '{}', actual: '{}'",
+              currentExpectedIssuer(),
+              tokenIssuer);
+          throw AuthenticationException.getInvalidTokenException("Invalid token. Issuer mismatch.");
+        }
+      }
+
+      String resolvedClientId = currentExpectedClientId();
+      if (!nullOrEmpty(resolvedClientId)) {
+        List<String> audiences = jwt.getAudience();
+        if (audiences == null || !audiences.contains(resolvedClientId)) {
+          LOG.warn(
+              "Token audience mismatch. Expected client ID: '{}', actual: '{}'",
+              resolvedClientId,
+              audiences);
+          throw AuthenticationException.getInvalidTokenException(
+              "Invalid token. Audience mismatch.");
+        }
+      }
+    }
+
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     claims.putAll(jwt.getClaims());
 
     return claims;
+  }
+
+  private String currentExpectedClientId() {
+    if (expectedClientId != null) {
+      return expectedClientId;
+    }
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    return authConfig == null ? null : authConfig.getClientId();
+  }
+
+  private String currentExpectedIssuer() {
+    if (expectedIssuer != null) {
+      return expectedIssuer;
+    }
+    return SecurityConfigurationManager.getInstance().getResolvedOidcIssuer();
+  }
+
+  private String currentInternalJwtIssuer() {
+    return internalJwtIssuer != null
+        ? internalJwtIssuer
+        : JWTTokenGenerator.getInstance().getIssuer();
+  }
+
+  private String currentInternalJwtKid() {
+    return internalJwtKid != null ? internalJwtKid : JWTTokenGenerator.getInstance().getKid();
+  }
+
+  private String currentNormalizedExpectedIssuer() {
+    String raw = currentExpectedIssuer();
+    if (raw == null) {
+      return null;
+    }
+    String[] cached = normalizedIssuerCache;
+    if (cached != null && raw.equals(cached[0])) {
+      return cached[1];
+    }
+    String normalized = normalizeIssuer(raw);
+    normalizedIssuerCache = new String[] {raw, normalized};
+    return normalized;
   }
 
   protected static String extractToken(MultivaluedMap<String, String> headers) {

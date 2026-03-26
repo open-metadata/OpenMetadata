@@ -38,7 +38,11 @@ public class CustomOidcValidator {
   private FieldError validateCustomOidcPublicClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
-      String discoveryUri = extractDiscoveryUri(authConfig, oidcConfig);
+      if (oidcConfig == null) {
+        throw new IllegalArgumentException(
+            "OIDC client config is required for custom OIDC validation");
+      }
+      String discoveryUri = OidcDiscoveryValidator.extractDiscoveryUri(authConfig, oidcConfig);
       if (nullOrEmpty(discoveryUri)) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
@@ -77,7 +81,11 @@ public class CustomOidcValidator {
   private FieldError validateCustomOidcConfidentialClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
-      String discoveryUri = extractDiscoveryUri(authConfig, oidcConfig);
+      if (oidcConfig == null) {
+        throw new IllegalArgumentException(
+            "OIDC client config is required for custom OIDC validation");
+      }
+      String discoveryUri = OidcDiscoveryValidator.extractDiscoveryUri(authConfig, oidcConfig);
       if (nullOrEmpty(discoveryUri)) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
@@ -125,32 +133,6 @@ public class CustomOidcValidator {
           "authenticationConfiguration",
           "Custom OIDC confidential client validation failed: " + e.getMessage());
     }
-  }
-
-  private String extractDiscoveryUri(
-      AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
-    if (!nullOrEmpty(oidcConfig.getDiscoveryUri())) {
-      return oidcConfig.getDiscoveryUri();
-    }
-
-    if (!nullOrEmpty(authConfig.getAuthority())) {
-      String authority = authConfig.getAuthority();
-      if (!authority.endsWith("/")) {
-        authority += "/";
-      }
-      return authority + ".well-known/openid-configuration";
-    }
-
-    // Priority 3: Try serverUrl as fallback
-    if (!nullOrEmpty(oidcConfig.getServerUrl())) {
-      String serverUrl = oidcConfig.getServerUrl();
-      if (!serverUrl.endsWith("/")) {
-        serverUrl += "/";
-      }
-      return serverUrl + ".well-known/openid-configuration";
-    }
-
-    return null;
   }
 
   private DiscoveryEndpoints extractEndpointsFromDiscovery(String discoveryUri) {

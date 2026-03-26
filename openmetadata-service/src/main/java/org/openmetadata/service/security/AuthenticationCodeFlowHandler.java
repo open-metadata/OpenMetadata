@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
+import static org.openmetadata.service.security.JwtFilter.normalizeIssuer;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
@@ -79,6 +80,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
@@ -1190,8 +1192,34 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     // Populate credentials
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
 
-    // Check expiry, azure on first go itself is returning a expried token sometimes
-    Date expirationTime = credentials.getIdToken().getJWTClaimsSet().getExpirationTime();
+    JWTClaimsSet claimsSet = credentials.getIdToken().getJWTClaimsSet();
+
+    OIDCProviderMetadata providerMetadata = client.getConfiguration().getProviderMetadata();
+    if (providerMetadata != null && providerMetadata.getIssuer() != null) {
+      String expectedIssuer = providerMetadata.getIssuer().getValue();
+      String actualIssuer = claimsSet.getIssuer();
+      if (expectedIssuer != null
+          && !Objects.equals(normalizeIssuer(expectedIssuer), normalizeIssuer(actualIssuer))) {
+        LOG.warn(
+            "ID token issuer mismatch. Expected: '{}', actual: '{}'", expectedIssuer, actualIssuer);
+        throw new TechnicalException("ID token issuer mismatch.");
+      }
+    }
+
+    String expectedClientId = client.getConfiguration().getClientId();
+    if (expectedClientId != null) {
+      List<String> audience = claimsSet.getAudience();
+      if (audience == null || !audience.contains(expectedClientId)) {
+        LOG.warn(
+            "ID token audience mismatch. Expected client ID: '{}', actual: '{}'",
+            expectedClientId,
+            audience);
+        throw new TechnicalException("ID token audience mismatch.");
+      }
+    }
+
+    // Azure may return an expired token on first attempt
+    Date expirationTime = claimsSet.getExpirationTime();
     if (expirationTime != null
         && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       renewOidcCredentials(session, credentials);

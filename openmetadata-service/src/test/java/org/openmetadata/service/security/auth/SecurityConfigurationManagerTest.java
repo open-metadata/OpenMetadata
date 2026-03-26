@@ -14,24 +14,30 @@
 package org.openmetadata.service.security.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 
 public class SecurityConfigurationManagerTest {
 
@@ -40,6 +46,15 @@ public class SecurityConfigurationManagerTest {
   @BeforeEach
   void setUp() {
     mockListener = mock(SecurityConfigurationManager.ConfigurationChangeListener.class);
+  }
+
+  @AfterEach
+  void tearDown() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    manager.setCurrentAuthConfig(null);
+    manager.setCurrentAuthzConfig(null);
+    manager.setCurrentMcpConfig(null);
+    manager.resetOidcIssuerResolutionState();
   }
 
   @Test
@@ -164,6 +179,97 @@ public class SecurityConfigurationManagerTest {
     } else {
       assertNotNull(auth);
       assertNotNull(authz);
+    }
+  }
+
+  @Test
+  void testRefreshResolvedOidcIssuerIfStale_NonOidcProvider_DoesNothing() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    manager.resetOidcIssuerResolutionState();
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setProvider(AuthProvider.BASIC);
+    auth.setAuthority("https://login.example.com");
+    manager.setCurrentAuthConfig(auth);
+    manager.setCurrentAuthzConfig(new AuthorizerConfiguration());
+
+    try (MockedStatic<OidcDiscoveryValidator> mockedValidator =
+        mockStatic(OidcDiscoveryValidator.class)) {
+      assertFalse(manager.refreshResolvedOidcIssuerIfStale());
+
+      mockedValidator.verify(() -> OidcDiscoveryValidator.resolveIssuer(any(), any()), never());
+      assertNull(manager.getResolvedOidcIssuer());
+      assertFalse(manager.isOidcIssuerFromDiscovery());
+    }
+  }
+
+  @Test
+  void testRefreshResolvedOidcIssuerIfStale_DiscoverySuccess_UpdatesResolvedIssuer() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    manager.resetOidcIssuerResolutionState();
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setProvider(AuthProvider.AZURE);
+    auth.setAuthority("https://login.microsoftonline.com/contoso");
+    manager.setCurrentAuthConfig(auth);
+    manager.setCurrentAuthzConfig(new AuthorizerConfiguration());
+
+    try (MockedStatic<OidcDiscoveryValidator> mockedValidator =
+        mockStatic(OidcDiscoveryValidator.class)) {
+      mockedValidator
+          .when(() -> OidcDiscoveryValidator.resolveIssuer(any(), any()))
+          .thenReturn("https://login.microsoftonline.com/contoso/v2.0");
+
+      assertTrue(manager.refreshResolvedOidcIssuerIfStale());
+
+      assertEquals(
+          "https://login.microsoftonline.com/contoso/v2.0", manager.getResolvedOidcIssuer());
+      assertTrue(manager.isOidcIssuerFromDiscovery());
+    }
+  }
+
+  @Test
+  void testRefreshResolvedOidcIssuerIfStale_DiscoveryFailure_FallsBackToAuthority() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    manager.resetOidcIssuerResolutionState();
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setProvider(AuthProvider.CUSTOM_OIDC);
+    auth.setAuthority("https://auth.example.com");
+    manager.setCurrentAuthConfig(auth);
+    manager.setCurrentAuthzConfig(new AuthorizerConfiguration());
+
+    try (MockedStatic<OidcDiscoveryValidator> mockedValidator =
+        mockStatic(OidcDiscoveryValidator.class)) {
+      mockedValidator
+          .when(() -> OidcDiscoveryValidator.resolveIssuer(any(), any()))
+          .thenReturn(null);
+
+      assertTrue(manager.refreshResolvedOidcIssuerIfStale());
+
+      assertEquals("https://auth.example.com", manager.getResolvedOidcIssuer());
+      assertFalse(manager.isOidcIssuerFromDiscovery());
+    }
+  }
+
+  @Test
+  void testRefreshResolvedOidcIssuerIfStale_AlreadyFromDiscovery_SkipsRefresh() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    manager.resetOidcIssuerResolutionState();
+    AuthenticationConfiguration auth = new AuthenticationConfiguration();
+    auth.setProvider(AuthProvider.CUSTOM_OIDC);
+    auth.setAuthority("https://auth.example.com");
+    manager.setCurrentAuthConfig(auth);
+    manager.setCurrentAuthzConfig(new AuthorizerConfiguration());
+
+    try (MockedStatic<OidcDiscoveryValidator> mockedValidator =
+        mockStatic(OidcDiscoveryValidator.class)) {
+      mockedValidator
+          .when(() -> OidcDiscoveryValidator.resolveIssuer(any(), any()))
+          .thenReturn("https://auth.example.com/realm");
+
+      manager.refreshResolvedOidcIssuerIfStale();
+      assertTrue(manager.isOidcIssuerFromDiscovery());
+
+      assertFalse(manager.refreshResolvedOidcIssuerIfStale());
+      mockedValidator.verify(() -> OidcDiscoveryValidator.resolveIssuer(any(), any()), times(1));
     }
   }
 
