@@ -75,6 +75,19 @@ WORKDIR ingestion/
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/*.py .
 
+# Create a non-root user with a writable home directory.
+# When the container runs with securityContext runAsUser: 1000 but no
+# /etc/passwd entry for that UID, Python disables user site-packages.
+# This causes runtime failures when tools like spacy download models
+# via pip --user, as the installed packages are invisible to the import
+# system. Creating the user ensures Python recognises UID 1000 and
+# enables the standard ~/.local install path.
+RUN groupadd -g 1000 openmetadata && useradd -m -u 1000 -g 1000 openmetadata
+RUN chown -R openmetadata:openmetadata /ingestion
+ENV HOME=/home/openmetadata
+ENV PATH="/home/openmetadata/.local/bin:${PATH}"
+USER openmetadata
+
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
 ENV PIP_NO_CACHE_DIR=1

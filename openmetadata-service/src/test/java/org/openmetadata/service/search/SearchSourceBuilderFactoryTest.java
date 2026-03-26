@@ -20,14 +20,22 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.Condition;
 import org.openmetadata.schema.api.search.FieldBoost;
+import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.Range;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchRequestBuilder;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchSourceBuilderFactory;
+import org.openmetadata.service.search.opensearch.OpenSearchRequestBuilder;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
 
 public class SearchSourceBuilderFactoryTest {
@@ -45,11 +53,7 @@ public class SearchSourceBuilderFactoryTest {
 
     // Add mock for getIndexNameWithoutAlias method
     when(mockSearchRepository.getIndexNameWithoutAlias(anyString()))
-        .thenAnswer(
-            invocation -> {
-              String resource = invocation.getArgument(0);
-              return resource.toLowerCase();
-            });
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
     Entity.setSearchRepository(mockSearchRepository);
 
@@ -252,6 +256,216 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testAggregateBuildersHandleMissingGlobalAggregations() {
+    searchSettings.setDefaultConfiguration(null);
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osAggregate =
+        assertDoesNotThrow(() -> osFactory.buildAggregateSearchBuilderV2("customer", 0, 10));
+    ElasticSearchRequestBuilder esAggregate =
+        assertDoesNotThrow(() -> esFactory.buildAggregateSearchBuilderV2("customer", 0, 10));
+    OpenSearchRequestBuilder osCommon =
+        assertDoesNotThrow(() -> osFactory.buildCommonSearchBuilderV2("customer", 0, 10));
+    ElasticSearchRequestBuilder esCommon =
+        assertDoesNotThrow(() -> esFactory.buildCommonSearchBuilderV2("customer", 0, 10));
+
+    assertNotNull(osAggregate.query());
+    assertNotNull(esAggregate.query());
+    assertNotNull(osCommon.query());
+    assertNotNull(esCommon.query());
+    assertTrue(osAggregate.aggregations().isEmpty());
+    assertTrue(esAggregate.aggregations().isEmpty());
+    assertTrue(osCommon.aggregations().isEmpty());
+    assertTrue(esCommon.aggregations().isEmpty());
+  }
+
+  @Test
+  public void testDataAssetBuildersApplyHighlightsAggregationsAndExplain() {
+    searchSettings.getGlobalSettings().setMaxResultHits(25);
+    searchSettings
+        .getGlobalSettings()
+        .setAggregations(List.of(createAggregation("owners", "owners.displayName")));
+    searchSettings.getGlobalSettings().setHighlightFields(List.of("name"));
+    tableConfig.setAggregations(List.of(createAggregation("service", "service.name")));
+    tableConfig.setHighlightFields(List.of("displayName"));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.buildDataAssetSearchBuilderV2("table", "customer", 100, 50, true, true);
+    ElasticSearchRequestBuilder esBuilder =
+        esFactory.buildDataAssetSearchBuilderV2("table", "customer", 100, 50, true, true);
+
+    assertEquals(25, osBuilder.from());
+    assertEquals(25, osBuilder.size());
+    assertEquals(25, esBuilder.from());
+    assertEquals(25, esBuilder.size());
+    assertEquals(Boolean.TRUE, osBuilder.explain());
+    assertEquals(Boolean.TRUE, esBuilder.explain());
+    assertEquals(Set.of("owners", "service"), osBuilder.aggregations().keySet());
+    assertEquals(Set.of("owners", "service"), esBuilder.aggregations().keySet());
+    assertHighlightFields(osBuilder, "displayName");
+    assertHighlightFields(esBuilder, "displayName");
+
+    OpenSearchRequestBuilder osWithoutAggregations =
+        osFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
+    ElasticSearchRequestBuilder esWithoutAggregations =
+        esFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
+
+    assertTrue(osWithoutAggregations.aggregations().isEmpty());
+    assertTrue(esWithoutAggregations.aggregations().isEmpty());
+    assertEquals(Boolean.FALSE, osWithoutAggregations.explain());
+    assertEquals(Boolean.FALSE, esWithoutAggregations.explain());
+    assertHighlightFields(osWithoutAggregations, "displayName");
+    assertHighlightFields(esWithoutAggregations, "displayName");
+  }
+
+  @Test
+  public void testElasticDataAssetBuilderHandlesMatchAllAndComplexSyntaxQueries() {
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    ElasticSearchRequestBuilder emptyBuilder =
+        esFactory.buildDataAssetSearchBuilderV2("table", "", 0, 10, false, false);
+    ElasticSearchRequestBuilder nullBuilder =
+        esFactory.buildDataAssetSearchBuilderV2("table", null, 0, 10, false, false);
+    ElasticSearchRequestBuilder wildcardBuilder =
+        esFactory.buildDataAssetSearchBuilderV2("table", "*", 0, 10, false, false);
+    ElasticSearchRequestBuilder complexBuilder =
+        esFactory.buildDataAssetSearchBuilderV2(
+            "table", "name:orders AND owner:alice", 0, 10, false, false);
+
+    assertTrue(emptyBuilder.query().isBool());
+    assertTrue(nullBuilder.query().isBool());
+    assertTrue(wildcardBuilder.query().isBool());
+    assertTrue(complexBuilder.query().isBool());
+    assertTrue(emptyBuilder.aggregations().isEmpty());
+    assertTrue(complexBuilder.aggregations().isEmpty());
+  }
+
+  @Test
+  public void testDataAssetBuildersUseGlobalHighlightFallbackAndScriptAggregations() {
+    searchSettings
+        .getGlobalSettings()
+        .setAggregations(
+            List.of(createScriptAggregation("entityTypeScript", "doc['entityType'].value")));
+    searchSettings.getGlobalSettings().setHighlightFields(List.of("name"));
+    tableConfig.setHighlightFields(null);
+    tableConfig.setAggregations(
+        List.of(createScriptAggregation("serviceScript", "doc['service.name'].value")));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.buildDataAssetSearchBuilderV2("table", "orders", 0, 10, false, true);
+    ElasticSearchRequestBuilder esBuilder =
+        esFactory.buildDataAssetSearchBuilderV2("table", "orders", 0, 10, false, true);
+
+    assertHighlightFields(osBuilder, "name");
+    assertHighlightFields(esBuilder, "name");
+    assertEquals(Set.of("entityTypeScript", "serviceScript"), osBuilder.aggregations().keySet());
+    assertEquals(Set.of("entityTypeScript", "serviceScript"), esBuilder.aggregations().keySet());
+  }
+
+  @Test
+  public void testSpecialIndexRoutingUsesExpectedBuilderFamilies() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osDataQuality =
+        osFactory.getSearchSourceBuilderV2("test_case_search_index", "status", 0, 10);
+    ElasticSearchRequestBuilder esDataQuality =
+        esFactory.getSearchSourceBuilderV2("test_case_search_index", "status", 0, 10);
+    assertHighlightFields(osDataQuality, "testSuite.name", "testSuite.description");
+    assertHighlightFields(esDataQuality, "testSuite.name", "testSuite.description");
+
+    OpenSearchRequestBuilder osTimeSeries =
+        osFactory.getSearchSourceBuilderV2("test_case_result_search_index", "passed", 0, 10);
+    ElasticSearchRequestBuilder esTimeSeries =
+        esFactory.getSearchSourceBuilderV2("test_case_result_search_index", "passed", 0, 10);
+    assertNotNull(osTimeSeries.highlighter());
+    assertNotNull(esTimeSeries.highlighter());
+    assertTrue(osTimeSeries.highlighter().fields().isEmpty());
+    assertTrue(esTimeSeries.highlighter().fields().isEmpty());
+
+    OpenSearchRequestBuilder osCost =
+        osFactory.getSearchSourceBuilderV2("raw_cost_analysis_report_data_index", "usage", 0, 10);
+    ElasticSearchRequestBuilder esCost =
+        esFactory.getSearchSourceBuilderV2("raw_cost_analysis_report_data_index", "usage", 0, 10);
+    assertNull(osCost.highlighter());
+    assertNull(esCost.highlighter());
+
+    OpenSearchRequestBuilder osService =
+        osFactory.getSearchSourceBuilderV2("database_service_search_index", "snowflake", 0, 10);
+    ElasticSearchRequestBuilder esService =
+        esFactory.getSearchSourceBuilderV2("database_service_search_index", "snowflake", 0, 10);
+    assertNotNull(osService.highlighter());
+    assertNotNull(esService.highlighter());
+    assertTrue(osService.highlighter().fields().isEmpty());
+    assertTrue(esService.highlighter().fields().isEmpty());
+
+    OpenSearchRequestBuilder osUser = osFactory.getSearchSourceBuilderV2("user", "alice", 0, 10);
+    ElasticSearchRequestBuilder esUser = esFactory.getSearchSourceBuilderV2("user", "alice", 0, 10);
+    assertNull(osUser.highlighter());
+    assertNull(esUser.highlighter());
+  }
+
+  @Test
+  public void testBoostedSearchBuildersProduceFunctionScoreQueries() {
+    searchSettings
+        .getGlobalSettings()
+        .setAggregations(List.of(createAggregation("entityType", "entityType")));
+    searchSettings
+        .getGlobalSettings()
+        .setTermBoosts(List.of(createTermBoost("tier.tagFQN", "Tier.Tier1", 3.0)));
+    searchSettings
+        .getGlobalSettings()
+        .setFieldValueBoosts(
+            List.of(
+                createFieldValueBoost(
+                    "usageSummary.weeklyStats.count",
+                    1.2,
+                    FieldValueBoost.Modifier.LOG_1_P,
+                    0.0,
+                    new Range().withGte(10.0))));
+    tableConfig.setTermBoosts(List.of(createTermBoost("entityType", "table", 2.0)));
+    tableConfig.setFieldValueBoosts(
+        List.of(
+            createFieldValueBoost(
+                "usageSummary.weeklyStats.count",
+                1.5,
+                FieldValueBoost.Modifier.SQRT,
+                1.0,
+                new Range().withLt(100.0))));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osCommon = osFactory.buildCommonSearchBuilderV2("customer", 0, 10);
+    ElasticSearchRequestBuilder esCommon = esFactory.buildCommonSearchBuilderV2("customer", 0, 10);
+    OpenSearchRequestBuilder osEntitySpecific =
+        osFactory.buildEntitySpecificAggregateSearchBuilderV2("customer", 0, 10);
+    ElasticSearchRequestBuilder esEntitySpecific =
+        esFactory.buildEntitySpecificAggregateSearchBuilderV2("customer", 0, 10);
+
+    assertTrue(osCommon.query().isFunctionScore());
+    assertTrue(esCommon.query().isFunctionScore());
+    assertTrue(osEntitySpecific.query().isFunctionScore());
+    assertTrue(esEntitySpecific.query().isFunctionScore());
+    assertEquals(Set.of("entityType"), osEntitySpecific.aggregations().keySet());
+    assertEquals(Set.of("entityType"), esEntitySpecific.aggregations().keySet());
+  }
+
+  @Test
   public void testConsistencyBetweenIndexes() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
 
@@ -271,5 +485,40 @@ public class SearchSourceBuilderFactoryTest {
     // Both should have same pagination parameters
     assertEquals(tableSpecificBuilder.from(), tableBuilder.from(), "Both should have same 'from'");
     assertEquals(tableSpecificBuilder.size(), tableBuilder.size(), "Both should have same 'size'");
+  }
+
+  private Aggregation createAggregation(String name, String field) {
+    return new Aggregation().withName(name).withField(field);
+  }
+
+  private Aggregation createScriptAggregation(String name, String script) {
+    return new Aggregation().withName(name).withScript(script);
+  }
+
+  private TermBoost createTermBoost(String field, String value, Double boost) {
+    return new TermBoost().withField(field).withValue(value).withBoost(boost);
+  }
+
+  private FieldValueBoost createFieldValueBoost(
+      String field, Double factor, FieldValueBoost.Modifier modifier, Double missing, Range range) {
+    return new FieldValueBoost()
+        .withField(field)
+        .withFactor(factor)
+        .withModifier(modifier)
+        .withMissing(missing)
+        .withCondition(new Condition().withRange(range));
+  }
+
+  private void assertHighlightFields(OpenSearchRequestBuilder builder, String... expectedFields) {
+    assertNotNull(builder.highlighter());
+    assertEquals(Set.copyOf(List.of(expectedFields)), builder.highlighter().fields().keySet());
+  }
+
+  private void assertHighlightFields(
+      ElasticSearchRequestBuilder builder, String... expectedFields) {
+    assertNotNull(builder.highlighter());
+    assertEquals(
+        Set.copyOf(List.of(expectedFields)),
+        Set.copyOf(builder.highlighter().fields().stream().map(field -> field.name()).toList()));
   }
 }

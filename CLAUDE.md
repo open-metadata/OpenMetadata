@@ -10,7 +10,7 @@ OpenMetadata is a unified metadata platform for data discovery, data observabili
 
 - **Backend**: Java 21 + Dropwizard REST API framework, multi-module Maven project
 - **Frontend**: React + TypeScript, built with Webpack and Yarn; component library via `openmetadata-ui-core-components` (Tailwind CSS v4 with `tw:` prefix, react-aria-components foundation)
-- **Ingestion**: Python 3.10-3.12 with Pydantic 2.x, 75+ data source connectors
+- **Ingestion**: Python 3.11+ with Pydantic 2.x, 75+ data source connectors
 - **Database**: MySQL (default) or PostgreSQL with Flyway migrations
 - **Search**: Elasticsearch 7.17+ or OpenSearch 2.6+ for metadata discovery
 - **Infrastructure**: Apache Airflow for workflow orchestration

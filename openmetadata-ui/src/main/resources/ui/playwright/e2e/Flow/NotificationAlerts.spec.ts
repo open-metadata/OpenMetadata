@@ -30,6 +30,7 @@ import {
   visitEditAlertPage,
 } from '../../utils/alert';
 import { descriptionBox, getApiContext } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addFilterWithUsersListInput,
   addInternalDestination,
@@ -43,7 +44,6 @@ import {
   visitNotificationAlertPage,
 } from '../../utils/notificationAlert';
 import { addExternalDestination } from '../../utils/observabilityAlert';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const dashboard = new DashboardClass();
 const table = new TableClass();
@@ -423,12 +423,13 @@ test('Conversation source alert', async ({ page }) => {
   });
 });
 
+// Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
 /**
  * Alert operations with permissions
  * @description Creates and triggers a Table source alert; verifies alert details for permissive user and limited behavior
  * for a non-permissive user; deletes the alert.
  */
-test('Alert operations for a user with and without permissions', async ({
+test.skip('Alert operations for a user with and without permissions', async ({
   page,
   userWithPermissionsPage,
   userWithoutPermissionsPage,

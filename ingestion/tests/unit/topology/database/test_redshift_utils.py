@@ -14,11 +14,14 @@
 import unittest
 from unittest.mock import MagicMock, Mock
 
-from metadata.ingestion.source.database.redshift.utils import get_view_definition
+from metadata.ingestion.source.database.redshift.utils import (
+    _get_all_relation_info,
+    get_view_definition,
+)
 
 
-class TestRedshiftUtils(unittest.TestCase):
-    """Test Redshift Utils"""
+class TestGetViewDefinition(unittest.TestCase):
+    """Test get_view_definition formatting and prefix handling"""
 
     def setUp(self):
         """Set up test fixtures"""
@@ -227,6 +230,76 @@ class TestRedshiftUtils(unittest.TestCase):
             result,
             "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1 ",
         )
+
+
+class TestGetAllRelationInfoCache(unittest.TestCase):
+    """Test _get_all_relation_info single-schema cache"""
+
+    @staticmethod
+    def _make_relation(relname, schema):
+        rel = Mock()
+        rel.relname = relname
+        rel.schema = schema
+        return rel
+
+    @staticmethod
+    def _make_result(relations):
+        result = MagicMock()
+        result.__iter__ = Mock(return_value=iter(relations))
+        return result
+
+    def setUp(self):
+        self.mock_self = Mock(spec=[])
+        self.mock_connection = Mock()
+
+    def test_cache_returns_all_relations_regardless_of_table_name(self):
+        """Passing table_name must not filter the cached results."""
+        relations = [
+            self._make_relation("view_a", "my_schema"),
+            self._make_relation("view_b", "my_schema"),
+            self._make_relation("table_c", "my_schema"),
+        ]
+        self.mock_connection.execute.return_value = self._make_result(relations)
+
+        result = _get_all_relation_info(
+            self.mock_self,
+            self.mock_connection,
+            schema="my_schema",
+            table_name="view_a",
+        )
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual({k.name for k in result}, {"view_a", "view_b", "table_c"})
+
+        # Second lookup for a different table must return the same cached dict
+        result2 = _get_all_relation_info(
+            self.mock_self,
+            self.mock_connection,
+            schema="my_schema",
+            table_name="view_b",
+        )
+
+        self.assertIs(result, result2)
+        self.mock_connection.execute.assert_called_once()
+
+    def test_cache_invalidates_on_schema_change(self):
+        """Moving to a new schema must replace the cached data."""
+        self.mock_connection.execute.side_effect = [
+            self._make_result([self._make_relation("t1", "schema_1")]),
+            self._make_result([self._make_relation("t2", "schema_2")]),
+        ]
+
+        r1 = _get_all_relation_info(
+            self.mock_self, self.mock_connection, schema="schema_1"
+        )
+        self.assertEqual({k.name for k in r1}, {"t1"})
+
+        r2 = _get_all_relation_info(
+            self.mock_self, self.mock_connection, schema="schema_2"
+        )
+        self.assertEqual({k.name for k in r2}, {"t2"})
+
+        self.assertEqual(self.mock_connection.execute.call_count, 2)
 
 
 if __name__ == "__main__":

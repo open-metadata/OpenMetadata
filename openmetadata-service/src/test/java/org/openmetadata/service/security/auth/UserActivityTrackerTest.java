@@ -13,10 +13,14 @@
 package org.openmetadata.service.security.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -26,7 +30,12 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,7 +71,9 @@ class UserActivityTrackerTest {
 
   @AfterEach
   void tearDown() {
-    tracker.shutdown();
+    if (tracker != null) {
+      tracker.shutdown();
+    }
   }
 
   @Test
@@ -121,6 +132,25 @@ class UserActivityTrackerTest {
     lastActivityTimeField.setAccessible(true);
     long activityTime = (long) lastActivityTimeField.get(activity);
     assertTrue(Math.abs(activityTime - firstTime) < 100);
+  }
+
+  @Test
+  void testTrackActivityUpdatesExistingUserAfterMinInterval() throws Exception {
+    tracker.trackActivity("user1");
+
+    Map<String, ?> cache = getCache();
+    Object activity = cache.get("user1");
+    long previousActivityTime = getActivityField(activity, "lastActivityTime");
+    long staleTime = previousActivityTime - TimeUnit.MINUTES.toMillis(2);
+    setActivityField(activity, "lastLocalUpdate", staleTime);
+    setActivityField(activity, "lastActivityTime", staleTime);
+
+    tracker.trackActivity("user1");
+
+    Object refreshedActivity = getCache().get("user1");
+    assertEquals(1, tracker.getLocalCacheSize());
+    assertTrue(getActivityField(refreshedActivity, "lastActivityTime") > staleTime);
+    assertTrue(getActivityField(refreshedActivity, "lastLocalUpdate") > staleTime);
   }
 
   @Test
@@ -258,5 +288,161 @@ class UserActivityTrackerTest {
 
     verify(mockUserDAO, times(2)).countDailyActiveUsers(twentyFourHoursAgo);
     verify(mockUserDAO, times(1)).countDailyActiveUsers(oneYearAgo);
+  }
+
+  @Test
+  void testForceFlushSkipsDatabaseWhenCacheIsEmpty() {
+    tracker.forceFlush();
+
+    verify(mockUserRepository, times(0)).updateUsersLastActivityTimeBatch(anyMap());
+    assertEquals(0, tracker.getLocalCacheSize());
+  }
+
+  @Test
+  void testForceFlushUsesLazyLoadedRepositoryAndDirectExecutor() throws Exception {
+    ScheduledExecutorService directExecutor = mock(ScheduledExecutorService.class);
+    doAnswer(
+            invocation -> {
+              ((Runnable) invocation.getArgument(0)).run();
+              return null;
+            })
+        .when(directExecutor)
+        .execute(any(Runnable.class));
+    setField(tracker, "virtualThreadExecutor", directExecutor);
+    setField(tracker, "userRepository", null);
+
+    try (MockedStatic<Entity> mockedEntity = Mockito.mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.USER))
+          .thenReturn(mockUserRepository);
+
+      tracker.trackActivity("lazy-user");
+      tracker.forceFlush();
+
+      verify(mockUserRepository).updateUsersLastActivityTimeBatch(anyMap());
+      assertSame(mockUserRepository, getField(tracker, "userRepository", UserRepository.class));
+      assertEquals(0, tracker.getLocalCacheSize());
+    }
+  }
+
+  @Test
+  void testBulkDatabaseUpdateReaddsInterruptedBatch() throws Exception {
+    Semaphore permits = getField(tracker, "dbOperationPermits", Semaphore.class);
+    permits.acquire(10);
+    try {
+      Map<String, Long> userActivityMap = Map.of("interrupt-user", 123L);
+
+      Thread.currentThread().interrupt();
+      invokePerformBulkDatabaseUpdate(userActivityMap);
+
+      assertEquals(1, tracker.getLocalCacheSize());
+      Map<String, ?> cache = getCache();
+      assertTrue(cache.containsKey("interrupt-user"));
+      assertTrue(Thread.currentThread().isInterrupted());
+    } finally {
+      Thread.interrupted();
+      permits.release(10);
+    }
+  }
+
+  @Test
+  void testBulkDatabaseUpdateDoesNotOverwriteNewerCachedEntryOnFailure() throws Exception {
+    tracker.trackActivity("user1");
+    Map<String, ?> cacheBefore = getCache();
+    Object existingActivity = cacheBefore.get("user1");
+    long existingLastLocalUpdate = getActivityField(existingActivity, "lastLocalUpdate");
+
+    Map<String, Long> failedBatch = new HashMap<>();
+    failedBatch.put("user1", 1L);
+    failedBatch.put("user2", 2L);
+
+    doThrow(new RuntimeException("DB down"))
+        .when(mockUserRepository)
+        .updateUsersLastActivityTimeBatch(anyMap());
+
+    invokePerformBulkDatabaseUpdate(failedBatch);
+
+    Map<String, ?> cacheAfter = getCache();
+    assertEquals(2, cacheAfter.size());
+    assertSame(existingActivity, cacheAfter.get("user1"));
+    assertEquals(
+        existingLastLocalUpdate, getActivityField(cacheAfter.get("user1"), "lastLocalUpdate"));
+    assertTrue(cacheAfter.containsKey("user2"));
+  }
+
+  @Test
+  void testShutdownCallsShutdownNowWhenExecutorsDoNotTerminate() throws Exception {
+    ScheduledExecutorService scheduler = mock(ScheduledExecutorService.class);
+    ScheduledExecutorService executor = mock(ScheduledExecutorService.class);
+    when(scheduler.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(false);
+    when(executor.awaitTermination(10, TimeUnit.SECONDS)).thenReturn(false);
+    setField(tracker, "scheduler", scheduler);
+    setField(tracker, "virtualThreadExecutor", executor);
+
+    tracker.shutdown();
+    tracker = null;
+
+    verify(scheduler).shutdown();
+    verify(scheduler).shutdownNow();
+    verify(executor).shutdown();
+    verify(executor).shutdownNow();
+  }
+
+  @Test
+  void testShutdownRestoresInterruptWhenAwaitTerminationIsInterrupted() throws Exception {
+    ScheduledExecutorService scheduler = mock(ScheduledExecutorService.class);
+    ScheduledExecutorService executor = mock(ScheduledExecutorService.class);
+    when(scheduler.awaitTermination(5, TimeUnit.SECONDS))
+        .thenThrow(new InterruptedException("stop"));
+    setField(tracker, "scheduler", scheduler);
+    setField(tracker, "virtualThreadExecutor", executor);
+
+    tracker.shutdown();
+    tracker = null;
+
+    verify(scheduler).shutdown();
+    verify(scheduler).shutdownNow();
+    verify(executor).shutdown();
+    verify(executor).shutdownNow();
+    assertTrue(Thread.currentThread().isInterrupted());
+    assertTrue(Thread.interrupted());
+    assertFalse(Thread.currentThread().isInterrupted());
+  }
+
+  private Map<String, ?> getCache() throws Exception {
+    return getField(tracker, "localActivityCache", Map.class);
+  }
+
+  private static void invokePerformBulkDatabaseUpdate(Map<String, Long> userActivityMap)
+      throws Exception {
+    Method method =
+        UserActivityTracker.class.getDeclaredMethod("performBulkDatabaseUpdate", Map.class);
+    method.setAccessible(true);
+    method.invoke(UserActivityTracker.getInstance(), userActivityMap);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T> T getField(Object target, String name, Class<T> type) throws Exception {
+    Field field = UserActivityTracker.class.getDeclaredField(name);
+    field.setAccessible(true);
+    return (T) field.get(target);
+  }
+
+  private static long getActivityField(Object activity, String name) throws Exception {
+    Field field = activity.getClass().getDeclaredField(name);
+    field.setAccessible(true);
+    return (long) field.get(activity);
+  }
+
+  private static void setActivityField(Object activity, String name, long value) throws Exception {
+    Field field = activity.getClass().getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(activity, value);
+  }
+
+  private static void setField(Object target, String name, Object value) throws Exception {
+    Field field = UserActivityTracker.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(target, value);
   }
 }

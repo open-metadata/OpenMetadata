@@ -13,7 +13,6 @@
 
 import { test as base, expect, Page } from '@playwright/test';
 import { toLower } from 'lodash';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -36,7 +35,6 @@ export const test = base.extend<{ adminPage: Page }>({
 
 test.describe(
   'Verify RTL Layout for landing page',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     const table = EntityDataClass.table1;
 

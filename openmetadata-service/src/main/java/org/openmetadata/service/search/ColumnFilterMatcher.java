@@ -138,6 +138,9 @@ public class ColumnFilterMatcher {
       if (parts.length == 2) {
         String filterType = parts[0].trim().toLowerCase();
         String filterValue = parts[1].trim();
+        if (nullOrEmpty(filterType) || nullOrEmpty(filterValue)) {
+          return null;
+        }
 
         return new FilterCriteria(filterType, filterValue);
       }
