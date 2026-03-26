@@ -714,7 +714,10 @@ class OpenLineageEntityResolverTest {
                       eq(Entity.PIPELINE),
                       eq("openlineage.airflow-my_dag"),
                       eq(Include.NON_DELETED)))
-          .thenThrow(new EntityNotFoundException("Not found"));
+          .thenAnswer(
+              invocation -> {
+                throw new EntityNotFoundException("Not found");
+              });
 
       mockedEntity
           .when(
@@ -740,7 +743,10 @@ class OpenLineageEntityResolverTest {
               () ->
                   Entity.getEntityReferenceByName(
                       eq(Entity.PIPELINE), anyString(), eq(Include.NON_DELETED)))
-          .thenThrow(new EntityNotFoundException("Not found"));
+          .thenAnswer(
+              invocation -> {
+                throw new EntityNotFoundException("Not found: " + invocation.getArgument(1));
+              });
 
       EntityReference result = resolver.resolveOrCreatePipeline("ns", "pipeline_name", "test_user");
 
@@ -1169,7 +1175,10 @@ class OpenLineageEntityResolverTest {
               () ->
                   Entity.getEntityReferenceByName(
                       eq(Entity.PIPELINE), anyString(), eq(Include.NON_DELETED)))
-          .thenThrow(new EntityNotFoundException("Not found"));
+          .thenAnswer(
+              invocation -> {
+                throw new EntityNotFoundException("Not found: " + invocation.getArgument(1));
+              });
 
       mockedEntity
           .when(
@@ -1201,7 +1210,10 @@ class OpenLineageEntityResolverTest {
               () ->
                   Entity.getEntityReferenceByName(
                       eq(Entity.PIPELINE), anyString(), eq(Include.NON_DELETED)))
-          .thenThrow(new EntityNotFoundException("Not found"));
+          .thenAnswer(
+              invocation -> {
+                throw new EntityNotFoundException("Not found: " + invocation.getArgument(1));
+              });
 
       mockedEntity
           .when(
@@ -1270,6 +1282,216 @@ class OpenLineageEntityResolverTest {
 
       assertNotNull(result);
       assertEquals("svc.db.public.output_table", result.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void resolveOrCreatePipeline_namespaceFallbackAlsoFails_autoCreateDisabled() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      // All entity reference lookups throw — covers both primary and namespace fallback catches
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceByName(any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                throw new EntityNotFoundException("Not found: " + invocation.getArgument(1));
+              });
+
+      EntityReference result = resolver.resolveOrCreatePipeline("airflow", "my_dag", "test_user");
+
+      assertNull(result);
+    }
+  }
+
+  @Test
+  void resolveContainer_searchThrowsException_returnsNull() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<org.openmetadata.schema.entity.data.Container> mockContainerRepo =
+        mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.CONTAINER))
+          .thenReturn(mockContainerRepo);
+      when(mockContainerRepo.getFields(anyString())).thenReturn(mockFields);
+      // Simulate exception during search (covers lines 422-423)
+      when(mockContainerRepo.listAll(any(Fields.class), any()))
+          .thenThrow(new RuntimeException("DB error"));
+
+      EntityReference result = resolver.resolveContainer("gs://bucket", "file.csv");
+
+      assertNull(result);
+    }
+  }
+
+  @Test
+  void resolveContainer_noSlashInName_extractParentPathReturnsNull() {
+    // Tests extractParentPath with a path that has no slash after the scheme
+    // This covers lines 430, 434 (null/no-slash in extractParentPath)
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<org.openmetadata.schema.entity.data.Container> mockContainerRepo =
+        mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.CONTAINER))
+          .thenReturn(mockContainerRepo);
+      when(mockContainerRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockContainerRepo.listAll(any(Fields.class), any())).thenReturn(List.of());
+
+      // namespace="gs://bucket" + "/" + name="file" → fullPath="gs://bucket/file"
+      // parentPath = "gs://bucket" → lastSlash at index 4 ("gs:/") but
+      // "gs://bucket/file" → lastSlash at index 13 → parentPath = "gs://bucket"
+      // We need a case where the full path has no internal slash to hit lastSlash <= 0
+      // namespace doesn't end with "/" so fullPath = namespace + "/" + name
+      // For extractParentPath to return null we need lastSlash <= 0
+      // But namespace always has "://" so there's always a slash.
+      // Let's use a simple name with no slash: fullPath = "bucket/simple_name"
+      EntityReference result = resolver.resolveContainer("bucket", "simple_name");
+
+      assertNull(result);
+    }
+  }
+
+  @Test
+  void listFilterConditions_fqnSuffix_generatesCorrectSql() {
+    // Exercise the ListFilter getCondition() methods by running through the actual
+    // resolver with a real (non-mocked) listAll that invokes the filter
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("postgresql://host:5432")
+            .withName("public.users");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+
+      // Use doAnswer to capture the filter and invoke getCondition() on it
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                // Invoke getCondition to cover lines 707-709 and 753-761
+                String condition = filter.getCondition("entity_table");
+                assertNotNull(condition);
+                assertTrue(condition.contains("fullyQualifiedName"));
+                return List.of();
+              });
+
+      EntityReference result = resolver.resolveTable(dataset);
+      assertNull(result);
+    }
+  }
+
+  @Test
+  void listFilterConditions_fqnPattern_generatesCorrectSql() {
+    OpenLineageEntityResolver resolver =
+        new OpenLineageEntityResolver(
+            false, "openlineage", Map.of("postgresql://host:5432", "my-svc"));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("postgresql://host:5432")
+            .withName("public.users");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+
+      // Use doAnswer to capture the FqnPattern filter and invoke getCondition()
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                // Invoke getCondition to cover lines 721-723
+                String condition = filter.getCondition("entity_table");
+                assertNotNull(condition);
+                assertTrue(condition.contains("fullyQualifiedName"));
+                return List.of();
+              });
+
+      EntityReference result = resolver.resolveTable(dataset);
+      assertNull(result);
+    }
+  }
+
+  @Test
+  void listFilterConditions_jsonField_generatesCorrectSql() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<org.openmetadata.schema.entity.data.Container> mockContainerRepo =
+        mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.CONTAINER))
+          .thenReturn(mockContainerRepo);
+      when(mockContainerRepo.getFields(anyString())).thenReturn(mockFields);
+
+      // Use doAnswer to capture the JsonField filter and invoke getCondition()
+      when(mockContainerRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                // Invoke getCondition to cover lines 738-749
+                String condition = filter.getCondition("container_entity");
+                assertNotNull(condition);
+                assertTrue(condition.contains("fullPath"));
+                return List.of();
+              });
+
+      EntityReference result = resolver.resolveContainer("gs://bucket", "data/file.csv");
+      assertNull(result);
+    }
+  }
+
+  @Test
+  void listFilterConditions_nullTableName_usesJsonColumn() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<org.openmetadata.schema.entity.data.Container> mockContainerRepo =
+        mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.CONTAINER))
+          .thenReturn(mockContainerRepo);
+      when(mockContainerRepo.getFields(anyString())).thenReturn(mockFields);
+
+      when(mockContainerRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                // Call with null tableName to cover the null branch in getCondition
+                String condition = filter.getCondition(null);
+                assertNotNull(condition);
+                assertTrue(condition.contains("json"));
+                return List.of();
+              });
+
+      EntityReference result = resolver.resolveContainer("gs://bucket", "data/file.csv");
+      assertNull(result);
     }
   }
 

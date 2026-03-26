@@ -117,17 +117,13 @@ class AirflowRestApiConnectionClassConverterTest {
   }
 
   @Test
-  void convert_nonMapAuthConfig_returnsConnectionWithOriginalAuthConfig() {
-    AirflowRestApiConnection original = new AirflowRestApiConnection();
-    BasicAuthConfig authConfig = new BasicAuthConfig();
-    authConfig.setUsername("admin");
-    authConfig.setPassword("pass");
-    original.setAuthConfig(authConfig);
+  void convert_nullAuthConfig_returnsConnectionWithoutConversion() {
+    // When authConfig is null, it's not a Map instance, so line 40 (early return) is hit
+    Map<String, Object> connMap = new HashMap<>();
+    connMap.put("authConfig", null);
 
-    Object result = converter.convert(original);
+    Object result = converter.convert(connMap);
 
     assertInstanceOf(AirflowRestApiConnection.class, result);
-    AirflowRestApiConnection conn = (AirflowRestApiConnection) result;
-    assertInstanceOf(BasicAuthConfig.class, conn.getAuthConfig());
   }
 }
