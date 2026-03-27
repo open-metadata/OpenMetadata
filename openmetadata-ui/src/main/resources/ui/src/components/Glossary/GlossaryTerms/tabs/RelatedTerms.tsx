@@ -12,20 +12,17 @@
  */
 
 import {
-  Autocomplete,
   Badge,
   BadgeWithIcon,
   Button,
-  Select,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Tag01, Trash01 } from '@untitledui/icons';
+import { Tag01 } from '@untitledui/icons';
 import { groupBy, isEmpty } from 'lodash';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Key } from 'react-aria-components';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -46,17 +43,16 @@ import {
   getGlossaryTermRelationSettings,
   searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
+import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
+import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
@@ -64,60 +60,12 @@ import {
 } from '../../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK } from '../../../OntologyExplorer/OntologyExplorer.constants';
-
-interface TermItem {
-  value: string;
-  label: string;
-  entity?: EntityReference;
-}
-
-interface TermSelectItem {
-  id: string;
-  label?: string;
-}
-
-interface RelationEditRow {
-  id: string;
-  relationType: string;
-  terms: TermItem[];
-}
-
-interface RelationTypeOption {
-  id: string;
-  label?: string;
-  title?: string;
-}
-
-interface TermsRowProps {
-  rowId: string;
-  initialRelationType: string;
-  initialTerms: TermItem[];
-  relationTypeOptions: RelationTypeOption[];
-  excludeFQN: string;
-  preloadedTerms: GlossaryTerm[];
-  onRelationTypeChange: (rowId: string, relationType: string) => void;
-  onTermsChange: (rowId: string, terms: TermItem[]) => void;
-  onRemove: (rowId: string) => void;
-}
-
-interface TermsRowEditorProps {
-  rows: RelationEditRow[];
-  excludeFQN: string;
-  preloadedTerms: GlossaryTerm[];
-  relationTypeOptions: RelationTypeOption[];
-  onAddRow: () => void;
-  onRelationTypeChange: (rowId: string, relationType: string) => void;
-  onTermsChange: (rowId: string, terms: TermItem[]) => void;
-  onRemove: (rowId: string) => void;
-}
-
-interface RelatedTermTagButtonProps {
-  entity: EntityReference;
-  relationType?: string;
-  versionStatus?: VersionStatus;
-  getRelationDisplayName: (relationType: string) => string;
-  onRelatedTermClick: (fqn: string) => void;
-}
+import {
+  RelatedTermTagButtonProps,
+  RelationEditRow,
+  TermsRowEditorProps,
+} from './RelatedTerms.interface';
+import TermsRowEditor from './TermsRowEditor.component';
 
 const MAX_VISIBLE_BADGES = 5;
 
@@ -181,216 +129,6 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   );
 };
 
-const TermsRow: React.FC<TermsRowProps> = ({
-  rowId,
-  initialRelationType,
-  initialTerms,
-  relationTypeOptions,
-  excludeFQN,
-  preloadedTerms,
-  onRelationTypeChange,
-  onTermsChange,
-  onRemove,
-}) => {
-  const { t } = useTranslation();
-  const [relationType, setRelationType] = useState(initialRelationType);
-  const [selectedTerms, setSelectedTerms] = useState<TermSelectItem[]>(
-    initialTerms.map((term) => ({ id: term.value, label: term.label }))
-  );
-  const [searchedTerms, setSearchedTerms] = useState<GlossaryTerm[]>([]);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const activeTerms = searchedTerms.length > 0 ? searchedTerms : preloadedTerms;
-
-  const termEntityMap = useMemo(() => {
-    const map: Record<string, EntityReference> = {};
-    [...preloadedTerms, ...searchedTerms].forEach((term) => {
-      if (term.fullyQualifiedName) {
-        map[term.fullyQualifiedName] = getEntityReferenceFromEntity(
-          term,
-          EntityType.GLOSSARY_TERM
-        );
-      }
-    });
-    initialTerms.forEach((term) => {
-      if (term.entity) {
-        map[term.value] = term.entity;
-      }
-    });
-
-    return map;
-  }, [preloadedTerms, searchedTerms, initialTerms]);
-
-  const dropdownItems = useMemo<TermSelectItem[]>(
-    () =>
-      activeTerms
-        .filter((term) => term.fullyQualifiedName !== excludeFQN)
-        .map((term) => ({
-          id: term.fullyQualifiedName ?? '',
-          label: getEntityName(term),
-        })),
-    [activeTerms, excludeFQN]
-  );
-
-  const toTermItems = useCallback(
-    (items: TermSelectItem[]): TermItem[] =>
-      items.map((i) => ({
-        entity: termEntityMap[i.id],
-        label: i.label ?? '',
-        value: i.id,
-      })),
-    [termEntityMap]
-  );
-
-  const handleRelationTypeChange = useCallback(
-    (key: Key | null) => {
-      setRelationType(String(key ?? ''));
-      onRelationTypeChange(rowId, String(key ?? ''));
-    },
-    [rowId, onRelationTypeChange]
-  );
-
-  const handleSearchChange = useCallback((value: string) => {
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
-    }
-    if (!value.trim()) {
-      setSearchedTerms([]);
-
-      return;
-    }
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const result = await searchGlossaryTermsPaginated({
-          q: value,
-          limit: PAGE_SIZE_MEDIUM,
-          offset: 0,
-        });
-        setSearchedTerms(result.data);
-      } catch {
-        // search failures fall back to preloaded terms
-      }
-    }, 300);
-  }, []);
-
-  const handleItemInserted = useCallback(
-    (key: Key) => {
-      const term = [...preloadedTerms, ...searchedTerms].find(
-        (t) => t.fullyQualifiedName === key
-      );
-      if (term) {
-        const updated = [
-          ...selectedTerms,
-          { id: term.fullyQualifiedName ?? '', label: getEntityName(term) },
-        ];
-        setSelectedTerms(updated);
-        onTermsChange(rowId, toTermItems(updated));
-      }
-    },
-    [
-      preloadedTerms,
-      searchedTerms,
-      selectedTerms,
-      rowId,
-      onTermsChange,
-      toTermItems,
-    ]
-  );
-
-  const handleItemCleared = useCallback(
-    (key: Key) => {
-      const updated = selectedTerms.filter((i) => i.id !== key);
-      setSelectedTerms(updated);
-      onTermsChange(rowId, toTermItems(updated));
-    },
-    [selectedTerms, rowId, onTermsChange, toTermItems]
-  );
-
-  return (
-    <div
-      className="d-flex items-center gap-3"
-      data-testid={`relation-row-${rowId}`}>
-      <div className="tw:w-67.5 tw:shrink-0">
-        <Select
-          className="w-full"
-          items={relationTypeOptions}
-          size="sm"
-          value={relationType}
-          onChange={handleRelationTypeChange}>
-          {(item) => (
-            <Select.Item id={item.id} key={item.id} label={item.label} />
-          )}
-        </Select>
-      </div>
-      <div className="tw:flex-1" data-testid={`term-autocomplete-${rowId}`}>
-        <Autocomplete
-          filterOption={() => true}
-          items={dropdownItems}
-          maxVisibleItems={3}
-          placeholder={t('label.add-entity', {
-            entity: t('label.term-plural'),
-          })}
-          selectedItems={selectedTerms}
-          onItemCleared={handleItemCleared}
-          onItemInserted={handleItemInserted}
-          onSearchChange={handleSearchChange}>
-          {(item) => (
-            <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
-          )}
-        </Autocomplete>
-      </div>
-      <Button
-        color="tertiary-destructive"
-        data-testid={`remove-row-${rowId}`}
-        iconLeading={Trash01}
-        size="sm"
-        onClick={() => onRemove(rowId)}
-      />
-    </div>
-  );
-};
-
-const TermsRowEditor: React.FC<TermsRowEditorProps> = ({
-  rows,
-  excludeFQN,
-  preloadedTerms,
-  relationTypeOptions,
-  onAddRow,
-  onRelationTypeChange,
-  onTermsChange,
-  onRemove,
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="tw:flex tw:flex-col tw:gap-3">
-      {rows.map((row) => (
-        <TermsRow
-          excludeFQN={excludeFQN}
-          initialRelationType={row.relationType}
-          initialTerms={row.terms}
-          key={row.id}
-          preloadedTerms={preloadedTerms}
-          relationTypeOptions={relationTypeOptions}
-          rowId={row.id}
-          onRelationTypeChange={onRelationTypeChange}
-          onRemove={onRemove}
-          onTermsChange={onTermsChange}
-        />
-      ))}
-      <Button
-        className="tw:w-fit"
-        color="tertiary"
-        data-testid="add-row-button"
-        size="sm"
-        onClick={onAddRow}>
-        {`+ ${t('label.add-entity', {
-          entity: t('label.related-term-plural'),
-        })}`}
-      </Button>
-    </div>
-  );
-};
 
 const RelatedTerms = () => {
   const navigate = useNavigate();
@@ -653,7 +391,11 @@ const RelatedTerms = () => {
     if (isVersionView) {
       return getVersionRelatedTerms();
     }
-    if (!permissions.EditAll || !isEmpty(termRelations)) {
+    const hasEditPermission = getPrioritizedEditPermission(
+      permissions,
+      Operation.EditGlossaryTerms
+    );
+    if (!hasEditPermission || !isEmpty(termRelations)) {
       return (
         <div className="d-flex flex-col gap-4">
           {Object.entries(groupedRelations).map(([relationType, relations]) => (
@@ -671,7 +413,7 @@ const RelatedTerms = () => {
               />
             </div>
           ))}
-          {!permissions.EditAll && termRelations.length === 0 && (
+          {!hasEditPermission && termRelations.length === 0 && (
             <div>{NO_DATA_PLACEHOLDER}</div>
           )}
         </div>
@@ -695,7 +437,7 @@ const RelatedTerms = () => {
         <Typography as="span" className="text-sm font-medium">
           {t('label.related-term-plural')}
         </Typography>
-        {permissions.EditAll && !isVersionView && !isEditing && !isAdding && (
+        {getPrioritizedEditPermission(permissions, Operation.EditGlossaryTerms) && !isVersionView && !isEditing && !isAdding && (
           <>
             <EditIconButton
               newLook
