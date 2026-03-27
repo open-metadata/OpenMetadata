@@ -641,6 +641,7 @@ const TagPage = () => {
     handleAssetSave,
     handleAssetClick,
     handleFeedCount,
+    assetTabRef,
     t,
   ]);
   const icon = useMemo(() => {

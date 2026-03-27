@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
+import { parseInt } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -86,6 +87,8 @@ const DataAssetsCoveragePieChartWidget = ({
       const { data: totalData } = await fetchTotalEntityCount(chartFilter);
       if (coverageData.length === 0 || totalData.length === 0) {
         setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
+
+        return;
       }
 
       const covered = parseInt(coverageData[0].originEntityFQN);

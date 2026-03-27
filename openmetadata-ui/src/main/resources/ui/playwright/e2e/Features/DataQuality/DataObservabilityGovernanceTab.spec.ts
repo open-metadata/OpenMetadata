@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, test } from '@playwright/test';
+import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { Glossary } from '../../../support/glossary/Glossary';
@@ -19,14 +20,13 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { createNewPage } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import {
   DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
   ENTITY_HEALTH_PIE_CHART_TEST_ID,
   goToDataQualityDashboard,
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
 } from '../../../utils/dataQuality';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

@@ -12,6 +12,7 @@
  */
 
 import test, { expect, Page } from '@playwright/test';
+import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import { TableClass } from '../../../support/entity/TableClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
@@ -19,8 +20,6 @@ import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import {
   clickPieChartSegmentByIndex,
   DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
@@ -28,6 +27,7 @@ import {
   goToDataQualityDashboard,
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
 } from '../../../utils/dataQuality';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 enum TestCaseStatus {
   Aborted = 'Aborted',
