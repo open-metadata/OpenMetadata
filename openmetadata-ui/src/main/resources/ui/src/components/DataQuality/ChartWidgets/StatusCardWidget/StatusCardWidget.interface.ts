@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { LinkProps } from 'react-router-dom';
+
 export type StatusData = {
   title: string;
   success: number;
