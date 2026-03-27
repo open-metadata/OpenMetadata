@@ -171,19 +171,14 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         return combinedStatus;
       }
 
-      // Get current timestamp for recent pipeline status
-      long currentTime = System.currentTimeMillis();
-      long startTime = currentTime - (24 * 60 * 60 * 1000); // Last 24 hours
-      long endTime = currentTime;
-
       // Search for ingestion pipelines by service name using search
       SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
       if (searchClient != null) {
         try {
           // Search for ingestion pipelines with the service name
-          String searchIndex = INGESTION_PIPELINE;
           var response =
-              searchClient.searchByField("service.name.keyword", serviceName, searchIndex, false);
+              searchClient.searchByField(
+                  "service.name.keyword", serviceName, INGESTION_PIPELINE, false);
 
           if (response != null && response.getStatus() == 200) {
             // Parse the response to extract pipeline information

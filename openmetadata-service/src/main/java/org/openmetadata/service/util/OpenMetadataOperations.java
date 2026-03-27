@@ -1988,10 +1988,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Trigger Application
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
-
-    int result = waitAndReturnReindexingAppStatus(app, currentTime);
-
-    return result;
+    return waitAndReturnReindexingAppStatus(app, currentTime);
   }
 
   @SneakyThrows

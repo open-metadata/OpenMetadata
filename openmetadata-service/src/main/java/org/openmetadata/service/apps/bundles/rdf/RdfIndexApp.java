@@ -576,7 +576,6 @@ public class RdfIndexApp extends AbstractNativeApplication {
         }
 
         int offset = batch * batchSize;
-        final int currentBatch = batch;
         producerExecutor.submit(
             () -> {
               try {

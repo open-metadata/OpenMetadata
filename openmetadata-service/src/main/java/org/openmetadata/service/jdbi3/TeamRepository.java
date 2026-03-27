@@ -739,13 +739,11 @@ public class TeamRepository extends EntityRepository<Team> {
         }
       }
     }
-    List<TeamHierarchy> topLevelNodes =
-        hierarchyMap.values().stream()
-            .filter(node -> !childIds.contains(node.getId()))
-            .sorted(Comparator.comparing(TeamHierarchy::getName))
-            .collect(Collectors.toList());
 
-    return topLevelNodes;
+    return hierarchyMap.values().stream()
+        .filter(node -> !childIds.contains(node.getId()))
+        .sorted(Comparator.comparing(TeamHierarchy::getName))
+        .collect(Collectors.toList());
   }
 
   private List<EntityReference> getUsers(Team team) {

@@ -2890,9 +2890,8 @@ public class TableRepository extends EntityRepository<Table> {
       List<EntityReference> piiOwners,
       Authorizer authorizer,
       SecurityContext securityContext) {
-    Table fullTable = table;
 
-    List<Column> allColumns = fullTable.getColumns();
+    List<Column> allColumns = table.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
       return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
     }

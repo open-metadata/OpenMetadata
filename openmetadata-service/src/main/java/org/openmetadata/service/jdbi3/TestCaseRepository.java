@@ -1740,10 +1740,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     ListFilter filter = new ListFilter(ALL);
     filter.addQueryParam("entityFQN", tableFqn);
     filter.addQueryParam("includeAllTests", "true");
-    List<TestCase> testCases =
-        new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
-
-    return testCases;
+    return new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
   }
 
   private List<TestCase> getTestCasesForTestSuite(UUID testSuiteId) {

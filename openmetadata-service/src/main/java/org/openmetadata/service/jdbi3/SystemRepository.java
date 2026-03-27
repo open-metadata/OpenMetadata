@@ -1640,8 +1640,8 @@ public class SystemRepository {
       // Use enhanced SAML validator - this performs comprehensive validation
       // without affecting production settings
       SamlValidator samlValidator = new SamlValidator();
-      FieldError result = samlValidator.validateSamlConfiguration(null, samlConfig);
-      return result; // No errors - validation passed
+      return samlValidator.validateSamlConfiguration(
+          null, samlConfig); // No errors - validation passed
     } catch (Exception e) {
       String fieldPath = determineFieldPathFromError("saml", e.getMessage());
       return ValidationErrorBuilder.createFieldError(

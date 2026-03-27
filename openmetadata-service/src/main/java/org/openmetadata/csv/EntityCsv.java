@@ -957,9 +957,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     // Parse CSV again with headers
     Reader in = new StringReader(stringWriter.toString());
     CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(in);
-    List<CSVRecord> finalRecords = new ArrayList<>(parser.getRecords());
-
-    return finalRecords;
+    return new ArrayList<>(parser.getRecords());
   }
 
   private List<String> padOrTrimColumns(List<String> row) {
@@ -1223,7 +1221,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       T entity = response.getEntity();
       EntityInterface entityForEvent = entity;
       if (entity instanceof User user) {
-        User userWithoutAuth =
+        entityForEvent =
             new User()
                 .withId(user.getId())
                 .withName(user.getName())
@@ -1246,7 +1244,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withDomains(user.getDomains())
                 .withPersonas(user.getPersonas())
                 .withDefaultPersona(user.getDefaultPersona());
-        entityForEvent = userWithoutAuth;
       }
       ChangeEvent changeEvent =
           FormatterUtil.createChangeEventForEntity(
