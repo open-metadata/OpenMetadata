@@ -703,7 +703,7 @@ public class SystemRepository {
 
   private StepValidation getSearchValidation(OpenMetadataApplicationConfig applicationConfig) {
     SearchRepository searchRepository = Entity.getSearchRepository();
-    if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())) {
+    if (searchRepository.getSearchClient().isClientAvailable()) {
       if (validateDataInsights()) {
         List<String> missingIndexes = findMissingIndexes(searchRepository);
         String message =
@@ -760,7 +760,7 @@ public class SystemRepository {
       SearchRepository searchRepository = Entity.getSearchRepository();
       String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), Entity.TABLE);
 
-      if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
+      if (searchRepository.getSearchClient().isClientAvailable()
           && searchRepository.getSearchClient().indexExists(dataStreamName)) {
         isValid = true;
       }
@@ -1641,10 +1641,7 @@ public class SystemRepository {
       // without affecting production settings
       SamlValidator samlValidator = new SamlValidator();
       FieldError result = samlValidator.validateSamlConfiguration(null, samlConfig);
-      if (result != null) {
-        return result;
-      }
-      return null; // No errors - validation passed
+      return result; // No errors - validation passed
     } catch (Exception e) {
       String fieldPath = determineFieldPathFromError("saml", e.getMessage());
       return ValidationErrorBuilder.createFieldError(

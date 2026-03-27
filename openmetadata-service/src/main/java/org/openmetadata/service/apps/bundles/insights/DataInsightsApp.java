@@ -337,14 +337,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     WebAnalyticsWorkflow workflow =
         new WebAnalyticsWorkflow(webAnalyticsConfig, timestamp, batchSize, backfill);
     WorkflowStats workflowStats = workflow.getWorkflowStats();
-
-    try {
-      workflow.process();
-    } catch (SearchIndexException ex) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(ex.getIndexingError());
-    }
-
+    workflow.process();
     return workflowStats;
   }
 

@@ -112,7 +112,7 @@ class SchemaFieldExtractorTest {
   }
 
   @Test
-  void extractAllCustomPropertiesDelegatesToRepository() throws Throwable {
+  void extractAllCustomPropertiesDelegatesToRepository() {
     SchemaFieldExtractor extractor = new SchemaFieldExtractor();
     TypeRepository repository = mock(TypeRepository.class);
     UriInfo uriInfo = mock(UriInfo.class);

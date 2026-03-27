@@ -531,11 +531,6 @@ public interface CollectionDAO {
     }
 
     @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
-
-    @Override
     default Class<DashboardService> getEntityClass() {
       return DashboardService.class;
     }
@@ -615,11 +610,6 @@ public interface CollectionDAO {
     default Class<DatabaseService> getEntityClass() {
       return DatabaseService.class;
     }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
   }
 
   interface MetadataServiceDAO extends EntityDAO<MetadataService> {
@@ -631,11 +621,6 @@ public interface CollectionDAO {
     @Override
     default Class<MetadataService> getEntityClass() {
       return MetadataService.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
   }
 
@@ -649,11 +634,6 @@ public interface CollectionDAO {
     default Class<TestConnectionDefinition> getEntityClass() {
       return TestConnectionDefinition.class;
     }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
   }
 
   interface StorageServiceDAO extends EntityDAO<StorageService> {
@@ -665,11 +645,6 @@ public interface CollectionDAO {
     @Override
     default Class<StorageService> getEntityClass() {
       return StorageService.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
   }
 
@@ -813,11 +788,6 @@ public interface CollectionDAO {
     default Class<SearchService> getEntityClass() {
       return SearchService.class;
     }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
   }
 
   interface SecurityServiceDAO extends EntityDAO<SecurityService> {
@@ -829,11 +799,6 @@ public interface CollectionDAO {
     @Override
     default Class<SecurityService> getEntityClass() {
       return SecurityService.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
   }
 
@@ -847,11 +812,6 @@ public interface CollectionDAO {
     default Class<ApiService> getEntityClass() {
       return ApiService.class;
     }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
   }
 
   interface DriveServiceDAO extends EntityDAO<DriveService> {
@@ -863,11 +823,6 @@ public interface CollectionDAO {
     @Override
     default Class<DriveService> getEntityClass() {
       return DriveService.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
   }
 
@@ -3433,11 +3388,6 @@ public interface CollectionDAO {
     default Class<Bot> getEntityClass() {
       return Bot.class;
     }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
   }
 
   interface DomainDAO extends EntityDAO<Domain> {
@@ -3622,11 +3572,6 @@ public interface CollectionDAO {
     @Override
     default Class<EventSubscription> getEntityClass() {
       return EventSubscription.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
 
     @SqlQuery("SELECT json FROM event_subscription_entity")
@@ -3928,11 +3873,6 @@ public interface CollectionDAO {
     default Class<MessagingService> getEntityClass() {
       return MessagingService.class;
     }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
   }
 
   interface MetricDAO extends EntityDAO<Metric> {
@@ -3998,11 +3938,6 @@ public interface CollectionDAO {
     @Override
     default Class<Glossary> getEntityClass() {
       return Glossary.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
   }
 
@@ -4334,11 +4269,6 @@ public interface CollectionDAO {
     default Class<PipelineService> getEntityClass() {
       return PipelineService.class;
     }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
   }
 
   interface MlModelServiceDAO extends EntityDAO<MlModelService> {
@@ -4350,11 +4280,6 @@ public interface CollectionDAO {
     @Override
     default Class<MlModelService> getEntityClass() {
       return MlModelService.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
   }
 
@@ -4775,7 +4700,7 @@ public interface CollectionDAO {
         bindMap.put("beforeAfterId", id);
       }
       // Add filter params
-      filter.getQueryParams().forEach(bindMap::put);
+      bindMap.putAll(filter.getQueryParams());
       return bindMap;
     }
 
@@ -4801,11 +4726,6 @@ public interface CollectionDAO {
     @Override
     default Class<Classification> getEntityClass() {
       return Classification.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
 
     // Much more efficient: Use IN clause with proper index usage
@@ -5018,8 +4938,7 @@ public interface CollectionDAO {
       String targetFQNPrefixHash =
           requiresFqnHash ? FullyQualifiedName.buildHash(targetFQNPrefix) : targetFQNPrefix;
       Map<String, List<TagLabel>> resultSet = new LinkedHashMap<>();
-      List<Pair<String, TagLabel>> tags =
-          getTagsInternalByPrefix(new String[] {targetFQNPrefixHash, postfix});
+      List<Pair<String, TagLabel>> tags = getTagsInternalByPrefix(targetFQNPrefixHash, postfix);
       tags.forEach(
           pair -> {
             String targetHash = pair.getLeft();
@@ -5838,11 +5757,6 @@ public interface CollectionDAO {
     default Class<Role> getEntityClass() {
       return Role.class;
     }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
   }
 
   interface PersonaDAO extends EntityDAO<Persona> {
@@ -5854,11 +5768,6 @@ public interface CollectionDAO {
     @Override
     default Class<Persona> getEntityClass() {
       return Persona.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
 
     @Override
@@ -5895,11 +5804,6 @@ public interface CollectionDAO {
     @Override
     default Class<Team> getEntityClass() {
       return Team.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
 
     @Override
@@ -6210,7 +6114,7 @@ public interface CollectionDAO {
     }
 
     /** Usage details with entity ID for batch operations */
-    public static class UsageDetailsWithId {
+    class UsageDetailsWithId {
       private final String entityId;
       private final UsageDetails usageDetails;
 
@@ -6264,11 +6168,6 @@ public interface CollectionDAO {
     @Override
     default Class<User> getEntityClass() {
       return User.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
 
     @Override
@@ -6912,11 +6811,6 @@ public interface CollectionDAO {
     }
 
     @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
-
-    @Override
     default boolean supportsSoftDelete() {
       return false;
     }
@@ -6931,11 +6825,6 @@ public interface CollectionDAO {
     @Override
     default Class<TestDefinition> getEntityClass() {
       return TestDefinition.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
 
     @Override
@@ -6994,8 +6883,8 @@ public interface CollectionDAO {
 
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
-        mysqlCondition.append("AND enabled=" + enabledValue + " ");
-        psqlCondition.append("AND enabled=" + enabledValue + " ");
+        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
       }
 
       return listBefore(
@@ -7063,8 +6952,8 @@ public interface CollectionDAO {
 
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
-        mysqlCondition.append("AND enabled=" + enabledValue + " ");
-        psqlCondition.append("AND enabled=" + enabledValue + " ");
+        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
       }
 
       return listAfter(
@@ -8909,11 +8798,6 @@ public interface CollectionDAO {
     default Class<Kpi> getEntityClass() {
       return Kpi.class;
     }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
   }
 
   interface WorkflowDAO extends EntityDAO<Workflow> {
@@ -9908,11 +9792,6 @@ public interface CollectionDAO {
     @Override
     default Class<org.openmetadata.schema.entity.services.LLMService> getEntityClass() {
       return org.openmetadata.schema.entity.services.LLMService.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
     }
   }
 

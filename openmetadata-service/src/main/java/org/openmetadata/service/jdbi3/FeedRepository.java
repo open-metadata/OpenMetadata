@@ -50,6 +50,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -367,7 +368,7 @@ public class FeedRepository {
       List<Reaction> updatedReactions = listOrEmpty(updated.getReactions());
 
       if (origReactions.size() != updatedReactions.size()
-          || !origReactions.containsAll(updatedReactions)) {
+          || !new HashSet<>(origReactions).containsAll(updatedReactions)) {
         fieldUpdated(changeDescription, "reactions", origReactions, updatedReactions);
       }
     }
@@ -1269,7 +1270,7 @@ public class FeedRepository {
         || (!Collections.isEmpty(original.getReactions())
             && Collections.isEmpty(updated.getReactions()))
         || original.getReactions().size() != updated.getReactions().size()
-        || !original.getReactions().containsAll(updated.getReactions());
+        || !new HashSet<>(original.getReactions()).containsAll(updated.getReactions());
   }
 
   private boolean fieldsChanged(Thread original, Thread updated) {
@@ -1283,7 +1284,7 @@ public class FeedRepository {
         || (original.getReactions() != null
             && updated.getReactions() != null
             && (original.getReactions().size() != updated.getReactions().size()
-                || !original.getReactions().containsAll(updated.getReactions())))
+                || !new HashSet<>(original.getReactions()).containsAll(updated.getReactions())))
         || (original.getAnnouncement() != null
             && (!original
                     .getAnnouncement()
@@ -1301,9 +1302,7 @@ public class FeedRepository {
             && !original.getChatbot().getQuery().equals(updated.getChatbot().getQuery()))
         || (original.getTask() != null
             && (original.getTask().getAssignees().size() != updated.getTask().getAssignees().size()
-                || !original
-                    .getTask()
-                    .getAssignees()
+                || !new HashSet<>(original.getTask().getAssignees())
                     .containsAll(updated.getTask().getAssignees())));
   }
 

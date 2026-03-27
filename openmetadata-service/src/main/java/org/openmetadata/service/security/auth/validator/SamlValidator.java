@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.io.ByteArrayInputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -43,11 +44,7 @@ public class SamlValidator {
       }
 
       FieldError idpValidation = validateIdpConnectivity(samlConfig);
-      if (idpValidation != null) {
-        return idpValidation;
-      }
-
-      return null; // Success - SAML configuration validated
+      return idpValidation; // Success - SAML configuration validated
     } catch (Exception e) {
       LOG.error("SAML validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -293,11 +290,10 @@ public class SamlValidator {
       String samlRequest = createTestSamlRequest(samlConfig);
 
       // Build URL with SAML request parameter (HTTP-Redirect binding)
-      StringBuilder urlWithParams = new StringBuilder(ssoUrl);
-      urlWithParams.append(ssoUrl.contains("?") ? "&" : "?");
-      urlWithParams.append("SAMLRequest=").append(samlRequest);
+      String urlWithParams =
+          ssoUrl + (ssoUrl.contains("?") ? "&" : "?") + "SAMLRequest=" + samlRequest;
 
-      URL url = new URL(urlWithParams.toString());
+      URL url = new URL(urlWithParams);
       HttpURLConnection conn = (HttpURLConnection) url.openConnection();
       conn.setRequestMethod("GET");
       conn.setConnectTimeout(5000);
@@ -353,7 +349,7 @@ public class SamlValidator {
       // Create a minimal SAML AuthnRequest XML
       String timestamp =
           java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString();
-      String requestId = "_" + java.util.UUID.randomUUID().toString();
+      String requestId = "_" + java.util.UUID.randomUUID();
 
       String samlRequestXml =
           "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
@@ -383,14 +379,14 @@ public class SamlValidator {
           new java.util.zip.Deflater(java.util.zip.Deflater.DEFLATED, true);
       java.util.zip.DeflaterOutputStream deflaterStream =
           new java.util.zip.DeflaterOutputStream(bytesOut, deflater);
-      deflaterStream.write(samlRequestXml.getBytes("UTF-8"));
+      deflaterStream.write(samlRequestXml.getBytes(StandardCharsets.UTF_8));
       deflaterStream.finish();
 
       // Base64 encode
       String base64Request = Base64.getEncoder().encodeToString(bytesOut.toByteArray());
 
       // URL encode for use in query parameter
-      return java.net.URLEncoder.encode(base64Request, "UTF-8");
+      return java.net.URLEncoder.encode(base64Request, StandardCharsets.UTF_8);
     } catch (Exception e) {
       LOG.warn("Failed to create test SAML request", e);
       // Return a dummy encoded string if we can't create proper request
@@ -408,7 +404,7 @@ public class SamlValidator {
         byte[] buffer = new byte[500];
         int bytesRead = inputStream.read(buffer);
         if (bytesRead > 0) {
-          return new String(buffer, 0, bytesRead, "UTF-8");
+          return new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
         }
       }
     } catch (Exception e) {
@@ -807,9 +803,7 @@ public class SamlValidator {
                 && idpConfig.getEntityId().contains("sts.windows.net"))) {
 
           FieldError azureNameIdValidation = validateAzureNameIdFormat(idpConfig, nameId);
-          if (azureNameIdValidation != null) {
-            return azureNameIdValidation;
-          }
+          return azureNameIdValidation;
         }
         // Add similar validation for other IdPs if needed
       }
@@ -895,21 +889,25 @@ public class SamlValidator {
           String supportedFormats = "";
 
           if (supportsSaml11) {
+            StringBuilder supportedFormatsBuilder = new StringBuilder();
             for (String format : azureSaml11Formats) {
-              supportedFormats += format + ", ";
+              supportedFormatsBuilder.append(format).append(", ");
               if (nameId.equals(format)) {
                 isSupported = true;
               }
             }
+            supportedFormats = supportedFormatsBuilder.toString();
           }
 
           if (supportsSaml20) {
+            StringBuilder supportedFormatsBuilder = new StringBuilder(supportedFormats);
             for (String format : azureSaml20Formats) {
-              supportedFormats += format + ", ";
+              supportedFormatsBuilder.append(format).append(", ");
               if (nameId.equals(format)) {
                 isSupported = true;
               }
             }
+            supportedFormats = supportedFormatsBuilder.toString();
           }
 
           // Azure AD most commonly uses SAML 1.1 emailAddress

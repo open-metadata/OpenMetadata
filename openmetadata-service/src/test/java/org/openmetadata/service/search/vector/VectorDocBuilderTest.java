@@ -2,7 +2,10 @@ package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -45,7 +48,7 @@ class VectorDocBuilderTest {
     Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
     Object embedding = fields.get("embedding");
-    assertTrue(embedding instanceof float[]);
+    assertInstanceOf(float[].class, embedding);
     assertEquals(384, ((float[]) embedding).length);
   }
 
@@ -79,7 +82,7 @@ class VectorDocBuilderTest {
     table.setDescription("Modified description");
     String fp2 = VectorDocBuilder.computeFingerprintForEntity(table);
 
-    assertFalse(fp1.equals(fp2));
+    assertNotEquals(fp1, fp2);
   }
 
   @Test
@@ -217,7 +220,7 @@ class VectorDocBuilderTest {
     regularTag.setTagFQN("PII.Sensitive");
     table.setTags(List.of(regularTag));
 
-    assertEquals(null, VectorDocBuilder.extractTierLabel(table));
+    assertNull(VectorDocBuilder.extractTierLabel(table));
   }
 
   @Test

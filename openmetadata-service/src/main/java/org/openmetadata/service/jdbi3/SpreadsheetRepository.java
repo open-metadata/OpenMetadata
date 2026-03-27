@@ -421,7 +421,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     }
 
     private List<EntityReference> getDataProducts(
-        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
       String dataProductsStr = csvRecord.get(fieldNumber);
       if (nullOrEmpty(dataProductsStr)) {
         return null;

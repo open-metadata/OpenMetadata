@@ -310,7 +310,7 @@ class OpenSearchBulkSinkBehaviorTest {
   }
 
   @Test
-  void settersUpdateConfigurationAndForwardCallbacks() throws Exception {
+  void settersUpdateConfigurationAndForwardCallbacks() {
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
         mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
