@@ -928,7 +928,7 @@ public class SamlValidator {
           }
 
         } else {
-          LOG.warn("Could not fetch Azure AD metadata: HTTP " + response.getStatusCode());
+          LOG.warn("Could not fetch Azure AD metadata: HTTP {}", response.getStatusCode());
           // Warning case - treat as success
           LOG.warn(
               "Could not verify NameID format against Azure AD metadata: HTTP {}",

@@ -1562,8 +1562,7 @@ public class UserRepository extends EntityRepository<User> {
               systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
 
           if (!isAssignedPersona && !isSystemDefaultPersona) {
-            LOG.warn(
-                "Persona with ID %s is not assigned to this user".formatted(pref.getPersonaId()));
+            LOG.warn("Persona with ID {} is not assigned to this user", pref.getPersonaId());
           }
           if (pref.getLandingPageSettings() != null) {
             UserUtil.validateUserPersonaPreferencesImage(pref.getLandingPageSettings());

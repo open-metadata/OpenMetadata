@@ -2169,7 +2169,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           pipelineRepository.listAll(
               new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
               new ListFilter(Include.NON_DELETED));
-      LOG.debug(String.format("Pipelines %d", pipelines.size()));
+      LOG.debug("Pipelines size {}", pipelines.size());
       List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
       List<List<String>> pipelineStatuses = new ArrayList<>();
 
@@ -2930,7 +2930,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS " + tableName);
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {} ", tableName, e);
                   }
                 });
         handle.execute("SET FOREIGN_KEY_CHECKS = 1");
@@ -2945,7 +2945,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS \"" + tableName + "\" CASCADE");
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {}", tableName, e);
                   }
                 });
       }

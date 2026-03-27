@@ -1051,7 +1051,7 @@ public class WorkflowHandler {
         }
       }
     } catch (FlowableObjectNotFoundException ex) {
-      LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+      LOG.debug("Flowable Task for Task ID {} not found.", customTaskId);
     }
   }
 

@@ -620,7 +620,7 @@ public class TeamRepository extends EntityRepository<Team> {
           == 1) { // Only parent is being deleted, move the parent to Organization
         addRelationship(
             organization.getId(), childTeam.getId(), TEAM, TEAM, Relationship.PARENT_OF);
-        LOG.info("Moving parent of team " + childTeam.getId() + " to organization");
+        LOG.info("Moving parent of team {} to organization", childTeam.getId());
       }
     }
   }
