@@ -85,7 +85,7 @@ class JWTTokenGeneratorTest {
   }
 
   @Test
-  void testECAlgorithmSupport() throws Exception {
+  void testECAlgorithmSupport() {
     // Test that the EC algorithms are supported in the enum
     AuthenticationConfiguration.TokenValidationAlgorithm es256 =
         AuthenticationConfiguration.TokenValidationAlgorithm.ES_256;
@@ -100,7 +100,7 @@ class JWTTokenGeneratorTest {
   }
 
   @Test
-  void testGetAlgorithmFromPublicKeyWithRSA() throws Exception {
+  void testGetAlgorithmFromPublicKeyWithRSA() {
     RSAPublicKey rsaPublicKey = jwtTokenGenerator.getPublicKey();
 
     Algorithm algorithm =

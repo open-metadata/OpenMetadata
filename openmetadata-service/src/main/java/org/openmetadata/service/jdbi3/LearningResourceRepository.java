@@ -99,8 +99,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
     if (!java.util.Objects.equals(existing.getContexts(), seed.getContexts())) return true;
     if (!java.util.Objects.equals(existing.getDifficulty(), seed.getDifficulty())) return true;
     if (!java.util.Objects.equals(existing.getSource(), seed.getSource())) return true;
-    if (!java.util.Objects.equals(existing.getStatus(), seed.getStatus())) return true;
-    return false;
+    return !java.util.Objects.equals(existing.getStatus(), seed.getStatus());
   }
 
   @Override

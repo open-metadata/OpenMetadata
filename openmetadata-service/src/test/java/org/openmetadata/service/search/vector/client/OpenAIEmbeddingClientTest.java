@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
@@ -323,7 +322,7 @@ class OpenAIEmbeddingClientTest {
 
   @SuppressWarnings("unchecked")
   @Test
-  void testConcurrencyLimiterEnforced() throws Exception {
+  void testConcurrencyLimiterEnforced() {
     AtomicInteger concurrentCount = new AtomicInteger(0);
     AtomicInteger maxObservedConcurrent = new AtomicInteger(0);
     CountDownLatch allStarted = new CountDownLatch(1);
@@ -381,7 +380,7 @@ class OpenAIEmbeddingClientTest {
           @Override
           public <T> HttpResponse<T> send(
               HttpRequest request, HttpResponse.BodyHandler<T> responseBodyHandler)
-              throws IOException, InterruptedException {
+              throws InterruptedException {
             int current = concurrentCount.incrementAndGet();
             maxObservedConcurrent.accumulateAndGet(current, Math::max);
             try {

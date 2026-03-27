@@ -262,9 +262,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
       LOG.info(
           "Generic Aggregation - Aggregation results present: {}", aggregationResults.isPresent());
-      if (aggregationResults.isPresent()) {
-        LOG.info("Generic Aggregation - Aggregation results: {}", aggregationResults.get());
-      }
+      aggregationResults.ifPresent(
+          jsonObject -> LOG.info("Generic Aggregation - Aggregation results: {}", jsonObject));
 
       return SearchIndexUtils.parseAggregationResults(
           aggregationResults, aggregationMetadata.getAggregationMetadata());
@@ -368,10 +367,9 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       LOG.info(
           "Generic Aggregation with RBAC - Aggregation results present: {}",
           aggregationResults.isPresent());
-      if (aggregationResults.isPresent()) {
-        LOG.info(
-            "Generic Aggregation with RBAC - Aggregation results: {}", aggregationResults.get());
-      }
+      aggregationResults.ifPresent(
+          jsonObject ->
+              LOG.info("Generic Aggregation with RBAC - Aggregation results: {}", jsonObject));
 
       return SearchIndexUtils.parseAggregationResults(
           aggregationResults, aggregationMetadata.getAggregationMetadata());

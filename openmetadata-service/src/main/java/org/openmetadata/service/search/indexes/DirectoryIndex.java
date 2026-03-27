@@ -30,8 +30,7 @@ public class DirectoryIndex implements SearchIndex {
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DIRECTORY, directory));
-    List<TagLabel> tags = new ArrayList<>();
-    tags.addAll(parseTags.getTags());
+    List<TagLabel> tags = new ArrayList<>(parseTags.getTags());
 
     Map<String, Object> commonAttributes = getCommonAttributesMap(directory, Entity.DIRECTORY);
     doc.putAll(commonAttributes);

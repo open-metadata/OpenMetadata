@@ -834,7 +834,7 @@ class DefaultRecreateHandlerTest {
               invocation -> {
                 String index = invocation.getArgument(0);
                 @SuppressWarnings("unchecked")
-                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(1));
+                Set<String> aliases = new HashSet<>(invocation.getArgument(1));
                 indexAliases.computeIfPresent(
                     index,
                     (k, v) -> {
@@ -851,7 +851,7 @@ class DefaultRecreateHandlerTest {
               invocation -> {
                 String index = invocation.getArgument(0);
                 @SuppressWarnings("unchecked")
-                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(1));
+                Set<String> aliases = new HashSet<>(invocation.getArgument(1));
                 indexAliases.computeIfAbsent(index, k -> new HashSet<>()).addAll(aliases);
                 return null;
               })
@@ -863,10 +863,10 @@ class DefaultRecreateHandlerTest {
           .doAnswer(
               invocation -> {
                 @SuppressWarnings("unchecked")
-                Set<String> oldIndices = (Set<String>) invocation.getArgument(0);
+                Set<String> oldIndices = invocation.getArgument(0);
                 String newIndex = invocation.getArgument(1);
                 @SuppressWarnings("unchecked")
-                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(2));
+                Set<String> aliases = new HashSet<>(invocation.getArgument(2));
 
                 // Remove aliases from old indices
                 for (String oldIndex : oldIndices) {
@@ -911,10 +911,10 @@ class DefaultRecreateHandlerTest {
           .doAnswer(
               invocation -> {
                 @SuppressWarnings("unchecked")
-                Set<String> oldIndices = (Set<String>) invocation.getArgument(0);
+                Set<String> oldIndices = invocation.getArgument(0);
                 String newIndex = invocation.getArgument(1);
                 @SuppressWarnings("unchecked")
-                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(2));
+                Set<String> aliases = new HashSet<>(invocation.getArgument(2));
 
                 // Remove aliases from old indices
                 for (String oldIndex : oldIndices) {
