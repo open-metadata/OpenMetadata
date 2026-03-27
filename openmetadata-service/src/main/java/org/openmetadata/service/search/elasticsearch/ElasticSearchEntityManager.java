@@ -865,7 +865,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                               s.source(ss -> ss.scriptString(DELETE_COLUMN_LINEAGE_SCRIPT))
                                   .lang(ScriptLanguage.Painless)
                                   .params(params))
-                      .refresh(true));
+                      .refresh(false));
 
       LOG.info(
           "Successfully deleted columns from upstream lineage for index: {}, updated: {}",

@@ -33,7 +33,7 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence;
-import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.TABLE_SEARCH_INDEX;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
@@ -54,6 +54,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -2277,6 +2278,10 @@ public class TableRepository extends EntityRepository<Table> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends ColumnEntityUpdater {
+    private final Set<String> pendingDeletedColumnFqns = new LinkedHashSet<>();
+    private final HashMap<String, String> pendingRenameColumnFqns = new HashMap<>();
+    private boolean columnLineageUpdateDeferred = false;
+
     public TableUpdater(
         Table original, Table updated, Operation operation, ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
@@ -2445,21 +2450,31 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
 
-      if (hasRenames) {
-        HashMap<String, String> renames = new HashMap<>(originalUpdatedColumnFqnMap);
-        deferReactOperation(
-            () ->
-                searchRepository
-                    .getSearchClient()
-                    .updateColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, renames));
-      }
+      // Accumulate column FQNs across multiple calls (e.g. when consolidateChanges=true runs
+      // updateInternal twice). A single deferred operation flushes the combined set at the end.
       if (hasDeletes) {
-        List<String> deletedColumnsCopy = List.copyOf(deletedColumns);
-        deferReactOperation(
-            () ->
-                searchRepository
-                    .getSearchClient()
-                    .deleteColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, deletedColumnsCopy));
+        pendingDeletedColumnFqns.addAll(deletedColumns);
+      }
+      if (hasRenames) {
+        pendingRenameColumnFqns.putAll(originalUpdatedColumnFqnMap);
+      }
+
+      if (!columnLineageUpdateDeferred && (hasDeletes || hasRenames)) {
+        columnLineageUpdateDeferred = true;
+        deferReactOperation(this::flushPendingColumnLineageSearchUpdates);
+      }
+    }
+
+    private void flushPendingColumnLineageSearchUpdates() {
+      if (!pendingRenameColumnFqns.isEmpty()) {
+        searchRepository
+            .getSearchClient()
+            .updateColumnsInUpstreamLineage(TABLE_SEARCH_INDEX, new HashMap<>(pendingRenameColumnFqns));
+      }
+      if (!pendingDeletedColumnFqns.isEmpty()) {
+        searchRepository
+            .getSearchClient()
+            .deleteColumnsInUpstreamLineage(TABLE_SEARCH_INDEX, List.copyOf(pendingDeletedColumnFqns));
       }
     }
   }

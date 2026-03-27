@@ -7934,11 +7934,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
             added.getFullyQualifiedName());
       }
 
+      // Build a lookup map from origColumns to avoid O(n²) stream search per updated column
+      Map<String, Column> origColumnByKey = new HashMap<>();
+      for (Column col : origColumns) {
+        origColumnByKey.put(columnLookupKey(col), col);
+      }
+
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
-        // Find stored column matching name, data type and ordinal position
-        Column stored =
-            origColumns.stream().filter(c -> columnMatch.test(c, updated)).findAny().orElse(null);
+        Column stored = origColumnByKey.get(columnLookupKey(updated));
         if (stored == null) { // New column added
           continue;
         }
@@ -7977,6 +7981,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       // NO-OP – to be overridden by entity-specific updaters when needed.
+    }
+
+    private static String columnLookupKey(Column col) {
+      return col.getName().toLowerCase() + "|" + col.getDataType() + "|" + col.getArrayDataType();
     }
 
     private void updateColumnDescription(

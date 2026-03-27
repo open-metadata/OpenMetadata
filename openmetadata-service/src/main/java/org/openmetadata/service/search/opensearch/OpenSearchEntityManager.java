@@ -939,7 +939,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                           .BuiltinScriptLanguage.Painless))
                                           .source(DELETE_COLUMN_LINEAGE_SCRIPT)
                                           .params(params)))
-                      .refresh(Refresh.True));
+                      .refresh(Refresh.False));
 
       LOG.info(
           "Successfully deleted columns from upstream lineage for index: {}, updated: {}",
