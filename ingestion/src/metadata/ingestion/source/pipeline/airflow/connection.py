@@ -188,10 +188,21 @@ def _(airflow_connection: SQLiteConnection) -> Engine:
     return get_sqlite_connection(airflow_connection)
 
 
-def get_connection(connection: AirflowConnection) -> Engine:
+def get_connection(connection: AirflowConnection):
     """
     Create connection
     """
+    from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel
+        AirflowRestApiConnection,
+    )
+
+    if isinstance(connection.connection, AirflowRestApiConnection):
+        from metadata.ingestion.source.pipeline.airflow.api.client import (  # pylint: disable=import-outside-toplevel
+            AirflowApiClient,
+        )
+
+        return AirflowApiClient(connection)
+
     try:
         return _get_connection(connection.connection)
     except Exception as exc:
@@ -211,9 +222,30 @@ class AirflowTaskDetailsAccessError(Exception):
     """
 
 
+def _test_api_connection(
+    metadata: OpenMetadata,
+    client,
+    service_connection: AirflowConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
+    test_fn = {
+        "CheckAccess": client.get_version,
+        "PipelineDetailsAccess": lambda: client.list_dags(limit=1),
+        "TaskDetailAccess": lambda: True,
+    }
+    return test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
+    )
+
+
 def test_connection(
     metadata: OpenMetadata,
-    engine: Engine,
+    connection_obj,
     service_connection: AirflowConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
@@ -222,8 +254,20 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+    from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel
+        AirflowRestApiConnection,
+    )
 
-    session_maker = sessionmaker(bind=engine)
+    if isinstance(service_connection.connection, AirflowRestApiConnection):
+        return _test_api_connection(
+            metadata,
+            connection_obj,
+            service_connection,
+            automation_workflow,
+            timeout_seconds,
+        )
+
+    session_maker = sessionmaker(bind=connection_obj)
     session = session_maker()
 
     def test_pipeline_details_access(session):
@@ -252,7 +296,7 @@ def test_connection(
             raise AirflowTaskDetailsAccessError(f"Task details access error : {e}")
 
     test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, engine),
+        "CheckAccess": partial(test_connection_engine_step, connection_obj),
         "PipelineDetailsAccess": partial(test_pipeline_details_access, session),
         "TaskDetailAccess": partial(test_task_detail_access, session),
     }
