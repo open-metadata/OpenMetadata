@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { test, expect } from '../../support/fixtures/userPages';
 import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
@@ -22,7 +23,6 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { TeamClass } from '../../support/team/TeamClass';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {

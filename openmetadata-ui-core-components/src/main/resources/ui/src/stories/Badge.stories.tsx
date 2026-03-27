@@ -10,23 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HelpCircle } from "@untitledui/icons";
-import type { Meta, StoryObj } from "@storybook/react";
+import { HelpCircle } from '@untitledui/icons';
+import type { Meta, StoryObj } from '@storybook/react';
 import {
   Badge,
   BadgeIcon,
   BadgeWithButton,
   BadgeWithDot,
   BadgeWithIcon,
-} from "../components/base/badges/badges";
+} from '../components/base/badges/badges';
 
 const meta = {
-  title: "Components/Badge",
+  title: 'Components/Badge',
   component: Badge,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Badge>;
 
 export default meta;
@@ -34,103 +34,171 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    children: "Badge",
-    type: "pill-color",
-    size: "md",
-    color: "gray",
+    children: 'Badge',
+    type: 'pill-color',
+    size: 'md',
+    color: 'gray',
   },
 };
 
 export const PillColors: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <Badge type="pill-color" color="gray">Gray</Badge>
-      <Badge type="pill-color" color="brand">Brand</Badge>
-      <Badge type="pill-color" color="error">Error</Badge>
-      <Badge type="pill-color" color="warning">Warning</Badge>
-      <Badge type="pill-color" color="success">Success</Badge>
-      <Badge type="pill-color" color="blue">Blue</Badge>
-      <Badge type="pill-color" color="indigo">Indigo</Badge>
-      <Badge type="pill-color" color="purple">Purple</Badge>
-      <Badge type="pill-color" color="pink">Pink</Badge>
-      <Badge type="pill-color" color="orange">Orange</Badge>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Badge color="gray" type="pill-color">
+        Gray
+      </Badge>
+      <Badge color="brand" type="pill-color">
+        Brand
+      </Badge>
+      <Badge color="error" type="pill-color">
+        Error
+      </Badge>
+      <Badge color="warning" type="pill-color">
+        Warning
+      </Badge>
+      <Badge color="success" type="pill-color">
+        Success
+      </Badge>
+      <Badge color="blue" type="pill-color">
+        Blue
+      </Badge>
+      <Badge color="indigo" type="pill-color">
+        Indigo
+      </Badge>
+      <Badge color="purple" type="pill-color">
+        Purple
+      </Badge>
+      <Badge color="pink" type="pill-color">
+        Pink
+      </Badge>
+      <Badge color="orange" type="pill-color">
+        Orange
+      </Badge>
     </div>
   ),
 };
 
 export const BadgeColors: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <Badge type="color" color="gray">Gray</Badge>
-      <Badge type="color" color="brand">Brand</Badge>
-      <Badge type="color" color="error">Error</Badge>
-      <Badge type="color" color="warning">Warning</Badge>
-      <Badge type="color" color="success">Success</Badge>
-      <Badge type="color" color="blue">Blue</Badge>
-      <Badge type="color" color="indigo">Indigo</Badge>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Badge color="gray" type="color">
+        Gray
+      </Badge>
+      <Badge color="brand" type="color">
+        Brand
+      </Badge>
+      <Badge color="error" type="color">
+        Error
+      </Badge>
+      <Badge color="warning" type="color">
+        Warning
+      </Badge>
+      <Badge color="success" type="color">
+        Success
+      </Badge>
+      <Badge color="blue" type="color">
+        Blue
+      </Badge>
+      <Badge color="indigo" type="color">
+        Indigo
+      </Badge>
     </div>
   ),
 };
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <Badge type="pill-color" color="brand" size="sm">Small</Badge>
-      <Badge type="pill-color" color="brand" size="md">Medium</Badge>
-      <Badge type="pill-color" color="brand" size="lg">Large</Badge>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <Badge color="brand" size="sm" type="pill-color">
+        Small
+      </Badge>
+      <Badge color="brand" size="md" type="pill-color">
+        Medium
+      </Badge>
+      <Badge color="brand" size="lg" type="pill-color">
+        Large
+      </Badge>
     </div>
   ),
 };
 
 export const WithDot: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <BadgeWithDot type="pill-color" color="gray">Gray</BadgeWithDot>
-      <BadgeWithDot type="pill-color" color="brand">Brand</BadgeWithDot>
-      <BadgeWithDot type="pill-color" color="error">Error</BadgeWithDot>
-      <BadgeWithDot type="pill-color" color="success">Success</BadgeWithDot>
-      <BadgeWithDot type="pill-color" color="warning">Warning</BadgeWithDot>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <BadgeWithDot color="gray" type="pill-color">
+        Gray
+      </BadgeWithDot>
+      <BadgeWithDot color="brand" type="pill-color">
+        Brand
+      </BadgeWithDot>
+      <BadgeWithDot color="error" type="pill-color">
+        Error
+      </BadgeWithDot>
+      <BadgeWithDot color="success" type="pill-color">
+        Success
+      </BadgeWithDot>
+      <BadgeWithDot color="warning" type="pill-color">
+        Warning
+      </BadgeWithDot>
     </div>
   ),
 };
 
 export const WithIcon: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <BadgeWithIcon type="pill-color" color="gray" iconLeading={HelpCircle}>Gray Leading</BadgeWithIcon>
-      <BadgeWithIcon type="pill-color" color="brand" iconTrailing={HelpCircle}>Brand Trailing</BadgeWithIcon>
-      <BadgeWithIcon type="color" color="success" iconLeading={HelpCircle}>Success</BadgeWithIcon>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <BadgeWithIcon color="gray" iconLeading={HelpCircle} type="pill-color">
+        Gray Leading
+      </BadgeWithIcon>
+      <BadgeWithIcon color="brand" iconTrailing={HelpCircle} type="pill-color">
+        Brand Trailing
+      </BadgeWithIcon>
+      <BadgeWithIcon color="success" iconLeading={HelpCircle} type="color">
+        Success
+      </BadgeWithIcon>
     </div>
   ),
 };
 
 export const WithButton: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <BadgeWithButton type="pill-color" color="gray">Gray</BadgeWithButton>
-      <BadgeWithButton type="pill-color" color="brand">Brand</BadgeWithButton>
-      <BadgeWithButton type="pill-color" color="error">Error</BadgeWithButton>
-      <BadgeWithButton type="pill-color" color="success">Success</BadgeWithButton>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <BadgeWithButton color="gray" type="pill-color">
+        Gray
+      </BadgeWithButton>
+      <BadgeWithButton color="brand" type="pill-color">
+        Brand
+      </BadgeWithButton>
+      <BadgeWithButton color="error" type="pill-color">
+        Error
+      </BadgeWithButton>
+      <BadgeWithButton color="success" type="pill-color">
+        Success
+      </BadgeWithButton>
     </div>
   ),
 };
 
 export const IconOnly: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <BadgeIcon type="pill-color" color="gray" icon={HelpCircle} />
-      <BadgeIcon type="pill-color" color="brand" icon={HelpCircle} />
-      <BadgeIcon type="pill-color" color="error" icon={HelpCircle} />
-      <BadgeIcon type="color" color="success" icon={HelpCircle} />
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <BadgeIcon color="gray" icon={HelpCircle} type="pill-color" />
+      <BadgeIcon color="brand" icon={HelpCircle} type="pill-color" />
+      <BadgeIcon color="error" icon={HelpCircle} type="pill-color" />
+      <BadgeIcon color="success" icon={HelpCircle} type="color" />
     </div>
   ),
 };
 
 export const ModernStyle: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <Badge type="modern" color="gray">Modern Badge</Badge>
-      <BadgeWithDot type="modern" color="gray">With Dot</BadgeWithDot>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Badge color="gray" type="modern">
+        Modern Badge
+      </Badge>
+      <BadgeWithDot color="gray" type="modern">
+        With Dot
+      </BadgeWithDot>
     </div>
   ),
 };

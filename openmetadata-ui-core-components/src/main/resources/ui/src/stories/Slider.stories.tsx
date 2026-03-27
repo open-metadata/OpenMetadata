@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Slider } from "../components/base/slider/slider";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Slider } from '../components/base/slider/slider';
 
 const meta = {
-  title: "Components/Slider",
+  title: 'Components/Slider',
   component: Slider,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Slider>;
 
 export default meta;
@@ -55,7 +55,12 @@ export const WithFloatingLabel: StoryObj = {
 export const CustomRange: StoryObj = {
   render: () => (
     <div style={{ width: 300 }}>
-      <Slider defaultValue={500} minValue={0} maxValue={1000} labelPosition="right" />
+      <Slider
+        defaultValue={500}
+        labelPosition="right"
+        maxValue={1000}
+        minValue={0}
+      />
     </div>
   ),
 };
@@ -65,8 +70,8 @@ export const CustomFormatter: StoryObj = {
     <div style={{ width: 300 }}>
       <Slider
         defaultValue={75}
-        labelPosition="bottom"
         labelFormatter={(value) => `${value}%`}
+        labelPosition="bottom"
       />
     </div>
   ),

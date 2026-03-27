@@ -13,7 +13,6 @@
 import test, { expect } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const table = {
   term: 'dim___reserved__colon____reserved__arrow__address',
@@ -25,32 +24,26 @@ const query =
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe(
-  'Schema definition (views)',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-  () => {
-    test.beforeEach('pre-requisite', async ({ page }) => {
-      await redirectToHomePage(page);
-    });
+test.describe('Schema definition (views)', () => {
+  test.beforeEach('pre-requisite', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
-    test('Verify schema definition (views) of table entity', async ({
+  test('Verify schema definition (views) of table entity', async ({ page }) => {
+    await visitEntityPage({
       page,
-    }) => {
-      await visitEntityPage({
-        page,
-        searchTerm: table.term,
-        dataTestId: `${table.serviceName}-${table.term}`,
-      });
-
-      await page.click('[data-testid="schema_definition"]');
-      await page
-        .locator('.CodeMirror-line > [role="presentation"]')
-        .first()
-        .waitFor();
-
-      await expect(
-        page.locator('.CodeMirror-line > [role="presentation"]')
-      ).toContainText(query);
+      searchTerm: table.term,
+      dataTestId: `${table.serviceName}-${table.term}`,
     });
-  }
-);
+
+    await page.click('[data-testid="schema_definition"]');
+    await page
+      .locator('.CodeMirror-line > [role="presentation"]')
+      .first()
+      .waitFor();
+
+    await expect(
+      page.locator('.CodeMirror-line > [role="presentation"]')
+    ).toContainText(query);
+  });
+});

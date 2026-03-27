@@ -21,7 +21,8 @@ export interface MicrosoftFabricConnection {
     /**
      * Azure Application client secret for Service Principal authentication.
      */
-    clientSecret: string;
+    clientSecret:         string;
+    connectionArguments?: { [key: string]: any };
     /**
      * Database of the data source. This is the name of your Fabric Warehouse or Lakehouse. This
      * is optional parameter, if you would like to restrict the metadata reading to a single

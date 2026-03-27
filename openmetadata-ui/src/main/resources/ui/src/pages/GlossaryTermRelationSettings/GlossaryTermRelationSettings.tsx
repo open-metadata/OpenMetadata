@@ -14,7 +14,9 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Card,
+  Checkbox,
   Divider,
   Input,
   Select,
@@ -23,17 +25,17 @@ import {
   Table,
   TableCard,
   TextArea,
-  Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@untitledui/icons';
+import { Check, Edit05, Lock01, Trash01, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { RELATION_META } from '../../components/OntologyExplorer/OntologyExplorer.constants';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
@@ -186,6 +188,17 @@ function GlossaryTermRelationSettingsPage() {
       { id: RelationCardinality.ManyToMany, label: t('label.many-to-many') },
       { id: RelationCardinality.Custom, label: t('label.custom') },
     ],
+    [t]
+  );
+
+  const colorOptions: SelectItemType[] = useMemo(
+    () =>
+      Object.entries(RELATION_META)
+        .filter(([key]) => /^custom\d+$/.test(key))
+        .map(([_key, { color, labelKey }]) => ({
+          id: color,
+          label: t(labelKey),
+        })),
     [t]
   );
 
@@ -438,7 +451,7 @@ function GlossaryTermRelationSettingsPage() {
 
   return (
     <PageLayoutV1 pageTitle={t('label.glossary-term-relation-plural')}>
-      <div className="tw:flex tw:flex-col tw:gap-4">
+      <div className="tw:flex tw:flex-col tw:gap-4 tw:w-full tw:min-w-0">
         <TitleBreadcrumb titleLinks={breadcrumbs} />
 
         <Card className="tw:flex tw:items-center tw:justify-between tw:p-6">
@@ -472,88 +485,127 @@ function GlossaryTermRelationSettingsPage() {
             </div>
           ) : (
             <TableCard.Root size="sm">
-              <Table
-                className="tw:table-fixed tw:w-full"
-                data-testid="relation-types-table">
+              <Table data-testid="relation-types-table">
                 <Table.Header>
-                  <Table.Head
-                    className="tw:w-[9%]"
-                    id="col-name"
-                    label={t('label.name')}
-                  />
-                  <Table.Head
-                    className="tw:w-[11%]"
-                    id="col-display-name"
-                    label={t('label.display-name')}
-                  />
-                  <Table.Head
-                    className="tw:w-[9%]"
-                    id="col-category"
-                    label={t('label.category')}
-                  />
-                  <Table.Head
-                    className="tw:w-[9%]"
-                    id="col-inverse"
-                    label={t('label.inverse')}
-                  />
-                  <Table.Head
-                    className="tw:w-[7%]"
-                    id="col-symmetric"
-                    label={t('label.symmetric')}
-                  />
-                  <Table.Head
-                    className="tw:w-[7%]"
-                    id="col-transitive"
-                    label={t('label.transitive')}
-                  />
-                  <Table.Head
-                    className="tw:w-[8%]"
-                    id="col-cross-glossary"
-                    label={t('label.cross-glossary')}
-                  />
-                  <Table.Head
-                    className="tw:w-[11%]"
-                    id="col-cardinality"
-                    label={t('label.cardinality')}
-                  />
-                  <Table.Head
-                    className="tw:w-[9%]"
-                    id="col-color"
-                    label={t('label.color')}
-                  />
-                  <Table.Head
-                    className="tw:w-[6%]"
-                    id="col-usage"
-                    label={t('label.usage')}
-                  />
-                  <Table.Head
-                    className="tw:w-[14%]"
-                    id="col-actions"
-                    label={t('label.action-plural')}
-                  />
+                  <Table.Head id="col-name">
+                    <Typography
+                      as="span"
+                      className="tw:text-gray-500 tw:whitespace-nowrap"
+                      size="text-sm"
+                      weight="regular">
+                      {t('label.name')}
+                    </Typography>
+                  </Table.Head>
+                  <Table.Head id="col-display-name">
+                    <Typography
+                      as="span"
+                      className="tw:text-gray-500 tw:whitespace-nowrap"
+                      size="text-sm"
+                      weight="regular">
+                      {t('label.display-name')}
+                    </Typography>
+                  </Table.Head>
+                  <Table.Head id="col-category">
+                    <Typography
+                      as="span"
+                      className="tw:text-gray-500 tw:whitespace-nowrap"
+                      size="text-sm"
+                      weight="regular">
+                      {t('label.category')}
+                    </Typography>
+                  </Table.Head>
+                  <Table.Head id="col-symmetric">
+                    <Typography
+                      as="span"
+                      className="tw:text-gray-500 tw:whitespace-nowrap"
+                      size="text-sm"
+                      weight="regular">
+                      {t('label.symmetric')}
+                    </Typography>
+                  </Table.Head>
+                  <Table.Head id="col-transitive">
+                    <Typography
+                      as="span"
+                      className="tw:text-gray-500 tw:whitespace-nowrap"
+                      size="text-sm"
+                      weight="regular">
+                      {t('label.transitive')}
+                    </Typography>
+                  </Table.Head>
+                  <Table.Head id="col-cross-glossary">
+                    <Typography
+                      as="span"
+                      className="tw:text-gray-500 tw:whitespace-nowrap"
+                      size="text-sm"
+                      weight="regular">
+                      {t('label.cross-glossary')}
+                    </Typography>
+                  </Table.Head>
+                  <Table.Head id="col-cardinality">
+                    <Typography
+                      as="span"
+                      className="tw:text-gray-500 tw:whitespace-nowrap"
+                      size="text-sm"
+                      weight="regular">
+                      {t('label.cardinality')}
+                    </Typography>
+                  </Table.Head>
+                  <Table.Head id="col-color">
+                    <Typography
+                      as="span"
+                      className="tw:text-gray-500 tw:whitespace-nowrap"
+                      size="text-sm"
+                      weight="regular">
+                      {t('label.color')}
+                    </Typography>
+                  </Table.Head>
+                  <Table.Head id="col-actions">
+                    <Typography
+                      as="span"
+                      className="tw:text-gray-500 tw:whitespace-nowrap"
+                      size="text-sm"
+                      weight="regular">
+                      {t('label.action-plural')}
+                    </Typography>
+                  </Table.Head>
                 </Table.Header>
                 <Table.Body items={settings?.relationTypes || []}>
                   {(record: GlossaryTermRelationType) => {
                     const count = usageCounts[record.name] || 0;
                     const isInUse = count > 0;
+                    let deleteTooltip = t('label.delete');
+                    if (!isAdminUser) {
+                      deleteTooltip = t('message.no-permission-for-action');
+                    } else if (isInUse) {
+                      deleteTooltip = t(
+                        'message.cannot-delete-relation-type-in-use',
+                        { count }
+                      );
+                    }
 
                     return (
                       <Table.Row id={record.name} key={record.name}>
-                        <Table.Cell className="tw:max-w-0 tw:overflow-hidden">
-                          <Tooltip placement="top" title={record.name}>
-                            <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
-                              <Typography
-                                as="span"
-                                className="tw:font-semibold tw:text-primary tw:truncate tw:block"
-                                data-testid={`relation-name-${record.name}`}>
-                                {record.name}
-                              </Typography>
-                            </TooltipTrigger>
-                          </Tooltip>
+                        <Table.Cell>
+                          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+                            <Lock01
+                              aria-hidden
+                              className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                            />
+                            <Tooltip placement="top" title={record.name}>
+                              <TooltipTrigger>
+                                <Typography
+                                  as="span"
+                                  className="tw:block tw:min-w-0 tw:truncate tw:font-semibold tw:text-primary"
+                                  data-testid={`relation-name-${record.name}`}>
+                                  {record.name}
+                                </Typography>
+                              </TooltipTrigger>
+                            </Tooltip>
+                          </div>
                         </Table.Cell>
-                        <Table.Cell className="tw:max-w-0 tw:overflow-hidden">
+                        <Table.Cell>
                           <Tooltip placement="top" title={record.displayName}>
-                            <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
+                            <TooltipTrigger>
                               <Typography
                                 as="span"
                                 className="tw:truncate tw:block">
@@ -562,7 +614,7 @@ function GlossaryTermRelationSettingsPage() {
                             </TooltipTrigger>
                           </Tooltip>
                         </Table.Cell>
-                        <Table.Cell className="tw:whitespace-nowrap">
+                        <Table.Cell>
                           <Badge
                             className="tw:capitalize"
                             color={
@@ -573,131 +625,81 @@ function GlossaryTermRelationSettingsPage() {
                             {record.category}
                           </Badge>
                         </Table.Cell>
-                        <Table.Cell className="tw:max-w-0 tw:overflow-hidden">
-                          <Tooltip
-                            placement="top"
-                            title={record.inverseRelation || ''}>
-                            <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
-                              <Typography
-                                as="span"
-                                className="tw:truncate tw:block">
-                                {record.inverseRelation || '-'}
-                              </Typography>
-                            </TooltipTrigger>
-                          </Tooltip>
-                        </Table.Cell>
-                        <Table.Cell className="tw:text-center">
-                          <div className="tw:flex tw:justify-center">
+                        <Table.Cell>
+                          <div className="tw:flex tw:items-center tw:justify-center">
                             {record.isSymmetric ? (
                               <Check className="tw:size-4 tw:text-success-500" />
                             ) : (
-                              <XClose className="tw:size-4 tw:text-tertiary" />
+                              <XClose className="tw:size-4 tw:text-error-primary" />
                             )}
-                          </div>
-                        </Table.Cell>
-                        <Table.Cell className="tw:text-center">
-                          <div className="tw:flex tw:justify-center">
-                            {record.isTransitive ? (
-                              <Check className="tw:size-4 tw:text-success-500" />
-                            ) : (
-                              <XClose className="tw:size-4 tw:text-tertiary" />
-                            )}
-                          </div>
-                        </Table.Cell>
-                        <Table.Cell className="tw:text-center">
-                          <div className="tw:flex tw:justify-center">
-                            {record.isCrossGlossaryAllowed ? (
-                              <Check className="tw:size-4 tw:text-success-500" />
-                            ) : (
-                              <XClose className="tw:size-4 tw:text-tertiary" />
-                            )}
-                          </div>
-                        </Table.Cell>
-                        <Table.Cell className="tw:whitespace-nowrap">
-                          {renderCardinality(record)}
-                        </Table.Cell>
-                        <Table.Cell className="tw:overflow-hidden">
-                          {record.color ? (
-                            <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
-                              <div
-                                className="tw:size-4 tw:rounded tw:border tw:border-secondary tw:shrink-0"
-                                style={{ backgroundColor: record.color }}
-                              />
-                              <Tooltip placement="top" title={record.color}>
-                                <TooltipTrigger className="tw:block tw:min-w-0 tw:overflow-hidden">
-                                  <Typography
-                                    as="span"
-                                    className="tw:text-xs tw:font-mono tw:text-tertiary tw:truncate tw:block">
-                                    {record.color}
-                                  </Typography>
-                                </TooltipTrigger>
-                              </Tooltip>
-                            </div>
-                          ) : (
-                            '-'
-                          )}
-                        </Table.Cell>
-                        <Table.Cell className="tw:text-center">
-                          <div className="tw:flex tw:justify-center">
-                            <Tooltip
-                              placement="top"
-                              title={
-                                isInUse
-                                  ? t('message.relation-type-in-use-count', {
-                                      count,
-                                    })
-                                  : t('message.relation-type-not-in-use')
-                              }>
-                              <TooltipTrigger>
-                                <Badge
-                                  color={isInUse ? 'brand' : 'gray'}
-                                  data-testid={`usage-count-${record.name}`}
-                                  type="pill-color">
-                                  {count}
-                                </Badge>
-                              </TooltipTrigger>
-                            </Tooltip>
                           </div>
                         </Table.Cell>
                         <Table.Cell>
-                          <div className="tw:flex tw:justify-end tw:gap-2 tw:whitespace-nowrap">
-                            <span
-                              className={
-                                record.isSystemDefined
-                                  ? 'tw:invisible'
-                                  : undefined
-                              }>
-                              <Button
-                                color="tertiary"
-                                data-testid={`edit-${record.name}-btn`}
-                                size="sm"
-                                onClick={() => handleEdit(record)}>
-                                {t('label.edit')}
-                              </Button>
-                            </span>
-                            <span
-                              className={
-                                record.isSystemDefined
-                                  ? 'tw:invisible'
-                                  : undefined
+                          <div className="tw:flex tw:items-center tw:justify-center">
+                            {record.isTransitive ? (
+                              <Check className="tw:size-4 tw:text-success-500" />
+                            ) : (
+                              <XClose className="tw:size-4 tw:text-error-primary" />
+                            )}
+                          </div>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <div className="tw:flex tw:items-center tw:justify-center">
+                            {record.isCrossGlossaryAllowed ? (
+                              <Check className="tw:size-4 tw:text-success-500" />
+                            ) : (
+                              <XClose className="tw:size-4 tw:text-error-primary" />
+                            )}
+                          </div>
+                        </Table.Cell>
+                        <Table.Cell>{renderCardinality(record)}</Table.Cell>
+                        <Table.Cell>
+                          {record.color ? (
+                            <div className="tw:flex tw:items-center tw:gap-2">
+                              <span
+                                className="tw:inline-block tw:size-3 tw:rounded-full tw:shrink-0 tw:border tw:border-gray-200"
+                                style={{ backgroundColor: record.color }}
+                              />
+                              <Typography
+                                as="span"
+                                className="tw:font-mono tw:text-xs tw:text-secondary">
+                                {record.color}
+                              </Typography>
+                            </div>
+                          ) : (
+                            <Typography as="span" className="tw:text-tertiary">
+                              —
+                            </Typography>
+                          )}
+                        </Table.Cell>
+                        <Table.Cell>
+                          <div className="tw:flex tw:gap-2">
+                            <ButtonUtility
+                              color="tertiary"
+                              data-testid={`edit-${record.name}-btn`}
+                              icon={Edit05}
+                              isDisabled={
+                                !isAdminUser || record.isSystemDefined
                               }
-                              title={
-                                isInUse
-                                  ? t(
-                                      'message.cannot-delete-relation-type-in-use',
-                                      { count }
-                                    )
-                                  : undefined
-                              }>
-                              <Button
-                                color="tertiary-destructive"
-                                data-testid={`delete-${record.name}-btn`}
-                                isDisabled={saving || isInUse}
-                                size="sm"
-                                onClick={() => handleDelete(record.name)}>
-                                {t('label.delete')}
-                              </Button>
-                            </span>
+                              size="sm"
+                              tooltip={
+                                isAdminUser
+                                  ? t('label.edit')
+                                  : t('message.no-permission-for-action')
+                              }
+                              onClick={() => handleEdit(record)}
+                            />
+                            <ButtonUtility
+                              color="tertiary"
+                              data-testid={`delete-${record.name}-btn`}
+                              icon={Trash01}
+                              isDisabled={
+                                !isAdminUser || record.isSystemDefined
+                              }
+                              size="sm"
+                              tooltip={deleteTooltip}
+                              onClick={() => handleDelete(record.name)}
+                            />
                           </div>
                         </Table.Cell>
                       </Table.Row>
@@ -710,8 +712,9 @@ function GlossaryTermRelationSettingsPage() {
         </div>
         <SlideoutMenu
           data-testid="relation-type-drawer"
+          dialogClassName="tw:overflow-hidden!"
           isOpen={isModalOpen}
-          width="500"
+          width={500}
           onOpenChange={(open) => {
             if (!open) {
               handleModalCancel();
@@ -732,9 +735,9 @@ function GlossaryTermRelationSettingsPage() {
               </SlideoutMenu.Header>
               <Divider orientation="horizontal" />
 
-              <SlideoutMenu.Content>
+              <SlideoutMenu.Content className="tw:flex-1 tw:min-h-0">
                 <div
-                  className="tw:flex tw:flex-col tw:gap-4"
+                  className="tw:flex tw:flex-col tw:gap-[30px]"
                   data-testid="relation-type-form">
                   <Input
                     data-testid="name-input"
@@ -837,7 +840,7 @@ function GlossaryTermRelationSettingsPage() {
                   </Select>
 
                   {formValues.cardinality === RelationCardinality.Custom && (
-                    <div className="tw:flex tw:flex-col tw:gap-4">
+                    <div className="tw:flex tw:flex-col tw:gap-7.5">
                       <Input
                         data-testid="source-max-input"
                         label={`${t('label.source')} ${t('label.max')}`}
@@ -875,37 +878,20 @@ function GlossaryTermRelationSettingsPage() {
                     </div>
                   )}
 
-                  <div>
-                    <Input
-                      data-testid="color-input"
-                      label={t('label.color')}
-                      placeholder="#1890ff"
-                      tooltip={t('message.relation-color-tooltip')}
-                      value={formValues.color ?? ''}
-                      onChange={(value) =>
-                        updateFormField('color', value || undefined)
-                      }
-                    />
-                    <div className="tw:mt-2 tw:flex tw:items-center tw:gap-2">
-                      <div
-                        className="tw:size-4 tw:rounded tw:border tw:border-secondary tw:shrink-0"
-                        data-testid="color-preview"
-                        style={{
-                          backgroundColor:
-                            formValues.color || 'var(--color-border-secondary)',
-                        }}
-                      />
-                      <Typography
-                        as="span"
-                        className="tw:text-xs tw:text-tertiary">
-                        {formValues.color ||
-                          t('label.no-entity', { entity: t('label.color') })}
-                      </Typography>
-                    </div>
-                  </div>
+                  <Select
+                    data-testid="color-select"
+                    items={colorOptions}
+                    label={t('label.color')}
+                    tooltip={t('message.relation-color-tooltip')}
+                    value={formValues.color ?? null}
+                    onChange={(key: Key | null) =>
+                      updateFormField('color', key ? String(key) : undefined)
+                    }>
+                    {(item) => <Select.Item {...item} />}
+                  </Select>
 
-                  <div className="tw:grid tw:grid-cols-3 tw:gap-4">
-                    <Toggle
+                  <div className="tw:grid tw:grid-cols-3 tw:gap-7.5">
+                    <Checkbox
                       data-testid="symmetric-switch"
                       isSelected={formValues.isSymmetric ?? false}
                       label={t('label.symmetric')}
@@ -914,7 +900,7 @@ function GlossaryTermRelationSettingsPage() {
                         updateFormField('isSymmetric', checked)
                       }
                     />
-                    <Toggle
+                    <Checkbox
                       data-testid="transitive-switch"
                       isSelected={formValues.isTransitive ?? false}
                       label={t('label.transitive')}
@@ -923,7 +909,7 @@ function GlossaryTermRelationSettingsPage() {
                         updateFormField('isTransitive', checked)
                       }
                     />
-                    <Toggle
+                    <Checkbox
                       data-testid="cross-glossary-switch"
                       isSelected={formValues.isCrossGlossaryAllowed ?? true}
                       label={t('label.cross-glossary')}

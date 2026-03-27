@@ -57,7 +57,9 @@ public class OpenLineageMapper {
   public OpenLineageMapper(OpenLineageEntityResolver entityResolver, OpenLineageSettings settings) {
     this.entityResolver = entityResolver;
 
-    if (settings != null && settings.getEventTypeFilter() != null) {
+    if (settings != null
+        && settings.getEventTypeFilter() != null
+        && !settings.getEventTypeFilter().isEmpty()) {
       this.allowedEventTypes =
           settings.getEventTypeFilter().stream()
               .map(OpenLineageEventType::value)
@@ -97,6 +99,9 @@ public class OpenLineageMapper {
 
     for (OpenLineageOutputDataset output : outputs) {
       EntityReference outputRef = entityResolver.resolveOrCreateTable(output, updatedBy);
+      if (outputRef == null && entityResolver.isStorageDataset(output.getNamespace())) {
+        outputRef = entityResolver.resolveContainer(output.getNamespace(), output.getName());
+      }
       if (outputRef == null) {
         LOG.warn(
             "Could not resolve output dataset: {}.{}", output.getNamespace(), output.getName());
@@ -108,6 +113,9 @@ public class OpenLineageMapper {
 
       for (OpenLineageInputDataset input : inputs) {
         EntityReference inputRef = entityResolver.resolveOrCreateTable(input, updatedBy);
+        if (inputRef == null && entityResolver.isStorageDataset(input.getNamespace())) {
+          inputRef = entityResolver.resolveContainer(input.getNamespace(), input.getName());
+        }
         if (inputRef == null) {
           LOG.warn("Could not resolve input dataset: {}.{}", input.getNamespace(), input.getName());
           continue;
@@ -153,6 +161,9 @@ public class OpenLineageMapper {
     for (OpenLineageInputDataset input : inputs) {
       String olName = buildOpenLineageDatasetName(input.getNamespace(), input.getName());
       EntityReference ref = entityResolver.resolveTable(input);
+      if (ref == null && entityResolver.isStorageDataset(input.getNamespace())) {
+        ref = entityResolver.resolveContainer(input.getNamespace(), input.getName());
+      }
       if (ref != null) {
         map.put(olName, ref.getFullyQualifiedName());
       }
@@ -198,12 +209,15 @@ public class OpenLineageMapper {
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
 
+    // Check outputFacets first (OpenLineage spec location), fall back to dataset facets
+    ColumnLineageFacet columnLineageFacet = null;
     OutputDatasetFacets outputFacets = output.getOutputFacets();
-    if (outputFacets == null) {
-      return columnLineages;
+    if (outputFacets != null) {
+      columnLineageFacet = outputFacets.getColumnLineage();
     }
-
-    ColumnLineageFacet columnLineageFacet = outputFacets.getColumnLineage();
+    if (columnLineageFacet == null && output.getFacets() != null) {
+      columnLineageFacet = output.getFacets().getColumnLineage();
+    }
     if (columnLineageFacet == null || columnLineageFacet.getFields() == null) {
       return columnLineages;
     }

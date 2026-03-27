@@ -11,29 +11,36 @@
  *  limitations under the License.
  */
 
-import type { Meta, StoryObj } from "@storybook/react";
-import { InfoCircle } from "@untitledui/icons";
-import { FeaturedIcon } from "../components/foundations/featured-icon/featured-icon";
+import type { Meta, StoryObj } from '@storybook/react';
+import { InfoCircle } from '@untitledui/icons';
+import { FeaturedIcon } from '../components/foundations/featured-icon/featured-icon';
 
 const meta = {
-  title: "Foundations/FeaturedIcon",
+  title: 'Foundations/FeaturedIcon',
   component: FeaturedIcon,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     color: {
-      control: "select",
-      options: ["brand", "gray", "success", "warning", "error"],
+      control: 'select',
+      options: ['brand', 'gray', 'success', 'warning', 'error'],
     },
     size: {
-      control: "select",
-      options: ["sm", "md", "lg", "xl"],
+      control: 'select',
+      options: ['sm', 'md', 'lg', 'xl'],
     },
     theme: {
-      control: "select",
-      options: ["light", "gradient", "dark", "outline", "modern", "modern-neue"],
+      control: 'select',
+      options: [
+        'light',
+        'gradient',
+        'dark',
+        'outline',
+        'modern',
+        'modern-neue',
+      ],
     },
   },
 } satisfies Meta<typeof FeaturedIcon>;
@@ -44,44 +51,68 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     icon: InfoCircle,
-    color: "brand",
-    size: "md",
-    theme: "light",
+    color: 'brand',
+    size: 'md',
+    theme: 'light',
   },
 };
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-      <FeaturedIcon icon={InfoCircle} color="brand" size="sm" theme="light" />
-      <FeaturedIcon icon={InfoCircle} color="brand" size="md" theme="light" />
-      <FeaturedIcon icon={InfoCircle} color="brand" size="lg" theme="light" />
-      <FeaturedIcon icon={InfoCircle} color="brand" size="xl" theme="light" />
+    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+      <FeaturedIcon color="brand" icon={InfoCircle} size="sm" theme="light" />
+      <FeaturedIcon color="brand" icon={InfoCircle} size="md" theme="light" />
+      <FeaturedIcon color="brand" icon={InfoCircle} size="lg" theme="light" />
+      <FeaturedIcon color="brand" icon={InfoCircle} size="xl" theme="light" />
     </div>
   ),
 };
 
 export const Themes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", maxWidth: 720 }}>
-      <FeaturedIcon icon={InfoCircle} color="brand" size="lg" theme="light" />
-      <FeaturedIcon icon={InfoCircle} color="brand" size="lg" theme="gradient" />
-      <FeaturedIcon icon={InfoCircle} color="brand" size="lg" theme="dark" />
-      <FeaturedIcon icon={InfoCircle} color="brand" size="lg" theme="outline" />
-      <FeaturedIcon icon={InfoCircle} color="brand" size="lg" theme="modern" />
-      <FeaturedIcon icon={InfoCircle} color="brand" size="lg" theme="modern-neue" />
+    <div
+      style={{
+        display: 'flex',
+        gap: 16,
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        maxWidth: 720,
+      }}>
+      <FeaturedIcon color="brand" icon={InfoCircle} size="lg" theme="light" />
+      <FeaturedIcon
+        color="brand"
+        icon={InfoCircle}
+        size="lg"
+        theme="gradient"
+      />
+      <FeaturedIcon color="brand" icon={InfoCircle} size="lg" theme="dark" />
+      <FeaturedIcon color="brand" icon={InfoCircle} size="lg" theme="outline" />
+      <FeaturedIcon color="brand" icon={InfoCircle} size="lg" theme="modern" />
+      <FeaturedIcon
+        color="brand"
+        icon={InfoCircle}
+        size="lg"
+        theme="modern-neue"
+      />
     </div>
   ),
 };
 
 export const Colors: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", maxWidth: 720 }}>
-      <FeaturedIcon icon={InfoCircle} color="brand" size="lg" theme="light" />
-      <FeaturedIcon icon={InfoCircle} color="gray" size="lg" theme="light" />
-      <FeaturedIcon icon={InfoCircle} color="success" size="lg" theme="light" />
-      <FeaturedIcon icon={InfoCircle} color="warning" size="lg" theme="light" />
-      <FeaturedIcon icon={InfoCircle} color="error" size="lg" theme="light" />
+    <div
+      style={{
+        display: 'flex',
+        gap: 16,
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        maxWidth: 720,
+      }}>
+      <FeaturedIcon color="brand" icon={InfoCircle} size="lg" theme="light" />
+      <FeaturedIcon color="gray" icon={InfoCircle} size="lg" theme="light" />
+      <FeaturedIcon color="success" icon={InfoCircle} size="lg" theme="light" />
+      <FeaturedIcon color="warning" icon={InfoCircle} size="lg" theme="light" />
+      <FeaturedIcon color="error" icon={InfoCircle} size="lg" theme="light" />
     </div>
   ),
 };

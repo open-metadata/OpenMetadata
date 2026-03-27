@@ -24,6 +24,7 @@ export const NODE_WIDTH = 120;
 export const NODE_HEIGHT = 2 * NODE_PADDING_V + 18;
 export { NODE_PADDING_H } from '../OntologyExplorer.constants';
 export const CHAR_WIDTH_ESTIMATE = 7;
+export const MODEL_NODE_MAX_WIDTH = 220;
 export const COMBO_PADDING = 48;
 export const HULL_GAP = 56;
 export const MIN_NODE_SPACING = 24;
@@ -55,6 +56,23 @@ export function estimateNodeWidth(label: string): number {
   const fromLabel = NODE_PADDING_H * 2 + label.length * CHAR_WIDTH_ESTIMATE;
 
   return Math.max(MIN_NODE_WIDTH, fromLabel);
+}
+
+export function truncateNodeLabelByWidth(label: string, width: number): string {
+  const maxChars = Math.max(
+    1,
+    Math.floor((width - NODE_PADDING_H * 2) / CHAR_WIDTH_ESTIMATE)
+  );
+
+  if (label.length <= maxChars) {
+    return label;
+  }
+
+  if (maxChars <= 1) {
+    return '...';
+  }
+
+  return `${label.slice(0, maxChars - 1)}...`;
 }
 
 /**

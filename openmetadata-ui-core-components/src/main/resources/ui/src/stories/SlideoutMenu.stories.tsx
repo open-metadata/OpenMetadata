@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Button } from "../components/base/buttons/button";
-import { SlideoutMenu } from "../components/application/slideout-menus/slideout-menu";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Button } from '../components/base/buttons/button';
+import { SlideoutMenu } from '../components/application/slideout-menus/slideout-menu';
 
 const meta = {
-  title: "Components/SlideoutMenu",
+  title: 'Components/SlideoutMenu',
   component: SlideoutMenu,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof SlideoutMenu>;
 
 export default meta;
@@ -138,28 +138,27 @@ export const WithRichContent: Story = {
                   </h3>
                   <div className="tw:flex tw:flex-col tw:divide-y tw:divide-[var(--color-border-secondary)]">
                     {[
-                      { name: "order_id", type: "BIGINT", desc: "Primary key" },
+                      { name: 'order_id', type: 'BIGINT', desc: 'Primary key' },
                       {
-                        name: "customer_id",
-                        type: "BIGINT",
-                        desc: "FK to customers table",
+                        name: 'customer_id',
+                        type: 'BIGINT',
+                        desc: 'FK to customers table',
                       },
-                      { name: "status", type: "VARCHAR", desc: "Order status" },
+                      { name: 'status', type: 'VARCHAR', desc: 'Order status' },
                       {
-                        name: "total_amount",
-                        type: "DECIMAL",
-                        desc: "Total order value",
+                        name: 'total_amount',
+                        type: 'DECIMAL',
+                        desc: 'Total order value',
                       },
                       {
-                        name: "created_at",
-                        type: "TIMESTAMP",
-                        desc: "Order creation time",
+                        name: 'created_at',
+                        type: 'TIMESTAMP',
+                        desc: 'Order creation time',
                       },
                     ].map((col) => (
                       <div
                         className="tw:flex tw:items-start tw:gap-3 tw:py-3"
-                        key={col.name}
-                      >
+                        key={col.name}>
                         <span className="tw:font-mono tw:text-sm tw:text-primary tw:w-28 tw:shrink-0">
                           {col.name}
                         </span>
@@ -178,11 +177,10 @@ export const WithRichContent: Story = {
                     Tags
                   </h3>
                   <div className="tw:flex tw:flex-wrap tw:gap-2">
-                    {["PII", "Sensitive", "Orders"].map((tag) => (
+                    {['PII', 'Sensitive', 'Orders'].map((tag) => (
                       <span
                         className="tw:rounded-full tw:border tw:border-primary tw:px-3 tw:py-0.5 tw:text-xs tw:font-medium tw:text-secondary"
-                        key={tag}
-                      >
+                        key={tag}>
                         {tag}
                       </span>
                     ))}
@@ -288,25 +286,25 @@ export const WithRenderProps: Story = {
                 Render Props
               </h2>
               <p className="tw:text-sm tw:text-tertiary tw:mt-1">
-                State:{" "}
-                {isEntering ? "entering" : isExiting ? "exiting" : "open"}
+                State:{' '}
+                {isEntering ? 'entering' : isExiting ? 'exiting' : 'open'}
               </p>
             </SlideoutMenu.Header>
             <SlideoutMenu.Content>
               <p className="tw:text-sm tw:text-secondary">
                 The SlideoutMenu supports a render-props pattern, giving you
-                access to{" "}
+                access to{' '}
                 <code className="tw:font-mono tw:text-xs tw:bg-secondary tw:rounded tw:px-1">
                   close
                 </code>
-                ,{" "}
+                ,{' '}
                 <code className="tw:font-mono tw:text-xs tw:bg-secondary tw:rounded tw:px-1">
                   isEntering
                 </code>
-                , and{" "}
+                , and{' '}
                 <code className="tw:font-mono tw:text-xs tw:bg-secondary tw:rounded tw:px-1">
                   isExiting
-                </code>{" "}
+                </code>{' '}
                 animation states from the children function.
               </p>
             </SlideoutMenu.Content>

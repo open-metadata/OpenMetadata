@@ -512,6 +512,9 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__LOGGING__LOGGING_LEVEL: ${AIRFLOW_LOGGING_LEVEL:-DEBUG}
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/opt/airflow/dag_generated_configs"
+      # OpenLineage transport config (optional - enable for lineage via OL)
+      # AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type": "http", "url": "http://openmetadata-server:8585/api/v1/openlineage/", "endpoint": "lineage", "auth": {"type": "api_key", "api_key": "<OM_JWT_TOKEN>"}}'
+      # AIRFLOW__OPENLINEAGE__NAMESPACE: local_airflow
       DB_HOST: ${AIRFLOW_DB_HOST:-mysql}
       DB_PORT: ${AIRFLOW_DB_PORT:-3306}
       AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}

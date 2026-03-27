@@ -20,8 +20,14 @@
   background: @white;
   &.explore,
   &.lineage,
-  &.glossary-term-assets-tab {
+  &.glossary-term-assets-tab,
+  &.ontology-explorer {
     background: @background-primary;
+
+    .summary-panel-container.drawer-summary-panel-container {
+      flex: 1;
+      min-width: 0;
+    }
   }
 
   .overview-tab-content {

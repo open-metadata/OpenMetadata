@@ -15,14 +15,14 @@ import {
   argbFromHex,
   hexFromArgb,
   themeFromSourceColor,
-} from "@material/material-color-utilities";
-import { normalizeHexColor } from "./colorValidation";
+} from '@material/material-color-utilities';
+import { normalizeHexColor } from './colorValidation';
 import type {
   ColorPalette,
   CustomColors,
   DynamicPalettes,
   ThemeColors,
-} from "../types";
+} from '../types';
 
 // No conversion needed - return hex directly
 function normalizeHex(hex: string): string {
@@ -42,7 +42,9 @@ export const generateMaterialPalette = (baseColor: string): ColorPalette => {
   const palette = theme.palettes.primary;
   const tones = [99, 95, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5];
 
-  const shadeKeys: Array<keyof ColorPalette> = [25, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+  const shadeKeys: Array<keyof ColorPalette> = [
+    25, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950,
+  ];
 
   const result = {} as ColorPalette;
   shadeKeys.forEach((key, index) => {
@@ -51,9 +53,7 @@ export const generateMaterialPalette = (baseColor: string): ColorPalette => {
       result[key] = normalizeHex(baseColor);
     } else {
       // Generate other shades using Material Design
-      result[key] = normalizeHex(
-        hexFromArgb(palette.tone(tones[index]))
-      );
+      result[key] = normalizeHex(hexFromArgb(palette.tone(tones[index])));
     }
   });
 
