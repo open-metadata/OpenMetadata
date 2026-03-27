@@ -194,11 +194,10 @@ test.describe(
         await expect(
           page.locator("[data-testid='select-owner-tabs']")
         ).toBeVisible();
-
-        await page
+ 
+        await expect(page
           .getByTestId('select-owner-tabs')
-          .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+          .getByTestId('loader')).not.toBeAttached()
 
         await page
           .locator("[data-testid='select-owner-tabs']")

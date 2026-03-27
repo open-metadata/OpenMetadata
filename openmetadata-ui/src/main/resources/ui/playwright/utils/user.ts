@@ -119,7 +119,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     .poll(
       async () => {
         const searchRequest = page.waitForResponse('/api/v1/search/query*');
-        await searchBar.fill('');
+        await searchBar.clear();
         await searchBar.fill(userName);
         await searchRequest;
         await loaderPromise.catch(() => undefined);

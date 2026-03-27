@@ -327,9 +327,10 @@ test.describe(
         ).toBeHidden();
 
         const { apiContext } = await getApiContext(viewIncidentsPage);
-        await fetchIncidentId(apiContext);
+        const id = await fetchIncidentId(apiContext);
+        expect(id).toBeDefined();
         const res = await apiContext.patch(
-          `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${incidentId}`,
+          `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${id}`,
           {
             data: [{ op: 'add', path: '/severity', value: 'Severity1' }],
             headers: { 'Content-Type': 'application/json-patch+json' },
@@ -359,10 +360,10 @@ test.describe(
         );
         expect(postRes.status()).toBe(403);
 
-        await fetchIncidentId(apiContext);
-        if (incidentId) {
+        const id = await fetchIncidentId(apiContext);
+        if (id) {
           const patchRes = await apiContext.patch(
-            `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${incidentId}`,
+            `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${id}`,
             {
               data: [{ op: 'add', path: '/severity', value: 'Severity4' }],
               headers: { 'Content-Type': 'application/json-patch+json' },

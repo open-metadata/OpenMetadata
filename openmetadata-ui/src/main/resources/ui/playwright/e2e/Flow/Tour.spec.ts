@@ -25,10 +25,7 @@ const waitForTourBadgeWithRetry = async (
 ) => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      await page.locator('[data-tour-elem="badge"]').waitFor({
-        state: 'visible',
-        timeout,
-      });
+      await expect(page.locator('[data-tour-elem="badge"]')).toBeVisible({timeout: timeout})
 
       return; // Success
     } catch (e) {
@@ -45,7 +42,7 @@ const waitForTourBadgeWithRetry = async (
 
 const expectTourBadge = async (page: Page, step: string, timeout = 10000) => {
   const badge = page.locator('[data-tour-elem="badge"]');
-  await badge.waitFor({ state: 'visible', timeout });
+  await expect(badge).toBeVisible({timeout: timeout})
   await expect
     .poll(async () => (await badge.textContent())?.trim(), {
       timeout,
