@@ -350,7 +350,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .build(
               new CacheLoader<String, Integer>() {
                 @Override
-                public Integer load(String key) throws Exception {
+                public Integer load(String key) {
                   throw new UnsupportedOperationException("Use get() method with a custom loader");
                 }
               });
@@ -4635,13 +4635,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected List<EntityReference> getFollowers(T entity, Include include) {
     Optional<List<EntityReference>> bundleFollowers =
         getRelationsFromReadBundle(entity, FIELD_FOLLOWERS, include);
-    if (bundleFollowers.isPresent()) {
-      return bundleFollowers.get();
-    }
-
-    return !supportsFollower || entity == null
-        ? Collections.emptyList()
-        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER, include);
+    return bundleFollowers.orElseGet(
+        () ->
+            !supportsFollower || entity == null
+                ? Collections.emptyList()
+                : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER, include));
   }
 
   protected Votes getVotes(T entity) {
@@ -5275,11 +5273,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Optional<List<EntityReference>> bundleDataProducts =
         getRelationsFromReadBundle(entity, FIELD_DATA_PRODUCTS, include);
-    if (bundleDataProducts.isPresent()) {
-      return bundleDataProducts.get();
-    }
-
-    return findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT, include);
+    return bundleDataProducts.orElseGet(
+        () -> findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT, include));
   }
 
   protected List<EntityReference> getDataProducts(UUID entityId, String entityType) {
@@ -5306,11 +5301,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected List<EntityReference> getChildren(T entity, Include include) {
     Optional<List<EntityReference>> bundleChildren =
         getRelationsFromReadBundle(entity, FIELD_CHILDREN, include);
-    if (bundleChildren.isPresent()) {
-      return bundleChildren.get();
-    }
-
-    return findTo(entity.getId(), entityType, Relationship.CONTAINS, entityType, include);
+    return bundleChildren.orElseGet(
+        () -> findTo(entity.getId(), entityType, Relationship.CONTAINS, entityType, include));
   }
 
   protected List<EntityReference> getReviewers(T entity) {
@@ -5320,13 +5312,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected List<EntityReference> getReviewers(T entity, Include include) {
     Optional<List<EntityReference>> bundleReviewers =
         getRelationsFromReadBundle(entity, FIELD_REVIEWERS, include);
-    if (bundleReviewers.isPresent()) {
-      return bundleReviewers.get();
-    }
-
-    return supportsReviewers
-        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null, include)
-        : null;
+    return bundleReviewers.orElseGet(
+        () ->
+            supportsReviewers
+                ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null, include)
+                : null);
   }
 
   protected List<EntityReference> getExperts(T entity) {
@@ -5336,13 +5326,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected List<EntityReference> getExperts(T entity, Include include) {
     Optional<List<EntityReference>> bundleExperts =
         getRelationsFromReadBundle(entity, FIELD_EXPERTS, include);
-    if (bundleExperts.isPresent()) {
-      return bundleExperts.get();
-    }
-
-    return supportsExperts
-        ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER, include)
-        : null;
+    return bundleExperts.orElseGet(
+        () ->
+            supportsExperts
+                ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER, include)
+                : null);
   }
 
   public final void inheritDomains(T entity, Fields fields, EntityInterface parent) {
@@ -6031,7 +6019,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
     private boolean versionChanged = false;
     @Getter protected ChangeDescription incrementalChangeDescription = null;
-    private ChangeSource changeSource;
+    private final ChangeSource changeSource;
     private final boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
@@ -7738,9 +7726,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Also check incrementalChangeDescription - this captures the name change
       // even when renameProcessed prevents it from being in the main changeDescription
       if (incChangeDesc != null && incChangeDesc.getFieldsUpdated() != null) {
-        if (incChangeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
-          return true;
-        }
+        return incChangeDesc.getFieldsUpdated().stream()
+            .anyMatch(fc -> "name".equals(fc.getName()));
       }
 
       return false;
@@ -9760,8 +9747,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
 
-      List<T> changedEntities =
-          changedUpdaters.stream().map(EntityUpdater::getUpdated).map(e -> (T) e).toList();
+      List<T> changedEntities = changedUpdaters.stream().map(EntityUpdater::getUpdated).toList();
       if (!changedEntities.isEmpty()) {
         try (var ignored = phase("setInheritedFields")) {
           // Only changed entities need inheritance hydration for downstream side effects.
@@ -9817,7 +9803,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
             succeededUpdaters.stream()
                 .filter(updater -> updater.isVersionChanged() || updater.isEntityChanged())
                 .map(EntityUpdater::getUpdated)
-                .map(e -> (T) e)
                 .toList();
         if (!fallbackChanged.isEmpty()) {
           try (var ignored = phase("invalidateCacheBulk")) {

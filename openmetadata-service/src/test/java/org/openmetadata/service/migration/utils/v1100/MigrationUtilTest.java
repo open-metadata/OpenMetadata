@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.utils.v1100;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -82,10 +83,10 @@ class MigrationUtilTest {
     assertEquals(4, updateSql.size());
     assertEquals(2, updateSql.stream().filter(sql -> sql.contains("glossary_term_entity")).count());
     assertEquals(2, updateSql.stream().filter(sql -> sql.contains("data_contract_entity")).count());
-    updateSql.forEach(sql -> assertEquals(true, sql.contains("jsonb_set")));
+    updateSql.forEach(sql -> assertTrue(sql.contains("jsonb_set")));
     updateSql.stream()
         .filter(sql -> sql.contains("data_contract_entity"))
-        .forEach(sql -> assertEquals(true, sql.contains("WHEN t.json->>'status' = 'Active'")));
+        .forEach(sql -> assertTrue(sql.contains("WHEN t.json->>'status' = 'Active'")));
   }
 
   @Test
@@ -102,13 +103,12 @@ class MigrationUtilTest {
     verify(handle, times(4)).createUpdate(sqlCaptor.capture());
 
     List<String> updateSql = sqlCaptor.getAllValues();
-    updateSql.forEach(sql -> assertEquals(true, sql.contains("JSON_SET(JSON_REMOVE")));
+    updateSql.forEach(sql -> assertTrue(sql.contains("JSON_SET(JSON_REMOVE")));
     updateSql.stream()
         .filter(sql -> sql.contains("data_contract_entity"))
         .forEach(
             sql ->
-                assertEquals(
-                    true,
+                assertTrue(
                     sql.contains(
                         "WHEN JSON_UNQUOTE(JSON_EXTRACT(t.json, '$.status')) = 'Active'")));
   }

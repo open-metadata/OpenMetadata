@@ -33,9 +33,12 @@
       "default": "10"
     },
     "connection": {
-      "title": "Metadata Database Connection",
-      "description": "Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.",
+      "title": "Airflow Connection",
+      "description": "Choose between database connection or REST API connection to fetch metadata from Airflow.",
       "oneOf": [
+        {
+          "$ref": "../../../utils/airflowRestApiConnection.json"
+        },
         {
           "$ref": "backendConnection.json"
         },

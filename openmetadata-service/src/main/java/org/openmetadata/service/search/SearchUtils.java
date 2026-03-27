@@ -293,7 +293,7 @@ public final class SearchUtils {
       return Collections.emptySet();
     }
     Set<String> requiredFields = new HashSet<>(Arrays.asList(fields.replace(" ", "").split(",")));
-    requiredFields.removeAll(SOURCE_FIELDS_TO_EXCLUDE);
+    SOURCE_FIELDS_TO_EXCLUDE.forEach(requiredFields::remove);
     // Without these fields lineage can't be built
     requiredFields.addAll(
         Set.of("fullyQualifiedName", "service", "fqnHash", "id", "entityType", "upstreamLineage"));
