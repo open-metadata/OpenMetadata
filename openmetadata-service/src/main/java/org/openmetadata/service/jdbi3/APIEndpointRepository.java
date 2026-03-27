@@ -654,14 +654,12 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "endpointURL",
-          () -> {
-            recordChange("endpointURL", original.getEndpointURL(), updated.getEndpointURL());
-          });
+          () -> recordChange("endpointURL", original.getEndpointURL(), updated.getEndpointURL()));
       compareAndUpdate(
           "requestMethod",
-          () -> {
-            recordChange("requestMethod", original.getRequestMethod(), updated.getRequestMethod());
-          });
+          () ->
+              recordChange(
+                  "requestMethod", original.getRequestMethod(), updated.getRequestMethod()));
 
       compareAndUpdate(
           "requestSchema",
@@ -694,15 +692,14 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
           });
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
 
     private void updateSchemaFields(

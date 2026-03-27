@@ -1265,28 +1265,19 @@ public class TeamRepository extends EntityRepository<Team> {
       }
       compareAndUpdate(
           "profile",
-          () -> {
-            recordChange("profile", original.getProfile(), updated.getProfile(), true);
-          });
+          () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
       compareAndUpdate(
           "isJoinable",
-          () -> {
-            recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
-          });
+          () -> recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable()));
       compareAndUpdate(
           "teamType",
-          () -> {
-            recordChange("teamType", original.getTeamType(), updated.getTeamType());
-          });
+          () -> recordChange("teamType", original.getTeamType(), updated.getTeamType()));
       // If the team is empty then email should be null, not be empty
       if (CommonUtil.nullOrEmpty(updated.getEmail())) {
         updated.setEmail(null);
       }
       compareAndUpdate(
-          "email",
-          () -> {
-            recordChange("email", original.getEmail(), updated.getEmail());
-          });
+          "email", () -> recordChange("email", original.getEmail(), updated.getEmail()));
       AtomicBoolean hierarchyOrPolicyChanged = new AtomicBoolean(false);
       compareAndUpdate(
           "users",

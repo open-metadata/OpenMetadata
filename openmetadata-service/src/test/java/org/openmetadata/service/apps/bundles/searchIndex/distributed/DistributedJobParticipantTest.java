@@ -204,9 +204,7 @@ class DistributedJobParticipantTest {
     try (MockedConstruction<DistributedSearchIndexCoordinator> mocked =
         mockConstruction(
             DistributedSearchIndexCoordinator.class,
-            (mock, context) -> {
-              when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of());
-            })) {
+            (mock, context) -> when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of()))) {
 
       participant =
           new DistributedJobParticipant(

@@ -330,7 +330,7 @@ class RequestLatencyContextTest {
 
   @Test
   void testNullRequestContext() {
-    assertDoesNotThrow(() -> RequestLatencyContext.endRequest());
+    assertDoesNotThrow(RequestLatencyContext::endRequest);
 
     Timer.Sample sample = RequestLatencyContext.startDatabaseOperation();
     assertNull(sample);
@@ -499,11 +499,7 @@ class RequestLatencyContextTest {
             });
 
     AtomicReference<String> result = new AtomicReference<>();
-    Thread child =
-        new Thread(
-            () -> {
-              result.set(wrapped.get());
-            });
+    Thread child = new Thread(() -> result.set(wrapped.get()));
     child.start();
     child.join();
 

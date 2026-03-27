@@ -572,7 +572,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       LOG.info("Reading security configuration from file: {}", configFile);
-      String yamlContent = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+      String yamlContent = Files.readString(file.toPath());
 
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       SecurityConfiguration securityConfig =

@@ -684,8 +684,7 @@ public class SearchIndexRetryWorker implements Managed {
               jobConfiguration != null ? jobConfiguration.getEntities() : null);
       Set<String> searchableEntities = searchRepository.getSearchEntities();
 
-      boolean containsAllToken =
-          requestedEntities.stream().anyMatch(entity -> "all".equalsIgnoreCase(entity));
+      boolean containsAllToken = requestedEntities.stream().anyMatch("all"::equalsIgnoreCase);
       Set<String> suspendedTypes =
           containsAllToken ? new HashSet<>(searchableEntities) : new HashSet<>(requestedEntities);
       suspendedTypes.retainAll(searchableEntities);

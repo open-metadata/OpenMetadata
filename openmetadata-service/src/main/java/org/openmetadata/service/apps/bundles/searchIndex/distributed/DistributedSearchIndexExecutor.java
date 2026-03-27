@@ -424,7 +424,7 @@ public class DistributedSearchIndexExecutor {
     partitionHeartbeatThread =
         Thread.ofVirtual()
             .name("reindex-partition-heartbeat-" + jobId.toString().substring(0, 8))
-            .start(() -> runPartitionHeartbeatLoop());
+            .start(this::runPartitionHeartbeatLoop);
 
     // Apply CPU-budgeted pool sizes from auto-tune
     applyPoolSizes(reindexConfig, bulkSink);
@@ -1086,8 +1086,7 @@ public class DistributedSearchIndexExecutor {
     // Set up per-entity promotion callback if recreating indices
     if (recreateIndex && recreateContext != null) {
       this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
-      entityTracker.setOnEntityComplete(
-          (entityType, success) -> promoteEntityIndex(entityType, success));
+      entityTracker.setOnEntityComplete(this::promoteEntityIndex);
       LOG.info(
           "Per-entity promotion callback SET for job {} (recreateIndex={}, recreateContext entities={})",
           jobId,
