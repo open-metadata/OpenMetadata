@@ -13,6 +13,7 @@
 
 import {
   Autocomplete,
+  Button,
   Divider,
   Select,
   Toggle,
@@ -39,6 +40,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
   relationTypes,
   onFiltersChange,
   onViewModeChange,
+  onClearAll,
   viewModeDisabled = false,
 }) => {
   const { t } = useTranslation();
@@ -118,6 +120,9 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
     },
     [filters, onFiltersChange]
   );
+
+  const hasActiveFilters =
+    filters.glossaryIds.length > 0 || filters.relationTypes.length > 0;
 
   const glossaryAllOnlySelected = filters.glossaryIds.includes(
     ONTOLOGY_AUTOCOMPLETE_ALL_ID
@@ -286,6 +291,21 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           onFiltersChange({ ...filters, showIsolatedNodes: checked })
         }
       />
+
+      {onClearAll && hasActiveFilters && (
+        <>
+          <div className="tw:ml-auto" />
+          <Button
+            color="tertiary"
+            data-testid="ontology-clear-all-btn"
+            size="sm"
+            onClick={onClearAll}>
+            {t('clear-entity', {
+              entity: t('label.all'),
+            })}
+          </Button>
+        </>
+      )}
     </div>
   );
 };

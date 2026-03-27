@@ -31,7 +31,6 @@ import {
   EDGE_LINE_WIDTH_DEFAULT,
   EDGE_LINE_WIDTH_HIGHLIGHTED,
   EDGE_STROKE_COLOR,
-  HIERARCHY_BADGE_OFFSET_X,
   HIERARCHY_BADGE_OFFSET_Y,
   HIERARCHY_BADGE_TEXT_INSET,
   LayoutEngine,
@@ -40,6 +39,7 @@ import {
   NODE_BADGE_OFFSET_X,
   NODE_BADGE_OFFSET_Y,
   NODE_BORDER_COLOR,
+  NODE_BORDER_RADIUS,
   NODE_FILL_DEFAULT,
   NODE_LABEL_FILL,
   type LayoutEngineType,
@@ -327,18 +327,32 @@ export function useOntologyGraph({
             hierarchyBadgeFontSize
           );
 
+          const hierarchyBadgePaddingH = 8;
+          const avgCharPx = Math.max(5.5, hierarchyBadgeFontSize * 0.65);
+          const estimatedBadgeW =
+            hierarchyBadgeText.length * avgCharPx + hierarchyBadgePaddingH * 2;
+          const hierarchyBadgeOffsetX = -nodeW / 2 + estimatedBadgeW / 2 - 3;
+
           return {
             ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
             zIndex: 2,
             opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
             stroke: nodeBorderColor,
+            ...(hasHierarchyBadge && {
+              radius: [
+                0,
+                NODE_BORDER_RADIUS,
+                NODE_BORDER_RADIUS,
+                NODE_BORDER_RADIUS,
+              ],
+            }),
             badge: hasHierarchyBadge,
             badges: hasHierarchyBadge
               ? [
                   {
                     text: hierarchyBadgeText,
                     placement: 'top',
-                    offsetX: HIERARCHY_BADGE_OFFSET_X,
+                    offsetX: hierarchyBadgeOffsetX,
                     offsetY: HIERARCHY_BADGE_OFFSET_Y,
                     fontSize: hierarchyBadgeFontSize,
                     fontWeight: 600,
@@ -350,7 +364,12 @@ export function useOntologyGraph({
                     backgroundRadius: [8, 8, 0, 0],
                     backgroundStroke: badgeColor,
                     backgroundLineWidth: 1,
-                    padding: [4, 8, 4, 8],
+                    padding: [
+                      4,
+                      hierarchyBadgePaddingH,
+                      4,
+                      hierarchyBadgePaddingH,
+                    ],
                     backgroundOpacity: 1,
                   },
                 ]

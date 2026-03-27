@@ -1330,7 +1330,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         <Card
           className="tw:mb-4 tw:flex tw:flex-col tw:px-5 tw:py-3"
           data-testid="ontology-explorer-header">
-          <Typography size="text-md" weight="semibold">
+          <Typography size="text-sm" weight="medium">
             {t('label.ontology-explorer')}
           </Typography>
           {filteredGraphData && statsItems.length > 0 && (
@@ -1371,6 +1371,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   glossaries={glossaries}
                   relationTypes={relationTypes}
                   viewModeDisabled={explorationMode === 'data'}
+                  onClearAll={() => setFilters(DEFAULT_FILTERS)}
                   onFiltersChange={handleFiltersChange}
                   onViewModeChange={handleViewModeChange}
                 />

@@ -35,7 +35,10 @@ import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { RELATION_META } from '../../components/OntologyExplorer/OntologyExplorer.constants';
+import {
+  COLOR_META_BY_HEX,
+  RELATION_META,
+} from '../../components/OntologyExplorer/OntologyExplorer.constants';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
@@ -210,6 +213,29 @@ function GlossaryTermRelationSettingsPage() {
       [RelationCardinality.ManyToMany]: t('label.many-to-many'),
       [RelationCardinality.Custom]: t('label.custom'),
     }),
+    [t]
+  );
+
+  const renderColorBadge = useCallback(
+    (record: GlossaryTermRelationType) => {
+      const effectiveColor = record.color ?? RELATION_META[record.name]?.color;
+
+      if (!effectiveColor) {
+        return (
+          <Typography as="span" className="tw:text-tertiary">
+            —
+          </Typography>
+        );
+      }
+
+      const meta = COLOR_META_BY_HEX[effectiveColor.toLowerCase()];
+
+      return (
+        <Badge color="gray" type="color">
+          {meta ? t(meta.labelKey) : effectiveColor}
+        </Badge>
+      );
+    },
     [t]
   );
 
@@ -587,10 +613,12 @@ function GlossaryTermRelationSettingsPage() {
                       <Table.Row id={record.name} key={record.name}>
                         <Table.Cell>
                           <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
-                            <Lock01
-                              aria-hidden
-                              className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                            />
+                            {record.isSystemDefined && (
+                              <Lock01
+                                aria-hidden
+                                className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                              />
+                            )}
                             <Tooltip placement="top" title={record.name}>
                               <TooltipTrigger>
                                 <Typography
@@ -653,25 +681,7 @@ function GlossaryTermRelationSettingsPage() {
                           </div>
                         </Table.Cell>
                         <Table.Cell>{renderCardinality(record)}</Table.Cell>
-                        <Table.Cell>
-                          {record.color ? (
-                            <div className="tw:flex tw:items-center tw:gap-2">
-                              <span
-                                className="tw:inline-block tw:size-3 tw:rounded-full tw:shrink-0 tw:border tw:border-gray-200"
-                                style={{ backgroundColor: record.color }}
-                              />
-                              <Typography
-                                as="span"
-                                className="tw:font-mono tw:text-xs tw:text-secondary">
-                                {record.color}
-                              </Typography>
-                            </div>
-                          ) : (
-                            <Typography as="span" className="tw:text-tertiary">
-                              —
-                            </Typography>
-                          )}
-                        </Table.Cell>
+                        <Table.Cell>{renderColorBadge(record)}</Table.Cell>
                         <Table.Cell>
                           <div className="tw:flex tw:gap-2">
                             <ButtonUtility

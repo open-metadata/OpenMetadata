@@ -1183,20 +1183,27 @@ export const addRelatedTerms = async (
   relatedTerms: GlossaryTerm[]
 ) => {
   await page.getByTestId('related-term-add-button').click();
+
+  const autocompleteInput = page
+    .locator('[data-testid^="term-autocomplete-"]')
+    .first()
+    .locator('input');
+
   for (const term of relatedTerms) {
-    const entityName = get(term, 'responseData.name');
-    const entityFqn = get(term, 'responseData.fullyQualifiedName');
-    await page.locator('#tagsForm_tags').fill(entityName);
-    await page.getByTestId(`tag-${entityFqn}`).click();
+    const entityDisplayName =
+      get(term, 'responseData.displayName') || get(term, 'responseData.name');
+    const searchRes = page.waitForResponse('**/api/v1/glossaryTerms/search*');
+    await autocompleteInput.fill(entityDisplayName);
+    await searchRes;
+    await page.getByRole('option', { name: entityDisplayName }).click();
   }
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-  await page.getByTestId('saveAssociatedTag').click();
+  await page.getByTestId('save-related-terms').click();
   await saveRes;
 
   for (const term of relatedTerms) {
     const entityName = get(term, 'responseData.displayName');
-
     await expect(page.getByTestId(entityName)).toBeVisible();
   }
 };
