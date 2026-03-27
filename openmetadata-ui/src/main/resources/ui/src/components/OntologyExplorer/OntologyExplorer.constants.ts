@@ -238,6 +238,97 @@ export const RELATION_COLORS: Record<string, string> = Object.fromEntries(
   Object.entries(RELATION_META).map(([key, { color }]) => [key, color])
 );
 
+export const COLOR_META_BY_HEX: Record<
+  string,
+  { color: string; background: string; labelKey: string }
+> = {
+  '#1570ef': {
+    color: '#1570ef',
+    background: '#eff8ff',
+    labelKey: 'label.color-blue',
+  },
+  '#b42318': {
+    color: '#b42318',
+    background: '#fef3f2',
+    labelKey: 'label.color-red',
+  },
+  '#b54708': {
+    color: '#b54708',
+    background: '#fffaeb',
+    labelKey: 'label.color-yellow',
+  },
+  '#067647': {
+    color: '#067647',
+    background: '#ecfdf3',
+    labelKey: 'label.color-green',
+  },
+  '#4e5ba6': {
+    color: '#4e5ba6',
+    background: '#f8f9fc',
+    labelKey: 'label.color-blue-gray',
+  },
+  '#026aa2': {
+    color: '#026aa2',
+    background: '#f0f9ff',
+    labelKey: 'label.color-blue-light',
+  },
+  '#155eef': {
+    color: '#155eef',
+    background: '#eff4ff',
+    labelKey: 'label.color-dark-blue',
+  },
+  '#6938ef': {
+    color: '#6938ef',
+    background: '#f4f3ff',
+    labelKey: 'label.color-purple',
+  },
+  '#ba24d5': {
+    color: '#ba24d5',
+    background: '#fdf4ff',
+    labelKey: 'label.color-fuchsia',
+  },
+  '#c11574': {
+    color: '#c11574',
+    background: '#fdf2fa',
+    labelKey: 'label.color-pink',
+  },
+  '#bc1b06': {
+    color: '#bc1b06',
+    background: '#fff4ed',
+    labelKey: 'label.color-orange',
+  },
+  '#107569': {
+    color: '#107569',
+    background: '#f0fdf9',
+    labelKey: 'label.color-rose',
+  },
+  '#535862': {
+    color: '#535862',
+    background: '#fafafa',
+    labelKey: 'label.color-gray',
+  },
+  '#e31b54': {
+    color: '#e31b54',
+    background: '#fff1f3',
+    labelKey: 'label.color-violet',
+  },
+  '#7839ee': {
+    color: '#7839ee',
+    background: '#f5f3ff',
+    labelKey: 'label.color-teal',
+  },
+  '#4f7a21': {
+    color: '#4f7a21',
+    background: '#f5fbee',
+    labelKey: 'label.color-moss',
+  },
+  '#0e7090': {
+    color: '#0e7090',
+    background: '#ecfdff',
+    labelKey: 'label.color-cyan',
+  },
+};
+
 export const EDGE_STROKE_COLOR = '#9196B1';
 export const DATA_MODE_ASSET_EDGE_STROKE_COLOR = '#D9DEED';
 export const DIMMED_NODE_OPACITY = 0.35;
