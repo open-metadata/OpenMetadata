@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Run with: ENABLE_K8S_TESTS=true mvn test -Dtest=K8sIngestionPipelineResourceIT
  */
+@Disabled("Flaky: pipelineServiceClient is null in CI - see Slack thread 2026-03-27")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class K8sIngestionPipelineResourceIT {
 

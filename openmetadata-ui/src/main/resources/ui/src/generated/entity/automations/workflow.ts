@@ -1065,7 +1065,7 @@ export interface ConfigObject {
      *
      * GCP Credentials for Google Drive API
      */
-    credentials?: CredentialsClass;
+    credentials?: PurpleGCPCredentials;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
@@ -1732,9 +1732,8 @@ export interface ConfigObject {
      *
      * Choose between API or database connection fetch metadata from superset.
      *
-     * Underlying database connection. See
-     * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
-     * supported backends.
+     * Choose between database connection or REST API connection to fetch metadata from
+     * Airflow.
      *
      * Matillion Auth Configuration
      *
@@ -2940,6 +2939,8 @@ export enum AuthMechanismEnum {
  *
  * AWS credentials configs.
  *
+ * AWS credentials for generating MWAA CLI token.
+ *
  * AWS credentials configuration.
  *
  * Authentication type to connect to Apache Ranger.
@@ -3121,6 +3122,8 @@ export interface AuthenticationType {
  * AWS credentials required to access the S3 file.
  *
  * AWS credentials configs.
+ *
+ * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
  */
@@ -3531,6 +3534,8 @@ export interface IcebergFileSystem {
  *
  * AWS credentials configs.
  *
+ * AWS credentials for generating MWAA CLI token.
+ *
  * AWS credentials configuration.
  *
  * Azure Cloud Credentials
@@ -3804,11 +3809,15 @@ export interface ConfigSourceConnection {
  *
  * GCP credentials configuration for authenticating with Pub/Sub.
  *
+ * GCP credentials configuration.
+ *
  * GCP Credentials for Google Drive API
  *
  * AWS credentials required to access the S3 file.
  *
  * AWS credentials configs.
+ *
+ * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
  */
@@ -4019,9 +4028,10 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Mysql Database Connection Config
  *
- * Underlying database connection. See
- * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
- * supported backends.
+ * Choose between database connection or REST API connection to fetch metadata from
+ * Airflow.
+ *
+ * Airflow REST API Connection Config for connecting via REST API.
  *
  * Lineage Backend Connection Config
  *
@@ -4132,7 +4142,10 @@ export interface ConfigConnection {
      * SSL Configuration details.
      */
     sslConfig?: ConnectionSSLConfig;
-    verifySSL?: VerifySSL;
+    /**
+     * Whether to verify SSL certificates when connecting to the Airflow API.
+     */
+    verifySSL?: boolean | VerifySSL;
     /**
      * Choose Auth Config Type.
      */
@@ -4192,6 +4205,15 @@ export interface ConfigConnection {
      */
     useSlowLogs?: boolean;
     /**
+     * Airflow REST API version.
+     */
+    apiVersion?: APIVersion;
+    /**
+     * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+     * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
+     */
+    authConfig?: AuthenticationConfiguration;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
@@ -4200,6 +4222,92 @@ export interface ConfigConnection {
      */
     databaseMode?:                  string;
     supportsViewLineageExtraction?: boolean;
+}
+
+/**
+ * Airflow REST API version.
+ *
+ * Airflow REST API version. Use v1 for Airflow 2.x and v2 for Airflow 3.x. Auto will detect
+ * the version automatically.
+ */
+export enum APIVersion {
+    Auto = "auto",
+    V1 = "v1",
+    V2 = "v2",
+}
+
+/**
+ * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+ * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
+ *
+ * Username and password for Airflow API authentication.
+ *
+ * Static access token for Airflow API authentication.
+ *
+ * GCP credentials for Google Cloud Composer. Supports service account values, credentials
+ * path, workload identity (external account), and ADC. Tokens are auto-refreshed at
+ * runtime.
+ *
+ * AWS MWAA (Managed Workflows for Apache Airflow) authentication configuration.
+ */
+export interface AuthenticationConfiguration {
+    /**
+     * Password for basic authentication to the Airflow API.
+     */
+    password?: string;
+    /**
+     * Username for basic authentication to the Airflow API.
+     */
+    username?: string;
+    /**
+     * Static access token for Airflow API authentication.
+     */
+    token?: string;
+    /**
+     * GCP credentials configuration.
+     */
+    credentials?: GcpConfigClass;
+    /**
+     * MWAA credentials and environment configuration.
+     */
+    mwaaConfig?: MWAAConfiguration;
+}
+
+/**
+ * GCP Credentials
+ *
+ * GCP credentials configs.
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
+ * GCP credentials configuration.
+ *
+ * GCP Credentials for Google Drive API
+ */
+export interface GcpConfigClass {
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
+}
+
+/**
+ * MWAA credentials and environment configuration.
+ */
+export interface MWAAConfiguration {
+    /**
+     * AWS credentials for generating MWAA CLI token.
+     */
+    awsConfig: AWSCredentials;
+    /**
+     * The name of your MWAA environment.
+     */
+    mwaaEnvironmentName: string;
 }
 
 /**
@@ -4266,6 +4374,8 @@ export interface DataStorageConfig {
  * AWS credentials required to access the S3 file.
  *
  * AWS credentials configs.
+ *
+ * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
  */
@@ -4395,6 +4505,7 @@ export enum ConnectionType {
     MatillionETL = "MatillionETL",
     Mysql = "Mysql",
     Postgres = "Postgres",
+    RESTAPI = "RestAPI",
     S3 = "S3",
     SQLite = "SQLite",
 }
@@ -4406,6 +4517,8 @@ export enum ConnectionType {
  *
  * GCP credentials configuration for authenticating with Pub/Sub.
  *
+ * GCP credentials configuration.
+ *
  * GCP Credentials for Google Drive API
  *
  * Azure Cloud Credentials
@@ -4414,7 +4527,7 @@ export enum ConnectionType {
  *
  * Azure Credentials
  */
-export interface CredentialsClass {
+export interface PurpleGCPCredentials {
     /**
      * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
      * Credentials Path
@@ -4581,27 +4694,6 @@ export enum FHIRVersion {
     Dstu2 = "DSTU2",
     R4 = "R4",
     Stu3 = "STU3",
-}
-
-/**
- * GCP Credentials
- *
- * GCP credentials configs.
- *
- * GCP credentials configuration for authenticating with Pub/Sub.
- *
- * GCP Credentials for Google Drive API
- */
-export interface GcpConfigClass {
-    /**
-     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
-     * Credentials Path
-     */
-    gcpConfig: GCPCredentialsConfiguration;
-    /**
-     * we enable the authenticated service account to impersonate another service account
-     */
-    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
 }
 
 /**

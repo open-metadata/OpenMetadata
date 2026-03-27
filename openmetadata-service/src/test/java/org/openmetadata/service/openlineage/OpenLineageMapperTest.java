@@ -598,6 +598,125 @@ class OpenLineageMapperTest {
   }
 
   @Test
+  void mapRunEvent_storageOutputDataset_resolvesContainer() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
+    OpenLineageInputDataset input = createInputDataset("ns", "schema.input_table");
+    OpenLineageOutputDataset output = createOutputDataset("gs://my-bucket", "data/output.csv");
+    event.setInputs(List.of(input));
+    event.setOutputs(List.of(output));
+
+    EntityReference inputRef = createEntityReference("i1", "svc.db.schema.input_table");
+    EntityReference containerRef =
+        new EntityReference()
+            .withId(
+                UUID.fromString(
+                    "00000000-0000-0000-0000-"
+                        + String.format("%012d", "c1".hashCode() & 0xFFFFFFFFL)))
+            .withType("container")
+            .withFullyQualifiedName("storage.my-bucket.data_output");
+
+    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
+    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(null);
+    when(entityResolver.isStorageDataset("gs://my-bucket")).thenReturn(true);
+    when(entityResolver.resolveContainer("gs://my-bucket", "data/output.csv"))
+        .thenReturn(containerRef);
+    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
+    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
+        .thenReturn(null);
+
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+
+    assertEquals(1, result.size());
+    assertEquals(containerRef, result.get(0).getEdge().getToEntity());
+  }
+
+  @Test
+  void mapRunEvent_storageInputDataset_resolvesContainer() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
+    OpenLineageInputDataset input = createInputDataset("s3://my-bucket", "data/input.parquet");
+    OpenLineageOutputDataset output = createOutputDataset("ns", "schema.output_table");
+    event.setInputs(List.of(input));
+    event.setOutputs(List.of(output));
+
+    EntityReference outputRef = createEntityReference("o1", "svc.db.schema.output_table");
+    EntityReference containerRef =
+        new EntityReference()
+            .withId(
+                UUID.fromString(
+                    "00000000-0000-0000-0000-"
+                        + String.format("%012d", "c2".hashCode() & 0xFFFFFFFFL)))
+            .withType("container")
+            .withFullyQualifiedName("storage.my-bucket.data_input");
+
+    when(entityResolver.resolveTable(input)).thenReturn(null);
+    when(entityResolver.isStorageDataset("s3://my-bucket")).thenReturn(true);
+    when(entityResolver.resolveContainer("s3://my-bucket", "data/input.parquet"))
+        .thenReturn(containerRef);
+    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
+    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(null);
+    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
+        .thenReturn(null);
+
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+
+    assertEquals(1, result.size());
+    assertEquals(containerRef, result.get(0).getEdge().getFromEntity());
+  }
+
+  @Test
+  void mapRunEvent_columnLineageInDatasetFacets_extractsColumnLineage() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
+
+    String inputNamespace = "input-ns";
+    String inputName = "schema.input_table";
+    OpenLineageInputDataset input = createInputDataset(inputNamespace, inputName);
+
+    String outputNamespace = "output-ns";
+    String outputName = "schema.output_table";
+    OpenLineageOutputDataset output = createOutputDataset(outputNamespace, outputName);
+
+    InputField inputField =
+        new InputField().withNamespace(inputNamespace).withName(inputName).withField("src_col");
+
+    ColumnLineageField columnLineageField =
+        new ColumnLineageField()
+            .withInputFields(List.of(inputField))
+            .withTransformationDescription("IDENTITY");
+
+    Fields fields = new Fields();
+    fields.setAdditionalProperty("dst_col", columnLineageField);
+
+    ColumnLineageFacet columnLineageFacet = new ColumnLineageFacet().withFields(fields);
+
+    // Set column lineage on dataset facets (NOT outputFacets) to cover line 219
+    org.openmetadata.schema.api.lineage.openlineage.DatasetFacets datasetFacets =
+        new org.openmetadata.schema.api.lineage.openlineage.DatasetFacets()
+            .withColumnLineage(columnLineageFacet);
+    output.setFacets(datasetFacets);
+
+    event.setInputs(List.of(input));
+    event.setOutputs(List.of(output));
+
+    EntityReference inputRef = createEntityReference("i1", "service.db.schema.input_table");
+    EntityReference outputRef = createEntityReference("o1", "service.db.schema.output_table");
+
+    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
+    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
+    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
+    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
+        .thenReturn(null);
+
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+
+    assertEquals(1, result.size());
+    List<ColumnLineage> columnLineages =
+        result.get(0).getEdge().getLineageDetails().getColumnsLineage();
+    assertNotNull(columnLineages);
+    assertEquals(1, columnLineages.size());
+    assertEquals("service.db.schema.output_table.dst_col", columnLineages.get(0).getToColumn());
+  }
+
+  @Test
   void mapRunEvent_noColumnLineageFacet_noColumnLineageInResult() {
     OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
     OpenLineageInputDataset input = createInputDataset("ns", "input_table");
