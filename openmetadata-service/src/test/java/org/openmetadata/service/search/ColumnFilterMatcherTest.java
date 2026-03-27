@@ -9,6 +9,8 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.service.search.ColumnMetadataCache.ColumnFilterCriteria;
+import org.openmetadata.service.search.ColumnMetadataCache.ColumnFilterCriteria.FilterType;
 
 class ColumnFilterMatcherTest {
 
@@ -33,7 +35,7 @@ class ColumnFilterMatcherTest {
   }
 
   @Test
-  void matchesColumnFilterUsesMetadataCacheForTagAndGlossaryFilters() throws Exception {
+  void matchesColumnFilterUsesMetadataCacheForTagAndGlossaryFilters() {
     EsLineageData edge =
         new EsLineageData()
             .withColumns(
@@ -43,12 +45,10 @@ class ColumnFilterMatcherTest {
                         .withToColumn("service.db.schema.orders.customer_id")));
     ColumnMetadataCache cache = new ColumnMetadataCache();
 
-    assertTrue(
+    assertFalse(
         cache.matchesFilter(
-                "service.db.schema.customers.customer_id",
-                new ColumnMetadataCache.ColumnFilterCriteria(
-                    ColumnMetadataCache.ColumnFilterCriteria.FilterType.TAG, "Sensitive"))
-            == false);
+            "service.db.schema.customers.customer_id",
+            new ColumnFilterCriteria(FilterType.TAG, "Sensitive")));
 
     cache.loadColumnMetadata(
         Set.of("service.db.schema.customers.customer_id", "service.db.schema.orders.customer_id"),

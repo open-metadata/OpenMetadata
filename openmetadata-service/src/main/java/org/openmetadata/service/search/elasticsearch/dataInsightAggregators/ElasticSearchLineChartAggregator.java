@@ -8,7 +8,6 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,8 +45,7 @@ public class ElasticSearchLineChartAggregator
       long end,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder,
-      boolean live)
-      throws IOException {
+      boolean live) {
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     Map<String, Aggregation> aggregationsMap = new HashMap<>();
     int i = 0;

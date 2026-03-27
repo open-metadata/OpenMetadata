@@ -9,7 +9,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECR
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -968,7 +967,7 @@ public class SearchIndexExecutor implements AutoCloseable {
                 recordLimit);
             break;
           }
-          if (endCursor != null && hasReachedEndCursor(keysetCursor, endCursor)) {
+          if (hasReachedEndCursor(keysetCursor, endCursor)) {
             LOG.debug("Reader for {} reached end cursor at processed={}", entityType, processed);
             break;
           }
@@ -1166,9 +1165,7 @@ public class SearchIndexExecutor implements AutoCloseable {
         if (metrics != null) {
           metrics.updateQueueFillRatio(fillPercent);
         }
-        if (fillPercent > 90) {
-          return true;
-        }
+        return fillPercent > 90;
       }
     }
     return false;
@@ -1574,7 +1571,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     return recreateIndexHandler.reCreateIndexes(entities);
   }
 
-  private void closeSinkIfNeeded() throws IOException {
+  private void closeSinkIfNeeded() {
     if (searchIndexSink != null && sinkClosed.compareAndSet(false, true)) {
       int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
       if (pendingVectorTasks > 0) {

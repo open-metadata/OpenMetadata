@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.auth.validator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -917,7 +918,7 @@ class SamlValidatorTest {
   }
 
   @Test
-  void validateX509CertificateTwoArgumentOverloadRejectsBrokenPem() throws Exception {
+  void validateX509CertificateTwoArgumentOverloadRejectsBrokenPem() {
     InvocationTargetException exception =
         assertThrows(
             InvocationTargetException.class,
@@ -928,11 +929,11 @@ class SamlValidatorTest {
                     "-----BEGIN CERTIFICATE-----broken-----END CERTIFICATE-----",
                     "SP X509 certificate"));
 
-    assertTrue(exception.getCause() instanceof CertificateException);
+    assertInstanceOf(CertificateException.class, exception.getCause());
   }
 
   @Test
-  void validateX509CertificateRejectsHeaderOnlyPemBlocks() throws Exception {
+  void validateX509CertificateRejectsHeaderOnlyPemBlocks() {
     InvocationTargetException exception =
         assertThrows(
             InvocationTargetException.class,
@@ -974,7 +975,7 @@ class SamlValidatorTest {
   }
 
   @Test
-  void validateIdpCertificateAgainstConfigThrowsForAuth0Mismatches() throws Exception {
+  void validateIdpCertificateAgainstConfigThrowsForAuth0Mismatches() {
     X509Certificate cert = mock(X509Certificate.class);
     when(cert.getSubjectDN()).thenReturn(new X500Principal("CN=wrong.auth0.com"));
 
@@ -991,11 +992,11 @@ class SamlValidatorTest {
                     cert,
                     samlConfig));
 
-    assertTrue(exception.getCause() instanceof CertificateException);
+    assertInstanceOf(CertificateException.class, exception.getCause());
   }
 
   @Test
-  void validateIdpCertificateAgainstConfigThrowsForAzureMismatches() throws Exception {
+  void validateIdpCertificateAgainstConfigThrowsForAzureMismatches() {
     X509Certificate cert = mock(X509Certificate.class);
     when(cert.getSubjectDN()).thenReturn(new X500Principal("CN=generic.example.com"));
 
@@ -1014,7 +1015,7 @@ class SamlValidatorTest {
                     cert,
                     samlConfig));
 
-    assertTrue(exception.getCause() instanceof CertificateException);
+    assertInstanceOf(CertificateException.class, exception.getCause());
   }
 
   @Test
@@ -1101,7 +1102,7 @@ class SamlValidatorTest {
   @SuppressWarnings("unchecked")
   private <T> T invokePrivate(String methodName, Class<?> parameterType, Object argument)
       throws Exception {
-    return (T) invokePrivate(methodName, new Class<?>[] {parameterType}, argument);
+    return invokePrivate(methodName, new Class<?>[] {parameterType}, argument);
   }
 
   @SuppressWarnings("unchecked")

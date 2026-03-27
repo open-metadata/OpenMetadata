@@ -180,11 +180,11 @@ public class ODCSConverter {
         desc.append(odcs.getDescription().getPurpose());
       }
       if (odcs.getDescription().getLimitations() != null) {
-        if (desc.length() > 0) desc.append("\n\n**Limitations:**\n");
+        if (!desc.isEmpty()) desc.append("\n\n**Limitations:**\n");
         desc.append(odcs.getDescription().getLimitations());
       }
       if (odcs.getDescription().getUsage() != null) {
-        if (desc.length() > 0) desc.append("\n\n**Usage:**\n");
+        if (!desc.isEmpty()) desc.append("\n\n**Usage:**\n");
         desc.append(odcs.getDescription().getUsage());
       }
       contract.setDescription(desc.toString());

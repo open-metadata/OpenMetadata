@@ -2763,7 +2763,7 @@ public class SearchRepository {
 
   @SuppressWarnings("unused")
   public <T> T getHighLevelClient() {
-    return (T) searchClient.getHighLevelClient();
+    return searchClient.getHighLevelClient();
   }
 
   public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(

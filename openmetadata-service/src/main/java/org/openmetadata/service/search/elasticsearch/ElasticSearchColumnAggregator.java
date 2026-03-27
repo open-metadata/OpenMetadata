@@ -669,7 +669,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
               String colName = getTextField(columnData, "name");
               // ES keyword aggregation lowercases the column names, so use case-insensitive
               // comparison
-              if (colName != null && columnName.equalsIgnoreCase(colName)) {
+              if (columnName.equalsIgnoreCase(colName)) {
                 // Preserve the original case column name from the first match
                 if (originalCaseColumnName == null) {
                   originalCaseColumnName = colName;
