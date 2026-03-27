@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { isUndefined } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { MetricClass } from '../../support/entity/MetricClass';
@@ -34,6 +33,10 @@ const table = new TableClass();
 const tier = new TagClass({
   classification: 'Tier',
 });
+// Second tier tag — created but NOT assigned to any asset
+const tierWithoutAsset = new TagClass({
+  classification: 'Tier',
+});
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
@@ -42,6 +45,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await table.create(apiContext);
   await domain.create(apiContext);
   await tier.create(apiContext);
+  // Create second tier but do NOT assign it to any asset
+  await tierWithoutAsset.create(apiContext);
 
   await table.patch({
     apiContext,
@@ -72,6 +77,17 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
       },
     ],
   });
+  await expect(async () => {
+    const response = await apiContext.get(
+      `/api/v1/search/query?q=${encodeURIComponent(
+        table.entityResponseData?.fullyQualifiedName ?? ''
+      )}&index=dataAsset&from=0&size=1`
+    );
+    const data = await response.json();
+
+    expect(data.hits.total.value).toBeGreaterThan(0);
+  }).toPass({ timeout: 90_000, intervals: [2_000] });
+
   await afterAction();
 });
 
@@ -121,48 +137,30 @@ test('should search for empty or null filters', async ({ page }) => {
   }
 });
 
-test('should show correct count for initial options', async ({ page }) => {
-  const items = [{ label: 'Tier', key: 'tier.tagFQN' }];
+test('should show correct count for tier filter options from aggregation', async ({
+  page,
+}) => {
+  const aggregateAPI = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+  );
+  await page.getByTestId('search-dropdown-Tier').click();
 
-  for (const filter of items) {
-    const aggregateAPI = page.waitForResponse(
-      '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
-    );
-    const tierFetchAPI = page.waitForResponse(
-      '/api/v1/tags?parent=Tier&limit=50'
-    );
-    await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
+  const res = await aggregateAPI;
+  const data = await res.json();
+  const buckets: { key: string; doc_count: number }[] =
+    data.aggregations['sterms#tier.tagFQN'].buckets;
 
-    const res = await aggregateAPI;
-    const tierRes = await tierFetchAPI;
-    const data = await res.json();
-    const tierList = (await tierRes.json()).data;
-    const buckets = data.aggregations['sterms#tier.tagFQN'].buckets;
+  await waitForAllLoadersToDisappear(page);
 
-    await waitForAllLoadersToDisappear(page);
-
-    // The following logic is required due to special case for tier filter
-    // where we are fetching the tier options from tag API and
-    // the count from aggregation API.
-    // So we need to match the bucket count with the corresponding tier option.
-    for (const tierItem of tierList) {
-      // Find the corresponding bucket for the tier
-      const bucket = buckets.find(
-        (item: { key: string }) =>
-          item.key.toLowerCase() === tierItem.fullyQualifiedName?.toLowerCase()
-      );
-      // Check if the tier in the dropdown has a corresponding bucket in elastic search response
-      if (!isUndefined(bucket)) {
-        await expect(
-          page
-            .locator(`[data-menu-id$="-${tierItem.fullyQualifiedName}"]`)
-            .getByTestId('filter-count')
-        ).toHaveText(bucket.doc_count.toString());
-      }
-    }
-
-    await clickOutside(page);
+  for (const bucket of buckets) {
+    await expect(
+      page
+        .locator(`[data-menu-id$="-${bucket.key}"]`)
+        .getByTestId('filter-count')
+    ).toHaveText(bucket.doc_count.toString());
   }
+
+  await clickOutside(page);
 });
 
 test('should search for multiple values along with null filters', async ({
@@ -243,6 +241,92 @@ test('Filter by column entity type shows only column results', async ({
 
   const quickFilter = page.getByTestId('search-dropdown-Data Assets');
   await expect(quickFilter).toContainText('tablecolumn');
+});
+
+test.describe('Tier filter - aggregation-based options', () => {
+  test('tier with assigned asset appears in dropdown, tier without asset does not', async ({
+    page,
+  }) => {
+    await test.step('Open Tier filter dropdown', async () => {
+      await page.getByTestId('search-dropdown-Tier').click();
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Search for tier with asset — it is visible in dropdown', async () => {
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
+      );
+      await page
+        .getByTestId('search-input')
+        .fill(tier.responseData.fullyQualifiedName);
+      await searchRes;
+
+      await expect(
+        page.getByTestId(tier.responseData.fullyQualifiedName.toLowerCase())
+      ).toBeVisible();
+    });
+
+    await test.step('Search for tier without asset — it is not visible in dropdown', async () => {
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
+      );
+      await page
+        .getByTestId('search-input')
+        .fill(tierWithoutAsset.responseData.fullyQualifiedName);
+      await searchRes;
+
+      await expect(
+        page.getByTestId(
+          tierWithoutAsset.responseData.fullyQualifiedName.toLowerCase()
+        )
+      ).not.toBeVisible();
+
+      await expect(page.getByText('No data available.')).toBeVisible();
+    });
+
+    await clickOutside(page);
+  });
+
+  test('selecting a tier filter shows only assets tagged with that tier', async ({
+    page,
+  }) => {
+    await test.step('Open Tier filter dropdown and select the tier', async () => {
+      await page.getByTestId('search-dropdown-Tier').click();
+      await waitForAllLoadersToDisappear(page);
+
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
+      );
+      await page
+        .getByTestId('search-input')
+        .fill(tier.responseData.fullyQualifiedName);
+      await searchRes;
+
+      await page
+        .getByTestId(tier.responseData.fullyQualifiedName.toLowerCase())
+        .click();
+      await expect(
+        page.getByTestId(
+          `${tier.responseData.fullyQualifiedName.toLowerCase()}-checkbox`
+        )
+      ).toBeChecked();
+    });
+
+    await test.step('Apply filter and verify asset is visible in results', async () => {
+      const queryRes = page.waitForResponse(
+        `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
+      );
+      await page.getByTestId('update-btn').click();
+      await queryRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId(
+          `table-data-card_${table.entityResponseData?.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+    });
+  });
 });
 
 test.describe('Metric search result highlight', () => {
