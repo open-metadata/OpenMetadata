@@ -495,15 +495,19 @@ test.describe('Standalone DQ Dashboard — regression', () => {
     page,
   }) => {
     await test.step('navigate to standalone DQ dashboard', async () => {
+      const tagListResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*index=tag*'
+      );
       await goToDataQualityDashboard(page);
       await waitForAllLoadersToDisappear(page);
+      await tagListResponse;
     });
 
     await test.step('open tag filter dropdown and select tag', async () => {
       await page.getByTestId('search-dropdown-Tag').click();
 
       const searchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=${tag.data.name}*index=tag*`
+        `/api/v1/search/query?q=*${tag.data.name}*index=tag*`
       );
       await page
         .getByTestId('drop-down-menu')

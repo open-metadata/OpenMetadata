@@ -31,8 +31,12 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
  */
 export async function goToDataQualityDashboard(page: Page): Promise<void> {
   await redirectToHomePage(page);
+  const dataQualityReportResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testSuites/dataQualityReport?q=*'
+  );
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
   await page.getByTestId('dashboard').click();
+  await dataQualityReportResponse;
 }
 
 /** Clicks a segment by 0-based index (targets .custom-pie-chart-clickable path). */
