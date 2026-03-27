@@ -81,7 +81,7 @@ const IncidentTimeChartWidget = ({
 
   useEffect(() => {
     getRespondTimeMetrics();
-  }, [chartFilter]);
+  }, [chartFilter, incidentMetricType]);
 
   return (
     <Card

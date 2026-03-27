@@ -405,7 +405,7 @@ const TagPage = () => {
     if (activeTab !== EntityTabs.ASSETS) {
       activeTabHandler(EntityTabs.ASSETS);
     }
-  }, [assetTabRef]);
+  }, [assetTabRef, activeTab, activeTabHandler, fetchClassificationTagAssets]);
 
   const manageButtonContent: ItemType[] = [
     ...(editTagsPermission

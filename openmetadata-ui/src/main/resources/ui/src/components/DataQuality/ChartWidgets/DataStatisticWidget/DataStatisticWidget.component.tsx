@@ -82,7 +82,7 @@ const DataStatisticWidget = ({
               countValueClassName
             )}
             data-testid="total-value">
-            {`${countValue} ${dataLabel ?? ''}`}
+            {dataLabel ? `${countValue} ${dataLabel}` : countValue}
           </Typography>
         </div>
       </div>

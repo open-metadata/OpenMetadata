@@ -86,9 +86,11 @@ const EntityHealthStatusPieChartWidget = ({
       );
       if (unhealthyData.length === 0 || totalData.length === 0) {
         setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
+
+        return;
       }
-      const unhealthy = parseInt(unhealthyData[0].originEntityFQN);
-      const total = parseInt(totalData[0].originEntityFQN);
+      const unhealthy = parseInt(unhealthyData[0].originEntityFQN, 10);
+      const total = parseInt(totalData[0].originEntityFQN, 10);
 
       setEntityHealthStates({ unhealthy, healthy: total - unhealthy, total });
     } catch {

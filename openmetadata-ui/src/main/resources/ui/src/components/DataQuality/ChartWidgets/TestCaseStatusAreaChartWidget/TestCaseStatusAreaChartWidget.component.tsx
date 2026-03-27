@@ -142,7 +142,7 @@ const TestCaseStatusAreaChartWidget = ({
 
   useEffect(() => {
     getTestCaseStatusMetrics();
-  }, [chartFilter]);
+  }, [chartFilter, testCaseStatus]);
 
   const containerClassName = classNames(
     'test-case-area-chart-widget-container tw:p-4',

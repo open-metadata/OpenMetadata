@@ -48,7 +48,7 @@ const IncidentTypeAreaChartWidget = ({
         <CustomAreaChart data={chartData} height={height} name={name} />
       </>
     );
-  }, [title, chartData, name]);
+  }, [title, chartData, name, height]);
 
   const getCountOfIncidentStatus = async () => {
     setIsChartLoading(true);
@@ -71,7 +71,7 @@ const IncidentTypeAreaChartWidget = ({
 
   useEffect(() => {
     getCountOfIncidentStatus();
-  }, [chartFilter]);
+  }, [chartFilter, incidentStatusType]);
 
   return (
     <Card
