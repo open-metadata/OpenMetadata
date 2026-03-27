@@ -34,6 +34,7 @@ import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTermRelationType } from '../../../../generated/configuration/glossaryTermRelationSettings';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   ChangeDescription,
   EntityReference,
@@ -52,7 +53,6 @@ import {
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
-import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
@@ -128,7 +128,6 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
     </Tooltip>
   );
 };
-
 
 const RelatedTerms = () => {
   const navigate = useNavigate();
@@ -437,27 +436,33 @@ const RelatedTerms = () => {
         <Typography as="span" className="text-sm font-medium">
           {t('label.related-term-plural')}
         </Typography>
-        {getPrioritizedEditPermission(permissions, Operation.EditGlossaryTerms) && !isVersionView && !isEditing && !isAdding && (
-          <>
-            <EditIconButton
-              newLook
-              data-testid="edit-button"
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.related-term-plural'),
-              })}
-              onClick={handleStartEditing}
-            />
-            <PlusIconButton
-              data-testid="related-term-add-button"
-              size="small"
-              title={t('label.add-entity', {
-                entity: t('label.related-term-plural'),
-              })}
-              onClick={handleStartAdding}
-            />
-          </>
-        )}
+        {getPrioritizedEditPermission(
+          permissions,
+          Operation.EditGlossaryTerms
+        ) &&
+          !isVersionView &&
+          !isEditing &&
+          !isAdding && (
+            <>
+              <EditIconButton
+                newLook
+                data-testid="edit-button"
+                size="small"
+                title={t('label.edit-entity', {
+                  entity: t('label.related-term-plural'),
+                })}
+                onClick={handleStartEditing}
+              />
+              <PlusIconButton
+                data-testid="related-term-add-button"
+                size="small"
+                title={t('label.add-entity', {
+                  entity: t('label.related-term-plural'),
+                })}
+                onClick={handleStartAdding}
+              />
+            </>
+          )}
       </div>
       {(isEditing || isAdding) && (
         <div className="d-flex items-center gap-2">

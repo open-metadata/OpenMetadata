@@ -18,8 +18,8 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
 import { TermsRowEditorProps } from './RelatedTerms.interface';
 import TermsRowEditor from './TermsRowEditor.component';
 
@@ -198,8 +198,16 @@ describe('TermsRow', () => {
       <TermsRowEditor
         {...editorProps}
         preloadedTerms={[
-          { id: 'term-1', name: 'CurrentTerm', fullyQualifiedName: 'Glossary.CurrentTerm' } as GlossaryTerm,
-          { id: 'term-2', name: 'OtherTerm', fullyQualifiedName: 'Glossary.OtherTerm' } as GlossaryTerm,
+          {
+            id: 'term-1',
+            name: 'CurrentTerm',
+            fullyQualifiedName: 'Glossary.CurrentTerm',
+          } as GlossaryTerm,
+          {
+            id: 'term-2',
+            name: 'OtherTerm',
+            fullyQualifiedName: 'Glossary.OtherTerm',
+          } as GlossaryTerm,
         ]}
         rows={[{ id: 'row-1', relationType: 'relatedTo', terms: [] }]}
       />

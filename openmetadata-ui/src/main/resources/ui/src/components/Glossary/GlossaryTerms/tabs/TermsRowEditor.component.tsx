@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Autocomplete,
-  Button,
-  Select,
-} from '@openmetadata/ui-core-components';
+import { Autocomplete, Button, Select } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
