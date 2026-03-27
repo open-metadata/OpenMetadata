@@ -10,20 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tab, Tabs, ThemeProvider, Typography } from '@mui/material';
 import type { TabsProps } from '@mui/material';
+import { Box, Tab, Tabs, ThemeProvider, Typography } from '@mui/material';
 import type { Meta } from '@storybook/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   CUSTOM_TABS_ARG_TYPES,
   CUSTOM_TABS_DEFAULT_ARGS,
 } from '../constants/Tabs.constants';
+import { createMuiTheme } from '../theme/createMuiTheme';
 import type {
   CommonTabPanelPropsType,
   StorybookComponent,
   TabItem,
 } from '../types/Tabs.types';
-import { createMuiTheme } from '../theme/createMuiTheme';
 
 type CustomTabsArgs = TabsProps & {
   tabs?: TabItem[];

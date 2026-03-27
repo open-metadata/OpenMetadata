@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class ColumnMetadataCacheTest {
 
   @Test
-  void loadColumnMetadataCachesEntriesByFullColumnFqn() throws Exception {
+  void loadColumnMetadataCachesEntriesByFullColumnFqn() {
     ColumnMetadataCache cache = new ColumnMetadataCache();
     AtomicInteger fetches = new AtomicInteger();
 
@@ -68,7 +68,7 @@ class ColumnMetadataCacheTest {
   }
 
   @Test
-  void loadColumnMetadataSkipsMalformedColumnsAndFetcherFailures() throws Exception {
+  void loadColumnMetadataSkipsMalformedColumnsAndFetcherFailures() {
     ColumnMetadataCache cache = new ColumnMetadataCache();
     AtomicInteger fetches = new AtomicInteger();
 

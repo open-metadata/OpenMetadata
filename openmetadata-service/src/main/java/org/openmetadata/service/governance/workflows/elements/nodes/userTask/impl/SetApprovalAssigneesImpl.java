@@ -105,7 +105,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           if (teamFqn != null && !teamFqn.trim().isEmpty()) {
             try {
               MessageParser.EntityLink teamLink = new MessageParser.EntityLink("team", teamFqn);
-              Team team = (Team) Entity.getEntity(teamLink, "users", Include.ALL);
+              Team team = Entity.getEntity(teamLink, "users", Include.ALL);
               if (team.getUsers() != null) {
                 assignees.addAll(getEntityLinkStringFromEntityReference(team.getUsers()));
               }

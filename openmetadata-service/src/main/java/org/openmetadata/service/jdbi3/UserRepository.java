@@ -304,7 +304,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Use the custom DAO method for optimized update
     // Note: @BindFQN will automatically hash the fqn, so we don't pre-hash it
-    ((UserDAO) daoCollection.userDAO()).updateLastActivityTime(fqn, lastActivityTime);
+    daoCollection.userDAO().updateLastActivityTime(fqn, lastActivityTime);
   }
 
   @Transaction
@@ -315,7 +315,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Bulk update all users' activity times in a single query
     // This is much more efficient than individual updates
-    UserDAO userDAO = (UserDAO) daoCollection.userDAO();
+    UserDAO userDAO = daoCollection.userDAO();
 
     // Build the CASE statement and collect nameHashes
     StringBuilder caseBuilder = new StringBuilder();

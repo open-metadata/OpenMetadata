@@ -14,6 +14,7 @@ import test, { expect } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import {
@@ -242,4 +243,106 @@ test('Filter by column entity type shows only column results', async ({
 
   const quickFilter = page.getByTestId('search-dropdown-Data Assets');
   await expect(quickFilter).toContainText('tablecolumn');
+});
+
+test.describe('Metric search result highlight', () => {
+  const metric = new MetricClass();
+
+  test.beforeAll('Create metric entity', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await metric.create(apiContext);
+
+    await expect(async () => {
+      const response = await apiContext.get(
+        `/api/v1/search/query?q=${metric.entity.name}&index=metric&from=0&size=10`
+      );
+      const data = await response.json();
+
+      expect(data.hits.total.value).toBeGreaterThan(0);
+    }).toPass({ timeout: 90_000, intervals: [2_000] });
+
+    await afterAction();
+  });
+
+  test('breadcrumb should show plain entity name and display name header should have highlighted terms', async ({
+    page,
+  }) => {
+    await test.step('Select Metric search index and search', async () => {
+      await page.getByTestId('global-search-selector').waitFor({
+        state: 'visible',
+      });
+      await page.getByTestId('global-search-selector').click();
+      await page.getByTestId('global-search-select-dropdown').waitFor({
+        state: 'visible',
+      });
+
+      await page
+        .getByTestId('global-search-select-dropdown')
+        .locator('.rc-virtual-list-holder')
+        .evaluate((el) => {
+          el.scrollTop = el.scrollHeight;
+        });
+
+      const metricOption = page.getByTestId(
+        'global-search-select-option-Metric'
+      );
+      await metricOption.waitFor({ state: 'visible' });
+      await metricOption.click();
+
+      const searchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('metric')
+      );
+
+      await page.getByTestId('searchBox').fill(metric.entity.name);
+      await page.keyboard.press('Enter');
+
+      const response = await searchResponse;
+      expect(response.status()).toBe(200);
+
+      await waitForAllLoadersToDisappear(page);
+      await page.getByTestId('search-results').waitFor({ state: 'visible' });
+    });
+
+    await test.step('Verify breadcrumb shows Metrics / plain entity name without HTML tags', async () => {
+      const entityCard = page.getByTestId(
+        `table-data-card_${metric.entity.name}`
+      );
+      await entityCard.waitFor({ state: 'visible' });
+
+      const breadcrumb = entityCard.getByTestId('breadcrumb');
+
+      const firstLink = breadcrumb
+        .getByTestId('breadcrumb-link')
+        .first()
+        .getByRole('link');
+      await expect(firstLink).toHaveText('Metrics');
+
+      const inactiveLink = breadcrumb.getByTestId('inactive-link');
+      await expect(inactiveLink).toHaveText(metric.entity.name);
+      await expect(inactiveLink).not.toContainText('<span');
+      await expect(inactiveLink).not.toContainText('text-highlighter');
+    });
+
+    await test.step('Verify display name header has highlighted search terms', async () => {
+      const entityCard = page.getByTestId(
+        `table-data-card_${metric.entity.name}`
+      );
+      const displayNameHeader = entityCard.getByTestId(
+        'entity-header-display-name'
+      );
+
+      await expect(displayNameHeader).toBeVisible();
+
+      const highlightedSpan = displayNameHeader.locator(
+        'span.text-highlighter'
+      );
+      await expect(highlightedSpan.first()).toBeVisible();
+
+      const fullText = await displayNameHeader.textContent();
+      expect(fullText?.trim()).toBe(metric.entity.name);
+    });
+  });
 });

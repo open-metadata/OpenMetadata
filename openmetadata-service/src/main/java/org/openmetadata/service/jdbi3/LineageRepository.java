@@ -146,10 +146,9 @@ public class LineageRepository {
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
     boolean relationAlreadyExists =
-        Boolean.FALSE.equals(
-            nullOrEmpty(
-                dao.relationshipDAO()
-                    .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal())));
+        !nullOrEmpty(
+            dao.relationshipDAO()
+                .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal()));
 
     if (lineageDetails.getPipeline() != null) {
       // Validate pipeline entity

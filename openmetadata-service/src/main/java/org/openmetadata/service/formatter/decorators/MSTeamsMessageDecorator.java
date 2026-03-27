@@ -446,7 +446,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
     parameterValues.forEach(
         param -> {
-          if (parameterValuesText.length() > 0) {
+          if (!parameterValuesText.isEmpty()) {
             parameterValuesText.append(", ");
           }
 

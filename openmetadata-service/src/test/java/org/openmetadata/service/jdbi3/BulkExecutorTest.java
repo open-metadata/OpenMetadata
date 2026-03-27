@@ -111,7 +111,7 @@ class BulkExecutorTest {
   }
 
   @Test
-  void testQueueCapacity() throws InterruptedException {
+  void testQueueCapacity() {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
     config.setMaxThreads(1);
     config.setQueueSize(5);
@@ -149,7 +149,7 @@ class BulkExecutorTest {
   }
 
   @Test
-  void testHasCapacity() throws InterruptedException {
+  void testHasCapacity() {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
     config.setMaxThreads(1);
     config.setQueueSize(2);

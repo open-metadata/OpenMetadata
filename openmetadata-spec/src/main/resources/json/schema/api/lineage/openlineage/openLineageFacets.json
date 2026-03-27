@@ -295,6 +295,9 @@
         },
         "ownership": {
           "$ref": "#/definitions/ownershipFacet"
+        },
+        "columnLineage": {
+          "$ref": "#/definitions/columnLineageFacet"
         }
       },
       "additionalProperties": true

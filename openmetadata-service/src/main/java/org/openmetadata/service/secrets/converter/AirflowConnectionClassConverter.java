@@ -19,6 +19,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.SQLiteConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.pipeline.AirflowRestApiConnection;
 import org.openmetadata.schema.services.connections.pipeline.BackendConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 
@@ -31,6 +32,7 @@ public class AirflowConnectionClassConverter extends ClassConverter {
           MysqlConnection.class,
           PostgresConnection.class,
           MssqlConnection.class,
+          AirflowRestApiConnection.class,
           SQLiteConnection.class);
 
   public AirflowConnectionClassConverter() {

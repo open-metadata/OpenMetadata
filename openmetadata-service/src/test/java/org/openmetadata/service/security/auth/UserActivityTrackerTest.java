@@ -89,7 +89,7 @@ class UserActivityTrackerTest {
   @Test
   void testTrackActivityWithNullUser() {
     // Should not track null or empty users
-    tracker.trackActivity((String) null);
+    tracker.trackActivity(null);
     tracker.trackActivity("");
 
     assertEquals(0, tracker.getLocalCacheSize());

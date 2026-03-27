@@ -279,7 +279,7 @@ class QuartzProgressListenerTest {
         .build();
   }
 
-  private AtomicInteger getPendingErrors(QuartzProgressListener listener) throws Exception {
+  private AtomicInteger getPendingErrors(QuartzProgressListener listener) {
     return (AtomicInteger) getField(listener, "pendingErrors");
   }
 

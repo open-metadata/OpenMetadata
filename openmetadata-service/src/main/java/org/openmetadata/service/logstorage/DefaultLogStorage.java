@@ -42,21 +42,21 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public OutputStream getLogOutputStream(String pipelineFQN, UUID runId) throws IOException {
+  public OutputStream getLogOutputStream(String pipelineFQN, UUID runId) {
     // Default implementation doesn't support streaming writes
     throw new UnsupportedOperationException(
         "DefaultLogStorage does not support streaming log writes. Use appendLogs instead.");
   }
 
   @Override
-  public void appendLogs(String pipelineFQN, UUID runId, String logContent) throws IOException {
+  public void appendLogs(String pipelineFQN, UUID runId, String logContent) {
     // Default implementation doesn't support direct log writes
     throw new UnsupportedOperationException(
         "DefaultLogStorage does not support direct log writes. Logs are managed by the pipeline service.");
   }
 
   @Override
-  public InputStream getLogInputStream(String pipelineFQN, UUID runId) throws IOException {
+  public InputStream getLogInputStream(String pipelineFQN, UUID runId) {
     // For default implementation, we delegate to the pipeline service client
     // The runId is not used here as the pipeline service client only supports getting latest logs
     Map<String, Object> logs = getLogs(pipelineFQN, runId, null, Integer.MAX_VALUE);
@@ -65,8 +65,8 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public Map<String, Object> getLogs(String pipelineFQN, UUID runId, String afterCursor, int limit)
-      throws IOException {
+  public Map<String, Object> getLogs(
+      String pipelineFQN, UUID runId, String afterCursor, int limit) {
     try {
       // Note: The default implementation through pipeline service client (Airflow/Argo)
       // doesn't support fetching logs by specific runId - it always returns the latest logs
@@ -108,7 +108,7 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public UUID getLatestRunId(String pipelineFQN) throws IOException {
+  public UUID getLatestRunId(String pipelineFQN) {
     // Try to get the latest run ID from pipeline status
     try {
       IngestionPipeline pipeline = new IngestionPipeline();
@@ -132,14 +132,14 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public List<UUID> listRuns(String pipelineFQN, int limit) throws IOException {
+  public List<UUID> listRuns(String pipelineFQN, int limit) {
     // Default implementation only supports getting the latest run
     UUID latestRunId = getLatestRunId(pipelineFQN);
     return latestRunId != null ? Collections.singletonList(latestRunId) : Collections.emptyList();
   }
 
   @Override
-  public void deleteLogs(String pipelineFQN, UUID runId) throws IOException {
+  public void deleteLogs(String pipelineFQN, UUID runId) {
     // Default implementation doesn't support deleting logs
     LOG.warn(
         "DefaultLogStorage does not support deleting logs for pipeline: {}, runId: {}",
@@ -148,13 +148,13 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public void deleteAllLogs(String pipelineFQN) throws IOException {
+  public void deleteAllLogs(String pipelineFQN) {
     // Default implementation doesn't support deleting logs
     LOG.warn("DefaultLogStorage does not support deleting all logs for pipeline: {}", pipelineFQN);
   }
 
   @Override
-  public boolean logsExist(String pipelineFQN, UUID runId) throws IOException {
+  public boolean logsExist(String pipelineFQN, UUID runId) {
     try {
       Map<String, Object> logs = getLogs(pipelineFQN, runId, null, 1);
       String logContent = (String) logs.get("logs");
@@ -170,7 +170,7 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public void closeStream(String pipelineFQN, UUID runId) throws IOException {
+  public void closeStream(String pipelineFQN, UUID runId) {
     // Default implementation doesn't manage streams - logs are handled by pipeline service client
     LOG.debug(
         "DefaultLogStorage closeStream called for pipeline: {}, runId: {} - no action needed",
@@ -179,7 +179,7 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     // Nothing to close for default implementation
   }
 

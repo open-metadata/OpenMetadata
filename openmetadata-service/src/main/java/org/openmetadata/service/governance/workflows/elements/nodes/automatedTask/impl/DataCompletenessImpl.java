@@ -175,9 +175,8 @@ public class DataCompletenessImpl implements JavaDelegate {
       // Get the first part to check if it's an array
       Object firstField = getNestedValue(entityMap, parts[0]);
 
-      if (firstField instanceof List) {
+      if (firstField instanceof List<?> arrayList) {
         // It's an array field check like "columns.description"
-        List<?> arrayList = (List<?>) firstField;
         if (arrayList.isEmpty()) {
           // Empty array - no items to check
           info.totalCount = 1;
@@ -201,8 +200,7 @@ public class DataCompletenessImpl implements JavaDelegate {
         Object value = getNestedValue(entityMap, fieldPath);
         info.totalCount = 1;
         // Smart detection for the nested value
-        if (value instanceof List) {
-          List<?> list = (List<?>) value;
+        if (value instanceof List<?> list) {
           info.filledCount = !list.isEmpty() ? 1 : 0; // Empty arrays are considered missing
         } else {
           info.filledCount = isFieldFilled(value) ? 1 : 0;
@@ -214,8 +212,7 @@ public class DataCompletenessImpl implements JavaDelegate {
       info.totalCount = 1;
 
       // Smart detection: if it's an array, check for non-empty
-      if (value instanceof List) {
-        List<?> list = (List<?>) value;
+      if (value instanceof List<?> list) {
         info.filledCount = !list.isEmpty() ? 1 : 0; // Empty arrays are considered missing
       } else {
         info.filledCount = isFieldFilled(value) ? 1 : 0;
@@ -257,18 +254,15 @@ public class DataCompletenessImpl implements JavaDelegate {
       return false;
     }
 
-    if (value instanceof String) {
-      String str = (String) value;
+    if (value instanceof String str) {
       return !str.trim().isEmpty(); // Empty strings are considered missing
     }
 
-    if (value instanceof List) {
-      List<?> list = (List<?>) value;
+    if (value instanceof List<?> list) {
       return !list.isEmpty(); // Empty arrays are considered missing
     }
 
-    if (value instanceof Map) {
-      Map<?, ?> map = (Map<?, ?>) value;
+    if (value instanceof Map<?, ?> map) {
       return !map.isEmpty();
     }
 
