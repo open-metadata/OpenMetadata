@@ -25,7 +25,7 @@ public class JettyMetrics implements MeterBinder, Managed {
   }
 
   @Override
-  public void start() throws Exception {
+  public void start() {
     if (server == null) {
       LOG.debug("JettyMetrics created without server - metrics will be initialized later");
       return;
@@ -42,7 +42,7 @@ public class JettyMetrics implements MeterBinder, Managed {
   }
 
   @Override
-  public void stop() throws Exception {
+  public void stop() {
     // Nothing to stop
   }
 

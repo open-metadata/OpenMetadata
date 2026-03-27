@@ -167,8 +167,7 @@ public class ReindexingJobLogger {
           .forEach(
               (entity, entityStatsObj) -> {
                 if (entityStatsObj instanceof org.openmetadata.schema.system.StepStats) {
-                  org.openmetadata.schema.system.StepStats entityStats =
-                      (org.openmetadata.schema.system.StepStats) entityStatsObj;
+                  org.openmetadata.schema.system.StepStats entityStats = entityStatsObj;
                   updateEntityProgress(
                       entity,
                       entityStats.getSuccessRecords() != null ? entityStats.getSuccessRecords() : 0,

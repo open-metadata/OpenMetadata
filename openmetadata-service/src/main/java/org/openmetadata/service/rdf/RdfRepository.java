@@ -482,12 +482,9 @@ public class RdfRepository {
 
         storageService.executeSparqlUpdate(deleteQuery);
 
-        StringBuilder insertQuery = new StringBuilder();
-        insertQuery.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
-        insertQuery.append(triples);
-        insertQuery.append(" } }");
+        String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
 
-        storageService.executeSparqlUpdate(insertQuery.toString());
+        storageService.executeSparqlUpdate(insertQuery);
         LOG.debug("Added lineage with details from {}/{} to {}/{}", fromType, fromId, toType, toId);
       }
     } catch (Exception e) {
@@ -948,8 +945,7 @@ public class RdfRepository {
   }
 
   private String parseGlossaryTermGraphResults(
-      String sparqlResults, boolean includeIsolated, UUID glossaryId, int limit, int offset)
-      throws IOException {
+      String sparqlResults, boolean includeIsolated, UUID glossaryId, int limit, int offset) {
     com.fasterxml.jackson.databind.node.ObjectNode graphData =
         JsonUtils.getObjectMapper().createObjectNode();
     com.fasterxml.jackson.databind.node.ArrayNode nodes =
@@ -1155,7 +1151,7 @@ public class RdfRepository {
    * Fallback method to get glossary terms from database when RDF store is empty or returns no results.
    */
   private String getGlossaryTermGraphFromDatabase(
-      UUID glossaryId, int limit, int offset, boolean includeIsolated) throws IOException {
+      UUID glossaryId, int limit, int offset, boolean includeIsolated) {
     com.fasterxml.jackson.databind.node.ObjectNode graphData =
         JsonUtils.getObjectMapper().createObjectNode();
     com.fasterxml.jackson.databind.node.ArrayNode nodes =
@@ -1698,12 +1694,9 @@ public class RdfRepository {
       String triples = writer.toString();
 
       if (!triples.isEmpty()) {
-        StringBuilder insertQuery = new StringBuilder();
-        insertQuery.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
-        insertQuery.append(triples);
-        insertQuery.append(" } }");
+        String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
 
-        storageService.executeSparqlUpdate(insertQuery.toString());
+        storageService.executeSparqlUpdate(insertQuery);
         LOG.debug("Added glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
       }
     } catch (Exception e) {
@@ -1854,12 +1847,9 @@ public class RdfRepository {
       LOG.debug("Generated N-Triples:\n{}", triples);
 
       if (!triples.isEmpty()) {
-        StringBuilder insertQuery = new StringBuilder();
-        insertQuery.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
-        insertQuery.append(triples);
-        insertQuery.append(" } }");
+        String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
 
-        storageService.executeSparqlUpdate(insertQuery.toString());
+        storageService.executeSparqlUpdate(insertQuery);
         LOG.debug("Bulk added {} glossary term relations to RDF store", relations.size());
       }
     } catch (Exception e) {
@@ -2008,8 +1998,7 @@ public class RdfRepository {
 
     try {
       org.openmetadata.schema.entity.data.Glossary glossary =
-          (org.openmetadata.schema.entity.data.Glossary)
-              Entity.getEntity("glossary", glossaryId, "*", null);
+          Entity.getEntity("glossary", glossaryId, "*", null);
 
       String glossaryUri = config.getBaseUri().toString() + "glossary/" + glossaryId;
       Resource glossaryResource = model.createResource(glossaryUri);
@@ -2257,7 +2246,7 @@ public class RdfRepository {
    * Diagnostic method to dump all glossary term relations stored in RDF. Returns a map with
    * predicate URIs as keys and counts as values, plus sample triples.
    */
-  public String debugGlossaryTermRelations() throws IOException {
+  public String debugGlossaryTermRelations() {
     if (!isEnabled()) {
       return "{\"error\": \"RDF not enabled\"}";
     }

@@ -98,7 +98,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String FORMULA_FUNC_REGEX =
       "\\b(count|sum|min|max|avg|unique)+\\((k='([^']*)')?,?\\s*(q='([^']*)')?\\)?";
 
-  public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\)\s]+";
+  public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\) ]+";
 
   public DataInsightSystemChartRepository() {
     super(
@@ -1263,7 +1263,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       this.serviceName = serviceName;
       this.filter = filter;
       this.entityLink = entityLink;
-      this.userIds = new ConcurrentHashMap().newKeySet(); // Thread-safe set
+      this.userIds = ConcurrentHashMap.newKeySet(); // Thread-safe set
       this.userIds.add(userId);
       this.startTime = System.currentTimeMillis(); // Session start time
       this.dataStartTime = dataStartTime; // Data range start time

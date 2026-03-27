@@ -1,7 +1,6 @@
 package org.openmetadata.service.rdf.translator;
 
 import com.apicatalog.jsonld.JsonLd;
-import com.apicatalog.jsonld.JsonLdError;
 import com.apicatalog.jsonld.document.JsonDocument;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -203,7 +202,7 @@ public class JsonLdTranslator {
     return result;
   }
 
-  public Model toRdf(EntityInterface entity) throws JsonLdError {
+  public Model toRdf(EntityInterface entity) {
     Model model = ModelFactory.createDefaultModel();
 
     model.setNsPrefix("om", "https://open-metadata.org/ontology/");

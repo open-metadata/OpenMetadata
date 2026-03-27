@@ -461,7 +461,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         break;
       }
     }
-    if (!"".equals(childSchemaName) && schemaField != null) {
+    if (!childSchemaName.isEmpty() && schemaField != null) {
       schemaField = getChildSchemaField(schemaField.getChildren(), childSchemaName);
     }
     if (schemaField == null) {

@@ -14,7 +14,6 @@
 package org.openmetadata.service.logstorage;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.io.IOException;
@@ -64,7 +63,7 @@ public class LogStorageFactoryTest {
   }
 
   @Test
-  void testCreateS3StorageWithMetrics() throws IOException {
+  void testCreateS3StorageWithMetrics() {
     // Note: This test would need additional setup to mock S3Client creation
     // For now, we're testing that the factory correctly passes metrics
     assertThrows(
