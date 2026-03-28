@@ -73,7 +73,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
     if (!errors.isEmpty()) {
       String errorReason = auth.getLastErrorReason();
       if (errorReason != null && !errorReason.isEmpty()) {
-        LOG.error("[SAML ACS]{}", errorReason);
+        LOG.error("[SAML ACS] {}", errorReason);
         resp.sendError(500, errorReason);
       }
     } else {
