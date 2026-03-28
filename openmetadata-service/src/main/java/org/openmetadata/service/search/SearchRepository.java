@@ -98,6 +98,7 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -1653,7 +1654,6 @@ public class SearchRepository {
     }
   }
 
-  private static final String CERTIFICATION = "Certification";
   private static final String CERTIFICATION_FIELD = "certification";
   private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
 
@@ -1664,19 +1664,34 @@ public class SearchRepository {
     }
 
     if (Entity.TAG.equalsIgnoreCase(entityType)) {
-      handleTagEntityUpdate((Tag) entity);
+      handleTagEntityUpdate((Tag) entity, changeDescription);
     } else {
       handleEntityCertificationUpdate(entity, changeDescription);
     }
   }
 
-  private void handleTagEntityUpdate(Tag tagEntity) {
-    if (CERTIFICATION.equals(tagEntity.getClassification().getFullyQualifiedName())) {
-      updateCertificationInSearch(tagEntity);
+  private void handleTagEntityUpdate(Tag tagEntity, ChangeDescription changeDescription) {
+    String allowedClassification = getCertificationClassificationFromSettings();
+    if (allowedClassification == null) return;
+    if (!allowedClassification.equals(tagEntity.getClassification().getFullyQualifiedName()))
+      return;
+
+    String oldFQN = tagEntity.getFullyQualifiedName();
+    for (FieldChange field : changeDescription.getFieldsUpdated()) {
+      if (FIELD_NAME.equals(field.getName()) && field.getOldValue() != null) {
+        String parentFQN = FullyQualifiedName.getParentFQN(tagEntity.getFullyQualifiedName());
+        if (!nullOrEmpty(parentFQN)) {
+          oldFQN = FullyQualifiedName.add(parentFQN, field.getOldValue().toString());
+        } else {
+          oldFQN = FullyQualifiedName.quoteName(field.getOldValue().toString());
+        }
+        break;
+      }
     }
+    updateCertificationInSearch(tagEntity, oldFQN);
   }
 
-  private void updateCertificationInSearch(Tag tagEntity) {
+  private void updateCertificationInSearch(Tag tagEntity, String oldFQN) {
     Map<String, Object> paramMap = new HashMap<>();
     paramMap.put("name", tagEntity.getName());
     paramMap.put("description", tagEntity.getDescription());
@@ -1684,8 +1699,18 @@ public class SearchRepository {
     paramMap.put("style", tagEntity.getStyle());
     searchClient.updateChildren(
         DATA_ASSET_SEARCH_ALIAS,
-        new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, tagEntity.getFullyQualifiedName()),
+        new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, oldFQN),
         new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
+  }
+
+  private String getCertificationClassificationFromSettings() {
+    return SettingsCache.getSettingOrDefault(
+            SettingsType.ASSET_CERTIFICATION_SETTINGS,
+            new AssetCertificationSettings()
+                .withAllowedClassification("Certification")
+                .withValidityPeriod("P30D"),
+            AssetCertificationSettings.class)
+        .getAllowedClassification();
   }
 
   private void handleEntityCertificationUpdate(EntityInterface entity, ChangeDescription change) {
@@ -1802,7 +1827,7 @@ public class SearchRepository {
           newFQN = FullyQualifiedName.quoteName(field.getNewValue().toString());
         }
 
-        if (field.getName().contains(FIELD_NAME)) {
+        if (FIELD_NAME.equals(field.getName())) {
           searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
         }
 

@@ -61,11 +61,13 @@ import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
+  certificationTableObject,
   dataProductTableObject,
   descriptionTableObject,
   domainTableObject,
   ownerTableObject,
   tagTableObject,
+  tierTableObject,
 } from '../../../../utils/TableColumn.util';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -149,6 +151,7 @@ export const DatabaseSchemaTable = ({
           fields: [
             ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
             commonTableFields,
+            TabSpecificField.CERTIFICATION,
           ],
         });
 
@@ -287,6 +290,8 @@ export const DatabaseSchemaTable = ({
       ...domainTableObject<DatabaseSchema>(),
       ...dataProductTableObject<DatabaseSchema>(),
       ...tagTableObject<DatabaseSchema>(),
+      ...tierTableObject<DatabaseSchema>(),
+      ...certificationTableObject<DatabaseSchema>(),
       ...(viewUsagePermission
         ? [
             {

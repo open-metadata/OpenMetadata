@@ -650,6 +650,66 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void propagateCertificationTagsDoesNothingForNonCertificationTag() {
+    Tag tag = mock(Tag.class);
+    when(tag.getClassification())
+        .thenReturn(new EntityReference().withFullyQualifiedName("OtherClassification"));
+
+    repository.propagateCertificationTags(
+        Entity.TAG, tag, changeDescription(List.of(), List.of(), List.of()));
+
+    verifyNoInteractions(searchClient);
+  }
+
+  @Test
+  void propagateCertificationTagsUsesOldFqnWhenTagRenamed() {
+    Tag tag = mock(Tag.class);
+    when(tag.getClassification())
+        .thenReturn(new EntityReference().withFullyQualifiedName("Certification"));
+    when(tag.getName()).thenReturn("Platinum");
+    when(tag.getDescription()).thenReturn("Top tier");
+    when(tag.getFullyQualifiedName()).thenReturn("Certification.Platinum");
+    when(tag.getStyle()).thenReturn(null);
+
+    FieldChange nameChange =
+        new FieldChange().withName("name").withOldValue("Gold").withNewValue("Platinum");
+
+    repository.propagateCertificationTags(
+        Entity.TAG, tag, changeDescription(List.of(), List.of(nameChange), List.of()));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, String>> keyCaptor = ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(SearchClient.DATA_ASSET_SEARCH_ALIAS), keyCaptor.capture(), any(Pair.class));
+    assertEquals("Certification.Gold", keyCaptor.getValue().getRight());
+  }
+
+  @Test
+  void propagateCertificationTagsUsesQuotedOldNameWhenTagHasNoParentFqn() {
+    Tag tag = mock(Tag.class);
+    when(tag.getClassification())
+        .thenReturn(new EntityReference().withFullyQualifiedName("Certification"));
+    when(tag.getName()).thenReturn("NewName");
+    when(tag.getDescription()).thenReturn("Some description");
+    when(tag.getFullyQualifiedName()).thenReturn("NewName");
+    when(tag.getStyle()).thenReturn(null);
+
+    FieldChange nameChange =
+        new FieldChange().withName("name").withOldValue("OldName").withNewValue("NewName");
+
+    repository.propagateCertificationTags(
+        Entity.TAG, tag, changeDescription(List.of(), List.of(nameChange), List.of()));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, String>> keyCaptor = ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(SearchClient.DATA_ASSET_SEARCH_ALIAS), keyCaptor.capture(), any(Pair.class));
+    assertEquals("OldName", keyCaptor.getValue().getRight());
+  }
+
+  @Test
   void deleteAndSoftDeleteOperationsSkipUnsupportedTypesButHandleMappedEntities()
       throws IOException {
     EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");

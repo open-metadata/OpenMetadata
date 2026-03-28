@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
@@ -28,6 +30,8 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.PredefinedRecognizer;
@@ -1488,5 +1492,170 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     assertEquals(35, allRecognizers.size());
     assertEquals(tag.getRecognizers(), allRecognizers);
+  }
+
+  @Test
+  void test_certificationTagRenamePropagatesToEntityAndSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    // Step 1: Get the existing Certification classification (seeded by the system)
+    org.openmetadata.schema.entity.classification.Classification certClassification =
+        client.classifications().getByName("Certification", null);
+    assertNotNull(certClassification, "Certification classification must exist as a system entity");
+
+    // Step 2: Create a new tag under Certification
+    String originalTagName = ns.shortPrefix("cert_tag");
+    CreateTag createTag = new CreateTag();
+    createTag.setName(originalTagName);
+    createTag.setClassification(certClassification.getFullyQualifiedName());
+    createTag.setDescription("Tag for rename propagation test");
+    Tag certTag = SdkClients.adminClient().tags().create(createTag);
+    String originalTagFqn = certTag.getFullyQualifiedName();
+    assertEquals("Certification." + originalTagName, originalTagFqn);
+
+    // Step 3: Create the DB hierarchy and a DatabaseSchema
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "cert_rename_svc");
+    org.openmetadata.schema.entity.data.Database db =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    DatabaseSchema schema = createDatabaseSchema(ns, db.getFullyQualifiedName());
+
+    // Step 4: Apply the certification tag to the DatabaseSchema via setCertification()
+    org.openmetadata.schema.type.TagLabel tagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(originalTagFqn)
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+
+    schema.setCertification(new AssetCertification().withTagLabel(tagLabel));
+    DatabaseSchema taggedSchema =
+        client.databaseSchemas().update(schema.getId().toString(), schema);
+
+    assertNotNull(taggedSchema);
+    // Certification tags are stored in the `certification` field, not in `tags`.
+    // Verify via a fresh fetch with fields=certification.
+    DatabaseSchema schemaWithCert =
+        client.databaseSchemas().get(taggedSchema.getId().toString(), "certification");
+    assertNotNull(
+        schemaWithCert.getCertification(),
+        "Schema must have a certification after tag application");
+    assertEquals(
+        originalTagFqn,
+        schemaWithCert.getCertification().getTagLabel().getTagFQN(),
+        "Schema certification tagFQN must match the applied certification tag");
+
+    // Step 5: Verify search finds the schema by the original tag FQN
+    // Certification tags are indexed under certification.tagLabel.tagFQN, not tags.tagFQN
+    String tagFilterBefore =
+        String.format(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"certification.tagLabel.tagFQN\":\"%s\"}}]}}}",
+            originalTagFqn);
+    Awaitility.await("Schema should be searchable by original tag FQN")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              String resp =
+                  client
+                      .search()
+                      .query("*")
+                      .index("database_schema_search_index")
+                      .queryFilter(tagFilterBefore)
+                      .size(10)
+                      .execute();
+              JsonNode hits = mapper.readTree(resp).path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(),
+                  "Schema should be findable by original tag FQN before rename");
+              boolean found = false;
+              for (JsonNode hit : hits) {
+                if (schema
+                    .getFullyQualifiedName()
+                    .equals(hit.path("_source").path("fullyQualifiedName").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(found, "Schema should appear in search results under original tag FQN");
+            });
+
+    // Step 6: Rename the certification tag (change its name — this changes the FQN)
+    String renamedTagName = ns.shortPrefix("cert_tag_renamed");
+    certTag.setName(renamedTagName);
+    Tag renamedTag = SdkClients.adminClient().tags().update(certTag.getId().toString(), certTag);
+    assertEquals(renamedTagName, renamedTag.getName());
+    String newTagFqn = renamedTag.getFullyQualifiedName();
+    assertEquals("Certification." + renamedTagName, newTagFqn);
+
+    // Step 7: Wait until certification tagFQN propagates to the entity
+    // (name/FQN change must propagate to all referencing entities' certification field)
+    Awaitility.await("Schema certification tagFQN should update after tag rename")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              DatabaseSchema fetched =
+                  client
+                      .databaseSchemas()
+                      .getByName(schema.getFullyQualifiedName(), "certification");
+              assertNotNull(fetched, "Schema must be fetchable by name after tag rename");
+              assertNotNull(
+                  fetched.getCertification(),
+                  "Schema must still have certification after tag rename");
+              assertNotNull(
+                  fetched.getCertification().getTagLabel(), "Certification must have a tagLabel");
+              assertEquals(
+                  newTagFqn,
+                  fetched.getCertification().getTagLabel().getTagFQN(),
+                  "Tag FQN on schema certification must be updated to new FQN after name rename");
+            });
+
+    // Step 8: Search must find the schema under the new tag FQN
+    String tagFilterAfter =
+        String.format(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"certification.tagLabel.tagFQN\":\"%s\"}}]}}}",
+            newTagFqn);
+    Awaitility.await("Schema should be searchable by new tag FQN after rename")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              String resp =
+                  client
+                      .search()
+                      .query("*")
+                      .index("database_schema_search_index")
+                      .queryFilter(tagFilterAfter)
+                      .size(10)
+                      .execute();
+              JsonNode hits = mapper.readTree(resp).path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(),
+                  "Schema should be findable by new tag FQN after name rename");
+              boolean found = false;
+              for (JsonNode hit : hits) {
+                if (schema
+                    .getFullyQualifiedName()
+                    .equals(hit.path("_source").path("fullyQualifiedName").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  found,
+                  "Schema should appear in search results under new tag FQN after name rename");
+            });
+
+    // Step 9: Delete the certification tag and verify the schema no longer has a certification
+    SdkClients.adminClient().tags().delete(certTag.getId().toString());
+
+    DatabaseSchema schemaAfterTagDelete =
+        client.databaseSchemas().getByName(schema.getFullyQualifiedName(), "certification");
+    assertNotNull(
+        schemaAfterTagDelete, "Schema must still be fetchable after certification tag deletion");
+    assertNull(
+        schemaAfterTagDelete.getCertification(),
+        "Schema must not have a certification after the certification tag is deleted");
   }
 }
