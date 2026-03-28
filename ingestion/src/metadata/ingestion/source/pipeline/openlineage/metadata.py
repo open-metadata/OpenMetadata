@@ -202,11 +202,15 @@ class OpenlineageSource(PipelineServiceSource):
         except KeyError:
             raise ValueError("Topic name is not present")
 
-        broker_hostname = urlparse(namespace).hostname
+        parsed = urlparse(namespace)
+        broker_hostname = parsed.hostname
         if not broker_hostname:
             raise ValueError(
                 f"Could not extract broker hostname from namespace: {namespace}"
             )
+
+        if parsed.port:
+            broker_hostname = f"{broker_hostname}:{parsed.port}"
 
         return TopicDetails(name=name, broker_hostname=broker_hostname)
 
@@ -250,9 +254,9 @@ class OpenlineageSource(PipelineServiceSource):
                         bootstrap_servers = svc.connection.config.bootstrapServers or ""
                         svc_fqn = svc.fullyQualifiedName.root
                         for broker in bootstrap_servers.split(","):
-                            hostname = broker.strip().split(":")[0]
-                            if hostname:
-                                self._broker_to_service[hostname] = svc_fqn
+                            broker = broker.strip()
+                            if broker:
+                                self._broker_to_service[broker] = svc_fqn
                     except Exception:
                         logger.debug(
                             f"Could not extract bootstrapServers from service {svc.name}"
