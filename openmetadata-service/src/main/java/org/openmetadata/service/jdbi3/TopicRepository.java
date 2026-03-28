@@ -789,7 +789,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     private void updateFieldDisplayName(String fieldPrefix, Field origField, Field updatedField) {
-      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
+      if (operation.isPut() && !nullOrEmpty(origField.getDisplayName()) && updatedByBot()) {
         updatedField.setDisplayName(origField.getDisplayName());
         return;
       }

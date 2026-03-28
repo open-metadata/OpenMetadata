@@ -783,7 +783,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     }
 
     private void updateFieldDisplayName(String fieldPrefix, Field origField, Field updatedField) {
-      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
+      if (operation.isPut() && !nullOrEmpty(origField.getDisplayName()) && updatedByBot()) {
         updatedField.setDisplayName(origField.getDisplayName());
         return;
       }

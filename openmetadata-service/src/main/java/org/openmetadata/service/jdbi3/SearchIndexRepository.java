@@ -646,7 +646,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
     private void updateFieldDisplayName(
         String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
-      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
+      if (operation.isPut() && !nullOrEmpty(origField.getDisplayName()) && updatedByBot()) {
         updatedField.setDisplayName(origField.getDisplayName());
         return;
       }
