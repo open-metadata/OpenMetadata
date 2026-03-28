@@ -9,6 +9,11 @@
     "recognizer": {
       "description": "Metadata about the recognizer that automatically applied this tag",
       "$ref": "tagLabelRecognizerMetadata.json"
+    },
+    "expiryDate": {
+      "description": "Epoch time in milliseconds when the certification tag expires",
+      "type": "integer",
+      "format": "utc-millisec"
     }
   },
   "additionalProperties": false
