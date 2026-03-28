@@ -1,7 +1,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;

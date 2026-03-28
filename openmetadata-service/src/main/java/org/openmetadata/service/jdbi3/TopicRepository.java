@@ -484,7 +484,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         break;
       }
     }
-    if (!"".equals(childrenSchemaName) && schemaField != null) {
+    if (!childrenSchemaName.isEmpty() && schemaField != null) {
       schemaField = getChildSchemaField(schemaField.getChildren(), childrenSchemaName);
     }
     if (schemaField == null) {

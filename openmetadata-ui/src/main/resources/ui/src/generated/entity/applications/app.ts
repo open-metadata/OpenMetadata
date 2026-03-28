@@ -871,6 +871,10 @@ export enum LabelTypeEnum {
  */
 export interface TagLabelMetadata {
     /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
+    /**
      * Metadata about the recognizer that automatically applied this tag
      */
     recognizer?: TagLabelRecognizerMetadata;

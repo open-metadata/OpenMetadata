@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -423,17 +423,22 @@ test('Conversation source alert', async ({ page }) => {
   });
 });
 
-// Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
 /**
  * Alert operations with permissions
  * @description Creates and triggers a Table source alert; verifies alert details for permissive user and limited behavior
  * for a non-permissive user; deletes the alert.
  */
-test.skip('Alert operations for a user with and without permissions', async ({
+test('Alert operations for a user with and without permissions', async ({
   page,
   userWithPermissionsPage,
   userWithoutPermissionsPage,
 }) => {
+  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
+  test.fixme(
+    process.env.PLAYWRIGHT_IS_OSS !== 'true',
+    'Skipping in AUT environment'
+  );
+
   test.slow();
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);

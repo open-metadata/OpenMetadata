@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,8 +30,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
       long end,
       List<FormulaHolder> formulas,
       Map metricHolder,
-      boolean live)
-      throws IOException {
+      boolean live) {
 
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
 

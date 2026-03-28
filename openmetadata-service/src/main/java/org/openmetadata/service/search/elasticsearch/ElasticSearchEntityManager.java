@@ -79,7 +79,7 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class ElasticSearchEntityManager implements EntityManagementClient {
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
-  private ElasticsearchAsyncClient asyncClient;
+  private final ElasticsearchAsyncClient asyncClient;
   private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -1435,8 +1435,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                 .withIncludeSourceFields(
                     SearchUtils.getRequiredEntityRelationshipFields(includeSourceFields));
         SearchEntityRelationshipResult tableER =
-            ((SearchClient) Entity.getSearchRepository().getSearchClient())
-                .searchEntityRelationship(request);
+            Entity.getSearchRepository().getSearchClient().searchEntityRelationship(request);
         Map.Entry<String, NodeInformation> tableNode =
             tableER.getNodes().entrySet().stream()
                 .filter(e -> fqn.toString().equals(e.getKey()))

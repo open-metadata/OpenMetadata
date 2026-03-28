@@ -916,23 +916,10 @@ test.describe('Glossary Advanced Operations', () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      // Clear all related terms
-
-      await page
-        .getByTestId('tag-selector')
-        .locator('#tagsForm_tags')
-        .press('Backspace');
-      await page
-        .getByTestId('tag-selector')
-        .locator('#tagsForm_tags')
-        .press('Backspace');
-      await page
-        .getByTestId('tag-selector')
-        .locator('#tagsForm_tags')
-        .press('Backspace');
+      await page.locator('[data-testid^="remove-row-"]').first().click();
 
       const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('save-related-terms').click();
       await validateRes;
 
       // Verify related term is removed

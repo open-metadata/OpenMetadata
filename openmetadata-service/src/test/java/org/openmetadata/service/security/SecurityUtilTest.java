@@ -22,7 +22,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.Principal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -182,14 +181,14 @@ class SecurityUtilTest {
   void testGetUserNameAndImpersonatedByUser() {
     CatalogSecurityContext impersonatedContext =
         new CatalogSecurityContext(
-            (Principal) () -> "alice@example.com", "https", "openid", Set.of(), false, "admin");
+            () -> "alice@example.com", "https", "openid", Set.of(), false, "admin");
 
     assertEquals("alice", SecurityUtil.getUserName(impersonatedContext));
     assertEquals("alice", SecurityUtil.getImpersonatedByUser(impersonatedContext));
 
     CatalogSecurityContext directContext =
         new CatalogSecurityContext(
-            (Principal) () -> "service-account/openmetadata", "https", "openid", Set.of());
+            () -> "service-account/openmetadata", "https", "openid", Set.of());
 
     assertEquals("service-account", SecurityUtil.getUserName(directContext));
     assertNull(SecurityUtil.getImpersonatedByUser(directContext));
@@ -469,7 +468,7 @@ class SecurityUtilTest {
     // Null claims should return null
     String displayName = SecurityUtil.extractDisplayNameFromClaims(null);
 
-    assertEquals(null, displayName);
+    assertNull(displayName);
   }
 
   @Test
@@ -479,7 +478,7 @@ class SecurityUtilTest {
 
     String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
 
-    assertEquals(null, displayName);
+    assertNull(displayName);
   }
 
   @Test
@@ -582,7 +581,7 @@ class SecurityUtilTest {
 
     String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
 
-    assertEquals(null, displayName);
+    assertNull(displayName);
   }
 
   @Test
@@ -594,7 +593,7 @@ class SecurityUtilTest {
 
     String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
 
-    assertEquals(null, displayName);
+    assertNull(displayName);
   }
 
   @Test

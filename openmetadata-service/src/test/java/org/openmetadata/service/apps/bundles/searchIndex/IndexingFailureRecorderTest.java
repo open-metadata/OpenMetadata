@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
@@ -528,7 +529,7 @@ class IndexingFailureRecorderTest {
 
         assertTrue(records.get(0).getId() != null && !records.get(0).getId().isEmpty());
         assertTrue(records.get(1).getId() != null && !records.get(1).getId().isEmpty());
-        assertTrue(!records.get(0).getId().equals(records.get(1).getId()));
+        assertFalse(records.get(0).getId().equals(records.get(1).getId()));
       }
     }
   }

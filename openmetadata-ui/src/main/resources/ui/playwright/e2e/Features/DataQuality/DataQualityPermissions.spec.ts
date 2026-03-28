@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CREATE_TEST_CASE_POLICY,
@@ -35,9 +35,9 @@ import { setupUserWithPolicy } from '../../../utils/permission';
 import {
   visitTestSuiteDetailsPage,
   visitTestSuitesPage,
-  waitForTestCaseDetailsResponse,
   waitForPermissionsResponse,
   waitForTableEntityPermissionsResponse,
+  waitForTestCaseDetailsResponse,
   waitForTestCaseListResponse,
 } from '../../../utils/testCases';
 

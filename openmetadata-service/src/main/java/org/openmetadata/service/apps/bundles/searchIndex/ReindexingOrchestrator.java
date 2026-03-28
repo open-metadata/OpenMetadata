@@ -210,7 +210,7 @@ public class ReindexingOrchestrator {
     }
   }
 
-  private void runReindexing() throws Exception {
+  private void runReindexing() {
     if (jobData.getEntities() == null || jobData.getEntities().isEmpty()) {
       LOG.info("No entities selected for reindexing, completing immediately");
       jobData.setStatus(EventPublisherJob.Status.COMPLETED);

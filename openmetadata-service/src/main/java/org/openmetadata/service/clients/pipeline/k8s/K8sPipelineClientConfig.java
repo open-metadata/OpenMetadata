@@ -261,13 +261,11 @@ public class K8sPipelineClientConfig {
     try {
       if (value instanceof LinkedHashMap) {
         return (LinkedHashMap<String, LinkedHashMap<String, String>>) value;
-      } else if (value instanceof Map) {
+      } else if (value instanceof Map<?, ?> rawMap) {
         LinkedHashMap<String, LinkedHashMap<String, String>> result = new LinkedHashMap<>();
-        Map<?, ?> rawMap = (Map<?, ?>) value;
         for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
-          if (entry.getKey() != null && entry.getValue() instanceof Map) {
+          if (entry.getKey() != null && entry.getValue() instanceof Map<?, ?> nestedMap) {
             String key = entry.getKey().toString();
-            Map<?, ?> nestedMap = (Map<?, ?>) entry.getValue();
             LinkedHashMap<String, String> nestedResult = new LinkedHashMap<>();
             for (Map.Entry<?, ?> nestedEntry : nestedMap.entrySet()) {
               if (nestedEntry.getKey() != null && nestedEntry.getValue() != null) {
@@ -321,16 +319,14 @@ public class K8sPipelineClientConfig {
       return List.of();
     }
     try {
-      if (value instanceof List) {
-        List<?> rawList = (List<?>) value;
+      if (value instanceof List<?> rawList) {
         return rawList.stream()
             .filter(Objects::nonNull)
             .map(Object::toString)
             .filter(s -> !nullOrEmpty(s))
             .collect(Collectors.toList());
-      } else if (value instanceof String) {
+      } else if (value instanceof String strValue) {
         // Handle case where Parameters serializes Lists to comma-separated strings
-        String strValue = (String) value;
         if (strValue.trim().isEmpty()) {
           return List.of();
         }

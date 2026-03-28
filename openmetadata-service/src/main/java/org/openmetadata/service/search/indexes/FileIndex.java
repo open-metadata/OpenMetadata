@@ -29,8 +29,7 @@ public class FileIndex implements SearchIndex {
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.FILE, file));
-    List<TagLabel> tags = new ArrayList<>();
-    tags.addAll(parseTags.getTags());
+    List<TagLabel> tags = new ArrayList<>(parseTags.getTags());
 
     Map<String, Object> commonAttributes = getCommonAttributesMap(file, Entity.FILE);
     doc.putAll(commonAttributes);

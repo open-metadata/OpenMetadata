@@ -768,8 +768,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     super.initialize(bootstrap);
   }
 
-  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf)
-      throws IOException {
+  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf) {
     LOG.info("Validating native migrations");
     ConnectionType connectionType =
         ConnectionType.from(conf.getDataSourceFactory().getDriverClass());

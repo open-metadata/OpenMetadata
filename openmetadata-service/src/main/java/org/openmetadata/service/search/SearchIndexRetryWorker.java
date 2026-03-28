@@ -284,9 +284,7 @@ public class SearchIndexRetryWorker implements Managed {
         return byHint;
       }
       EntityReference byFqn = resolveByFqn(entityFqn);
-      if (byFqn != null) {
-        return byFqn;
-      }
+      return byFqn;
     }
     return null;
   }

@@ -30,8 +30,7 @@ public class DriveServiceIndex implements SearchIndex {
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DRIVE_SERVICE, driveService));
-    List<TagLabel> tags = new ArrayList<>();
-    tags.addAll(parseTags.getTags());
+    List<TagLabel> tags = new ArrayList<>(parseTags.getTags());
 
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(driveService, Entity.DRIVE_SERVICE);
