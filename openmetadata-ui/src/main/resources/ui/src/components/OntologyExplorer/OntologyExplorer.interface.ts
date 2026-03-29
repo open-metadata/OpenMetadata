@@ -130,6 +130,7 @@ export interface FilterToolbarProps {
   relationTypes: GlossaryTermRelationType[];
   onFiltersChange: (filters: GraphFilters) => void;
   onViewModeChange?: (viewMode: GraphViewMode) => void;
+  onClearAll?: () => void;
   viewModeDisabled?: boolean;
 }
 

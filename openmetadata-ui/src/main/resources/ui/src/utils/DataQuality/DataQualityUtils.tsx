@@ -12,6 +12,7 @@
  */
 import { t } from 'i18next';
 import {
+  cloneDeep,
   isArray,
   isNil,
   isUndefined,
@@ -22,6 +23,7 @@ import {
   startCase,
   uniqBy,
 } from 'lodash';
+import QueryString from 'qs';
 import { Surface } from 'recharts';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
@@ -34,11 +36,15 @@ import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
+import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
+import { TEXT_GREY_MUTED } from '../../constants/constants';
+import { DEFAULT_DIMENSIONS_DATA } from '../../constants/DataQuality.constants';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import { Table } from '../../generated/entity/data/table';
+import { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import {
   TestCase,
@@ -51,13 +57,17 @@ import {
 } from '../../generated/tests/testDefinition';
 import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
 import { TableSearchSource } from '../../interface/search.interface';
-import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
+import {
+  DataQualityDashboardChartFilters,
+  DataQualityPageTabs,
+} from '../../pages/DataQuality/DataQualityPage.interface';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import { getEntryFormattedValue } from '../DataInsightUtils';
 import { formatDate } from '../date-time/DateTimeUtils';
 import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityUtils';
 import { getEntityFQN } from '../FeedUtils';
+import { getDataQualityPagePath } from '../RouterUtils';
 import { generateEntityLink } from '../TableUtils';
 
 /**
@@ -678,3 +688,75 @@ export function getColumnNameFromColumnFilterKey(
     ? columnFilterKey.slice(columnFilterKey.lastIndexOf('::') + 2)
     : columnFilterKey;
 }
+
+/** Returns path and search for navigating to the Test Cases tab with a status filter. */
+export const getTestCaseTabPath = (testCaseStatus: TestCaseStatus) => ({
+  pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
+  search: QueryString.stringify({ testCaseStatus }),
+});
+
+export const transformToTestCaseStatusByDimension = (
+  inputData: DataQualityReport['data']
+): StatusData[] => {
+  const result: { [key: string]: StatusData } = cloneDeep(
+    DEFAULT_DIMENSIONS_DATA
+  );
+
+  inputData.forEach((item) => {
+    const {
+      document_count,
+      'testCaseResult.testCaseStatus': status,
+      dataQualityDimension = DataQualityDimensions.NoDimension,
+    } = item;
+    const count = parseInt(document_count, 10);
+
+    if (!result[dataQualityDimension]) {
+      result[dataQualityDimension] = {
+        title: dataQualityDimension,
+        success: 0,
+        failed: 0,
+        aborted: 0,
+        total: 0,
+      };
+    }
+
+    if (status === 'success') {
+      result[dataQualityDimension].success += count;
+    } else if (status === 'failed') {
+      result[dataQualityDimension].failed += count;
+    } else if (status === 'aborted') {
+      result[dataQualityDimension].aborted += count;
+    }
+
+    result[dataQualityDimension].total += count;
+  });
+
+  return Object.values(result);
+};
+
+export const getPieChartLabel = (label: string, value = 0) => {
+  return (
+    <>
+      <text
+        dy={8}
+        fill="#1D2939"
+        fontSize={20}
+        fontWeight={600}
+        textAnchor="middle"
+        x="50%"
+        y="56%">
+        {value}
+      </text>
+      <text
+        dy={8}
+        fill={TEXT_GREY_MUTED}
+        fontSize={12}
+        fontWeight={500}
+        textAnchor="middle"
+        x="50%"
+        y="44%">
+        {label}
+      </text>
+    </>
+  );
+};
