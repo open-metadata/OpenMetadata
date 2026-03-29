@@ -217,12 +217,12 @@ public class ReindexingProgressMonitor {
     double percentage = ((double) processed / total) * 100;
     int bars = (int) (percentage / 5); // 20 bars total
 
-    StringBuilder progress = new StringBuilder();
-    progress.append("█".repeat(Math.max(0, bars)));
-    progress.append("░".repeat(Math.max(0, 20 - bars)));
-    progress.append(String.format(" %s", formatPercentage(processed, total)));
+    String progress =
+        "█".repeat(Math.max(0, bars))
+            + "░".repeat(Math.max(0, 20 - bars))
+            + String.format(" %s", formatPercentage(processed, total));
 
-    return progress.toString();
+    return progress;
   }
 
   private String formatPercentage(long processed, long total) {

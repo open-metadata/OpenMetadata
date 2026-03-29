@@ -526,7 +526,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
+        && !(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
           uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
     }
@@ -715,7 +715,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     CatalogSecurityContext catalogSecurityContext =
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
+        && !(user.getIsBot() != null && user.getIsBot())) {
       user.setRoles(validateAndGetRolesRef(getRolesFromAuthorizationToken(catalogSecurityContext)));
     }
   }

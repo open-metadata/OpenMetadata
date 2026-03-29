@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,7 +51,7 @@ class VectorSearchQueryBuilderTest {
     // First filter should always be deleted=false
     JsonNode deletedFilter = filter.get(0);
     assertTrue(deletedFilter.has("term"));
-    assertEquals(false, deletedFilter.get("term").get("deleted").asBoolean());
+    assertFalse(deletedFilter.get("term").get("deleted").asBoolean());
   }
 
   @Test
@@ -264,7 +265,7 @@ class VectorSearchQueryBuilderTest {
     assertEquals(5, mustFilters.size());
 
     // First should always be deleted=false
-    assertEquals(false, mustFilters.get(0).get("term").get("deleted").asBoolean());
+    assertFalse(mustFilters.get(0).get("term").get("deleted").asBoolean());
 
     // Verify all filters are present (order may vary)
     String filtersJson = mustFilters.toString();
@@ -700,6 +701,6 @@ class VectorSearchQueryBuilderTest {
 
     // Should have only 1 filter: deleted=false
     assertEquals(1, mustFilters.size());
-    assertEquals(false, mustFilters.get(0).get("term").get("deleted").asBoolean());
+    assertFalse(mustFilters.get(0).get("term").get("deleted").asBoolean());
   }
 }

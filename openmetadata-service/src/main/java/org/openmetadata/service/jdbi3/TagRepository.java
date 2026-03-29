@@ -722,7 +722,7 @@ public class TagRepository extends EntityRepository<Tag> {
     var queryBuilder = new StringBuilder();
     tagFQNs.forEach(
         tagFQN -> {
-          if (queryBuilder.length() > 0) {
+          if (!queryBuilder.isEmpty()) {
             queryBuilder.append(" UNION ALL ");
           }
           var escapedFQN = tagFQN.replace("'", "''");

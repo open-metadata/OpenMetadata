@@ -423,7 +423,6 @@ public class MigrationUtil {
                         .withFormula(
                             "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100")
                         .withFilter(exclude_tags_filter))));
-    ;
 
     // number of Data Asset with Description KPI
     createChart(

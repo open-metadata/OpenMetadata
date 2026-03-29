@@ -1445,7 +1445,7 @@ class DistributedSearchIndexCoordinatorTest {
         10000,
         status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? 10000 : 5000,
         status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? 9900 : 4900,
-        status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? 100 : 100,
+        100,
         statsJson,
         "admin",
         System.currentTimeMillis() - 60000,

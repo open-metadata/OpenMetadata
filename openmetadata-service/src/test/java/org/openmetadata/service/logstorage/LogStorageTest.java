@@ -14,7 +14,6 @@
 package org.openmetadata.service.logstorage;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -53,7 +52,7 @@ public class LogStorageTest {
   }
 
   @Test
-  void testDefaultLogStorageGetLogs() throws IOException {
+  void testDefaultLogStorageGetLogs() {
     // Setup mock response
     Map<String, String> mockLogs = new HashMap<>();
     mockLogs.put("logs", "Test log content\nLine 2\nLine 3");
@@ -76,7 +75,7 @@ public class LogStorageTest {
   }
 
   @Test
-  void testDefaultLogStorageGetLogsWithPagination() throws IOException {
+  void testDefaultLogStorageGetLogsWithPagination() {
     // Setup mock response
     Map<String, String> mockLogs = new HashMap<>();
     mockLogs.put("logs", "Line 4\nLine 5");
@@ -135,7 +134,7 @@ public class LogStorageTest {
   }
 
   @Test
-  void testDefaultLogStorageGetLatestRunId() throws IOException {
+  void testDefaultLogStorageGetLatestRunId() {
     // Setup mock pipeline status
     PipelineStatus status = new PipelineStatus();
     status.setRunId(testRunId.toString());
@@ -151,7 +150,7 @@ public class LogStorageTest {
   }
 
   @Test
-  void testDefaultLogStorageListRuns() throws IOException {
+  void testDefaultLogStorageListRuns() {
     // Setup mock pipeline status
     PipelineStatus status = new PipelineStatus();
     status.setRunId(testRunId.toString());
@@ -168,7 +167,7 @@ public class LogStorageTest {
   }
 
   @Test
-  void testDefaultLogStorageLogsExist() throws IOException {
+  void testDefaultLogStorageLogsExist() {
     // Setup mock response with logs
     Map<String, String> mockLogs = new HashMap<>();
     mockLogs.put("logs", "Some log content");
@@ -189,14 +188,14 @@ public class LogStorageTest {
   }
 
   @Test
-  void testDefaultLogStorageDeleteOperationsNoOp() throws IOException {
+  void testDefaultLogStorageDeleteOperationsNoOp() {
     // Test that delete operations don't throw exceptions (they're no-ops)
     assertDoesNotThrow(() -> defaultLogStorage.deleteLogs(testPipelineFQN, testRunId));
     assertDoesNotThrow(() -> defaultLogStorage.deleteAllLogs(testPipelineFQN));
   }
 
   @Test
-  void testDefaultLogStorageCloseStreamNoOp() throws IOException {
+  void testDefaultLogStorageCloseStreamNoOp() {
     // Test that close stream operation doesn't throw exceptions (it's a no-op)
     assertDoesNotThrow(() -> defaultLogStorage.closeStream(testPipelineFQN, testRunId));
   }

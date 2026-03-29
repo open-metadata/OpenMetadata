@@ -1,10 +1,11 @@
-package org.openmetadata.service.migration.postgres.v1124;
+package org.openmetadata.service.migration.postgres.v1125;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v1124.MigrationUtil;
+import org.openmetadata.service.migration.utils.v1125.MigrationUtil;
 
 @Slf4j
 public class Migration extends MigrationProcessImpl {
@@ -20,7 +21,7 @@ public class Migration extends MigrationProcessImpl {
       MigrationUtil.migrateWebhookSecretKeyToAuthType(handle);
     } catch (Exception e) {
       LOG.error(
-          "Failed to migrate webhook secretKey to authType in v1124 migration. "
+          "Failed to migrate webhook secretKey to authType in v1125 migration. "
               + "Webhook authentication may not work correctly until re-saved.",
           e);
     }
@@ -28,8 +29,16 @@ public class Migration extends MigrationProcessImpl {
       MigrationUtil.migrateWorkflowDefinitions();
     } catch (Exception e) {
       LOG.error(
-          "Failed to migrate workflow definitions in v1124 migration. "
+          "Failed to migrate workflow definitions in v1125 migration. "
               + "Include fields feature may not work correctly until server restart.",
+          e);
+    }
+    try {
+      MigrationUtil.migrateCertificationToTagUsage(handle, ConnectionType.POSTGRES);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to migrate certification from entity JSON to tag_usage in v1125 migration. "
+              + "Certification data may be inconsistent until re-saved.",
           e);
     }
   }

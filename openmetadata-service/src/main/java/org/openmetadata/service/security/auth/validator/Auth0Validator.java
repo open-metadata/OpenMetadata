@@ -49,11 +49,7 @@ public class Auth0Validator {
       }
 
       FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, authority);
-      if (publicKeyValidation != null) {
-        return publicKeyValidation;
-      }
-
-      return null; // Success - Auth0 public client validated
+      return publicKeyValidation; // Success - Auth0 public client validated
     } catch (Exception e) {
       LOG.error("Auth0 public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -88,11 +84,7 @@ public class Auth0Validator {
       FieldError credentialsValidation =
           validateClientCredentials(
               auth0Domain, oidcConfig.getId(), oidcConfig.getSecret(), oidcConfig.getCallbackUrl());
-      if (credentialsValidation != null) {
-        return credentialsValidation;
-      }
-
-      return null; // Success - Auth0 confidential client validated
+      return credentialsValidation; // Success - Auth0 confidential client validated
     } catch (Exception e) {
       LOG.error("Auth0 confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -326,7 +318,7 @@ public class Auth0Validator {
                 ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
                 "Invalid JWKS format. Expected JSON with 'keys' array at: " + urlStr);
           }
-          if (jwks.has("keys") && jwks.get("keys").size() == 0) {
+          if (jwks.has("keys") && jwks.get("keys").isEmpty()) {
             return ValidationErrorBuilder.createFieldError(
                 ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
                 "JWKS endpoint returned empty keys array: " + urlStr);

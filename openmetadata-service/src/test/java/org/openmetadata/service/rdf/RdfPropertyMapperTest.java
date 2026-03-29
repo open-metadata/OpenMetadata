@@ -448,7 +448,7 @@ class RdfPropertyMapperTest {
 
       // The mapper should not add triples for non-structured properties by default
       // (they're handled by the context-based mapping)
-      assertTrue(initialTripleCount == 0, "Model should be empty initially");
+      assertEquals(0, initialTripleCount, "Model should be empty initially");
     }
 
     @Test

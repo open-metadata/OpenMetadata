@@ -19,6 +19,7 @@ import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -1065,7 +1066,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             .entity(
                 new jakarta.ws.rs.core.StreamingOutput() {
                   @Override
-                  public void write(java.io.OutputStream output) throws java.io.IOException {
+                  public void write(java.io.OutputStream output) {
                     try {
                       // Send SSE headers
                       output.write("retry: 1000\n\n".getBytes());
@@ -1079,7 +1080,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                                   String.format("data: %s\n\n", logLine.replace("\n", "\ndata: "));
                               output.write(event.getBytes(java.nio.charset.StandardCharsets.UTF_8));
                               output.flush();
-                            } catch (java.io.IOException e) {
+                            } catch (IOException e) {
                               LOG.debug("Client disconnected for {}/{}", pipelineFQN, runId);
                               throw new RuntimeException(e);
                             }
@@ -1187,7 +1188,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         .entity(
             new jakarta.ws.rs.core.StreamingOutput() {
               @Override
-              public void write(java.io.OutputStream output) throws java.io.IOException {
+              public void write(java.io.OutputStream output) {
                 try {
                   output.write("retry: 1000\n\n".getBytes());
                   output.flush();
@@ -1212,7 +1213,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                               String.format("data: %s\n\n", json)
                                   .getBytes(java.nio.charset.StandardCharsets.UTF_8));
                           output.flush();
-                        } catch (java.io.IOException e) {
+                        } catch (IOException e) {
                           LOG.debug(
                               "Client disconnected for progress stream {}/{}", pipelineFQN, runId);
                           throw new RuntimeException(e);

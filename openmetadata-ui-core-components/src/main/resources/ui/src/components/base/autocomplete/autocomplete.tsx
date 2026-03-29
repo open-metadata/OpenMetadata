@@ -56,6 +56,7 @@ interface AutocompleteContextValue {
   onInputChange: (value: string) => void;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   maxVisibleItems?: number;
+  multiple: boolean;
 }
 
 const AutocompleteContext = createContext<AutocompleteContextValue>({
@@ -65,6 +66,7 @@ const AutocompleteContext = createContext<AutocompleteContextValue>({
   onRemove: () => {},
   onInputChange: () => {},
   maxVisibleItems: undefined,
+  multiple: true,
 });
 
 interface AutocompleteTriggerProps extends AriaGroupProps {
@@ -94,6 +96,7 @@ export interface AutocompleteProps
   filterOption?: (item: SelectItemType, filterText: string) => boolean;
   onSearchChange?: (value: string) => void;
   maxVisibleItems?: number;
+  multiple?: boolean;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
@@ -146,6 +149,12 @@ const InnerAutocomplete = ({
         focusManager?.focusNext({ wrap: false, tabbable: false });
 
         break;
+      case 'ArrowDown':
+        if (comboBoxStateContext && !comboBoxStateContext.isOpen) {
+          comboBoxStateContext.open();
+        }
+
+        break;
     }
   };
 
@@ -195,7 +204,7 @@ const InnerAutocomplete = ({
   };
 
   const isSelectionEmpty = context?.selectedItems?.length === 0;
-  const { maxVisibleItems } = context;
+  const { maxVisibleItems, multiple } = context;
   const allSelected = context?.selectedItems ?? [];
   const visibleSelected =
     maxVisibleItems === undefined
@@ -240,10 +249,11 @@ const InnerAutocomplete = ({
       <div
         className={cx(
           'tw:relative tw:flex tw:min-w-[20%] tw:flex-1 tw:flex-row tw:items-center',
-          !isSelectionEmpty && 'tw:ml-0.5'
+          !isSelectionEmpty && 'tw:ml-0.5',
+          !multiple && !isSelectionEmpty && 'tw:hidden'
         )}>
         <AriaInput
-          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-none tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-none tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
           onKeyDown={handleInputKeyDown}
           onMouseDown={handleInputMouseDown}
@@ -258,6 +268,7 @@ const AutocompleteTrigger = ({
   placeholder,
   placeholderIcon: Icon = SearchLg,
   isDisabled: _isDisabled,
+  isInvalid,
   ...otherProps
 }: AutocompleteTriggerProps) => {
   return (
@@ -267,10 +278,13 @@ const AutocompleteTrigger = ({
         cx(
           'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
           isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
+          isInvalid && 'tw:ring-error_subtle',
           isFocusWithin && 'tw:ring-2 tw:ring-brand',
+          isFocusWithin && isInvalid && 'tw:ring-2 tw:ring-error',
           sizes[size].root
         )
-      }>
+      }
+      isInvalid={isInvalid}>
       {({ isDisabled }) => (
         <>
           {Icon && (
@@ -298,6 +312,7 @@ export const AutocompleteBase = ({
   label,
   tooltip,
   hint,
+  isInvalid,
   selectedItems,
   onItemCleared,
   onItemInserted,
@@ -305,6 +320,7 @@ export const AutocompleteBase = ({
   popoverClassName,
   renderTag,
   filterOption,
+  multiple = true,
   onSearchChange,
   maxVisibleItems,
   name: _name,
@@ -364,6 +380,9 @@ export const AutocompleteBase = ({
     if (!id) {
       return;
     }
+    if (!multiple && internalSelected.length >= 1) {
+      return;
+    }
     const item = itemMap.get(id as string);
     if (!item) {
       return;
@@ -407,6 +426,7 @@ export const AutocompleteBase = ({
       onRemove,
       renderTag,
       maxVisibleItems,
+      multiple,
     }),
     [
       selectedKeys,
@@ -415,6 +435,7 @@ export const AutocompleteBase = ({
       onRemove,
       renderTag,
       maxVisibleItems,
+      multiple,
     ]
   );
 
@@ -425,7 +446,7 @@ export const AutocompleteBase = ({
           allowsEmptyCollection
           inputValue={filterText}
           items={visibleItems}
-          menuTrigger="focus"
+          menuTrigger="input"
           selectedKey={null}
           onInputChange={onInputChange}
           onSelectionChange={onSelectionChange}
@@ -440,6 +461,7 @@ export const AutocompleteBase = ({
 
               <div className="tw:relative tw:w-full" ref={triggerRef}>
                 <AutocompleteTrigger
+                  isInvalid={isInvalid}
                   placeholder={placeholder}
                   placeholderIcon={props.placeholderIcon}
                   size="sm"
@@ -460,7 +482,7 @@ export const AutocompleteBase = ({
                 </AriaListBox>
               </Popover>
 
-              {hint && <HintText isInvalid={state.isInvalid}>{hint}</HintText>}
+              {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
             </div>
           )}
         </AriaComboBox>

@@ -120,7 +120,7 @@ class DistributedJobStatsAggregatorTest {
   }
 
   @Test
-  void testStopsWhenJobNotFound() throws Exception {
+  void testStopsWhenJobNotFound() {
     when(coordinator.getJobWithAggregatedStats(jobId)).thenReturn(null);
 
     aggregator = new DistributedJobStatsAggregator(coordinator, jobId, 500);
@@ -542,8 +542,7 @@ class DistributedJobStatsAggregatorTest {
     assertEquals(100, stats.getSinkStats().getSuccessRecords());
     assertEquals(23, stats.getVectorStats().getTotalRecords());
 
-    StepStats tableStats =
-        (StepStats) stats.getEntityStats().getAdditionalProperties().get("table");
+    StepStats tableStats = stats.getEntityStats().getAdditionalProperties().get("table");
     assertEquals(Integer.MAX_VALUE, tableStats.getTotalRecords());
     assertEquals(Integer.MAX_VALUE, tableStats.getSuccessRecords());
 

@@ -104,7 +104,7 @@ public class OpenSearchClient implements SearchClient {
   private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
   private final OpenSearchSearchManager searchManager;
 
-  private NLQService nlqService;
+  private final NLQService nlqService;
 
   public OpenSearchClient(ElasticSearchConfiguration config) {
     this(config, null);

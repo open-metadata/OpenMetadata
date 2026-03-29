@@ -96,8 +96,7 @@ public class FilterEntityImpl implements JavaDelegate {
     }
 
     // Parse JSON string into map if needed
-    if (filterObj instanceof String) {
-      String filterStr = (String) filterObj;
+    if (filterObj instanceof String filterStr) {
       // Handle empty string as "no filter"
       if (filterStr.trim().isEmpty()) {
         return null; // Empty string means no filtering

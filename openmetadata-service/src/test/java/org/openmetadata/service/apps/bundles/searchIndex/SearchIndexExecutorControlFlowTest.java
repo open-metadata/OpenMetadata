@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -183,7 +184,7 @@ class SearchIndexExecutorControlFlowTest {
                     null,
                     "table"));
 
-    assertTrue(thrown.getCause() instanceof SearchIndexException);
+    assertInstanceOf(SearchIndexException.class, thrown.getCause());
   }
 
   @Test
@@ -354,7 +355,7 @@ class SearchIndexExecutorControlFlowTest {
                   invokePrivateMethod(
                       "validateClusterCapacity", new Class<?>[] {Set.class}, Set.of(Entity.TABLE)));
 
-      assertTrue(thrown.getCause() instanceof InsufficientClusterCapacityException);
+      assertInstanceOf(InsufficientClusterCapacityException.class, thrown.getCause());
     }
   }
 
@@ -859,7 +860,7 @@ class SearchIndexExecutorControlFlowTest {
   }
 
   @Test
-  void executeCompletesRecreateFlowForZeroEntityWorkload() throws Exception {
+  void executeCompletesRecreateFlowForZeroEntityWorkload() {
     ReindexingProgressListener listener = mock(ReindexingProgressListener.class);
     ReindexingJobContext jobContext = mock(ReindexingJobContext.class);
     CollectionDAO.SearchIndexFailureDAO failureDao =
@@ -1285,7 +1286,7 @@ class SearchIndexExecutorControlFlowTest {
     setField("searchIndexSink", sink);
     setField("taskQueue", queue);
     when(source.readWithCursor(RestUtil.encodeCursor("0")))
-        .thenReturn((ResultList) new ResultList<>(List.of(mock(EntityInterface.class))));
+        .thenReturn(new ResultList<>(List.of(mock(EntityInterface.class))));
 
     invokePrivateMethod(
         "processReadTask",

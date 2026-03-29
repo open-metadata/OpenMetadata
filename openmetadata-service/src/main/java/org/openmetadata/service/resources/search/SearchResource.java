@@ -991,7 +991,7 @@ public class SearchResource {
             responseCode = "409",
             description = "Conflict - Search indexing is currently running")
       })
-  public Response cleanOrphanIndexes(@Context SecurityContext securityContext) throws IOException {
+  public Response cleanOrphanIndexes(@Context SecurityContext securityContext) {
     authorizer.authorizeAdminOrBot(securityContext);
 
     if (isSearchIndexingRunning()) {

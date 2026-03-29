@@ -11,7 +11,50 @@
  *  limitations under the License.
  */
 import { expect, Page, Response } from '@playwright/test';
+import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
+import { redirectToHomePage } from './common';
+import { sidebarClick } from './sidebar';
+
+/** Recharts PieChart id for the Test Case Result pie on the Data Quality dashboard. */
+export const TEST_CASE_STATUS_PIE_CHART_TEST_ID = 'test-case-result-pie-chart';
+
+/** Recharts PieChart id for the Entity Health Status pie on the Data Quality dashboard. */
+export const ENTITY_HEALTH_PIE_CHART_TEST_ID = 'healthy-data-assets-pie-chart';
+
+/** Recharts PieChart id for the Data Assets Coverage pie on the Data Quality dashboard. */
+export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
+  'data-assets-coverage-pie-chart';
+
+/**
+ * Navigate to the Data Quality dashboard (Dashboard sub-tab under Data Quality).
+ */
+export async function goToDataQualityDashboard(page: Page): Promise<void> {
+  await redirectToHomePage(page);
+  const dataQualityReportResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testSuites/dataQualityReport?q=*'
+  );
+  await sidebarClick(page, SidebarItem.DATA_QUALITY);
+  await page.getByTestId('dashboard').click();
+  await dataQualityReportResponse;
+}
+
+/** Clicks a segment by 0-based index (targets .custom-pie-chart-clickable path). */
+export async function clickPieChartSegmentByIndex(
+  page: Page,
+  chartTestId: string,
+  segmentIndex: number
+): Promise<void> {
+  const chart = page.locator(`#${chartTestId}`);
+  await expect(chart).toBeVisible();
+  const segmentPath = chart
+    .locator('.custom-pie-chart-clickable path')
+    .nth(segmentIndex);
+  await expect(segmentPath).toBeVisible();
+  await segmentPath.evaluate((el) => {
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+}
 
 export enum ObservabilityFeature {
   TEST_CASE = 'Test case',
