@@ -7957,7 +7957,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               stored.getFullyQualifiedName(), updated.getFullyQualifiedName());
         }
 
-        String columnPrefix = EntityUtil.getFieldName(fieldName, updated.getName());
+        String columnPrefix =
+            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
         updateColumnDescription(columnPrefix, stored, updated);
         updateColumnDisplayName(columnPrefix, stored, updated);
         updateColumnDataLength(columnPrefix, stored, updated);

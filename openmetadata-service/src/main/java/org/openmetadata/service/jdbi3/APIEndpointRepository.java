@@ -749,7 +749,8 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
           continue;
         }
 
-        String schemaFieldPrefix = EntityUtil.getFieldName(fieldName, updated.getName());
+        String schemaFieldPrefix =
+            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);

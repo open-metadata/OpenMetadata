@@ -614,7 +614,8 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         if (stored == null) { // New field added
           continue;
         }
-        String searchFieldPrefix = EntityUtil.getFieldName(fieldName, updated.getName());
+        String searchFieldPrefix =
+            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
         updateFieldDescription(searchFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(searchFieldPrefix, stored, updated);
         updateFieldDisplayName(searchFieldPrefix, stored, updated);
