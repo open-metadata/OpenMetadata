@@ -10,9 +10,11 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,7 +43,6 @@ import org.openmetadata.service.search.vector.client.EmbeddingClient;
 @ExtendWith(TestNamespaceExtension.class)
 public class PatchTableEmbeddingIT {
 
-  private static final String TABLE_INDEX = "openmetadata_table_search_index";
   private static final String KNN_TEST_INDEX = "test_knn_embedding_index";
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -88,10 +89,19 @@ public class PatchTableEmbeddingIT {
     String tableId = table.getId().toString();
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      // Wait for the search indexer to index the entity doc (async lifecycle event).
+      // updateEntityEmbedding uses _update (not upsert), so the doc must exist first.
+      Awaitility.await("Wait for entity doc to be indexed")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(() -> docExists(searchClient, entityIndexName, tableId));
+
       // Generate initial embedding synchronously — no polling needed
       vectorService.updateEntityEmbedding(table, entityIndexName);
 
-      String initialFingerprint = getFieldFromDoc(searchClient, tableId, "fingerprint");
+      String initialFingerprint =
+          getFieldFromDoc(searchClient, entityIndexName, tableId, "fingerprint");
       assertNotNull(initialFingerprint, "Initial fingerprint should exist after sync embedding");
 
       // Patch description and re-generate embedding synchronously
@@ -99,19 +109,20 @@ public class PatchTableEmbeddingIT {
       Table updated = client.tables().update(tableId, table);
       vectorService.updateEntityEmbedding(updated, entityIndexName);
 
-      String updatedFingerprint = getFieldFromDoc(searchClient, tableId, "fingerprint");
+      String updatedFingerprint =
+          getFieldFromDoc(searchClient, entityIndexName, tableId, "fingerprint");
       assertNotNull(updatedFingerprint, "Updated fingerprint should exist");
       assertNotEquals(
           initialFingerprint,
           updatedFingerprint,
           "Fingerprint should change after description update");
 
-      String textToEmbed = getFieldFromDoc(searchClient, tableId, "textToEmbed");
+      String textToEmbed = getFieldFromDoc(searchClient, entityIndexName, tableId, "textToEmbed");
       assertTrue(
           textToEmbed.contains("Revenue metrics"),
           "textToEmbed should reflect the patched description");
 
-      String embeddingJson = getFieldFromDoc(searchClient, tableId, "embedding");
+      String embeddingJson = getFieldFromDoc(searchClient, entityIndexName, tableId, "embedding");
       assertNotNull(embeddingJson, "Embedding vector should exist after PATCH");
 
       List<String> knnResults =
@@ -216,12 +227,22 @@ public class PatchTableEmbeddingIT {
     }
   }
 
-  /** Uses GET _doc API which reads from the translog and is always real-time. */
-  private String getFieldFromDoc(Rest5Client searchClient, String entityId, String field)
+  private boolean docExists(Rest5Client searchClient, String indexName, String entityId)
       throws Exception {
     Request request =
+        new Request("GET", String.format("/%s/_doc/%s?_source=false", indexName, entityId));
+    Response response = searchClient.performRequest(request);
+    String body =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+    return MAPPER.readTree(body).path("found").asBoolean(false);
+  }
+
+  /** Uses GET _doc API which reads from the translog and is always real-time. */
+  private String getFieldFromDoc(
+      Rest5Client searchClient, String indexName, String entityId, String field) throws Exception {
+    Request request =
         new Request(
-            "GET", String.format("/%s/_doc/%s?_source_includes=%s", TABLE_INDEX, entityId, field));
+            "GET", String.format("/%s/_doc/%s?_source_includes=%s", indexName, entityId, field));
 
     Response response = searchClient.performRequest(request);
     String body =
