@@ -112,7 +112,7 @@ jobs:
           -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
           -Dsonar.pullrequest.branch=$PR_HEAD_REF \
           -Dsonar.pullrequest.base=main \
-          -Donar.pullrequest.github.repository=OpenMetadata \
+          -Dsonar.pullrequest.github.repository=OpenMetadata \
           -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
           -Dsonar.pullrequest.provider=github
         env:
