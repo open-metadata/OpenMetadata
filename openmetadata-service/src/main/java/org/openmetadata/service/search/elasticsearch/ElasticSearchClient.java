@@ -680,6 +680,7 @@ public class ElasticSearchClient implements SearchClient {
 
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
+              httpAsyncClientBuilder.useSystemProperties();
               var connectionManagerBuilder =
                   org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder
                       .create();
