@@ -10,11 +10,9 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,12 +28,14 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
@@ -89,13 +89,9 @@ public class PatchTableEmbeddingIT {
     String tableId = table.getId().toString();
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
-      // Wait for the search indexer to index the entity doc (async lifecycle event).
-      // updateEntityEmbedding uses _update (not upsert), so the doc must exist first.
-      Awaitility.await("Wait for entity doc to be indexed")
-          .atMost(Duration.ofSeconds(30))
-          .pollInterval(Duration.ofSeconds(2))
-          .ignoreExceptions()
-          .until(() -> docExists(searchClient, entityIndexName, tableId));
+      // Index the entity doc synchronously. The async SearchIndexHandler may be
+      // suspended during reindex, so we bypass it and create the doc directly.
+      indexEntityDoc(searchRepo, table, entityIndexName);
 
       // Generate initial embedding synchronously — no polling needed
       vectorService.updateEntityEmbedding(table, entityIndexName);
@@ -227,14 +223,11 @@ public class PatchTableEmbeddingIT {
     }
   }
 
-  private boolean docExists(Rest5Client searchClient, String indexName, String entityId)
+  private void indexEntityDoc(SearchRepository searchRepo, Table table, String indexName)
       throws Exception {
-    Request request =
-        new Request("GET", String.format("/%s/_doc/%s?_source=false", indexName, entityId));
-    Response response = searchClient.performRequest(request);
-    String body =
-        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
-    return MAPPER.readTree(body).path("found").asBoolean(false);
+    SearchIndex index = searchRepo.getSearchIndexFactory().buildIndex(Entity.TABLE, table);
+    String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+    searchRepo.getSearchClient().createEntity(indexName, table.getId().toString(), doc);
   }
 
   /** Uses GET _doc API which reads from the translog and is always real-time. */
