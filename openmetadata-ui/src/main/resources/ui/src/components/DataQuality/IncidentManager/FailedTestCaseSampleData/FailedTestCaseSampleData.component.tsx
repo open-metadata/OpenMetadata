@@ -29,8 +29,8 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { TableData } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import {
-    deleteTestCaseFailedSampleData,
-    getTestCaseFailedSampleData
+  deleteTestCaseFailedSampleData,
+  getTestCaseFailedSampleData,
 } from '../../../../rest/testAPI';
 import { getEntityDeleteMessage } from '../../../../utils/CommonUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
@@ -41,8 +41,8 @@ import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { RowData } from '../../../Database/SampleDataTable/RowData';
 import {
-    SampleData,
-    SampleDataType
+  SampleData,
+  SampleDataType,
 } from '../../../Database/SampleDataTable/SampleData.interface';
 import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import './failed-test-case-sample-data.less';

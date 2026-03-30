@@ -12,11 +12,11 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';

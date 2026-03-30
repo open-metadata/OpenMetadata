@@ -14,8 +14,8 @@
 import { createElement } from 'react';
 import { EntityTabs } from '../../enums/entity.enum';
 import domainClassBase, {
-    DomainClassBase,
-    DomainDetailPageTabProps
+  DomainClassBase,
+  DomainDetailPageTabProps,
 } from './DomainClassBase';
 
 jest.mock('../../constants/Domain.constants', () => ({

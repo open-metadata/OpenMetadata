@@ -41,8 +41,8 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -57,8 +57,8 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import {
-    addDataProducts,
-    patchDataProduct
+  addDataProducts,
+  patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -66,38 +66,38 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getFeedCounts, getIsErrorMatch } from '../../../utils/CommonUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import {
-    getQueryFilterForDataProducts,
-    getQueryFilterForDomain,
-    getQueryFilterToExcludeDomainTerms
+  getQueryFilterForDataProducts,
+  getQueryFilterForDomain,
+  getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
 import {
-    getEntityFeedLink,
-    getEntityName,
-    getEntityVoteStatus
+  getEntityFeedLink,
+  getEntityName,
+  getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
-    DEFAULT_ENTITY_PERMISSION,
-    getPrioritizedEditPermission
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
 } from '../../../utils/PermissionsUtils';
 import {
-    getDomainDetailsPath,
-    getDomainPath,
-    getDomainVersionsPath
+  getDomainDetailsPath,
+  getDomainPath,
+  getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 import {
-    escapeESReservedCharacters,
-    getDecodedFqn,
-    getEncodedFqn
+  escapeESReservedCharacters,
+  getDecodedFqn,
+  getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';

@@ -18,15 +18,15 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
-    DEFAULT_SCHEDULE_CRON_DAILY,
-    SCHEDULAR_OPTIONS
+  DEFAULT_SCHEDULE_CRON_DAILY,
+  SCHEDULAR_OPTIONS,
 } from '../../../../constants/Schedular.constants';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
-    FieldProp,
-    FieldTypes,
-    FormItemLayout
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
@@ -36,8 +36,8 @@ import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Ste
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
 import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import {
-    AddTestSuitePipelineProps,
-    TestSuiteIngestionDataType
+  AddTestSuitePipelineProps,
+  TestSuiteIngestionDataType,
 } from '../AddDataQualityTest.interface';
 import './add-test-suite-pipeline.style.less';
 

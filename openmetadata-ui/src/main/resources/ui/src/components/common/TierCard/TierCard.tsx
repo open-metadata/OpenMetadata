@@ -12,15 +12,15 @@
  */
 
 import {
-    Button,
-    Card,
-    Collapse,
-    Popover,
-    Radio,
-    RadioChangeEvent,
-    Space,
-    Spin,
-    Typography
+  Button,
+  Card,
+  Collapse,
+  Popover,
+  Radio,
+  RadioChangeEvent,
+  Space,
+  Spin,
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 

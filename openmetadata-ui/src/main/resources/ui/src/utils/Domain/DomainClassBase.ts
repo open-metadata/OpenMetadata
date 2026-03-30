@@ -19,8 +19,8 @@ import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProdu
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import {
-    DESCRIPTION_WIDGET,
-    GridSizes
+  DESCRIPTION_WIDGET,
+  GridSizes,
 } from '../../constants/CustomizeWidgets.constants';
 import { DOMAIN_DUMMY_DATA } from '../../constants/Domain.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';

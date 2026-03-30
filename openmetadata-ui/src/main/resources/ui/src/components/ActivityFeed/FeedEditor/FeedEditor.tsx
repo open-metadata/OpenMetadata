@@ -19,14 +19,14 @@ import { Parchment } from 'quill';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
 import {
-    forwardRef,
-    KeyboardEvent,
-    useCallback,
-    useEffect,
-    useImperativeHandle,
-    useMemo,
-    useRef,
-    useState
+  forwardRef,
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { useTranslation } from 'react-i18next';
@@ -34,17 +34,17 @@ import ReactQuill, { Quill } from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { BORDER_COLOR } from '../../../constants/constants';
 import {
-    MENTION_ALLOWED_CHARS,
-    MENTION_DENOTATION_CHARS,
-    TOOLBAR_ITEMS
+  MENTION_ALLOWED_CHARS,
+  MENTION_DENOTATION_CHARS,
+  TOOLBAR_ITEMS,
 } from '../../../constants/Feeds.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
 import {
-    HTMLToMarkdown,
-    suggestions,
-    userMentionItemWithAvatar
+  HTMLToMarkdown,
+  suggestions,
+  userMentionItemWithAvatar,
 } from '../../../utils/FeedUtils';
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';

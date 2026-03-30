@@ -22,13 +22,13 @@ import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-c
 import { ReactComponent as RelationsNavIcon } from '../../../assets/svg/ic_relations.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-    hasCustomPropertiesTab,
-    hasLineageTab,
-    hasSchemaTab
+  hasCustomPropertiesTab,
+  hasLineageTab,
+  hasSchemaTab,
 } from '../../../utils/EntityUtils';
 import {
-    EntityRightPanelTab,
-    EntityRightPanelVerticalNavProps
+  EntityRightPanelTab,
+  EntityRightPanelVerticalNavProps,
 } from './EntityRightPanelVerticalNav.interface';
 import './EntityRightPanelVerticalNav.less';
 

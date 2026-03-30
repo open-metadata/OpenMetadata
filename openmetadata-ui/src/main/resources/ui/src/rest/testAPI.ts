@@ -17,25 +17,25 @@ import { PagingResponse } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import {
-    BundleSuiteBulkAddRequestClass,
-    Mode as BundleSuiteBulkAddMode
+  BundleSuiteBulkAddRequestClass,
+  Mode as BundleSuiteBulkAddMode,
 } from '../generated/api/tests/bundleSuiteBulkAddRequest';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
-    TableData,
-    TestCase,
-    TestCaseDimensionResult,
-    TestCaseResult,
-    TestCaseStatus
+  TableData,
+  TestCase,
+  TestCaseDimensionResult,
+  TestCaseResult,
+  TestCaseStatus,
 } from '../generated/tests/testCase';
 import {
-    DataQualityDimensions,
-    EntityType,
-    TestDefinition,
-    TestPlatform
+  DataQualityDimensions,
+  EntityType,
+  TestDefinition,
+  TestPlatform,
 } from '../generated/tests/testDefinition';
 import { TestSuite, TestSummary } from '../generated/tests/testSuite';
 import { EntityHistory } from '../generated/type/entityHistory';

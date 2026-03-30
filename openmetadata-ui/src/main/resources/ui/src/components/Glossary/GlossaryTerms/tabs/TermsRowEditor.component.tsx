@@ -23,14 +23,14 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../../generated/entity/type';
 import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
 import {
-    getEntityName,
-    getEntityReferenceFromEntity
+  getEntityName,
+  getEntityReferenceFromEntity,
 } from '../../../../utils/EntityUtils';
 import {
-    TermItem,
-    TermSelectItem,
-    TermsRowEditorProps,
-    TermsRowProps
+  TermItem,
+  TermSelectItem,
+  TermsRowEditorProps,
+  TermsRowProps,
 } from './RelatedTerms.interface';
 
 const TermsRow: React.FC<TermsRowProps> = ({

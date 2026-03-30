@@ -25,8 +25,8 @@ import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-    ResourceEntity,
-    UIPermission
+  ResourceEntity,
+  UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { SettledStatus } from '../enums/Axios.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -36,27 +36,27 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import {
-    AssetCertification,
-    Column,
-    EntityReference,
-    TagSource
+  AssetCertification,
+  Column,
+  EntityReference,
+  TagSource,
 } from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { searchQuery } from '../rest/searchAPI';
 import {
-    getAllClassifications,
-    getClassificationByName,
-    getTags
+  getAllClassifications,
+  getClassificationByName,
+  getTags,
 } from '../rest/tagAPI';
 import { getEntityName } from './EntityUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { checkPermissionEntityResource } from './PermissionsUtils';
 import {
-    getClassificationTagPath,
-    getExplorePath,
-    getGlossaryPath
+  getClassificationTagPath,
+  getExplorePath,
+  getGlossaryPath,
 } from './RouterUtils';
 import { getTermQuery } from './SearchUtils';
 import { getTagsWithoutTier } from './TableUtils';

@@ -19,17 +19,17 @@ import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
-    ExtensionDataProps,
-    ExtensionDataTypes
+  ExtensionDataProps,
+  ExtensionDataTypes,
 } from '../../components/Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { TABLE_TYPE_CUSTOM_PROPERTY } from '../../constants/CustomProperty.constants';
 import { SEMICOLON_SPLITTER } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
-    Config,
-    CustomProperty,
-    EntityReference,
-    Type
+  Config,
+  CustomProperty,
+  EntityReference,
+  Type,
 } from '../../generated/entity/type';
 import { Status } from '../../generated/type/csvImportResult';
 import { removeOuterEscapes } from '../CommonUtils';

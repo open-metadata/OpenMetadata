@@ -15,8 +15,8 @@ import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
-    Aggregations,
-    SearchResponse
+  Aggregations,
+  SearchResponse,
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { domainBuildESQuery } from '../../../../utils/DomainUtils';

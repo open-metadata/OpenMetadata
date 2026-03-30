@@ -21,11 +21,11 @@ import { ChangeDescription } from '../../../../generated/tests/testCase';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
-    getChangedEntityNewValue,
-    getChangedEntityOldValue,
-    getChangedEntityStatus,
-    getDiffByFieldName,
-    getDiffDisplayValue
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getChangedEntityStatus,
+  getDiffByFieldName,
+  getDiffDisplayValue,
 } from '../../../../utils/EntityVersionUtils';
 import Loader from '../../../common/Loader/Loader';
 import QueryViewer from '../../../common/QueryViewer/QueryViewer.component';

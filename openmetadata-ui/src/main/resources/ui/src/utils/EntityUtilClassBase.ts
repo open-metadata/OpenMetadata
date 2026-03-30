@@ -19,8 +19,8 @@ import { NavigateFunction } from 'react-router-dom';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -54,8 +54,8 @@ import { patchApplication } from '../rest/applicationAPI';
 import { patchChartDetails } from '../rest/chartsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import {
-    patchDatabaseDetails,
-    patchDatabaseSchemaDetails
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
 } from '../rest/databaseAPI';
 import { patchDataModelDetails } from '../rest/dataModelsAPI';
 import { patchDataProduct } from '../rest/dataProductAPI';
@@ -82,38 +82,38 @@ import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import { getEntityByFqnUtil } from './EntityByFqnUtils';
 import { EntityTypeName } from './EntityUtils';
 import {
-    FormattedAPIServiceType,
-    FormattedDashboardServiceType,
-    FormattedDatabaseServiceType,
-    FormattedDriveServiceType,
-    FormattedMessagingServiceType,
-    FormattedMetadataServiceType,
-    FormattedMlModelServiceType,
-    FormattedPipelineServiceType,
-    FormattedSearchServiceType,
-    FormattedStorageServiceType
+  FormattedAPIServiceType,
+  FormattedDashboardServiceType,
+  FormattedDatabaseServiceType,
+  FormattedDriveServiceType,
+  FormattedMessagingServiceType,
+  FormattedMetadataServiceType,
+  FormattedMlModelServiceType,
+  FormattedPipelineServiceType,
+  FormattedSearchServiceType,
+  FormattedStorageServiceType,
 } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
-    getApplicationDetailsPath,
-    getBotsPath,
-    getClassificationTagPath,
-    getDomainDetailsPath,
-    getEditWebhookPath,
-    getEntityDetailsPath,
-    getGlossaryTermDetailsPath,
-    getKpiPath,
-    getNotificationAlertDetailsPath,
-    getObservabilityAlertDetailsPath,
-    getPersonaDetailsPath,
-    getPolicyWithFqnPath,
-    getRoleWithFqnPath,
-    getServiceDetailsPath,
-    getSettingPath,
-    getTagsDetailsPath,
-    getTeamsWithFqnPath,
-    getTestCaseDetailPagePath,
-    getUserPath
+  getApplicationDetailsPath,
+  getBotsPath,
+  getClassificationTagPath,
+  getDomainDetailsPath,
+  getEditWebhookPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
+  getKpiPath,
+  getNotificationAlertDetailsPath,
+  getObservabilityAlertDetailsPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
+  getServiceDetailsPath,
+  getSettingPath,
+  getTagsDetailsPath,
+  getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
+  getUserPath,
 } from './RouterUtils';
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';

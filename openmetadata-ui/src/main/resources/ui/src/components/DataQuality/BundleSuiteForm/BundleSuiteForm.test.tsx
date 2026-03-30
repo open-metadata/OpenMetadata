@@ -12,11 +12,11 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import React, { forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -25,12 +25,12 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { MOCK_TEST_CASE } from '../../../mocks/TestSuite.mock';
 import {
-    addIngestionPipeline,
-    deployIngestionPipelineById
+  addIngestionPipeline,
+  deployIngestionPipelineById,
 } from '../../../rest/ingestionPipelineAPI';
 import {
-    addTestCasesToLogicalTestSuiteBulk,
-    createTestSuites
+  addTestCasesToLogicalTestSuiteBulk,
+  createTestSuites,
 } from '../../../rest/testAPI';
 import BundleSuiteForm from './BundleSuiteForm';
 import { BundleSuiteFormProps } from './BundleSuiteForm.interface';

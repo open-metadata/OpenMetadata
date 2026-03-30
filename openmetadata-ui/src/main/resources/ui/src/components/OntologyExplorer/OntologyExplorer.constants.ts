@@ -12,8 +12,8 @@
  */
 
 import {
-    GlossaryTermRelationType,
-    RelationCategory
+  GlossaryTermRelationType,
+  RelationCategory,
 } from '../../generated/configuration/glossaryTermRelationSettings';
 
 /** Synthetic id for the glossary/relation "All" option in ontology filter autocompletes */

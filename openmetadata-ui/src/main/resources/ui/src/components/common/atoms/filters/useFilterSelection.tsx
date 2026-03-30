@@ -12,10 +12,10 @@
  */
 
 import {
-    Badge,
-    Button,
-    ButtonUtility,
-    Typography
+  Badge,
+  Button,
+  ButtonUtility,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
 import { useCallback, useMemo } from 'react';

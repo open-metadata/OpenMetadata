@@ -31,8 +31,8 @@ import { getTableDetailsByFQN } from '../../../../../rest/tableAPI';
 import { getPartialNameFromTableFQN } from '../../../../../utils/CommonUtils';
 import { getCurrentMillis } from '../../../../../utils/date-time/DateTimeUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';

@@ -12,8 +12,8 @@
  */
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import {
-    AddTestCaseListSubmitPayload,
-    ListTestCaseParamsBySearch
+  AddTestCaseListSubmitPayload,
+  ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 
 export interface AddTestCaseListChangePayload

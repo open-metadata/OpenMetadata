@@ -14,9 +14,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
-    ErrorSource,
-    ScheduleTimeline,
-    Status
+  ErrorSource,
+  ScheduleTimeline,
+  Status,
 } from '../../../../generated/entity/applications/appRunRecord';
 import AppLogsViewer from './AppLogsViewer.component';
 

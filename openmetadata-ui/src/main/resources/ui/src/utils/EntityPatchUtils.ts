@@ -18,8 +18,8 @@ import { patchApplication } from '../rest/applicationAPI';
 import { patchChartDetails } from '../rest/chartsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import {
-    patchDatabaseDetails,
-    patchDatabaseSchemaDetails
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
 } from '../rest/databaseAPI';
 import { patchDataModelDetails } from '../rest/dataModelsAPI';
 import { patchDataProduct } from '../rest/dataProductAPI';

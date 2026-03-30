@@ -18,8 +18,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TaskDescriptionPreviewer from '../../../components/common/RichTextEditor/TaskDescriptionPreviewer';
 import {
-    Thread,
-    ThreadTaskStatus
+  Thread,
+  ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
 
 export const DiffViewNew = ({

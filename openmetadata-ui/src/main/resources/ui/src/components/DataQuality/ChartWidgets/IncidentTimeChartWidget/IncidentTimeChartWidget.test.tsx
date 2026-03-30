@@ -14,8 +14,8 @@ import '@testing-library/jest-dom/extend-expect';
 import { render, screen, waitFor } from '@testing-library/react';
 import { fetchIncidentTimeMetrics } from '../../../../rest/dataQualityDashboardAPI';
 import {
-    IncidentTimeChartWidgetProps,
-    IncidentTimeMetricsType
+  IncidentTimeChartWidgetProps,
+  IncidentTimeMetricsType,
 } from '../../DataQuality.interface';
 import IncidentTimeChartWidget from './IncidentTimeChartWidget.component';
 

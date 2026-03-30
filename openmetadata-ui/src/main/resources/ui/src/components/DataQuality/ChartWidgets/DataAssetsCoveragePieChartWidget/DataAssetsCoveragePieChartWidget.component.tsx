@@ -21,8 +21,8 @@ import { ROUTES } from '../../../../constants/constants';
 import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
-    fetchEntityCoveredWithDQ,
-    fetchTotalEntityCount
+  fetchEntityCoveredWithDQ,
+  fetchTotalEntityCount,
 } from '../../../../rest/dataQualityDashboardAPI';
 import { getPieChartLabel } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getDataQualityPagePath } from '../../../../utils/RouterUtils';

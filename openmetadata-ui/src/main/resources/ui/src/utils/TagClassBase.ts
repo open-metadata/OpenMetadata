@@ -18,8 +18,8 @@ import { DomainLabelV2 } from '../components/DataAssets/DomainLabelV2/DomainLabe
 import { OwnerLabelV2 } from '../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { PAGE_SIZE } from '../constants/constants';
 import {
-    DESCRIPTION_WIDGET,
-    GridSizes
+  DESCRIPTION_WIDGET,
+  GridSizes,
 } from '../constants/CustomizeWidgets.constants';
 import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';

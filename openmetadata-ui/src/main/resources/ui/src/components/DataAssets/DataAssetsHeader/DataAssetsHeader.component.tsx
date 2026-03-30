@@ -34,26 +34,26 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
-    CustomizeEntityType,
-    ENTITY_PAGE_TYPE_MAP
+  CustomizeEntityType,
+  ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
 import {
-    EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
-    SERVICE_TYPES
+  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
+  SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import {
-    EntityTabs,
-    EntityType,
-    TabSpecificField
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
 } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
 import {
-    ContractExecutionStatus,
-    DataContract
+  ContractExecutionStatus,
+  DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
@@ -68,16 +68,16 @@ import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
-    getDataAssetsHeaderInfo,
-    isDataAssetsWithServiceField
+  getDataAssetsHeaderInfo,
+  isDataAssetsWithServiceField,
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-    getEntityFeedLink,
-    getEntityName,
-    getEntityVoteStatus
+  getEntityFeedLink,
+  getEntityName,
+  getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
@@ -104,10 +104,10 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
-    DataAssetHeaderInfo,
-    DataAssetsHeaderProps,
-    DataAssetsWithFollowersField,
-    EntitiesWithDomainField
+  DataAssetHeaderInfo,
+  DataAssetsHeaderProps,
+  DataAssetsWithFollowersField,
+  EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
 
 export const DataAssetsHeader = ({

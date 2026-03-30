@@ -14,8 +14,8 @@
 import { useMemo } from 'react';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import {
-    getClassificationTags,
-    getGlossaryTags
+  getClassificationTags,
+  getGlossaryTags,
 } from '../../../../../utils/TagsUtils';
 import { ColumnConfig } from '../../shared/types';
 

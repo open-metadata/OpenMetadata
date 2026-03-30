@@ -13,25 +13,25 @@
 
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
 import {
-    Card,
-    Form,
-    Input,
-    Select,
-    Tag,
-    TimePicker,
-    Tooltip,
-    Typography
+  Card,
+  Form,
+  Input,
+  Select,
+  Tag,
+  TimePicker,
+  Tooltip,
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
-    isArray,
-    isEmpty,
-    isNil,
-    isUndefined,
-    noop,
-    omitBy,
-    toNumber
+  isArray,
+  isEmpty,
+  isNil,
+  isUndefined,
+  noop,
+  omitBy,
+  toNumber,
 } from 'lodash';
 import { DateTime } from 'luxon';
 import moment, { Moment } from 'moment';
@@ -44,17 +44,17 @@ import { ReactComponent as EndTimeArrowIcon } from '../../../assets/svg/end-time
 import { ReactComponent as EndTimeIcon } from '../../../assets/svg/end-time.svg';
 import { ReactComponent as StartTimeIcon } from '../../../assets/svg/start-time.svg';
 import {
-    DE_ACTIVE_COLOR,
-    GRAYED_OUT_COLOR,
-    ICON_DIMENSION,
-    VALIDATION_MESSAGES
+  DE_ACTIVE_COLOR,
+  GRAYED_OUT_COLOR,
+  ICON_DIMENSION,
+  VALIDATION_MESSAGES,
 } from '../../../constants/constants';
 import {
-    AUTO_HEIGHT_TYPES,
-    HYPERLINK_TYPE_CUSTOM_PROPERTY,
-    NO_OVERFLOW_TOGGLE_TYPES,
-    SCROLLABLE_WRAPPER_TYPES,
-    TABLE_TYPE_CUSTOM_PROPERTY
+  AUTO_HEIGHT_TYPES,
+  HYPERLINK_TYPE_CUSTOM_PROPERTY,
+  NO_OVERFLOW_TOGGLE_TYPES,
+  SCROLLABLE_WRAPPER_TYPES,
+  TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -78,9 +78,9 @@ import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
-    PropertyValueProps,
-    PropertyValueType,
-    TimeIntervalType
+  PropertyValueProps,
+  PropertyValueType,
+  TimeIntervalType,
 } from './CustomPropertyTable.interface';
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';

@@ -14,8 +14,8 @@
 import { ReactNode } from 'react';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import {
-    Aggregations,
-    SearchResponse
+  Aggregations,
+  SearchResponse,
 } from '../../../../../interface/search.interface';
 import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';
 import { SearchDropdownOption } from '../../../../SearchDropdown/SearchDropdown.interface';

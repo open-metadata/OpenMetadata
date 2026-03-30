@@ -12,9 +12,9 @@
  */
 
 import {
-    ButtonUtility,
-    Tooltip,
-    TooltipTrigger
+  ButtonUtility,
+  Tooltip,
+  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { FunctionComponent } from 'react';
 import type { Placement } from 'react-aria';

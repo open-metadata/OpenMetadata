@@ -19,12 +19,12 @@ import { DataQualityReport } from '../../../../generated/tests/dataQualityReport
 import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
-    fetchTestCaseSummaryByDimension,
-    fetchTestCaseSummaryByNoDimension
+  fetchTestCaseSummaryByDimension,
+  fetchTestCaseSummaryByNoDimension,
 } from '../../../../rest/dataQualityDashboardAPI';
 import {
-    getDimensionIcon,
-    transformToTestCaseStatusByDimension
+  getDimensionIcon,
+  transformToTestCaseStatusByDimension,
 } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getDataQualityPagePath } from '../../../../utils/RouterUtils';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';

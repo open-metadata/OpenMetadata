@@ -16,8 +16,8 @@ import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createScrollToErrorHandler } from '../../../../utils/formUtils';
 import {
-    CompositeDrawerConfig,
-    useCompositeDrawer
+  CompositeDrawerConfig,
+  useCompositeDrawer,
 } from './useCompositeDrawer';
 
 export interface FormDrawerConfig<T> extends CompositeDrawerConfig {

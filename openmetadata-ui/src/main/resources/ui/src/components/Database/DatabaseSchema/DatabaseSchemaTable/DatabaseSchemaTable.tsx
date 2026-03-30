@@ -20,15 +20,15 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    INITIAL_PAGING_VALUE,
-    INITIAL_TABLE_FILTERS
+  INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
-    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-    DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS,
-    TABLE_COLUMNS_KEYS
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
 } from '../../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
@@ -44,30 +44,30 @@ import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLoca
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTableFilters } from '../../../../hooks/useTableFilters';
 import {
-    getDatabaseSchemas,
-    patchDatabaseSchemaDetails
+  getDatabaseSchemas,
+  patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-    getColumnSorter,
-    getEntityBulkEditPath,
-    highlightSearchText
+  getColumnSorter,
+  getEntityBulkEditPath,
+  highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
-    certificationTableObject,
-    dataProductTableObject,
-    descriptionTableObject,
-    domainTableObject,
-    ownerTableObject,
-    tagTableObject,
-    tierTableObject
+  certificationTableObject,
+  dataProductTableObject,
+  descriptionTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
+  tierTableObject,
 } from '../../../../utils/TableColumn.util';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';

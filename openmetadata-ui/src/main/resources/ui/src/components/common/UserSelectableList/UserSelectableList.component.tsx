@@ -16,9 +16,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
-    DE_ACTIVE_COLOR,
-    PAGE_SIZE_MEDIUM,
-    TEXT_GREY_MUTED
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+  TEXT_GREY_MUTED,
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
@@ -28,8 +28,8 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import {
-    getEntityName,
-    getEntityReferenceListFromEntities
+  getEntityName,
+  getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 

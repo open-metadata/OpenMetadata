@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
-    LayoutEngine,
-    NODE_PADDING_H,
-    NODE_PADDING_V,
-    toLayoutEngineType,
-    type LayoutEngineType,
-    type LayoutType
+  LayoutEngine,
+  NODE_PADDING_H,
+  NODE_PADDING_V,
+  toLayoutEngineType,
+  type LayoutEngineType,
+  type LayoutType,
 } from '../OntologyExplorer.constants';
 import { LayoutConfig, LayoutNodeLike } from '../OntologyExplorer.interface';
 

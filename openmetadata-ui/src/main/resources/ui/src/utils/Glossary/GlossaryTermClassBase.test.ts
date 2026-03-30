@@ -14,8 +14,8 @@
 import React from 'react';
 import { EntityTabs } from '../../enums/entity.enum';
 import glossaryTermClassBase, {
-    GlossaryTermClassBase,
-    GlossaryTermDetailPageTabProps
+  GlossaryTermClassBase,
+  GlossaryTermDetailPageTabProps,
 } from './GlossaryTermClassBase';
 import { getGlossaryTermDetailPageTabs } from './GlossaryTermUtils';
 

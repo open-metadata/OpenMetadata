@@ -12,12 +12,12 @@
  */
 
 import {
-    Button,
-    Dialog,
-    DialogTrigger,
-    Modal,
-    ModalOverlay,
-    Tabs
+  Button,
+  Dialog,
+  DialogTrigger,
+  Modal,
+  ModalOverlay,
+  Tabs,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -32,8 +32,8 @@ import ManageButton from '../../components/common/EntityPageInfos/ManageButton/M
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import {
-    NextPreviousProps,
-    PagingHandlerParams
+  NextPreviousProps,
+  PagingHandlerParams,
 } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -52,14 +52,14 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { DEFAULT_SORT_ORDER } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
-    EntityTabs,
-    EntityType,
-    TabSpecificField
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
 } from '../../enums/entity.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -70,25 +70,25 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { useEntityRules } from '../../hooks/useEntityRules';
 import { useFqn } from '../../hooks/useFqn';
 import {
-    DataQualityPageTabs,
-    DataQualitySubTabs
+  DataQualityPageTabs,
+  DataQualitySubTabs,
 } from '../../pages/DataQuality/DataQualityPage.interface';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
-    addTestCasesToLogicalTestSuiteBulk,
-    getListTestCaseBySearch,
-    getTestSuiteByName,
-    ListTestCaseParamsBySearch,
-    updateTestSuiteById
+  addTestCasesToLogicalTestSuiteBulk,
+  getListTestCaseBySearch,
+  getTestSuiteByName,
+  ListTestCaseParamsBySearch,
+  updateTestSuiteById,
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
-    checkPermission,
-    DEFAULT_ENTITY_PERMISSION
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import {
-    getDataQualityPagePath,
-    getTestSuitePath
+  getDataQualityPagePath,
+  getTestSuitePath,
 } from '../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../utils/TestCaseUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

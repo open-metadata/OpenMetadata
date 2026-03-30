@@ -12,12 +12,12 @@
  */
 
 import {
-    Badge,
-    BadgeWithIcon,
-    Button,
-    Tooltip,
-    TooltipTrigger,
-    Typography
+  Badge,
+  BadgeWithIcon,
+  Button,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Tag01 } from '@untitledui/icons';
 import { groupBy, isEmpty } from 'lodash';
@@ -27,8 +27,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import {
-    NO_DATA_PLACEHOLDER,
-    PAGE_SIZE_MEDIUM
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -36,34 +36,34 @@ import { GlossaryTermRelationType } from '../../../../generated/configuration/gl
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
-    ChangeDescription,
-    EntityReference
+  ChangeDescription,
+  EntityReference,
 } from '../../../../generated/entity/type';
 import { TermRelation } from '../../../../generated/type/termRelation';
 import {
-    getGlossaryTermRelationSettings,
-    searchGlossaryTermsPaginated
+  getGlossaryTermRelationSettings,
+  searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
-    getChangedEntityNewValue,
-    getChangedEntityOldValue,
-    getDiffByFieldName
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
-    EditIconButton,
-    PlusIconButton
+  EditIconButton,
+  PlusIconButton,
 } from '../../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK } from '../../../OntologyExplorer/OntologyExplorer.constants';
 import {
-    RelatedTermTagButtonProps,
-    RelationEditRow,
-    TermsRowEditorProps
+  RelatedTermTagButtonProps,
+  RelationEditRow,
+  TermsRowEditorProps,
 } from './RelatedTerms.interface';
 import TermsRowEditor from './TermsRowEditor.component';
 

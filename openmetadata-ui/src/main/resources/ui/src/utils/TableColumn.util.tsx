@@ -27,10 +27,10 @@ import { EntityReference } from '../generated/type/entityReference';
 import { TagLabel } from '../generated/type/tagLabel';
 import i18n from './i18next/LocalUtil';
 import {
-    getCertificationTag,
-    getTagsWithoutCertification,
-    getTagsWithoutTier,
-    getTierTags
+  getCertificationTag,
+  getTagsWithoutCertification,
+  getTagsWithoutTier,
+  getTierTags,
 } from './TableUtils';
 
 export const columnFilterIcon = (filtered: boolean) => (

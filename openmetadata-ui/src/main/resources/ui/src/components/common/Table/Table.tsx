@@ -11,24 +11,24 @@
  *  limitations under the License.
  */
 import {
-    Button,
-    Col,
-    Dropdown,
-    Row,
-    SpinProps,
-    Table as AntdTable,
-    Typography
+  Button,
+  Col,
+  Dropdown,
+  Row,
+  SpinProps,
+  Table as AntdTable,
+  Typography,
 } from 'antd';
 import { ColumnsType, ColumnType } from 'antd/es/table';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
-    forwardRef,
-    Ref,
-    useCallback,
-    useEffect,
-    useMemo,
-    useState
+  forwardRef,
+  Ref,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
 } from 'react';
 import { useAntdColumnResize } from 'react-antd-column-resize';
 import { Column } from 'react-antd-column-resize/dist/useAntdColumnResize/types';
@@ -36,8 +36,8 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
-    getCustomizeColumnDetails,
-    getReorderedColumns
+  getCustomizeColumnDetails,
+  getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -46,8 +46,8 @@ import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
 import {
-    TableColumnDropdownList,
-    TableComponentProps
+  TableColumnDropdownList,
+  TableComponentProps,
 } from './Table.interface';
 import './table.less';
 

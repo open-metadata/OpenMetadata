@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    fireEvent,
-    queryByAttribute,
-    render,
-    screen,
-    waitFor
+  fireEvent,
+  queryByAttribute,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';

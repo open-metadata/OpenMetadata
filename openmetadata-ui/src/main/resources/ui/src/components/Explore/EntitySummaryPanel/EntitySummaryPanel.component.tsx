@@ -23,8 +23,8 @@ import { useNavigate } from 'react-router-dom';
 import { LineageData } from '../../../components/Lineage/Lineage.interface';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -35,77 +35,77 @@ import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
-    getApiCollectionByFQN,
-    patchApiCollection
+  getApiCollectionByFQN,
+  patchApiCollection,
 } from '../../../rest/apiCollectionsAPI';
 import {
-    getApiEndPointByFQN,
-    patchApiEndPoint
+  getApiEndPointByFQN,
+  patchApiEndPoint,
 } from '../../../rest/apiEndpointsAPI';
 import { getChartByFqn, patchChartDetails } from '../../../rest/chartsAPI';
 import {
-    getDashboardByFqn,
-    patchDashboardDetails
+  getDashboardByFqn,
+  patchDashboardDetails,
 } from '../../../rest/dashboardAPI';
 import {
-    getDatabaseDetailsByFQN,
-    getDatabaseSchemaDetailsByFQN,
-    patchDatabaseDetails,
-    patchDatabaseSchemaDetails
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
 } from '../../../rest/databaseAPI';
 import {
-    getDataModelByFqn,
-    patchDataModelDetails
+  getDataModelByFqn,
+  patchDataModelDetails,
 } from '../../../rest/dataModelsAPI';
 import {
-    getDataProductByName,
-    patchDataProduct
+  getDataProductByName,
+  patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { getDomainByName, patchDomains } from '../../../rest/domainAPI';
 import {
-    getDriveAssetByFqn,
-    patchDriveAssetDetails
+  getDriveAssetByFqn,
+  patchDriveAssetDetails,
 } from '../../../rest/driveAPI';
 import {
-    getGlossaryTermByFQN,
-    patchGlossaryTerm
+  getGlossaryTermByFQN,
+  patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getMetricByFqn, patchMetric } from '../../../rest/metricsAPI';
 import { getMlModelByFQN, patchMlModelDetails } from '../../../rest/mlModelAPI';
 import {
-    getPipelineByFqn,
-    patchPipelineDetails
+  getPipelineByFqn,
+  patchPipelineDetails,
 } from '../../../rest/pipelineAPI';
 import {
-    getSearchIndexDetailsByFQN,
-    patchSearchIndexDetails
+  getSearchIndexDetailsByFQN,
+  patchSearchIndexDetails,
 } from '../../../rest/SearchIndexAPI';
 import {
-    getContainerByFQN,
-    patchContainerDetails
+  getContainerByFQN,
+  patchContainerDetails,
 } from '../../../rest/storageAPI';
 
 import {
-    getStoredProceduresByFqn,
-    patchStoredProceduresDetails
+  getStoredProceduresByFqn,
+  patchStoredProceduresDetails,
 } from '../../../rest/storedProceduresAPI';
 import {
-    getTableDetailsByFQN,
-    patchTableDetails,
-    updateTableColumn
+  getTableDetailsByFQN,
+  patchTableDetails,
+  updateTableColumn,
 } from '../../../rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-    DRAWER_NAVIGATION_OPTIONS,
-    getEntityLinkFromType
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityLinkFromType,
 } from '../../../utils/EntityUtils';
 import {
-    DEFAULT_ENTITY_PERMISSION,
-    getPrioritizedEditPermission,
-    getPrioritizedViewPermission
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -123,8 +123,8 @@ import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import {
-    EntitySummaryPanelProps,
-    SearchSourceDetails
+  EntitySummaryPanelProps,
+  SearchSourceDetails,
 } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
 

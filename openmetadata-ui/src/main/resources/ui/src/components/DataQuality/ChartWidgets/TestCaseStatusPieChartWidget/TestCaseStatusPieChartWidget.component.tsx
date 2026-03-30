@@ -16,16 +16,16 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../../assets/svg/all-activity-v2.svg';
 import {
-    GREEN_3,
-    RED_3,
-    YELLOW_2
+  GREEN_3,
+  RED_3,
+  YELLOW_2,
 } from '../../../../constants/Color.constants';
 import { INITIAL_TEST_SUMMARY } from '../../../../constants/TestSuite.constant';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
 import {
-    getPieChartLabel,
-    getTestCaseTabPath,
-    transformToTestCaseStatusObject
+  getPieChartLabel,
+  getTestCaseTabPath,
+  transformToTestCaseStatusObject,
 } from '../../../../utils/DataQuality/DataQualityUtils';
 import type { CustomPieChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
