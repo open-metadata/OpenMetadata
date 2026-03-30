@@ -210,7 +210,7 @@ public class MigrationUtil {
     } catch (Exception exc) {
       LOG.warn(
           "Fail to migrate table partition. The partition detail may have been migrated already.");
-      LOG.debug(String.format("Table JSON %s\n", jsonRow), exc);
+      LOG.debug("Table JSON {}\n", jsonRow, exc);
     }
   }
 }

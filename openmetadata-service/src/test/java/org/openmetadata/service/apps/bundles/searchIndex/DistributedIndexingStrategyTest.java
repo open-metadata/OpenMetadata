@@ -522,11 +522,10 @@ class DistributedIndexingStrategyTest {
         MockedConstruction<DistributedSearchIndexExecutor> executorConstruction =
             mockConstruction(
                 DistributedSearchIndexExecutor.class,
-                (mock, context) -> {
-                  org.mockito.Mockito.doThrow(new RuntimeException("startup failed"))
-                      .when(mock)
-                      .performStartupRecovery();
-                })) {
+                (mock, context) ->
+                    org.mockito.Mockito.doThrow(new RuntimeException("startup failed"))
+                        .when(mock)
+                        .performStartupRecovery())) {
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
 
       ExecutionResult result =

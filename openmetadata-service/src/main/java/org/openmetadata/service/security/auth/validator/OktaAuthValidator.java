@@ -57,8 +57,8 @@ public class OktaAuthValidator {
         return clientIdValidation;
       }
 
-      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain, null);
-      return publicKeyValidation; // Success - Okta public client validated
+      return validatePublicKeyUrls(
+          authConfig, oktaDomain, null); // Success - Okta public client validated
     } catch (Exception e) {
       LOG.error("Okta public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -97,10 +97,11 @@ public class OktaAuthValidator {
 
       // Step 5: Validate client credentials (secret)
       String clientId = oidcConfig.getId();
-      FieldError credentialsValidation =
-          validateClientCredentials(
-              oktaDomain, clientId, oidcConfig.getSecret(), oidcConfig.getDiscoveryUri());
-      return credentialsValidation; // Success - Okta confidential client validated
+      return validateClientCredentials(
+          oktaDomain,
+          clientId,
+          oidcConfig.getSecret(),
+          oidcConfig.getDiscoveryUri()); // Success - Okta confidential client validated
     } catch (Exception e) {
       LOG.error("Okta confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(

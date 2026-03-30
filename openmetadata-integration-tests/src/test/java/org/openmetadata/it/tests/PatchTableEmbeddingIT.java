@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,11 +10,9 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,18 +28,21 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class PatchTableEmbeddingIT {
 
-  private static final String TABLE_INDEX = "openmetadata_table_search_index";
   private static final String KNN_TEST_INDEX = "test_knn_embedding_index";
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -60,14 +62,16 @@ public class PatchTableEmbeddingIT {
         searchRepo.isVectorEmbeddingEnabled(), "Vector embedding could not be initialized");
 
     try {
-      runEmbeddingTest(ns);
+      runEmbeddingTest(ns, searchRepo);
     } finally {
       searchRepo.getSearchConfiguration().setNaturalLanguageSearch(null);
     }
   }
 
-  private void runEmbeddingTest(TestNamespace ns) throws Exception {
+  private void runEmbeddingTest(TestNamespace ns, SearchRepository searchRepo) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
+    VectorIndexService vectorService = searchRepo.getVectorIndexService();
+    String entityIndexName = resolveTableIndexName(searchRepo);
 
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -85,34 +89,36 @@ public class PatchTableEmbeddingIT {
     String tableId = table.getId().toString();
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
-      Awaitility.await("Wait for initial embedding")
-          .atMost(Duration.ofSeconds(30))
-          .pollInterval(Duration.ofSeconds(2))
-          .ignoreExceptions()
-          .until(() -> getFieldFromIndex(searchClient, tableId, "fingerprint") != null);
+      // Index the entity doc synchronously. The async SearchIndexHandler may be
+      // suspended during reindex, so we bypass it and create the doc directly.
+      indexEntityDoc(searchRepo, table, entityIndexName);
 
-      String initialFingerprint = getFieldFromIndex(searchClient, tableId, "fingerprint");
-      assertNotNull(initialFingerprint, "Initial fingerprint should exist");
+      // Generate initial embedding synchronously — no polling needed
+      vectorService.updateEntityEmbedding(table, entityIndexName);
 
+      String initialFingerprint =
+          getFieldFromDoc(searchClient, entityIndexName, tableId, "fingerprint");
+      assertNotNull(initialFingerprint, "Initial fingerprint should exist after sync embedding");
+
+      // Patch description and re-generate embedding synchronously
       table.setDescription("Revenue metrics for quarterly financial reporting analysis");
-      client.tables().update(tableId, table);
+      Table updated = client.tables().update(tableId, table);
+      vectorService.updateEntityEmbedding(updated, entityIndexName);
 
-      Awaitility.await("Wait for embedding update after PATCH")
-          .atMost(Duration.ofSeconds(30))
-          .pollInterval(Duration.ofSeconds(2))
-          .ignoreExceptions()
-          .until(
-              () -> {
-                String fp = getFieldFromIndex(searchClient, tableId, "fingerprint");
-                return fp != null && !fp.equals(initialFingerprint);
-              });
+      String updatedFingerprint =
+          getFieldFromDoc(searchClient, entityIndexName, tableId, "fingerprint");
+      assertNotNull(updatedFingerprint, "Updated fingerprint should exist");
+      assertNotEquals(
+          initialFingerprint,
+          updatedFingerprint,
+          "Fingerprint should change after description update");
 
-      String textToEmbed = getFieldFromIndex(searchClient, tableId, "textToEmbed");
+      String textToEmbed = getFieldFromDoc(searchClient, entityIndexName, tableId, "textToEmbed");
       assertTrue(
           textToEmbed.contains("Revenue metrics"),
           "textToEmbed should reflect the patched description");
 
-      String embeddingJson = getFieldFromIndex(searchClient, tableId, "embedding");
+      String embeddingJson = getFieldFromDoc(searchClient, entityIndexName, tableId, "embedding");
       assertNotNull(embeddingJson, "Embedding vector should exist after PATCH");
 
       List<String> knnResults =
@@ -121,6 +127,11 @@ public class PatchTableEmbeddingIT {
           knnResults.contains(tableId),
           "Patched table should be found via KNN search for its new description");
     }
+  }
+
+  private String resolveTableIndexName(SearchRepository searchRepo) {
+    IndexMapping mapping = searchRepo.getIndexMapping(Entity.TABLE);
+    return mapping.getIndexName(searchRepo.getClusterAlias());
   }
 
   /**
@@ -134,7 +145,7 @@ public class PatchTableEmbeddingIT {
     try {
       createKnnIndex(searchClient, dimension);
       indexEmbeddingDocument(searchClient, tableId, embeddingJson);
-      refreshIndex(searchClient);
+      refreshKnnIndex(searchClient);
       return executeKnnSearch(searchClient, 10);
     } finally {
       deleteKnnIndex(searchClient);
@@ -170,7 +181,7 @@ public class PatchTableEmbeddingIT {
     searchClient.performRequest(request);
   }
 
-  private void refreshIndex(Rest5Client searchClient) throws Exception {
+  private void refreshKnnIndex(Rest5Client searchClient) throws Exception {
     searchClient.performRequest(new Request("POST", "/" + KNN_TEST_INDEX + "/_refresh"));
   }
 
@@ -212,28 +223,31 @@ public class PatchTableEmbeddingIT {
     }
   }
 
-  private String getFieldFromIndex(Rest5Client searchClient, String entityId, String field)
+  private void indexEntityDoc(SearchRepository searchRepo, Table table, String indexName)
       throws Exception {
-    String query =
-        String.format(
-            "{\"size\":1,\"_source\":[\"%s\"],\"query\":{\"term\":{\"_id\":\"%s\"}}}",
-            field, entityId);
+    SearchIndex index = searchRepo.getSearchIndexFactory().buildIndex(Entity.TABLE, table);
+    String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+    searchRepo.getSearchClient().createEntity(indexName, table.getId().toString(), doc);
+  }
 
-    Request request = new Request("POST", "/" + TABLE_INDEX + "/_search");
-    request.setJsonEntity(query);
+  /** Uses GET _doc API which reads from the translog and is always real-time. */
+  private String getFieldFromDoc(
+      Rest5Client searchClient, String indexName, String entityId, String field) throws Exception {
+    Request request =
+        new Request(
+            "GET", String.format("/%s/_doc/%s?_source_includes=%s", indexName, entityId, field));
 
     Response response = searchClient.performRequest(request);
     String body =
         new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     JsonNode root = MAPPER.readTree(body);
-    JsonNode hits = root.path("hits").path("hits");
-    if (hits.isArray() && !hits.isEmpty()) {
-      JsonNode fieldValue = hits.get(0).path("_source").path(field);
-      if (fieldValue.isMissingNode() || fieldValue.isNull()) {
-        return null;
-      }
-      return fieldValue.isTextual() ? fieldValue.asText() : fieldValue.toString();
+    if (!root.path("found").asBoolean(false)) {
+      return null;
     }
-    return null;
+    JsonNode fieldValue = root.path("_source").path(field);
+    if (fieldValue.isMissingNode() || fieldValue.isNull()) {
+      return null;
+    }
+    return fieldValue.isTextual() ? fieldValue.asText() : fieldValue.toString();
   }
 }

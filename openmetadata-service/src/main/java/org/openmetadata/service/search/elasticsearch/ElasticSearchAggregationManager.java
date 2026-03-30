@@ -333,7 +333,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
           if (parsedQuery != null) {
             final Query existingQuery = parsedQuery;
-            Query combinedQuery =
+            parsedQuery =
                 Query.of(
                     qb ->
                         qb.bool(
@@ -342,7 +342,6 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
                               b.filter(rbacQuery);
                               return b;
                             }));
-            parsedQuery = combinedQuery;
           } else {
             parsedQuery = rbacQuery;
           }

@@ -2300,74 +2300,62 @@ public class TableRepository extends EntityRepository<Table> {
           });
       compareAndUpdate(
           "tableType",
-          () -> {
-            recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
-          });
+          () -> recordChange("tableType", origTable.getTableType(), updatedTable.getTableType()));
       compareAndUpdate(
           "dataModel",
-          () -> {
-            recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel());
-          });
+          () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));
       compareAndUpdate(
-          "tableConstraints",
-          () -> {
-            updateTableConstraints(origTable, updatedTable, operation);
-          });
+          "tableConstraints", () -> updateTableConstraints(origTable, updatedTable, operation));
       compareAndUpdate(
           "sourceUrl",
-          () -> {
-            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-          });
+          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
           "retentionPeriod",
-          () -> {
-            recordChange(
-                "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
-          });
+          () ->
+              recordChange(
+                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
       compareAndUpdate(
           "compressionEnabled",
-          () -> {
-            recordChange(
-                "compressionEnabled",
-                original.getCompressionEnabled(),
-                updated.getCompressionEnabled());
-          });
+          () ->
+              recordChange(
+                  "compressionEnabled",
+                  original.getCompressionEnabled(),
+                  updated.getCompressionEnabled()));
       compareAndUpdate(
           "compressionCodec",
-          () -> {
-            recordChange(
-                "compressionCodec", original.getCompressionCodec(), updated.getCompressionCodec());
-          });
+          () ->
+              recordChange(
+                  "compressionCodec",
+                  original.getCompressionCodec(),
+                  updated.getCompressionCodec()));
       compareAndUpdate(
           "compressionStrategy",
-          () -> {
-            recordChange(
-                "compressionStrategy",
-                original.getCompressionStrategy(),
-                updated.getCompressionStrategy());
-          });
+          () ->
+              recordChange(
+                  "compressionStrategy",
+                  original.getCompressionStrategy(),
+                  updated.getCompressionStrategy()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
       compareAndUpdate(
           "locationPath",
-          () -> {
-            recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
-          });
+          () ->
+              recordChange("locationPath", original.getLocationPath(), updated.getLocationPath()));
       compareAndUpdate(
           "processedLineage",
-          () -> {
-            recordChange(
-                "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
-          });
+          () ->
+              recordChange(
+                  "processedLineage",
+                  original.getProcessedLineage(),
+                  updated.getProcessedLineage()));
     }
 
     private void updateProcessedLineage(Table origTable, Table updatedTable) {
@@ -2890,9 +2878,8 @@ public class TableRepository extends EntityRepository<Table> {
       List<EntityReference> piiOwners,
       Authorizer authorizer,
       SecurityContext securityContext) {
-    Table fullTable = table;
 
-    List<Column> allColumns = fullTable.getColumns();
+    List<Column> allColumns = table.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
       return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
     }

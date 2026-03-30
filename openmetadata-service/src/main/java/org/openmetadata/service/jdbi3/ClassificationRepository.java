@@ -287,23 +287,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
       compareAndUpdate(
           "disabled",
-          () -> {
-            recordChange("disabled", original.getDisabled(), updated.getDisabled());
-          });
+          () -> recordChange("disabled", original.getDisabled(), updated.getDisabled()));
       compareAndUpdate(
           "autoClassificationConfig",
-          () -> {
-            recordChange(
-                "autoClassificationConfig",
-                original.getAutoClassificationConfig(),
-                updated.getAutoClassificationConfig(),
-                true);
-          });
-      compareAndUpdate(
-          "name",
-          () -> {
-            updateName(updated);
-          });
+          () ->
+              recordChange(
+                  "autoClassificationConfig",
+                  original.getAutoClassificationConfig(),
+                  updated.getAutoClassificationConfig(),
+                  true));
+      compareAndUpdate("name", () -> updateName(updated));
     }
 
     public void updateName(Classification updated) {

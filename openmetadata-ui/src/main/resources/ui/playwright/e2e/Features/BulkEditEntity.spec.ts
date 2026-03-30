@@ -212,9 +212,17 @@ test.describe('Bulk Edit Entity', () => {
         })
       ).toBeVisible();
 
+      // Verify Tier
       await expect(
         page.getByRole('link', {
           name: 'Tier1',
+        })
+      ).toBeVisible();
+
+      // Verify Certification
+      await expect(
+        page.getByRole('link', {
+          name: 'Gold',
         })
       ).toBeVisible();
 
@@ -356,9 +364,17 @@ test.describe('Bulk Edit Entity', () => {
         })
       ).toBeVisible();
 
+      // Verify Tier
       await expect(
         page.getByRole('link', {
           name: 'Tier1',
+        })
+      ).toBeVisible();
+
+      // Verify Certification
+      await expect(
+        page.getByRole('link', {
+          name: 'Gold',
         })
       ).toBeVisible();
 
@@ -497,10 +513,16 @@ test.describe('Bulk Edit Entity', () => {
         })
       ).toBeVisible();
 
+      // Verify Tier
       await expect(
         page.getByRole('link', {
           name: 'Tier1',
         })
+      ).toBeVisible();
+
+      // Verify Certification
+      await expect(
+        page.getByTestId('certification-Certification.Gold')
       ).toBeVisible();
 
       await expect(
