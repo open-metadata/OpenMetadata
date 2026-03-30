@@ -26,6 +26,9 @@ class SearchIndexTest {
           "connection",
           "changeSummary");
 
+  private static final Set<String> BANNED_FIELDS =
+      Set.of("changeDescription", "incrementalChangeDescription", "changeSummary");
+
   // Test the getFQNParts logic directly without instantiating SearchIndex
   private Set<String> getFQNParts(String fqn) {
     var parts = FullyQualifiedName.split(fqn);
@@ -159,11 +162,12 @@ class SearchIndexTest {
   }
 
   @Test
-  void testNestedChangeDescriptionSurvivesTopLevelRemoval() {
-    // Top-level removal only strips top-level keys. Nested changeDescription
-    // inside referenced entities is NOT removed by the Java code.
-    // Defense-in-depth: index mappings must declare changeDescription as
-    // "enabled: false" so ES/OS ignores it even if it leaks through.
+  void testNestedChangeDescriptionMustNotLeakIntoDoc() {
+    // Nested entities (e.g., a Query inside QueryCostRecord) must have
+    // changeDescription stripped BEFORE being placed into the doc.
+    // The index code (e.g., QueryCostRecordIndex) is responsible for
+    // nulling out changeDescription on nested entities. This test
+    // verifies that if someone forgets, findBannedFields catches it.
     Map<String, Object> nestedEntity = new HashMap<>();
     nestedEntity.put("id", "ref-1");
     nestedEntity.put(
@@ -179,12 +183,101 @@ class SearchIndexTest {
     assertFalse(
         doc.containsKey("changeDescription"), "Top-level changeDescription should be removed");
 
-    @SuppressWarnings("unchecked")
-    Map<String, Object> nested = (Map<String, Object>) doc.get("someNestedRef");
-    assertTrue(
-        nested.containsKey("changeDescription"),
-        "Nested changeDescription survives top-level removal — "
-            + "mapping 'enabled: false' is the safety net");
+    List<String> violations = findBannedFields(doc, BANNED_FIELDS);
+    assertFalse(
+        violations.isEmpty(),
+        "Nested changeDescription should be detected — index code must null it before doc.put()");
+    assertTrue(violations.get(0).contains("someNestedRef.changeDescription"));
+  }
+
+  @Test
+  void testNoBannedFieldsAfterProperCleanup() {
+    Map<String, Object> nestedEntity = new HashMap<>();
+    nestedEntity.put("id", "ref-1");
+    nestedEntity.put("name", "clean-entity");
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "test-record");
+    doc.put("changeDescription", Map.of("fieldsUpdated", List.of()));
+    doc.put("incrementalChangeDescription", Map.of("fieldsUpdated", List.of()));
+    doc.put("changeSummary", Map.of());
+    doc.put("nestedRef", nestedEntity);
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    List<String> violations = findBannedFields(doc, BANNED_FIELDS);
+    assertTrue(violations.isEmpty(), "No banned fields should remain after cleanup: " + violations);
+  }
+
+  @Test
+  void testBannedFieldsDetectedAtMultipleNestingLevels() {
+    Map<String, Object> level2 = new HashMap<>();
+    level2.put("id", "deep");
+    level2.put("changeDescription", Map.of("fieldsUpdated", List.of()));
+
+    Map<String, Object> level1 = new HashMap<>();
+    level1.put("id", "mid");
+    level1.put("incrementalChangeDescription", Map.of("fieldsUpdated", List.of()));
+    level1.put("child", level2);
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "test");
+    doc.put("nested", level1);
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    List<String> violations = findBannedFields(doc, BANNED_FIELDS);
+    assertEquals(2, violations.size(), "Should detect banned fields at both nesting levels");
+  }
+
+  @Test
+  void testBannedFieldsDetectedInsideLists() {
+    Map<String, Object> listItem = new HashMap<>();
+    listItem.put("id", "item-1");
+    listItem.put("changeDescription", Map.of("fieldsUpdated", List.of()));
+
+    List<Object> items = new ArrayList<>();
+    items.add(listItem);
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "test");
+    doc.put("entities", items);
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    List<String> violations = findBannedFields(doc, BANNED_FIELDS);
+    assertFalse(violations.isEmpty(), "Should detect changeDescription inside list items");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<String> findBannedFields(Map<String, Object> doc, Set<String> bannedKeys) {
+    List<String> violations = new ArrayList<>();
+    findBannedFieldsRecursive(doc, bannedKeys, "", violations);
+    return violations;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void findBannedFieldsRecursive(
+      Map<String, Object> map, Set<String> bannedKeys, String path, List<String> violations) {
+    for (Map.Entry<String, Object> entry : map.entrySet()) {
+      String fullPath = path.isEmpty() ? entry.getKey() : path + "." + entry.getKey();
+      if (bannedKeys.contains(entry.getKey())) {
+        violations.add(fullPath);
+      }
+      Object value = entry.getValue();
+      if (value instanceof Map) {
+        findBannedFieldsRecursive((Map<String, Object>) value, bannedKeys, fullPath, violations);
+      } else if (value instanceof List) {
+        int i = 0;
+        for (Object item : (List<?>) value) {
+          if (item instanceof Map) {
+            findBannedFieldsRecursive(
+                (Map<String, Object>) item, bannedKeys, fullPath + "[" + i + "]", violations);
+          }
+          i++;
+        }
+      }
+    }
   }
 
   private Map<String, Object> buildDocWithChangeDescription(Object newValue) {
