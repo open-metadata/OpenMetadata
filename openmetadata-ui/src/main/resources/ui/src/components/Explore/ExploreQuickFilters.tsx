@@ -116,7 +116,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         independent,
         showDeleted,
         optionPageSize,
-        isNLPEnabled
+        isNLPEnabled,
+        searchText
       );
 
       buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
@@ -186,7 +187,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         independent,
         showDeleted,
         undefined,
-        isNLPEnabled
+        isNLPEnabled,
+        searchText
       );
 
       const buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
