@@ -474,7 +474,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           false,
           undefined,
-          false
+          false,
+          ''
         );
       });
     });

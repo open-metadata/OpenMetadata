@@ -88,21 +88,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('search dropdown quick filters - index readiness', () => {
-  test.beforeEach(async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
-    await expect(async () => {
-      const response = await apiContext.get(
-        `/api/v1/search/query?q=${encodeURIComponent(
-          table.entityResponseData?.fullyQualifiedName ?? ''
-        )}&index=dataAsset&from=0&size=1`
-      );
-      const data = await response.json();
-
-      expect(data.hits.total.value).toBeGreaterThan(0);
-    }).toPass({ timeout: 90_000, intervals: [2_000] });
-  });
-
   test('search dropdown should work properly for quick filters', async ({
     page,
   }) => {
