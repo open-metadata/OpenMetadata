@@ -1154,6 +1154,9 @@ public final class EntityUtil {
     if (entityReference.getId() == null) {
       throw new IllegalArgumentException("Entity reference id must not be null");
     }
+    if (entityReference.getType() == null) {
+      throw new IllegalArgumentException("Entity reference type must not be null");
+    }
     if (expectedType != null && !expectedType.equals(entityReference.getType())) {
       throw new IllegalArgumentException(
           String.format(

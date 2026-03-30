@@ -984,6 +984,15 @@ class EntityUtilTest {
   }
 
   @Test
+  void testValidateEntityReference_nullType() {
+    UUID id = UUID.randomUUID();
+    EntityReference ref = new EntityReference().withId(id);
+    assertThrows(
+        IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref, "table"));
+    assertThrows(IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref));
+  }
+
+  @Test
   void testValidateEntityReference_typeMismatch() {
     UUID id = UUID.randomUUID();
     EntityReference ref = new EntityReference().withId(id).withType("dashboard");

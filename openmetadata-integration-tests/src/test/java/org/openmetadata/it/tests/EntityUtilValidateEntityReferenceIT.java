@@ -85,6 +85,15 @@ public class EntityUtilValidateEntityReferenceIT {
   }
 
   @Test
+  void testValidateEntityReference_nullTypeThrows() {
+    UUID id = UUID.randomUUID();
+    EntityReference ref = new EntityReference().withId(id);
+    assertThrows(
+        IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref, "user"));
+    assertThrows(IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref));
+  }
+
+  @Test
   void testValidateEntityReference_typeMismatchThrows() {
     SharedEntities shared = SharedEntities.get();
     EntityReference ref = new EntityReference().withId(shared.USER1.getId()).withType("user");
