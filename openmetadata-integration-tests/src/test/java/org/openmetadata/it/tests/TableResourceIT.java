@@ -2922,6 +2922,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             ColumnBuilder.of("col_to_delete", "BIGINT").build(),
             ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
     Table sourceTable = client.tables().create(sourceReq);
+    // Bump version past 0.1 so consolidateChanges() is eligible on the next PATCH.
+    // consolidateChanges requires original.getVersion() > 0.1, which means the entity
+    // must have been updated at least once before the column-removal PATCH we're testing.
+    sourceTable.setDescription("lineage test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
 
     CreateTable targetReq = new CreateTable();
     targetReq.setName(ns.prefix("lineage_tgt"));
@@ -2961,7 +2966,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
           .ignoreExceptions()
           .until(() -> getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString()).contains(sourceColFqn));
 
-      // PUT source table without col_to_delete — triggers column lineage delete
+      // PATCH source table without col_to_delete — triggers column lineage delete.
+      // Uses update() which sends HTTP PATCH under the hood, and now that version > 0.1
+      // consolidateChanges() is eligible, exercising the deferred-flush deduplication fix.
       sourceTable.setColumns(List.of(ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
       client.tables().update(sourceTable.getId().toString(), sourceTable);
 

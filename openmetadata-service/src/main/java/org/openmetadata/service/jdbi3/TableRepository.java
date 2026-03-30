@@ -33,7 +33,7 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence;
-import static org.openmetadata.service.search.SearchClient.TABLE_SEARCH_INDEX;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
@@ -2469,12 +2469,12 @@ public class TableRepository extends EntityRepository<Table> {
       if (!pendingRenameColumnFqns.isEmpty()) {
         searchRepository
             .getSearchClient()
-            .updateColumnsInUpstreamLineage(TABLE_SEARCH_INDEX, new HashMap<>(pendingRenameColumnFqns));
+            .updateColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, new HashMap<>(pendingRenameColumnFqns));
       }
       if (!pendingDeletedColumnFqns.isEmpty()) {
         searchRepository
             .getSearchClient()
-            .deleteColumnsInUpstreamLineage(TABLE_SEARCH_INDEX, List.copyOf(pendingDeletedColumnFqns));
+            .deleteColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, List.copyOf(pendingDeletedColumnFqns));
       }
     }
   }
