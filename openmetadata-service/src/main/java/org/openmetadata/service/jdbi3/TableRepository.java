@@ -2456,7 +2456,6 @@ public class TableRepository extends EntityRepository<Table> {
         pendingDeletedColumnFqns.addAll(deletedColumns);
       }
       if (hasRenames) {
-        pendingRenameColumnFqns.clear();
         pendingRenameColumnFqns.putAll(originalUpdatedColumnFqnMap);
       }
 
