@@ -168,9 +168,20 @@ export const AuthProvider = ({
   const onLoginHandler = () => {
     setApplicationLoading(true);
 
-    authenticatorRef.current?.invokeLogin();
+    const invokeLogin = () => {
+      if (authenticatorRef.current) {
+        authenticatorRef.current.invokeLogin();
+        resetWebAnalyticSession();
+      } else {
+        // Polling mechanism to wait for authenticator ref to be available.
+        // This handles race conditions in production builds where onLoginHandler
+        // may be called before the authenticator component has mounted and set the ref.
+        // Retry every 50ms until ref is available.
+        setTimeout(invokeLogin, 50);
+      }
+    };
 
-    resetWebAnalyticSession();
+    invokeLogin();
   };
 
   // Handler to perform logout within application
@@ -288,9 +299,9 @@ export const AuthProvider = ({
     // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
     const shouldStartExpiry =
       refreshToken ||
-      [AuthProviderEnum.Basic, AuthProviderEnum.LDAP].indexOf(
+      [AuthProviderEnum.Basic, AuthProviderEnum.LDAP].includes(
         authConfig?.provider as AuthProviderEnum
-      ) === -1;
+      );
 
     if (!isExpired && isNumber(timeoutExpiry) && shouldStartExpiry) {
       // Have 5m buffer before start trying for silent signIn
