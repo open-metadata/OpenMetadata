@@ -27,9 +27,9 @@ import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import {
-    getDataQualityPagePath,
-    getTestCaseDetailPagePath,
-    getTestSuitePath
+  getDataQualityPagePath,
+  getTestCaseDetailPagePath,
+  getTestSuitePath,
 } from '../../utils/RouterUtils';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';

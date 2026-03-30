@@ -12,11 +12,11 @@
  */
 
 import {
-    findByTestId,
-    findByText,
-    fireEvent,
-    render,
-    screen
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+  screen,
 } from '@testing-library/react';
 import React, { act } from 'react';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';

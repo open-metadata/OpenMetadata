@@ -12,15 +12,15 @@
  */
 
 import {
-    Button,
-    Card,
-    Col,
-    Drawer,
-    Form,
-    Row,
-    Space,
-    Switch,
-    Typography
+  Button,
+  Card,
+  Col,
+  Drawer,
+  Form,
+  Row,
+  Space,
+  Switch,
+  Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -37,9 +37,9 @@ import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OwnerType } from '../../../enums/user.enum';
 import {
-    CreateIngestionPipeline,
-    FluffyType as ConfigType,
-    PipelineType
+  CreateIngestionPipeline,
+  FluffyType as ConfigType,
+  PipelineType,
 } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestSuite } from '../../../generated/api/tests/createTestSuite';
 import { LogLevels } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -47,21 +47,21 @@ import { TestSuite } from '../../../generated/tests/testSuite';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
-    addIngestionPipeline,
-    deployIngestionPipelineById
+  addIngestionPipeline,
+  deployIngestionPipelineById,
 } from '../../../rest/ingestionPipelineAPI';
 import {
-    addTestCasesToLogicalTestSuiteBulk,
-    createTestSuites
+  addTestCasesToLogicalTestSuiteBulk,
+  createTestSuites,
 } from '../../../rest/testAPI';
 import {
-    getNameFromFQN,
-    replaceAllSpacialCharWith_
+  getNameFromFQN,
+  replaceAllSpacialCharWith_,
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-    createScrollToErrorHandler,
-    generateFormFields
+  createScrollToErrorHandler,
+  generateFormFields,
 } from '../../../utils/formUtils';
 import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
@@ -73,8 +73,8 @@ import '../AddDataQualityTest/components/TestCaseFormV1.less';
 import { AddTestCaseList } from '../AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
 import {
-    BundleSuiteFormData,
-    BundleSuiteFormProps
+  BundleSuiteFormData,
+  BundleSuiteFormProps,
 } from './BundleSuiteForm.interface';
 
 // =============================================

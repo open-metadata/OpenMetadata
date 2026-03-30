@@ -12,10 +12,10 @@
  */
 
 import {
-    Button,
-    Dropdown,
-    Skeleton,
-    Tooltip
+  Button,
+  Dropdown,
+  Skeleton,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, DotsVertical } from '@untitledui/icons';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
@@ -36,9 +36,9 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import {
-    TestCase,
-    TestCaseResult,
-    TestCaseStatus
+  TestCase,
+  TestCaseResult,
+  TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../../../../generated/tests/testSuite';
@@ -47,14 +47,14 @@ import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManag
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN, Transi18next } from '../../../../utils/CommonUtils';
 import {
-    getColumnNameFromEntityLink,
-    getEntityName
+  getColumnNameFromEntityLink,
+  getEntityName,
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import {
-    getEntityDetailsPath,
-    getTestCaseDetailPagePath,
-    getTestSuitePath
+  getEntityDetailsPath,
+  getTestCaseDetailPagePath,
+  getTestSuitePath,
 } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -70,10 +70,10 @@ import BundleSuiteForm from '../../../DataQuality/BundleSuiteForm/BundleSuiteFor
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
-    DataQualityTabProps,
-    ProfilerTabPath,
-    TestCaseAction,
-    TestCasePermission
+  DataQualityTabProps,
+  ProfilerTabPath,
+  TestCaseAction,
+  TestCasePermission,
 } from '../ProfilerDashboard/profilerDashboard.interface';
 import './data-quality-tab.less';
 
