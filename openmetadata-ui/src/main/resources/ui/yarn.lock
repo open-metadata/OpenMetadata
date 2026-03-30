@@ -10831,10 +10831,10 @@ sentence-case@^3.0.4:
     tslib "^2.0.3"
     upper-case-first "^2.0.2"
 
-serialize-javascript@7.0.3, serialize-javascript@^4.0.0:
-  version "7.0.3"
-  resolved "https://registry.yarnpkg.com/serialize-javascript/-/serialize-javascript-7.0.3.tgz#c92008d8a21bc7b2307c2e885a4bd0f03b2aee6c"
-  integrity sha512-h+cZ/XXarqDgCjo+YSyQU/ulDEESGGf8AMK9pPNmhNSl/FzPl6L8pMp1leca5z6NuG6tvV/auC8/43tmovowww==
+serialize-javascript@7.0.5, serialize-javascript@^4.0.0:
+  version "7.0.5"
+  resolved "https://registry.yarnpkg.com/serialize-javascript/-/serialize-javascript-7.0.5.tgz#c798cc0552ffbb08981914a42a8756e339d0d5b1"
+  integrity sha512-F4LcB0UqUl1zErq+1nYEEzSHJnIwb3AF2XWB94b+afhrekOUijwooAYqFyRbjYkm2PAKBabx6oYv/xDxNi8IBw==
 
 set-blocking@^2.0.0:
   version "2.0.0"
