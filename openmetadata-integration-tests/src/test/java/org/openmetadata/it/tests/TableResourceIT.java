@@ -2937,39 +2937,45 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     String sourceColFqn = sourceTable.getFullyQualifiedName() + ".col_to_delete";
     String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
 
-    client.lineage().addLineage(
-        new AddLineage()
-            .withEdge(
-                new EntitiesEdge()
-                    .withFromEntity(
-                        new EntityReference()
-                            .withId(sourceTable.getId())
-                            .withType("table")
-                            .withFullyQualifiedName(sourceTable.getFullyQualifiedName()))
-                    .withToEntity(
-                        new EntityReference()
-                            .withId(targetTable.getId())
-                            .withType("table")
-                            .withFullyQualifiedName(targetTable.getFullyQualifiedName()))
-                    .withLineageDetails(
-                        new LineageDetails()
-                            .withColumnsLineage(
-                                List.of(
-                                    new ColumnLineage()
-                                        .withFromColumns(List.of(sourceColFqn))
-                                        .withToColumn(targetColFqn))))));
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(
+                            new EntityReference()
+                                .withId(sourceTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(sourceTable.getFullyQualifiedName()))
+                        .withToEntity(
+                            new EntityReference()
+                                .withId(targetTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(targetTable.getFullyQualifiedName()))
+                        .withLineageDetails(
+                            new LineageDetails()
+                                .withColumnsLineage(
+                                    List.of(
+                                        new ColumnLineage()
+                                            .withFromColumns(List.of(sourceColFqn))
+                                            .withToColumn(targetColFqn))))));
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
       Awaitility.await("Wait for column lineage to be indexed in search")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
           .ignoreExceptions()
-          .until(() -> getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString()).contains(sourceColFqn));
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
 
       // PATCH source table without col_to_delete — triggers column lineage delete.
       // Uses update() which sends HTTP PATCH under the hood, and now that version > 0.1
       // consolidateChanges() is eligible, exercising the deferred-flush deduplication fix.
-      sourceTable.setColumns(List.of(ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
+      sourceTable.setColumns(
+          List.of(ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
       client.tables().update(sourceTable.getId().toString(), sourceTable);
 
       // Wait for the deletion to propagate to the search index via the deferred flush
@@ -2977,7 +2983,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
           .atMost(Duration.ofSeconds(15))
           .pollInterval(Duration.ofSeconds(2))
           .ignoreExceptions()
-          .until(() -> !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString()).contains(sourceColFqn));
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
     }
   }
 
@@ -2991,8 +3000,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     request.setJsonEntity(query);
     Response response = searchClient.performRequest(request);
     return new String(
-        response.getEntity().getContent().readAllBytes(),
-        java.nio.charset.StandardCharsets.UTF_8);
+        response.getEntity().getContent().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
   }
 
   // ===================================================================

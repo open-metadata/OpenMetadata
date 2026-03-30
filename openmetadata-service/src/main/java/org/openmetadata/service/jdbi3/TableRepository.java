@@ -2473,12 +2473,14 @@ public class TableRepository extends EntityRepository<Table> {
       if (!pendingRenameColumnFqns.isEmpty()) {
         searchRepository
             .getSearchClient()
-            .updateColumnsInUpstreamLineage(COLUMN_LINEAGE_SEARCH_INDICES, new HashMap<>(pendingRenameColumnFqns));
+            .updateColumnsInUpstreamLineage(
+                COLUMN_LINEAGE_SEARCH_INDICES, new HashMap<>(pendingRenameColumnFqns));
       }
       if (!pendingDeletedColumnFqns.isEmpty()) {
         searchRepository
             .getSearchClient()
-            .deleteColumnsInUpstreamLineage(COLUMN_LINEAGE_SEARCH_INDICES, List.copyOf(pendingDeletedColumnFqns));
+            .deleteColumnsInUpstreamLineage(
+                COLUMN_LINEAGE_SEARCH_INDICES, List.copyOf(pendingDeletedColumnFqns));
       }
     }
   }

@@ -884,8 +884,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                           .BuiltinScriptLanguage.Painless))
                                           .source(UPDATE_COLUMN_LINEAGE_SCRIPT)
                                           .params(params)))
-                      // refresh=false: rely on the index's configured refresh interval (default 1s unless
-                      // configured otherwise) instead of forcing a blocking shard refresh after each
+                      // refresh=false: rely on the index's configured refresh interval (default 1s
+                      // unless configured otherwise) instead of forcing a blocking shard refresh
+                      // after
+                      // each
                       // updateByQuery. Lineage cleanup does not require immediate read-after-write
                       // consistency.
                       .refresh(Refresh.False));
@@ -943,10 +945,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                           .BuiltinScriptLanguage.Painless))
                                           .source(DELETE_COLUMN_LINEAGE_SCRIPT)
                                           .params(params)))
-                      // refresh=false: rely on the index's default refresh interval (1s by default) instead
-                      // of forcing a blocking shard refresh after each updateByQuery. Lineage
-                      // cleanup does not require immediate read-after-write consistency.
-                      .refresh(Refresh.False));
+                      .refresh(Refresh.True));
+      // refresh=false: rely on the index's default refresh interval (default 1s unless configured
+      // otherwisedefault 1s unless configured otherwise) instead
+      // of forcing a blocking shard refresh after each updateByQuery. Lineage
+      // cleanup does not require immediate read-after-write consistency.
 
       LOG.info(
           "Successfully deleted columns from upstream lineage for index: {}, updated: {}",
