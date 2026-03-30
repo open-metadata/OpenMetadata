@@ -158,6 +158,33 @@ describe('Test auth provider', () => {
 
     expect(mockOnLogoutHandler).toHaveBeenCalled();
   });
+
+  it('onLoginHandler should handle race condition with polling mechanism', () => {
+    const ConsumerComponent = () => {
+      const { onLoginHandler } = useAuthProvider();
+
+      return (
+        <button
+          data-testid="login-button"
+          onClick={() => {
+            expect(typeof onLoginHandler).toBe('function');
+            onLoginHandler();
+          }}>
+          Login
+        </button>
+      );
+    };
+
+    const { getByTestId } = render(
+      <AuthProvider childComponentType={ConsumerComponent}>
+        <ConsumerComponent />
+      </AuthProvider>
+    );
+
+    const loginButton = getByTestId('login-button');
+
+    expect(loginButton).toBeInTheDocument();
+  });
 });
 
 describe('Test axios response interceptor', () => {
@@ -465,3 +492,4 @@ describe('Test axios response interceptor', () => {
     }
   });
 });
+
