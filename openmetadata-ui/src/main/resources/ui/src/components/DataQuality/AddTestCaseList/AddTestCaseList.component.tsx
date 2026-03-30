@@ -11,35 +11,35 @@
  *  limitations under the License.
  */
 import {
-  Button,
-  Checkbox,
-  Col,
-  Divider,
-  List,
-  Row,
-  Space,
-  Typography,
+    Button,
+    Checkbox,
+    Col,
+    Divider,
+    List,
+    Row,
+    Space,
+    Typography
 } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
 import VirtualList from 'rc-virtual-list';
 import {
-  UIEventHandler,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    UIEventHandler,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import {
-  TEST_CASE_STATUS_FILTER_OPTIONS,
-  TEST_CASE_STATUS_LABELS,
-  TEST_CASE_TYPE_OPTION,
+    TEST_CASE_STATUS_FILTER_OPTIONS,
+    TEST_CASE_STATUS_LABELS,
+    TEST_CASE_TYPE_OPTION
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -51,14 +51,14 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
-  COLUMN_AGGREGATE_FIELD,
-  getColumnNameFromColumnFilterKey,
-  getSelectedOptionsFromKeys,
-  parseColumnAggregateBuckets,
+    COLUMN_AGGREGATE_FIELD,
+    getColumnNameFromColumnFilterKey,
+    getSelectedOptionsFromKeys,
+    parseColumnAggregateBuckets
 } from '../../../utils/DataQuality/DataQualityUtils';
 import {
-  getColumnNameFromEntityLink,
-  getEntityName,
+    getColumnNameFromEntityLink,
+    getEntityName
 } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';

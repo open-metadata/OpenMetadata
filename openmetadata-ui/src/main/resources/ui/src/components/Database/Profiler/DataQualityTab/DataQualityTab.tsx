@@ -12,13 +12,12 @@
  */
 
 import {
-  Button,
-  Dropdown,
-  Skeleton,
-  Tooltip,
+    Button,
+    Dropdown,
+    Skeleton,
+    Tooltip
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, DotsVertical } from '@untitledui/icons';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
 import { FilterValue, SorterResult } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -29,6 +28,7 @@ import { useEffect, useMemo, useRef, useState, type Key } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
+import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -36,9 +36,9 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import {
-  TestCase,
-  TestCaseResult,
-  TestCaseStatus,
+    TestCase,
+    TestCaseResult,
+    TestCaseStatus
 } from '../../../../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../../../../generated/tests/testSuite';
@@ -47,14 +47,14 @@ import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManag
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN, Transi18next } from '../../../../utils/CommonUtils';
 import {
-  getColumnNameFromEntityLink,
-  getEntityName,
+    getColumnNameFromEntityLink,
+    getEntityName
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import {
-  getEntityDetailsPath,
-  getTestCaseDetailPagePath,
-  getTestSuitePath,
+    getEntityDetailsPath,
+    getTestCaseDetailPagePath,
+    getTestSuitePath
 } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -64,16 +64,16 @@ import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterT
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
+import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
 import AddToBundleSuiteModal from '../../../DataQuality/AddToBundleSuiteModal/AddToBundleSuiteModal.component';
 import BundleSuiteForm from '../../../DataQuality/BundleSuiteForm/BundleSuiteForm';
-import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
-  DataQualityTabProps,
-  ProfilerTabPath,
-  TestCaseAction,
-  TestCasePermission,
+    DataQualityTabProps,
+    ProfilerTabPath,
+    TestCaseAction,
+    TestCasePermission
 } from '../ProfilerDashboard/profilerDashboard.interface';
 import './data-quality-tab.less';
 

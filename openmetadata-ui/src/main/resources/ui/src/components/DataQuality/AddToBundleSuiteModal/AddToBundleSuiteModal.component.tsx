@@ -22,8 +22,8 @@ import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { TestSuiteType } from '../../../enums/TestSuite.enum';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import {
-  addTestCasesToLogicalTestSuiteBulk,
-  getListTestSuitesBySearch,
+    addTestCasesToLogicalTestSuiteBulk,
+    getListTestSuitesBySearch
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
