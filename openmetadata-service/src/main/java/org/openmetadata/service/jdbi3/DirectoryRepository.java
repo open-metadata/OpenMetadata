@@ -477,51 +477,42 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "parent",
-          () -> {
-            updateFromRelationship(
-                "parent",
-                DIRECTORY,
-                original.getParent(),
-                updated.getParent(),
-                Relationship.CONTAINS,
-                DIRECTORY,
-                original.getId());
-          });
+      compareAndUpdate("parent", this::run);
       compareAndUpdate(
           "directoryType",
-          () -> {
-            recordChange("directoryType", original.getDirectoryType(), updated.getDirectoryType());
-          });
-      compareAndUpdate(
-          "path",
-          () -> {
-            recordChange("path", original.getPath(), updated.getPath());
-          });
+          () ->
+              recordChange(
+                  "directoryType", original.getDirectoryType(), updated.getDirectoryType()));
+      compareAndUpdate("path", () -> recordChange("path", original.getPath(), updated.getPath()));
       compareAndUpdate(
           "isShared",
-          () -> {
-            recordChange("isShared", original.getIsShared(), updated.getIsShared());
-          });
+          () -> recordChange("isShared", original.getIsShared(), updated.getIsShared()));
       compareAndUpdate(
           "numberOfFiles",
-          () -> {
-            recordChange("numberOfFiles", original.getNumberOfFiles(), updated.getNumberOfFiles());
-          });
+          () ->
+              recordChange(
+                  "numberOfFiles", original.getNumberOfFiles(), updated.getNumberOfFiles()));
       compareAndUpdate(
           "numberOfSubDirectories",
-          () -> {
-            recordChange(
-                "numberOfSubDirectories",
-                original.getNumberOfSubDirectories(),
-                updated.getNumberOfSubDirectories());
-          });
+          () ->
+              recordChange(
+                  "numberOfSubDirectories",
+                  original.getNumberOfSubDirectories(),
+                  updated.getNumberOfSubDirectories()));
       compareAndUpdate(
           "totalSize",
-          () -> {
-            recordChange("totalSize", original.getTotalSize(), updated.getTotalSize());
-          });
+          () -> recordChange("totalSize", original.getTotalSize(), updated.getTotalSize()));
+    }
+
+    private void run() {
+      updateFromRelationship(
+          "parent",
+          DIRECTORY,
+          original.getParent(),
+          updated.getParent(),
+          Relationship.CONTAINS,
+          DIRECTORY,
+          original.getId());
     }
   }
 }

@@ -187,12 +187,10 @@ class RuleEvaluatorTest {
               DatabaseSchema cachedSchema = i.getArgument(0);
               EntityReference dbRef = cachedSchema.getDatabase();
               if (dbRef == null) return null;
-              Database db =
-                  JsonUtils.readValue(
-                      EntityRepository.CACHE_WITH_ID.get(
-                          new ImmutablePair<>(Entity.DATABASE, dbRef.getId())),
-                      Database.class);
-              return db;
+              return JsonUtils.readValue(
+                  EntityRepository.CACHE_WITH_ID.get(
+                      new ImmutablePair<>(Entity.DATABASE, dbRef.getId())),
+                  Database.class);
             });
     createResourceContextSchema =
         Mockito.spy(new CreateResourceContext<>(Entity.DATABASE_SCHEMA, schema));

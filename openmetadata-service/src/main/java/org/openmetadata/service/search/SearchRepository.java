@@ -583,9 +583,8 @@ public class SearchRepository {
       }
     } catch (Exception e) {
       LOG.error(
-          String.format(
-              "Failed to Delete Index for entity %s due to ",
-              indexMapping.getIndexName(clusterAlias)),
+          "Failed to Delete Index for entity {} due to ",
+          indexMapping.getIndexName(clusterAlias),
           e);
     }
   }

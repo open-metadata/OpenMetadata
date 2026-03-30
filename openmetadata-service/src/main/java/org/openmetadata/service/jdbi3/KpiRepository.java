@@ -260,37 +260,29 @@ public class KpiRepository extends EntityRepository<Kpi> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "dataInsightChart",
-          () -> {
-            updateToRelationship(
-                "dataInsightChart",
-                KPI,
-                original.getId(),
-                Relationship.USES,
-                DATA_INSIGHT_CHART,
-                original.getDataInsightChart(),
-                updated.getDataInsightChart(),
-                false);
-          });
+          () ->
+              updateToRelationship(
+                  "dataInsightChart",
+                  KPI,
+                  original.getId(),
+                  Relationship.USES,
+                  DATA_INSIGHT_CHART,
+                  original.getDataInsightChart(),
+                  updated.getDataInsightChart(),
+                  false));
       compareAndUpdate(
           "targetValue",
-          () -> {
-            recordChange("targetValue", original.getTargetValue(), updated.getTargetValue(), true);
-          });
+          () ->
+              recordChange(
+                  "targetValue", original.getTargetValue(), updated.getTargetValue(), true));
       compareAndUpdate(
           "startDate",
-          () -> {
-            recordChange("startDate", original.getStartDate(), updated.getStartDate());
-          });
+          () -> recordChange("startDate", original.getStartDate(), updated.getStartDate()));
       compareAndUpdate(
-          "endDate",
-          () -> {
-            recordChange("endDate", original.getEndDate(), updated.getEndDate());
-          });
+          "endDate", () -> recordChange("endDate", original.getEndDate(), updated.getEndDate()));
       compareAndUpdate(
           "metricType",
-          () -> {
-            recordChange("metricType", original.getMetricType(), updated.getMetricType());
-          });
+          () -> recordChange("metricType", original.getMetricType(), updated.getMetricType()));
     }
   }
 }

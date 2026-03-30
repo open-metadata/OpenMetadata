@@ -118,9 +118,7 @@ public class LogStorageTest {
     // Test that append logs throws unsupported operation
     assertThrows(
         UnsupportedOperationException.class,
-        () -> {
-          defaultLogStorage.appendLogs(testPipelineFQN, testRunId, "New log content");
-        });
+        () -> defaultLogStorage.appendLogs(testPipelineFQN, testRunId, "New log content"));
   }
 
   @Test
@@ -128,9 +126,7 @@ public class LogStorageTest {
     // Test that get output stream throws unsupported operation
     assertThrows(
         UnsupportedOperationException.class,
-        () -> {
-          defaultLogStorage.getLogOutputStream(testPipelineFQN, testRunId);
-        });
+        () -> defaultLogStorage.getLogOutputStream(testPipelineFQN, testRunId));
   }
 
   @Test
