@@ -104,6 +104,9 @@ public class SearchListFilterTest {
     assertEquals("owners", actual.at("/bool/filter/1/nested/path").asText());
     assertEquals("owner1", actual.at("/bool/filter/1/nested/query/terms/owners.id/0").asText());
     assertEquals("owner2", actual.at("/bool/filter/1/nested/query/terms/owners.id/1").asText());
+    assertTrue(
+        actual.at("/bool/filter/1/nested/ignore_unmapped").asBoolean(),
+        "Nested owners query must set ignore_unmapped to true");
   }
 
   @Test
@@ -139,7 +142,7 @@ public class SearchListFilterTest {
         actual.contains("{\"term\": {\"domains.fullyQualifiedName\": \"finance.\\\"raw\\\"\"}}"));
     assertTrue(
         actual.contains(
-            "{\"nested\":{\"path\":\"owners\",\"query\":{\"terms\":{\"owners.id\":[\"owner1\", \"owner2\"]}}}}"));
+            "{\"nested\":{\"path\":\"owners\",\"query\":{\"terms\":{\"owners.id\":[\"owner1\", \"owner2\"]}},\"ignore_unmapped\":true}}"));
     assertTrue(actual.contains("{\"term\": {\"createdBy\": \"user\\\"name\"}}"));
   }
 
@@ -385,6 +388,41 @@ public class SearchListFilterTest {
         actual.contains("testCase.fullyQualifiedName.keyword")
             && actual.contains("db.schema.table.test1"),
         "Expected testCaseFqn filter but got: " + actual);
+  }
+
+  @Test
+  void testNestedQueryWorksForMappedFields() {
+    // Verifies nested query produces correct structure for indexes with owners as nested
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("owners", "owner-abc,owner-def");
+
+    JsonNode actual = parse(searchListFilter.getFilterQuery(null));
+
+    JsonNode nested = actual.at("/bool/filter/1/nested");
+    assertFalse(nested.isMissingNode(), "nested query must be present");
+    assertEquals("owners", nested.at("/path").asText(), "must target correct nested path");
+    assertEquals(
+        "owner-abc",
+        nested.at("/query/terms/owners.id/0").asText(),
+        "must contain first owner value");
+    assertEquals(
+        "owner-def",
+        nested.at("/query/terms/owners.id/1").asText(),
+        "must contain second owner value");
+  }
+
+  @Test
+  void testNestedQueryDoesNotFailForUnmappedFields() {
+    // Verifies ignore_unmapped is set so indexes without owners (e.g. user) don't throw errors
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("owners", "owner-abc");
+
+    JsonNode actual = parse(searchListFilter.getFilterQuery(null));
+
+    JsonNode nested = actual.at("/bool/filter/1/nested");
+    assertTrue(
+        nested.at("/ignore_unmapped").asBoolean(),
+        "must set ignore_unmapped so query works on indexes without this nested field");
   }
 
   private JsonNode parse(String json) {

@@ -18,6 +18,7 @@ import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
 
@@ -317,7 +318,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       var request = Requests.builder().endpoint(endpoint).method(method).json(body).build();
       try (var response = genericClient.execute(request)) {
         if (response.getStatus() >= 400) {
-          String errorBody = response.getBody().map(b -> b.bodyAsString()).orElse("no body");
+          String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
           throw new IOException(
               "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody);
         }

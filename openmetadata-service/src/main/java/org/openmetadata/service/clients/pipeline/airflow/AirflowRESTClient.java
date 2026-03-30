@@ -330,12 +330,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return getResponse(200, response.body());
       }
     } catch (IOException | URISyntaxException e) {
-      LOG.error(
-          String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
+      LOG.error("Failed to delete Airflow Pipeline {} from Airflow DAGS", pipelineName);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.error(
-          String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
+      LOG.error("Failed to delete Airflow Pipeline {} from Airflow DAGS", pipelineName);
     }
     return getResponse(
         500, String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
@@ -439,9 +437,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
     }
     // Return an empty list. We'll just show the stored status from the Ingestion Pipeline
     LOG.error(
-        String.format(
-            "Got status code [%s] trying to get queued statuses: [%s]",
-            response.statusCode(), response.body()));
+        "Got status code [{}] trying to get queued statuses: [{}]",
+        response.statusCode(),
+        response.body());
     return new ArrayList<>();
   }
 

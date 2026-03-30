@@ -562,28 +562,22 @@ public class AppRepository extends EntityRepository<App> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "appConfiguration",
-          () -> {
-            recordChange(
-                "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
-          });
+          () ->
+              recordChange(
+                  "appConfiguration",
+                  original.getAppConfiguration(),
+                  updated.getAppConfiguration()));
       compareAndUpdate(
           "appSchedule",
-          () -> {
-            recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
-          });
-      compareAndUpdate(
-          "bot",
-          () -> {
-            recordChange("bot", original.getBot(), updated.getBot());
-          });
+          () -> recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule()));
+      compareAndUpdate("bot", () -> recordChange("bot", original.getBot(), updated.getBot()));
       compareAndUpdate(
           "eventSubscriptions",
-          () -> {
-            recordChange(
-                "eventSubscriptions",
-                original.getEventSubscriptions(),
-                updated.getEventSubscriptions());
-          });
+          () ->
+              recordChange(
+                  "eventSubscriptions",
+                  original.getEventSubscriptions(),
+                  updated.getEventSubscriptions()));
     }
   }
 }

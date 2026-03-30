@@ -1345,79 +1345,72 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           });
       compareAndUpdate(
           TEST_SUITE_FIELD,
-          () -> {
-            updateFromRelationship(
-                TEST_SUITE_FIELD,
-                TEST_SUITE,
-                original.getTestSuite(),
-                updated.getTestSuite(),
-                Relationship.HAS,
-                TEST_CASE,
-                updated.getId());
-          });
+          () ->
+              updateFromRelationship(
+                  TEST_SUITE_FIELD,
+                  TEST_SUITE,
+                  original.getTestSuite(),
+                  updated.getTestSuite(),
+                  Relationship.HAS,
+                  TEST_CASE,
+                  updated.getId()));
       compareAndUpdate(
           TEST_DEFINITION,
-          () -> {
-            updateFromRelationship(
-                TEST_DEFINITION,
-                TEST_DEFINITION,
-                original.getTestDefinition(),
-                updated.getTestDefinition(),
-                Relationship.CONTAINS,
-                TEST_CASE,
-                updated.getId());
-          });
+          () ->
+              updateFromRelationship(
+                  TEST_DEFINITION,
+                  TEST_DEFINITION,
+                  original.getTestDefinition(),
+                  updated.getTestDefinition(),
+                  Relationship.CONTAINS,
+                  TEST_CASE,
+                  updated.getId()));
       compareAndUpdate(
           "parameterValues",
-          () -> {
-            recordChange(
-                "parameterValues", original.getParameterValues(), updated.getParameterValues());
-          });
+          () ->
+              recordChange(
+                  "parameterValues", original.getParameterValues(), updated.getParameterValues()));
       compareAndUpdate(
           "inspectionQuery",
-          () -> {
-            recordChange(
-                "inspectionQuery", original.getInspectionQuery(), updated.getInspectionQuery());
-          });
+          () ->
+              recordChange(
+                  "inspectionQuery", original.getInspectionQuery(), updated.getInspectionQuery()));
       compareAndUpdate(
           "computePassedFailedRowCount",
-          () -> {
-            recordChange(
-                "computePassedFailedRowCount",
-                original.getComputePassedFailedRowCount(),
-                updated.getComputePassedFailedRowCount());
-          });
+          () ->
+              recordChange(
+                  "computePassedFailedRowCount",
+                  original.getComputePassedFailedRowCount(),
+                  updated.getComputePassedFailedRowCount()));
       compareAndUpdate(
           "useDynamicAssertion",
-          () -> {
-            recordChange(
-                "useDynamicAssertion",
-                original.getUseDynamicAssertion(),
-                updated.getUseDynamicAssertion());
-          });
+          () ->
+              recordChange(
+                  "useDynamicAssertion",
+                  original.getUseDynamicAssertion(),
+                  updated.getUseDynamicAssertion()));
       compareAndUpdate(
           "dimensionColumns",
-          () -> {
-            recordChange(
-                "dimensionColumns", original.getDimensionColumns(), updated.getDimensionColumns());
-          });
+          () ->
+              recordChange(
+                  "dimensionColumns",
+                  original.getDimensionColumns(),
+                  updated.getDimensionColumns()));
       compareAndUpdate(
           "topDimensions",
-          () -> {
-            recordChange("topDimensions", original.getTopDimensions(), updated.getTopDimensions());
-          });
+          () ->
+              recordChange(
+                  "topDimensions", original.getTopDimensions(), updated.getTopDimensions()));
       compareAndUpdate(
           "testCaseStatus",
-          () -> {
-            recordChange(
-                "testCaseStatus", original.getTestCaseStatus(), updated.getTestCaseStatus());
-          });
+          () ->
+              recordChange(
+                  "testCaseStatus", original.getTestCaseStatus(), updated.getTestCaseStatus()));
       compareAndUpdate(
           "testCaseResult",
-          () -> {
-            recordChange(
-                "testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
-          });
+          () ->
+              recordChange(
+                  "testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult()));
     }
   }
 
@@ -1740,10 +1733,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     ListFilter filter = new ListFilter(ALL);
     filter.addQueryParam("entityFQN", tableFqn);
     filter.addQueryParam("includeAllTests", "true");
-    List<TestCase> testCases =
-        new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
-
-    return testCases;
+    return new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
   }
 
   private List<TestCase> getTestCasesForTestSuite(UUID testSuiteId) {

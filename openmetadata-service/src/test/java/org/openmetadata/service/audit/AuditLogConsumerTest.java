@@ -160,8 +160,7 @@ class AuditLogConsumerTest {
   @Test
   void testOffsetNotAdvancedOnFailure() {
     // Test that offset doesn't advance when processing fails
-    long currentOffset = 0;
-    long lastSuccessfulOffset = currentOffset;
+    long lastSuccessfulOffset = 0;
 
     // Simulate processing where 2nd event fails
     List<Long> eventOffsets = List.of(1L, 2L, 3L);

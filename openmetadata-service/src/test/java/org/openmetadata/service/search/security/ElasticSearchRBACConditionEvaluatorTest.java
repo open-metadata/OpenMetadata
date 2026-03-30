@@ -1563,4 +1563,62 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must_not[*].bool.must[?(@.terms._index[?(@ == 'column')])]",
         "Deny policy should include 'column' (child of table) in must_not _index filter");
   }
+
+  @Test
+  void testNestedQueryWorksForMappedFields() {
+    // Verifies nested query produces correct structure for indexes that have the field mapped
+    ElasticQueryBuilderFactory factory = new ElasticQueryBuilderFactory();
+
+    OMQueryBuilder nested =
+        factory.nestedQuery("owners", factory.termQuery("owners.id", "user-abc"));
+    Query query = ((ElasticQueryBuilder) nested).build();
+    String json = serializeQueryToJson(query);
+
+    assertTrue(json.contains("\"path\":\"owners\""), "must target correct nested path");
+    assertTrue(json.contains("\"owners.id\""), "must query the nested field");
+    assertTrue(json.contains("\"user-abc\""), "must contain the search value");
+  }
+
+  @Test
+  void testNestedQueryDoesNotFailForUnmappedFields() {
+    // Verifies ignore_unmapped=true is set so indexes without the nested field don't throw errors
+    ElasticQueryBuilderFactory factory = new ElasticQueryBuilderFactory();
+
+    OMQueryBuilder nested =
+        factory.nestedQuery("owners", factory.termQuery("owners.id", "user-abc"));
+    Query query = ((ElasticQueryBuilder) nested).build();
+    String json = serializeQueryToJson(query);
+
+    assertTrue(
+        json.contains("\"ignore_unmapped\":true"),
+        "must set ignore_unmapped so query works on indexes without this nested field");
+  }
+
+  @Test
+  void testStaticNestedQueryWorksForMappedFields() {
+    Query inner = Query.of(q -> q.term(t -> t.field("owners.id").value("team-1")));
+
+    Query nested =
+        org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.nestedQuery(
+            "owners", inner);
+    String json = serializeQueryToJson(nested);
+
+    assertTrue(json.contains("\"path\":\"owners\""), "must target correct nested path");
+    assertTrue(json.contains("\"owners.id\""), "must query the nested field");
+    assertTrue(json.contains("\"team-1\""), "must contain the search value");
+  }
+
+  @Test
+  void testStaticNestedQueryDoesNotFailForUnmappedFields() {
+    Query inner = Query.of(q -> q.term(t -> t.field("owners.id").value("team-1")));
+
+    Query nested =
+        org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.nestedQuery(
+            "owners", inner);
+    String json = serializeQueryToJson(nested);
+
+    assertTrue(
+        json.contains("\"ignore_unmapped\":true"),
+        "must set ignore_unmapped so query works on indexes without this nested field");
+  }
 }
