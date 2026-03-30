@@ -2203,15 +2203,7 @@ export const checkExploreSearchFilter = async (
   entity?: EntityClass
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  if (filterKey === 'tier.tagFQN') {
-    const tierList = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN**`
-    );
-    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-    await tierList;
-  } else {
-    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  }
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
   await searchAndClickOnOption(
     page,
     {
@@ -2222,17 +2214,7 @@ export const checkExploreSearchFilter = async (
     true
   );
 
-  const rawFilterValue = (filterValue ?? '').replace(/ /g, '+').toLowerCase();
-
-  // Use JSON.stringify to properly escape both backslashes and double quotes
-  const escapedValue = JSON.stringify(rawFilterValue).slice(1, -1);
-
-  const filterValueForSearchURL =
-    filterKey === 'tier.tagFQN'
-      ? filterValue
-      : /["%]/.test(filterValue ?? '')
-      ? escapedValue
-      : rawFilterValue;
+  const rawFilterValue = (filterValue ?? '').replaceAll(' ', '+').toLowerCase();
 
   // Use a predicate to check the response URL contains the correct filter
   const queryRes = page.waitForResponse(
@@ -2259,14 +2241,13 @@ export const checkExploreSearchFilter = async (
 
         // Check if the filter contains both the filterKey and filterValue
         return (
-          filterStr.includes(filterKey) &&
-          filterStr.includes(filterValueForSearchURL)
+          filterStr.includes(filterKey) && filterStr.includes(rawFilterValue)
         );
       } catch {
         // Fallback to simple string match if JSON parse fails
         return (
           queryFilter.includes(filterKey) &&
-          queryFilter.includes(filterValueForSearchURL)
+          queryFilter.includes(rawFilterValue)
         );
       }
     },

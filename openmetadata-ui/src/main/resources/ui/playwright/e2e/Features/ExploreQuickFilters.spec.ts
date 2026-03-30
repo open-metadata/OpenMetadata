@@ -19,6 +19,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import {
   clickOutside,
   createNewPage,
+  getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -140,16 +141,15 @@ test('should search for empty or null filters', async ({ page }) => {
 test('should show correct count for tier filter options from aggregation', async ({
   page,
 }) => {
-  const aggregateAPI = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+  const { apiContext } = await getApiContext(page);
+  const res = await apiContext.get(
+    '/api/v1/search/query?q=&index=dataAsset&from=0&size=0&deleted=false'
   );
-  await page.getByTestId('search-dropdown-Tier').click();
-
-  const res = await aggregateAPI;
   const data = await res.json();
   const buckets: { key: string; doc_count: number }[] =
-    data.aggregations['sterms#tier.tagFQN'].buckets;
+    data.aggregations['sterms#tier.tagFQN']?.buckets ?? [];
 
+  await page.getByTestId('search-dropdown-Tier').click();
   await waitForAllLoadersToDisappear(page);
 
   for (const bucket of buckets) {
@@ -176,6 +176,11 @@ test('should search for multiple values along with null filters', async ({
       label: 'Domains',
       key: 'domains.displayName.keyword',
       value: domain.responseData.displayName,
+    },
+    {
+      label: 'Tier',
+      key: 'tier.tagFQN',
+      value: tier.responseData.fullyQualifiedName,
     },
   ];
 
