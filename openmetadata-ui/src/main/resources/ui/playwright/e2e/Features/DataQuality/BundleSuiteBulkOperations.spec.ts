@@ -12,6 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
+import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../../utils/common';
 import {
@@ -26,7 +27,6 @@ import {
   verifyTestCaseSelectionCount,
 } from '../../../utils/dataQuality';
 import { test } from '../../fixtures/pages';
-import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

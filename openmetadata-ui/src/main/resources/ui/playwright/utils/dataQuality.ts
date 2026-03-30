@@ -14,8 +14,8 @@ import { expect, Page, Response } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
-import { sidebarClick } from './sidebar';
 import { waitForAllLoadersToDisappear } from './entity';
+import { sidebarClick } from './sidebar';
 
 /** Recharts PieChart id for the Test Case Result pie on the Data Quality dashboard. */
 export const TEST_CASE_STATUS_PIE_CHART_TEST_ID = 'test-case-result-pie-chart';
@@ -154,9 +154,9 @@ export const addTestCaseToLogicalTestSuite = async (
   );
   await page.click('[data-testid="add-test-case-btn"]');
   await testCaseResponse;
-  await page.locator(
-    "[data-testid='test-case-selection-card'] [data-testid='loader']"
-  ).waitFor({ state: 'detached' });
+  await page
+    .locator("[data-testid='test-case-selection-card'] [data-testid='loader']")
+    .waitFor({ state: 'detached' });
 
   const getTestCase = page.waitForResponse(
     `/api/v1/dataQuality/testCases/search/list?*`
@@ -170,7 +170,9 @@ export const addTestCaseToLogicalTestSuite = async (
   );
   await page.click('[data-testid="submit"]');
   await updateTestCase;
-  await page.locator('[data-testid="test-case-selection-card"]').waitFor({ state: 'detached' });
+  await page
+    .locator('[data-testid="test-case-selection-card"]')
+    .waitFor({ state: 'detached' });
 };
 
 export const removeTestCasesFromLogicalTestSuite = async (
