@@ -1213,7 +1213,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
 
     // --- RootDomain: Tier1 Filter (only rootTable has Tier1) ---
-    await applyTierFilter('Tier.Tier1');
+    await applyTierFilter('tier.tier1');
     await expectVisible(rootTable.entityResponseData?.fullyQualifiedName);
     await expectNotVisible(
       subDomain1Table1.entityResponseData?.fullyQualifiedName

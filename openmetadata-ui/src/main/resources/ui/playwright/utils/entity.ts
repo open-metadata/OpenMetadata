@@ -2215,6 +2215,10 @@ export const checkExploreSearchFilter = async (
   );
 
   const rawFilterValue = (filterValue ?? '').replaceAll(' ', '+').toLowerCase();
+  const escapedValue = JSON.stringify(rawFilterValue).slice(1, -1);
+  const filterValueForSearchURL = /["%]/.test(filterValue ?? '')
+    ? escapedValue
+    : rawFilterValue;
 
   // Use a predicate to check the response URL contains the correct filter
   const queryRes = page.waitForResponse(
@@ -2241,13 +2245,14 @@ export const checkExploreSearchFilter = async (
 
         // Check if the filter contains both the filterKey and filterValue
         return (
-          filterStr.includes(filterKey) && filterStr.includes(rawFilterValue)
+          filterStr.includes(filterKey) &&
+          filterStr.includes(filterValueForSearchURL)
         );
       } catch {
         // Fallback to simple string match if JSON parse fails
         return (
           queryFilter.includes(filterKey) &&
-          queryFilter.includes(rawFilterValue)
+          queryFilter.includes(filterValueForSearchURL)
         );
       }
     },
