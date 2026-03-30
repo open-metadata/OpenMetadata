@@ -2450,8 +2450,10 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
 
-      // Accumulate column FQNs across multiple calls (e.g. when consolidateChanges=true runs
-      // updateInternal twice). A single deferred operation flushes the combined set at the end.
+      // Replace pending sets with the latest pass's values. When consolidateChanges=true,
+      // updateInternal runs multiple times with different original states; earlier passes may
+      // detect spurious deletes/renames that the final pass does not. Clearing before each
+      // assignment ensures only the final pass's results are flushed to the search index.
       if (hasDeletes) {
         pendingDeletedColumnFqns.clear();
         pendingDeletedColumnFqns.addAll(deletedColumns);
