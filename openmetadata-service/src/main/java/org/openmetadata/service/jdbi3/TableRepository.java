@@ -2453,9 +2453,11 @@ public class TableRepository extends EntityRepository<Table> {
       // Accumulate column FQNs across multiple calls (e.g. when consolidateChanges=true runs
       // updateInternal twice). A single deferred operation flushes the combined set at the end.
       if (hasDeletes) {
+        pendingDeletedColumnFqns.clear();
         pendingDeletedColumnFqns.addAll(deletedColumns);
       }
       if (hasRenames) {
+        pendingRenameColumnFqns.clear();
         pendingRenameColumnFqns.putAll(originalUpdatedColumnFqnMap);
       }
 
