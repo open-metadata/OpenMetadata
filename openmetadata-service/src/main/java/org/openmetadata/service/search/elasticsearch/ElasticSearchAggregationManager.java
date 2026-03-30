@@ -114,7 +114,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
             new ElasticSearchSourceBuilderFactory(searchSettings);
         ElasticSearchRequestBuilder textQueryBuilder =
             searchBuilderFactory.getSearchSourceBuilderV2(
-                request.getIndex(), request.getQueryText(), 0, 0, false, false);
+                indexName, request.getQueryText(), 0, 0, false, false);
         Query textQuery = textQueryBuilder.query();
         if (textQuery != null) {
           if (query != null) {
