@@ -15,6 +15,7 @@ import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { get, isEmpty, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import GlossaryIcon from '../assets/svg/book.svg';
+import ChartIcon from '../assets/svg/chart.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
 import DatabaseIcon from '../assets/svg/ic-database.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
@@ -92,7 +93,6 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
-  PUBSUB,
   QLIK_SENSE,
   QUICKSIGHT,
   REDASH,
@@ -139,6 +139,10 @@ import {
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
+import {
+  ConfigObject,
+  WorkflowType,
+} from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -165,7 +169,10 @@ import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
-import { getSearchIndexFromService } from './ServiceUtils';
+import {
+  getSearchIndexFromService,
+  getTestConnectionName,
+} from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
@@ -407,341 +414,149 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
-  public getServiceLogo(type: string): string {
+  private readonly serviceLogoMap = new Map<string, string>([
+    [this.DatabaseServiceTypeSmallCase.CustomDatabase, DATABASE_DEFAULT],
+    [this.DatabaseServiceTypeSmallCase.Mysql, MYSQL],
+    [this.DatabaseServiceTypeSmallCase.Redshift, REDSHIFT],
+    [this.DatabaseServiceTypeSmallCase.BigQuery, BIGQUERY],
+    [this.DatabaseServiceTypeSmallCase.BigTable, BIGTABLE],
+    [this.DatabaseServiceTypeSmallCase.Hive, HIVE],
+    [this.DatabaseServiceTypeSmallCase.Impala, IMPALA],
+    [this.DatabaseServiceTypeSmallCase.Postgres, POSTGRES],
+    [this.DatabaseServiceTypeSmallCase.Oracle, ORACLE],
+    [this.DatabaseServiceTypeSmallCase.Snowflake, SNOWFLAKE],
+    [this.DatabaseServiceTypeSmallCase.Mssql, MSSQL],
+    [this.DatabaseServiceTypeSmallCase.Athena, ATHENA],
+    [this.DatabaseServiceTypeSmallCase.Presto, PRESTO],
+    [this.DatabaseServiceTypeSmallCase.Trino, TRINO],
+    [this.DatabaseServiceTypeSmallCase.Glue, GLUE],
+    [this.DatabaseServiceTypeSmallCase.DomoDatabase, DOMO],
+    [this.DatabaseServiceTypeSmallCase.MariaDB, MARIADB],
+    [this.DatabaseServiceTypeSmallCase.Vertica, VERTICA],
+    [this.DatabaseServiceTypeSmallCase.AzureSQL, AZURESQL],
+    [this.DatabaseServiceTypeSmallCase.Clickhouse, CLICKHOUSE],
+    [this.DatabaseServiceTypeSmallCase.Databricks, DATABRICK],
+    [this.DatabaseServiceTypeSmallCase.UnityCatalog, UNITYCATALOG],
+    [this.DatabaseServiceTypeSmallCase.Db2, IBMDB2],
+    [this.DatabaseServiceTypeSmallCase.Doris, DORIS],
+    [this.DatabaseServiceTypeSmallCase.StarRocks, STARROCKS],
+    [this.DatabaseServiceTypeSmallCase.Druid, DRUID],
+    [this.DatabaseServiceTypeSmallCase.DynamoDB, DYNAMODB],
+    [this.DatabaseServiceTypeSmallCase.Exasol, EXASOL],
+    [this.DatabaseServiceTypeSmallCase.SingleStore, SINGLESTORE],
+    [this.DatabaseServiceTypeSmallCase.SQLite, SQLITE],
+    [this.DatabaseServiceTypeSmallCase.Salesforce, SALESFORCE],
+    [this.DatabaseServiceTypeSmallCase.SapHana, SAP_HANA],
+    [this.DatabaseServiceTypeSmallCase.SapERP, SAP_ERP],
+    [this.DatabaseServiceTypeSmallCase.DeltaLake, DELTALAKE],
+    [this.DatabaseServiceTypeSmallCase.PinotDB, PINOT],
+    [this.DatabaseServiceTypeSmallCase.Datalake, DATALAKE],
+    [this.DatabaseServiceTypeSmallCase.MongoDB, MONGODB],
+    [this.DatabaseServiceTypeSmallCase.Cassandra, CASSANDRA],
+    [this.DatabaseServiceTypeSmallCase.SAS, SAS],
+    [this.DatabaseServiceTypeSmallCase.Couchbase, COUCHBASE],
+    [this.DatabaseServiceTypeSmallCase.Cockroach, COCKROACH],
+    [this.DatabaseServiceTypeSmallCase.Greenplum, GREENPLUM],
+    [this.DatabaseServiceTypeSmallCase.Iceberg, ICEBERGE],
+    [this.DatabaseServiceTypeSmallCase.Teradata, TERADATA],
+    [this.DatabaseServiceTypeSmallCase.Synapse, SYNAPSE],
+    [this.DatabaseServiceTypeSmallCase.BurstIQ, BURSTIQ],
+    [this.DatabaseServiceTypeSmallCase.Timescale, TIMESCALE],
+    [this.MessagingServiceTypeSmallCase.CustomMessaging, TOPIC_DEFAULT],
+    [this.MessagingServiceTypeSmallCase.Kafka, KAFKA],
+    [this.MessagingServiceTypeSmallCase.Redpanda, REDPANDA],
+    [this.MessagingServiceTypeSmallCase.Kinesis, KINESIS],
+    [this.DashboardServiceTypeSmallCase.CustomDashboard, DASHBOARD_DEFAULT],
+    [this.DashboardServiceTypeSmallCase.Superset, SUPERSET],
+    [this.DashboardServiceTypeSmallCase.Looker, LOOKER],
+    [this.DashboardServiceTypeSmallCase.Tableau, TABLEAU],
+    [this.DashboardServiceTypeSmallCase.Hex, HEX],
+    [this.DashboardServiceTypeSmallCase.Redash, REDASH],
+    [this.DashboardServiceTypeSmallCase.Metabase, METABASE],
+    [this.DashboardServiceTypeSmallCase.PowerBI, POWERBI],
+    [this.DashboardServiceTypeSmallCase.QuickSight, QUICKSIGHT],
+    [this.DashboardServiceTypeSmallCase.DomoDashboard, DOMO],
+    [this.DashboardServiceTypeSmallCase.Mode, MODE],
+    [this.DashboardServiceTypeSmallCase.QlikSense, QLIK_SENSE],
+    [this.DashboardServiceTypeSmallCase.QlikCloud, QLIK_SENSE],
+    [this.DashboardServiceTypeSmallCase.Lightdash, LIGHT_DASH],
+    [this.DashboardServiceTypeSmallCase.Sigma, SIGMA],
+    [this.DashboardServiceTypeSmallCase.MicroStrategy, MICROSTRATEGY],
+    [this.DashboardServiceTypeSmallCase.Grafana, GRAFANA],
+    [this.PipelineServiceTypeSmallCase.CustomPipeline, PIPELINE_DEFAULT],
+    [this.PipelineServiceTypeSmallCase.Airflow, AIRFLOW],
+    [this.PipelineServiceTypeSmallCase.Airbyte, AIRBYTE],
+    [this.PipelineServiceTypeSmallCase.Dagster, DAGSTER],
+    [this.PipelineServiceTypeSmallCase.Fivetran, FIVETRAN],
+    [this.PipelineServiceTypeSmallCase.DBTCloud, DBT],
+    [this.PipelineServiceTypeSmallCase.GluePipeline, GLUE],
+    [this.PipelineServiceTypeSmallCase.KafkaConnect, KAFKA],
+    [this.PipelineServiceTypeSmallCase.Spark, SPARK],
+    [this.PipelineServiceTypeSmallCase.Spline, SPLINE],
+    [this.PipelineServiceTypeSmallCase.Nifi, NIFI],
+    [this.PipelineServiceTypeSmallCase.DomoPipeline, DOMO],
+    [this.PipelineServiceTypeSmallCase.DatabricksPipeline, DATABRICK],
+    [this.PipelineServiceTypeSmallCase.OpenLineage, OPENLINEAGE],
+    [this.PipelineServiceTypeSmallCase.Flink, FLINK],
+    [this.MlModelServiceTypeSmallCase.CustomMlModel, ML_MODEL_DEFAULT],
+    [this.MlModelServiceTypeSmallCase.Mlflow, MLFLOW],
+    [this.MlModelServiceTypeSmallCase.Sklearn, SCIKIT],
+    [this.MlModelServiceTypeSmallCase.SageMaker, SAGEMAKER],
+    [this.MetadataServiceTypeSmallCase.Amundsen, AMUNDSEN],
+    [this.MetadataServiceTypeSmallCase.Atlas, ATLAS],
+    [this.MetadataServiceTypeSmallCase.AlationSink, ALATIONSINK],
+    [this.MetadataServiceTypeSmallCase.OpenMetadata, LOGO],
+    [this.StorageServiceTypeSmallCase.CustomStorage, CUSTOM_STORAGE_DEFAULT],
+    [this.StorageServiceTypeSmallCase.S3, AMAZON_S3],
+    [this.StorageServiceTypeSmallCase.Gcs, GCS],
+    [this.SearchServiceTypeSmallCase.CustomSearch, CUSTOM_SEARCH_DEFAULT],
+    [this.SearchServiceTypeSmallCase.ElasticSearch, ELASTIC_SEARCH],
+    [this.SearchServiceTypeSmallCase.OpenSearch, OPEN_SEARCH],
+    [this.ApiServiceTypeSmallCase.REST, REST_SERVICE],
+    [this.DriveServiceTypeSmallCase.CustomDrive, CUSTOM_DRIVE_DEFAULT],
+    [this.DriveServiceTypeSmallCase.GoogleDrive, GOOGLE_DRIVE],
+    [this.DriveServiceTypeSmallCase.SFTP, SFTP],
+  ]);
+
+  private getDefaultLogoForServiceType(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
-    switch (toLower(type)) {
-      case this.DatabaseServiceTypeSmallCase.CustomDatabase:
-        return DATABASE_DEFAULT;
-      case this.DatabaseServiceTypeSmallCase.Mysql:
-        return MYSQL;
 
-      case this.DatabaseServiceTypeSmallCase.Redshift:
-        return REDSHIFT;
-
-      case this.DatabaseServiceTypeSmallCase.BigQuery:
-        return BIGQUERY;
-
-      case this.DatabaseServiceTypeSmallCase.BigTable:
-        return BIGTABLE;
-
-      case this.DatabaseServiceTypeSmallCase.Hive:
-        return HIVE;
-
-      case this.DatabaseServiceTypeSmallCase.Impala:
-        return IMPALA;
-
-      case this.DatabaseServiceTypeSmallCase.Postgres:
-        return POSTGRES;
-
-      case this.DatabaseServiceTypeSmallCase.Oracle:
-        return ORACLE;
-
-      case this.DatabaseServiceTypeSmallCase.Snowflake:
-        return SNOWFLAKE;
-
-      case this.DatabaseServiceTypeSmallCase.Mssql:
-        return MSSQL;
-
-      case this.DatabaseServiceTypeSmallCase.Athena:
-        return ATHENA;
-
-      case this.DatabaseServiceTypeSmallCase.Presto:
-        return PRESTO;
-
-      case this.DatabaseServiceTypeSmallCase.Trino:
-        return TRINO;
-
-      case this.DatabaseServiceTypeSmallCase.Glue:
-        return GLUE;
-
-      case this.DatabaseServiceTypeSmallCase.DomoDatabase:
-        return DOMO;
-
-      case this.DatabaseServiceTypeSmallCase.MariaDB:
-        return MARIADB;
-
-      case this.DatabaseServiceTypeSmallCase.Vertica:
-        return VERTICA;
-
-      case this.DatabaseServiceTypeSmallCase.AzureSQL:
-        return AZURESQL;
-
-      case this.DatabaseServiceTypeSmallCase.Clickhouse:
-        return CLICKHOUSE;
-
-      case this.DatabaseServiceTypeSmallCase.Databricks:
-        return DATABRICK;
-
-      case this.DatabaseServiceTypeSmallCase.UnityCatalog:
-        return UNITYCATALOG;
-
-      case this.DatabaseServiceTypeSmallCase.Db2:
-        return IBMDB2;
-
-      case this.DatabaseServiceTypeSmallCase.Doris:
-        return DORIS;
-
-      case this.DatabaseServiceTypeSmallCase.StarRocks:
-        return STARROCKS;
-
-      case this.DatabaseServiceTypeSmallCase.Druid:
-        return DRUID;
-
-      case this.DatabaseServiceTypeSmallCase.DynamoDB:
-        return DYNAMODB;
-
-      case this.DatabaseServiceTypeSmallCase.Exasol:
-        return EXASOL;
-
-      case this.DatabaseServiceTypeSmallCase.SingleStore:
-        return SINGLESTORE;
-
-      case this.DatabaseServiceTypeSmallCase.SQLite:
-        return SQLITE;
-
-      case this.DatabaseServiceTypeSmallCase.Salesforce:
-        return SALESFORCE;
-
-      case this.DatabaseServiceTypeSmallCase.SapHana:
-        return SAP_HANA;
-
-      case this.DatabaseServiceTypeSmallCase.SapERP:
-        return SAP_ERP;
-
-      case this.DatabaseServiceTypeSmallCase.DeltaLake:
-        return DELTALAKE;
-
-      case this.DatabaseServiceTypeSmallCase.PinotDB:
-        return PINOT;
-
-      case this.DatabaseServiceTypeSmallCase.Datalake:
-        return DATALAKE;
-
-      case this.DatabaseServiceTypeSmallCase.MongoDB:
-        return MONGODB;
-
-      case this.DatabaseServiceTypeSmallCase.Cassandra:
-        return CASSANDRA;
-
-      case this.DatabaseServiceTypeSmallCase.SAS:
-        return SAS;
-
-      case this.DatabaseServiceTypeSmallCase.Couchbase:
-        return COUCHBASE;
-
-      case this.DatabaseServiceTypeSmallCase.Cockroach:
-        return COCKROACH;
-
-      case this.DatabaseServiceTypeSmallCase.Greenplum:
-        return GREENPLUM;
-
-      case this.DatabaseServiceTypeSmallCase.Iceberg:
-        return ICEBERGE;
-
-      case this.DatabaseServiceTypeSmallCase.Teradata:
-        return TERADATA;
-
-      case this.DatabaseServiceTypeSmallCase.Synapse:
-        return SYNAPSE;
-
-      case this.DatabaseServiceTypeSmallCase.BurstIQ:
-        return BURSTIQ;
-
-      case this.MessagingServiceTypeSmallCase.CustomMessaging:
-        return TOPIC_DEFAULT;
-
-      case this.MessagingServiceTypeSmallCase.Kafka:
-        return KAFKA;
-
-      case this.MessagingServiceTypeSmallCase.Redpanda:
-        return REDPANDA;
-
-      case this.MessagingServiceTypeSmallCase.PubSub:
-        return PUBSUB;
-
-      case this.MessagingServiceTypeSmallCase.Kinesis:
-        return KINESIS;
-
-      case this.DashboardServiceTypeSmallCase.CustomDashboard:
-        return DASHBOARD_DEFAULT;
-
-      case this.DashboardServiceTypeSmallCase.Superset:
-        return SUPERSET;
-
-      case this.DashboardServiceTypeSmallCase.Looker:
-        return LOOKER;
-
-      case this.DashboardServiceTypeSmallCase.Tableau:
-        return TABLEAU;
-
-      case this.DashboardServiceTypeSmallCase.Hex:
-        return HEX;
-
-      case this.DashboardServiceTypeSmallCase.Redash:
-        return REDASH;
-
-      case this.DashboardServiceTypeSmallCase.Metabase:
-        return METABASE;
-
-      case this.DashboardServiceTypeSmallCase.PowerBI:
-        return POWERBI;
-
-      case this.DashboardServiceTypeSmallCase.QuickSight:
-        return QUICKSIGHT;
-
-      case this.DashboardServiceTypeSmallCase.DomoDashboard:
-        return DOMO;
-
-      case this.DashboardServiceTypeSmallCase.Mode:
-        return MODE;
-
-      case this.DashboardServiceTypeSmallCase.QlikSense:
-        return QLIK_SENSE;
-
-      case this.DashboardServiceTypeSmallCase.QlikCloud:
-        return QLIK_SENSE;
-
-      case this.DashboardServiceTypeSmallCase.Lightdash:
-        return LIGHT_DASH;
-
-      case this.DashboardServiceTypeSmallCase.Sigma:
-        return SIGMA;
-
-      case this.PipelineServiceTypeSmallCase.CustomPipeline:
-        return PIPELINE_DEFAULT;
-
-      case this.PipelineServiceTypeSmallCase.Airflow:
-        return AIRFLOW;
-
-      case this.PipelineServiceTypeSmallCase.Airbyte:
-        return AIRBYTE;
-
-      case this.PipelineServiceTypeSmallCase.Dagster:
-        return DAGSTER;
-
-      case this.PipelineServiceTypeSmallCase.Fivetran:
-        return FIVETRAN;
-
-      case this.PipelineServiceTypeSmallCase.DBTCloud:
-        return DBT;
-
-      case this.PipelineServiceTypeSmallCase.GluePipeline:
-        return GLUE;
-
-      case this.PipelineServiceTypeSmallCase.KafkaConnect:
-        return KAFKA;
-
-      case this.PipelineServiceTypeSmallCase.Spark:
-        return SPARK;
-
-      case this.PipelineServiceTypeSmallCase.Spline:
-        return SPLINE;
-
-      case this.PipelineServiceTypeSmallCase.Nifi:
-        return NIFI;
-
-      case this.PipelineServiceTypeSmallCase.DomoPipeline:
-        return DOMO;
-
-      case this.PipelineServiceTypeSmallCase.DatabricksPipeline:
-        return DATABRICK;
-
-      case this.PipelineServiceTypeSmallCase.OpenLineage:
-        return OPENLINEAGE;
-
-      case this.PipelineServiceTypeSmallCase.Flink:
-        return FLINK;
-
-      case this.MlModelServiceTypeSmallCase.CustomMlModel:
-        return ML_MODEL_DEFAULT;
-
-      case this.MlModelServiceTypeSmallCase.Mlflow:
-        return MLFLOW;
-
-      case this.MlModelServiceTypeSmallCase.Sklearn:
-        return SCIKIT;
-
-      case this.MlModelServiceTypeSmallCase.SageMaker:
-        return SAGEMAKER;
-
-      case this.MetadataServiceTypeSmallCase.Amundsen:
-        return AMUNDSEN;
-
-      case this.MetadataServiceTypeSmallCase.Atlas:
-        return ATLAS;
-
-      case this.MetadataServiceTypeSmallCase.AlationSink:
-        return ALATIONSINK;
-
-      case this.MetadataServiceTypeSmallCase.OpenMetadata:
-        return LOGO;
-
-      case this.StorageServiceTypeSmallCase.CustomStorage:
-        return CUSTOM_STORAGE_DEFAULT;
-
-      case this.StorageServiceTypeSmallCase.S3:
-        return AMAZON_S3;
-
-      case this.StorageServiceTypeSmallCase.Gcs:
-        return GCS;
-
-      case this.SearchServiceTypeSmallCase.CustomSearch:
-        return CUSTOM_SEARCH_DEFAULT;
-
-      case this.SearchServiceTypeSmallCase.ElasticSearch:
-        return ELASTIC_SEARCH;
-
-      case this.SearchServiceTypeSmallCase.OpenSearch:
-        return OPEN_SEARCH;
-
-      case this.ApiServiceTypeSmallCase.REST:
-        return REST_SERVICE;
-
-      case this.DashboardServiceTypeSmallCase.MicroStrategy:
-        return MICROSTRATEGY;
-
-      case this.DashboardServiceTypeSmallCase.Grafana:
-        return GRAFANA;
-
-      case this.DriveServiceTypeSmallCase.CustomDrive:
-        return CUSTOM_DRIVE_DEFAULT;
-
-      case this.DriveServiceTypeSmallCase.GoogleDrive:
-        return GOOGLE_DRIVE;
-
-      case this.DriveServiceTypeSmallCase.Sftp:
-        return SFTP;
-
-      case this.DatabaseServiceTypeSmallCase.Timescale:
-        return TIMESCALE;
-
-      default: {
-        let logo;
-        if (serviceTypes.messagingServices.includes(type)) {
-          logo = TOPIC_DEFAULT;
-        } else if (serviceTypes.dashboardServices.includes(type)) {
-          logo = DASHBOARD_DEFAULT;
-        } else if (serviceTypes.pipelineServices.includes(type)) {
-          logo = PIPELINE_DEFAULT;
-        } else if (serviceTypes.databaseServices.includes(type)) {
-          logo = DATABASE_DEFAULT;
-        } else if (serviceTypes.mlmodelServices.includes(type)) {
-          logo = ML_MODEL_DEFAULT;
-        } else if (serviceTypes.storageServices.includes(type)) {
-          logo = CUSTOM_STORAGE_DEFAULT;
-        } else if (serviceTypes.searchServices.includes(type)) {
-          logo = CUSTOM_SEARCH_DEFAULT;
-        } else if (serviceTypes.securityServices.includes(type)) {
-          logo = DEFAULT_SERVICE;
-        } else if (serviceTypes.driveServices.includes(type)) {
-          logo = CUSTOM_DRIVE_DEFAULT;
-        } else {
-          logo = DEFAULT_SERVICE;
-        }
-
-        return logo;
-      }
+    if (serviceTypes.messagingServices.includes(type)) {
+      return TOPIC_DEFAULT;
     }
+    if (serviceTypes.dashboardServices.includes(type)) {
+      return DASHBOARD_DEFAULT;
+    }
+    if (serviceTypes.pipelineServices.includes(type)) {
+      return PIPELINE_DEFAULT;
+    }
+    if (serviceTypes.databaseServices.includes(type)) {
+      return DATABASE_DEFAULT;
+    }
+    if (serviceTypes.mlmodelServices.includes(type)) {
+      return ML_MODEL_DEFAULT;
+    }
+    if (serviceTypes.storageServices.includes(type)) {
+      return CUSTOM_STORAGE_DEFAULT;
+    }
+    if (serviceTypes.searchServices.includes(type)) {
+      return CUSTOM_SEARCH_DEFAULT;
+    }
+    if (serviceTypes.securityServices.includes(type)) {
+      return DEFAULT_SERVICE;
+    }
+    if (serviceTypes.driveServices.includes(type)) {
+      return CUSTOM_DRIVE_DEFAULT;
+    }
+
+    return DEFAULT_SERVICE;
+  }
+
+  public getServiceLogo(type: string): string {
+    const lowerType = toLower(type);
+    const logo = this.serviceLogoMap.get(lowerType);
+
+    return logo ?? this.getDefaultLogoForServiceType(type);
   }
 
   public getServiceTypeLogo(searchSource: {
@@ -769,6 +584,10 @@ class ServiceUtilClassBase {
         default:
           return this.getServiceLogo('');
       }
+    }
+
+    if (entityType === EntityType.CHART) {
+      return ChartIcon;
     }
 
     return this.getServiceLogo(type);
