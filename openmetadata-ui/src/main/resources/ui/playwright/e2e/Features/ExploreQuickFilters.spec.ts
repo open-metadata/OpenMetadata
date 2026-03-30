@@ -78,17 +78,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
       },
     ],
   });
-  await expect(async () => {
-    const response = await apiContext.get(
-      `/api/v1/search/query?q=${encodeURIComponent(
-        table.entityResponseData?.fullyQualifiedName ?? ''
-      )}&index=dataAsset&from=0&size=1`
-    );
-    const data = await response.json();
-
-    expect(data.hits.total.value).toBeGreaterThan(0);
-  }).toPass({ timeout: 90_000, intervals: [2_000] });
-
   await afterAction();
 });
 
@@ -98,31 +87,48 @@ test.beforeEach(async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 });
 
-test('search dropdown should work properly for quick filters', async ({
-  page,
-}) => {
-  const items = [
-    {
-      label: 'Domains',
-      key: 'domains.displayName.keyword',
-      value: domain.responseData.displayName,
-    },
-    { label: 'Tag', key: 'tags.tagFQN', value: 'PersonalData.Personal' },
-  ];
+test.describe('search dropdown quick filters - index readiness', () => {
+  test.beforeEach(async ({ page }) => {
+    const { apiContext } = await getApiContext(page);
 
-  for (const filter of items) {
-    await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
-    await searchAndClickOnOption(page, filter, true);
+    await expect(async () => {
+      const response = await apiContext.get(
+        `/api/v1/search/query?q=${encodeURIComponent(
+          table.entityResponseData?.fullyQualifiedName ?? ''
+        )}&index=dataAsset&from=0&size=1`
+      );
+      const data = await response.json();
 
-    const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
-      filter.key
-    }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
+      expect(data.hits.total.value).toBeGreaterThan(0);
+    }).toPass({ timeout: 90_000, intervals: [2_000] });
+  });
 
-    const queryRes = page.waitForResponse(querySearchURL);
-    await page.click('[data-testid="update-btn"]');
-    await queryRes;
-    await page.click('[data-testid="clear-filters"]');
-  }
+  test('search dropdown should work properly for quick filters', async ({
+    page,
+  }) => {
+    const items = [
+      {
+        label: 'Domains',
+        key: 'domains.displayName.keyword',
+        value: domain.responseData.displayName,
+      },
+      { label: 'Tag', key: 'tags.tagFQN', value: 'PersonalData.Personal' },
+    ];
+
+    for (const filter of items) {
+      await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
+      await searchAndClickOnOption(page, filter, true);
+
+      const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
+        filter.key
+      }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
+
+      const queryRes = page.waitForResponse(querySearchURL);
+      await page.click('[data-testid="update-btn"]');
+      await queryRes;
+      await page.click('[data-testid="clear-filters"]');
+    }
+  });
 });
 
 test('should search for empty or null filters', async ({ page }) => {
@@ -272,6 +278,7 @@ test.describe('Tier filter - aggregation-based options', () => {
     });
 
     await test.step('Search for tier without asset — it is not visible in dropdown', async () => {
+      await page.getByTestId('search-input').clear();
       const searchRes = page.waitForResponse(
         `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
       );
