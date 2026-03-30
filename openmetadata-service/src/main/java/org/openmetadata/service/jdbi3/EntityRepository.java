@@ -7984,7 +7984,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private static String columnLookupKey(Column col) {
-      return col.getName().toLowerCase() + "|" + col.getDataType() + "|" + col.getArrayDataType();
+      return col.getName().toLowerCase(Locale.ROOT)
+          + "|" + col.getDataType() + "|" + col.getArrayDataType();
     }
 
     private void updateColumnDescription(
