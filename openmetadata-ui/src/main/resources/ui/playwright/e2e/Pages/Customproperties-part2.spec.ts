@@ -91,7 +91,7 @@ const propertiesWithConfigList = [
   },
 ];
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({ storageState: 'playwright/.auth/admin.json', trace: 'on' });
 
 test.describe('Custom properties with custom property config', () => {
   const adminTestEntity = new TableClass();

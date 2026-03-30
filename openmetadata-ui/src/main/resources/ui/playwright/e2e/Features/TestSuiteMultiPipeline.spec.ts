@@ -21,7 +21,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({ storageState: 'playwright/.auth/admin.json', trace: 'on' });
 
 /**
  * Create, update, and delete a TestSuite pipeline from the entity page

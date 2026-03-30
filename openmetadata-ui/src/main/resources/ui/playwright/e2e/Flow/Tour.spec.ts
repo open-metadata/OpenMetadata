@@ -152,6 +152,7 @@ const validateTourSteps = async (page: Page) => {
   await page.getByTestId('last-step-button').click();
   await page.getByTestId('saveButton').click();
 };
+test.use({ trace: 'on' });
 
 test.describe(
   'Tour should work properly',

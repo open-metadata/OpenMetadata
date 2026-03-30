@@ -136,6 +136,8 @@ const test = base.extend<{
   },
 });
 
+test.use({ trace: 'on' });
+
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
 

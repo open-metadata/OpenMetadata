@@ -31,6 +31,8 @@ const table1 = new TableClass();
 const user = new UserClass();
 const domain = new Domain();
 
+test.use({ trace: 'on' });
+
 test.describe('Explore Assets Discovery', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);

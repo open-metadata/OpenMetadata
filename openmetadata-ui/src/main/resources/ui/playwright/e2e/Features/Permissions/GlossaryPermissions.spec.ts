@@ -52,6 +52,8 @@ const test = base.extend<{
   },
 });
 
+test.use({ trace: 'on' });
+
 test.describe('Glossary Permissions', () => {
   test.beforeAll('Setup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);

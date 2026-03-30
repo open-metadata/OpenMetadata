@@ -54,6 +54,8 @@ test.use({
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
+test.use({ trace: 'on' });
+
 test.beforeAll(async ({ browser }) => {
   const { afterAction, apiContext } = await createNewPage(browser);
 
