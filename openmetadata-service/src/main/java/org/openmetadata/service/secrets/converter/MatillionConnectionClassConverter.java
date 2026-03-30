@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
+import org.openmetadata.schema.services.connections.pipeline.matillion.MatillionDPCAuth;
 import org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth;
 import org.openmetadata.schema.utils.JsonUtils;
 
@@ -30,7 +31,9 @@ public class MatillionConnectionClassConverter extends ClassConverter {
     MatillionConnection matillionConnection =
         (MatillionConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(matillionConnection.getConnection(), List.of(MatillionETLAuth.class))
+    tryToConvertOrFail(
+            matillionConnection.getConnection(),
+            List.of(MatillionETLAuth.class, MatillionDPCAuth.class))
         .ifPresent(matillionConnection::setConnection);
 
     return matillionConnection;
