@@ -2568,8 +2568,8 @@ export interface RunTimeCleanUpConfiguration {
 export interface SampleDataIngestionConfig {
     /**
      * Allows OpenMetadata to read the sample data. This setting won't save the sample data but
-     * sample data will temporally be brough in OpenMetadata infrastructure for processing. If
-     * readinfg is disable but storing is enabled, reading will be enabled by default.
+     * sample data will temporarily be brought in OpenMetadata infrastructure for processing. If
+     * reading is disabled but storing is enabled, reading will be enabled by default.
      */
     readSampleData?: boolean;
     /**
