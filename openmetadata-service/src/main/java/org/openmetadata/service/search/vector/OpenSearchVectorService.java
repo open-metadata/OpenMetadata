@@ -80,7 +80,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         MAPPER
             .createObjectNode()
             .put("technique", "rrf")
-            .put("rank_constant", 60)
+            .put("rank_constant", 30)
             .set("parameters", MAPPER.createObjectNode().set("weights", weights));
     var scoreRanker =
         MAPPER
