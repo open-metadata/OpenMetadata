@@ -62,7 +62,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     [fields]
   );
 
-  const { showDeleted, quickFilter } = useMemo(() => {
+  const { showDeleted, quickFilter, searchText } = useMemo(() => {
     const parsed = Qs.parse(
       location.search.startsWith('?')
         ? location.search.substring(1)
@@ -72,6 +72,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     return {
       showDeleted: parsed.showDeleted === 'true',
       quickFilter: parsed.quickFilter ?? '',
+      searchText: (parsed.search as string) ?? '',
     };
   }, [location.search]);
 
@@ -123,7 +124,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           independent,
           showDeleted,
           optionPageSize,
-          isNLPEnabled
+          isNLPEnabled,
+          searchText
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })
@@ -216,7 +218,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           independent,
           showDeleted,
           undefined,
-          isNLPEnabled
+          isNLPEnabled,
+          searchText
         );
 
         const buckets =
