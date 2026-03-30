@@ -939,6 +939,9 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                           .BuiltinScriptLanguage.Painless))
                                           .source(DELETE_COLUMN_LINEAGE_SCRIPT)
                                           .params(params)))
+                      // refresh=false: rely on the index's default refresh interval (1s by default) instead
+                      // of forcing a blocking shard refresh after each updateByQuery. Lineage
+                      // cleanup does not require immediate read-after-write consistency.
                       .refresh(Refresh.False));
 
       LOG.info(
