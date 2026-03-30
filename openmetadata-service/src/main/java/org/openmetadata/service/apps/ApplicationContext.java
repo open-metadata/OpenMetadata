@@ -81,8 +81,7 @@ public class ApplicationContext {
   }
 
   public AbstractNativeApplication getAppIfExists(String name) {
-    AbstractNativeApplication app = this.apps.get(name);
-    return app;
+    return this.apps.get(name);
   }
 
   public Collection<AbstractNativeApplication> getAllApps() {

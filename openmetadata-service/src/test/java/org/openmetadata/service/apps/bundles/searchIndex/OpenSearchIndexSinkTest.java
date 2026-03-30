@@ -205,7 +205,7 @@ class OpenSearchIndexSinkTest {
   }
 
   @Test
-  void closeDelegatesToSearchClient() throws Exception {
+  void closeDelegatesToSearchClient() {
     try (MockedConstruction<OpenSearchAsyncClient> asyncConstruction =
         mockConstruction(OpenSearchAsyncClient.class)) {
       OpenSearchIndexSink sink = new OpenSearchIndexSink(searchClient, 4096, 1, 3, 10, 50);

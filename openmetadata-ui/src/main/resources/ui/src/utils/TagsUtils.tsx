@@ -643,6 +643,14 @@ export const getTagRedirectLink = (
     : getClassificationTagPath(tag.tagFQN);
 };
 
+export const getGlossaryTags = (tags: TagLabel[] | undefined): TagLabel[] =>
+  tags?.filter((tag) => tag.source === TagSource.Glossary) ?? [];
+
+export const getClassificationTags = (
+  tags: TagLabel[] | undefined
+): TagLabel[] =>
+  tags?.filter((tag) => tag.source === TagSource.Classification) ?? [];
+
 export const TagListItemRenderer = (props: EntityReference) => {
   return (
     <Space>

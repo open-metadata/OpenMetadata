@@ -103,7 +103,7 @@ public class SystemResource {
   private PipelineServiceClientInterface pipelineServiceClient;
   private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
-  private SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
+  private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
   private boolean isNlqEnabled = false;
 
   public SystemResource(Authorizer authorizer) {

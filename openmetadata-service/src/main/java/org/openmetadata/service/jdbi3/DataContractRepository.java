@@ -711,11 +711,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (binaryTypes.contains(type1) && binaryTypes.contains(type2)) {
       return true;
     }
-    if (complexTypes.contains(type1) && complexTypes.contains(type2)) {
-      return true;
-    }
-
-    return false;
+    return complexTypes.contains(type1) && complexTypes.contains(type2);
   }
 
   /**
@@ -892,10 +888,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<UUID> testsToRemove =
         currentTests.stream().filter(testId -> !testCaseRefs.contains(testId)).toList();
     if (!nullOrEmpty(testsToRemove)) {
-      testsToRemove.forEach(
-          test -> {
-            testCaseRepository.deleteTestCaseFromLogicalTestSuite(testSuite.getId(), test);
-          });
+      for (UUID test : testsToRemove) {
+        testCaseRepository.deleteTestCaseFromLogicalTestSuite(testSuite.getId(), test);
+      }
     }
   }
 
@@ -1222,10 +1217,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         testSuite.getTests().stream().map(EntityReference::getFullyQualifiedName).toList();
     List<ResultSummary> testSummary =
         testSuite.getTestCaseResultSummary().stream()
-            .filter(
-                test -> {
-                  return currentTests.contains(test.getTestCaseName());
-                })
+            .filter(test -> currentTests.contains(test.getTestCaseName()))
             .toList();
 
     List<ResultSummary> failedTests =
@@ -1403,49 +1395,25 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "latestResult",
-          () -> {
-            recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
-          });
+          () ->
+              recordChange("latestResult", original.getLatestResult(), updated.getLatestResult()));
       compareAndUpdate(
           "entityStatus",
-          () -> {
-            recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
-          });
+          () ->
+              recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus()));
       compareAndUpdate(
           "testSuite",
-          () -> {
-            recordChange("testSuite", original.getTestSuite(), updated.getTestSuite());
-          });
+          () -> recordChange("testSuite", original.getTestSuite(), updated.getTestSuite()));
       compareAndUpdate(
           "termsOfUse",
-          () -> {
-            recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse());
-          });
+          () -> recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse()));
       compareAndUpdate(
           "security",
-          () -> {
-            recordChange("security", original.getSecurity(), updated.getSecurity());
-          });
-      compareAndUpdate(
-          "sla",
-          () -> {
-            recordChange("sla", original.getSla(), updated.getSla());
-          });
-      compareAndUpdate(
-          "schema",
-          () -> {
-            updateSchema(original, updated);
-          });
-      compareAndUpdate(
-          "qualityExpectations",
-          () -> {
-            updateQualityExpectations(original, updated);
-          });
-      compareAndUpdate(
-          "semantics",
-          () -> {
-            updateSemantics(original, updated);
-          });
+          () -> recordChange("security", original.getSecurity(), updated.getSecurity()));
+      compareAndUpdate("sla", () -> recordChange("sla", original.getSla(), updated.getSla()));
+      compareAndUpdate("schema", () -> updateSchema(original, updated));
+      compareAndUpdate("qualityExpectations", () -> updateQualityExpectations(original, updated));
+      compareAndUpdate("semantics", () -> updateSemantics(original, updated));
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
@@ -1656,11 +1624,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // Add entity's own semantics (not inherited)
       if (merged.getSemantics() != null) {
-        for (SemanticsRule entityRule : merged.getSemantics()) {
-          // Keep the inherited flag as-is from the entity rule (should be false/null for native
-          // rules)
-          mergedSemantics.add(entityRule);
-        }
+        // Keep the inherited flag as-is from the entity rule (should be false/null for native
+        // rules)
+        mergedSemantics.addAll(merged.getSemantics());
       }
 
       merged.setSemantics(mergedSemantics);

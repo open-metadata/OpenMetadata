@@ -39,11 +39,13 @@ import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
 import { stringToHTML } from './StringsUtils';
 import {
+  certificationTableObject,
   dataProductTableObject,
   descriptionTableObject,
   domainTableObject,
   ownerTableObject,
   tagTableObject,
+  tierTableObject,
 } from './TableColumn.util';
 import { getUsagePercentile } from './TableUtils';
 
@@ -97,6 +99,8 @@ export const getServiceMainTabColumns = (
   ...domainTableObject<ServicePageData>(),
   ...dataProductTableObject<ServicePageData>(),
   ...tagTableObject<ServicePageData>(),
+  ...tierTableObject<ServicePageData>(),
+  ...certificationTableObject<ServicePageData>(),
   ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
     ? [
         {

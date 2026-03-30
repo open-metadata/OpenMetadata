@@ -22,9 +22,16 @@ import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { TAG_LIST_SIZE } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { EntityType } from '../enums/entity.enum';
+import { AssetCertification } from '../generated/entity/data/database';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagLabel } from '../generated/type/tagLabel';
 import i18n from './i18next/LocalUtil';
+import {
+  getCertificationTag,
+  getTagsWithoutCertification,
+  getTagsWithoutTier,
+  getTierTags,
+} from './TableUtils';
 
 export const columnFilterIcon = (filtered: boolean) => (
   <Icon
@@ -102,9 +109,47 @@ export const tagTableObject = <
     dataIndex: TABLE_COLUMNS_KEYS.TAGS,
     width: 240,
     key: TABLE_COLUMNS_KEYS.TAGS,
-    render: (_, record: T) => (
-      <TagsViewer sizeCap={TAG_LIST_SIZE} tags={record.tags ?? []} />
-    ),
+    render: (_, record: T) => {
+      const filteredTags = getTagsWithoutCertification(
+        getTagsWithoutTier(record.tags ?? [])
+      );
+
+      return <TagsViewer sizeCap={TAG_LIST_SIZE} tags={filteredTags} />;
+    },
+  },
+];
+
+export const tierTableObject = <
+  T extends { tags?: TagLabel[] }
+>(): ColumnsType<T> => [
+  {
+    title: i18n.t('label.tier').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+    key: TABLE_COLUMNS_KEYS.TIER,
+    width: 120,
+    render: (_, record: T) => {
+      const tierTag = getTierTags(record.tags ?? []);
+
+      return <TagsViewer sizeCap={1} tags={tierTag ? [tierTag] : []} />;
+    },
+  },
+];
+
+export const certificationTableObject = <
+  T extends { certification?: AssetCertification; tags?: TagLabel[] }
+>(): ColumnsType<T> => [
+  {
+    title: i18n.t('label.certification').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.CERTIFICATION,
+    key: TABLE_COLUMNS_KEYS.CERTIFICATION,
+    width: 150,
+    render: (_, record: T) => {
+      const certTag =
+        record.certification?.tagLabel ??
+        getCertificationTag(record.tags ?? []);
+
+      return <TagsViewer sizeCap={1} tags={certTag ? [certTag] : []} />;
+    },
   },
 ];
 

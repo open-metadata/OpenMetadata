@@ -14,7 +14,6 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
-import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -241,8 +240,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       long end,
       List<FormulaHolder> formulas,
       Map metricHolder,
-      boolean live)
-      throws IOException;
+      boolean live);
 
   DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,

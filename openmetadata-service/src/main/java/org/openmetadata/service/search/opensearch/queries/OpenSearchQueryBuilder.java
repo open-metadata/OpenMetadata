@@ -175,7 +175,7 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
 
   public OpenSearchQueryBuilder nestedQuery(String path, OMQueryBuilder innerQuery) {
     Query inner = ((OpenSearchQueryBuilder) innerQuery).build();
-    this.query = Query.of(q -> q.nested(n -> n.path(path).query(inner)));
+    this.query = Query.of(q -> q.nested(n -> n.path(path).query(inner).ignoreUnmapped(true)));
     return this;
   }
 
