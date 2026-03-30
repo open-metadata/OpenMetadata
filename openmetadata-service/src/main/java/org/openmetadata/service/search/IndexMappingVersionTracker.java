@@ -109,7 +109,7 @@ public class IndexMappingVersionTracker {
     return hashes;
   }
 
-  private JsonNode loadMappingForEntity(String entityType) throws IOException {
+  private JsonNode loadMappingForEntity(String entityType) {
     try {
       ObjectMapper mapper = new ObjectMapper();
       Map<String, JsonNode> allLanguageMappings = new HashMap<>();

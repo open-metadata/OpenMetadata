@@ -101,7 +101,7 @@ class OpenSearchIndexSinkTest {
   }
 
   @Test
-  void testWriteWithEmptyData() throws Exception {
+  void testWriteWithEmptyData() {
     List<TaggedOperation<BulkOperation>> data = new ArrayList<>();
 
     assertDoesNotThrow(() -> sink.write(data));

@@ -238,16 +238,11 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     });
 
     await test.step('Verify filter chip is displayed', async () => {
-      const metadataStatusChip = page.locator('.filter-selection-chip').filter({
-        has: page.locator('.filter-selection-value', {
-          hasText: /Missing|MISSING/,
-        }),
-      });
+      const metadataStatusChip = page.getByTestId('filter-chip-metadataStatus');
 
       await expect(metadataStatusChip).toBeVisible();
-      await expect(
-        metadataStatusChip.locator('.filter-selection-label')
-      ).toContainText('Has / Missing Metadata');
+      await expect(metadataStatusChip).toContainText('Has / Missing Metadata');
+      await expect(metadataStatusChip).toContainText(/Missing|MISSING/);
     });
   });
 
@@ -280,16 +275,13 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     });
 
     await test.step('Verify filter chip is restored', async () => {
-      const metadataStatusChip = page.locator('.filter-selection-chip').filter({
-        has: page.locator('.filter-selection-value', {
-          hasText: /Inconsistent|INCONSISTENT/,
-        }),
-      });
+      const metadataStatusChip = page.getByTestId('filter-chip-metadataStatus');
 
       await expect(metadataStatusChip).toBeVisible();
-      await expect(
-        metadataStatusChip.locator('.filter-selection-label')
-      ).toContainText('Has / Missing Metadata');
+      await expect(metadataStatusChip).toContainText('Has / Missing Metadata');
+      await expect(metadataStatusChip).toContainText(
+        /Inconsistent|INCONSISTENT/
+      );
     });
   });
 
@@ -364,13 +356,10 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     });
 
     await test.step('Verify filter chip is present', async () => {
-      const metadataStatusChip = page.locator('.filter-selection-chip').filter({
-        has: page.locator('.filter-selection-value', {
-          hasText: /Missing|MISSING/,
-        }),
-      });
+      const metadataStatusChip = page.getByTestId('filter-chip-metadataStatus');
 
       await expect(metadataStatusChip).toBeVisible();
+      await expect(metadataStatusChip).toContainText(/Missing|MISSING/);
     });
 
     await test.step('Deselect the MISSING filter', async () => {
@@ -384,13 +373,9 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     });
 
     await test.step('Verify filter chip removed and URL updated', async () => {
-      const metadataStatusChip = page.locator('.filter-selection-chip').filter({
-        has: page.locator('.filter-selection-value', {
-          hasText: /Missing|MISSING/,
-        }),
-      });
-
-      await expect(metadataStatusChip).not.toBeVisible();
+      await expect(
+        page.getByTestId('filter-chip-metadataStatus')
+      ).not.toBeVisible();
       expect(page.url()).not.toContain('metadataStatus=MISSING');
     });
   });
@@ -484,16 +469,13 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     });
 
     await test.step('Verify service chip is visible', async () => {
-      const serviceChip = page.locator('.filter-selection-chip').filter({
-        has: page.locator('.filter-selection-value', {
-          hasText: 'sample_data',
-        }),
-      });
+      const serviceChip = page.getByTestId(
+        'filter-chip-service.displayName.keyword'
+      );
 
       await expect(serviceChip).toBeVisible();
-      await expect(
-        serviceChip.locator('.filter-selection-label')
-      ).toContainText('Service');
+      await expect(serviceChip).toContainText('Service');
+      await expect(serviceChip).toContainText('sample_data');
     });
   });
 });

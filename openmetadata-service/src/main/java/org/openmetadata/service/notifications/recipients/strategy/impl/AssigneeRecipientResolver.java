@@ -32,7 +32,6 @@ import org.openmetadata.service.notifications.recipients.strategy.RecipientResol
 
 /**
  * Resolves assignees from task threads.
- *
  * This resolver extracts assignees from task-based notifications and converts them
  * to recipients with appropriate contact information.
  */

@@ -82,10 +82,9 @@ public class SemanticSearchEngine {
 
     // Use embedding-based search with RDF enhancement for now
     float[] queryEmbedding = embeddingService.generateEmbedding(query);
-    List<SearchResult> results = findSimilarByEmbedding(queryEmbedding, entityType, limit);
 
     // The results are already enhanced with RDF context in the pipeline
-    return results;
+    return findSimilarByEmbedding(queryEmbedding, entityType, limit);
   }
 
   public List<SearchResult> findSimilarEntities(String entityId, String entityType, int limit) {

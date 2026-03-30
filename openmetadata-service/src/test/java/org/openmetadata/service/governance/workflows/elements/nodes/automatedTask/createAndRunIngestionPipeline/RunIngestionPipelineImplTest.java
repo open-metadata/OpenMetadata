@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -114,7 +113,7 @@ class RunIngestionPipelineImplTest {
   }
 
   @Test
-  void testExecuteSuccessFirstAttempt() throws Exception {
+  void testExecuteSuccessFirstAttempt() {
     // Mock repository and entity setup
     when(mockRepository.get(any(), any(UUID.class), any())).thenReturn(testPipeline);
     when(mockRepository.getOpenMetadataApplicationConfig()).thenReturn(null);

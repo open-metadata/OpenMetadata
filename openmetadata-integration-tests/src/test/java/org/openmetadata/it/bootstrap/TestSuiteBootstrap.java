@@ -27,7 +27,9 @@ import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -61,6 +63,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
@@ -397,7 +400,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
   }
 
-  private static boolean isK8sTestsRequested() {
+  public static boolean isK8sTestsRequested() {
     return "true".equalsIgnoreCase(System.getProperty("ENABLE_K8S_TESTS"))
         || "true".equalsIgnoreCase(System.getenv("ENABLE_K8S_TESTS"));
   }
@@ -798,6 +801,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory
             .createPipelineServiceClient(pipelineConfig);
 
+    if (APP != null) {
+      APP.getConfiguration().setPipelineServiceClientConfiguration(pipelineConfig);
+    }
+
     // Update the IngestionPipelineRepository with the new client
     // This is necessary because the repository caches the client at startup
     try {
@@ -811,7 +818,40 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       throw new RuntimeException("Failed to configure K8s pipeline client", e);
     }
 
+    refreshIngestionPipelineResource();
+
     LOG.info("K8s pipeline service client configured and ready");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void refreshIngestionPipelineResource() {
+    if (APP == null) {
+      LOG.info("OpenMetadata application is not initialized yet; skipping resource refresh");
+      return;
+    }
+
+    try {
+      Field collectionMapField = CollectionRegistry.class.getDeclaredField("collectionMap");
+      collectionMapField.setAccessible(true);
+
+      Map<String, CollectionRegistry.CollectionDetails> collectionMap =
+          (Map<String, CollectionRegistry.CollectionDetails>)
+              collectionMapField.get(CollectionRegistry.getInstance());
+
+      for (CollectionRegistry.CollectionDetails details : collectionMap.values()) {
+        Object resource = details.getResource();
+        if (resource instanceof IngestionPipelineResource ingestionPipelineResource) {
+          ingestionPipelineResource.initialize(APP.getConfiguration());
+          LOG.info("Refreshed IngestionPipelineResource with K8s pipeline client");
+          return;
+        }
+      }
+
+      LOG.warn("IngestionPipelineResource is not registered; skipping resource refresh");
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to refresh IngestionPipelineResource with K8s pipeline client", e);
+    }
   }
 
   /**

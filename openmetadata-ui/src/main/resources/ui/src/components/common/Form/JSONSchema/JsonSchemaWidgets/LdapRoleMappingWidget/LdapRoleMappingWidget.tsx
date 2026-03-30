@@ -12,9 +12,16 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Grid } from '@mui/material';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Button, Card, Input, Select, Space, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Input,
+  Select,
+  Space,
+  Typography as AntDTypography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +30,7 @@ import { getRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
 
-const { Text } = Typography;
+const { Text } = AntDTypography;
 
 interface RoleMappingEntry {
   id: string;
@@ -209,15 +216,19 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     <div className="ldap-role-mapping-widget" data-testid={id}>
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
         {mappings.length > 0 && (
-          <div className="mapping-header">
-            <div className="mapping-header-col">
-              <Text>{t('label.ldap-group-dn')}</Text>
-            </div>
-            <div className="mapping-header-col">
-              <Text>{t('label.openmetadata-role-plural')}</Text>
-            </div>
-            <div className="mapping-header-actions" />
-          </div>
+          <Grid className="tw:mb-1" gap="2">
+            <Grid.Item span={11}>
+              <Typography className="tw:text-gray-700" weight="medium">
+                {t('label.ldap-group-dn')}
+              </Typography>
+            </Grid.Item>
+            <Grid.Item span={12}>
+              <Typography className="tw:text-gray-700" weight="medium">
+                {t('label.openmetadata-role-plural')}
+              </Typography>
+            </Grid.Item>
+            <Grid.Item span={1} />
+          </Grid>
         )}
 
         {mappings.map((mapping) => (
@@ -226,32 +237,30 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             data-testid={`mapping-card-${mapping.id}`}
             key={mapping.id}
             size="small">
-            <Grid container alignItems="center" spacing={2}>
-              <Grid size="grow">
-                <div>
-                  <Input
-                    className="form-control"
-                    data-testid={`ldap-group-input-${mapping.id}`}
-                    disabled={disabled || readonly}
-                    placeholder={t('message.ldap-group-dn-placeholder')}
-                    status={errors[mapping.id] ? 'error' : undefined}
-                    value={mapping.ldapGroup}
-                    onChange={(e) =>
-                      handleLdapGroupChange(mapping.id, e.target.value)
-                    }
-                  />
-                  {errors[mapping.id] && (
-                    <Text
-                      className="text-xs m-t-xss"
-                      data-testid={`ldap-group-error-${mapping.id}`}
-                      type="danger">
-                      {errors[mapping.id]}
-                    </Text>
-                  )}
-                </div>
-              </Grid>
+            <Grid gap="2">
+              <Grid.Item span={11}>
+                <Input
+                  className="form-control"
+                  data-testid={`ldap-group-input-${mapping.id}`}
+                  disabled={disabled || readonly}
+                  placeholder={t('message.ldap-group-dn-placeholder')}
+                  status={errors[mapping.id] ? 'error' : undefined}
+                  value={mapping.ldapGroup}
+                  onChange={(e) =>
+                    handleLdapGroupChange(mapping.id, e.target.value)
+                  }
+                />
+                {errors[mapping.id] && (
+                  <Text
+                    className="text-xs m-t-xss"
+                    data-testid={`ldap-group-error-${mapping.id}`}
+                    type="danger">
+                    {errors[mapping.id]}
+                  </Text>
+                )}
+              </Grid.Item>
 
-              <Grid size="grow">
+              <Grid.Item span={12}>
                 <Select
                   showSearch
                   className="w-full"
@@ -266,9 +275,9 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   value={mapping.roles}
                   onChange={(roles) => handleRolesChange(mapping.id, roles)}
                 />
-              </Grid>
+              </Grid.Item>
 
-              <Grid size="auto">
+              <Grid.Item className="tw:flex tw:items-center" span={1}>
                 <Button
                   data-testid={`remove-mapping-btn-${mapping.id}`}
                   disabled={disabled || readonly}
@@ -277,7 +286,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   type="text"
                   onClick={() => handleRemoveMapping(mapping.id)}
                 />
-              </Grid>
+              </Grid.Item>
             </Grid>
           </Card>
         ))}

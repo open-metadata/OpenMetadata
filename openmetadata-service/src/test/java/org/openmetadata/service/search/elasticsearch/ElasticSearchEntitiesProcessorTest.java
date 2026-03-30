@@ -87,7 +87,7 @@ class ElasticSearchEntitiesProcessorTest {
       Map<String, Object> contextData = new HashMap<>();
       contextData.put("entityType", ENTITY_TYPE);
 
-      entityMock.when(() -> Entity.getSearchRepository()).thenReturn(searchRepository);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       when(searchRepository.getIndexMapping(ENTITY_TYPE)).thenReturn(indexMapping);
       when(searchRepository.getClusterAlias()).thenReturn("default");
       when(indexMapping.getIndexName("default")).thenReturn(INDEX_NAME);
@@ -124,7 +124,7 @@ class ElasticSearchEntitiesProcessorTest {
       Map<String, Object> contextData = new HashMap<>();
       contextData.put("entityType", ENTITY_TYPE);
 
-      entityMock.when(() -> Entity.getSearchRepository()).thenReturn(searchRepository);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       entityMock
           .when(() -> Entity.buildSearchIndex(eq(ENTITY_TYPE), any()))
           .thenThrow(new RuntimeException("Test exception"));

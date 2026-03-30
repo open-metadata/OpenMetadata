@@ -168,11 +168,10 @@ public class IngestionProgressTracker {
         update
             .getProgress()
             .forEach(
-                (entityType, progress) -> {
-                  entityProgress
-                      .computeIfAbsent(entityType, k -> new EntityProgressState())
-                      .update(progress);
-                });
+                (entityType, progress) ->
+                    entityProgress
+                        .computeIfAbsent(entityType, k -> new EntityProgressState())
+                        .update(progress));
       }
     }
 
@@ -195,8 +194,7 @@ public class IngestionProgressTracker {
     private volatile Integer estimatedRemainingSeconds;
 
     public void update(Object progress) {
-      if (progress instanceof Map) {
-        Map<?, ?> map = (Map<?, ?>) progress;
+      if (progress instanceof Map<?, ?> map) {
         if (map.get("total") != null) {
           this.total = ((Number) map.get("total")).intValue();
         }

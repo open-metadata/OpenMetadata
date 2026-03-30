@@ -247,10 +247,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
-          ENABLED,
-          () -> {
-            recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
-          });
+          ENABLED, () -> recordChange(ENABLED, original.getEnabled(), updated.getEnabled()));
       compareAndUpdate(
           "rules",
           () -> {

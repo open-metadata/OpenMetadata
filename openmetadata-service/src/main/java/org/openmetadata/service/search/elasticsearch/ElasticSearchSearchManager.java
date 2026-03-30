@@ -425,9 +425,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     if (searchAfter != null && searchAfter.length > 0) {
       List<String> searchAfterList = new ArrayList<>();
       for (Object value : searchAfter) {
-        if (value instanceof es.co.elastic.clients.elasticsearch._types.FieldValue) {
-          es.co.elastic.clients.elasticsearch._types.FieldValue fieldValue =
-              (es.co.elastic.clients.elasticsearch._types.FieldValue) value;
+        if (value instanceof FieldValue fieldValue) {
           searchAfterList.add(String.valueOf(fieldValue._get()));
         } else {
           searchAfterList.add(String.valueOf(value));
@@ -891,8 +889,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
         if (jsonObject.containsKey("_source")) {
           JsonValue sourceValue = jsonObject.get("_source");
-          if (sourceValue instanceof JsonObject) {
-            JsonObject sourceObj = (JsonObject) sourceValue;
+          if (sourceValue instanceof JsonObject sourceObj) {
             if (sourceObj.containsKey("include")) {
               includes =
                   sourceObj.getJsonArray("include").stream()

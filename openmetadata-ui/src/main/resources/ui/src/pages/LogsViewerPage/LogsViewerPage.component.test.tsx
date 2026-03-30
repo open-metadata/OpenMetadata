@@ -95,6 +95,20 @@ jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => () => <>TitleBreadcrumb.component</>
 );
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <>{children}</>),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(({ icon, onClick, 'data-testid': testId }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {icon}
+      </button>
+    )),
+}));
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );

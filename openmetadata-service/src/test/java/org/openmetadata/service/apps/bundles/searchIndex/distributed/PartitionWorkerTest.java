@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -265,7 +266,7 @@ class PartitionWorkerTest {
     PartitionWorker.BatchResult result3 = new PartitionWorker.BatchResult(100, 10, 0, null);
 
     assertEquals(result1, result2);
-    assertFalse(result1.equals(result3));
+    assertNotEquals(result1, result3);
   }
 
   @Test
@@ -275,7 +276,7 @@ class PartitionWorkerTest {
     PartitionWorker.PartitionResult result3 = new PartitionWorker.PartitionResult(1000, 50, true);
 
     assertEquals(result1, result2);
-    assertFalse(result1.equals(result3));
+    assertNotEquals(result1, result3);
   }
 
   @Test
@@ -488,7 +489,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionKeepsProgressStatusProcessingAndCompletesSuccessfully() throws Exception {
+  void processPartitionKeepsProgressStatusProcessingAndCompletesSuccessfully() {
     PartitionWorker partitionWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
@@ -530,7 +531,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionTracksReaderFailuresAndCompletesWithFailedCounts() throws Exception {
+  void processPartitionTracksReaderFailuresAndCompletesWithFailedCounts() {
     PartitionWorker partitionWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
@@ -570,7 +571,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionStopsAfterReadWhenStopRequestedMidLoop() throws Exception {
+  void processPartitionStopsAfterReadWhenStopRequestedMidLoop() {
     PartitionWorker partitionWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
@@ -665,7 +666,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionAdjustsSuccessCountsForProcessFailures() throws Exception {
+  void processPartitionAdjustsSuccessCountsForProcessFailures() {
     PartitionWorker partitionWorker = new PartitionWorker(coordinator, bulkSink, 2, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
 
@@ -709,7 +710,7 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void processPartitionFailsPartitionWhenCompletionThrows() throws Exception {
+  void processPartitionFailsPartitionWhenCompletionThrows() {
     PartitionWorker partitionWorker = new PartitionWorker(coordinator, bulkSink, 2, null, false);
     SearchIndexPartition partition = buildPartition("table", 0, 1);
 

@@ -204,9 +204,7 @@ class DistributedJobParticipantTest {
     try (MockedConstruction<DistributedSearchIndexCoordinator> mocked =
         mockConstruction(
             DistributedSearchIndexCoordinator.class,
-            (mock, context) -> {
-              when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of());
-            })) {
+            (mock, context) -> when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of()))) {
 
       participant =
           new DistributedJobParticipant(
@@ -223,7 +221,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testJoinsActiveJobWithPendingPartitions() throws Exception {
+  void testJoinsActiveJobWithPendingPartitions() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
 
@@ -318,7 +316,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testDoesNotRejoinSameRunningJob() throws Exception {
+  void testDoesNotRejoinSameRunningJob() {
     UUID jobId = UUID.randomUUID();
 
     EventPublisherJob config = new EventPublisherJob();
@@ -388,7 +386,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testClearsJobIdWhenJobCompletes() throws Exception {
+  void testClearsJobIdWhenJobCompletes() {
     UUID jobId = UUID.randomUUID();
 
     EventPublisherJob config = new EventPublisherJob();
@@ -484,7 +482,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testAttemptsToClaimPartitions() throws Exception {
+  void testAttemptsToClaimPartitions() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
 
