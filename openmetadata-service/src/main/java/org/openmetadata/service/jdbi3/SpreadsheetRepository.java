@@ -450,39 +450,22 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "mimeType",
-          () -> {
-            recordChange("mimeType", original.getMimeType(), updated.getMimeType());
-          });
+          () -> recordChange("mimeType", original.getMimeType(), updated.getMimeType()));
       compareAndUpdate(
           "createdTime",
-          () -> {
-            recordChange("createdTime", original.getCreatedTime(), updated.getCreatedTime());
-          });
+          () -> recordChange("createdTime", original.getCreatedTime(), updated.getCreatedTime()));
       compareAndUpdate(
           "modifiedTime",
-          () -> {
-            recordChange("modifiedTime", original.getModifiedTime(), updated.getModifiedTime());
-          });
-      compareAndUpdate(
-          "path",
-          () -> {
-            recordChange("path", original.getPath(), updated.getPath());
-          });
+          () ->
+              recordChange("modifiedTime", original.getModifiedTime(), updated.getModifiedTime()));
+      compareAndUpdate("path", () -> recordChange("path", original.getPath(), updated.getPath()));
       compareAndUpdate(
           "driveFileId",
-          () -> {
-            recordChange("driveFileId", original.getDriveFileId(), updated.getDriveFileId());
-          });
-      compareAndUpdate(
-          "size",
-          () -> {
-            recordChange("size", original.getSize(), updated.getSize());
-          });
+          () -> recordChange("driveFileId", original.getDriveFileId(), updated.getDriveFileId()));
+      compareAndUpdate("size", () -> recordChange("size", original.getSize(), updated.getSize()));
       compareAndUpdate(
           "fileVersion",
-          () -> {
-            recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion());
-          });
+          () -> recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion()));
     }
   }
 }

@@ -699,6 +699,112 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   // BULK API SUPPORT
   // ===================================================================
 
+  // ===================================================================
+  // PATCH TESTS FOR NESTED SCHEMA FIELDS
+  // ===================================================================
+
+  @Test
+  void patch_responseSchemaFieldDescription_200(TestNamespace ns) {
+    APICollection collection = getOrCreateAPICollection(ns);
+
+    List<Field> fields =
+        Arrays.asList(
+            getField("user_id", FieldDataType.STRING, null),
+            getField("status", FieldDataType.STRING, null));
+    APISchema responseSchema = new APISchema().withSchemaFields(fields);
+
+    CreateAPIEndpoint request =
+        new CreateAPIEndpoint()
+            .withName(ns.prefix("patch_resp_desc"))
+            .withApiCollection(collection.getFullyQualifiedName())
+            .withRequestMethod(APIRequestMethod.GET)
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/test"))
+            .withResponseSchema(responseSchema);
+
+    APIEndpoint endpoint = createEntity(request);
+    APIEndpoint fetched = getEntityWithFields(endpoint.getId().toString(), "tags,responseSchema");
+    Double versionBefore = fetched.getVersion();
+
+    fetched.getResponseSchema().getSchemaFields().get(0).setDescription("Unique user identifier");
+    APIEndpoint patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    APIEndpoint verified = getEntityWithFields(patched.getId().toString(), "tags,responseSchema");
+    assertEquals(
+        "Unique user identifier",
+        verified.getResponseSchema().getSchemaFields().get(0).getDescription());
+  }
+
+  @Test
+  void patch_responseSchemaFieldTags_200(TestNamespace ns) {
+    APICollection collection = getOrCreateAPICollection(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    List<Field> fields =
+        Arrays.asList(
+            getField("email", FieldDataType.STRING, null),
+            getField("name", FieldDataType.STRING, null));
+    APISchema responseSchema = new APISchema().withSchemaFields(fields);
+
+    CreateAPIEndpoint request =
+        new CreateAPIEndpoint()
+            .withName(ns.prefix("patch_resp_tags"))
+            .withApiCollection(collection.getFullyQualifiedName())
+            .withRequestMethod(APIRequestMethod.GET)
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/test"))
+            .withResponseSchema(responseSchema);
+
+    APIEndpoint endpoint = createEntity(request);
+    APIEndpoint fetched = getEntityWithFields(endpoint.getId().toString(), "tags,responseSchema");
+    Double versionBefore = fetched.getVersion();
+
+    TagLabel piiTag = shared.PII_SENSITIVE_TAG_LABEL;
+    fetched.getResponseSchema().getSchemaFields().get(0).setTags(new ArrayList<>(List.of(piiTag)));
+    APIEndpoint patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    APIEndpoint verified = getEntityWithFields(patched.getId().toString(), "tags,responseSchema");
+    List<TagLabel> fieldTags = verified.getResponseSchema().getSchemaFields().get(0).getTags();
+    assertNotNull(fieldTags);
+    assertFalse(fieldTags.isEmpty());
+    assertTrue(fieldTags.stream().anyMatch(t -> t.getTagFQN().equals(piiTag.getTagFQN())));
+  }
+
+  @Test
+  void patch_requestSchemaFieldDescription_200(TestNamespace ns) {
+    APICollection collection = getOrCreateAPICollection(ns);
+
+    List<Field> fields =
+        Arrays.asList(
+            getField("body", FieldDataType.STRING, null),
+            getField("headers", FieldDataType.STRING, null));
+    APISchema requestSchema = new APISchema().withSchemaFields(fields);
+
+    CreateAPIEndpoint request =
+        new CreateAPIEndpoint()
+            .withName(ns.prefix("patch_req_desc"))
+            .withApiCollection(collection.getFullyQualifiedName())
+            .withRequestMethod(APIRequestMethod.POST)
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/test"))
+            .withRequestSchema(requestSchema);
+
+    APIEndpoint endpoint = createEntity(request);
+    APIEndpoint fetched = getEntityWithFields(endpoint.getId().toString(), "tags,requestSchema");
+    Double versionBefore = fetched.getVersion();
+
+    fetched.getRequestSchema().getSchemaFields().get(0).setDescription("Request body payload");
+    APIEndpoint patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    APIEndpoint verified = getEntityWithFields(patched.getId().toString(), "tags,requestSchema");
+    assertEquals(
+        "Request body payload",
+        verified.getRequestSchema().getSchemaFields().get(0).getDescription());
+  }
+
   @Override
   protected BulkOperationResult executeBulkCreate(List<CreateAPIEndpoint> createRequests) {
     return SdkClients.adminClient().apiEndpoints().bulkCreateOrUpdate(createRequests);

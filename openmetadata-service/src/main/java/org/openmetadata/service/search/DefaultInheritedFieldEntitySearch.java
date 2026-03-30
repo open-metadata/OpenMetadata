@@ -149,9 +149,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
 
       String responseBody = extractResponseBody(response);
       JsonNode searchResponse = JsonUtils.readTree(responseBody);
-      int count = extractTotalCountFromSearchResponse(searchResponse);
-      return count;
-
+      return extractTotalCountFromSearchResponse(searchResponse);
     } catch (Exception e) {
       LOG.info("Failed to get count for inherited field, using fallback", e);
       return fallback.get();

@@ -1,7 +1,9 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -47,6 +49,8 @@ class LineagePathPreserverTest {
     assertEquals(Set.of(ROOT, MID_ONE, MID_TWO, LEAF), filtered.getNodes().keySet());
     assertEquals(
         Set.of("root-mid1", "mid1-mid2", "mid2-leaf"), filtered.getUpstreamEdges().keySet());
+    assertNotSame(result, filtered);
+    assertEquals(Set.of(ROOT, MID_ONE, MID_TWO, LEAF), result.getNodes().keySet());
   }
 
   @Test
@@ -70,6 +74,8 @@ class LineagePathPreserverTest {
     assertEquals(Set.of(ROOT, MID_ONE, MID_TWO, LEAF), filtered.getNodes().keySet());
     assertEquals(
         Set.of("root-mid1", "mid1-mid2", "mid2-leaf"), filtered.getUpstreamEdges().keySet());
+    assertNotSame(result, filtered);
+    assertEquals(Set.of(ROOT, MID_ONE, MID_TWO, LEAF), result.getNodes().keySet());
   }
 
   @Test
@@ -112,6 +118,56 @@ class LineagePathPreserverTest {
     assertEquals(Set.of(ROOT, MID_ONE, MID_TWO, LEAF), preserved.getNodes().keySet());
     assertEquals(
         Set.of("root-mid1", "mid1-mid2", "mid2-leaf"), preserved.getDownstreamEdges().keySet());
+  }
+
+  @Test
+  void preservePathsWithEdgesHandlesDiamondTopology() {
+    String left = "svc.db.schema.left";
+    String right = "svc.db.schema.right";
+
+    SearchLineageResult result = new SearchLineageResult();
+    result.setNodes(
+        Map.of(
+            ROOT, node(ROOT),
+            left, node(left),
+            right, node(right),
+            LEAF, node(LEAF)));
+    result.setDownstreamEdges(
+        Map.of(
+            "root-left", edge(ROOT, left, null),
+            "root-right", edge(ROOT, right, null),
+            "left-leaf", edge(left, LEAF, leafColumn()),
+            "right-leaf", edge(right, LEAF, leafColumn())));
+    result.setUpstreamEdges(new HashMap<>());
+
+    SearchLineageResult preserved =
+        LineagePathPreserver.preservePathsWithEdges(result, ROOT, Set.of(LEAF));
+
+    assertEquals(Set.of(ROOT, left, right, LEAF), preserved.getNodes().keySet());
+    assertEquals(
+        Set.of("root-left", "root-right", "left-leaf", "right-leaf"),
+        preserved.getDownstreamEdges().keySet());
+  }
+
+  @Test
+  void preservePathsWithEdgesHandlesCyclesWithoutInfiniteRecursion() {
+    String nodeA = "svc.db.schema.a";
+    String nodeB = "svc.db.schema.b";
+
+    SearchLineageResult result = new SearchLineageResult();
+    result.setNodes(Map.of(ROOT, node(ROOT), nodeA, node(nodeA), nodeB, node(nodeB)));
+    result.setDownstreamEdges(
+        Map.of(
+            "root-a", edge(ROOT, nodeA, null),
+            "a-b", edge(nodeA, nodeB, leafColumn()),
+            "b-a", edge(nodeB, nodeA, null)));
+    result.setUpstreamEdges(new HashMap<>());
+
+    SearchLineageResult preserved =
+        LineagePathPreserver.preservePathsWithEdges(result, ROOT, Set.of(nodeB));
+
+    assertEquals(Set.of(ROOT, nodeA, nodeB), preserved.getNodes().keySet());
+    assertEquals(Set.of("root-a", "a-b", "b-a"), preserved.getDownstreamEdges().keySet());
   }
 
   @Test
@@ -338,6 +394,19 @@ class LineagePathPreserverTest {
   }
 
   @Test
+  void filterByColumnsDoesNotMutateOriginalEdgesOrNodes() {
+    SearchLineageResult original = lineageResultWithChain();
+
+    SearchLineageResult filtered =
+        LineagePathPreserver.filterByColumns(original, "columnName:ssn", ROOT);
+
+    assertNotSame(original, filtered);
+    assertEquals(Set.of(ROOT, MID_ONE, MID_TWO, LEAF), original.getNodes().keySet());
+    assertNotNull(original.getUpstreamEdges().get("mid2-leaf").getColumns());
+    assertFalse(original.getUpstreamEdges().get("mid2-leaf").getColumns().isEmpty());
+  }
+
+  @Test
   void filterByColumnsWithMetadataNarrowsColumnsCorrectly() throws Exception {
     Map<String, NodeInformation> nodes = new HashMap<>();
     nodes.put(ROOT, node(ROOT));
@@ -452,38 +521,6 @@ class LineagePathPreserverTest {
 
     assertTrue(preserved.getNodes().containsKey(ROOT));
     assertTrue(preserved.getNodes().containsKey("B"));
-  }
-
-  // --- Edge case: diamond-shaped graph ---
-
-  @Test
-  void preservePathsWithEdgesHandlesDiamondTopology() {
-    // Diamond: ROOT -> A -> C, ROOT -> B -> C
-    Map<String, NodeInformation> nodes = new HashMap<>();
-    nodes.put(ROOT, node(ROOT));
-    nodes.put("A", node("A"));
-    nodes.put("B", node("B"));
-    nodes.put("C", node("C"));
-
-    Map<String, EsLineageData> downstreamEdges = new HashMap<>();
-    downstreamEdges.put("e1", edge(ROOT, "A", null));
-    downstreamEdges.put("e2", edge(ROOT, "B", null));
-    downstreamEdges.put("e3", edge("A", "C", null));
-    downstreamEdges.put("e4", edge("B", "C", null));
-
-    SearchLineageResult result = new SearchLineageResult();
-    result.setNodes(nodes);
-    result.setUpstreamEdges(new HashMap<>());
-    result.setDownstreamEdges(downstreamEdges);
-
-    SearchLineageResult preserved =
-        LineagePathPreserver.preservePathsWithEdges(result, ROOT, Set.of("C"));
-
-    // All nodes should be preserved (root, A, B as intermediate, C as match)
-    assertTrue(preserved.getNodes().containsKey(ROOT));
-    assertTrue(preserved.getNodes().containsKey("C"));
-    // At least one intermediate path node (A or B) should be preserved
-    assertTrue(preserved.getNodes().containsKey("A") || preserved.getNodes().containsKey("B"));
   }
 
   // --- Edge case: no edges match column filter ---

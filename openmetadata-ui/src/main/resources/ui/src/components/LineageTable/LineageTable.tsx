@@ -16,15 +16,17 @@ import MenuItem from '@mui/material/MenuItem';
 import ToggleButton from '@mui/material/ToggleButton';
 import { ColumnsType } from 'antd/es/table';
 import Card from 'antd/lib/card/Card';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
 import QueryString from 'qs';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
-import { LINEAGE_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
+import { getLineageDropdownItems } from '../../constants/AdvancedSearch.constants';
 import {
   FULLSCREEN_QUERY_PARAM_KEY,
   NO_DATA,
@@ -52,7 +54,6 @@ import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interfa
 import {
   getLineageByEntityCount,
   getLineageDataByFQN,
-  getLineagePagingData,
 } from '../../rest/lineageAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import {
@@ -69,6 +70,7 @@ import {
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
 } from '../../utils/Lineage/LineageUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
@@ -100,6 +102,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   // Use the custom hook for state management
   const {
     filterNodes,
@@ -127,6 +130,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   } = usePaging(PAGE_SIZE_LARGE);
 
   const [impactOnEl, setImpactOnEl] = useState<null | HTMLElement>(null);
+  const paginationInfoKeyRef = useRef<string | null>(null);
 
   const { isFullScreen, nodeDepth, lineageDirection } = useMemo(() => {
     const queryParams = QueryString.parse(location.search, {
@@ -185,22 +189,24 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         { replace: true }
       );
     },
-    [location.search]
+    [location.search, navigate]
   );
 
-  // Get upstream and downstream count when fqn, entityType, lineageDirection or nodeDepth changes
-  const { upstreamCount, downstreamCount } = useMemo(() => {
-    if (impactLevel === EImpactLevel.ColumnLevel) {
-      handlePagingChange({
-        total:
-          lineageDirection === LineageDirection.Upstream
-            ? upstreamColumnLineageNodes.length
-            : downstreamColumnLineageNodes.length,
-      } as Paging);
+  const clearQuickFilterValues = useCallback(() => {
+    setSelectedQuickFilters((prev) =>
+      (prev ?? []).map((filter) => ({ ...filter, value: [] }))
+    );
+  }, [setSelectedQuickFilters]);
 
+  const { upstreamCount, downstreamCount, pagingTotal } = useMemo(() => {
+    if (impactLevel === EImpactLevel.ColumnLevel) {
       return {
         upstreamCount: upstreamColumnLineageNodes.length,
         downstreamCount: downstreamColumnLineageNodes.length,
+        pagingTotal:
+          lineageDirection === LineageDirection.Upstream
+            ? upstreamColumnLineageNodes.length
+            : downstreamColumnLineageNodes.length,
       };
     }
 
@@ -227,14 +233,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         return acc;
       }, 0) ?? 0;
 
-    handlePagingChange({
-      total:
+    return {
+      upstreamCount,
+      downstreamCount,
+      pagingTotal:
         lineageDirection === LineageDirection.Downstream
           ? downstreamCount
           : upstreamCount,
-    } as Paging);
-
-    return { upstreamCount, downstreamCount };
+    };
   }, [
     lineagePagingInfo,
     nodeDepth,
@@ -243,6 +249,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     downstreamColumnLineageNodes,
     lineageDirection,
   ]);
+
+  useEffect(() => {
+    handlePagingChange({ total: pagingTotal } as Paging);
+  }, [handlePagingChange, pagingTotal]);
 
   const radioGroupOptions = useMemo(() => {
     return [
@@ -265,7 +275,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         value: LineageDirection.Downstream,
       },
     ];
-  }, [upstreamCount, downstreamCount]);
+  }, [t, upstreamCount, downstreamCount]);
 
   const streamButtonGroup = useMemo(() => {
     return (
@@ -287,7 +297,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ))}
       </StyledToggleButtonGroup>
     );
-  }, [lineageDirection, radioGroupOptions]);
+  }, [handlePageChange, lineageDirection, radioGroupOptions, updateURLParams]);
 
   // Column-level filter keys used for column_filter post-processing
   // On Table-level: only COLUMN goes to column_filter (for Column dropdown in post-processing)
@@ -411,10 +421,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               key={option.key}
               selected={option.key === impactLevel}
               onClick={() => {
-                setSelectedImpactLevel(option.key);
-                // Clear filter values when switching impact levels
-                setSelectedQuickFilters([]);
-                handlePageChange(currentPage);
+                flushSync(() => {
+                  setSelectedImpactLevel(option.key);
+                });
+                clearQuickFilterValues();
+                handlePageChange(1);
                 setImpactOnEl(null);
               }}>
               {option.icon}
@@ -424,7 +435,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         </StyledMenu>
       </div>
     );
-  }, [navigate, streamButtonGroup, impactOnEl, impactLevel]);
+  }, [
+    clearQuickFilterValues,
+    handlePageChange,
+    impactLevel,
+    impactOnEl,
+    setSelectedImpactLevel,
+    streamButtonGroup,
+  ]);
 
   // Function to fetch nodes based on current filters and pagination
   const fetchNodes = useCallback(async () => {
@@ -432,18 +450,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       setLoading(true);
 
       if (impactLevel === EImpactLevel.ColumnLevel) {
-        // Use nodeDepth from the depth dropdown instead of lineageConfig defaults
-        // so column-level view respects the user's depth selection
         const columnLevelConfig = {
           ...lineageConfig,
           upstreamDepth:
-            lineageDirection === LineageDirection.Upstream
-              ? nodeDepth
-              : lineageConfig.upstreamDepth,
+            lineageDirection === LineageDirection.Upstream ? nodeDepth : 0,
           downstreamDepth:
-            lineageDirection === LineageDirection.Downstream
-              ? nodeDepth
-              : lineageConfig.downstreamDepth,
+            lineageDirection === LineageDirection.Downstream ? nodeDepth : 0,
         };
 
         const res = await getLineageDataByFQN({
@@ -452,6 +464,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           config: columnLevelConfig,
           queryFilter,
           columnFilter: columnFilterValue,
+          direction: lineageDirection,
         });
 
         const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
@@ -478,18 +491,39 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           } as Paging);
         }
       } else {
+        const paginationInfoKey = JSON.stringify({
+          fqn,
+          entityType,
+          lineageDirection,
+          nodeDepth,
+          upstreamDepth: lineageConfig.upstreamDepth,
+          downstreamDepth: lineageConfig.downstreamDepth,
+          queryFilter,
+          columnFilterValue,
+        });
+        const shouldIncludePaginationInfo =
+          paginationInfoKeyRef.current !== paginationInfoKey;
+
         const res = await getLineageByEntityCount({
           fqn: fqn ?? '',
-          type: entityType ?? '',
+          entityType: entityType ?? '',
           direction: lineageDirection,
-          nodeDepth: nodeDepth,
+          nodeDepth,
+          maxDepth: nodeDepth,
+          upstreamDepth: lineageConfig.upstreamDepth,
+          downstreamDepth: lineageConfig.downstreamDepth,
           from: (currentPage - 1) * pageSize,
           size: pageSize,
           query_filter: queryFilter,
           column_filter: columnFilterValue,
+          include_pagination_info: shouldIncludePaginationInfo,
         });
 
         delete res.nodes[fqn];
+        if (shouldIncludePaginationInfo) {
+          setLineagePagingInfo(res.paginationInfo ?? null);
+          paginationInfoKeyRef.current = res.paginationInfo ? paginationInfoKey : null;
+        }
 
         setFilterNodes(
           sortBy(
@@ -507,9 +541,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         );
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Error fetching nodes:', error);
+      showErrorToast(error as AxiosError);
       setFilterNodes([]);
+      setColumnLineageNodes([], []);
+      if (impactLevel === EImpactLevel.TableLevel) {
+        paginationInfoKeyRef.current = null;
+        setLineagePagingInfo(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -524,36 +562,22 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     impactLevel,
     lineageConfig,
     columnFilterValue,
+    setLineagePagingInfo,
   ]);
 
   // Table-level lineage: fetch on all dependencies
   useEffect(() => {
     if (impactLevel === EImpactLevel.TableLevel) {
-      fetchNodes();
+      void fetchNodes();
     }
-  }, [
-    nodeDepth,
-    currentPage,
-    impactLevel,
-    pageSize,
-    queryFilter,
-    columnFilterValue,
-    lineageDirection,
-  ]);
+  }, [fetchNodes, impactLevel]);
 
   // Column-level lineage: fetch only when switching to column mode
   useEffect(() => {
     if (impactLevel === EImpactLevel.ColumnLevel) {
-      fetchNodes();
+      void fetchNodes();
     }
-  }, [
-    nodeDepth,
-    currentPage,
-    impactLevel,
-    pageSize,
-    queryFilter,
-    columnFilterValue,
-  ]);
+  }, [fetchNodes, impactLevel, lineageDirection]);
 
   useEffect(() => {
     updateEntityData(entityType, entity, false);
@@ -849,7 +873,9 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Initialize quick filters on component mount
   useEffect(() => {
-    const items = LINEAGE_DROPDOWN_ITEMS;
+    const items = getLineageDropdownItems(
+      impactLevel === EImpactLevel.ColumnLevel
+    );
     const updatedQuickFilters = items.map((selectedFilterItem) => {
       const originalFilterItem = selectedQuickFilters?.find(
         (filter) => filter.key === selectedFilterItem.key
@@ -918,21 +944,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       },
     };
   }, [pageSize, currentPage, showPagination, paging, handlePageSizeChange]);
-
-  // Fetch paging data when fqn, entityType, or queryFilter changes
-  useEffect(() => {
-    const fetchPagingData = async () => {
-      const lineagePagingData = await getLineagePagingData({
-        fqn: fqn ?? '',
-        type: entityType ?? '',
-        query_filter: queryFilter,
-      });
-
-      setLineagePagingInfo(lineagePagingData);
-    };
-
-    fetchPagingData();
-  }, [fqn, entityType, queryFilter]);
 
   return (
     <Card

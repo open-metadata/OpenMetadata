@@ -24,15 +24,14 @@ import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.lineage.DepthInfo;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
@@ -46,13 +45,20 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.ColumnFilterMatcher;
 import org.openmetadata.service.search.ColumnMetadataCache;
 import org.openmetadata.service.search.LineagePathPreserver;
-import org.openmetadata.service.search.QueryFilterParser;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 
 @Slf4j
 public class ESLineageGraphBuilder
     extends org.openmetadata.service.search.lineage.AbstractLineageGraphBuilder {
+
+  private static final List<String> COLUMN_METADATA_SOURCE_FIELDS =
+      List.of(
+          "fullyQualifiedName",
+          "columns.name",
+          "columns.fullyQualifiedName",
+          "columns.tags.tagFQN",
+          "columns.tags.source");
 
   private final ElasticsearchClient esClient;
 
@@ -604,19 +610,29 @@ public class ESLineageGraphBuilder
     upstreamDepthCounts.put(0, 1);
     downstreamDepthCounts.put(0, 1);
 
-    boolean hasNodeFilter = !nullOrEmpty(queryFilter);
+    boolean hasNodeFilter = hasNodeLevelFilters(queryFilter);
     String countFilter = getStructuralFilterOnly(queryFilter);
 
     if (hasNodeFilter) {
       if (upstreamDepth > 0) {
         upstreamDepthCounts.putAll(
             getFilteredDepthCounts(
-                fqn, LineageDirection.UPSTREAM, upstreamDepth, queryFilter, includeDeleted));
+                fqn,
+                LineageDirection.UPSTREAM,
+                upstreamDepth,
+                queryFilter,
+                countFilter,
+                includeDeleted));
       }
       if (downstreamDepth > 0) {
         downstreamDepthCounts.putAll(
             getFilteredDepthCounts(
-                fqn, LineageDirection.DOWNSTREAM, downstreamDepth, queryFilter, includeDeleted));
+                fqn,
+                LineageDirection.DOWNSTREAM,
+                downstreamDepth,
+                queryFilter,
+                countFilter,
+                includeDeleted));
       }
     } else {
       if (upstreamDepth > 0) {
@@ -641,41 +657,7 @@ public class ESLineageGraphBuilder
       }
     }
 
-    LineagePaginationInfo paginationInfo = new LineagePaginationInfo();
-
-    int totalUpstream = upstreamDepthCounts.values().stream().mapToInt(Integer::intValue).sum();
-    int totalDownstream = downstreamDepthCounts.values().stream().mapToInt(Integer::intValue).sum();
-
-    paginationInfo.setTotalUpstreamEntities(totalUpstream);
-    paginationInfo.setTotalDownstreamEntities(totalDownstream);
-
-    paginationInfo.setMaxUpstreamDepth(
-        upstreamDepthCounts.keySet().stream().mapToInt(i -> i).max().orElse(0));
-    paginationInfo.setMaxDownstreamDepth(
-        downstreamDepthCounts.keySet().stream().mapToInt(i -> i).max().orElse(0));
-
-    List<DepthInfo> upstreamDepthInfo = new ArrayList<>();
-    for (Map.Entry<Integer, Integer> entry : upstreamDepthCounts.entrySet()) {
-      DepthInfo depthInfo = new DepthInfo();
-      depthInfo.setDepth(entry.getKey());
-      depthInfo.setEntityCount(entry.getValue());
-      upstreamDepthInfo.add(depthInfo);
-    }
-    upstreamDepthInfo.sort(Comparator.comparingInt(DepthInfo::getDepth));
-
-    List<DepthInfo> downstreamDepthInfo = new ArrayList<>();
-    for (Map.Entry<Integer, Integer> entry : downstreamDepthCounts.entrySet()) {
-      DepthInfo depthInfo = new DepthInfo();
-      depthInfo.setDepth(entry.getKey());
-      depthInfo.setEntityCount(entry.getValue());
-      downstreamDepthInfo.add(depthInfo);
-    }
-    downstreamDepthInfo.sort(Comparator.comparingInt(DepthInfo::getDepth));
-
-    paginationInfo.setUpstreamDepthInfo(upstreamDepthInfo);
-    paginationInfo.setDownstreamDepthInfo(downstreamDepthInfo);
-
-    return paginationInfo;
+    return buildPaginationInfo(upstreamDepthCounts, downstreamDepthCounts);
   }
 
   private Map<Integer, Integer> getFilteredDepthCounts(
@@ -683,10 +665,11 @@ public class ESLineageGraphBuilder
       LineageDirection direction,
       int maxDepth,
       String queryFilter,
+      String structuralFilter,
       boolean includeDeleted)
       throws IOException {
     Map<Integer, List<String>> entitiesByDepth =
-        getAllEntitiesByDepth(fqn, direction, maxDepth, null, includeDeleted, Set.of());
+        getAllEntitiesByDepth(fqn, direction, maxDepth, structuralFilter, includeDeleted, Set.of());
 
     Set<String> allFqnHashes = new HashSet<>();
     for (List<String> fqns : entitiesByDepth.values()) {
@@ -721,10 +704,10 @@ public class ESLineageGraphBuilder
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    boolean hasQueryFilter = !nullOrEmpty(request.getQueryFilter());
+    boolean hasNodeLevelQueryFilter = hasNodeLevelFilters(request.getQueryFilter());
     boolean hasColumnFilter = !nullOrEmpty(request.getColumnFilter());
 
-    if (!hasQueryFilter && !hasColumnFilter) {
+    if (!hasNodeLevelQueryFilter && !hasColumnFilter) {
       java.util.Optional<SearchLineageResult> cached = checkEntityCountCache(request);
       if (cached.isPresent()) {
         LOG.debug(
@@ -743,7 +726,7 @@ public class ESLineageGraphBuilder
       result = applyColumnFiltering(result, convertToSearchLineageRequest(request));
     }
 
-    if (!hasQueryFilter && !hasColumnFilter) {
+    if (!hasNodeLevelQueryFilter && !hasColumnFilter) {
       cacheEntityCountResult(request, result);
     }
 
@@ -752,7 +735,10 @@ public class ESLineageGraphBuilder
 
   private SearchLineageResult searchLineageByEntityCountInternal(EntityCountLineageRequest request)
       throws IOException {
-    boolean hasQueryFilter = !nullOrEmpty(request.getQueryFilter());
+    boolean hasNodeLevelQueryFilter = hasNodeLevelFilters(request.getQueryFilter());
+    String structuralQueryFilter = getStructuralFilterOnly(request.getQueryFilter());
+    int traversalDepth = getTraversalDepth(request.getNodeDepth(), request.getMaxDepth());
+    Map<Integer, Integer> currentDirectionDepthCounts = new LinkedHashMap<>();
 
     SearchLineageResult result =
         new SearchLineageResult()
@@ -771,31 +757,41 @@ public class ESLineageGraphBuilder
         false);
 
     if (request.getNodeDepth() != null && request.getNodeDepth() == 0) {
+      if (Boolean.TRUE.equals(request.getIncludePaginationInfo())) {
+        result.setPaginationInfo(
+            buildEntityCountPaginationInfo(
+                request,
+                hasNodeLevelQueryFilter,
+                structuralQueryFilter,
+                currentDirectionDepthCounts));
+      }
       return result;
     }
 
-    if (request.getNodeDepth() != null && !hasQueryFilter) {
-      getEntitiesAtSpecificDepthWithPagination(result, request);
+    if (request.getNodeDepth() != null && !hasNodeLevelQueryFilter) {
+      currentDirectionDepthCounts = getEntitiesAtSpecificDepthWithPagination(result, request);
     } else {
-      // BFS always unfiltered — filter applied after via ES postFilter or pagination
+      // Only node-level filters require unfiltered traversal.
       Map<Integer, List<String>> entitiesByDepth =
-          getAllEntitiesByDepth(
-              request.getFqn(),
-              request.getDirection(),
-              request.getMaxDepth(),
-              null,
-              request.getIncludeDeleted(),
-              request.getIncludeSourceFields());
+          dedupeEntitiesByDepth(
+              getAllEntitiesByDepth(
+                  request.getFqn(),
+                  request.getDirection(),
+                  traversalDepth,
+                  hasNodeLevelQueryFilter ? structuralQueryFilter : request.getQueryFilter(),
+                  request.getIncludeDeleted(),
+                  request.getIncludeSourceFields()));
 
       List<String> allEntities = new ArrayList<>();
-      for (int depth = 1; depth <= request.getMaxDepth(); depth++) {
+      for (int depth = 1; depth <= traversalDepth; depth++) {
         allEntities.addAll(entitiesByDepth.getOrDefault(depth, new ArrayList<>()));
       }
 
       // Build reverse lookup once for O(1) depth resolution
       Map<String, Integer> depthByFqn = buildDepthLookup(entitiesByDepth);
+      allEntities = sortEntityFqnsByDepthThenName(allEntities, depthByFqn);
 
-      if (hasQueryFilter) {
+      if (hasNodeLevelQueryFilter) {
         // ES-native: collect all FQN hashes, fetch only matching docs via ES postFilter
         Set<String> allFqnHashes = new HashSet<>();
         for (String entityFqn : allEntities) {
@@ -805,6 +801,8 @@ public class ESLineageGraphBuilder
         if (!allFqnHashes.isEmpty()) {
           Map<String, Object> matchingDocs =
               fetchMatchingEntities(allFqnHashes, request.getQueryFilter());
+          currentDirectionDepthCounts =
+              countMatchingEntitiesByDepth(entitiesByDepth, matchingDocs.keySet());
 
           Set<String> allCollectedFqns = new HashSet<>(matchingDocs.keySet());
           allCollectedFqns.add(request.getFqn());
@@ -826,7 +824,8 @@ public class ESLineageGraphBuilder
           }
         }
       } else {
-        // No filter: paginate first, then fetch docs for one page only
+        currentDirectionDepthCounts = toDepthCounts(entitiesByDepth);
+        // No node-level filter: paginate first, then fetch docs for one page only
         List<String> paginatedEntities =
             paginateList(allEntities, request.getFrom(), request.getSize());
         addEntitiesAcrossDepths(result, paginatedEntities, entitiesByDepth, request);
@@ -835,7 +834,16 @@ public class ESLineageGraphBuilder
 
     replaceTagsWithEntityLevelTags(result);
 
-    if (hasQueryFilter) {
+    if (Boolean.TRUE.equals(request.getIncludePaginationInfo())) {
+      result.setPaginationInfo(
+          buildEntityCountPaginationInfo(
+              request,
+              hasNodeLevelQueryFilter,
+              structuralQueryFilter,
+              currentDirectionDepthCounts));
+    }
+
+    if (hasNodeLevelQueryFilter) {
       return applyEntityCountPagination(result, request);
     }
 
@@ -944,7 +952,12 @@ public class ESLineageGraphBuilder
         request.getIsConnectedVia() != null ? request.getIsConnectedVia() : Boolean.FALSE,
         request.getFrom() != null ? request.getFrom() : 0,
         request.getSize() != null ? request.getSize() : 0,
-        request.getNodeDepth() != null ? request.getNodeDepth() : 0);
+        request.getNodeDepth() != null ? request.getNodeDepth() : 0,
+        request.getIncludePaginationInfo() != null
+            ? request.getIncludePaginationInfo()
+            : Boolean.FALSE,
+        request.getUpstreamDepth() != null ? request.getUpstreamDepth() : 0,
+        request.getDownstreamDepth() != null ? request.getDownstreamDepth() : 0);
   }
 
   private Map<Integer, Integer> getDepthWiseEntityCounts(
@@ -954,6 +967,18 @@ public class ESLineageGraphBuilder
       String queryFilter,
       boolean includeDeleted,
       String entityType)
+      throws IOException {
+    return getDepthWiseEntityCounts(
+        fqn, direction, maxDepth, queryFilter, includeDeleted, isConnectedVia(entityType));
+  }
+
+  private Map<Integer, Integer> getDepthWiseEntityCounts(
+      String fqn,
+      LineageDirection direction,
+      int maxDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      boolean connectedVia)
       throws IOException {
 
     int startingOffset = direction.equals(LineageDirection.UPSTREAM) ? 0 : 1;
@@ -969,7 +994,7 @@ public class ESLineageGraphBuilder
 
       Map<String, Set<String>> directionKeyAndValues =
           buildDirectionToFqnSet(
-              getLineageDirection(direction, isConnectedVia(entityType)), currentLevel.keySet());
+              getLineageDirection(direction, connectedVia), currentLevel.keySet());
 
       SearchRequest searchRequest =
           EsUtils.getSearchRequest(
@@ -1057,7 +1082,7 @@ public class ESLineageGraphBuilder
 
       SearchResponse<JsonData> searchResponse = esClient.search(searchRequest, JsonData.class);
 
-      List<String> entitiesAtDepth = new ArrayList<>();
+      Set<String> entitiesAtDepth = new LinkedHashSet<>();
       Map<String, String> nextLevel = new HashMap<>();
 
       for (Hit<JsonData> hit : searchResponse.hits().hits()) {
@@ -1086,7 +1111,7 @@ public class ESLineageGraphBuilder
         }
       }
 
-      entitiesByDepth.put(depth, entitiesAtDepth);
+      entitiesByDepth.put(depth, new ArrayList<>(entitiesAtDepth));
       currentLevel = nextLevel;
     }
 
@@ -1181,7 +1206,7 @@ public class ESLineageGraphBuilder
     }
   }
 
-  private void getEntitiesAtSpecificDepthWithPagination(
+  private Map<Integer, Integer> getEntitiesAtSpecificDepthWithPagination(
       SearchLineageResult result, EntityCountLineageRequest request) throws IOException {
     int startingOffset = request.getDirection().equals(LineageDirection.UPSTREAM) ? 0 : 1;
     int targetDepth = request.getNodeDepth();
@@ -1252,7 +1277,11 @@ public class ESLineageGraphBuilder
     }
 
     // Apply pagination to all collected entities
-    List<EntityData> allEntitiesUpToDepthList = new ArrayList<>(allEntitiesUpToDepth.values());
+    List<EntityData> allEntitiesUpToDepthList =
+        sortEntitiesByDepthThenName(
+            new ArrayList<>(allEntitiesUpToDepth.values()),
+            entityData -> entityData.depth,
+            entityData -> entityData.fqn);
     List<EntityData> paginatedEntities =
         paginateList(allEntitiesUpToDepthList, request.getFrom(), request.getSize());
 
@@ -1277,60 +1306,82 @@ public class ESLineageGraphBuilder
 
       addLineageEdges(result, entityData.document, request, allCollectedFqns);
     }
-  }
 
-  /**
-   * Separates structural filters (deleted, etc.) from node filters (owner, tags, etc.)
-   * for path-preserving filter logic.
-   */
-  private String getStructuralFilterOnly(String queryFilter) {
-    if (nullOrEmpty(queryFilter)) {
-      return null;
-    }
-
-    Map<String, List<String>> parsedFields = QueryFilterParser.parseFilter(queryFilter);
-    if (parsedFields.isEmpty()) {
-      return null;
-    }
-
-    Set<String> NODE_LEVEL_FIELDS =
-        Set.of(
-            "owner",
-            "owners",
-            "tag",
-            "tags",
-            "domain",
-            "service",
-            "tier",
-            "name",
-            "displayName",
-            "owners.displayName",
-            "tags.tagFQN",
-            "domain.displayName");
-
-    for (String fieldName : parsedFields.keySet()) {
-      String baseField = fieldName.contains(".") ? fieldName.split("\\.")[0] : fieldName;
-      if (NODE_LEVEL_FIELDS.contains(fieldName) || NODE_LEVEL_FIELDS.contains(baseField)) {
-        return null;
+    Map<Integer, Integer> depthCounts = new LinkedHashMap<>();
+    for (EntityData entityData : allEntitiesUpToDepthList) {
+      if (entityData.depth > 0) {
+        depthCounts.merge(entityData.depth, 1, Integer::sum);
       }
     }
 
-    return queryFilter;
+    return depthCounts;
   }
 
-  /**
-   * Checks if the query filter contains node-level filters that require path preservation.
-   * These filters need path preservation because the lineage BFS traverses layer by layer,
-   * and applying entity-level filters during traversal prevents reaching deeper matching nodes
-   * through non-matching intermediate nodes.
-   */
-  private boolean hasNodeLevelFilters(String queryFilter) {
-    if (nullOrEmpty(queryFilter)) {
-      return false;
+  private LineagePaginationInfo buildEntityCountPaginationInfo(
+      EntityCountLineageRequest request,
+      boolean hasNodeLevelQueryFilter,
+      String structuralQueryFilter,
+      Map<Integer, Integer> currentDirectionDepthCounts)
+      throws IOException {
+    Map<Integer, Integer> upstreamDepthCounts = new LinkedHashMap<>();
+    Map<Integer, Integer> downstreamDepthCounts = new LinkedHashMap<>();
+    upstreamDepthCounts.put(0, 1);
+    downstreamDepthCounts.put(0, 1);
+
+    int upstreamDepth = getRequestedDepthForDirection(request, LineageDirection.UPSTREAM);
+    int downstreamDepth = getRequestedDepthForDirection(request, LineageDirection.DOWNSTREAM);
+
+    if (request.getDirection() == LineageDirection.UPSTREAM && upstreamDepth > 0) {
+      upstreamDepthCounts.putAll(currentDirectionDepthCounts);
+    } else if (upstreamDepth > 0) {
+      upstreamDepthCounts.putAll(
+          getEntityCountDepthCounts(
+              request,
+              LineageDirection.UPSTREAM,
+              upstreamDepth,
+              hasNodeLevelQueryFilter,
+              structuralQueryFilter));
     }
-    // If getStructuralFilterOnly returns null, the filter contains node-level fields
-    // that require unfiltered BFS + in-memory post-filter with path preservation.
-    return getStructuralFilterOnly(queryFilter) == null;
+
+    if (request.getDirection() == LineageDirection.DOWNSTREAM && downstreamDepth > 0) {
+      downstreamDepthCounts.putAll(currentDirectionDepthCounts);
+    } else if (downstreamDepth > 0) {
+      downstreamDepthCounts.putAll(
+          getEntityCountDepthCounts(
+              request,
+              LineageDirection.DOWNSTREAM,
+              downstreamDepth,
+              hasNodeLevelQueryFilter,
+              structuralQueryFilter));
+    }
+
+    return buildPaginationInfo(upstreamDepthCounts, downstreamDepthCounts);
+  }
+
+  private Map<Integer, Integer> getEntityCountDepthCounts(
+      EntityCountLineageRequest request,
+      LineageDirection direction,
+      int depth,
+      boolean hasNodeLevelQueryFilter,
+      String structuralQueryFilter)
+      throws IOException {
+    if (hasNodeLevelQueryFilter) {
+      return getFilteredDepthCounts(
+          request.getFqn(),
+          direction,
+          depth,
+          request.getQueryFilter(),
+          structuralQueryFilter,
+          request.getIncludeDeleted());
+    }
+
+    return getDepthWiseEntityCounts(
+        request.getFqn(),
+        direction,
+        depth,
+        structuralQueryFilter,
+        request.getIncludeDeleted(),
+        Boolean.TRUE.equals(request.getIsConnectedVia()));
   }
 
   /**
@@ -1351,7 +1402,7 @@ public class ESLineageGraphBuilder
       if (!columnFqns.isEmpty()) {
         // Load column metadata from parent entities
         ColumnMetadataCache cache = new ColumnMetadataCache();
-        cache.loadColumnMetadata(columnFqns, this::fetchEntityDocument);
+        cache.loadColumnMetadata(columnFqns, this::fetchEntityDocuments, this::fetchEntityDocument);
 
         // Apply filtering with metadata
         return LineagePathPreserver.filterByColumnsWithMetadata(
@@ -1406,7 +1457,42 @@ public class ESLineageGraphBuilder
         GLOBAL_SEARCH_ALIAS,
         FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
         Pair.of(FullyQualifiedName.buildHash(fqn), fqn),
+        COLUMN_METADATA_SOURCE_FIELDS,
         SOURCE_FIELDS_TO_EXCLUDE);
+  }
+
+  private Map<String, Map<String, Object>> fetchEntityDocuments(Set<String> fqns)
+      throws IOException {
+    Map<String, Map<String, Object>> entityDocs = new HashMap<>();
+    List<String> fqnList = new ArrayList<>(fqns);
+
+    for (int index = 0; index < fqnList.size(); index += 1000) {
+      List<String> batch = fqnList.subList(index, Math.min(index + 1000, fqnList.size()));
+      Set<String> fqnHashes = new HashSet<>();
+      for (String fqn : batch) {
+        fqnHashes.add(FullyQualifiedName.buildHash(fqn));
+      }
+
+      Map<String, Object> batchResult =
+          EsUtils.searchEntitiesByKey(
+              esClient,
+              null,
+              GLOBAL_SEARCH_ALIAS,
+              FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+              fqnHashes,
+              0,
+              batch.size(),
+              COLUMN_METADATA_SOURCE_FIELDS,
+              SOURCE_FIELDS_TO_EXCLUDE,
+              null);
+      for (Map.Entry<String, Object> entry : batchResult.entrySet()) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> entityDoc = (Map<String, Object>) entry.getValue();
+        entityDocs.put(entry.getKey(), entityDoc);
+      }
+    }
+
+    return entityDocs;
   }
 
   /**
@@ -1417,7 +1503,10 @@ public class ESLineageGraphBuilder
   public SearchLineageResult executeInMemory(
       org.openmetadata.service.search.lineage.LineageQueryContext context, int batchSize)
       throws IOException {
-    return searchLineageInternal(context.getRequest());
+    SearchLineageRequest request = context.getRequest();
+    return request.getDirection() != null
+        ? searchLineageWithDirectionInternal(request)
+        : searchLineageInternal(request);
   }
 
   /**

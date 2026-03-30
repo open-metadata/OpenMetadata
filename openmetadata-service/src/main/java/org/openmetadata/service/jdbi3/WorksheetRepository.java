@@ -238,7 +238,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     // Collect unique spreadsheet IDs
     Set<UUID> spreadsheetIds =
         worksheets.stream()
-            .map(w -> w.getSpreadsheet())
+            .map(Worksheet::getSpreadsheet)
             .filter(Objects::nonNull)
             .map(EntityReference::getId)
             .collect(Collectors.toSet());
@@ -539,24 +539,15 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       LOG.info("WorksheetUpdater.entitySpecificUpdate called");
       compareAndUpdate(
           "worksheetId",
-          () -> {
-            recordChange("worksheetId", original.getWorksheetId(), updated.getWorksheetId());
-          });
+          () -> recordChange("worksheetId", original.getWorksheetId(), updated.getWorksheetId()));
       compareAndUpdate(
-          "index",
-          () -> {
-            recordChange("index", original.getIndex(), updated.getIndex());
-          });
+          "index", () -> recordChange("index", original.getIndex(), updated.getIndex()));
       compareAndUpdate(
           "rowCount",
-          () -> {
-            recordChange("rowCount", original.getRowCount(), updated.getRowCount());
-          });
+          () -> recordChange("rowCount", original.getRowCount(), updated.getRowCount()));
       compareAndUpdate(
           "columnCount",
-          () -> {
-            recordChange("columnCount", original.getColumnCount(), updated.getColumnCount());
-          });
+          () -> recordChange("columnCount", original.getColumnCount(), updated.getColumnCount()));
       compareAndUpdate(
           "columns",
           () -> {
@@ -570,14 +561,10 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
           });
       compareAndUpdate(
           "isHidden",
-          () -> {
-            recordChange("isHidden", original.getIsHidden(), updated.getIsHidden());
-          });
+          () -> recordChange("isHidden", original.getIsHidden(), updated.getIsHidden()));
       compareAndUpdate(
           "sampleData",
-          () -> {
-            recordChange("sampleData", original.getSampleData(), updated.getSampleData());
-          });
+          () -> recordChange("sampleData", original.getSampleData(), updated.getSampleData()));
     }
   }
 }

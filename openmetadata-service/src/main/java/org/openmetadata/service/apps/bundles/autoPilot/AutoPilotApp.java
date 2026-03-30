@@ -88,9 +88,9 @@ public class AutoPilotApp extends AbstractNativeApplication {
               getTriggerWorkflowId(WORKFLOW_NAME), UUID.randomUUID().toString(), variables);
     } else {
       LOG.info(
-          String.format(
-              "%s is not active. Won't be triggered for %s",
-              WORKFLOW_NAME, runtimeConfig.getEntityLink()));
+          "{} is not active. Won't be triggered for {}",
+          WORKFLOW_NAME,
+          runtimeConfig.getEntityLink());
     }
   }
 

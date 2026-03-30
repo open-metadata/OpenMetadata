@@ -38,6 +38,9 @@ public class LineageCacheKey {
   int from;
   int size;
   int nodeDepth;
+  Boolean includePaginationInfo;
+  int paginationUpstreamDepth;
+  int paginationDownstreamDepth;
 
   /**
    * Creates cache key from lineage request.
@@ -62,6 +65,9 @@ public class LineageCacheKey {
         request.getIsConnectedVia() != null ? request.getIsConnectedVia() : Boolean.FALSE,
         0,
         0,
+        0,
+        Boolean.FALSE,
+        0,
         0);
   }
 
@@ -76,7 +82,8 @@ public class LineageCacheKey {
     return String.format(
         "LineageCacheKey{fqn='%s', up=%d, down=%d, queryFilter='%s', columnFilter='%s',"
             + " preservePaths=%b, direction='%s', isConnectedVia=%b, from=%d, size=%d,"
-            + " nodeDepth=%d}",
+            + " nodeDepth=%d, includePaginationInfo=%b, paginationUpstreamDepth=%d,"
+            + " paginationDownstreamDepth=%d}",
         fqn,
         upstreamDepth,
         downstreamDepth,
@@ -87,6 +94,9 @@ public class LineageCacheKey {
         isConnectedVia,
         from,
         size,
-        nodeDepth);
+        nodeDepth,
+        includePaginationInfo,
+        paginationUpstreamDepth,
+        paginationDownstreamDepth);
   }
 }

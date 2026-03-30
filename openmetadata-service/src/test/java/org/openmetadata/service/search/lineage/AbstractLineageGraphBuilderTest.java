@@ -728,6 +728,55 @@ class AbstractLineageGraphBuilderTest {
     assertTrue(out.getNodes().containsKey("svc.db.schema.mid"));
   }
 
+  @Test
+  void hasNodeLevelFiltersClassifiesStructuralAndNodeFilters() {
+    assertFalse(builder.hasNodeLevelFilters("{\"term\":{\"deleted\":false}}"));
+    assertFalse(builder.hasNodeLevelFilters("{\"term\":{\"id.keyword\":\"123\"}}"));
+    assertTrue(
+        builder.hasNodeLevelFilters("{\"term\":{\"tags.tagFQN.keyword\":\"PII.Sensitive\"}}"));
+    assertTrue(builder.hasNodeLevelFilters("{\"wildcard\":{\"name\":{\"value\":\"*sales*\"}}}"));
+    assertTrue(builder.hasNodeLevelFilters("{\"term\":{\"ownerName\":\"harsha\"}}"));
+    assertTrue(builder.hasNodeLevelFilters("{\"term\":{\"domains.name.keyword\":\"Finance\"}}"));
+  }
+
+  @Test
+  void getTraversalDepthPrefersSelectedDepthWhenProvided() {
+    assertEquals(3, builder.getTraversalDepth(3, 10000));
+    assertEquals(4, builder.getTraversalDepth(-4, 10000));
+    assertEquals(6, builder.getTraversalDepth(null, 6));
+    assertEquals(2, builder.getTraversalDepth(2, null));
+  }
+
+  @Test
+  void sortEntityFqnsByDepthThenNameOrdersDepthFirstThenAlphabetically() {
+    Map<String, Integer> depthByFqn =
+        Map.of("svc.db.schema.b", 2, "svc.db.schema.a", 1, "svc.db.schema.c", 1);
+
+    List<String> sorted =
+        builder.sortEntityFqnsByDepthThenName(
+            List.of("svc.db.schema.b", "svc.db.schema.c", "svc.db.schema.a"), depthByFqn);
+
+    assertEquals(List.of("svc.db.schema.a", "svc.db.schema.c", "svc.db.schema.b"), sorted);
+  }
+
+  @Test
+  void sortEntitiesByDepthThenNameOrdersGenericPayloadDeterministically() {
+    record DepthCarrier(String fqn, int depth) {}
+
+    List<DepthCarrier> sorted =
+        builder.sortEntitiesByDepthThenName(
+            List.of(
+                new DepthCarrier("svc.db.schema.c", 2),
+                new DepthCarrier("svc.db.schema.b", 1),
+                new DepthCarrier("svc.db.schema.a", 1)),
+            DepthCarrier::depth,
+            DepthCarrier::fqn);
+
+    assertEquals(
+        List.of("svc.db.schema.a", "svc.db.schema.b", "svc.db.schema.c"),
+        sorted.stream().map(DepthCarrier::fqn).toList());
+  }
+
   private NodeInformation nodeWithEntity(String fqn, Map<String, Object> entity) {
     return new NodeInformation().withEntity(entity).withNodeDepth(1);
   }
@@ -753,6 +802,18 @@ class AbstractLineageGraphBuilderTest {
     public SearchLineageResult executeWithScroll(LineageQueryContext context, int batchSize)
         throws IOException {
       return new SearchLineageResult();
+    }
+
+    public List<String> sortEntityFqnsByDepthThenName(
+        List<String> entityFqns, Map<String, Integer> depthByFqn) {
+      return super.sortEntityFqnsByDepthThenName(entityFqns, depthByFqn);
+    }
+
+    public <T> List<T> sortEntitiesByDepthThenName(
+        List<T> entities,
+        java.util.function.ToIntFunction<T> depthExtractor,
+        java.util.function.Function<T, String> fqnExtractor) {
+      return super.sortEntitiesByDepthThenName(entities, depthExtractor, fqnExtractor);
     }
   }
 }

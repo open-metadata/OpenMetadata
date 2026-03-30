@@ -284,6 +284,19 @@ public class OsUtils {
       Pair<String, String> hasToFqnPair,
       List<String> fieldsToRemove)
       throws IOException {
+    return searchEntityByKey(
+        client, direction, indexAlias, keyName, hasToFqnPair, null, fieldsToRemove);
+  }
+
+  public static Map<String, Object> searchEntityByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Pair<String, String> hasToFqnPair,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove)
+      throws IOException {
     Map<String, Object> result =
         searchEntitiesByKey(
             client,
@@ -293,6 +306,7 @@ public class OsUtils {
             Set.of(hasToFqnPair.getLeft()),
             0,
             1,
+            fieldsToInclude,
             fieldsToRemove);
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
@@ -315,7 +329,7 @@ public class OsUtils {
       List<String> fieldsToRemove)
       throws IOException {
     return searchEntitiesByKey(
-        client, direction, indexAlias, keyName, keyValues, from, size, fieldsToRemove, null);
+        client, direction, indexAlias, keyName, keyValues, from, size, null, fieldsToRemove, null);
   }
 
   public static Map<String, Object> searchEntitiesByKey(
@@ -326,6 +340,55 @@ public class OsUtils {
       Set<String> keyValues,
       int from,
       int size,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove)
+      throws IOException {
+    return searchEntitiesByKey(
+        client,
+        direction,
+        indexAlias,
+        keyName,
+        keyValues,
+        from,
+        size,
+        fieldsToInclude,
+        fieldsToRemove,
+        null);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToRemove,
+      String queryFilter)
+      throws IOException {
+    return searchEntitiesByKey(
+        client,
+        direction,
+        indexAlias,
+        keyName,
+        keyValues,
+        from,
+        size,
+        null,
+        fieldsToRemove,
+        queryFilter);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToInclude,
       List<String> fieldsToRemove,
       String queryFilter)
       throws IOException {
@@ -340,7 +403,7 @@ public class OsUtils {
             from,
             size,
             null,
-            null,
+            fieldsToInclude,
             fieldsToRemove);
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;

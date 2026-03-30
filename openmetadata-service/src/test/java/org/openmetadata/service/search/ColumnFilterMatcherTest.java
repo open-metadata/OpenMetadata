@@ -468,7 +468,8 @@ class ColumnFilterMatcherTest {
                         "name",
                         "name",
                         "tags",
-                        List.of(Map.of("tagFQN", "Glossary.CustomerName"))))));
+                        List.of(
+                            Map.of("tagFQN", "Glossary.CustomerName", "source", "Glossary"))))));
 
     List<ColumnLineage> result =
         ColumnFilterMatcher.filterMatchingColumnsWithMetadata(edge, "glossary:CustomerName", cache);
@@ -602,6 +603,7 @@ class ColumnFilterMatcherTest {
   }
 
   private static Map<String, Object> column(String name, String tagFqn) {
-    return Map.of("name", name, "tags", List.of(Map.of("tagFQN", tagFqn)));
+    String source = tagFqn.startsWith("Glossary.") ? "Glossary" : "Classification";
+    return Map.of("name", name, "tags", List.of(Map.of("tagFQN", tagFqn, "source", source)));
   }
 }

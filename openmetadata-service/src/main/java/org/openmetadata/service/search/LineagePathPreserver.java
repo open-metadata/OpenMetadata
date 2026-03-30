@@ -9,6 +9,7 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Utility class to preserve paths in lineage results when filters are applied.
@@ -262,12 +263,14 @@ public class LineagePathPreserver {
       return result;
     }
 
-    Set<String> matchingNodes = collectNodesFromMatchingEdges(result, columnFilter, rootFqn, null);
-    preservePathsAndFilterEdges(result, matchingNodes, rootFqn);
-    narrowColumnsOnEdges(result, columnFilter, null);
-    retainOnlyNodes(result, matchingNodes);
+    SearchLineageResult filteredResult = JsonUtils.deepCopy(result, SearchLineageResult.class);
+    Set<String> matchingNodes =
+        collectNodesFromMatchingEdges(filteredResult, columnFilter, rootFqn, null);
+    preservePathsAndFilterEdges(filteredResult, matchingNodes, rootFqn);
+    narrowColumnsOnEdges(filteredResult, columnFilter, null);
+    retainOnlyNodes(filteredResult, matchingNodes);
 
-    return result;
+    return filteredResult;
   }
 
   public static SearchLineageResult filterByColumnsWithMetadata(
@@ -280,13 +283,14 @@ public class LineagePathPreserver {
       return result;
     }
 
+    SearchLineageResult filteredResult = JsonUtils.deepCopy(result, SearchLineageResult.class);
     Set<String> matchingNodes =
-        collectNodesFromMatchingEdges(result, columnFilter, rootFqn, metadataCache);
-    preservePathsAndFilterEdges(result, matchingNodes, rootFqn);
-    narrowColumnsOnEdges(result, columnFilter, metadataCache);
-    retainOnlyNodes(result, matchingNodes);
+        collectNodesFromMatchingEdges(filteredResult, columnFilter, rootFqn, metadataCache);
+    preservePathsAndFilterEdges(filteredResult, matchingNodes, rootFqn);
+    narrowColumnsOnEdges(filteredResult, columnFilter, metadataCache);
+    retainOnlyNodes(filteredResult, matchingNodes);
 
-    return result;
+    return filteredResult;
   }
 
   private static Set<String> collectNodesFromMatchingEdges(

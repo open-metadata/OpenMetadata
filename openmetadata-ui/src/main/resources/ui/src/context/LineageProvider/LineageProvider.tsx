@@ -1221,6 +1221,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, []);
 
+  const redraw = useCallback(async () => {
+    if (entityLineage) {
+      await redrawLineage(entityLineage, true);
+    }
+  }, [entityLineage, redrawLineage]);
+
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
     setReactFlowInstance(reactFlowInstance);
     if (reactFlowInstance.viewportInitialized) {
@@ -1400,7 +1406,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setSelectedEdge(undefined);
   }, []);
 
-  const onEntitySelect = (selectedEntity: EntityReference, nodeId: string) => {
+  function onEntitySelect(selectedEntity: EntityReference, nodeId: string) {
     const isExistingNode = nodes.some(
       (n) =>
         n.data.node.fullyQualifiedName === selectedEntity.fullyQualifiedName
@@ -1440,7 +1446,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         });
       });
     }
-  };
+  }
 
   const onAddPipelineModalSave = useCallback(
     async (pipelineData?: EntityReference) => {
@@ -1648,12 +1654,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     },
     [nodes, edges, entityLineage]
   );
-
-  const redraw = useCallback(async () => {
-    if (entityLineage) {
-      await redrawLineage(entityLineage, true);
-    }
-  }, [entityLineage, redrawLineage]);
 
   useEffect(() => {
     redraw();

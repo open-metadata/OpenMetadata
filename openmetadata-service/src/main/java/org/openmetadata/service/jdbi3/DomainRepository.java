@@ -442,16 +442,10 @@ public class DomainRepository extends EntityRepository<Domain> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "name",
-          () -> {
-            updateName(updated);
-          });
+      compareAndUpdate("name", () -> updateName(updated));
       compareAndUpdate(
           "domainType",
-          () -> {
-            recordChange("domainType", original.getDomainType(), updated.getDomainType());
-          });
+          () -> recordChange("domainType", original.getDomainType(), updated.getDomainType()));
     }
 
     private void updateName(Domain updated) {

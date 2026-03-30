@@ -127,13 +127,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private void createIndexInternal(String entityType) throws IOException {
     IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
     if (!searchRepository.indexExists(resultIndexType)) {
-      LOG.info(String.format("[Data Insights] Creating Index for Entity Type: '%s'", entityType));
+      LOG.info("[Data Insights] Creating Index for Entity Type: '{}'", entityType);
       searchRepository.createIndex(resultIndexType);
     }
     DataInsightsSearchInterface searchInterface = getSearchInterface();
     if (!searchInterface.dataAssetDataStreamExists(
         getDataStreamName(searchRepository.getClusterAlias(), entityType))) {
-      LOG.info(String.format("[Data Insights] Creating Index for Entity Type: '%s'", entityType));
+      LOG.info("[Data Insights] Creating Index for Entity Type: '{}'", entityType);
       searchRepository
           .getSearchClient()
           .addIndexAlias(
@@ -144,7 +144,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private void deleteIndexInternal(String entityType) {
     IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
     if (searchRepository.indexExists(resultIndexType)) {
-      LOG.info(String.format("[Data Insights] Deleting Index for Entity Type: '%s'", entityType));
+      LOG.info("[Data Insights] Deleting Index for Entity Type: '{}'", entityType);
       searchRepository.deleteIndex(resultIndexType);
     }
   }

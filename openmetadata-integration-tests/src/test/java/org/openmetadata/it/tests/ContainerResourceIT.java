@@ -7,12 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -25,6 +27,7 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
@@ -1153,6 +1156,120 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     Column retrievedBigintArray = container.getDataModel().getColumns().get(2);
     assertEquals(ColumnDataType.ARRAY, retrievedBigintArray.getDataType());
     assertEquals(ColumnDataType.BIGINT, retrievedBigintArray.getArrayDataType());
+  }
+
+  // ===================================================================
+  // PATCH TESTS FOR NESTED DATA MODEL COLUMNS
+  // ===================================================================
+
+  @Test
+  void patch_dataModelColumnDescription_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                Arrays.asList(
+                    new Column()
+                        .withName("account_id")
+                        .withDataType(ColumnDataType.STRING)
+                        .withDataTypeDisplay("string"),
+                    new Column()
+                        .withName("balance")
+                        .withDataType(ColumnDataType.NUMERIC)
+                        .withDataTypeDisplay("numeric")));
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("patch_col_desc"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+    Container fetched = getEntityWithFields(container.getId().toString(), "tags,dataModel");
+    Double versionBefore = fetched.getVersion();
+
+    fetched.getDataModel().getColumns().get(0).setDescription("Unique account identifier");
+    Container patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    Container verified = getEntityWithFields(patched.getId().toString(), "tags,dataModel");
+    assertEquals(
+        "Unique account identifier", verified.getDataModel().getColumns().get(0).getDescription());
+  }
+
+  @Test
+  void patch_dataModelColumnTags_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    SharedEntities shared = SharedEntities.get();
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                Arrays.asList(
+                    new Column()
+                        .withName("email")
+                        .withDataType(ColumnDataType.STRING)
+                        .withDataTypeDisplay("string"),
+                    new Column()
+                        .withName("phone")
+                        .withDataType(ColumnDataType.STRING)
+                        .withDataTypeDisplay("string")));
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("patch_col_tags"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+    Container fetched = getEntityWithFields(container.getId().toString(), "tags,dataModel");
+    Double versionBefore = fetched.getVersion();
+
+    TagLabel piiTag = shared.PII_SENSITIVE_TAG_LABEL;
+    fetched.getDataModel().getColumns().get(0).setTags(new ArrayList<>(List.of(piiTag)));
+    Container patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    Container verified = getEntityWithFields(patched.getId().toString(), "tags,dataModel");
+    List<TagLabel> columnTags = verified.getDataModel().getColumns().get(0).getTags();
+    assertNotNull(columnTags);
+    assertFalse(columnTags.isEmpty());
+    assertTrue(columnTags.stream().anyMatch(t -> t.getTagFQN().equals(piiTag.getTagFQN())));
+  }
+
+  @Test
+  void patch_dataModelColumnDisplayName_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("txn_id")
+                        .withDataType(ColumnDataType.STRING)
+                        .withDataTypeDisplay("string")));
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("patch_col_display"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+
+    Container container = createEntity(request);
+    Container fetched = getEntityWithFields(container.getId().toString(), "tags,dataModel");
+    Double versionBefore = fetched.getVersion();
+
+    fetched.getDataModel().getColumns().get(0).setDisplayName("Transaction ID");
+    Container patched = patchEntity(fetched.getId().toString(), fetched);
+
+    assertTrue(patched.getVersion() > versionBefore);
+
+    Container verified = getEntityWithFields(patched.getId().toString(), "tags,dataModel");
+    assertEquals("Transaction ID", verified.getDataModel().getColumns().get(0).getDisplayName());
   }
 
   // ===================================================================

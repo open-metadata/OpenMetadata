@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringReader;
@@ -65,6 +66,8 @@ import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Lineage resource operations.
@@ -354,6 +357,59 @@ public class LineageResourceIT {
     cleanupTable(client, source);
     cleanupTable(client, target1);
     cleanupTable(client, target2);
+  }
+
+  @Test
+  void testDirectionalSearchPreservePathsRetainsIntermediateNodes() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table root = createTable(client, namespace, "preserve_root");
+    Table mid = createTable(client, namespace, "preserve_mid");
+    Table leaf = createTable(client, namespace, "preserve_leaf");
+
+    addLineage(client, root, mid);
+    addLineage(client, mid, leaf);
+
+    String queryFilter =
+        """
+        {
+          "query": {
+            "bool": {
+              "must": [
+                {"wildcard": {"name.keyword": {"value": "*preserve_leaf*"}}}
+              ]
+            }
+          }
+        }
+        """;
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fqn", root.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "3")
+            .queryParam("includeDeleted", "false")
+            .queryParam("query_filter", queryFilter)
+            .queryParam("preserve_paths", "true")
+            .build();
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/lineage/getLineage/Downstream", null, options);
+    JsonNode result = OBJECT_MAPPER.readTree(response);
+
+    assertTrue(result.get("nodes").has(root.getFullyQualifiedName()));
+    assertTrue(result.get("nodes").has(mid.getFullyQualifiedName()));
+    assertTrue(result.get("nodes").has(leaf.getFullyQualifiedName()));
+    assertEquals(2, result.get("downstreamEdges").size());
+
+    deleteLineage(client, root.getEntityReference(), mid.getEntityReference());
+    deleteLineage(client, mid.getEntityReference(), leaf.getEntityReference());
+    cleanupTable(client, root);
+    cleanupTable(client, mid);
+    cleanupTable(client, leaf);
   }
 
   @Test

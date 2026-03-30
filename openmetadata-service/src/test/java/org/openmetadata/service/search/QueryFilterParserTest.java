@@ -82,7 +82,7 @@ class QueryFilterParserTest {
         QueryFilterParser.matchesFilter(entityMap, Map.of("missing.field", List.of("anything"))));
     assertFalse(QueryFilterParser.matchesFilter(entityMap, Map.of()));
     assertFalse(QueryFilterParser.matchesFilter(null, Map.of("description", List.of("sales"))));
-    assertFalse(QueryFilterParser.matchesFilter(entityMap, null));
+    assertFalse(QueryFilterParser.matchesFilter(entityMap, (Map<String, List<String>>) null));
   }
 
   // --- parseFilterClauses tests ---
@@ -107,6 +107,17 @@ class QueryFilterParserTest {
 
     assertEquals(1, clauses.size());
     assertEquals(List.of("Tier.Gold"), clauses.get(0).get("tags.tagFQN"));
+  }
+
+  @Test
+  void parseFilterClausesPreservesQuotedQueryStringValues() {
+    List<Map<String, List<String>>> clauses =
+        QueryFilterParser.parseFilterClauses(
+            "displayName:\"Data Stewards\" service.name.keyword:warehouse_service");
+
+    assertEquals(1, clauses.size());
+    assertEquals(List.of("Data Stewards"), clauses.get(0).get("displayName"));
+    assertEquals(List.of("warehouse_service"), clauses.get(0).get("service.name"));
   }
 
   @Test
@@ -570,5 +581,120 @@ class QueryFilterParserTest {
     ownerWithNullName.put("name", "alice_user");
     entity.put("owners", List.of(ownerWithNullName));
     assertFalse(QueryFilterParser.matchesFilter(entity, parsed));
+  }
+
+  @Test
+  void matchesFilterQueryUsesExactSemanticsForTermQueries() {
+    String queryFilter =
+        """
+        {"query":{"bool":{"must":[{"term":{"tags.tagFQN.keyword":"PII.Sensitive"}}]}}}
+        """;
+
+    Map<String, Object> exactMatch = Map.of("tags", List.of(Map.of("tagFQN", "PII.Sensitive")));
+    Map<String, Object> containsMatch =
+        Map.of("tags", List.of(Map.of("tagFQN", "PII.SensitiveData")));
+
+    assertTrue(QueryFilterParser.matchesFilter(exactMatch, queryFilter));
+    assertFalse(QueryFilterParser.matchesFilter(containsMatch, queryFilter));
+  }
+
+  @Test
+  void matchesFilterQueryKeepsPartialSemanticsForWildcardQueries() {
+    String queryFilter =
+        """
+        {"query":{"bool":{"must":[
+          {"wildcard":{"name":{"value":"*sales*"}}},
+          {"wildcard":{"displayName":{"value":"*sales*"}}}
+        ]}}}
+        """;
+
+    Map<String, Object> entity = Map.of("name", "daily_sales_table", "displayName", "Sales Table");
+    Map<String, Object> noMatch = Map.of("name", "inventory", "displayName", "Inventory");
+
+    assertTrue(QueryFilterParser.matchesFilter(entity, queryFilter));
+    assertFalse(QueryFilterParser.matchesFilter(noMatch, queryFilter));
+  }
+
+  @Test
+  void matchesFilterQuerySupportsMustNotClauses() {
+    String queryFilter =
+        """
+        {"query":{"bool":{"must":[{"term":{"entityType":"table"}}],"must_not":[{"term":{"deleted":"true"}}]}}}
+        """;
+
+    Map<String, Object> activeEntity = Map.of("entityType", "table", "deleted", "false");
+    Map<String, Object> deletedEntity = Map.of("entityType", "table", "deleted", "true");
+
+    assertTrue(QueryFilterParser.matchesFilter(activeEntity, queryFilter));
+    assertFalse(QueryFilterParser.matchesFilter(deletedEntity, queryFilter));
+  }
+
+  @Test
+  void matchesFilterQuerySupportsExistsClauses() {
+    String queryFilter =
+        """
+        {"query":{"bool":{"filter":[{"exists":{"field":"owners.displayName"}}]}}}
+        """;
+
+    Map<String, Object> entityWithOwners =
+        Map.of("owners", List.of(Map.of("displayName", "Data Steward")));
+    Map<String, Object> entityWithoutOwners = Map.of("owners", List.of(Map.of("name", "steward")));
+
+    assertTrue(QueryFilterParser.matchesFilter(entityWithOwners, queryFilter));
+    assertFalse(QueryFilterParser.matchesFilter(entityWithoutOwners, queryFilter));
+  }
+
+  @Test
+  void matchesFilterQuerySupportsPrefixClauses() {
+    String queryFilter =
+        """
+        {"query":{"bool":{"must":[{"prefix":{"name":{"value":"cust"}}}]}}}
+        """;
+
+    Map<String, Object> matchingEntity = Map.of("name", "customer_orders");
+    Map<String, Object> nonMatchingEntity = Map.of("name", "orders_customer");
+
+    assertTrue(QueryFilterParser.matchesFilter(matchingEntity, queryFilter));
+    assertFalse(QueryFilterParser.matchesFilter(nonMatchingEntity, queryFilter));
+  }
+
+  @Test
+  void matchesFilterQuerySupportsRangeClauses() {
+    String queryFilter =
+        """
+        {"query":{"bool":{"filter":[{"range":{"usageCount":{"gte":3,"lt":10}}}]}}}
+        """;
+
+    Map<String, Object> matchingEntity = Map.of("usageCount", 5);
+    Map<String, Object> tooSmall = Map.of("usageCount", 2);
+    Map<String, Object> tooLarge = Map.of("usageCount", 10);
+
+    assertTrue(QueryFilterParser.matchesFilter(matchingEntity, queryFilter));
+    assertFalse(QueryFilterParser.matchesFilter(tooSmall, queryFilter));
+    assertFalse(QueryFilterParser.matchesFilter(tooLarge, queryFilter));
+  }
+
+  @Test
+  void matchesTypedFilterClausesRequireEveryRepeatedMustClause() {
+    String queryFilter =
+        """
+        {
+          "query": {
+            "bool": {
+              "must": [
+                {"term": {"tags.tagFQN.keyword": "Tier.Gold"}},
+                {"term": {"tags.tagFQN.keyword": "CustID"}}
+              ]
+            }
+          }
+        }
+        """;
+
+    Map<String, Object> matchingEntity =
+        Map.of("tags", List.of(Map.of("tagFQN", "Tier.Gold"), Map.of("tagFQN", "CustID")));
+    Map<String, Object> missingSecondTag = Map.of("tags", List.of(Map.of("tagFQN", "Tier.Gold")));
+
+    assertTrue(QueryFilterParser.matchesFilter(matchingEntity, queryFilter));
+    assertFalse(QueryFilterParser.matchesFilter(missingSecondTag, queryFilter));
   }
 }

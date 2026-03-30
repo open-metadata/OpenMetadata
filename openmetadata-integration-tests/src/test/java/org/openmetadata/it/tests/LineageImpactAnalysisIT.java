@@ -1,7 +1,6 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -32,6 +31,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
@@ -196,6 +196,8 @@ public class LineageImpactAnalysisIT {
                     .withDomains(List.of(domainA.getFullyQualifiedName())));
 
     // int_a: PII.NonSensitive, Tier3, user3, DomainA, GlossaryTerm
+    Column intACustomerId = ColumnBuilder.of("customer_id", "INT").build();
+    intACustomerId.setTags(List.of(piiSensitive, glossaryLabel));
     intA =
         client
             .tables()
@@ -205,7 +207,7 @@ public class LineageImpactAnalysisIT {
                     .withDatabaseSchema(schemaFqn)
                     .withColumns(
                         List.of(
-                            ColumnBuilder.of("customer_id", "INT").build(),
+                            intACustomerId,
                             ColumnBuilder.of("email", "VARCHAR").dataLength(255).build(),
                             ColumnBuilder.of("lifetime_value", "DECIMAL").build(),
                             ColumnBuilder.of("churn_score", "DECIMAL").build()))
@@ -436,8 +438,7 @@ public class LineageImpactAnalysisIT {
     String qf =
         comboFilter(searchClause("rpt"), tagClause(shared.GLOSSARY1_TERM1.getFullyQualifiedName()));
     Set<String> nodes = getTableViewNodes(stgA, "Downstream", qf);
-    // rpt tables that have the glossary term
-    assertFalse(nodes.isEmpty());
+    assertContainsExactly(nodes, rptB);
   }
 
   @Test
@@ -563,6 +564,41 @@ public class LineageImpactAnalysisIT {
     assertTrue(getColumnCount(result) > 0);
   }
 
+  @Test
+  void testColumnView_downstream_tagFilter_matchesExactPairs() throws Exception {
+    JsonNode result = getColumnViewResult(stgA, "Downstream", 3, null, "tag:PII.Sensitive");
+    assertNotNull(result);
+    assertColumnPairsExactly(
+        result,
+        columnPair(stgA, "customer_id", intA, "customer_id"),
+        columnPair(intA, "customer_id", rptA, "customer_id"),
+        columnPair(intA, "customer_id", rptB, "customer_id"));
+  }
+
+  @Test
+  void testColumnView_downstream_glossaryFilter_matchesExactPairs() throws Exception {
+    JsonNode result =
+        getColumnViewResult(
+            stgA,
+            "Downstream",
+            3,
+            null,
+            "glossary:" + SharedEntities.get().GLOSSARY1_TERM1.getFullyQualifiedName());
+    assertNotNull(result);
+    assertColumnPairsExactly(
+        result,
+        columnPair(stgA, "customer_id", intA, "customer_id"),
+        columnPair(intA, "customer_id", rptA, "customer_id"),
+        columnPair(intA, "customer_id", rptB, "customer_id"));
+  }
+
+  @Test
+  void testColumnView_downstream_glossaryFilter_doesNotMatchClassificationTags() throws Exception {
+    JsonNode result = getColumnViewResult(stgA, "Downstream", 3, null, "glossary:PII.Sensitive");
+    assertNotNull(result);
+    assertEquals(0, getColumnCount(result));
+  }
+
   // ── COLUMN VIEW: Upstream filters ─────────────────────────────────────
 
   @Test
@@ -628,8 +664,7 @@ public class LineageImpactAnalysisIT {
   void testTableView_filteredCountMatchesData() throws Exception {
     String qf = tierFilter("Tier.Tier1");
     Set<String> nodes = getTableViewNodes(rawA, "Downstream", qf);
-    // Count should match the number of returned nodes
-    assertFalse(nodes.isEmpty());
+    assertContainsExactly(nodes, rptA, rptB);
   }
 
   @Test
@@ -657,6 +692,20 @@ public class LineageImpactAnalysisIT {
     Set<String> nodes = getTableViewNodes(stgA, "Downstream", qf);
     // All returned nodes should contain "rpt" in name
     assertTrue(nodes.stream().allMatch(fqn -> fqn.contains("rpt")));
+  }
+
+  @Test
+  void testTableView_paginationWithOffsetReturnsUniquePages() throws Exception {
+    Set<String> firstPage = getTableViewNodes(rawA, "Downstream", 0, 2, null);
+    Set<String> secondPage = getTableViewNodes(rawA, "Downstream", 2, 2, null);
+
+    assertEquals(2, firstPage.size());
+    assertEquals(2, secondPage.size());
+    assertTrue(firstPage.stream().noneMatch(secondPage::contains));
+
+    Set<String> combined = new HashSet<>(firstPage);
+    combined.addAll(secondPage);
+    assertContainsExactly(combined, stgA, intA, rptA, rptB);
   }
 
   // ── Helper methods ────────────────────────────────────────────────────
@@ -709,6 +758,11 @@ public class LineageImpactAnalysisIT {
 
   private Set<String> getTableViewNodes(Table entity, String direction, String queryFilter)
       throws Exception {
+    return getTableViewNodes(entity, direction, 0, 100, queryFilter);
+  }
+
+  private Set<String> getTableViewNodes(
+      Table entity, String direction, int from, int size, String queryFilter) throws Exception {
     String[] result = {null};
     Awaitility.await("getLineageByEntityCount")
         .atMost(Duration.ofSeconds(30))
@@ -722,8 +776,8 @@ public class LineageImpactAnalysisIT {
                       .getLineageByEntityCount(
                           entity.getFullyQualifiedName(),
                           direction,
-                          0,
-                          100,
+                          from,
+                          size,
                           100,
                           false,
                           queryFilter,
@@ -792,6 +846,41 @@ public class LineageImpactAnalysisIT {
     return count;
   }
 
+  private void assertColumnPairsExactly(JsonNode result, String... expectedPairs) {
+    assertEquals(Set.of(expectedPairs), getColumnPairs(result), "Column lineage pairs mismatch");
+  }
+
+  private Set<String> getColumnPairs(JsonNode result) {
+    Set<String> pairs = new HashSet<>();
+    for (String edgeType : List.of("upstreamEdges", "downstreamEdges")) {
+      JsonNode edges = result.get(edgeType);
+      if (edges == null || !edges.isObject()) {
+        continue;
+      }
+
+      for (JsonNode edge : (Iterable<JsonNode>) edges::elements) {
+        JsonNode columns = edge.get("columns");
+        if (columns == null || !columns.isArray()) {
+          continue;
+        }
+
+        for (JsonNode columnLineage : columns) {
+          String toColumn = columnLineage.path("toColumn").asText();
+          JsonNode fromColumns = columnLineage.path("fromColumns");
+          if (!fromColumns.isArray()) {
+            continue;
+          }
+
+          for (JsonNode fromColumn : fromColumns) {
+            pairs.add(fromColumn.asText() + "->" + toColumn);
+          }
+        }
+      }
+    }
+
+    return pairs;
+  }
+
   private void assertContainsExactly(Set<String> actualFqns, Table... expectedTables) {
     Set<String> expected = new HashSet<>();
     for (Table t : expectedTables) {
@@ -804,6 +893,16 @@ public class LineageImpactAnalysisIT {
     return new ColumnLineage()
         .withFromColumns(List.of(from.getFullyQualifiedName() + "." + fromCol))
         .withToColumn(to.getFullyQualifiedName() + "." + toCol);
+  }
+
+  private String columnPair(Table from, String fromCol, Table to, String toCol) {
+    return from.getFullyQualifiedName()
+        + "."
+        + fromCol
+        + "->"
+        + to.getFullyQualifiedName()
+        + "."
+        + toCol;
   }
 
   private void addLineageWithColumns(Table from, Table to, List<ColumnLineage> columns) {

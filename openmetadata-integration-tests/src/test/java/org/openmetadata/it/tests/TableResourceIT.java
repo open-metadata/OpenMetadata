@@ -5229,6 +5229,53 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
   }
 
+  /**
+   * Issue #18246: When a table is recreated with a new column in the middle, the PUT (ingestion
+   * re-run) should preserve the actual column order from the source database.
+   */
+  @Test
+  void put_columnOrderPreservedWhenNewColumnAddedInMiddle(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Step 1: Create table with [id, name, created_at] (simulates first ingestion)
+    CreateTable createRequest = createRequest(ns.prefix("column_order_table"), ns);
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "INT").ordinalPosition(1).build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(100).ordinalPosition(2).build(),
+            ColumnBuilder.of("created_at", "TIMESTAMP").ordinalPosition(3).build()));
+    Table table = createEntity(createRequest);
+
+    assertEquals(3, table.getColumns().size());
+    assertEquals("id", table.getColumns().get(0).getName());
+    assertEquals("name", table.getColumns().get(1).getName());
+    assertEquals("created_at", table.getColumns().get(2).getName());
+
+    // Step 2: Simulate table recreation with new column in the middle:
+    // [id, name, name_2, created_at]
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "INT").ordinalPosition(1).build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(100).ordinalPosition(2).build(),
+            ColumnBuilder.of("name_2", "VARCHAR").dataLength(10).ordinalPosition(3).build(),
+            ColumnBuilder.of("created_at", "TIMESTAMP").ordinalPosition(4).build()));
+    Table updatedTable = client.tables().createOrUpdate(createRequest);
+
+    // Verify column order matches the source database order
+    assertEquals(4, updatedTable.getColumns().size());
+    assertEquals("id", updatedTable.getColumns().get(0).getName(), "id should be at position 0");
+    assertEquals(
+        "name", updatedTable.getColumns().get(1).getName(), "name should be at position 1");
+    assertEquals(
+        "name_2",
+        updatedTable.getColumns().get(2).getName(),
+        "name_2 should be at position 2 (not appended at end)");
+    assertEquals(
+        "created_at",
+        updatedTable.getColumns().get(3).getName(),
+        "created_at should be at position 3");
+  }
+
   private void validateTableFieldsAfterImport(Table original, Table imported) {
     if (original.getDescription() != null) {
       assertEquals(

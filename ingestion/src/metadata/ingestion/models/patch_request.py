@@ -374,44 +374,103 @@ def build_patch(
                 source=source,
                 destination=destination,
                 array_entity_fields=array_entity_fields,
+                restrict_update_fields=restrict_update_fields,
+                override_metadata=override_metadata,
             )
 
         # special handler for tableConstraints
         _table_constraints_handler(source, destination)
 
-        # Get the difference between source and destination
+        # Determine which array entity fields are present in allowed_fields
+        active_array_fields = set()
+        if array_entity_fields:
+            for field in array_entity_fields:
+                if allowed_fields is None or field in allowed_fields:
+                    active_array_fields.add(field)
+
+        # Exclude array entity fields from the position-based jsonpatch diff.
+        # They are handled via full "replace" operations to preserve correct
+        # ordering when columns are added/removed/reordered.
         if allowed_fields:
+            non_array_allowed = {
+                k: v for k, v in allowed_fields.items() if k not in active_array_fields
+            }
+            if non_array_allowed:
+                patch = jsonpatch.make_patch(
+                    json.loads(
+                        source.model_dump_json(
+                            exclude_unset=True,
+                            exclude_none=True,
+                            include=non_array_allowed,
+                        )
+                    ),
+                    json.loads(
+                        destination.model_dump_json(
+                            exclude_unset=True,
+                            exclude_none=True,
+                            include=non_array_allowed,
+                        )
+                    ),
+                )
+            else:
+                patch = jsonpatch.JsonPatch([])
+        else:
+            array_exclude = (
+                {f: True for f in active_array_fields} if active_array_fields else None
+            )
             patch = jsonpatch.make_patch(
                 json.loads(
                     source.model_dump_json(
                         exclude_unset=True,
                         exclude_none=True,
-                        include=allowed_fields,
+                        exclude=array_exclude,
                     )
                 ),
                 json.loads(
                     destination.model_dump_json(
                         exclude_unset=True,
                         exclude_none=True,
-                        include=allowed_fields,
+                        exclude=array_exclude,
                     )
                 ),
             )
-        else:
-            patch: jsonpatch.JsonPatch = jsonpatch.make_patch(
-                json.loads(
-                    source.model_dump_json(exclude_unset=True, exclude_none=True)
-                ),
-                json.loads(
-                    destination.model_dump_json(exclude_unset=True, exclude_none=True)
-                ),
-            )
-        if not patch:
+
+        # Add full "replace" operations for array entity fields whose
+        # content changed.  The merge in _sort_array_entity_fields already
+        # applied the restrict_update_fields / override_metadata logic, so
+        # the replacement value is ready to use as-is.
+        for field in active_array_fields:
+            if hasattr(source, field) and hasattr(destination, field):
+                src_json = json.loads(
+                    source.model_dump_json(
+                        exclude_unset=True,
+                        exclude_none=True,
+                        include={field: True},
+                    )
+                )
+                dst_json = json.loads(
+                    destination.model_dump_json(
+                        exclude_unset=True,
+                        exclude_none=True,
+                        include={field: True},
+                    )
+                )
+                if src_json.get(field) != dst_json.get(field):
+                    patch.patch.append(
+                        {
+                            "op": "replace",
+                            "path": f"/{field}",
+                            "value": dst_json.get(field, []),
+                        }
+                    )
+
+        if not patch.patch:
             return None
 
-        # For a user editable fields like descriptions, tags we only want to support "add" operation in patch
-        # we will remove the other operations.
-        # This will only be applicable if the override_metadata field is set to False.
+        # For user-editable fields like descriptions and tags we only want
+        # to support "add" operations in the patch.  Array entity field
+        # "replace" operations (e.g. /columns) pass through because their
+        # paths do not contain restricted field names.
         if restrict_update_fields:
             updated_operations = JsonPatchUpdater.from_restrict_update_fields(
                 restrict_update_fields
@@ -515,42 +574,82 @@ def _table_constraints_handler(source: T, destination: T):
     setattr(destination, "tableConstraints", rearranged_constraints)
 
 
+def _should_update_restricted_field(
+    source_value, dest_value, override_metadata: bool
+) -> bool:
+    """Decide whether a restricted field should be updated from destination.
+
+    Mirrors the restrict_update_fields filter semantics:
+    - ADD   (source empty → dest has value): always allowed
+    - REPLACE (both have values):           only with override
+    - REMOVE  (source has value → dest empty): never allowed
+    """
+    source_empty = source_value is None or (
+        isinstance(source_value, list) and len(source_value) == 0
+    )
+    dest_empty = dest_value is None or (
+        isinstance(dest_value, list) and len(dest_value) == 0
+    )
+    if dest_empty:
+        return False
+    if source_empty:
+        return True
+    return override_metadata
+
+
 def _sort_array_entity_fields(
     source: T,
     destination: T,
     array_entity_fields: Optional[List] = None,
+    restrict_update_fields: Optional[List] = None,
+    override_metadata: Optional[bool] = False,
 ):
     """
-    Sort the array entity fields to make sure the order is consistent
+    Reorder array entity fields to match the destination order (the actual
+    source database column order), while merging metadata from source
+    (the existing entity in OpenMetadata) for columns that already exist.
+
+    The merge respects restrict_update_fields / override_metadata so the
+    resulting array can be used as a full replacement value without further
+    filtering.
     """
+    restrict_set = set(restrict_update_fields or [])
+
     for field in array_entity_fields or []:
         if hasattr(destination, field) and hasattr(source, field):
             destination_attributes = getattr(destination, field)
             source_attributes = getattr(source, field)
 
-            # Create a dictionary of destination attributes for easy lookup
-            destination_dict = {
-                _get_attribute_name(attr): attr for attr in destination_attributes
+            source_dict = {
+                _get_attribute_name(attr): attr for attr in source_attributes
             }
 
             updated_attributes = []
-            for source_attr in source_attributes or []:
-                # Update the destination attribute with the source attribute
-                destination_attr = destination_dict.get(
-                    _get_attribute_name(source_attr)
-                )
-                if destination_attr:
+            for dest_attr in destination_attributes or []:
+                source_attr = source_dict.get(_get_attribute_name(dest_attr))
+                if source_attr:
+                    update_dict = {}
+                    for k, v in dest_attr.__dict__.items():
+                        if k not in dest_attr.model_fields_set:
+                            continue
+                        if k in restrict_set:
+                            src_val = getattr(source_attr, k, None)
+                            if not _should_update_restricted_field(
+                                src_val, v, override_metadata
+                            ):
+                                continue
+                        update_dict[k] = v
                     updated_attributes.append(
-                        source_attr.model_copy(update=destination_attr.__dict__)
+                        source_attr.model_copy(update=update_dict)
                     )
-                    # Remove the updated attribute from the destination dictionary
-                    del destination_dict[_get_attribute_name(source_attr)]
                 else:
-                    updated_attributes.append(None)
+                    updated_attributes.append(dest_attr)
 
-            # Combine the updated attributes with the remaining destination attributes
-            final_attributes = updated_attributes + list(destination_dict.values())
-            setattr(destination, field, final_attributes)
+            for idx, attr in enumerate(updated_attributes):
+                if hasattr(attr, "ordinalPosition"):
+                    attr.ordinalPosition = idx + 1
+
+            setattr(destination, field, updated_attributes)
 
 
 def _remove_change_description(entity: T) -> T:

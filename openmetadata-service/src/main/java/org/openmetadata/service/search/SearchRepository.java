@@ -454,9 +454,9 @@ public class SearchRepository {
 
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
-    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
+    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.4;
     double semanticWeight =
-        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
+        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.6;
 
     try {
       SearchSettings ss =
@@ -583,9 +583,8 @@ public class SearchRepository {
       }
     } catch (Exception e) {
       LOG.error(
-          String.format(
-              "Failed to Delete Index for entity %s due to ",
-              indexMapping.getIndexName(clusterAlias)),
+          "Failed to Delete Index for entity {} due to ",
+          indexMapping.getIndexName(clusterAlias),
           e);
     }
   }

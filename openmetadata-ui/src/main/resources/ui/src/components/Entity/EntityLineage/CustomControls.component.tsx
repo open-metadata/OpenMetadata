@@ -40,7 +40,7 @@ import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exi
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-gear.svg';
-import { LINEAGE_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
+import { getLineageDropdownItems } from '../../../constants/AdvancedSearch.constants';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
   FULLSCREEN_QUERY_PARAM_KEY,
@@ -169,7 +169,9 @@ const CustomControls: FC<{
 
   // Initialize quick filters on component mount
   useEffect(() => {
-    const updatedQuickFilters = LINEAGE_DROPDOWN_ITEMS.map(
+    const updatedQuickFilters = getLineageDropdownItems(
+      impactLevel === EImpactLevel.ColumnLevel
+    ).map(
       (selectedFilterItem) => {
         const originalFilterItem = selectedQuickFilters?.find(
           (filter) => filter.key === selectedFilterItem.key
@@ -185,7 +187,7 @@ const CustomControls: FC<{
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
     }
-  }, []);
+  }, [impactLevel]);
 
   const queryParams = useMemo(() => {
     return QueryString.parse(location.search, {
@@ -287,9 +289,10 @@ const CustomControls: FC<{
     () =>
       exportLineageByEntityCountAsync({
         fqn: fqn ?? '',
-        type: entityType ?? '',
+        entityType: entityType ?? '',
         direction: lineageDirection,
         nodeDepth: nodeDepth,
+        maxDepth: nodeDepth,
         query_filter: quickFilters,
       }),
     [fqn, entityType, lineageDirection, nodeDepth, quickFilters]
@@ -301,7 +304,7 @@ const CustomControls: FC<{
     } else {
       onExportClick([ExportTypes.CSV, ExportTypes.PNG]);
     }
-  }, [activeTab, onExportClick]);
+  }, [activeTab, handleImpactAnalysisExport, onExportClick]);
 
   const handleDialogSave = (newConfig: LineageConfig) => {
     // Implement save logic here
@@ -346,7 +349,7 @@ const CustomControls: FC<{
     ) : (
       <LineageSearchSelect />
     );
-  }, [searchValue, onSearchValueChange]);
+  }, [activeTab, onSearchValueChange, searchValue, t]);
 
   const handleNodeDepthUpdate = useCallback(
     (depth: number) => {

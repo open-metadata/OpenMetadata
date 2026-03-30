@@ -105,7 +105,7 @@ public class MigrationUtil {
                   collectionDAO.ingestionPipelineDAO().update(ingestionPipeline);
 
                 } catch (Exception ex) {
-                  LOG.warn(String.format("Error updating automator [%s] due to [%s]", row, ex));
+                  LOG.warn("Error updating automator [{}] due to ", row, ex);
                 }
               });
     } catch (Exception ex) {
@@ -287,7 +287,7 @@ public class MigrationUtil {
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
-      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
+      LOG.warn("Chart {} exists, Exception : {}", chartName, ex.getMessage());
     }
   }
 
