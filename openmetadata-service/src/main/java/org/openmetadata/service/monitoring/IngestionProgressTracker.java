@@ -168,11 +168,10 @@ public class IngestionProgressTracker {
         update
             .getProgress()
             .forEach(
-                (entityType, progress) -> {
-                  entityProgress
-                      .computeIfAbsent(entityType, k -> new EntityProgressState())
-                      .update(progress);
-                });
+                (entityType, progress) ->
+                    entityProgress
+                        .computeIfAbsent(entityType, k -> new EntityProgressState())
+                        .update(progress));
       }
     }
 

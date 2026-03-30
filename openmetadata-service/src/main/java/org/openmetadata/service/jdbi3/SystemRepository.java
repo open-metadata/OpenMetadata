@@ -103,7 +103,7 @@ import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 @Slf4j
 @Repository
 public class SystemRepository {
-  private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings";
+  private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
@@ -143,7 +143,7 @@ public class SystemRepository {
     try {
       settingsList = dao.getAllConfig();
     } catch (Exception ex) {
-      LOG.error("Error while trying fetch all Settings " + ex.getMessage());
+      LOG.error("Error while trying fetch all Settings {}", ex.getMessage());
     }
     int count = 0;
     if (settingsList != null) {
@@ -233,7 +233,7 @@ public class SystemRepository {
       setting.setConfigValue(emailConfig);
       return setting;
     } catch (Exception ex) {
-      LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
+      LOG.error("Error while trying fetch EMAIL Settings {}", ex.getMessage());
     }
     return null;
   }
@@ -262,7 +262,7 @@ public class SystemRepository {
       setting.setConfigValue(slackAppConfiguration);
       return setting;
     } catch (Exception ex) {
-      LOG.error("Error while trying fetch Slack Settings " + ex.getMessage());
+      LOG.error("Error while trying fetch Slack Settings {}", ex.getMessage());
     }
     return null;
   }
@@ -288,7 +288,7 @@ public class SystemRepository {
     try {
       updateSetting(setting);
     } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
+      LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     if (oldValue == null) {
@@ -303,7 +303,7 @@ public class SystemRepository {
     try {
       updateSetting(setting);
     } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
+      LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
@@ -329,7 +329,7 @@ public class SystemRepository {
     try {
       updateSetting(original);
     } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
+      LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
@@ -413,7 +413,7 @@ public class SystemRepository {
       setting.setConfigValue(slackBotConfiguration);
       return setting;
     } catch (Exception ex) {
-      LOG.error("Error while trying fetch Slack bot Settings " + ex.getMessage());
+      LOG.error("Error while trying fetch Slack bot Settings {}", ex.getMessage());
     }
     return null;
   }
@@ -426,7 +426,7 @@ public class SystemRepository {
       setting.setConfigValue(slackInstallerConfiguration);
       return setting;
     } catch (Exception ex) {
-      LOG.error("Error while trying to fetch slack installer setting " + ex.getMessage());
+      LOG.error("Error while trying to fetch slack installer setting {}", ex.getMessage());
     }
     return null;
   }
@@ -439,7 +439,7 @@ public class SystemRepository {
       setting.setConfigValue(slackStateConfiguration);
       return setting;
     } catch (Exception ex) {
-      LOG.error("Error while trying to fetch slack state setting " + ex.getMessage());
+      LOG.error("Error while trying to fetch slack state setting {}", ex.getMessage());
     }
     return null;
   }
@@ -1404,7 +1404,7 @@ public class SystemRepository {
               }
             }
           } catch (Exception e) {
-            LOG.warn("Failed to validate mail attribute: " + e.getMessage());
+            LOG.warn("Failed to validate mail attribute: {}", e.getMessage());
           }
         }
 
@@ -1640,8 +1640,8 @@ public class SystemRepository {
       // Use enhanced SAML validator - this performs comprehensive validation
       // without affecting production settings
       SamlValidator samlValidator = new SamlValidator();
-      FieldError result = samlValidator.validateSamlConfiguration(null, samlConfig);
-      return result; // No errors - validation passed
+      return samlValidator.validateSamlConfiguration(
+          null, samlConfig); // No errors - validation passed
     } catch (Exception e) {
       String fieldPath = determineFieldPathFromError("saml", e.getMessage());
       return ValidationErrorBuilder.createFieldError(

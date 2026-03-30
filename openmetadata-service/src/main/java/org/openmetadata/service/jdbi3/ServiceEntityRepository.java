@@ -136,16 +136,8 @@ public abstract class ServiceEntityRepository<
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "connection",
-          () -> {
-            updateConnection();
-          });
-      compareAndUpdate(
-          "ingestionRunner",
-          () -> {
-            updateIngestionRunner();
-          });
+      compareAndUpdate("connection", this::updateConnection);
+      compareAndUpdate("ingestionRunner", this::updateIngestionRunner);
     }
 
     private void updateConnection() {

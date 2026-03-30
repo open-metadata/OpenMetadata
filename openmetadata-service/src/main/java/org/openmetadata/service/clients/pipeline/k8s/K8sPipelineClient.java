@@ -1617,11 +1617,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       String runId,
       Map<String, Object> configOverride,
       ServiceEntityInterface service) {
-    List<V1EnvVar> envVars =
-        new ArrayList<>(
-            buildCommonIngestionEnvVars(pipeline, runId, configOverride, service, true));
-
-    return envVars;
+    return new ArrayList<>(
+        buildCommonIngestionEnvVars(pipeline, runId, configOverride, service, true));
   }
 
   private List<V1EnvVar> buildCommonIngestionEnvVars(

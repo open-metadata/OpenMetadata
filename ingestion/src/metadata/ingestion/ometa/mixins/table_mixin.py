@@ -14,8 +14,13 @@ Mixin class containing Table specific methods
 To be used by OpenMetadata class
 """
 import base64
+import datetime
+import decimal
+import ipaddress
 import json
+import math
 import traceback
+import uuid
 from typing import Dict, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, validate_call
@@ -53,6 +58,106 @@ LRU_CACHE_SIZE = 4096
 T = TypeVar("T", bound=BaseModel)
 
 
+def _sanitize_sample_data_value(value):
+    """
+    Ensure a single cell value is safe for JSON serialization before it is
+    passed to Pydantic's model_dump_json().
+    """
+    try:
+        # --- Tier 1: JSON-native primitives — fast path ---
+        if value is None or isinstance(value, (str, int, bool)):
+            return value
+
+        # Float is a special case: finite floats are JSON-safe, but inf/-inf/NaN
+        # produce non-standard JSON tokens that Java's Jackson parser rejects.
+        if isinstance(value, float):
+            return value if math.isfinite(value) else str(value)
+
+        # --- Tier 2: Known stdlib / common driver types ---
+
+        # Binary data (e.g. MySQL WKB geometry columns, raw BINARY/VARBINARY)
+        if isinstance(value, bytes):
+            try:
+                return f"[base64]{base64.b64encode(value).decode('ascii', errors='ignore')}"
+            except Exception:
+                logger.debug(traceback.format_exc())
+                return "[binary data]"
+
+        # IP address objects returned by clickhouse-driver for IPv4/IPv6 columns,
+        # and by psycopg2 for PostgreSQL INET/CIDR columns
+        if isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
+            return str(value)
+
+        # UUID objects returned by psycopg2 / SQLAlchemy for UUID columns
+        if isinstance(value, uuid.UUID):
+            return str(value)
+
+        # datetime.datetime MUST be checked before datetime.date because
+        # datetime.datetime is a subclass of datetime.date — checking date first
+        # would silently drop the time component.
+        if isinstance(value, datetime.datetime):
+            return value.isoformat()
+
+        # datetime.date objects returned for DATE columns
+        if isinstance(value, datetime.date):
+            return value.isoformat()
+
+        # Decimal objects returned for NUMERIC/DECIMAL columns by most drivers.
+        # Preserve as float so the JSON payload stays numeric rather than a string.
+        # Non-finite values (Infinity, -Infinity, NaN) are not valid JSON numbers,
+        # so those are converted to their string representation instead.
+        if isinstance(value, decimal.Decimal):
+            return float(value) if value.is_finite() else str(value)
+
+        # timedelta objects returned for INTERVAL columns (Oracle, PostgreSQL)
+        if isinstance(value, datetime.timedelta):
+            return str(value)
+
+        # --- Tier 3: Container types — recurse to handle nested non-primitives ---
+
+        # Lists cover ARRAY columns (PostgreSQL, BigQuery, Databricks, Trino)
+        if isinstance(value, list):
+            return [_sanitize_sample_data_value(item) for item in value]
+
+        # Dicts cover STRUCT / MAP / HSTORE columns.
+        # Keys are coerced to str because JSON requires string keys, and some
+        # drivers (e.g. Databricks MAP) may return integer or other non-string keys.
+        if isinstance(value, dict):
+            return {str(k): _sanitize_sample_data_value(v) for k, v in value.items()}
+
+        # --- Tier 4: Universal catch-all ---
+        # Any remaining driver-specific object (psycopg2.extras.Inet,
+        # psycopg2.extras.Range, cx_Oracle.LOB, spatial objects, numpy scalars,
+        # etc.) is converted to its string representation rather than crashing.
+        try:
+            return str(value)
+        except Exception:
+            logger.debug(
+                "Could not convert sample data value of type %s to string: %s",
+                type(value).__name__,
+                traceback.format_exc(),
+            )
+            return "[unserializable]"
+
+    except Exception:
+        # Top-level safety net: if any conversion above raised unexpectedly,
+        # try a plain string cast before giving up entirely.
+        logger.debug(
+            "Unexpected error sanitizing sample data value of type %s: %s",
+            type(value).__name__,
+            traceback.format_exc(),
+        )
+        try:
+            return str(value)
+        except Exception:
+            logger.debug(
+                "Fallback str() also failed for type %s: %s",
+                type(value).__name__,
+                traceback.format_exc(),
+            )
+            return "[unserializable]"
+
+
 class OMetaTableMixin:
     """
     OpenMetadata API methods related to Tables.
@@ -62,7 +167,6 @@ class OMetaTableMixin:
 
     client: REST
 
-    # pylint: disable=too-many-nested-blocks
     def ingest_table_sample_data(
         self, table: Table, sample_data: TableData
     ) -> Optional[TableData]:
@@ -74,22 +178,17 @@ class OMetaTableMixin:
         """
         resp = None
         try:
-            # Pre-process sample data to handle binary/non-UTF-8 data before serialization
+            # Pre-process every cell through the sanitizer so that
+            # driver-specific objects (IP addresses, UUIDs, Decimals, range
+            # types, spatial objects, etc.) are converted to JSON-safe
+            # primitives before model_dump_json() is called.
             if sample_data and sample_data.rows:
 
                 for row in sample_data.rows:
                     if not row:
                         continue
                     for col_idx, value in enumerate(row):
-                        # Handle binary data explicitly
-                        if isinstance(value, bytes):
-                            # Convert binary data to Base64-encoded string
-                            try:
-                                row[
-                                    col_idx
-                                ] = f"[base64]{base64.b64encode(value).decode('ascii', errors='ignore')}"
-                            except Exception as _:
-                                row[col_idx] = f"[binary]{value}"
+                        row[col_idx] = _sanitize_sample_data_value(value)
 
             try:
                 data = sample_data.model_dump_json()

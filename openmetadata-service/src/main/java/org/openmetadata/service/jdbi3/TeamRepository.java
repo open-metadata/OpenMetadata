@@ -620,7 +620,7 @@ public class TeamRepository extends EntityRepository<Team> {
           == 1) { // Only parent is being deleted, move the parent to Organization
         addRelationship(
             organization.getId(), childTeam.getId(), TEAM, TEAM, Relationship.PARENT_OF);
-        LOG.info("Moving parent of team " + childTeam.getId() + " to organization");
+        LOG.info("Moving parent of team {} to organization", childTeam.getId());
       }
     }
   }
@@ -739,13 +739,11 @@ public class TeamRepository extends EntityRepository<Team> {
         }
       }
     }
-    List<TeamHierarchy> topLevelNodes =
-        hierarchyMap.values().stream()
-            .filter(node -> !childIds.contains(node.getId()))
-            .sorted(Comparator.comparing(TeamHierarchy::getName))
-            .collect(Collectors.toList());
 
-    return topLevelNodes;
+    return hierarchyMap.values().stream()
+        .filter(node -> !childIds.contains(node.getId()))
+        .sorted(Comparator.comparing(TeamHierarchy::getName))
+        .collect(Collectors.toList());
   }
 
   private List<EntityReference> getUsers(Team team) {
@@ -1267,28 +1265,19 @@ public class TeamRepository extends EntityRepository<Team> {
       }
       compareAndUpdate(
           "profile",
-          () -> {
-            recordChange("profile", original.getProfile(), updated.getProfile(), true);
-          });
+          () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
       compareAndUpdate(
           "isJoinable",
-          () -> {
-            recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
-          });
+          () -> recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable()));
       compareAndUpdate(
           "teamType",
-          () -> {
-            recordChange("teamType", original.getTeamType(), updated.getTeamType());
-          });
+          () -> recordChange("teamType", original.getTeamType(), updated.getTeamType()));
       // If the team is empty then email should be null, not be empty
       if (CommonUtil.nullOrEmpty(updated.getEmail())) {
         updated.setEmail(null);
       }
       compareAndUpdate(
-          "email",
-          () -> {
-            recordChange("email", original.getEmail(), updated.getEmail());
-          });
+          "email", () -> recordChange("email", original.getEmail(), updated.getEmail()));
       AtomicBoolean hierarchyOrPolicyChanged = new AtomicBoolean(false);
       compareAndUpdate(
           "users",

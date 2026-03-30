@@ -61,8 +61,7 @@ public class AzureAuthValidator {
         return clientIdValidation;
       }
 
-      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, tenantId);
-      return publicKeyValidation;
+      return validatePublicKeyUrls(authConfig, tenantId);
     } catch (Exception e) {
       LOG.error("Azure public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -151,9 +150,7 @@ public class AzureAuthValidator {
         return publicKeyValidation;
       }
 
-      FieldError credentialsValidation =
-          validateClientCredentials(tenantId, oidcConfig.getId(), oidcConfig.getSecret());
-      return credentialsValidation;
+      return validateClientCredentials(tenantId, oidcConfig.getId(), oidcConfig.getSecret());
     } catch (Exception e) {
       LOG.error("Azure confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError("", "Failed azure confidential validation");

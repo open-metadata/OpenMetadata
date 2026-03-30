@@ -1978,21 +1978,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       validateParent();
-      compareAndUpdate(
-          "synonyms",
-          () -> {
-            updateSynonyms(original, updated);
-          });
+      compareAndUpdate("synonyms", this::run);
       compareAndUpdate(
           "references",
           () -> {
             updateReferences(original, updated);
           });
-      compareAndUpdate(
-          "relatedTerms",
-          () -> {
-            updateRelatedTerms(original, updated);
-          });
+      compareAndUpdate("relatedTerms", () -> updateRelatedTerms(original, updated));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
@@ -2345,6 +2337,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTerm(tagRecord.getId(), visited);
       }
+    }
+
+    private void run() {
+      updateSynonyms(original, updated);
     }
   }
 

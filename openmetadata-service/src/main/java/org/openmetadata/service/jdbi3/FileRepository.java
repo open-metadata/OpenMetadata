@@ -479,60 +479,41 @@ public class FileRepository extends EntityRepository<File> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "fileType",
-          () -> {
-            recordChange("fileType", original.getFileType(), updated.getFileType());
-          });
+          () -> recordChange("fileType", original.getFileType(), updated.getFileType()));
       compareAndUpdate(
           "mimeType",
-          () -> {
-            recordChange("mimeType", original.getMimeType(), updated.getMimeType());
-          });
+          () -> recordChange("mimeType", original.getMimeType(), updated.getMimeType()));
       compareAndUpdate(
           "fileExtension",
-          () -> {
-            recordChange("fileExtension", original.getFileExtension(), updated.getFileExtension());
-          });
-      compareAndUpdate(
-          "path",
-          () -> {
-            recordChange("path", original.getPath(), updated.getPath());
-          });
-      compareAndUpdate(
-          "size",
-          () -> {
-            recordChange("size", original.getSize(), updated.getSize());
-          });
+          () ->
+              recordChange(
+                  "fileExtension", original.getFileExtension(), updated.getFileExtension()));
+      compareAndUpdate("path", () -> recordChange("path", original.getPath(), updated.getPath()));
+      compareAndUpdate("size", () -> recordChange("size", original.getSize(), updated.getSize()));
       compareAndUpdate(
           "checksum",
-          () -> {
-            recordChange("checksum", original.getChecksum(), updated.getChecksum());
-          });
+          () -> recordChange("checksum", original.getChecksum(), updated.getChecksum()));
       compareAndUpdate(
           "webViewLink",
-          () -> {
-            recordChange("webViewLink", original.getWebViewLink(), updated.getWebViewLink());
-          });
+          () -> recordChange("webViewLink", original.getWebViewLink(), updated.getWebViewLink()));
       compareAndUpdate(
           "downloadLink",
-          () -> {
-            recordChange("downloadLink", original.getDownloadLink(), updated.getDownloadLink());
-          });
+          () ->
+              recordChange("downloadLink", original.getDownloadLink(), updated.getDownloadLink()));
       compareAndUpdate(
           "isShared",
-          () -> {
-            recordChange("isShared", original.getIsShared(), updated.getIsShared());
-          });
+          () -> recordChange("isShared", original.getIsShared(), updated.getIsShared()));
       compareAndUpdate(
           "fileVersion",
-          () -> {
-            recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion());
-          });
+          () -> recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion()));
       compareAndUpdate(
           "columns",
-          () -> {
-            updateColumns(
-                COLUMN_FIELD, original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
-          });
+          () ->
+              updateColumns(
+                  COLUMN_FIELD,
+                  original.getColumns(),
+                  updated.getColumns(),
+                  EntityUtil.columnMatch));
     }
   }
 }

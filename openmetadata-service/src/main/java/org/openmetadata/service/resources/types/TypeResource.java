@@ -544,7 +544,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       return Response.ok(fieldsList).type(MediaType.APPLICATION_JSON).build();
 
     } catch (Exception e) {
-      LOG.error("Error processing schema for entity type: " + entityType, e);
+      LOG.error("Error processing schema for entity type: {}", entityType, e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(
               "Error processing schema for entity type: "

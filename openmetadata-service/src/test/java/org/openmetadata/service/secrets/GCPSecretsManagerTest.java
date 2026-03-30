@@ -122,8 +122,7 @@ public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
 
     secretsManager.encryptAuthenticationMechanism("ingestion-bot", authMechanism);
 
-    boolean hasEmptyPayload =
-        mockSecretStorage.values().stream().anyMatch(value -> value.isEmpty());
+    boolean hasEmptyPayload = mockSecretStorage.values().stream().anyMatch(String::isEmpty);
     assertFalse(
         hasEmptyPayload,
         "Token revocation with empty string should not create empty secret payloads");
@@ -140,8 +139,7 @@ public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
 
     secretsManager.encryptAuthenticationMechanism("ingestion-bot", authMechanism);
 
-    boolean hasEmptyPayload =
-        mockSecretStorage.values().stream().anyMatch(value -> value.isEmpty());
+    boolean hasEmptyPayload = mockSecretStorage.values().stream().anyMatch(String::isEmpty);
     assertFalse(
         hasEmptyPayload, "Token revocation with null should not create empty secret payloads");
   }
