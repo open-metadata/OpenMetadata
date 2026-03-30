@@ -19,7 +19,7 @@ env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
   UI_COVERAGE_DIRECTORY: openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 concurrency:
-  group: yarn-coverage-${{ github.head_ref || github.run_id }}
+  group: yarn-coverage-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 jobs:
   ui-coverage-tests:
@@ -110,15 +110,16 @@ jobs:
           sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
           -Dproject.settings=sonar-project.properties \
           -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
-          -Dsonar.pullrequest.branch=${{ github.head_ref }} \
+          -Dsonar.pullrequest.branch=$PR_HEAD_REF \
           -Dsonar.pullrequest.base=main \
-          -Donar.pullrequest.github.repository=OpenMetadata \
+          -Dsonar.pullrequest.github.repository=OpenMetadata \
           -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
           -Dsonar.pullrequest.provider=github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
           SONARCLOUD_URL: https://sonarcloud.io
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       - name: SonarCloud Scan
         if: github.event_name == 'push' && steps.npm_install_sonar_scanner.outcome == 'success'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
