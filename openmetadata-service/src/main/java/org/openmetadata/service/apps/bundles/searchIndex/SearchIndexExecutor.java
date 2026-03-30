@@ -47,6 +47,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.EntityStatsTracke
 import org.openmetadata.service.apps.bundles.searchIndex.stats.JobStatsManager;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.BoundedListFilter;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
@@ -752,21 +753,12 @@ public class SearchIndexExecutor implements AutoCloseable {
                     fixedBatchSize,
                     getSearchIndexFields(entityType),
                     totalEntityRecords);
-            submitReaders(
+            submitEntityReaders(
                 entityType,
                 totalEntityRecords,
                 fixedBatchSize,
                 numReaders,
                 producerPhaser,
-                () -> {
-                  PaginatedEntitiesSource source =
-                      new PaginatedEntitiesSource(
-                          entityType,
-                          fixedBatchSize,
-                          getSearchIndexFields(entityType),
-                          totalEntityRecords);
-                  return source::readNextKeyset;
-                },
                 entSource::findBoundaryCursors);
           }
         } catch (Exception e) {
@@ -867,6 +859,94 @@ public class SearchIndexExecutor implements AutoCloseable {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  private void submitEntityReaders(
+      String entityType,
+      int totalRecords,
+      int fixedBatchSize,
+      int numReaders,
+      Phaser producerPhaser,
+      java.util.function.BiFunction<Integer, Integer, List<String>> boundaryFinder) {
+    Map<String, String> mdc = MDC.getCopyOfContextMap();
+    if (numReaders == 1) {
+      PaginatedEntitiesSource source =
+          new PaginatedEntitiesSource(
+              entityType, fixedBatchSize, getSearchIndexFields(entityType), totalRecords);
+      producerExecutor.submit(
+          () -> {
+            if (mdc != null) MDC.setContextMap(mdc);
+            try {
+              processKeysetBatches(
+                  entityType,
+                  Integer.MAX_VALUE,
+                  fixedBatchSize,
+                  null,
+                  source::readNextKeyset,
+                  producerPhaser);
+            } finally {
+              MDC.clear();
+            }
+          });
+      return;
+    }
+
+    List<String> boundaries = boundaryFinder.apply(numReaders, totalRecords);
+    int actualReaders = boundaries.size() + 1;
+
+    if (actualReaders < numReaders) {
+      LOG.warn(
+          "Boundary discovery for {} returned {} cursors (expected {}), using {} readers",
+          entityType,
+          boundaries.size(),
+          numReaders - 1,
+          actualReaders);
+      entityBatchCounters.get(entityType).set(actualReaders);
+      for (int j = 0; j < numReaders - actualReaders; j++) {
+        producerPhaser.arriveAndDeregister();
+      }
+    }
+
+    for (int i = 0; i < actualReaders; i++) {
+      final String startCursor = (i == 0) ? null : boundaries.get(i - 1);
+      final boolean isLastReader = (i == actualReaders - 1);
+
+      ListFilter filter;
+      if (isLastReader) {
+        filter = new ListFilter(Include.ALL);
+      } else {
+        String endBoundary = boundaries.get(i);
+        String decoded = RestUtil.decodeCursor(endBoundary);
+        Map<String, String> cursorMap =
+            org.openmetadata.schema.utils.JsonUtils.readValue(decoded, Map.class);
+        filter = new BoundedListFilter(Include.ALL, cursorMap.get("name"), cursorMap.get("id"));
+      }
+
+      final ListFilter readerFilter = filter;
+      producerExecutor.submit(
+          () -> {
+            if (mdc != null) MDC.setContextMap(mdc);
+            try {
+              PaginatedEntitiesSource source =
+                  new PaginatedEntitiesSource(
+                      entityType,
+                      fixedBatchSize,
+                      getSearchIndexFields(entityType),
+                      totalRecords,
+                      readerFilter);
+              processKeysetBatches(
+                  entityType,
+                  Integer.MAX_VALUE,
+                  fixedBatchSize,
+                  startCursor,
+                  source::readNextKeyset,
+                  producerPhaser);
+            } finally {
+              MDC.clear();
+            }
+          });
+    }
+  }
+
   private boolean hasReachedEndCursor(String afterCursor, String endCursor) {
     if (endCursor == null || afterCursor == null) return false;
     String decodedAfter = RestUtil.decodeCursor(afterCursor);
@@ -881,25 +961,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     } catch (NumberFormatException ignored) {
       // Not a numeric cursor, fall through to JSON comparison
     }
-
-    // Regular entity cursors are JSON maps with "name" and "id" fields
-    try {
-      @SuppressWarnings("unchecked")
-      Map<String, String> afterMap =
-          org.openmetadata.schema.utils.JsonUtils.readValue(decodedAfter, Map.class);
-      @SuppressWarnings("unchecked")
-      Map<String, String> endMap =
-          org.openmetadata.schema.utils.JsonUtils.readValue(decodedEnd, Map.class);
-      String afterName = afterMap.getOrDefault("name", "");
-      String endName = endMap.getOrDefault("name", "");
-      int nameCompare = afterName.compareTo(endName);
-      if (nameCompare != 0) return nameCompare >= 0;
-      String afterId = afterMap.getOrDefault("id", "");
-      String endId = endMap.getOrDefault("id", "");
-      return afterId.compareTo(endId) >= 0;
-    } catch (Exception e) {
-      return decodedAfter.compareTo(decodedEnd) >= 0;
-    }
+    return false;
   }
 
   private void processKeysetBatches(

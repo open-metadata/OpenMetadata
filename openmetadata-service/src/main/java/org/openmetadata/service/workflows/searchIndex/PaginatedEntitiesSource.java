@@ -93,6 +93,20 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         .withWarningRecords(0);
   }
 
+  public PaginatedEntitiesSource(
+      String entityType, int batchSize, List<String> fields, int knownTotal, ListFilter filter) {
+    this.entityType = entityType;
+    this.batchSize = batchSize;
+    this.fields = fields;
+    this.filter = filter;
+    this.cachedTotalCount = knownTotal;
+    this.stats
+        .withTotalRecords(cachedTotalCount)
+        .withSuccessRecords(0)
+        .withFailedRecords(0)
+        .withWarningRecords(0);
+  }
+
   public PaginatedEntitiesSource withName(String name) {
     this.name = name;
     return this;
