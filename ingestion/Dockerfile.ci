@@ -107,6 +107,7 @@ WORKDIR /home/airflow/ingestion
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
 RUN pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-databricks==0.2.0" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
 RUN pip install "datamodel-code-generator==0.25.6"
+RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
 RUN python /home/airflow/scripts/datamodel_generation.py
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all

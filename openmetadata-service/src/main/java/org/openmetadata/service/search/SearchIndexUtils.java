@@ -89,6 +89,10 @@ public final class SearchIndexUtils {
 
   public static void removeFieldByPath(Map<String, Object> jsonMap, String path) {
     String[] pathElements = path.split("\\.");
+    if (pathElements.length == 1) {
+      jsonMap.remove(pathElements[0]);
+      return;
+    }
     Map<String, Object> currentMap = jsonMap;
 
     String key = pathElements[0];
@@ -98,7 +102,9 @@ public final class SearchIndexUtils {
     } else if (value instanceof List) {
       List<?> list = (List<Map<String, Object>>) value;
       for (Object obj : list) {
-        Map<String, Object> item = JsonUtils.getMap(obj);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> item =
+            obj instanceof Map ? (Map<String, Object>) obj : JsonUtils.getMap(obj);
         removeFieldByPath(
             item,
             Arrays.stream(pathElements, 1, pathElements.length).collect(Collectors.joining(".")));
@@ -207,8 +213,7 @@ public final class SearchIndexUtils {
                       val.ifPresentOrElse(
                           s -> {
                             switch (s.getValueType()) {
-                              case NUMBER -> nodeData.put(
-                                  dimensions.get(0), String.valueOf((JsonNumber) s));
+                              case NUMBER -> nodeData.put(dimensions.get(0), String.valueOf(s));
                               default -> nodeData.put(
                                   dimensions.get(0), ((JsonString) s).getString());
                             }
@@ -462,12 +467,10 @@ public final class SearchIndexUtils {
     if (value instanceof Number || value instanceof Boolean) {
       return value.toString();
     }
-    if (value instanceof List) {
-      List<?> list = (List<?>) value;
+    if (value instanceof List<?> list) {
       return list.stream().map(SearchIndexUtils::flattenValue).collect(Collectors.joining(" "));
     }
-    if (value instanceof Map) {
-      Map<?, ?> map = (Map<?, ?>) value;
+    if (value instanceof Map<?, ?> map) {
       return flattenMapValue(map);
     }
     return value.toString();

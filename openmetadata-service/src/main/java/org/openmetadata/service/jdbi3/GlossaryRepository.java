@@ -56,6 +56,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.type.Style;
@@ -453,7 +454,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                 SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
         if (settings != null && settings.getRelationTypes() != null) {
           return settings.getRelationTypes().stream()
-              .map(rt -> rt.getName())
+              .map(GlossaryTermRelationType::getName)
               .sorted()
               .collect(Collectors.joining(", "));
         }
@@ -632,11 +633,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "name",
-          () -> {
-            updateName(updated);
-          });
+      compareAndUpdate("name", () -> updateName(updated));
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }

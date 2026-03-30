@@ -97,6 +97,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_compiled_query,
     get_dbt_model_name,
     get_dbt_raw_query,
+    get_manifest_column_name,
     validate_custom_property_value,
 )
 from metadata.ingestion.source.database.dbt.models import DbtMeta
@@ -1545,10 +1546,7 @@ class DbtSource(DbtServiceSource):
                 )
                 if not check_test_definition_exists:
                     entity_type = EntityType.TABLE
-                    if (
-                        hasattr(manifest_node, "column_name")
-                        and manifest_node.column_name
-                    ):
+                    if get_manifest_column_name(manifest_node):
                         entity_type = EntityType.COLUMN
                     yield Either(
                         right=CreateTestDefinitionRequest(
@@ -1594,9 +1592,7 @@ class DbtSource(DbtServiceSource):
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
-                        column_name=manifest_node.column_name
-                        if hasattr(manifest_node, "column_name")
-                        else None,
+                        column_name=get_manifest_column_name(manifest_node),
                         test_case_name=manifest_node.name,
                     )
 
@@ -1705,9 +1701,7 @@ class DbtSource(DbtServiceSource):
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
-                        column_name=manifest_node.column_name
-                        if hasattr(manifest_node, "column_name")
-                        else None,
+                        column_name=get_manifest_column_name(manifest_node),
                         test_case_name=manifest_node.name,
                     )
 

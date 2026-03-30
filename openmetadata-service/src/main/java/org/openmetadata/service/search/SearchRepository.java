@@ -86,7 +86,6 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
@@ -99,6 +98,7 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -424,7 +424,7 @@ public class SearchRepository {
       if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
         os.org.opensearch.client.opensearch.OpenSearchClient osClient =
             ((OpenSearchClient) getSearchClient()).getNewClient();
-        OpenSearchVectorService.init(osClient, embeddingClient, language);
+        OpenSearchVectorService.init(osClient, embeddingClient);
         this.vectorIndexService = OpenSearchVectorService.getInstance();
       } else {
         LOG.warn(
@@ -583,9 +583,8 @@ public class SearchRepository {
       }
     } catch (Exception e) {
       LOG.error(
-          String.format(
-              "Failed to Delete Index for entity %s due to ",
-              indexMapping.getIndexName(clusterAlias)),
+          "Failed to Delete Index for entity {} due to ",
+          indexMapping.getIndexName(clusterAlias),
           e);
     }
   }
@@ -649,12 +648,10 @@ public class SearchRepository {
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("createEntityIndex", ie));
       LOG.error(
-          "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue creating new search document for entity [{}] and entityType [{}]",
           entityId,
           entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+          ie);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
@@ -876,13 +873,23 @@ public class SearchRepository {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
         for (EntityInterface entity : entities) {
-          SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-          String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
-          docs.add(Collections.singletonMap(entity.getId().toString(), doc));
+          try {
+            SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+            String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+            docs.add(Collections.singletonMap(entity.getId().toString(), doc));
+          } catch (Exception ie) {
+            LOG.error(
+                "Issue in building search document for entity [{}] and entityType [{}]",
+                entity.getId(),
+                entityType,
+                ie);
+          }
         }
 
-        // createEntities is async fire-and-forget — errors are handled in its
-        // callback via the retry queue, so no try-catch is needed here.
+        if (docs.isEmpty()) {
+          return;
+        }
+
         searchClient.createEntities(indexMapping.getIndexName(clusterAlias), docs);
 
         if (Entity.TABLE.equals(entityType)) {
@@ -977,12 +984,10 @@ public class SearchRepository {
             entityType,
             SearchIndexRetryQueue.failureReason("createTimeSeriesEntity", ie));
         LOG.error(
-            "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            "Issue creating new search document for entity [{}] and entityType [{}]",
             entityId,
             entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
+            ie);
       } finally {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
@@ -1010,12 +1015,10 @@ public class SearchRepository {
             entityType,
             SearchIndexRetryQueue.failureReason("updateTimeSeriesEntity", e));
         LOG.error(
-            "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            "Issue updating the search document for entity [{}] and entityType [{}]",
             entityId,
             entityType,
-            e.getMessage(),
-            e.getCause(),
-            ExceptionUtils.getStackTrace(e));
+            e);
       } finally {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
@@ -1144,12 +1147,10 @@ public class SearchRepository {
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("updateEntityIndex", ie));
       LOG.error(
-          "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue updating the search document for entity [{}] and entityType [{}]",
           entityId,
           entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+          ie);
     } finally {
       // End search timing
       if (searchSample != null) {
@@ -1652,7 +1653,6 @@ public class SearchRepository {
     }
   }
 
-  private static final String CERTIFICATION = "Certification";
   private static final String CERTIFICATION_FIELD = "certification";
   private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
 
@@ -1663,19 +1663,34 @@ public class SearchRepository {
     }
 
     if (Entity.TAG.equalsIgnoreCase(entityType)) {
-      handleTagEntityUpdate((Tag) entity);
+      handleTagEntityUpdate((Tag) entity, changeDescription);
     } else {
       handleEntityCertificationUpdate(entity, changeDescription);
     }
   }
 
-  private void handleTagEntityUpdate(Tag tagEntity) {
-    if (CERTIFICATION.equals(tagEntity.getClassification().getFullyQualifiedName())) {
-      updateCertificationInSearch(tagEntity);
+  private void handleTagEntityUpdate(Tag tagEntity, ChangeDescription changeDescription) {
+    String allowedClassification = getCertificationClassificationFromSettings();
+    if (allowedClassification == null) return;
+    if (!allowedClassification.equals(tagEntity.getClassification().getFullyQualifiedName()))
+      return;
+
+    String oldFQN = tagEntity.getFullyQualifiedName();
+    for (FieldChange field : changeDescription.getFieldsUpdated()) {
+      if (FIELD_NAME.equals(field.getName()) && field.getOldValue() != null) {
+        String parentFQN = FullyQualifiedName.getParentFQN(tagEntity.getFullyQualifiedName());
+        if (!nullOrEmpty(parentFQN)) {
+          oldFQN = FullyQualifiedName.add(parentFQN, field.getOldValue().toString());
+        } else {
+          oldFQN = FullyQualifiedName.quoteName(field.getOldValue().toString());
+        }
+        break;
+      }
     }
+    updateCertificationInSearch(tagEntity, oldFQN);
   }
 
-  private void updateCertificationInSearch(Tag tagEntity) {
+  private void updateCertificationInSearch(Tag tagEntity, String oldFQN) {
     Map<String, Object> paramMap = new HashMap<>();
     paramMap.put("name", tagEntity.getName());
     paramMap.put("description", tagEntity.getDescription());
@@ -1683,8 +1698,18 @@ public class SearchRepository {
     paramMap.put("style", tagEntity.getStyle());
     searchClient.updateChildren(
         DATA_ASSET_SEARCH_ALIAS,
-        new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, tagEntity.getFullyQualifiedName()),
+        new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, oldFQN),
         new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
+  }
+
+  private String getCertificationClassificationFromSettings() {
+    return SettingsCache.getSettingOrDefault(
+            SettingsType.ASSET_CERTIFICATION_SETTINGS,
+            new AssetCertificationSettings()
+                .withAllowedClassification("Certification")
+                .withValidityPeriod("P30D"),
+            AssetCertificationSettings.class)
+        .getAllowedClassification();
   }
 
   private void handleEntityCertificationUpdate(EntityInterface entity, ChangeDescription change) {
@@ -1736,7 +1761,7 @@ public class SearchRepository {
       EntityInterface entity) {
 
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
-      String indexName = indexMapping.getIndexName();
+      String indexName = indexMapping.getIndexName(clusterAlias);
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (field.getName().contains(PARENT)) {
           String oldParentFQN = entity.getName();
@@ -1801,18 +1826,18 @@ public class SearchRepository {
           newFQN = FullyQualifiedName.quoteName(field.getNewValue().toString());
         }
 
-        if (field.getName().contains(FIELD_NAME)) {
+        if (FIELD_NAME.equals(field.getName())) {
           searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
         }
 
         if (field.getName().equalsIgnoreCase(FIELD_DISPLAY_NAME)) {
           Map<String, Object> updates = new HashMap<>();
           updates.put("displayName", field.getNewValue().toString());
-          paramMap.put("tagFQN", oldFQN);
+          paramMap.put("tagFQN", entity.getFullyQualifiedName());
           paramMap.put("updates", updates);
           searchClient.updateChildren(
               GLOBAL_SEARCH_ALIAS,
-              new ImmutablePair<>(TAGS_FQN, oldFQN),
+              new ImmutablePair<>(TAGS_FQN, entity.getFullyQualifiedName()),
               new ImmutablePair<>(UPDATE_TAGS_FIELD_SCRIPT, paramMap));
         }
       }
@@ -1984,12 +2009,7 @@ public class SearchRepository {
       IndexMapping indexMapping = getIndexMapping(entityType);
       searchClient.deleteByScript(indexMapping.getIndexName(clusterAlias), scriptTxt, params);
     } catch (Exception ie) {
-      LOG.error(
-          "Issue in deleting  search document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
-          entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+      LOG.error("Issue deleting search document for entityType [{}]", entityType, ie);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
@@ -2031,12 +2051,10 @@ public class SearchRepository {
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("deleteEntityIndex", ie));
       LOG.error(
-          "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue deleting the search document for entityID [{}] and entityType [{}]",
           entityId,
           entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+          ie);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
@@ -2070,12 +2088,10 @@ public class SearchRepository {
             fqn,
             SearchIndexRetryQueue.failureReason("deleteEntityByFQNPrefix", ie));
         LOG.error(
-            "Issue in Deleting the search document for entityFQN [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            "Issue deleting the search document for entityFQN [{}] and entityType [{}]",
             fqn,
             entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
+            ie);
       } finally {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
@@ -2099,12 +2115,10 @@ public class SearchRepository {
             entityType,
             SearchIndexRetryQueue.failureReason("deleteTimeSeriesEntityById", ie));
         LOG.error(
-            "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            "Issue deleting the search document for entityID [{}] and entityType [{}]",
             entityId,
             entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
+            ie);
       } finally {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
@@ -2150,12 +2164,10 @@ public class SearchRepository {
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("softDeleteOrRestoreEntityIndex", ie));
       LOG.error(
-          "Issue in Soft Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue soft deleting the search document for entityID [{}] and entityType [{}]",
           entityId,
           entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+          ie);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
@@ -2750,7 +2762,7 @@ public class SearchRepository {
 
   @SuppressWarnings("unused")
   public <T> T getHighLevelClient() {
-    return (T) searchClient.getHighLevelClient();
+    return searchClient.getHighLevelClient();
   }
 
   public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(

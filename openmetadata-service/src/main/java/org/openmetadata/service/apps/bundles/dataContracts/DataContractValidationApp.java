@@ -36,7 +36,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
 
   private final Stats stats = new Stats();
   private JobExecutionContext jobExecutionContext;
-  private Map<String, Object> failureDetails = new HashMap<>();
+  private final Map<String, Object> failureDetails = new HashMap<>();
 
   public DataContractValidationApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);

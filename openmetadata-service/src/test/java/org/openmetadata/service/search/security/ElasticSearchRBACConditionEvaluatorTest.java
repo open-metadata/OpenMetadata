@@ -3,7 +3,6 @@ package org.openmetadata.service.search.security;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.openmetadata.service.util.TestUtils.assertFieldDoesNotExist;
 import static org.openmetadata.service.util.TestUtils.assertFieldExists;
@@ -17,6 +16,7 @@ import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import jakarta.json.stream.JsonGenerator;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -288,6 +288,24 @@ class ElasticSearchRBACConditionEvaluatorTest {
     countBoolQueries(rootNode, boolQueryCount);
     assertEquals(
         6, boolQueryCount.get(), "There should be no more than 5 'bool' clauses in the query.");
+  }
+
+  @Test
+  void getIndexFilterFallsBackToLowercaseResourcesWhenSearchRepositoryIsUnavailable()
+      throws Exception {
+    Entity.setSearchRepository(null);
+
+    Method method = RBACConditionEvaluator.class.getDeclaredMethod("getIndexFilter", List.class);
+    method.setAccessible(true);
+
+    OMQueryBuilder queryBuilder =
+        (OMQueryBuilder) method.invoke(evaluator, List.of("TABLE", "MlModel"));
+    Query elasticQuery = ((ElasticQueryBuilder) queryBuilder).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+
+    assertTrue(generatedQuery.contains("\"_index\""));
+    assertTrue(generatedQuery.contains("\"table\""));
+    assertTrue(generatedQuery.contains("\"mlmodel\""));
   }
 
   @Test

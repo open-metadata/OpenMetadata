@@ -210,7 +210,7 @@ public class ReindexingOrchestrator {
     }
   }
 
-  private void runReindexing() throws Exception {
+  private void runReindexing() {
     if (jobData.getEntities() == null || jobData.getEntities().isEmpty()) {
       LOG.info("No entities selected for reindexing, completing immediately");
       jobData.setStatus(EventPublisherJob.Status.COMPLETED);
@@ -390,8 +390,11 @@ public class ReindexingOrchestrator {
     }
 
     if (jobData.getStats() != null) {
-      SuccessContext successContext =
-          new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
+      SuccessContext successContext = appRecord.getSuccessContext();
+      if (successContext == null) {
+        successContext = new SuccessContext();
+      }
+      successContext.withAdditionalProperty("stats", jobData.getStats());
 
       String distributedJobId = (String) resultMetadata.get("distributedJobId");
 

@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Tag, TagGroup, TagList } from "../components/base/tags/tags";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Tag, TagGroup, TagList } from '../components/base/tags/tags';
 
 const meta = {
-  title: "Components/Tags",
+  title: 'Components/Tags',
   component: TagGroup,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof TagGroup>;
 
 export default meta;
@@ -39,7 +39,7 @@ export const Default: Story = {
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <TagGroup label="Small" size="sm">
         <TagList>
           <Tag id="sm1">Small Tag</Tag>
@@ -66,9 +66,15 @@ export const WithDot: StoryObj = {
   render: () => (
     <TagGroup label="Status" size="md">
       <TagList>
-        <Tag id="active" dot>Active</Tag>
-        <Tag id="pending" dot>Pending</Tag>
-        <Tag id="inactive" dot>Inactive</Tag>
+        <Tag dot id="active">
+          Active
+        </Tag>
+        <Tag dot id="pending">
+          Pending
+        </Tag>
+        <Tag dot id="inactive">
+          Inactive
+        </Tag>
       </TagList>
     </TagGroup>
   ),
@@ -78,9 +84,15 @@ export const WithCount: StoryObj = {
   render: () => (
     <TagGroup label="Filters" size="md">
       <TagList>
-        <Tag id="all" count={42}>All Items</Tag>
-        <Tag id="active" count={15}>Active</Tag>
-        <Tag id="archived" count={7}>Archived</Tag>
+        <Tag count={42} id="all">
+          All Items
+        </Tag>
+        <Tag count={15} id="active">
+          Active
+        </Tag>
+        <Tag count={7} id="archived">
+          Archived
+        </Tag>
       </TagList>
     </TagGroup>
   ),
@@ -90,8 +102,12 @@ export const WithAvatar: StoryObj = {
   render: () => (
     <TagGroup label="Team" size="md">
       <TagList>
-        <Tag id="user1" avatarSrc="https://i.pravatar.cc/150?img=1">John Doe</Tag>
-        <Tag id="user2" avatarSrc="https://i.pravatar.cc/150?img=2">Jane Smith</Tag>
+        <Tag avatarSrc="https://i.pravatar.cc/150?img=1" id="user1">
+          John Doe
+        </Tag>
+        <Tag avatarSrc="https://i.pravatar.cc/150?img=2" id="user2">
+          Jane Smith
+        </Tag>
       </TagList>
     </TagGroup>
   ),
@@ -101,9 +117,15 @@ export const WithClose: StoryObj = {
   render: () => (
     <TagGroup label="Selected filters" size="md">
       <TagList>
-        <Tag id="tag1" onClose={(id) => console.log("Remove:", id)}>React</Tag>
-        <Tag id="tag2" onClose={(id) => console.log("Remove:", id)}>TypeScript</Tag>
-        <Tag id="tag3" onClose={(id) => console.log("Remove:", id)}>Tailwind</Tag>
+        <Tag id="tag1" onClose={(id) => console.log('Remove:', id)}>
+          React
+        </Tag>
+        <Tag id="tag2" onClose={(id) => console.log('Remove:', id)}>
+          TypeScript
+        </Tag>
+        <Tag id="tag3" onClose={(id) => console.log('Remove:', id)}>
+          Tailwind
+        </Tag>
       </TagList>
     </TagGroup>
   ),
@@ -111,7 +133,7 @@ export const WithClose: StoryObj = {
 
 export const SingleSelection: StoryObj = {
   render: () => (
-    <TagGroup label="Category" size="md" selectionMode="single">
+    <TagGroup label="Category" selectionMode="single" size="md">
       <TagList>
         <Tag id="design">Design</Tag>
         <Tag id="engineering">Engineering</Tag>
@@ -124,7 +146,7 @@ export const SingleSelection: StoryObj = {
 
 export const MultipleSelection: StoryObj = {
   render: () => (
-    <TagGroup label="Tags" size="md" selectionMode="multiple">
+    <TagGroup label="Tags" selectionMode="multiple" size="md">
       <TagList>
         <Tag id="react">React</Tag>
         <Tag id="vue">Vue</Tag>

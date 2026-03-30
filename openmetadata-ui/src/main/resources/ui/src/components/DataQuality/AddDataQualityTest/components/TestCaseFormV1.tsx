@@ -33,7 +33,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, isEqual, isString, isUndefined, snakeCase } from 'lodash';
+import { isEmpty, isEqual, isUndefined, snakeCase } from 'lodash';
 import {
   FC,
   FocusEvent,
@@ -125,6 +125,7 @@ import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCar
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import ScheduleIntervalV1 from '../../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
+import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 import {
@@ -845,14 +846,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         // - Table has test suite with existing pipelines
         // - canCreatePipeline is false
         if (testSuiteResponse && canCreatePipeline) {
-          const selectedTestCases =
-            values.testCases?.map((testCase) => {
-              if (isString(testCase)) {
-                return testCase;
-              }
-
-              return testCase.name ?? '';
-            }) ?? [];
+          const selectedTestCases = normalizeSelectedTestProp(values.testCases);
           const tableName = replaceAllSpacialCharWith_(
             selectedTable || table?.fullyQualifiedName || ''
           );

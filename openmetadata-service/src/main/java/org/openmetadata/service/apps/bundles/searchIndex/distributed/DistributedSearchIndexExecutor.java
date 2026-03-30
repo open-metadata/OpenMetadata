@@ -327,22 +327,24 @@ public class DistributedSearchIndexExecutor {
 
     UUID jobId = currentJob.getId();
     LOG.info("Server {} starting execution of job {}", serverId, jobId);
+    boolean startedJob = false;
 
     // Start the job if in READY state
     if (currentJob.getStatus() == IndexJobStatus.READY) {
       coordinator.startJob(jobId);
       currentJob = coordinator.getJob(jobId).orElseThrow();
-
-      // Notify other servers that a job has started so they can participate
-      if (jobNotifier != null) {
-        jobNotifier.notifyJobStarted(jobId, "SEARCH_INDEX");
-        LOG.info("Notified other servers about job {} via {}", jobId, jobNotifier.getType());
-      }
+      startedJob = true;
     }
 
     if (currentJob.getStatus() != IndexJobStatus.RUNNING) {
       throw new IllegalStateException(
           "Job must be in RUNNING state to execute. Current: " + currentJob.getStatus());
+    }
+
+    // Notify other servers that a job has started so they can participate
+    if (startedJob && jobNotifier != null && currentJob.getStatus() == IndexJobStatus.RUNNING) {
+      jobNotifier.notifyJobStarted(jobId, "SEARCH_INDEX");
+      LOG.info("Notified other servers about job {} via {}", jobId, jobNotifier.getType());
     }
 
     ReindexingMetrics metrics = ReindexingMetrics.getInstance();
@@ -422,7 +424,7 @@ public class DistributedSearchIndexExecutor {
     partitionHeartbeatThread =
         Thread.ofVirtual()
             .name("reindex-partition-heartbeat-" + jobId.toString().substring(0, 8))
-            .start(() -> runPartitionHeartbeatLoop());
+            .start(this::runPartitionHeartbeatLoop);
 
     // Apply CPU-budgeted pool sizes from auto-tune
     applyPoolSizes(reindexConfig, bulkSink);
@@ -1084,8 +1086,7 @@ public class DistributedSearchIndexExecutor {
     // Set up per-entity promotion callback if recreating indices
     if (recreateIndex && recreateContext != null) {
       this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
-      entityTracker.setOnEntityComplete(
-          (entityType, success) -> promoteEntityIndex(entityType, success));
+      entityTracker.setOnEntityComplete(this::promoteEntityIndex);
       LOG.info(
           "Per-entity promotion callback SET for job {} (recreateIndex={}, recreateContext entities={})",
           jobId,

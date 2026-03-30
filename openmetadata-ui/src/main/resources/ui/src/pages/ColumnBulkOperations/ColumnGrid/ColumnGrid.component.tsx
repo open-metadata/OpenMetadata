@@ -63,7 +63,6 @@ import {
   PAGE_SIZE_MEDIUM,
   SOCKET_EVENTS,
 } from '../../../constants/constants';
-import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -85,8 +84,11 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
+import { formatContent } from '../../../utils/BlockEditorUtils';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getSanitizeContent } from '../../../utils/sanitize.utils';
+import { stringToDOMElement } from '../../../utils/StringsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
@@ -108,8 +110,8 @@ const TABLE_LAYOUT_CLASSES =
 const COLUMN_WIDTH_PERCENT: Record<string, string> = {
   columnName: '22%',
   path: '16%',
-  description: '14%',
-  dataType: '14%',
+  description: '16%',
+  dataType: '12%',
   tags: '18%',
   glossaryTerms: '18%',
 };
@@ -120,8 +122,69 @@ const EmptyCellContent = () => (
   </Typography>
 );
 
+const COLUMN_GRID_TAG_BADGES_MAX_VISIBLE = 2;
+
+const COLUMN_GRID_GLOSSARY_TERMS_BADGES_MAX_VISIBLE = 1;
+
+const COLUMN_NAME_CELL_GRID =
+  'tw:grid tw:w-full tw:min-w-0 tw:grid-cols-[2.25rem_minmax(0,1fr)] tw:items-center tw:gap-1 tw:overflow-hidden';
+
+const COLUMN_NAME_CELL_CHEVRON =
+  'tw:flex tw:min-w-0 tw:items-center tw:justify-center tw:overflow-hidden';
+
+interface ColumnGridTruncatingTagBadgesProps {
+  maxVisible?: number;
+  renderBadge: (tag: TagLabel, index: number) => React.ReactNode;
+  tags: TagLabel[];
+}
+
+const ColumnGridTruncatingTagBadges: React.FC<
+  ColumnGridTruncatingTagBadgesProps
+> = ({
+  maxVisible = COLUMN_GRID_TAG_BADGES_MAX_VISIBLE,
+  renderBadge,
+  tags,
+}) => {
+  if (tags.length === 0) {
+    return null;
+  }
+
+  const limit = Math.max(0, maxVisible);
+  const visibleTags = tags.slice(0, limit);
+  const remaining = tags.length - visibleTags.length;
+
+  return (
+    <div className="tw:flex tw:items-center tw:gap-1.5">
+      {visibleTags.map((tag: TagLabel, index: number) => {
+        const fullLabel = tag.name || tag.tagFQN.split('.').pop() || '';
+
+        return (
+          <div
+            className="tw:min-w-0 tw:flex-1 tw:basis-0 tw:overflow-hidden"
+            key={tag.tagFQN}
+            title={fullLabel}>
+            {renderBadge(tag, index)}
+          </div>
+        );
+      })}
+      {remaining > 0 && <Typography as="span">+{remaining}</Typography>}
+    </div>
+  );
+};
+
 const hasEditedValues = (r: ColumnGridRowData): boolean =>
   some(EDITED_ROW_KEYS, (key) => !isUndefined(r[key]));
+
+const getDescriptionPreview = (description?: string): string => {
+  if (!description) {
+    return '';
+  }
+
+  return (
+    stringToDOMElement(getSanitizeContent(formatContent(description, 'client')))
+      .textContent ?? ''
+  ).slice(0, 100);
+};
 
 interface ColumnOccurrenceTarget {
   columnFQN: string;
@@ -325,6 +388,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         columnName: child.name || '',
         displayName: child.displayName,
         description: child.description,
+        descriptionPreview: getDescriptionPreview(child.description),
         dataType: child.dataType,
         tags: child.tags,
         occurrenceCount: 1,
@@ -408,6 +472,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   columnName: item.columnName,
                   displayName: group.displayName,
                   description: group.description,
+                  descriptionPreview: getDescriptionPreview(group.description),
                   dataType: group.dataType,
                   tags: group.tags,
                   occurrenceCount: 1,
@@ -454,6 +519,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             columnName: item.columnName,
             displayName: group?.displayName,
             description: group?.description,
+            descriptionPreview: getDescriptionPreview(group?.description),
             dataType: group?.dataType,
             tags: aggregatedTags.length > 0 ? aggregatedTags : group?.tags,
             occurrenceCount: allOccurrences.length,
@@ -492,6 +558,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 columnName: item.columnName,
                 displayName: group.displayName,
                 description: group.description,
+                descriptionPreview: getDescriptionPreview(group.description),
                 dataType: group.dataType,
                 tags: group.tags,
                 occurrenceCount: 1,
@@ -522,6 +589,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             columnName: item.columnName,
             displayName: group?.displayName,
             description: group?.description,
+            descriptionPreview: getDescriptionPreview(group?.description),
             dataType: group?.dataType,
             tags: group?.tags,
             occurrenceCount: allOccurrences.length,
@@ -718,7 +786,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       return (
         <Button
-          className="tw:block tw:min-w-0 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap"
+          className="tw:block tw:min-w-0 tw:truncate"
           color="link-color"
           href={entityInfo.link}>
           {entityInfo.name}
@@ -730,8 +798,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   const renderDescriptionCellAdapter = useCallback(
     (entity: ColumnGridRowData) => {
-      const description = entity.editedDescription ?? entity.description ?? '';
       const hasEdit = entity.editedDescription !== undefined;
+      const displayValue = hasEdit
+        ? entity.editedDescriptionPreview ?? ''
+        : entity.descriptionPreview ?? '';
 
       if (entity.hasCoverage && entity.metadataStatus) {
         const countText =
@@ -742,26 +812,37 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return (
           <Typography
             as="span"
-            className={getMetadataStatusClassName(entity.metadataStatus)}>
+            className={classNames(
+              getMetadataStatusClassName(entity.metadataStatus),
+              'tw:w-fit'
+            )}>
             {getMetadataStatusLabel(entity.metadataStatus, t)}
             {countText}
           </Typography>
         );
       }
 
-      // Show actual description for child rows or single occurrences
-      // Strip HTML tags for display - React's JSX escaping handles XSS prevention
-      const displayValue = description.replace(/<[^>]*>/g, '').slice(0, 100);
-
       if (hasEdit) {
         return (
-          <Badge color="warning" size="sm" type="color">
-            <Typography as="span">{displayValue || '-'}</Typography>
-          </Badge>
+          <div className="tw:flex tw:min-w-0 tw:max-w-full">
+            <Badge
+              className="tw:shrink tw:truncate"
+              color="warning"
+              size="sm"
+              type="color">
+              {displayValue || '-'}
+            </Badge>
+          </div>
         );
       }
 
-      return <Typography as="span">{displayValue || '-'}</Typography>;
+      return (
+        <Typography
+          as="span"
+          className="tw:block tw:max-w-full tw:truncate tw:whitespace-nowrap tw:overflow-hidden tw:min-w-0">
+          {displayValue || '-'}
+        </Typography>
+      );
     },
     []
   );
@@ -780,29 +861,24 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
     }
 
-    const visibleTags = classificationTags.slice(0, 2);
-    const remainingCount = classificationTags.length - 2;
-
     return (
-      <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
-        {visibleTags.map((tag: TagLabel, index: number) => (
+      <ColumnGridTruncatingTagBadges
+        renderBadge={(tag: TagLabel, index: number) => (
           <Badge
+            className="tw:inline-flex tw:min-w-0 tw:max-w-full tw:items-center tw:gap-1"
             color={index === 0 ? 'gray' : 'blue'}
-            key={tag.tagFQN}
             size="sm"
             type="color">
-            {index === 0 && <TagIcon className="tw:size-3 tw:mr-1" />}
-            {tag.name || tag.tagFQN.split('.').pop()}
+            {index === 0 ? <TagIcon className="tw:size-3 tw:shrink-0" /> : null}
+            <div className="tw:min-w-0 tw:flex-1">
+              <Typography as="span" className="tw:block tw:min-w-0 tw:truncate">
+                {tag.name || tag.tagFQN.split('.').pop()}
+              </Typography>
+            </div>
           </Badge>
-        ))}
-        {remainingCount > 0 && (
-          <Typography
-            as="span"
-            className="tw:text-tertiary tw:text-xs tw:font-medium">
-            +{remainingCount}
-          </Typography>
         )}
-      </div>
+        tags={classificationTags}
+      />
     );
   }, []);
 
@@ -821,24 +897,30 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
       }
 
-      const visibleTerms = glossaryTerms.slice(0, 1);
-      const remainingCount = glossaryTerms.length - 1;
-
       return (
-        <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
-          {visibleTerms.map((tag: TagLabel) => (
-            <Badge color="gray" key={tag.tagFQN} size="sm" type="color">
-              {tag.name || tag.tagFQN.split('.').pop()}
-            </Badge>
-          ))}
-          {remainingCount > 0 && (
-            <Typography
-              as="span"
-              className="tw:text-tertiary tw:text-xs tw:font-medium">
-              +{remainingCount}
-            </Typography>
-          )}
-        </div>
+        <ColumnGridTruncatingTagBadges
+          maxVisible={COLUMN_GRID_GLOSSARY_TERMS_BADGES_MAX_VISIBLE}
+          renderBadge={(tag: TagLabel) => {
+            const labelText = tag.name || tag.tagFQN.split('.').pop() || '';
+
+            return (
+              <Badge
+                className="tw:inline-flex tw:min-w-0 tw:max-w-full tw:items-center tw:gap-1"
+                color="gray"
+                size="sm"
+                type="color">
+                <div className="tw:min-w-0 tw:flex-1">
+                  <Typography
+                    as="span"
+                    className="tw:block tw:min-w-0 tw:truncate">
+                    {labelText}
+                  </Typography>
+                </div>
+              </Badge>
+            );
+          }}
+          tags={glossaryTerms}
+        />
       );
     },
     []
@@ -872,6 +954,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   // Update render functions to use listing data state (with correct CellRenderer signature)
   const renderColumnNameCellFinal = useCallback(
     (entity: ColumnGridRowData) => {
+      const columnNameButtonClass = classNames(
+        'tw:flex tw:flex-1 tw:min-w-0 tw:items-center tw:justify-start tw:overflow-hidden tw:text-start',
+        'tw:*:data-text:block tw:*:data-text:min-w-0 tw:*:data-text:w-full tw:*:data-text:truncate'
+      );
+
       if (entity.isGroup && entity.occurrenceCount > 1) {
         const expandHandler = () => {
           const isExpanded = columnGridListing.expandedRows.has(entity.id);
@@ -898,21 +985,24 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         const isGroupExpanded = columnGridListing.expandedRows.has(entity.id);
 
         return (
-          <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:gap-1 tw:overflow-hidden">
-            <ButtonUtility
-              color="tertiary"
-              icon={
-                <ChevronRight
-                  className={classNames(
-                    'tw:size-4 tw:transition-transform',
-                    isGroupExpanded && 'tw:rotate-90'
-                  )}
-                />
-              }
-              size="sm"
-              onClick={expandHandler}
-            />
+          <div className={COLUMN_NAME_CELL_GRID}>
+            <div className={COLUMN_NAME_CELL_CHEVRON}>
+              <ButtonUtility
+                color="tertiary"
+                icon={
+                  <ChevronRight
+                    className={classNames(
+                      'tw:size-4 tw:transition-transform',
+                      isGroupExpanded && 'tw:rotate-90'
+                    )}
+                  />
+                }
+                size="sm"
+                onClick={expandHandler}
+              />
+            </div>
             <Button
+              className={columnNameButtonClass}
               color="tertiary"
               onPress={() => {
                 handleGroupSelectRef.current(entity.id, true);
@@ -926,6 +1016,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       if (entity.isStructChild) {
         const hasChildren = entity.children && entity.children.length > 0;
+        const nestedCount = entity.children?.length ?? 0;
+        const nameWithCount =
+          nestedCount > 0
+            ? `${entity.columnName} (${nestedCount})`
+            : entity.columnName;
 
         const structExpandHandler = () => {
           const isExpanded = columnGridListing.expandedStructRows.has(
@@ -954,28 +1049,43 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
 
         return (
-          <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:gap-1 tw:overflow-hidden">
-            {hasChildren && (
-              <ButtonUtility
-                color="tertiary"
-                icon={
-                  <ChevronRight
-                    className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isStructExpanded && 'tw:rotate-90'
-                    )}
-                  />
-                }
-                size="sm"
-                onClick={structExpandHandler}
-              />
-            )}
-            <Typography as="span">{entity.columnName}</Typography>
+          <div className={COLUMN_NAME_CELL_GRID}>
+            <div className={COLUMN_NAME_CELL_CHEVRON}>
+              {hasChildren ? (
+                <ButtonUtility
+                  color="tertiary"
+                  icon={
+                    <ChevronRight
+                      className={classNames(
+                        'tw:size-4 tw:transition-transform',
+                        isStructExpanded && 'tw:rotate-90'
+                      )}
+                    />
+                  }
+                  size="sm"
+                  onClick={structExpandHandler}
+                />
+              ) : null}
+            </div>
+            <Button
+              className={columnNameButtonClass}
+              color="tertiary"
+              onPress={() => {
+                handleSelectRef.current(entity.id, true);
+                openDrawerRef.current();
+              }}>
+              {nameWithCount}
+            </Button>
           </div>
         );
       }
 
       const hasStructChildren = entity.children && entity.children.length > 0;
+      const nestedCount = entity.children?.length ?? 0;
+      const nameWithCount =
+        nestedCount > 0
+          ? `${entity.columnName} (${nestedCount})`
+          : entity.columnName;
 
       const occurrenceExpandHandler = () => {
         const isExpanded = columnGridListing.expandedStructRows.has(entity.id);
@@ -1002,29 +1112,32 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
 
       return (
-        <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:gap-1 tw:overflow-hidden">
-          {hasStructChildren && (
-            <ButtonUtility
-              color="tertiary"
-              icon={
-                <ChevronRight
-                  className={classNames(
-                    'tw:size-4 tw:transition-transform',
-                    isOccurrenceExpanded && 'tw:rotate-90'
-                  )}
-                />
-              }
-              size="sm"
-              onClick={occurrenceExpandHandler}
-            />
-          )}
+        <div className={COLUMN_NAME_CELL_GRID}>
+          <div className={COLUMN_NAME_CELL_CHEVRON}>
+            {hasStructChildren ? (
+              <ButtonUtility
+                color="tertiary"
+                icon={
+                  <ChevronRight
+                    className={classNames(
+                      'tw:size-4 tw:transition-transform',
+                      isOccurrenceExpanded && 'tw:rotate-90'
+                    )}
+                  />
+                }
+                size="sm"
+                onClick={occurrenceExpandHandler}
+              />
+            ) : null}
+          </div>
           <Button
+            className={columnNameButtonClass}
             color="tertiary"
             onPress={() => {
               handleSelectRef.current(entity.id, true);
               openDrawerRef.current();
             }}>
-            {entity.columnName}
+            {nameWithCount}
           </Button>
         </div>
       );
@@ -1055,6 +1168,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             ? {
                 ...row,
                 [fieldName]: value,
+                ...(field === 'description'
+                  ? {
+                      editedDescriptionPreview: getDescriptionPreview(
+                        value as string
+                      ),
+                    }
+                  : {}),
               }
             : row
         );
@@ -1081,6 +1201,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             ...r,
             editedDisplayName: undefined,
             editedDescription: undefined,
+            editedDescriptionPreview: undefined,
             editedTags: undefined,
           };
         }
@@ -1208,6 +1329,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           ...r,
           editedDisplayName: undefined,
           editedDescription: undefined,
+          editedDescriptionPreview: undefined,
           editedTags: undefined,
         }))
       );
@@ -1443,7 +1565,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const queue = [parentId];
       while (queue.length > 0) {
         const current = queue.shift() as string;
-        const children = allRows.filter((r) => r.structParentId === current);
+        const children = allRows.filter(
+          (r) => r.structParentId === current || r.parentId === current
+        );
         for (const c of children) {
           result.push(c.id);
           queue.push(c.id);
@@ -2145,13 +2269,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: drawerTitle,
-    anchor: 'right',
     width: '40%',
     closeOnEscape: true,
     testId: 'column-bulk-operations-form-drawer',
-    header: {
-      sx: DRAWER_HEADER_STYLING,
-    },
     onCancel: discardPendingEdits,
     form: drawerContent,
     onSubmit: handleBulkUpdate,

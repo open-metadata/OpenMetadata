@@ -91,7 +91,7 @@ def ingest_s3_storage(minio, metadata, service_name, create_data):
               awsConfig: 
                 awsAccessKeyId: {minio_container.access_key}
                 awsSecretAccessKey: {minio_container.secret_key} 
-                awsRegion: not-important
+                awsRegion: us-east-1
                 endPointURL: http://localhost:{minio_container.get_exposed_port(9000)}
           sourceConfig:
             config:

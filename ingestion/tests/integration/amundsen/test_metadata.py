@@ -145,7 +145,7 @@ EXPECTED_SERVICE = [
         connection=DatabaseConnection(
             config=DynamoDBConnection(
                 type="DynamoDB",
-                awsConfig=AWSCredentials(awsRegion="aws_region"),
+                awsConfig=AWSCredentials(awsRegion="us-east-1"),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
                 supportsProfiler=True,

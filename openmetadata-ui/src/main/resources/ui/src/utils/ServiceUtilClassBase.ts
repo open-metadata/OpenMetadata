@@ -92,6 +92,7 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
+  PUBSUB,
   QLIK_SENSE,
   QUICKSIGHT,
   REDASH,
@@ -197,6 +198,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Mulesoft,
     DatabaseServiceType.MicrosoftFabric,
     PipelineServiceType.MicrosoftFabricPipeline,
+    DatabaseServiceType.MicrosoftAccess,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -553,6 +555,9 @@ class ServiceUtilClassBase {
 
       case this.MessagingServiceTypeSmallCase.Redpanda:
         return REDPANDA;
+
+      case this.MessagingServiceTypeSmallCase.PubSub:
+        return PUBSUB;
 
       case this.MessagingServiceTypeSmallCase.Kinesis:
         return KINESIS;

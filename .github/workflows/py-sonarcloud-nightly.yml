@@ -29,9 +29,71 @@ env:
   PROJECT_BASE_DIR: "ingestion"
 
 jobs:
-  ingestion-sonarcloud-analysis:
+  py-unit-tests:
+    name: Unit Tests
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+          fetch-depth: 0
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-server: 'false'
+
+      - name: Run Unit Tests
+        run: |
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s unit-tests
+        shell: bash
+
+      - name: Upload coverage artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: ingestion/.coverage
+          include-hidden-files: true
+
+  py-integration-tests:
+    name: "Integration Tests (${{ matrix.shard.name }})"
     timeout-minutes: 180
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - name: "shard-1"
+            nox-args: >-
+              tests/integration/ometa
+              tests/integration/postgres
+              tests/integration/mysql
+              tests/integration/profiler
+              tests/integration/data_quality
+          - name: "shard-2"
+            nox-args: >-
+              --ignore=tests/integration/ometa
+              --ignore=tests/integration/postgres
+              --ignore=tests/integration/mysql
+              --ignore=tests/integration/profiler
+              --ignore=tests/integration/data_quality
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -57,11 +119,22 @@ jobs:
           args: "-m no-ui"
           ingestion_dependency: "mysql,elasticsearch,sample-data"
 
-      - name: Run Python Tests & Record Coverage
+      - name: Run Integration Tests
         run: |
           source env/bin/activate
-          make coverage
-          rm pom.xml
+          cd ingestion
+          nox --no-venv -s integration-tests -- --standalone --durations=5 ${{ matrix.shard.nox-args }}
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+        shell: bash
+
+      - name: Upload coverage artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration-${{ matrix.shard.name }}
+          path: ingestion/.coverage
+          include-hidden-files: true
 
       - name: Clean Up
         if: ${{ !cancelled() }}
@@ -69,6 +142,61 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
+
+  py-combine-coverage:
+    if: ${{ !cancelled() }}
+    needs: [py-unit-tests, py-integration-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        run: pip install uv
+        shell: bash
+
+      - name: Install coverage
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          uv pip install "coverage[toml]" nox
+        shell: bash
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: ingestion/coverage-data/
+
+      - name: Prepare coverage files
+        run: |
+          cd ingestion
+          [ -f coverage-data/coverage-unit/.coverage ] && mv coverage-data/coverage-unit/.coverage .coverage.unit
+          for dir in coverage-data/coverage-integration-*/; do
+            shard=$(basename "$dir" | sed 's/coverage-integration-//')
+            [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"
+          done
+        shell: bash
+
+      - name: Combine coverage
+        run: |
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s combine-coverage
+        shell: bash
+
+      - name: Remove pom.xml
+        run: rm pom.xml
+        shell: bash
 
       - name: Push Results To Sonar
         if: ${{ !cancelled() }}

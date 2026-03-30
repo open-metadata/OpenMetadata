@@ -221,20 +221,30 @@ export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   return usagePercentile;
 };
 
-export const getTierTags = (tags: Array<TagLabel>) => {
-  const tierTag = tags.find((item) =>
-    item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-  );
+export const isTierTag = (tagFQN: string) =>
+  tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`);
 
-  return tierTag;
+export const isCertificationTag = (tagFQN: string) =>
+  tagFQN.startsWith(`Certification${FQN_SEPARATOR_CHAR}`);
+
+export const getTierTags = (tags: Array<TagLabel>) => {
+  return tags.find((item) => isTierTag(item.tagFQN));
 };
 
 export const getTagsWithoutTier = (
   tags: Array<EntityTags>
 ): Array<EntityTags> => {
-  return tags.filter(
-    (item) => !item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-  );
+  return tags.filter((item) => !isTierTag(item.tagFQN));
+};
+
+export const getCertificationTag = (tags: Array<TagLabel>) => {
+  return tags.find((item) => isCertificationTag(item.tagFQN));
+};
+
+export const getTagsWithoutCertification = (
+  tags: Array<EntityTags>
+): Array<EntityTags> => {
+  return tags.filter((item) => !isCertificationTag(item.tagFQN));
 };
 
 export const getConstraintIcon = ({

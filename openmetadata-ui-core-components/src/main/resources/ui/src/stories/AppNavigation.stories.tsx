@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
+import type { Meta, StoryObj } from '@storybook/react';
+import { useState } from 'react';
 import {
   BarChart01,
   BookOpen01,
@@ -24,57 +24,57 @@ import {
   Settings01,
   Tag01,
   Users01,
-} from "@untitledui/icons";
-import { NavAccountCard } from "../components/application/app-navigation/base-components/nav-account-card";
-import { NavItemButton } from "../components/application/app-navigation/base-components/nav-item-button";
-import { NavList } from "../components/application/app-navigation/base-components/nav-list";
+} from '@untitledui/icons';
+import { NavAccountCard } from '../components/application/app-navigation/base-components/nav-account-card';
+import { NavItemButton } from '../components/application/app-navigation/base-components/nav-item-button';
+import { NavList } from '../components/application/app-navigation/base-components/nav-list';
 
 const meta = {
-  title: "Application/AppNavigation",
+  title: 'Application/AppNavigation',
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta;
 
 export default meta;
 type Story = StoryObj;
 
 const sampleNavItems = [
-  { label: "Home", href: "/home", icon: Home01 },
-  { label: "Dashboard", href: "/dashboard", icon: BarChart01 },
-  { label: "Explore", href: "/explore", icon: Grid01 },
+  { label: 'Home', href: '/home', icon: Home01 },
+  { label: 'Dashboard', href: '/dashboard', icon: BarChart01 },
+  { label: 'Explore', href: '/explore', icon: Grid01 },
   {
-    label: "Data Assets",
-    href: "/data-assets",
+    label: 'Data Assets',
+    href: '/data-assets',
     icon: Database01,
     items: [
-      { label: "Tables", href: "/data-assets/tables" },
-      { label: "Topics", href: "/data-assets/topics" },
-      { label: "Dashboards", href: "/data-assets/dashboards" },
-      { label: "Pipelines", href: "/data-assets/pipelines" },
+      { label: 'Tables', href: '/data-assets/tables' },
+      { label: 'Topics', href: '/data-assets/topics' },
+      { label: 'Dashboards', href: '/data-assets/dashboards' },
+      { label: 'Pipelines', href: '/data-assets/pipelines' },
     ],
   },
-  { label: "Governance", href: "/governance", icon: Tag01, badge: "3" },
-  { label: "Quality", href: "/quality", icon: PieChart03 },
-  { label: "Insights", href: "/insights", icon: File06 },
+  { label: 'Governance', href: '/governance', icon: Tag01, badge: '3' },
+  { label: 'Quality', href: '/quality', icon: PieChart03 },
+  { label: 'Insights', href: '/insights', icon: File06 },
   { divider: true as const },
-  { label: "Settings", href: "/settings", icon: Settings01 },
-  { label: "Documentation", href: "/docs", icon: BookOpen01 },
-  { label: "Support", href: "/support", icon: LifeBuoy01 },
+  { label: 'Settings', href: '/settings', icon: Settings01 },
+  { label: 'Documentation', href: '/docs', icon: BookOpen01 },
+  { label: 'Support', href: '/support', icon: LifeBuoy01 },
 ];
 
 const sampleNavItemsCompact = [
-  { label: "Home", href: "/home", icon: Home01 },
-  { label: "Dashboard", href: "/dashboard", icon: BarChart01 },
-  { label: "Explore", href: "/explore", icon: Grid01 },
-  { label: "Data Assets", href: "/data-assets", icon: Database01 },
-  { label: "Governance", href: "/governance", icon: Tag01 },
-  { label: "Quality", href: "/quality", icon: PieChart03 },
-  { label: "Insights", href: "/insights", icon: File06 },
+  { label: 'Home', href: '/home', icon: Home01 },
+  { label: 'Dashboard', href: '/dashboard', icon: BarChart01 },
+  { label: 'Explore', href: '/explore', icon: Grid01 },
+  { label: 'Data Assets', href: '/data-assets', icon: Database01 },
+  { label: 'Governance', href: '/governance', icon: Tag01 },
+  { label: 'Quality', href: '/quality', icon: PieChart03 },
+  { label: 'Insights', href: '/insights', icon: File06 },
   { divider: true as const },
-  { label: "Settings", href: "/settings", icon: Settings01 },
-  { label: "Support", href: "/support", icon: LifeBuoy01 },
+  { label: 'Settings', href: '/settings', icon: Settings01 },
+  { label: 'Support', href: '/support', icon: LifeBuoy01 },
 ];
 
 /** Full-width sidebar with logo, nav items, and account card at the bottom. */
@@ -96,8 +96,12 @@ export const DefaultSidebar: Story = {
       </nav>
 
       <main className="tw:flex-1 tw:p-8">
-        <h1 className="tw:text-xl tw:font-semibold tw:text-primary">Main Content</h1>
-        <p className="tw:mt-2 tw:text-sm tw:text-tertiary">Select a navigation item to explore the sidebar behavior.</p>
+        <h1 className="tw:text-xl tw:font-semibold tw:text-primary">
+          Main Content
+        </h1>
+        <p className="tw:mt-2 tw:text-sm tw:text-tertiary">
+          Select a navigation item to explore the sidebar behavior.
+        </p>
       </main>
     </div>
   ),
@@ -115,15 +119,18 @@ export const CollapsedIconSidebar: Story = {
         <div className="tw:flex tw:flex-1 tw:flex-col tw:items-center tw:gap-1">
           {sampleNavItemsCompact.map((item, index) =>
             item.divider ? (
-              <hr key={index} className="tw:my-1 tw:w-8 tw:border-none tw:bg-border-secondary tw:h-px" />
+              <hr
+                className="tw:my-1 tw:w-8 tw:border-none tw:bg-border-secondary tw:h-px"
+                key={index}
+              />
             ) : (
               item.icon && (
                 <NavItemButton
-                  key={item.href}
+                  current={item.href === '/dashboard'}
                   href={item.href}
-                  label={item.label}
                   icon={item.icon}
-                  current={item.href === "/dashboard"}
+                  key={item.href}
+                  label={item.label}
                   size="md"
                 />
               )
@@ -132,13 +139,17 @@ export const CollapsedIconSidebar: Story = {
         </div>
 
         <div className="tw:mt-4">
-          <NavItemButton href="/team" label="Team" icon={Users01} size="md" />
+          <NavItemButton href="/team" icon={Users01} label="Team" size="md" />
         </div>
       </nav>
 
       <main className="tw:flex-1 tw:p-8">
-        <h1 className="tw:text-xl tw:font-semibold tw:text-primary">Main Content</h1>
-        <p className="tw:mt-2 tw:text-sm tw:text-tertiary">Icon-only sidebar — hover icons to see tooltips.</p>
+        <h1 className="tw:text-xl tw:font-semibold tw:text-primary">
+          Main Content
+        </h1>
+        <p className="tw:mt-2 tw:text-sm tw:text-tertiary">
+          Icon-only sidebar — hover icons to see tooltips.
+        </p>
       </main>
     </div>
   ),
@@ -153,18 +164,19 @@ export const TogglableSidebar: Story = {
       <div className="tw:flex tw:h-screen tw:bg-secondary">
         <nav
           className={`tw:flex tw:flex-col tw:border-r tw:border-secondary tw:bg-primary tw:transition-all tw:duration-200 ${
-            collapsed ? "tw:w-16 tw:items-center" : "tw:w-72"
-          }`}
-        >
+            collapsed ? 'tw:w-16 tw:items-center' : 'tw:w-72'
+          }`}>
           <div
-            className={`tw:flex tw:h-16 tw:items-center tw:px-4 ${collapsed ? "tw:justify-center" : "tw:justify-between"}`}
-          >
+            className={`tw:flex tw:h-16 tw:items-center tw:px-4 ${
+              collapsed ? 'tw:justify-center' : 'tw:justify-between'
+            }`}>
             <Home01 className="tw:size-8 tw:text-fg-primary" />
             <button
-              onClick={() => setCollapsed((c) => !c)}
-              className={`tw:rounded-md tw:p-1.5 tw:text-fg-quaternary tw:transition tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover ${collapsed ? "tw:mt-0" : ""}`}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className={`tw:rounded-md tw:p-1.5 tw:text-fg-quaternary tw:transition tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover ${
+                collapsed ? 'tw:mt-0' : ''
+              }`}
+              onClick={() => setCollapsed((c) => !c)}>
               <Grid01 className="tw:size-4" />
             </button>
           </div>
@@ -173,15 +185,18 @@ export const TogglableSidebar: Story = {
             <div className="tw:flex tw:flex-1 tw:flex-col tw:items-center tw:gap-1 tw:px-2">
               {sampleNavItemsCompact.map((item, index) =>
                 item.divider ? (
-                  <hr key={index} className="tw:my-1 tw:w-8 tw:h-px tw:border-none tw:bg-border-secondary" />
+                  <hr
+                    className="tw:my-1 tw:w-8 tw:h-px tw:border-none tw:bg-border-secondary"
+                    key={index}
+                  />
                 ) : (
                   item.icon && (
                     <NavItemButton
-                      key={item.href}
+                      current={item.href === '/dashboard'}
                       href={item.href}
-                      label={item.label}
                       icon={item.icon}
-                      current={item.href === "/dashboard"}
+                      key={item.href}
+                      label={item.label}
                       size="md"
                     />
                   )
@@ -202,9 +217,12 @@ export const TogglableSidebar: Story = {
         </nav>
 
         <main className="tw:flex-1 tw:p-8">
-          <h1 className="tw:text-xl tw:font-semibold tw:text-primary">Main Content</h1>
+          <h1 className="tw:text-xl tw:font-semibold tw:text-primary">
+            Main Content
+          </h1>
           <p className="tw:mt-2 tw:text-sm tw:text-tertiary">
-            Click the grid icon in the sidebar header to toggle between expanded and collapsed states.
+            Click the grid icon in the sidebar header to toggle between expanded
+            and collapsed states.
           </p>
         </main>
       </div>
@@ -233,25 +251,28 @@ export const WithNestedNavigation: Story = {
       <main className="tw:flex-1 tw:p-8">
         <h1 className="tw:text-xl tw:font-semibold tw:text-primary">Tables</h1>
         <p className="tw:mt-2 tw:text-sm tw:text-tertiary">
-          Active URL is set to <code className="tw:rounded tw:bg-secondary tw:px-1 tw:font-mono tw:text-xs">/data-assets/tables</code> — the parent collapsible section opens automatically.
+          Active URL is set to{' '}
+          <code className="tw:rounded tw:bg-secondary tw:px-1 tw:font-mono tw:text-xs">
+            /data-assets/tables
+          </code>{' '}
+          — the parent collapsible section opens automatically.
         </p>
       </main>
     </div>
   ),
 };
 
-
 /** Sidebar with a badge on a nav item to surface counts or alerts. */
 export const WithBadges: Story = {
   render: () => {
     const itemsWithBadges = [
-      { label: "Home", href: "/home", icon: Home01 },
-      { label: "Dashboard", href: "/dashboard", icon: BarChart01 },
-      { label: "Governance", href: "/governance", icon: Tag01, badge: "5" },
-      { label: "Quality", href: "/quality", icon: PieChart03, badge: "12" },
-      { label: "Insights", href: "/insights", icon: File06, badge: "New" },
+      { label: 'Home', href: '/home', icon: Home01 },
+      { label: 'Dashboard', href: '/dashboard', icon: BarChart01 },
+      { label: 'Governance', href: '/governance', icon: Tag01, badge: '5' },
+      { label: 'Quality', href: '/quality', icon: PieChart03, badge: '12' },
+      { label: 'Insights', href: '/insights', icon: File06, badge: 'New' },
       { divider: true as const },
-      { label: "Settings", href: "/settings", icon: Settings01 },
+      { label: 'Settings', href: '/settings', icon: Settings01 },
     ];
 
     return (
@@ -271,8 +292,12 @@ export const WithBadges: Story = {
         </nav>
 
         <main className="tw:flex-1 tw:p-8">
-          <h1 className="tw:text-xl tw:font-semibold tw:text-primary">Main Content</h1>
-          <p className="tw:mt-2 tw:text-sm tw:text-tertiary">Nav items can display badge counts or labels.</p>
+          <h1 className="tw:text-xl tw:font-semibold tw:text-primary">
+            Main Content
+          </h1>
+          <p className="tw:mt-2 tw:text-sm tw:text-tertiary">
+            Nav items can display badge counts or labels.
+          </p>
         </main>
       </div>
     );

@@ -293,8 +293,7 @@ public class UserApprovalTask implements NodeInterface {
       Set<String> teams = new HashSet<>();
 
       Object candidatesObj = config.get("candidates");
-      if (candidatesObj instanceof List) {
-        List<?> candidates = (List<?>) candidatesObj;
+      if (candidatesObj instanceof List<?> candidates) {
         for (Object candidate : candidates) {
           if (candidate instanceof Map) {
             Map<String, Object> candidateMap = (Map<String, Object>) candidate;

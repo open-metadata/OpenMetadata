@@ -441,13 +441,11 @@ public class SearchClusterMetrics {
     double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
 
     // Default to conservative 10MB for AWS-managed clusters if we can't fetch from cluster
+    long maxContentLength = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default
     long maxPayloadSize = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default
     try {
       if (searchRepository != null) {
         SearchClient searchClient = searchRepository.getSearchClient();
-        Map<String, Object> clusterSettings = null;
-
-        long maxContentLength = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default;
         String maxContentLengthStr;
 
         // Get cluster settings based on search client type
@@ -490,7 +488,7 @@ public class SearchClusterMetrics {
         .cpuUsagePercent(50.0)
         .memoryUsagePercent(heapUsagePercent)
         .maxPayloadSizeBytes(maxPayloadSize)
-        .maxContentLength(maxPayloadSize * 10 / 9)
+        .maxContentLength(maxContentLength)
         .recommendedConcurrentRequests(conservativeConcurrentRequests)
         .recommendedBatchSize(conservativeBatchSize)
         .recommendedProducerThreads(conservativeThreads)

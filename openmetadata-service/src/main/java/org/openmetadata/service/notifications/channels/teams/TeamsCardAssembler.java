@@ -467,7 +467,7 @@ final class TeamsCardAssembler extends AbstractVisitor {
   private static boolean isAllowedLinkUrl(String url) {
     if (url == null) return false;
     try {
-      String s = URI.create(url.trim()).getScheme();
+      String s = URI.create(escapeMdUrl(url)).getScheme();
       return s != null
           && (s.equalsIgnoreCase("http")
               || s.equalsIgnoreCase("https")
