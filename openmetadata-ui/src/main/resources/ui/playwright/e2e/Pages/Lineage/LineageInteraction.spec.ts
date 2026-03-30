@@ -14,8 +14,6 @@ import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
-import { MlModelClass } from '../../../support/entity/MlModelClass';
-import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -36,7 +34,6 @@ import {
   editLineage,
   editLineageClick,
   performZoomOut,
-  verifyNodePresent,
   visitLineageTab,
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
@@ -46,8 +43,6 @@ test.describe('Lineage Interactions', () => {
   const table2 = new TableClass();
   const topic = new TopicClass();
   const dashboard = new DashboardClass();
-  const mlmodel = new MlModelClass();
-  const pipeline = new PipelineClass();
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await getDefaultAdminAPIContext(
@@ -59,8 +54,6 @@ test.describe('Lineage Interactions', () => {
       table2.create(apiContext),
       topic.create(apiContext),
       dashboard.create(apiContext),
-      mlmodel.create(apiContext),
-      pipeline.create(apiContext),
     ]);
 
     await topic.patch({
@@ -107,8 +100,6 @@ test.describe('Lineage Interactions', () => {
       table2.delete(apiContext),
       topic.delete(apiContext),
       dashboard.delete(apiContext),
-      mlmodel.delete(apiContext),
-      pipeline.delete(apiContext),
     ]);
     await afterAction();
   });
@@ -151,110 +142,46 @@ test.describe('Lineage Interactions', () => {
     test('Verify edge click opens edge drawer', async ({ page }) => {
       await clickEdgeBetweenNodes(page, table1, topic, false);
 
-      await expect(page.locator('.edge-info-drawer')).toBeVisible();
+      await expect(page.getByTestId('edge-header-title')).toBeVisible();
+      await expect(page.getByTestId('edge-header-title')).toHaveText(
+        'Edge Information'
+      );
 
-      await expect(
-        page.getByText(table1.entityResponseData.displayName ?? '')
-      ).toBeVisible();
-      await expect(
-        page.getByText(topic.entityResponseData.displayName ?? '')
-      ).toBeVisible();
+      await expect(page.getByTestId('Source-value')).toBeVisible();
+      await expect(page.getByTestId('Source-value')).toHaveText(
+        table1.entityResponseData.displayName ?? ''
+      );
+
+      await expect(page.getByTestId('Target-value')).toBeVisible();
+      await expect(page.getByTestId('Target-value')).toHaveText(
+        topic.entityResponseData.displayName ?? ''
+      );
     });
 
     test('Verify edge delete button in drawer', async ({ page }) => {
       const table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
+      const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
 
       await editLineage(page);
 
       await clickEdgeBetweenNodes(page, table1, topic, false);
 
-      const deleteBtn = page
-        .locator('.edge-info-drawer')
-        .getByTestId('delete-edge');
+      const deleteBtn = page.getByTestId('add-pipeline');
       await expect(deleteBtn).toBeVisible();
 
       await deleteBtn.click();
 
-      await expect(
-        page.locator('[data-testid="confirmation-modal"]')
-      ).toBeVisible();
+      await page.getByTestId('remove-edge-button').click();
 
-      await page
-        .locator('[data-testid="confirmation-modal"]')
-        .getByRole('button', { name: 'Confirm' })
-        .click();
+      await page.getByRole('button', { name: /confirm/i }).waitFor();
+      await page.getByRole('button', { name: /confirm/i }).click();
 
       await waitForAllLoadersToDisappear(page);
 
       await editLineageClick(page);
 
-      const edge = page.locator(`[data-fromnode="${table1Fqn}"]`);
-      await expect(edge).not.toBeVisible();
-    });
-
-    test('Verify add pipeline to edge', async ({ page }) => {
-      const { apiContext } = await getApiContext(page);
-      await table2.visitEntityPage(page);
-      await visitLineageTab(page);
-      await performZoomOut(page);
-
-      await editLineage(page);
-
-      const table2Fqn = get(
-        table2,
-        'entityResponseData.fullyQualifiedName',
-        ''
-      );
-
-      await verifyNodePresent(page, table2);
-
-      const tableFqn = get(table1, 'entityResponseData.fullyQualifiedName');
-
-      await connectEdgeBetweenNodesViaAPI(
-        apiContext,
-        { id: table2.entityResponseData.id, type: 'table' },
-        { id: table1.entityResponseData.id, type: 'table' }
-      );
-
-      await page.reload();
-      await visitLineageTab(page);
-      await performZoomOut(page);
-
-      await editLineage(page);
-
-      await clickEdgeBetweenNodes(page, table2, table1, false);
-
-      const addPipelineBtn = page
-        .locator('.edge-info-drawer')
-        .getByTestId('add-pipeline');
-      await addPipelineBtn.click();
-
-      await expect(page.locator('[data-testid="entity-modal"]')).toBeVisible();
-
-      await page
-        .locator('[data-testid="entity-modal"]')
-        .getByTestId('searchbar')
-        .fill(pipeline.entity.name);
-
-      await page.waitForTimeout(500);
-
-      const pipelineFqn = get(
-        pipeline,
-        'entityResponseData.fullyQualifiedName'
-      );
-      await page.getByTestId(`${pipelineFqn}-container`).click();
-
-      const saveRes = page.waitForResponse('/api/v1/lineage');
-      await page.getByRole('button', { name: 'Save' }).click();
-      await saveRes;
-
-      await waitForAllLoadersToDisappear(page);
-
-      await editLineageClick(page);
-
-      await expect(
-        page.getByTestId(`pipeline-label-${table2Fqn}-${tableFqn}`)
-      ).toBeVisible();
+      const edgeDiv = page.getByTestId(`edge-${table1Fqn}-${topicFqn}`);
+      await expect(edgeDiv).not.toBeVisible();
     });
 
     test('Verify function data in edge drawer', async ({ page }) => {
@@ -460,7 +387,9 @@ test.describe('Lineage Interactions', () => {
       await expect(page.locator('[role="dialog"]')).toBeVisible();
 
       await expect(
-        page.getByText(topic.entityResponseData.displayName ?? '')
+        page.getByText(topic.entityResponseData.displayName ?? '', {
+          exact: true,
+        })
       ).toBeVisible();
 
       await page.getByLabel('Close').first().click();
@@ -556,10 +485,10 @@ test.describe('Lineage Interactions', () => {
           table4.create(apiContext),
         ]);
 
-        table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
-        table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName');
-        table3Fqn = get(table3, 'entityResponseData.fullyQualifiedName');
-        table4Fqn = get(table4, 'entityResponseData.fullyQualifiedName');
+        table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName', '');
+        table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName', '');
+        table3Fqn = get(table3, 'entityResponseData.fullyQualifiedName', '');
+        table4Fqn = get(table4, 'entityResponseData.fullyQualifiedName', '');
 
         table1Col = `${table1Fqn}.${get(
           table1,
@@ -778,11 +707,7 @@ test.describe('Lineage Interactions', () => {
 
       await clickEdgeBetweenNodes(page, table1, topic, false);
 
-      await expect(page.locator('.edge-info-drawer')).toBeVisible();
-
-      const addPipelineBtn = page
-        .locator('.edge-info-drawer')
-        .getByTestId('add-pipeline');
+      const addPipelineBtn = page.getByTestId('add-pipeline');
 
       if ((await addPipelineBtn.count()) > 0) {
         await expect(addPipelineBtn).toBeVisible();

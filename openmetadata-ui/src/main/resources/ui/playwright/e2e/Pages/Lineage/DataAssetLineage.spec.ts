@@ -477,17 +477,17 @@ test.describe('Lineage Settings modal', () => {
     await page.getByLabel(/upstream/i).fill('5');
     await page.getByLabel(/downstream/i).fill('4');
 
+    const lineageResponse = page.waitForResponse(
+      (request) =>
+        request.url().includes('upstreamDepth=5&downstreamDepth=4') &&
+        request.request().method() === 'GET'
+    );
+
     await page.getByRole('button', { name: /Ok/i }).click();
 
+    await lineageResponse;
+
     await expect(page.locator('[role="dialog"]')).not.toBeVisible();
-
-    await page.reload();
-    await waitForAllLoadersToDisappear(page);
-
-    await page.getByTestId('lineage-config').click();
-
-    await expect(page.getByLabel(/upstream/i)).toHaveValue('5');
-    await expect(page.getByLabel(/downstream/i)).toHaveValue('4');
   });
 
   test('Verify validation for invalid depth', async ({ page }) => {

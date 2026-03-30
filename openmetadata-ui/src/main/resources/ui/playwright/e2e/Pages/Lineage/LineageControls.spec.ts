@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { SidebarItem } from '../../../constant/sidebar';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -127,6 +128,8 @@ test.describe('Canvas Controls', () => {
     const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
     await clickLineageNode(page, tableFqn);
 
+    await page.getByTestId('drawer-close-icon').click();
+
     await page.getByTestId('fit-screen').click();
     await page.getByRole('menuitem', { name: 'Refocused to selected' }).click();
 
@@ -149,15 +152,15 @@ test.describe('Canvas Controls', () => {
   });
 
   test('Verify fullscreen toggle', async ({ page }) => {
-    expect(page.url()).not.toContain('fullscreen=true');
-
-    await page.getByTestId('full-screen').click();
-
+    // before each step has fullscreen=true
     expect(page.url()).toContain('fullscreen=true');
 
     await page.getByTestId('exit-full-screen').click();
 
     expect(page.url()).not.toContain('fullscreen=true');
+    await page.getByTestId('full-screen').click();
+
+    expect(page.url()).toContain('fullscreen=true');
   });
 });
 
@@ -209,8 +212,7 @@ test.describe('Lineage Layers', () => {
 
   test.describe('Error Handling', () => {
     test('Verify invalid entity search handling', async ({ page }) => {
-      await sidebarClick(page, 'Govern');
-      await page.getByTestId('appbar-item-lineage').click();
+      await sidebarClick(page, SidebarItem.LINEAGE);
 
       await waitForAllLoadersToDisappear(page);
 
