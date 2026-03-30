@@ -25,7 +25,9 @@ const waitForTourBadgeWithRetry = async (
 ) => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      await expect(page.locator('[data-tour-elem="badge"]')).toBeVisible({timeout: timeout})
+      await expect(page.locator('[data-tour-elem="badge"]')).toBeVisible({
+        timeout: timeout,
+      });
 
       return; // Success
     } catch (e) {
@@ -42,7 +44,7 @@ const waitForTourBadgeWithRetry = async (
 
 const expectTourBadge = async (page: Page, step: string, timeout = 10000) => {
   const badge = page.locator('[data-tour-elem="badge"]');
-  await expect(badge).toBeVisible({timeout: timeout})
+  await expect(badge).toBeVisible({ timeout: timeout });
   await expect
     .poll(async () => (await badge.textContent())?.trim(), {
       timeout,
@@ -195,7 +197,8 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-      await page.locator('#feedWidgetData').waitFor();
+      await expect(page.locator('#feedWidgetData')).toBeVisible();
+      await expect(page.locator('#feedWidgetData')).toBeAttached();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
       await waitForTourBadgeWithRetry(page);
@@ -215,7 +218,8 @@ test.describe(
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await page.waitForURL('**/tour');
 
-      await page.locator('#feedWidgetData').waitFor();
+      await expect(page.locator('#feedWidgetData')).toBeVisible();
+      await expect(page.locator('#feedWidgetData')).toBeAttached();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
       await waitForTourBadgeWithRetry(page);

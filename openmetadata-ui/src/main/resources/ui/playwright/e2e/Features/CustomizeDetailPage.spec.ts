@@ -600,8 +600,8 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await addWidgetButton.waitFor({ state: 'visible' });
         await expect(addWidgetButton).toBeEnabled();
         await addWidgetButton.click();
-     
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeAttached()
+
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeAttached();
 
         await adminPage
           .getByTestId('add-widget-modal')
