@@ -52,6 +52,9 @@ class QueryFilterBuilderTest {
 
     assertEquals("owners", filter.at("/query/bool/must/0/nested/path").asText());
     assertEquals("team", filter.at("/query/bool/must/0/nested/query/term/owners.type").asText());
+    assertTrue(
+        filter.at("/query/bool/must/0/nested/ignore_unmapped").asBoolean(),
+        "Nested owners query must set ignore_unmapped to true");
     assertFalse(filter.at("/query/bool/must/1/term/deleted").asBoolean());
   }
 
@@ -68,6 +71,9 @@ class QueryFilterBuilderTest {
 
     assertEquals("owners", filter.at("/query/bool/must/0/nested/path").asText());
     assertEquals("team-id", filter.at("/query/bool/must/0/nested/query/match/owners.id").asText());
+    assertTrue(
+        filter.at("/query/bool/must/0/nested/ignore_unmapped").asBoolean(),
+        "Nested owners query must set ignore_unmapped to true");
     assertFalse(filter.at("/query/bool/must/1/term/deleted").asBoolean());
     assertEquals(Entity.TABLE, filter.at("/query/bool/must/2/term/entityType").asText());
   }
@@ -132,6 +138,9 @@ class QueryFilterBuilderTest {
     JsonNode filter = parse(QueryFilterBuilder.buildUserAssetsFilter(query));
 
     assertEquals("owners", filter.at("/query/bool/must/0/nested/path").asText());
+    assertTrue(
+        filter.at("/query/bool/must/0/nested/ignore_unmapped").asBoolean(),
+        "Nested owners query must set ignore_unmapped to true");
     assertEquals(
         "user-id",
         filter.at("/query/bool/must/0/nested/query/bool/should/0/term/owners.id").asText());
@@ -139,6 +148,89 @@ class QueryFilterBuilderTest {
         "team-id",
         filter.at("/query/bool/must/0/nested/query/bool/should/1/term/owners.id").asText());
     assertFalse(filter.at("/query/bool/must/1/term/deleted").asBoolean());
+  }
+
+  @Test
+  void nestedTermConditionWorksForMappedFields() {
+    // Verifies nested term query produces correct structure for indexes with the nested field
+    JsonNode filter = parse(QueryFilterBuilder.buildTeamAssetsCountFilter());
+
+    JsonNode nested = filter.at("/query/bool/must/0/nested");
+    assertEquals("owners", nested.at("/path").asText(), "must target correct nested path");
+    assertFalse(nested.at("/query").isMissingNode(), "must contain inner query");
+    assertEquals(
+        "team", nested.at("/query/term/owners.type").asText(), "must filter on term value");
+  }
+
+  @Test
+  void nestedTermConditionDoesNotFailForUnmappedFields() {
+    // Verifies ignore_unmapped is set so indexes without the nested field don't throw errors
+    JsonNode filter = parse(QueryFilterBuilder.buildTeamAssetsCountFilter());
+
+    JsonNode nested = filter.at("/query/bool/must/0/nested");
+    assertTrue(
+        nested.at("/ignore_unmapped").asBoolean(),
+        "must set ignore_unmapped so query works on indexes without this nested field");
+  }
+
+  @Test
+  void nestedMatchConditionWorksForMappedFields() {
+    InheritedFieldQuery query =
+        InheritedFieldQuery.builder().fieldPath("owners.id").fieldValue("owner-123").build();
+
+    JsonNode filter = parse(QueryFilterBuilder.buildOwnerAssetsFilter(query));
+
+    JsonNode nested = filter.at("/query/bool/must/0/nested");
+    assertEquals("owners", nested.at("/path").asText(), "must target correct nested path");
+    assertEquals(
+        "owner-123",
+        nested.at("/query/match/owners.id").asText(),
+        "must match on the provided value");
+  }
+
+  @Test
+  void nestedMatchConditionDoesNotFailForUnmappedFields() {
+    InheritedFieldQuery query =
+        InheritedFieldQuery.builder().fieldPath("owners.id").fieldValue("owner-123").build();
+
+    JsonNode filter = parse(QueryFilterBuilder.buildOwnerAssetsFilter(query));
+
+    JsonNode nested = filter.at("/query/bool/must/0/nested");
+    assertTrue(
+        nested.at("/ignore_unmapped").asBoolean(),
+        "must set ignore_unmapped so query works on indexes without this nested field");
+  }
+
+  @Test
+  void nestedOrConditionWorksForMappedFields() {
+    InheritedFieldQuery query =
+        InheritedFieldQuery.builder()
+            .fieldPath("owners.id")
+            .fieldValues(List.of("id-1", "id-2", "id-3"))
+            .build();
+
+    JsonNode filter = parse(QueryFilterBuilder.buildUserAssetsFilter(query));
+
+    JsonNode nested = filter.at("/query/bool/must/0/nested");
+    assertEquals("owners", nested.at("/path").asText(), "must target correct nested path");
+    assertEquals(
+        3, nested.at("/query/bool/should").size(), "must contain all values in should clause");
+  }
+
+  @Test
+  void nestedOrConditionDoesNotFailForUnmappedFields() {
+    InheritedFieldQuery query =
+        InheritedFieldQuery.builder()
+            .fieldPath("owners.id")
+            .fieldValues(List.of("id-1", "id-2"))
+            .build();
+
+    JsonNode filter = parse(QueryFilterBuilder.buildUserAssetsFilter(query));
+
+    JsonNode nested = filter.at("/query/bool/must/0/nested");
+    assertTrue(
+        nested.at("/ignore_unmapped").asBoolean(),
+        "must set ignore_unmapped so query works on indexes without this nested field");
   }
 
   private JsonNode parse(String json) {
