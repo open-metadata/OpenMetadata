@@ -882,40 +882,29 @@ public class TagRepository extends EntityRepository<Tag> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "mutuallyExclusive",
-          () -> {
-            recordChange(
-                "mutuallyExclusive",
-                original.getMutuallyExclusive(),
-                updated.getMutuallyExclusive());
-          });
+      compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
           "disabled",
-          () -> {
-            recordChange("disabled", original.getDisabled(), updated.getDisabled());
-          });
+          () -> recordChange("disabled", original.getDisabled(), updated.getDisabled()));
       compareAndUpdate(
           "recognizers",
-          () -> {
-            recordChange("recognizers", original.getRecognizers(), updated.getRecognizers(), true);
-          });
+          () ->
+              recordChange(
+                  "recognizers", original.getRecognizers(), updated.getRecognizers(), true));
       compareAndUpdate(
           "autoClassificationEnabled",
-          () -> {
-            recordChange(
-                "autoClassificationEnabled",
-                original.getAutoClassificationEnabled(),
-                updated.getAutoClassificationEnabled());
-          });
+          () ->
+              recordChange(
+                  "autoClassificationEnabled",
+                  original.getAutoClassificationEnabled(),
+                  updated.getAutoClassificationEnabled()));
       compareAndUpdate(
           "autoClassificationPriority",
-          () -> {
-            recordChange(
-                "autoClassificationPriority",
-                original.getAutoClassificationPriority(),
-                updated.getAutoClassificationPriority());
-          });
+          () ->
+              recordChange(
+                  "autoClassificationPriority",
+                  original.getAutoClassificationPriority(),
+                  updated.getAutoClassificationPriority()));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "classification");
     }
 
@@ -1036,6 +1025,11 @@ public class TagRepository extends EntityRepository<Tag> {
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }
+    }
+
+    private void run() {
+      recordChange(
+          "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
     }
   }
 

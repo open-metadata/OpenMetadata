@@ -732,7 +732,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                 create.getCreatePasswordType(),
                 create.getPassword());
       } catch (Exception ex) {
-        LOG.error("Error in sending invite to User" + ex.getMessage());
+        LOG.error("Error in sending invite to User{}", ex.getMessage());
       }
     }
   }
@@ -1358,7 +1358,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               EmailUtil.getPasswordResetSubject(),
               TemplateConstants.RESET_LINK_TEMPLATE);
     } catch (Exception ex) {
-      LOG.error("Error in sending mail for reset password" + ex.getMessage());
+      LOG.error("Error in sending mail for reset password{}", ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
     }
     return Response.status(Response.Status.OK)
@@ -1928,8 +1928,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           repository.getByName(
               uriInfo, user.getFullyQualifiedName(), repository.getFieldsWithUserAuth("*"));
     } catch (EntityNotFoundException exc) {
-      LOG.debug(
-          String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
+      LOG.debug("User not found when adding auth mechanism for: [{}]", user.getName());
       original = null;
     }
     return original;

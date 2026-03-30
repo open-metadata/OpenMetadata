@@ -351,10 +351,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 ),
                 right=None,
             )
-
-        # Clear buffer and tracking set
-        self.buffer = []
-        self.buffered_entity_names.clear()
+        finally:
+            self.buffer = []
+            self.buffered_entity_names.clear()
 
         if result and result.status == basic.Status.success:
             self.status.scanned_all(result.successRequest)

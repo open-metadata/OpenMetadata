@@ -1,0 +1,157 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../../styles/variables.less';
+
+.data-statistic-widget-title {
+  div&.ant-typography {
+    margin-bottom: @margin-lg;
+  }
+}
+
+// Default styles for title
+.data-statistic-title-default {
+  color: @grey-600;
+  font-weight: 500;
+  margin-bottom: @size-xxs;
+}
+
+// Default styles for count value
+.data-statistic-count-default {
+  color: @text-color;
+  font-weight: 600;
+  font-size: @size-lg;
+}
+
+.data-statistic-widget-icon {
+  height: 40px;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: @grey-900;
+  border-color: @grey-50;
+
+  svg {
+    height: 40px;
+    width: 40px;
+  }
+
+  // When status classes are present, apply circular bordered style (for data observability)
+  &.failed,
+  &.success,
+  &.aborted {
+    border-radius: 50%;
+    border: 6px solid;
+    padding: 6px;
+    background-color: @grey-100;
+    border-color: @grey-50;
+
+    svg {
+      height: 20px;
+      width: 20px;
+    }
+  }
+
+  // Status-specific colors for circular bordered style
+  &.failed {
+    color: @red-10;
+    background-color: @alert-error-icon-bg-1;
+    border-color: @red-9;
+  }
+
+  &.success {
+    color: @green-10;
+    background-color: @green-100;
+    border-color: @green-9;
+  }
+
+  &.aborted {
+    color: @alert-warning-icon;
+    background-color: @alert-warning-icon-bg-1;
+    border-color: @yellow-10;
+  }
+}
+
+.data-statistic-widget-box {
+  padding: @padding-md @padding-md @padding-xs @padding-md;
+  border-radius: @border-rad-sm;
+  border: 1px solid @grey-200;
+
+  .data-statistic-widget-divider {
+    height: 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px dashed @grey-200;
+    margin-top: @margin-sm;
+    margin-bottom: @margin-xss;
+  }
+}
+
+.data-statistic-widget-box .data-statistic-widget-default-button {
+  padding: 0;
+  color: @primary-7;
+  font-weight: 500;
+  font-size: @size-sm;
+
+  &:hover,
+  &:focus,
+  &:active {
+    color: @primary-7;
+    background-color: transparent;
+  }
+
+  svg {
+    width: @size-lg;
+    height: 10px;
+  }
+}
+
+.data-statistic-widget-link {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+
+  a:hover {
+    text-decoration: none;
+  }
+
+  .ant-btn {
+    display: flex;
+    align-items: center;
+    gap: @size-xs;
+    border: none;
+
+    &.failed {
+      color: @red-10;
+      background-color: @red-9;
+      &:hover {
+        background-color: @alert-error-icon-bg-1;
+      }
+    }
+    &.success {
+      color: @green-10;
+      background-color: @green-9;
+      &:hover {
+        background-color: @green-100;
+      }
+    }
+    &.aborted {
+      color: @alert-warning-icon;
+      background-color: @yellow-10;
+      &:hover {
+        background-color: @alert-warning-icon-bg-1;
+      }
+    }
+  }
+}

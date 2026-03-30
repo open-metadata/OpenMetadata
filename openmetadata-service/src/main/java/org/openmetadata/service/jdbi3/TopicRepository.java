@@ -606,20 +606,18 @@ public class TopicRepository extends EntityRepository<Topic> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "maximumMessageSize",
-          () -> {
-            recordChange(
-                "maximumMessageSize",
-                original.getMaximumMessageSize(),
-                updated.getMaximumMessageSize());
-          });
+          () ->
+              recordChange(
+                  "maximumMessageSize",
+                  original.getMaximumMessageSize(),
+                  updated.getMaximumMessageSize()));
       compareAndUpdate(
           "minimumInSyncReplicas",
-          () -> {
-            recordChange(
-                "minimumInSyncReplicas",
-                original.getMinimumInSyncReplicas(),
-                updated.getMinimumInSyncReplicas());
-          });
+          () ->
+              recordChange(
+                  "minimumInSyncReplicas",
+                  original.getMinimumInSyncReplicas(),
+                  updated.getMinimumInSyncReplicas()));
       compareAndUpdate(
           "partitions",
           () -> {
@@ -630,22 +628,21 @@ public class TopicRepository extends EntityRepository<Topic> {
           });
       compareAndUpdate(
           "replicationFactor",
-          () -> {
-            recordChange(
-                "replicationFactor",
-                original.getReplicationFactor(),
-                updated.getReplicationFactor());
-          });
+          () ->
+              recordChange(
+                  "replicationFactor",
+                  original.getReplicationFactor(),
+                  updated.getReplicationFactor()));
       compareAndUpdate(
           "retentionTime",
-          () -> {
-            recordChange("retentionTime", original.getRetentionTime(), updated.getRetentionTime());
-          });
+          () ->
+              recordChange(
+                  "retentionTime", original.getRetentionTime(), updated.getRetentionTime()));
       compareAndUpdate(
           "retentionSize",
-          () -> {
-            recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());
-          });
+          () ->
+              recordChange(
+                  "retentionSize", original.getRetentionSize(), updated.getRetentionSize()));
       compareAndUpdate(
           "messageSchema",
           () -> {
@@ -673,30 +670,21 @@ public class TopicRepository extends EntityRepository<Topic> {
           });
       compareAndUpdate(
           "topicConfig",
-          () -> {
-            recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
-          });
-      compareAndUpdate(
-          "cleanupPolicies",
-          () -> {
-            updateCleanupPolicies(original, updated);
-          });
+          () -> recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig()));
+      compareAndUpdate("cleanupPolicies", () -> updateCleanupPolicies(original, updated));
       compareAndUpdate(
           "sourceUrl",
-          () -> {
-            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-          });
+          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
 
     private void updateCleanupPolicies(Topic original, Topic updated) {
@@ -755,19 +743,20 @@ public class TopicRepository extends EntityRepository<Topic> {
           continue;
         }
 
-        updateFieldDescription(stored, updated);
-        updateFieldDataTypeDisplay(stored, updated);
-        updateFieldDisplayName(stored, updated);
+        String schemaFieldPrefix =
+            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        updateFieldDescription(schemaFieldPrefix, stored, updated);
+        updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
+        updateFieldDisplayName(schemaFieldPrefix, stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
+            EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
             stored.getTags(),
             updated.getTags());
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
           updateSchemaFields(
-              childrenFieldName,
+              schemaFieldPrefix,
               listOrEmpty(stored.getChildren()),
               listOrEmpty(updated.getChildren()),
               fieldMatch);
@@ -777,34 +766,38 @@ public class TopicRepository extends EntityRepository<Topic> {
       majorVersionChange = majorVersionChange || !deletedFields.isEmpty();
     }
 
-    private void updateFieldDescription(Field origField, Field updatedField) {
+    private void updateFieldDescription(String fieldPrefix, Field origField, Field updatedField) {
       if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
-        // Revert the non-empty field description if being updated by a bot
         updatedField.setDescription(origField.getDescription());
         return;
       }
-      String field = EntityUtil.getSchemaField(original, origField, FIELD_DESCRIPTION);
-      recordChange(field, origField.getDescription(), updatedField.getDescription());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DESCRIPTION),
+          origField.getDescription(),
+          updatedField.getDescription());
     }
 
-    private void updateFieldDisplayName(Field origField, Field updatedField) {
-      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
-        // Revert the non-empty field description if being updated by a bot
+    private void updateFieldDisplayName(String fieldPrefix, Field origField, Field updatedField) {
+      if (operation.isPut() && !nullOrEmpty(origField.getDisplayName()) && updatedByBot()) {
         updatedField.setDisplayName(origField.getDisplayName());
         return;
       }
-      String field = EntityUtil.getSchemaField(original, origField, FIELD_DISPLAY_NAME);
-      recordChange(field, origField.getDisplayName(), updatedField.getDisplayName());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DISPLAY_NAME),
+          origField.getDisplayName(),
+          updatedField.getDisplayName());
     }
 
-    private void updateFieldDataTypeDisplay(Field origField, Field updatedField) {
+    private void updateFieldDataTypeDisplay(
+        String fieldPrefix, Field origField, Field updatedField) {
       if (operation.isPut() && !nullOrEmpty(origField.getDataTypeDisplay()) && updatedByBot()) {
-        // Revert the non-empty field dataTypeDisplay if being updated by a bot
         updatedField.setDataTypeDisplay(origField.getDataTypeDisplay());
         return;
       }
-      String field = EntityUtil.getSchemaField(original, origField, FIELD_DATA_TYPE_DISPLAY);
-      recordChange(field, origField.getDataTypeDisplay(), updatedField.getDataTypeDisplay());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DATA_TYPE_DISPLAY),
+          origField.getDataTypeDisplay(),
+          updatedField.getDataTypeDisplay());
     }
   }
 }

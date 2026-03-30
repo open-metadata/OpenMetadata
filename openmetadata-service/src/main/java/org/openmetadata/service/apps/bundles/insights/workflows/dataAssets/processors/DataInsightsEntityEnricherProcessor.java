@@ -272,12 +272,11 @@ public class DataInsightsEntityEnricherProcessor
           // Note: If the Owner is deleted we can't infer the Teams for which the Data Asset
           // belonged.
           LOG.debug(
-              String.format(
-                  "Owner %s for %s '%s' version '%s' not found.",
-                  entityOwner.getFullyQualifiedName(),
-                  Entity.getEntityTypeFromObject(entity),
-                  entity.getFullyQualifiedName(),
-                  entity.getVersion()));
+              "Owner {} for {} '{}' version '{}' not found.",
+              entityOwner.getFullyQualifiedName(),
+              Entity.getEntityTypeFromObject(entity),
+              entity.getFullyQualifiedName(),
+              entity.getVersion());
         }
       }
     }

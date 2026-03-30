@@ -92,13 +92,8 @@ public class JettyMetrics implements MeterBinder, Managed {
         .register(registry);
 
     // Queue metrics
-    Gauge.builder(
-            "jetty.queue.size",
-            threadPool,
-            tp -> {
-              // QueuedThreadPool uses a BlockingQueue, we can get the queue and check its size
-              return tp.getQueueSize();
-            })
+    // QueuedThreadPool uses a BlockingQueue, we can get the queue and check its size
+    Gauge.builder("jetty.queue.size", threadPool, QueuedThreadPool::getQueueSize)
         .description("Number of requests queued")
         .tags(tags)
         .register(registry);

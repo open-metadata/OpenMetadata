@@ -244,58 +244,40 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "notificationTemplate",
-          () -> {
-            updateTemplateRelationship();
-          });
+      compareAndUpdate("notificationTemplate", this::updateTemplateRelationship);
 
       compareAndUpdate(
-          "input",
-          () -> {
-            recordChange("input", original.getInput(), updated.getInput(), true);
-          });
+          "input", () -> recordChange("input", original.getInput(), updated.getInput(), true));
       compareAndUpdate(
           "batchSize",
-          () -> {
-            recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
-          });
+          () -> recordChange("batchSize", original.getBatchSize(), updated.getBatchSize()));
       if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
         compareAndUpdate(
             "filteringRules",
-            () -> {
-              recordChange(
-                  "filteringRules",
-                  original.getFilteringRules(),
-                  updated.getFilteringRules(),
-                  true);
-            });
+            () ->
+                recordChange(
+                    "filteringRules",
+                    original.getFilteringRules(),
+                    updated.getFilteringRules(),
+                    true));
         compareAndUpdate(
-            "enabled",
-            () -> {
-              recordChange("enabled", original.getEnabled(), updated.getEnabled());
-            });
+            "enabled", () -> recordChange("enabled", original.getEnabled(), updated.getEnabled()));
         compareAndUpdate(
             "destinations",
-            () -> {
-              recordChange(
-                  "destinations",
-                  original.getDestinations(),
-                  encryptWebhookSecretKey(updated.getDestinations()),
-                  true,
-                  objectMatch,
-                  false);
-            });
+            () ->
+                recordChange(
+                    "destinations",
+                    original.getDestinations(),
+                    encryptWebhookSecretKey(updated.getDestinations()),
+                    true,
+                    objectMatch,
+                    false));
         compareAndUpdate(
             "trigger",
-            () -> {
-              recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
-            });
+            () -> recordChange("trigger", original.getTrigger(), updated.getTrigger(), true));
         compareAndUpdate(
             "config",
-            () -> {
-              recordChange("config", original.getConfig(), updated.getConfig(), true);
-            });
+            () -> recordChange("config", original.getConfig(), updated.getConfig(), true));
       }
     }
 

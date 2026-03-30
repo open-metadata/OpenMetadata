@@ -286,7 +286,7 @@
     "path-to-regexp": "1.9.0",
     "cookie": "0.7.0",
     "cross-spawn": "7.0.5",
-    "serialize-javascript": "7.0.3",
+    "serialize-javascript": "7.0.5",
     "dompurify": "3.3.2",
     "immutable": "4.3.8",
     "@tootallnate/once": "3.0.1",

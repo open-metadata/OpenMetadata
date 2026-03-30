@@ -356,9 +356,7 @@ public class K8sPipelineClientConfig {
             String[] parts = keyValue.split(separator, 2);
             map.put(parts[0], parts[1]);
           } catch (Exception e) {
-            LOG.error(
-                String.format(
-                    "Could not extract config map [%s] due to [%s]", keyValue, e.getMessage()));
+            LOG.error("Could not extract config map [{}] due to [{}]", keyValue, e.getMessage());
           }
         });
     return map;

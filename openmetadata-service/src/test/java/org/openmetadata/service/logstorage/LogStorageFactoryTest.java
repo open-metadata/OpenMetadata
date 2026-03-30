@@ -68,9 +68,7 @@ public class LogStorageFactoryTest {
     // For now, we're testing that the factory correctly passes metrics
     assertThrows(
         Exception.class,
-        () -> {
-          LogStorageFactory.create(s3Config, mockPipelineServiceClient, mockMetrics);
-        });
+        () -> LogStorageFactory.create(s3Config, mockPipelineServiceClient, mockMetrics));
     // The exception is expected because we haven't mocked S3Client.builder()
     // In a real scenario with proper mocking, this would create an S3LogStorage instance
   }
@@ -89,19 +87,13 @@ public class LogStorageFactoryTest {
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> {
-          LogStorageFactory.create(invalidConfig, mockPipelineServiceClient, mockMetrics);
-        });
+        () -> LogStorageFactory.create(invalidConfig, mockPipelineServiceClient, mockMetrics));
   }
 
   @Test
   void testNullPipelineServiceClient() {
     // Default storage requires PipelineServiceClient
-    assertThrows(
-        IOException.class,
-        () -> {
-          LogStorageFactory.create(null, null, mockMetrics);
-        });
+    assertThrows(IOException.class, () -> LogStorageFactory.create(null, null, mockMetrics));
   }
 
   @Test

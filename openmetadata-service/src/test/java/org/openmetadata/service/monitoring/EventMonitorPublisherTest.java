@@ -136,22 +136,14 @@ class EventMonitorPublisherTest {
 
   @Test
   void testPublishWithNullEventList() {
-    assertThrows(
-        NullPointerException.class,
-        () -> {
-          eventMonitorPublisher.publish(null);
-        });
+    assertThrows(NullPointerException.class, () -> eventMonitorPublisher.publish(null));
   }
 
   @Test
   void testPublishWithNullEventListData() {
     EventList eventList = new EventList(null, null, null, 0);
 
-    assertThrows(
-        NullPointerException.class,
-        () -> {
-          eventMonitorPublisher.publish(eventList);
-        });
+    assertThrows(NullPointerException.class, () -> eventMonitorPublisher.publish(eventList));
   }
 
   @Test
@@ -162,11 +154,7 @@ class EventMonitorPublisherTest {
 
     doThrow(new RuntimeException("Test exception")).when(eventMonitor).pushMetric(any());
 
-    assertThrows(
-        RuntimeException.class,
-        () -> {
-          eventMonitorPublisher.publish(eventList);
-        });
+    assertThrows(RuntimeException.class, () -> eventMonitorPublisher.publish(eventList));
   }
 
   @Test

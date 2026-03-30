@@ -800,11 +800,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "name",
-          () -> {
-            updateName(updated);
-          });
+      compareAndUpdate("name", () -> updateName(updated));
       // Ports are managed via dedicated bulk add/remove APIs, not via entity PATCH
       // Handle domain change with asset migration
       // Skip during consolidation to avoid incorrect intermediate migrations.
