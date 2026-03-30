@@ -259,6 +259,48 @@ public class SearchResourceIT {
     assertNotNull(response);
   }
 
+  @Test
+  void testAggregateQueryWithQueryText(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    createTestTable(ns, "aggregate_querytext_test");
+
+    String response =
+        client
+            .search()
+            .aggregate("*")
+            .index("table_search_index")
+            .field("database.name")
+            .queryText("aggregate_querytext_test")
+            .execute();
+
+    assertNotNull(response);
+    JsonNode root = OBJECT_MAPPER.readTree(response);
+    assertTrue(root.has("aggregations"), "Response should have aggregations");
+  }
+
+  @Test
+  void testAggregateQueryWithEmptyQueryText(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    createTestTable(ns, "aggregate_empty_qt");
+
+    String responseWithout =
+        client.search().aggregate("*").index("table_search_index").field("database.name").execute();
+
+    String responseWith =
+        client
+            .search()
+            .aggregate("*")
+            .index("table_search_index")
+            .field("database.name")
+            .queryText("")
+            .execute();
+
+    assertNotNull(responseWithout);
+    assertNotNull(responseWith);
+  }
+
   // ===================================================================
   // SPECIAL CHARACTER AND EDGE CASE TESTS
   // ===================================================================
