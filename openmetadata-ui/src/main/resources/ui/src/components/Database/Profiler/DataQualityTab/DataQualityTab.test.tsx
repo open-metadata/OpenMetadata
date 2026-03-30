@@ -129,9 +129,8 @@ const mockAuthData = {
 const mockNavigateDataQualityTab = jest.fn();
 
 jest.mock('react-router-dom', () => {
-  const actual = jest.requireActual<typeof import('react-router-dom')>(
-    'react-router-dom'
-  );
+  const actual =
+    jest.requireActual<typeof import('react-router-dom')>('react-router-dom');
 
   return {
     ...actual,

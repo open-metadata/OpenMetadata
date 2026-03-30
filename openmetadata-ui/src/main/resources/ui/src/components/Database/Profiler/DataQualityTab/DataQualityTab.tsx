@@ -584,7 +584,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   }, [testCases]);
 
-  // useEffect(() => {
   const rowSelectionConfig = enableBulkActions
     ? {
         selectedRowKeys,
