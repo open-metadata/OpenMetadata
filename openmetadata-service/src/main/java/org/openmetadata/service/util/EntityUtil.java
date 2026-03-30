@@ -1157,12 +1157,12 @@ public final class EntityUtil {
     if (nullOrEmpty(entityReference.getType())) {
       throw new IllegalArgumentException("Entity reference type must not be null or empty");
     }
-    if (expectedType != null && !expectedType.equals(entityReference.getType())) {
+    if (!nullOrEmpty(expectedType) && !expectedType.equals(entityReference.getType())) {
       throw new IllegalArgumentException(
           String.format(
               "Invalid entity type '%s'. Expected '%s'.", entityReference.getType(), expectedType));
     }
-    EntityReference ref = Entity.getEntityReference(entityReference, ALL);
+    EntityReference ref = Entity.getEntityReference(entityReference, NON_DELETED);
     copy(ref, entityReference);
     return entityReference;
   }

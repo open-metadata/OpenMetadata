@@ -1024,7 +1024,7 @@ class EntityUtilTest {
             .withFullyQualifiedName("service.orders");
 
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
-      entity.when(() -> Entity.getEntityReference(ref, Include.ALL)).thenReturn(resolved);
+      entity.when(() -> Entity.getEntityReference(ref, Include.NON_DELETED)).thenReturn(resolved);
 
       EntityReference result = EntityUtil.validateEntityReference(ref, "table");
       assertEquals("orders", result.getName());
@@ -1044,7 +1044,7 @@ class EntityUtilTest {
             .withFullyQualifiedName("john");
 
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
-      entity.when(() -> Entity.getEntityReference(ref, Include.ALL)).thenReturn(resolved);
+      entity.when(() -> Entity.getEntityReference(ref, Include.NON_DELETED)).thenReturn(resolved);
 
       EntityReference result = EntityUtil.validateEntityReference(ref);
       assertEquals("john", result.getName());
@@ -1058,7 +1058,7 @@ class EntityUtilTest {
 
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
       entity
-          .when(() -> Entity.getEntityReference(ref, Include.ALL))
+          .when(() -> Entity.getEntityReference(ref, Include.NON_DELETED))
           .thenThrow(new EntityNotFoundException("table not found"));
 
       assertThrows(
