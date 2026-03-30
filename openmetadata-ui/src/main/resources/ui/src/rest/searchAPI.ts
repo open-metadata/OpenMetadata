@@ -16,11 +16,11 @@ import { isArray, isNil } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
 import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
 import {
-  Aggregations,
-  KeysOfUnion,
-  SearchIndexSearchSourceMapping,
-  SearchRequest,
-  SearchResponse,
+    Aggregations,
+    KeysOfUnion,
+    SearchIndexSearchSourceMapping,
+    SearchRequest,
+    SearchResponse
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
 import { getQueryWithSlash } from '../utils/SearchUtils';

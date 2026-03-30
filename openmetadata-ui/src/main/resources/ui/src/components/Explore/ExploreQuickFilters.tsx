@@ -27,8 +27,8 @@ import { getTags } from '../../rest/tagAPI';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getCombinedQueryFilterObject,
-  getQuickFilterWithDeletedFlag,
+    getCombinedQueryFilterObject,
+    getQuickFilterWithDeletedFlag
 } from '../../utils/ExplorePage/ExplorePageUtils';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';

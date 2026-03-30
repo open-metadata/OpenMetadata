@@ -57,8 +57,8 @@ export interface OntologyGraphData {
 }
 
 import {
-  LayoutType,
-  type LayoutEngineType,
+    LayoutType,
+    type LayoutEngineType
 } from './OntologyExplorer.constants';
 import type { GraphSearchHighlightInput } from './utils/graphSearchHighlight';
 

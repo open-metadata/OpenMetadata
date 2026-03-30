@@ -12,25 +12,25 @@
  */
 
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor
 } from '@testing-library/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  mockDataInsightApplication,
-  mockDataInsightApplicationRun,
-  mockIngestionPipeline,
-  mockLatestDataInsightApplicationRunLogs,
-  mockLogsData,
+    mockDataInsightApplication,
+    mockDataInsightApplicationRun,
+    mockIngestionPipeline,
+    mockLatestDataInsightApplicationRunLogs,
+    mockLogsData
 } from '../../mocks/LogsViewerPage.mock';
 import {
-  getApplicationByName,
-  getExternalApplicationRuns,
-  getLatestApplicationRuns,
+    getApplicationByName,
+    getExternalApplicationRuns,
+    getLatestApplicationRuns
 } from '../../rest/applicationAPI';
 import { getIngestionPipelineLogById } from '../../rest/ingestionPipelineAPI';
 import LogsViewerPage from './LogsViewerPage';

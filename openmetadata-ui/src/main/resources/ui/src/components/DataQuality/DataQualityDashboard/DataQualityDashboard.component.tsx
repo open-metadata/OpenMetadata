@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-  Card,
-  Grid,
-  Tooltip,
-  TooltipTrigger,
+    Card,
+    Grid,
+    Tooltip,
+    TooltipTrigger
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, isEqual, omit, uniqBy } from 'lodash';
@@ -30,14 +30,14 @@ import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
-  ABORTED_CHART_COLOR_SCHEME,
-  FAILED_CHART_COLOR_SCHEME,
-  SUCCESS_CHART_COLOR_SCHEME,
+    ABORTED_CHART_COLOR_SCHEME,
+    FAILED_CHART_COLOR_SCHEME,
+    SUCCESS_CHART_COLOR_SCHEME
 } from '../../../constants/Chart.constants';
 import { PAGE_SIZE_BASE, ROUTES } from '../../../constants/constants';
 import {
-  DATA_QUALITY_DASHBOARD_HEADER,
-  DQ_FILTER_KEYS,
+    DATA_QUALITY_DASHBOARD_HEADER,
+    DQ_FILTER_KEYS
 } from '../../../constants/DataQuality.constants';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -50,11 +50,11 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchUtils';
 import {
-  formatDate,
-  getCurrentMillis,
-  getEndOfDayInMillis,
-  getEpochMillisForPastDays,
-  getStartOfDayInMillis,
+    formatDate,
+    getCurrentMillis,
+    getEndOfDayInMillis,
+    getEpochMillisForPastDays,
+    getStartOfDayInMillis
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';

@@ -13,16 +13,16 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
-  Avatar,
-  Button,
-  Col,
-  Modal,
-  Row,
-  Space,
-  Switch,
-  Tabs,
-  Tooltip,
-  Typography,
+    Avatar,
+    Button,
+    Col,
+    Modal,
+    Row,
+    Space,
+    Switch,
+    Tabs,
+    Tooltip,
+    Typography
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -41,14 +41,14 @@ import { ReactComponent as IconTeams } from '../../../../assets/svg/ic-teams.svg
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
 import {
-  GLOSSARIES_DOCS,
-  ROLE_DOCS,
-  TEAMS_DOCS,
+    GLOSSARIES_DOCS,
+    ROLE_DOCS,
+    TEAMS_DOCS
 } from '../../../../constants/docs.constants';
 import { ExportTypes } from '../../../../constants/Export.constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../../../constants/Learning.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -57,8 +57,8 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { OwnerType } from '../../../../enums/user.enum';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import {
-  EntityReference as UserTeams,
-  User,
+    EntityReference as UserTeams,
+    User
 } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
@@ -71,13 +71,13 @@ import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
-  EXTENSION_POINTS,
-  TabContribution,
+    EXTENSION_POINTS,
+    TabContribution
 } from '../../../../utils/ExtensionPointTypes';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import {
-  getSettingsPathWithFqn,
-  getTeamsWithFqnPath,
+    getSettingsPathWithFqn,
+    getTeamsWithFqnPath
 } from '../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
@@ -100,9 +100,9 @@ import { useApplicationsProvider } from '../../Applications/ApplicationsProvider
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
 import {
-  AddAttribute,
-  PlaceholderProps,
-  TeamDetailsProp,
+    AddAttribute,
+    PlaceholderProps,
+    TeamDetailsProp
 } from './TeamDetailsV1.interface';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';

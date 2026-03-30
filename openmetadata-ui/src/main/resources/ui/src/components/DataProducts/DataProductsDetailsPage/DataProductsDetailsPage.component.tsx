@@ -34,20 +34,20 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
+    EntityTabs,
+    EntityType,
+    TabSpecificField
 } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
-  ChangeDescription,
-  DataProduct,
+    ChangeDescription,
+    DataProduct
 } from '../../../generated/entity/domains/dataProduct';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -64,34 +64,34 @@ import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
-  getEntityDeleteMessage,
-  getFeedCounts,
+    getEntityDeleteMessage,
+    getFeedCounts
 } from '../../../utils/CommonUtils';
 import {
-  checkIfExpandViewSupported,
-  getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
+    checkIfExpandViewSupported,
+    getDetailsTabWithNewLabel,
+    getTabLabelMapFromTabs
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
+    getEntityFeedLink,
+    getEntityName,
+    getEntityVoteStatus
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
+    DEFAULT_ENTITY_PERMISSION,
+    getPrioritizedEditPermission
 } from '../../../utils/PermissionsUtils';
 import {
-  getDomainPath,
-  getEntityDetailsPath,
-  getVersionPath,
+    getDomainPath,
+    getEntityDetailsPath,
+    getVersionPath
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

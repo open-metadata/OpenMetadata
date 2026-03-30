@@ -13,10 +13,10 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import {
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  XClose,
+    ChevronDown,
+    ChevronRight,
+    ChevronUp,
+    XClose
 } from '@untitledui/icons';
 import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
@@ -28,9 +28,9 @@ import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import {
-  DE_ACTIVE_COLOR,
-  ENTITY_PATH,
-  PAGE_SIZE_LARGE,
+    DE_ACTIVE_COLOR,
+    ENTITY_PATH,
+    PAGE_SIZE_LARGE
 } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
@@ -38,8 +38,8 @@ import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
-  getTableColumnsByFQN,
-  updateTableColumn,
+    getTableColumnsByFQN,
+    updateTableColumn
 } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
@@ -47,13 +47,13 @@ import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getErrorText, stringToHTML } from '../../../utils/StringsUtils';
 import {
-  buildColumnBreadcrumbPath,
-  findOriginalColumnIndex,
-  flattenColumns,
-  generateEntityLink,
-  getDataTypeDisplay,
-  mergeTagsWithGlossary,
-  normalizeTags,
+    buildColumnBreadcrumbPath,
+    findOriginalColumnIndex,
+    flattenColumns,
+    generateEntityLink,
+    getDataTypeDisplay,
+    mergeTagsWithGlossary,
+    normalizeTags
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
@@ -74,10 +74,10 @@ import { LineageData } from '../../Lineage/Lineage.interface';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import {
-  ColumnDetailPanelProps,
-  ColumnFieldUpdate,
-  ColumnOrTask,
-  TestCaseStatusCounts,
+    ColumnDetailPanelProps,
+    ColumnFieldUpdate,
+    ColumnOrTask,
+    TestCaseStatusCounts
 } from './ColumnDetailPanel.interface';
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';

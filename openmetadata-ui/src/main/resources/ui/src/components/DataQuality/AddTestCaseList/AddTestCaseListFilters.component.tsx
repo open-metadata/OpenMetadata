@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next';
 import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import {
-  AddTestCaseListFilterKey,
-  ADD_TEST_CASE_LIST_FILTERS,
+    AddTestCaseListFilterKey,
+    ADD_TEST_CASE_LIST_FILTERS
 } from './AddTestCaseListFilters.constants';
 import { AddTestCaseListFiltersProps } from './AddTestCaseListFilters.interface';
 import './AddTestCaseListFilters.style.less';

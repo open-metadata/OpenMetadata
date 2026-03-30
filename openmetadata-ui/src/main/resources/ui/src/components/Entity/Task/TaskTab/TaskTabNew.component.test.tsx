@@ -15,9 +15,9 @@ import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
-  APPROVAL_TASK_FEED,
-  TASK_FEED,
-  TASK_FEED_RECOGNIZER_FEEDBACK,
+    APPROVAL_TASK_FEED,
+    TASK_FEED,
+    TASK_FEED_RECOGNIZER_FEEDBACK
 } from '../../../../mocks/Task.mock';
 import { TaskTabProps } from './TaskTab.interface';
 import { TaskTabNew } from './TaskTabNew.component';

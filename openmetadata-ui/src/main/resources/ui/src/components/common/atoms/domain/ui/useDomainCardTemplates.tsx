@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import {
-  getClassificationTags,
-  getGlossaryTags,
+    getClassificationTags,
+    getGlossaryTags
 } from '../../../../../utils/TagsUtils';
 import { ColumnConfig } from '../../shared/types';
 

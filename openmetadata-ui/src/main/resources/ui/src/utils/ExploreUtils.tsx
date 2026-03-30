@@ -18,20 +18,20 @@ import { Bucket } from 'Models';
 import Qs from 'qs';
 import React from 'react';
 import {
-  ExploreQuickFilterField,
-  ExploreSearchIndex,
-  SearchHitCounts,
+    ExploreQuickFilterField,
+    ExploreSearchIndex,
+    SearchHitCounts
 } from '../components/Explore/ExplorePage.interface';
 import {
-  DatabaseFields,
-  ExploreTreeNode,
+    DatabaseFields,
+    ExploreTreeNode
 } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
 import {
-  ES_EXCEPTION_SHARDS_FAILED,
-  FAILED_TO_FIND_INDEX_ERROR,
-  INITIAL_SORT_FIELD,
+    ES_EXCEPTION_SHARDS_FAILED,
+    FAILED_TO_FIND_INDEX_ERROR,
+    INITIAL_SORT_FIELD
 } from '../constants/explore.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
@@ -39,14 +39,14 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Aggregations, SearchResponse } from '../interface/search.interface';
 import {
-  EsBoolQuery,
-  QueryFieldInterface,
-  QueryFilterInterface,
-  TabsInfoData,
+    EsBoolQuery,
+    QueryFieldInterface,
+    QueryFilterInterface,
+    TabsInfoData
 } from '../pages/ExplorePage/ExplorePage.interface';
 import {
-  getAggregateFieldOptions,
-  postAggregateFieldOptions,
+    getAggregateFieldOptions,
+    postAggregateFieldOptions
 } from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';

@@ -12,8 +12,8 @@
  */
 import { render } from '@testing-library/react';
 import {
-  MOCKED_GLOSSARY_TERMS,
-  MOCK_PERMISSIONS,
+    MOCKED_GLOSSARY_TERMS,
+    MOCK_PERMISSIONS
 } from '../../../../mocks/Glossary.mock';
 import RelatedTerms from './RelatedTerms';
 

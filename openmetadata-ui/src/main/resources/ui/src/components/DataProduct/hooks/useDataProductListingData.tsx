@@ -15,22 +15,22 @@ import { Avatar, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
 import {
-  DATAPRODUCT_DEFAULT_QUICK_FILTERS,
-  DATAPRODUCT_FILTERS,
+    DATAPRODUCT_DEFAULT_QUICK_FILTERS,
+    DATAPRODUCT_FILTERS
 } from '../../../constants/DataProduct.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
-  getClassificationTags,
-  getGlossaryTags,
+    getClassificationTags,
+    getGlossaryTags
 } from '../../../utils/TagsUtils';
 import { useListingData } from '../../common/atoms/compositions/useListingData';
 import {
-  CellRenderer,
-  ColumnConfig,
-  ListingData,
+    CellRenderer,
+    ColumnConfig,
+    ListingData
 } from '../../common/atoms/shared/types';
 
 export const useDataProductListingData = (): ListingData<DataProduct> => {

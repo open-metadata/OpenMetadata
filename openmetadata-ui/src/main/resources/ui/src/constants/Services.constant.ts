@@ -114,8 +114,8 @@ import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
 import {
-  ServiceCategory,
-  ServiceNestedConnectionFields,
+    ServiceCategory,
+    ServiceNestedConnectionFields
 } from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from '../generated/entity/automations/workflow';

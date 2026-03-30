@@ -12,22 +12,22 @@
  */
 
 import {
-  Badge,
-  Button,
-  ButtonUtility,
-  Card,
-  Checkbox,
-  Divider,
-  Input,
-  Select,
-  SelectItemType,
-  SlideoutMenu,
-  Table,
-  TableCard,
-  TextArea,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
+    Badge,
+    Button,
+    ButtonUtility,
+    Card,
+    Checkbox,
+    Divider,
+    Input,
+    Select,
+    SelectItemType,
+    SlideoutMenu,
+    Table,
+    TableCard,
+    TextArea,
+    Tooltip,
+    TooltipTrigger,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Check, Edit05, Lock01, Trash01, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -36,22 +36,22 @@ import { useTranslation } from 'react-i18next';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import {
-  COLOR_META_BY_HEX,
-  RELATION_META,
+    COLOR_META_BY_HEX,
+    RELATION_META
 } from '../../components/OntologyExplorer/OntologyExplorer.constants';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
-  GlossaryTermRelationSettings,
-  GlossaryTermRelationType,
-  RelationCardinality,
-  RelationCategory,
+    GlossaryTermRelationSettings,
+    GlossaryTermRelationType,
+    RelationCardinality,
+    RelationCategory
 } from '../../generated/configuration/glossaryTermRelationSettings';
 import { useAuth } from '../../hooks/authHooks';
 import {
-  getGlossaryTermRelationSettings,
-  getRelationTypeUsageCounts,
-  updateGlossaryTermRelationSettings,
+    getGlossaryTermRelationSettings,
+    getRelationTypeUsageCounts,
+    updateGlossaryTermRelationSettings
 } from '../../rest/glossaryAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';

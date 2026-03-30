@@ -12,23 +12,23 @@
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
-  FieldOrGroup,
-  Fields,
-  OldJsonItem,
-  OldJsonTree,
-  RenderSettings,
+    FieldOrGroup,
+    Fields,
+    OldJsonItem,
+    OldJsonTree,
+    RenderSettings
 } from '@react-awesome-query-builder/antd';
 import { Button } from 'antd';
 import { isBoolean, isEmpty, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import {
-  EsBoolQuery,
-  EsExistsQuery,
-  EsTerm,
-  EsWildCard,
-  QueryFieldInterface,
-  QueryFilterInterface,
+    EsBoolQuery,
+    EsExistsQuery,
+    EsTerm,
+    EsWildCard,
+    QueryFieldInterface,
+    QueryFilterInterface
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { t } from './i18next/LocalUtil';
 import { generateUUID } from './StringsUtils';

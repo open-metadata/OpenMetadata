@@ -12,16 +12,16 @@
  */
 import { t } from 'i18next';
 import {
-  cloneDeep,
-  isArray,
-  isNil,
-  isUndefined,
-  lowerCase,
-  omit,
-  omitBy,
-  parseInt,
-  startCase,
-  uniqBy,
+    cloneDeep,
+    isArray,
+    isNil,
+    isUndefined,
+    lowerCase,
+    omit,
+    omitBy,
+    parseInt,
+    startCase,
+    uniqBy
 } from 'lodash';
 import QueryString from 'qs';
 import { Surface } from 'recharts';
@@ -47,19 +47,19 @@ import { Table } from '../../generated/entity/data/table';
 import { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import {
-  TestCase,
-  TestCaseParameterValue,
+    TestCase,
+    TestCaseParameterValue
 } from '../../generated/tests/testCase';
 import {
-  DataQualityDimensions,
-  TestDataType,
-  TestDefinition,
+    DataQualityDimensions,
+    TestDataType,
+    TestDefinition
 } from '../../generated/tests/testDefinition';
 import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
 import { TableSearchSource } from '../../interface/search.interface';
 import {
-  DataQualityDashboardChartFilters,
-  DataQualityPageTabs,
+    DataQualityDashboardChartFilters,
+    DataQualityPageTabs
 } from '../../pages/DataQuality/DataQualityPage.interface';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import { getEntryFormattedValue } from '../DataInsightUtils';

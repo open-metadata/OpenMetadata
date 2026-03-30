@@ -16,15 +16,15 @@ import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import {
-  get,
-  isEmpty,
-  isUndefined,
-  lowerCase,
-  omit,
-  toString,
-  uniqBy,
-  uniqueId,
-  upperCase,
+    get,
+    isEmpty,
+    isUndefined,
+    lowerCase,
+    omit,
+    toString,
+    uniqBy,
+    uniqueId,
+    upperCase
 } from 'lodash';
 import { EntityTags } from 'Models';
 import { CSSProperties, Fragment, lazy, Suspense } from 'react';
@@ -157,29 +157,29 @@ import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
-  Column,
-  ConstraintType,
-  DataType,
-  JoinedWith,
-  Table,
-  TableConstraint,
-  TableJoins,
+    Column,
+    ConstraintType,
+    DataType,
+    JoinedWith,
+    Table,
+    TableConstraint,
+    TableJoins
 } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
+    LabelType,
+    State,
+    TagLabel,
+    TagSource
 } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
-  FrequentlyJoinedTables,
-  Joined,
+    FrequentlyJoinedTables,
+    Joined
 } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
@@ -187,8 +187,8 @@ import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/Table
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
 import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
+    getPartialNameFromTableFQN,
+    getTableFQNFromColumnFQN
 } from './CommonUtils';
 import { extractContainerColumns } from './ContainerDetailUtils';
 import { extractDataModelColumns } from './DashboardDataModelUtils';

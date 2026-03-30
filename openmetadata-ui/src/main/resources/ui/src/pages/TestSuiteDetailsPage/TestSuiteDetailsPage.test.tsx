@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor
 } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
-  addTestCasesToLogicalTestSuiteBulk,
-  getListTestCaseBySearch,
-  getTestSuiteByName,
-  updateTestSuiteById,
+    addTestCasesToLogicalTestSuiteBulk,
+    getListTestCaseBySearch,
+    getTestSuiteByName,
+    updateTestSuiteById
 } from '../../rest/testAPI';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
 

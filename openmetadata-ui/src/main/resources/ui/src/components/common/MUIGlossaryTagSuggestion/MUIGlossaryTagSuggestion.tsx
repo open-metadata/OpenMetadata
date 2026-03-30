@@ -19,9 +19,9 @@ import { TagSource } from '../../../generated/entity/data/container';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
-  getGlossariesList,
-  queryGlossaryTerms,
-  searchGlossaryTerms,
+    getGlossariesList,
+    queryGlossaryTerms,
+    searchGlossaryTerms
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';

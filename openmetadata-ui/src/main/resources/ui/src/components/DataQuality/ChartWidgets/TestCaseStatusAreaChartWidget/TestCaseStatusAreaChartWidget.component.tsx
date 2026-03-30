@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-  Skeleton,
-  Tooltip,
-  Typography,
+    Skeleton,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined, last, toLower } from 'lodash';

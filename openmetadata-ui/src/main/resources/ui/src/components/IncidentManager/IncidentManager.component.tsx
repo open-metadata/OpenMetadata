@@ -24,8 +24,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
-  DEFAULT_DOMAIN_VALUE,
-  PAGE_SIZE_BASE,
+    DEFAULT_DOMAIN_VALUE,
+    PAGE_SIZE_BASE
 } from '../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -35,38 +35,38 @@ import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
-  Assigned,
-  Severities,
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
+    Assigned,
+    Severities,
+    TestCaseResolutionStatus,
+    TestCaseResolutionStatusTypes
 } from '../../generated/tests/testCaseResolutionStatus';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import {
-  SearchHitBody,
-  TestCaseSearchSource,
+    SearchHitBody,
+    TestCaseSearchSource
 } from '../../interface/search.interface';
 import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/IncidentManager.interface';
 import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import {
-  getListTestCaseIncidentStatusFromSearch,
-  postTestCaseIncidentStatus,
-  TestCaseIncidentStatusParams,
-  updateTestCaseIncidentById,
+    getListTestCaseIncidentStatusFromSearch,
+    postTestCaseIncidentStatus,
+    TestCaseIncidentStatusParams,
+    updateTestCaseIncidentById
 } from '../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import {
-  getNameFromFQN,
-  getPartialNameFromTableFQN,
+    getNameFromFQN,
+    getPartialNameFromTableFQN
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getEntityDetailsPath,
-  getTestCaseDetailPagePath,
+    getEntityDetailsPath,
+    getTestCaseDetailPagePath
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
@@ -78,8 +78,8 @@ import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interfa
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Table from '../common/Table/Table';
 import {
-  ProfilerTabPath,
-  TestCasePermission,
+    ProfilerTabPath,
+    TestCasePermission
 } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';

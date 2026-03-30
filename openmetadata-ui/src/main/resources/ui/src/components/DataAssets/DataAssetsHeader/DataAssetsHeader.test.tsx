@@ -15,8 +15,8 @@ import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
-  Container,
-  StorageServiceType,
+    Container,
+    StorageServiceType
 } from '../../../generated/entity/data/container';
 import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';

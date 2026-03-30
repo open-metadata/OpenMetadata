@@ -12,34 +12,34 @@
  */
 
 import {
-  CustomizeTabWidget,
-  CustomizeTabWidgetProps,
+    CustomizeTabWidget,
+    CustomizeTabWidgetProps
 } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { GenericWidget } from '../../components/Customization/GenericWidget/GenericWidget';
 import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
 import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';
 import {
-  CommonWidgetType,
-  CUSTOM_PROPERTIES_WIDGET,
-  DESCRIPTION_WIDGET,
-  DOMAIN_WIDGET,
-  OWNER_WIDGET,
-  REFERENCES_WIDGET,
-  RELATED_TERMS_WIDGET,
-  REVIEWER_WIDGET,
-  SYNONYMS_WIDGET,
-  TAGS_WIDGET,
-  TERMS_TABLE_WIDGET,
+    CommonWidgetType,
+    CUSTOM_PROPERTIES_WIDGET,
+    DESCRIPTION_WIDGET,
+    DOMAIN_WIDGET,
+    OWNER_WIDGET,
+    REFERENCES_WIDGET,
+    RELATED_TERMS_WIDGET,
+    REVIEWER_WIDGET,
+    SYNONYMS_WIDGET,
+    TAGS_WIDGET,
+    TERMS_TABLE_WIDGET
 } from '../../constants/CustomizeWidgets.constants';
 import {
-  DetailPageWidgetKeys,
-  GlossaryTermDetailPageWidgetKeys,
+    DetailPageWidgetKeys,
+    GlossaryTermDetailPageWidgetKeys
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import {
-  WidgetCommonProps,
-  WidgetConfig,
+    WidgetCommonProps,
+    WidgetConfig
 } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getGlossaryTermWidgetFromKey } from '../GlossaryTerm/GlossaryTermUtil';
 

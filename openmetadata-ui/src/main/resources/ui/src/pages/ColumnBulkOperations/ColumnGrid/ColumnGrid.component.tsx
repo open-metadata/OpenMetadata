@@ -12,29 +12,29 @@
  */
 
 import {
-  Badge,
-  Button,
-  ButtonUtility,
-  Card,
-  Input,
-  Table,
-  Toggle,
-  Typography,
+    Badge,
+    Button,
+    ButtonUtility,
+    Card,
+    Input,
+    Table,
+    Toggle,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  ArrowRight,
-  ChevronRight,
-  Tag01 as TagIcon,
-  XClose,
+    ArrowRight,
+    ChevronRight,
+    Tag01 as TagIcon,
+    XClose
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, some } from 'lodash';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -49,8 +49,8 @@ import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer';
 import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
 import { useSearch } from '../../../components/common/atoms/navigation/useSearch';
 import {
-  CellRenderer,
-  ColumnConfig,
+    CellRenderer,
+    ColumnConfig
 } from '../../../components/common/atoms/shared/types';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -58,30 +58,30 @@ import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-  SOCKET_EVENTS,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM,
+    SOCKET_EVENTS
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
-  BulkColumnUpdateRequest,
-  ColumnUpdate,
+    BulkColumnUpdateRequest,
+    ColumnUpdate
 } from '../../../generated/api/data/bulkColumnUpdateRequest';
 import {
-  ColumnChild,
-  ColumnGridItem,
-  ColumnOccurrenceRef,
-  MetadataStatus,
+    ColumnChild,
+    ColumnGridItem,
+    ColumnOccurrenceRef,
+    MetadataStatus
 } from '../../../generated/api/data/columnGridResponse';
 import { BulkOperationResult } from '../../../generated/type/bulkOperationResult';
 import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
+    LabelType,
+    State,
+    TagLabel,
+    TagSource
 } from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
 import { formatContent } from '../../../utils/BlockEditorUtils';
@@ -94,9 +94,9 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import { ColumnGridTableRow } from './components/ColumnGridTableRow';
 import {
-  RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
-  SCROLL_TO_ROW_MAX_RETRIES,
-  SCROLL_TO_ROW_RETRY_DELAY_MS,
+    RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
+    SCROLL_TO_ROW_MAX_RETRIES,
+    SCROLL_TO_ROW_RETRY_DELAY_MS
 } from './constants/ColumnGrid.constants';
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';

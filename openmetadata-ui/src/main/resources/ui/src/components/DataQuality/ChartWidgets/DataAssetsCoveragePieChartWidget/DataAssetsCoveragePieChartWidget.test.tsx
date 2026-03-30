@@ -12,8 +12,8 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import {
-  fetchEntityCoveredWithDQ,
-  fetchTotalEntityCount,
+    fetchEntityCoveredWithDQ,
+    fetchTotalEntityCount
 } from '../../../../rest/dataQualityDashboardAPI';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import DataAssetsCoveragePieChartWidget from './DataAssetsCoveragePieChartWidget.component';

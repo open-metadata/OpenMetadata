@@ -22,9 +22,9 @@ import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface'
 import { ExploreQuickFilterField } from './ExplorePage.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import {
-  mockAdvancedFieldDefaultOptions,
-  mockAggregations,
-  mockTierTags,
+    mockAdvancedFieldDefaultOptions,
+    mockAggregations,
+    mockTierTags
 } from './mocks/ExploreQuickFilters.mock';
 
 const mockUseCustomLocation = jest.fn();

@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import {
-  Button,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
+    Button,
+    Col,
+    Divider,
+    Dropdown,
+    Row,
+    Space,
+    Tabs,
+    Tooltip
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -35,8 +35,8 @@ import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
-  ActivityFeedLayoutType,
-  ActivityFeedTabs,
+    ActivityFeedLayoutType,
+    ActivityFeedTabs
 } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -57,7 +57,7 @@ import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/Ent
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
-  AssetsTabRef,
+    AssetsTabRef
 } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
@@ -66,9 +66,9 @@ import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameM
 import IconColorModal from '../../components/Modals/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  BLACK_COLOR,
-  DE_ACTIVE_COLOR,
-  ROUTES,
+    BLACK_COLOR,
+    DE_ACTIVE_COLOR,
+    ROUTES
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
@@ -77,14 +77,14 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
+    EntityTabs,
+    EntityType,
+    TabSpecificField
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
@@ -101,14 +101,14 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
-  getClassificationDetailsPath,
-  getClassificationTagPath,
+    getClassificationDetailsPath,
+    getClassificationTagPath
 } from '../../utils/RouterUtils';
 import tagClassBase from '../../utils/TagClassBase';
 import {
-  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
-  getQueryFilterToExcludeTermsAndEntities,
-  getTagAssetsQueryFilter,
+    getExcludedIndexesBasedOnEntityTypeEditTagPermission,
+    getQueryFilterToExcludeTermsAndEntities,
+    getTagAssetsQueryFilter
 } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

@@ -12,22 +12,22 @@
  */
 
 import {
-  Card,
-  Divider,
-  Input,
-  SlideoutMenu,
-  Tabs,
-  Typography,
+    Card,
+    Divider,
+    Input,
+    SlideoutMenu,
+    Tabs,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { SearchMd } from '@untitledui/icons';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
@@ -39,24 +39,24 @@ import { EntityReference } from '../../generated/entity/type';
 import { TagSource } from '../../generated/type/tagLabel';
 import { TermRelation } from '../../generated/type/termRelation';
 import {
-  getGlossariesList,
-  getGlossaryTerms,
-  getGlossaryTermsAssetCounts,
+    getGlossariesList,
+    getGlossaryTerms,
+    getGlossaryTermsAssetCounts
 } from '../../rest/glossaryAPI';
 import { getMetrics } from '../../rest/metricsAPI';
 import {
-  checkRdfEnabled,
-  getGlossaryTermGraph,
-  GraphData,
+    checkRdfEnabled,
+    getGlossaryTermGraph,
+    GraphData
 } from '../../rest/rdfAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import {
-  getGlossaryTermRelationSettings,
-  GlossaryTermRelationType,
+    getGlossaryTermRelationSettings,
+    GlossaryTermRelationType
 } from '../../rest/settingConfigAPI';
 import {
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
+    getEntityDetailsPath,
+    getGlossaryTermDetailsPath
 } from '../../utils/RouterUtils';
 import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -68,21 +68,21 @@ import GraphSettingsPanel from './GraphSettingsPanel';
 import NodeContextMenu from './NodeContextMenu';
 import OntologyControlButtons from './OntologyControlButtons';
 import {
-  LayoutType,
-  RELATION_COLORS,
-  toLayoutEngineType,
-  withoutOntologyAutocompleteAll,
+    LayoutType,
+    RELATION_COLORS,
+    toLayoutEngineType,
+    withoutOntologyAutocompleteAll
 } from './OntologyExplorer.constants';
 import {
-  ExplorationMode,
-  GraphFilters,
-  GraphSettings,
-  GraphViewMode,
-  OntologyEdge,
-  OntologyExplorerProps,
-  OntologyGraphData,
-  OntologyGraphHandle,
-  OntologyNode,
+    ExplorationMode,
+    GraphFilters,
+    GraphSettings,
+    GraphViewMode,
+    OntologyEdge,
+    OntologyExplorerProps,
+    OntologyGraphData,
+    OntologyGraphHandle,
+    OntologyNode
 } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
 import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';

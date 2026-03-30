@@ -16,9 +16,9 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { EntityTabs } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  mockedGlossaryTerms,
-  MOCK_ASSETS_DATA,
-  MOCK_PERMISSIONS,
+    mockedGlossaryTerms,
+    MOCK_ASSETS_DATA,
+    MOCK_PERMISSIONS
 } from '../../../mocks/Glossary.mock';
 import * as CommonUtils from '../../../utils/CommonUtils';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';

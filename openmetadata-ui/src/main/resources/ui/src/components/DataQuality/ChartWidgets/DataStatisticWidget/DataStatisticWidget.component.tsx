@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-  Button,
-  Divider,
-  Skeleton,
-  Typography,
+    Button,
+    Divider,
+    Skeleton,
+    Typography
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { Link } from 'react-router-dom';

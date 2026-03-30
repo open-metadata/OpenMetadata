@@ -25,14 +25,14 @@ import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remov
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../../../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
-  EntityAction,
-  EntityType,
-  TabSpecificField,
+    EntityAction,
+    EntityType,
+    TabSpecificField
 } from '../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { TeamType } from '../../../../../generated/entity/teams/team';
@@ -46,8 +46,8 @@ import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
+    getEntityName,
+    getEntityReferenceFromEntity
 } from '../../../../../utils/EntityUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../../utils/SearchUtils';

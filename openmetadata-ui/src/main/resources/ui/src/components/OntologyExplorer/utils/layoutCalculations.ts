@@ -11,24 +11,24 @@
  *  limitations under the License.
  */
 import {
-  COMBO_HEADER_HEIGHT,
-  DATA_MODE_ASSET_CIRCLE_SIZE,
-  DATA_MODE_ASSET_LABEL_LAYOUT_STACK,
-  DATA_MODE_TERM_TO_FIRST_RING_GAP,
-  LayoutEngine,
-  type LayoutEngineType,
+    COMBO_HEADER_HEIGHT,
+    DATA_MODE_ASSET_CIRCLE_SIZE,
+    DATA_MODE_ASSET_LABEL_LAYOUT_STACK,
+    DATA_MODE_TERM_TO_FIRST_RING_GAP,
+    LayoutEngine,
+    type LayoutEngineType
 } from '../OntologyExplorer.constants';
 import {
-  HierarchyGraphResult,
-  MergedEdge,
-  OntologyNode,
+    HierarchyGraphResult,
+    MergedEdge,
+    OntologyNode
 } from '../OntologyExplorer.interface';
 import {
-  BADGE_MIN_NODE_WIDTH,
-  DAGRE_NODE_SEP,
-  DAGRE_RANK_SEP,
-  NODE_HEIGHT,
-  NODE_WIDTH,
+    BADGE_MIN_NODE_WIDTH,
+    DAGRE_NODE_SEP,
+    DAGRE_RANK_SEP,
+    NODE_HEIGHT,
+    NODE_WIDTH
 } from './graphConfig';
 
 const COMBO_PADDING = 56;

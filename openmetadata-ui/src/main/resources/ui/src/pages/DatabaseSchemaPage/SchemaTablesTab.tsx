@@ -27,14 +27,14 @@ import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import {
-  INITIAL_PAGING_VALUE,
-  INITIAL_TABLE_FILTERS,
+    INITIAL_PAGING_VALUE,
+    INITIAL_TABLE_FILTERS
 } from '../../constants/constants';
 import { DUMMY_DATABASE_SCHEMA_TABLES_DETAILS } from '../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import {
-  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-  DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS,
+    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+    DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS
 } from '../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -49,32 +49,32 @@ import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { searchQuery } from '../../rest/searchAPI';
 import {
-  getTableList,
-  patchTableDetails,
-  TableListParams,
+    getTableList,
+    patchTableDetails,
+    TableListParams
 } from '../../rest/tableAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
-  getColumnSorter,
-  getEntityBulkEditPath,
-  highlightSearchText,
+    getColumnSorter,
+    getEntityBulkEditPath,
+    highlightSearchText
 } from '../../utils/EntityUtils';
 import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
+    getPrioritizedEditPermission,
+    getPrioritizedViewPermission
 } from '../../utils/PermissionsUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
 import {
-  certificationTableObject,
-  dataProductTableObject,
-  descriptionTableObject,
-  domainTableObject,
-  ownerTableObject,
-  tagTableObject,
-  tierTableObject,
+    certificationTableObject,
+    dataProductTableObject,
+    descriptionTableObject,
+    domainTableObject,
+    ownerTableObject,
+    tagTableObject,
+    tierTableObject
 } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 

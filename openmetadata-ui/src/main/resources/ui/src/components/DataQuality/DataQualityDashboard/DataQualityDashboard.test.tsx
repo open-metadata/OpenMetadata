@@ -14,9 +14,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import {
-  ABORTED_CHART_COLOR_SCHEME,
-  FAILED_CHART_COLOR_SCHEME,
-  SUCCESS_CHART_COLOR_SCHEME,
+    ABORTED_CHART_COLOR_SCHEME,
+    FAILED_CHART_COLOR_SCHEME,
+    SUCCESS_CHART_COLOR_SCHEME
 } from '../../../constants/Chart.constants';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';

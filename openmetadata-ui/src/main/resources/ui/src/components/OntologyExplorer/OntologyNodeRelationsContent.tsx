@@ -12,12 +12,12 @@
  */
 
 import {
-  Badge,
-  Card,
-  Divider,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
+    Badge,
+    Card,
+    Divider,
+    Tooltip,
+    TooltipTrigger,
+    Typography
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

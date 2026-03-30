@@ -14,8 +14,8 @@
 import { cloneDeep, isUndefined } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import {
-  MessagingConnection,
-  MessagingServiceType,
+    MessagingConnection,
+    MessagingServiceType
 } from '../generated/entity/services/messagingService';
 import customMessagingConnection from '../jsons/connectionSchemas/connections/messaging/customMessagingConnection.json';
 import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';

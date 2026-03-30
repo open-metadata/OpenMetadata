@@ -12,11 +12,11 @@
  */
 
 import {
-  ColumnChild,
-  ColumnGridItem,
-  ColumnMetadataGroup,
-  ColumnOccurrenceRef,
-  MetadataStatus,
+    ColumnChild,
+    ColumnGridItem,
+    ColumnMetadataGroup,
+    ColumnOccurrenceRef,
+    MetadataStatus
 } from '../../../generated/api/data/columnGridResponse';
 import { TagLabel } from '../../../generated/type/tagLabel';
 

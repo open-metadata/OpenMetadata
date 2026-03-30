@@ -15,12 +15,12 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import {
-  Button,
-  Card,
-  Input,
-  Select,
-  Space,
-  Typography as AntDTypography,
+    Button,
+    Card,
+    Input,
+    Select,
+    Space,
+    Typography as AntDTypography
 } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';

@@ -15,12 +15,12 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  Database,
-  DatabaseServiceType,
+    Database,
+    DatabaseServiceType
 } from '../../generated/entity/data/database';
 import {
-  MOCK_CHANGE_DESCRIPTION,
-  MOCK_DATABASE_SERVICE,
+    MOCK_CHANGE_DESCRIPTION,
+    MOCK_DATABASE_SERVICE
 } from '../../mocks/Service.mock';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';

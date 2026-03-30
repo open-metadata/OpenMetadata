@@ -12,11 +12,11 @@
  */
 
 import {
-  findByTestId,
-  findByText,
-  queryByTestId,
-  queryByText,
-  render,
+    findByTestId,
+    findByText,
+    queryByTestId,
+    queryByText,
+    render
 } from '@testing-library/react';
 import { forwardRef } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
