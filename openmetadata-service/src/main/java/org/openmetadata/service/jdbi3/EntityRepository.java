@@ -182,6 +182,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
@@ -7935,7 +7936,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Build a lookup map from origColumns to avoid O(n²) stream search per updated column
-      Map<String, Column> origColumnByKey = new HashMap<>();
+      Map<ColumnKey, Column> origColumnByKey = new HashMap<>();
       for (Column col : origColumns) {
         origColumnByKey.put(columnLookupKey(col), col);
       }
@@ -7983,9 +7984,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // NO-OP – to be overridden by entity-specific updaters when needed.
     }
 
-    private static String columnLookupKey(Column col) {
-      return col.getName().toLowerCase(Locale.ROOT)
-          + "|" + col.getDataType() + "|" + col.getArrayDataType();
+    private record ColumnKey(String name, ColumnDataType dataType, ColumnDataType arrayDataType) {}
+
+    private static ColumnKey columnLookupKey(Column col) {
+      return new ColumnKey(
+          col.getName() == null ? null : col.getName().toLowerCase(Locale.ROOT),
+          col.getDataType(),
+          col.getArrayDataType());
     }
 
     private void updateColumnDescription(

@@ -2289,6 +2289,8 @@ public class TableRepository extends EntityRepository<Table> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      pendingDeletedColumnFqns.clear();
+      pendingRenameColumnFqns.clear();
       Table origTable = original;
       Table updatedTable = updated;
       if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
@@ -2450,16 +2452,14 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
 
-      // Replace pending sets with the latest pass's values. When consolidateChanges=true,
-      // updateInternal runs multiple times with different original states; earlier passes may
-      // detect spurious deletes/renames that the final pass does not. Clearing before each
-      // assignment ensures only the final pass's results are flushed to the search index.
+      // Accumulate within this pass. entitySpecificUpdate() clears both collections at the
+      // start of each updateInternal() pass, so stale data from a prior consolidation pass
+      // never leaks into the flush. Using addAll/putAll (not clear+replace) here means nested
+      // column levels all contribute their deletes/renames to the same deferred flush.
       if (hasDeletes) {
-        pendingDeletedColumnFqns.clear();
         pendingDeletedColumnFqns.addAll(deletedColumns);
       }
       if (hasRenames) {
-        pendingRenameColumnFqns.clear();
         pendingRenameColumnFqns.putAll(originalUpdatedColumnFqnMap);
       }
 
