@@ -959,9 +959,9 @@ public class SearchIndexExecutor implements AutoCloseable {
       int endOffset = Integer.parseInt(decodedEnd);
       return afterOffset >= endOffset;
     } catch (NumberFormatException ignored) {
-      // Not a numeric cursor, fall through to JSON comparison
+      // Not a numeric cursor, fall through to string comparison
     }
-    return false;
+    return decodedAfter.equals(decodedEnd);
   }
 
   private void processKeysetBatches(
