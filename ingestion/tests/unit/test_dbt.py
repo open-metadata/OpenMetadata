@@ -3262,9 +3262,7 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
         Must not call add_test_case_results.
         """
         source = self._make_dbt_source()
-        source.add_dbt_test_result(
-            self._make_dbt_test(status="success", message=None)
-        )
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=None))
         source.metadata.add_test_case_results.assert_not_called()
 
     def test_compiled_only_empty_message_is_skipped(self):
@@ -3273,9 +3271,7 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
         Empty string is falsy — must also be skipped.
         """
         source = self._make_dbt_source()
-        source.add_dbt_test_result(
-            self._make_dbt_test(status="success", message="")
-        )
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=""))
         source.metadata.add_test_case_results.assert_not_called()
 
     def test_real_pass_result_is_ingested(self):
@@ -3297,9 +3293,7 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             ),
             DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
         }
-        with patch(
-            "metadata.ingestion.source.database.dbt.metadata.fqn"
-        ) as mock_fqn:
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
             mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
             mock_fqn.build.return_value = (
                 "snowflake.db.schema.orders.test_not_null_orders_id"
@@ -3329,9 +3323,7 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             ),
             DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
         }
-        with patch(
-            "metadata.ingestion.source.database.dbt.metadata.fqn"
-        ) as mock_fqn:
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
             mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
             mock_fqn.build.return_value = (
                 "snowflake.db.schema.orders.test_not_null_orders_id"
@@ -3361,9 +3353,7 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             ),
             DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
         }
-        with patch(
-            "metadata.ingestion.source.database.dbt.metadata.fqn"
-        ) as mock_fqn:
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
             mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
             mock_fqn.build.return_value = (
                 "snowflake.db.schema.orders.test_not_null_orders_id"
