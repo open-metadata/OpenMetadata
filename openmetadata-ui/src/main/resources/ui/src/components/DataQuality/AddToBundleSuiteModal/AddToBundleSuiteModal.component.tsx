@@ -164,6 +164,7 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
             className="w-full"
             filterOption={false}
             getPopupContainer={getPopupContainer}
+            listHeight={100}
             loading={optionsLoading}
             options={options}
             placeholder={t('label.select-field', {

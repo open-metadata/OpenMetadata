@@ -664,7 +664,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               </Dropdown.Popover>
             </Dropdown.Root>
             <Button
-              className="tw:h-6 tw:w-6"
+              className="tw:h-6 tw:w-6 tw:*:data-icon:text-gray-600"
               color="tertiary"
               data-testid="bulk-clear-test-case-selection"
               iconLeading={DeleteIcon}
