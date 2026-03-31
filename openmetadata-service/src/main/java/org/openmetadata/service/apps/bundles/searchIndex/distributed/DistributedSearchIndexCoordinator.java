@@ -82,10 +82,14 @@ public class DistributedSearchIndexCoordinator {
    */
   private static final int MAX_IN_FLIGHT_PARTITIONS_PER_SERVER = 5;
 
+  /** Throttle interval for touching job.updatedAt from partition completions */
+  private static final long JOB_TOUCH_INTERVAL_MS = TimeUnit.MINUTES.toMillis(2);
+
   private final CollectionDAO collectionDAO;
   private final PartitionCalculator partitionCalculator;
   private final String serverId;
   private EntityCompletionTracker entityTracker;
+  private final AtomicLong lastJobTouchTime = new AtomicLong(0);
 
   /** Monotonic counter to guarantee unique claimedAt values across concurrent worker threads. */
   private final AtomicLong claimCounter = new AtomicLong(0);
@@ -451,6 +455,12 @@ public class DistributedSearchIndexCoordinator {
         successCount,
         failedCount);
 
+    // Keep job.updatedAt fresh so OrphanJobMonitor doesn't mark it as orphaned.
+    // This is especially important after recovery when no coordinator lock-refresh loop is running.
+    // Throttled to avoid excessive DB writes — ABANDONED_LOCK_THRESHOLD is 10 min, so every 2 min
+    // is safe.
+    touchJobThrottled(record.jobId(), now);
+
     // Record partition completion for per-entity index promotion
     if (entityTracker != null) {
       LOG.debug(
@@ -464,6 +474,18 @@ public class DistributedSearchIndexCoordinator {
 
     // Check if job should be marked as complete
     checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
+  }
+
+  private void touchJobThrottled(String jobId, long now) {
+    long last = lastJobTouchTime.get();
+    if (now - last < JOB_TOUCH_INTERVAL_MS || !lastJobTouchTime.compareAndSet(last, now)) {
+      return;
+    }
+    try {
+      collectionDAO.searchIndexJobDAO().touchJob(jobId, now);
+    } catch (Exception e) {
+      LOG.debug("Failed to touch job updatedAt for {}: {}", jobId, e.getMessage());
+    }
   }
 
   /**

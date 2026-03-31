@@ -141,6 +141,17 @@
   }
 }
 
+// TableV2 whole-table drop highlight — driven by React Aria's native data-drop-target
+[data-drop-target] table:not(.ant-table) {
+  border-collapse: collapse;
+  tbody {
+    border: 2px dashed @primary-color;
+    tr td {
+      background: @active-color !important;
+    }
+  }
+}
+
 .align-table-filter-left {
   .ant-table-filter-column {
     flex-direction: row-reverse;

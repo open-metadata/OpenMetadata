@@ -92,7 +92,9 @@ test.describe('Profiler Configuration Page', () => {
 
       await adminPage.click('[data-testid="add-fields"]');
       await adminPage.click('[data-testid="save-button"]');
-      await adminPage.locator('#metricConfiguration_0_dataType_help').waitFor();
+      await adminPage
+        .locator('#metricConfiguration_0_dataType_help')
+        .waitFor({ state: 'visible' });
 
       await expect(
         adminPage.locator('#metricConfiguration_0_dataType_help')
@@ -332,11 +334,4 @@ test.describe('Profiler Configuration Page', () => {
       userPage.locator('[data-testid="preferences"]')
     ).not.toBeVisible();
   });
-});
-
-// Delete new user with admin login
-base.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await user.delete(apiContext);
-  await afterAction();
 });

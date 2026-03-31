@@ -1495,6 +1495,90 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Test
+  void test_certificationTagNotLeakingIntoTagsField(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    org.openmetadata.schema.entity.classification.Classification certClassification =
+        client.classifications().getByName("Certification", null);
+    assertNotNull(certClassification, "Certification classification must exist");
+
+    String certTagName = ns.shortPrefix("cert_leak_tag");
+    CreateTag createCertTag = new CreateTag();
+    createCertTag.setName(certTagName);
+    createCertTag.setClassification(certClassification.getFullyQualifiedName());
+    createCertTag.setDescription("Cert tag for leak test");
+    Tag certTag = SdkClients.adminClient().tags().create(createCertTag);
+
+    org.openmetadata.schema.entity.classification.Classification regularClassification =
+        createClassification(ns);
+    CreateTag createRegularTag = new CreateTag();
+    createRegularTag.setName(ns.shortPrefix("regular_tag"));
+    createRegularTag.setClassification(regularClassification.getFullyQualifiedName());
+    createRegularTag.setDescription("Regular tag for leak test");
+    Tag regularTag = SdkClients.adminClient().tags().create(createRegularTag);
+
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "cert_leak_svc");
+    org.openmetadata.schema.entity.data.Database db =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    DatabaseSchema schema = createDatabaseSchema(ns, db.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.TagLabel certTagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(certTag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+    org.openmetadata.schema.type.TagLabel regularTagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(regularTag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+
+    schema.setCertification(new AssetCertification().withTagLabel(certTagLabel));
+    schema.setTags(List.of(regularTagLabel));
+    DatabaseSchema tagged = client.databaseSchemas().update(schema.getId().toString(), schema);
+    assertNotNull(tagged);
+
+    // GET single entity: cert tag must not appear in `tags`
+    DatabaseSchema fetched =
+        client.databaseSchemas().get(tagged.getId().toString(), "tags,certification");
+    assertNotNull(fetched.getCertification(), "Certification field must be populated");
+    List<org.openmetadata.schema.type.TagLabel> singleTags = fetched.getTags();
+    assertNotNull(singleTags);
+    assertTrue(
+        singleTags.stream()
+            .noneMatch(t -> t.getTagFQN().startsWith(certClassification.getFullyQualifiedName())),
+        "GET: cert tag must not appear in tags field");
+    assertTrue(
+        singleTags.stream().anyMatch(t -> t.getTagFQN().equals(regularTag.getFullyQualifiedName())),
+        "GET: regular tag must still be present in tags field");
+
+    // LIST entities (batch path): cert tag must not appear in `tags` of the listed entity
+    org.openmetadata.sdk.models.ListParams listParams =
+        new org.openmetadata.sdk.models.ListParams()
+            .setDatabase(db.getFullyQualifiedName())
+            .setFields("tags,certification");
+    org.openmetadata.sdk.models.ListResponse<DatabaseSchema> listed =
+        client.databaseSchemas().list(listParams);
+    assertNotNull(listed.getData());
+    DatabaseSchema listedSchema =
+        listed.getData().stream()
+            .filter(s -> s.getId().equals(schema.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(listedSchema, "Schema must appear in list result");
+    List<org.openmetadata.schema.type.TagLabel> listTags = listedSchema.getTags();
+    assertNotNull(listTags);
+    assertTrue(
+        listTags.stream()
+            .noneMatch(t -> t.getTagFQN().startsWith(certClassification.getFullyQualifiedName())),
+        "LIST (batch): cert tag must not appear in tags field");
+    assertTrue(
+        listTags.stream().anyMatch(t -> t.getTagFQN().equals(regularTag.getFullyQualifiedName())),
+        "LIST (batch): regular tag must still be present in tags field");
+  }
+
+  @Test
   void test_certificationTagRenamePropagatesToEntityAndSearch(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     ObjectMapper mapper = new ObjectMapper();
