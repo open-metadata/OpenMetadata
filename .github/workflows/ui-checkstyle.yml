@@ -162,6 +162,7 @@ jobs:
             ```
             Or to fix all files: 
             ```bash
+            cd openmetadata-ui/src/main/resources/ui
             yarn install
             yarn ui-checkstyle
             ```
@@ -632,6 +633,7 @@ jobs:
             ```
             Or to fix all playwright files: 
             ```bash
+            cd openmetadata-ui/src/main/resources/ui
             yarn install
             yarn ui-checkstyle:playwright
             ```
@@ -841,6 +843,7 @@ jobs:
             ```
             Or to fix all files: 
             ```bash
+            cd openmetadata-ui-core-components/src/main/resources/ui
             yarn install
             yarn lint:fix && yarn pretty
             ```
