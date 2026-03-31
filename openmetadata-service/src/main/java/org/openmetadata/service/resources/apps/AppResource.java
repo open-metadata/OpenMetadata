@@ -391,6 +391,48 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @GET
+  @Path("/name/{name}/live-indexing-queue")
+  @Operation(
+      operationId = "listSearchIndexRetryQueue",
+      summary = "List Search Index Retry Queue",
+      description =
+          "Get the current live indexing retry queue entries for the SearchIndexingApplication.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of retry queue records",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response listRetryQueue(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Limit records. (1 to 1000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000)
+          int limitParam,
+      @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          int offset) {
+    App app = repository.getByName(uriInfo, name, repository.getFields("id"));
+    if (!"SearchIndexingApplication".equals(app.getName())) {
+      throw new BadRequestException(
+          "Live indexing queue is only available for SearchIndexingApplication");
+    }
+    CollectionDAO.SearchIndexRetryQueueDAO retryQueueDAO =
+        Entity.getCollectionDAO().searchIndexRetryQueueDAO();
+    var records = retryQueueDAO.listAll(limitParam, offset);
+    int total = retryQueueDAO.countAll();
+    return Response.ok(new ResultList<>(records, offset, total)).build();
+  }
+
+  @GET
   @Path("/name/{name}/extension")
   @Operation(
       operationId = "listAppExtension",

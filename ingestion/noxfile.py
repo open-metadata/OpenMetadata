@@ -23,7 +23,7 @@ from nox.virtualenv import PassthroughEnv
 
 # TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
 
-SUPPORTED_PYTHON_VERSIONS = ["3.10", "3.11"]
+SUPPORTED_PYTHON_VERSIONS = ["3.10", "3.11", "3.12"]
 
 
 def get_python_versions():
