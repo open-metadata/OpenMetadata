@@ -175,11 +175,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     String fqn = term.getFullyQualifiedName();
-    boolean useParentScope =
-        parent != null && !parent.isEmpty() && FullyQualifiedName.isParent(fqn, parent);
+    boolean parentProvided = parent != null && !parent.isEmpty();
+
+    if (parentProvided && !FullyQualifiedName.isParent(fqn, parent)) {
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
 
     InheritedFieldQuery query =
-        useParentScope
+        parentProvided
             ? InheritedFieldQuery.forGlossaryTermChildren(parent, offset, limit)
             : InheritedFieldQuery.forGlossaryTerm(fqn, offset, limit);
 
@@ -206,14 +209,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return new HashMap<>();
     }
 
-    List<GlossaryTerm> allGlossaryTerms =
-        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
-
+    List<GlossaryTerm> allGlossaryTerms;
     if (parent != null && !parent.isEmpty()) {
       allGlossaryTerms =
-          allGlossaryTerms.stream()
-              .filter(term -> FullyQualifiedName.isParent(term.getFullyQualifiedName(), parent))
-              .collect(Collectors.toList());
+          JsonUtils.readObjects(
+              daoCollection.glossaryTermDAO().getNestedTerms(parent), GlossaryTerm.class);
+    } else {
+      allGlossaryTerms = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
     }
 
     Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();

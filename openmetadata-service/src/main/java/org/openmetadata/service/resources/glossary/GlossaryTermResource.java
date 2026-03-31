@@ -876,8 +876,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           int offset,
       @Parameter(
               description =
-                  "Filter by parent glossary or glossary term FQN. "
-                      + "When provided, only returns assets for children whose FQN starts with this value.")
+                  "Parent scope filter. "
+                      + "When provided, only returns assets if the requested term is a descendant of this parent FQN; "
+                      + "otherwise returns an empty result.")
           @QueryParam("parent")
           String parent) {
     return Response.ok(repository.getGlossaryTermAssets(id, limit, offset, parent)).build();
@@ -924,8 +925,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           int offset,
       @Parameter(
               description =
-                  "Filter by parent glossary or glossary term FQN. "
-                      + "When provided, only returns assets for children whose FQN starts with this value.")
+                  "Parent scope filter. "
+                      + "When provided, only returns assets if the requested term is a descendant of this parent FQN; "
+                      + "otherwise returns an empty result.")
           @QueryParam("parent")
           String parent) {
     return Response.ok(repository.getGlossaryTermAssetsByName(fqn, limit, offset, parent)).build();

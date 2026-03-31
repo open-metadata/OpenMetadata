@@ -88,6 +88,26 @@ class QueryFilterBuilderTest {
   }
 
   @Test
+  void buildTagAssetsFilterUsesHierarchyWhenSupported() {
+    InheritedFieldQuery query =
+        InheritedFieldQuery.builder()
+            .fieldPath("tags.tagFQN")
+            .fieldValue("glossary.parentTerm")
+            .supportsHierarchy(true)
+            .includeDeleted(true)
+            .build();
+
+    JsonNode filter = parse(QueryFilterBuilder.buildTagAssetsFilter(query));
+
+    assertEquals(
+        "glossary.parentTerm",
+        filter.at("/query/bool/must/0/bool/should/0/term/tags.tagFQN").asText());
+    assertEquals(
+        "glossary.parentTerm.",
+        filter.at("/query/bool/must/0/bool/should/1/prefix/tags.tagFQN").asText());
+  }
+
+  @Test
   void buildGenericFilterUsesHierarchyWhenSupported() {
     InheritedFieldQuery query =
         InheritedFieldQuery.builder()

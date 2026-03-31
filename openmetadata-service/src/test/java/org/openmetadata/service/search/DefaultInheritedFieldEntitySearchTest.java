@@ -345,6 +345,8 @@ class DefaultInheritedFieldEntitySearchTest {
     InheritedFieldQuery tag = InheritedFieldQuery.forTag("tag", 3, 4);
     InheritedFieldQuery dataProduct = InheritedFieldQuery.forDataProduct("product", 5, 6);
     InheritedFieldQuery glossary = InheritedFieldQuery.forGlossaryTerm("term", 7, 8);
+    InheritedFieldQuery glossaryChildren =
+        InheritedFieldQuery.forGlossaryTermChildren("parent.term", 13, 14);
     InheritedFieldQuery team = InheritedFieldQuery.forTeam("team", 9, 10);
     InheritedFieldQuery user = InheritedFieldQuery.forUser("user", List.of("team1"), 11, 12);
 
@@ -356,6 +358,15 @@ class DefaultInheritedFieldEntitySearchTest {
     assertEquals("dataProducts.fullyQualifiedName", dataProduct.getFieldPath());
     assertFalse(dataProduct.isIncludeDeleted());
     assertEquals("tags.tagFQN", glossary.getFieldPath());
+    assertFalse(glossary.isSupportsHierarchy());
+    assertEquals("tags.tagFQN", glossaryChildren.getFieldPath());
+    assertTrue(glossaryChildren.isSupportsHierarchy());
+    assertEquals("parent.term", glossaryChildren.getFieldValue());
+    assertTrue(glossaryChildren.isIncludeDeleted());
+    assertEquals(
+        InheritedFieldEntitySearch.QueryFilterType.TAG_ASSETS, glossaryChildren.getFilterType());
+    assertEquals(13, glossaryChildren.getFrom());
+    assertEquals(14, glossaryChildren.getSize());
     assertEquals("owners.id", team.getFieldPath());
     assertEquals(InheritedFieldEntitySearch.QueryFilterType.OWNER_ASSETS, team.getFilterType());
     assertEquals(List.of("user", "team1"), user.getFieldValues());
