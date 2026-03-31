@@ -124,9 +124,8 @@ public final class UserUtil {
       } else {
         if (Boolean.TRUE.equals(originalUser.getIsBot())) {
           LOG.error(
-              String.format(
-                  "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
-                  originalUser.getName()));
+              "You configured bot user {} in initialAdmins config. Bot user cannot be promoted to be an admin.",
+              originalUser.getName());
         }
       }
     } catch (EntityNotFoundException e) {

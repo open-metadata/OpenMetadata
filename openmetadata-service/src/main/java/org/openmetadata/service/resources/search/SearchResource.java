@@ -537,7 +537,10 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @DefaultValue("false") @QueryParam("deleted") boolean deleted)
+      @DefaultValue("false") @QueryParam("deleted") boolean deleted,
+      @Parameter(description = "Free-text search query to scope aggregation results")
+          @QueryParam("queryText")
+          String queryText)
       throws IOException {
 
     AggregationRequest aggregationRequest =
@@ -548,7 +551,8 @@ public class SearchResource {
             .withFieldName(fieldName)
             .withFieldValue(value)
             .withSourceFields(SearchUtils.sourceFields(sourceFieldsParam))
-            .withDeleted(deleted);
+            .withDeleted(deleted)
+            .withQueryText(queryText);
 
     return searchRepository.aggregate(aggregationRequest);
   }

@@ -43,8 +43,7 @@ public class SamlValidator {
         return securityValidation;
       }
 
-      FieldError idpValidation = validateIdpConnectivity(samlConfig);
-      return idpValidation; // Success - SAML configuration validated
+      return validateIdpConnectivity(samlConfig); // Success - SAML configuration validated
     } catch (Exception e) {
       LOG.error("SAML validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -802,8 +801,7 @@ public class SamlValidator {
             || (idpConfig.getEntityId() != null
                 && idpConfig.getEntityId().contains("sts.windows.net"))) {
 
-          FieldError azureNameIdValidation = validateAzureNameIdFormat(idpConfig, nameId);
-          return azureNameIdValidation;
+          return validateAzureNameIdFormat(idpConfig, nameId);
         }
         // Add similar validation for other IdPs if needed
       }
@@ -930,7 +928,7 @@ public class SamlValidator {
           }
 
         } else {
-          LOG.warn("Could not fetch Azure AD metadata: HTTP " + response.getStatusCode());
+          LOG.warn("Could not fetch Azure AD metadata: HTTP {}", response.getStatusCode());
           // Warning case - treat as success
           LOG.warn(
               "Could not verify NameID format against Azure AD metadata: HTTP {}",

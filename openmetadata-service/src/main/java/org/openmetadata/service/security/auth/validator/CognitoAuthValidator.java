@@ -46,8 +46,8 @@ public class CognitoAuthValidator {
         return poolValidation;
       }
 
-      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, cognitoDetails);
-      return publicKeyValidation; // Success - Cognito public client validated
+      return validatePublicKeyUrls(
+          authConfig, cognitoDetails); // Success - Cognito public client validated
     } catch (Exception e) {
       LOG.error("Cognito public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -79,13 +79,11 @@ public class CognitoAuthValidator {
       }
 
       // Validate client credentials
-      FieldError credentialsValidation =
-          validateClientCredentials(
-              cognitoDetails,
-              oidcConfig.getId(),
-              oidcConfig.getSecret(),
-              oidcConfig.getCallbackUrl());
-      return credentialsValidation; // Success - Cognito confidential client validated
+      return validateClientCredentials(
+          cognitoDetails,
+          oidcConfig.getId(),
+          oidcConfig.getSecret(),
+          oidcConfig.getCallbackUrl()); // Success - Cognito confidential client validated
     } catch (Exception e) {
       LOG.error("Cognito confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(

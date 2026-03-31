@@ -1362,7 +1362,7 @@ public class S3LogStorage implements LogStorageInterface {
                   completedParts.add(part);
                 }
               } else {
-                LOG.error("Failed to upload part " + currentPartNumber, throwable);
+                LOG.error("Failed to upload part {} ", currentPartNumber, throwable);
               }
             });
 

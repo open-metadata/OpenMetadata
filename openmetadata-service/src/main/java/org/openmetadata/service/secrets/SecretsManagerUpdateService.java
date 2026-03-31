@@ -84,9 +84,8 @@ public class SecretsManagerUpdateService {
 
   private void updateServices() {
     LOG.info(
-        String.format(
-            "Updating services in case of an update on the JSON schema: [%s]",
-            secretManager.getSecretsManagerProvider().value()));
+        "Updating services in case of an update on the JSON schema: [{}]",
+        secretManager.getSecretsManagerProvider().value());
     retrieveServices()
         .forEach(
             service -> {
@@ -105,9 +104,8 @@ public class SecretsManagerUpdateService {
 
   private void updateBotUsers() {
     LOG.info(
-        String.format(
-            "Updating bot users in case of an update on the JSON schema: [%s]",
-            secretManager.getSecretsManagerProvider().value()));
+        "Updating bot users in case of an update on the JSON schema: [{}]",
+        secretManager.getSecretsManagerProvider().value());
     retrieveBotUsers()
         .forEach(
             botUser -> {
@@ -126,9 +124,8 @@ public class SecretsManagerUpdateService {
 
   private void updateIngestionPipelines() {
     LOG.info(
-        String.format(
-            "Updating ingestion pipelines in case of an update on the JSON schema: [%s]",
-            secretManager.getSecretsManagerProvider().value()));
+        "Updating ingestion pipelines in case of an update on the JSON schema: [{}]",
+        secretManager.getSecretsManagerProvider().value());
     retrieveIngestionPipelines()
         .forEach(
             ingestionPipeline -> {

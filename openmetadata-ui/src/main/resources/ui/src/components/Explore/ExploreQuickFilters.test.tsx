@@ -13,10 +13,8 @@
 
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TIER_FQN_KEY } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { getTags } from '../../rest/tagAPI';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
 import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
 import { ExploreQuickFilterField } from './ExplorePage.interface';
@@ -24,7 +22,6 @@ import ExploreQuickFilters from './ExploreQuickFilters';
 import {
   mockAdvancedFieldDefaultOptions,
   mockAggregations,
-  mockTierTags,
 } from './mocks/ExploreQuickFilters.mock';
 
 const mockUseCustomLocation = jest.fn();
@@ -53,7 +50,6 @@ jest.mock('../../hooks/useSearchStore', () => ({
 
 const mockOnFieldValueSelect = jest.fn();
 const mockGetAggregationOptions = jest.fn();
-const mockGetTags = jest.fn();
 
 jest.mock('../SearchDropdown/SearchDropdown', () => ({
   __esModule: true,
@@ -68,7 +64,6 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
     hideCounts,
     independent,
     showSelectedCounts,
-    fixedOrderOptions,
   }: SearchDropdownProps) => (
     <div data-testid={`search-dropdown-${searchKey}`} title="search-dropdown">
       <span data-testid={`label-${searchKey}`}>{searchKey}</span>
@@ -83,9 +78,6 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
       </span>
       <span data-testid={`show-selected-counts-${searchKey}`}>
         {showSelectedCounts ? 'true' : 'false'}
-      </span>
-      <span data-testid={`fixed-order-${searchKey}`}>
-        {fixedOrderOptions ? 'true' : 'false'}
       </span>
       <span data-testid={`selected-count-${searchKey}`}>
         {selectedKeys?.length ?? 0}
@@ -118,10 +110,6 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
 
 jest.mock('../../utils/ExploreUtils', () => ({
   getAggregationOptions: jest.fn(),
-}));
-
-jest.mock('../../rest/tagAPI', () => ({
-  getTags: jest.fn(),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -178,7 +166,6 @@ describe('ExploreQuickFilters component', () => {
     (getAggregationOptions as jest.Mock).mockImplementation(
       mockGetAggregationOptions
     );
-    (getTags as jest.Mock).mockImplementation(mockGetTags);
   });
 
   describe('Rendering', () => {
@@ -300,10 +287,43 @@ describe('ExploreQuickFilters component', () => {
 
       expect(mockUseCustomLocation).toHaveBeenCalled();
     });
+
+    it('should pass search query text to getAggregationOptions', async () => {
+      mockUseCustomLocation.mockReturnValue({
+        search: '?search=pets',
+      });
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(<ExploreQuickFilters {...mockProps} aggregations={undefined} />);
+
+      const initialButton = screen.getByTestId(
+        'onGetInitialOptions-database.name'
+      );
+
+      await act(async () => {
+        userEvent.click(initialButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'database.name',
+          '',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          'pets'
+        );
+      });
+    });
   });
 
   describe('Options fetching - Aggregations', () => {
-    it('should use aggregations when available for non-tier fields', async () => {
+    it('should use aggregations when available', async () => {
       render(<ExploreQuickFilters {...mockProps} />);
 
       const searchButton = screen.getByTestId('onSearch-database.name');
@@ -320,13 +340,9 @@ describe('ExploreQuickFilters component', () => {
           false,
           false,
           undefined,
-          false
+          false,
+          ''
         );
-      });
-
-      await waitFor(() => {
-        // const options = screen.queryAllByTestId(/option-database\.name-/);
-        // expect(options.length).toBeGreaterThan(0);
       });
     });
 
@@ -354,7 +370,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           false,
           undefined,
-          false
+          false,
+          ''
         );
       });
     });
@@ -389,131 +406,9 @@ describe('ExploreQuickFilters component', () => {
           false,
           false,
           50,
-          false
+          false,
+          ''
         );
-      });
-    });
-  });
-
-  describe('Tier field handling', () => {
-    it('should fetch tier tags and set fixedOrderOptions for tier field', async () => {
-      mockGetTags.mockResolvedValue(mockTierTags);
-      mockGetAggregationOptions.mockResolvedValue({
-        data: {
-          aggregations: {
-            [`sterms#${TIER_FQN_KEY}`]: {
-              buckets: [
-                { key: 'tier.tier1', doc_count: 5 },
-                { key: 'tier.tier2', doc_count: 3 },
-              ],
-            },
-          },
-        },
-      });
-
-      const tierFields: ExploreQuickFilterField[] = [
-        {
-          label: 'Tier',
-          key: TIER_FQN_KEY,
-          value: undefined,
-        },
-      ];
-
-      render(<ExploreQuickFilters {...mockProps} fields={tierFields} />);
-
-      const initialButton = screen.getByTestId(
-        `onGetInitialOptions-${TIER_FQN_KEY}`
-      );
-
-      await act(async () => {
-        userEvent.click(initialButton);
-      });
-
-      await waitFor(() => {
-        expect(getTags).toHaveBeenCalledWith({ parent: 'Tier', limit: 50 });
-      });
-
-      expect(
-        screen.getByTestId(`fixed-order-${TIER_FQN_KEY}`)
-      ).toHaveTextContent('true');
-    });
-
-    it('should filter tier options on search', async () => {
-      mockGetTags.mockResolvedValue(mockTierTags);
-      mockGetAggregationOptions.mockResolvedValue({
-        data: {
-          aggregations: {
-            [`sterms#${TIER_FQN_KEY}`]: {
-              buckets: [{ key: 'tier.tier1', doc_count: 5 }],
-            },
-          },
-        },
-      });
-
-      const tierFields: ExploreQuickFilterField[] = [
-        {
-          label: 'Tier',
-          key: TIER_FQN_KEY,
-          value: undefined,
-        },
-      ];
-
-      render(<ExploreQuickFilters {...mockProps} fields={tierFields} />);
-
-      const initialButton = screen.getByTestId(
-        `onGetInitialOptions-${TIER_FQN_KEY}`
-      );
-
-      await act(async () => {
-        userEvent.click(initialButton);
-      });
-
-      await waitFor(() => {
-        expect(getTags).toHaveBeenCalled();
-      });
-
-      const searchButton = screen.getByTestId(`onSearch-${TIER_FQN_KEY}`);
-
-      await act(async () => {
-        userEvent.click(searchButton);
-      });
-
-      await waitFor(() => {
-        expect(getAggregationOptions).not.toHaveBeenCalledWith(
-          expect.anything(),
-          TIER_FQN_KEY,
-          'test',
-          expect.anything(),
-          expect.anything(),
-          expect.anything()
-        );
-      });
-    });
-
-    it('should handle tier field with existing values', async () => {
-      mockGetTags.mockResolvedValue(mockTierTags);
-      mockGetAggregationOptions.mockResolvedValue({
-        data: {
-          aggregations: {
-            [`sterms#${TIER_FQN_KEY}`]: {
-              buckets: [{ key: 'tier.tier1', doc_count: 5 }],
-            },
-          },
-        },
-      });
-
-      const tierFields: ExploreQuickFilterField[] = [
-        {
-          label: 'Tier',
-          key: TIER_FQN_KEY,
-          value: [{ key: 'tier.tier1', label: 'Tier1' }],
-        },
-      ];
-
-      render(<ExploreQuickFilters {...mockProps} fields={tierFields} />);
-
-      await waitFor(() => {
-        expect(getTags).toHaveBeenCalled();
       });
     });
   });
@@ -541,7 +436,46 @@ describe('ExploreQuickFilters component', () => {
           false,
           false,
           undefined,
-          false
+          false,
+          ''
+        );
+      });
+    });
+
+    it('should call getAggregationOptions for tier field on search', async () => {
+      mockGetAggregationOptions.mockResolvedValue({
+        data: {
+          aggregations: {
+            'sterms#tier.tagFQN': {
+              buckets: [{ key: 'Tier.Tier1', doc_count: 5 }],
+            },
+          },
+        },
+      });
+
+      const tierFields: ExploreQuickFilterField[] = [
+        { label: 'Tier', key: 'tier.tagFQN', value: undefined },
+      ];
+
+      render(<ExploreQuickFilters {...mockProps} fields={tierFields} />);
+
+      const searchButton = screen.getByTestId('onSearch-tier.tagFQN');
+
+      await act(async () => {
+        userEvent.click(searchButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'tier.tagFQN',
+          'test',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          ''
         );
       });
     });
@@ -588,7 +522,8 @@ describe('ExploreQuickFilters component', () => {
           true,
           false,
           undefined,
-          false
+          false,
+          ''
         );
       });
     });
@@ -616,7 +551,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           false,
           undefined,
-          true
+          true,
+          ''
         );
       });
     });
@@ -703,33 +639,6 @@ describe('ExploreQuickFilters component', () => {
         expect(showErrorToast).toHaveBeenCalled();
       });
     });
-
-    it('should handle getTags API error for tier field', async () => {
-      const { showErrorToast } = require('../../utils/ToastUtils');
-      mockGetTags.mockRejectedValue(new Error('Tags API Error'));
-
-      const tierFields: ExploreQuickFilterField[] = [
-        {
-          label: 'Tier',
-          key: TIER_FQN_KEY,
-          value: undefined,
-        },
-      ];
-
-      render(<ExploreQuickFilters {...mockProps} fields={tierFields} />);
-
-      const initialButton = screen.getByTestId(
-        `onGetInitialOptions-${TIER_FQN_KEY}`
-      );
-
-      await act(async () => {
-        userEvent.click(initialButton);
-      });
-
-      await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalled();
-      });
-    });
   });
 
   describe('Combined query filter', () => {
@@ -769,7 +678,8 @@ describe('ExploreQuickFilters component', () => {
           expect.anything(),
           expect.anything(),
           undefined,
-          expect.anything()
+          expect.anything(),
+          expect.any(String)
         );
       });
     });
@@ -803,47 +713,15 @@ describe('ExploreQuickFilters component', () => {
           false,
           false,
           undefined,
-          false
+          false,
+          ''
         );
       });
     });
   });
 
-  describe('Selected keys mapping', () => {
-    it('should map tier field values to options when available', async () => {
-      mockGetTags.mockResolvedValue(mockTierTags);
-      mockGetAggregationOptions.mockResolvedValue({
-        data: {
-          aggregations: {
-            [`sterms#${TIER_FQN_KEY}`]: {
-              buckets: [{ key: 'tier.tier1', doc_count: 5 }],
-            },
-          },
-        },
-      });
-
-      const tierFields: ExploreQuickFilterField[] = [
-        {
-          label: 'Tier',
-          key: TIER_FQN_KEY,
-          value: [{ key: 'tier.tier1', label: 'Tier1' }],
-        },
-      ];
-
-      render(<ExploreQuickFilters {...mockProps} fields={tierFields} />);
-
-      await waitFor(() => {
-        expect(getTags).toHaveBeenCalled();
-      });
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`selected-count-${TIER_FQN_KEY}`)
-        ).toHaveTextContent('1');
-      });
-    });
-
-    it('should use original values for non-tier fields', () => {
+  describe('Selected keys', () => {
+    it('should reflect selected values for any field', () => {
       const fieldsWithValues: ExploreQuickFilterField[] = [
         {
           label: 'Database',
@@ -856,6 +734,22 @@ describe('ExploreQuickFilters component', () => {
 
       expect(
         screen.getByTestId('selected-count-database.name')
+      ).toHaveTextContent('1');
+    });
+
+    it('should reflect selected values for tier field', () => {
+      const tierFields: ExploreQuickFilterField[] = [
+        {
+          label: 'Tier',
+          key: 'tier.tagFQN',
+          value: [{ key: 'Tier.Tier1', label: 'Tier1' }],
+        },
+      ];
+
+      render(<ExploreQuickFilters {...mockProps} fields={tierFields} />);
+
+      expect(
+        screen.getByTestId('selected-count-tier.tagFQN')
       ).toHaveTextContent('1');
     });
   });

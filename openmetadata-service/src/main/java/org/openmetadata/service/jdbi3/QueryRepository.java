@@ -380,16 +380,15 @@ public class QueryRepository extends EntityRepository<Query> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "users",
-          () -> {
-            updateFromRelationships(
-                "users",
-                USER,
-                original.getUsers(),
-                updated.getUsers() == null ? new ArrayList<>() : updated.getUsers(),
-                Relationship.USES,
-                Entity.QUERY,
-                original.getId());
-          });
+          () ->
+              updateFromRelationships(
+                  "users",
+                  USER,
+                  original.getUsers(),
+                  updated.getUsers() == null ? new ArrayList<>() : updated.getUsers(),
+                  Relationship.USES,
+                  Entity.QUERY,
+                  original.getId()));
       compareAndUpdate(
           "queryUsedIn",
           () -> {
@@ -406,15 +405,13 @@ public class QueryRepository extends EntityRepository<Query> {
           });
       compareAndUpdate(
           "processedLineage",
-          () -> {
-            recordChange(
-                "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
-          });
+          () ->
+              recordChange(
+                  "processedLineage",
+                  original.getProcessedLineage(),
+                  updated.getProcessedLineage()));
       compareAndUpdate(
-          "usedBy",
-          () -> {
-            recordChange("usedBy", original.getUsedBy(), updated.getUsedBy(), true);
-          });
+          "usedBy", () -> recordChange("usedBy", original.getUsedBy(), updated.getUsedBy(), true));
       compareAndUpdate(
           "query",
           () -> {

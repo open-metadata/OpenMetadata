@@ -167,12 +167,17 @@ public class ReindexingJobLogger {
           .forEach(
               (entity, entityStatsObj) -> {
                 if (entityStatsObj instanceof org.openmetadata.schema.system.StepStats) {
-                  org.openmetadata.schema.system.StepStats entityStats = entityStatsObj;
                   updateEntityProgress(
                       entity,
-                      entityStats.getSuccessRecords() != null ? entityStats.getSuccessRecords() : 0,
-                      entityStats.getTotalRecords() != null ? entityStats.getTotalRecords() : 0,
-                      entityStats.getFailedRecords() != null ? entityStats.getFailedRecords() : 0);
+                      entityStatsObj.getSuccessRecords() != null
+                          ? entityStatsObj.getSuccessRecords()
+                          : 0,
+                      entityStatsObj.getTotalRecords() != null
+                          ? entityStatsObj.getTotalRecords()
+                          : 0,
+                      entityStatsObj.getFailedRecords() != null
+                          ? entityStatsObj.getFailedRecords()
+                          : 0);
                 }
               });
     }

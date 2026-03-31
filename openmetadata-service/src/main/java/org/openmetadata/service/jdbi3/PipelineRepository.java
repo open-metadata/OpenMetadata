@@ -519,14 +519,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     Long minStartTime =
         pipelineStatus.getTaskStatus().stream()
-            .map(task -> task.getStartTime())
+            .map(Status::getStartTime)
             .filter(java.util.Objects::nonNull)
             .min(Long::compare)
             .orElse(null);
 
     Long maxEndTime =
         pipelineStatus.getTaskStatus().stream()
-            .map(task -> task.getEndTime())
+            .map(Status::getEndTime)
             .filter(java.util.Objects::nonNull)
             .max(Long::compare)
             .orElse(null);
@@ -987,43 +987,32 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      compareAndUpdate("tasks", () -> updateTasks(original, updated));
       compareAndUpdate(
-          "tasks",
-          () -> {
-            updateTasks(original, updated);
-          });
-      compareAndUpdate(
-          "state",
-          () -> {
-            recordChange("state", original.getState(), updated.getState());
-          });
+          "state", () -> recordChange("state", original.getState(), updated.getState()));
       compareAndUpdate(
           "sourceUrl",
-          () -> {
-            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-          });
+          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
           "concurrency",
-          () -> {
-            recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
-          });
+          () -> recordChange("concurrency", original.getConcurrency(), updated.getConcurrency()));
       compareAndUpdate(
           "pipelineLocation",
-          () -> {
-            recordChange(
-                "pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
-          });
+          () ->
+              recordChange(
+                  "pipelineLocation",
+                  original.getPipelineLocation(),
+                  updated.getPipelineLocation()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
 
     private void updateTasks(Pipeline original, Pipeline updated) {

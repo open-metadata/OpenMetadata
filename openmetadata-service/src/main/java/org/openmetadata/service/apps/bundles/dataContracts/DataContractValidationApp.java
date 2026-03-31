@@ -181,6 +181,13 @@ public class DataContractValidationApp extends AbstractNativeApplication {
 
             // Process each asset in this batch
             for (EntityReference assetRef : assetsResult.getData()) {
+              if (!contractRepository.isEntityTypeSupported(assetRef.getType())) {
+                LOG.warn(
+                    "Skipping asset {} (entity type '{}' is not supported for data contracts)",
+                    assetRef.getName(),
+                    assetRef.getType());
+                continue;
+              }
               try {
                 // Get the asset entity
                 EntityInterface asset =
