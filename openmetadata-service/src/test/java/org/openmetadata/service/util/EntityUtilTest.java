@@ -969,6 +969,104 @@ class EntityUtilTest {
   }
 
   @Test
+  void testValidateEntityReference_nullReference() {
+    assertThrows(
+        IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(null, "table"));
+    assertThrows(IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(null));
+  }
+
+  @Test
+  void testValidateEntityReference_nullId() {
+    EntityReference ref = new EntityReference().withType("table");
+    assertThrows(
+        IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref, "table"));
+    assertThrows(IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref));
+  }
+
+  @Test
+  void testValidateEntityReference_nullType() {
+    UUID id = UUID.randomUUID();
+    EntityReference ref = new EntityReference().withId(id);
+    assertThrows(
+        IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref, "table"));
+    assertThrows(IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref));
+  }
+
+  @Test
+  void testValidateEntityReference_emptyType() {
+    UUID id = UUID.randomUUID();
+    EntityReference ref = new EntityReference().withId(id).withType("");
+    assertThrows(
+        IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref, "table"));
+    assertThrows(IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref));
+  }
+
+  @Test
+  void testValidateEntityReference_typeMismatch() {
+    UUID id = UUID.randomUUID();
+    EntityReference ref = new EntityReference().withId(id).withType("dashboard");
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class, () -> EntityUtil.validateEntityReference(ref, "table"));
+    assertTrue(ex.getMessage().contains("dashboard"));
+    assertTrue(ex.getMessage().contains("table"));
+  }
+
+  @Test
+  void testValidateEntityReference_success() {
+    UUID id = UUID.randomUUID();
+    EntityReference ref = new EntityReference().withId(id).withType("table");
+    EntityReference resolved =
+        new EntityReference()
+            .withId(id)
+            .withType("table")
+            .withName("orders")
+            .withFullyQualifiedName("service.orders");
+
+    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityReference(ref, Include.NON_DELETED)).thenReturn(resolved);
+
+      EntityReference result = EntityUtil.validateEntityReference(ref, "table");
+      assertEquals("orders", result.getName());
+      assertEquals("service.orders", result.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void testValidateEntityReference_withoutExpectedType() {
+    UUID id = UUID.randomUUID();
+    EntityReference ref = new EntityReference().withId(id).withType("user");
+    EntityReference resolved =
+        new EntityReference()
+            .withId(id)
+            .withType("user")
+            .withName("john")
+            .withFullyQualifiedName("john");
+
+    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityReference(ref, Include.NON_DELETED)).thenReturn(resolved);
+
+      EntityReference result = EntityUtil.validateEntityReference(ref);
+      assertEquals("john", result.getName());
+    }
+  }
+
+  @Test
+  void testValidateEntityReference_entityNotFound() {
+    UUID id = UUID.randomUUID();
+    EntityReference ref = new EntityReference().withId(id).withType("table");
+
+    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityReference(ref, Include.NON_DELETED))
+          .thenThrow(new EntityNotFoundException("table not found"));
+
+      assertThrows(
+          EntityNotFoundException.class, () -> EntityUtil.validateEntityReference(ref, "table"));
+    }
+  }
+
+  @Test
   void testEncodeEntityFqnSafe_EmailSecurityCompatibility() {
     // Test FQNs that would be problematic with email security systems
     String problematicFqn = "Table Name & Data #1 + Test?param=value";
