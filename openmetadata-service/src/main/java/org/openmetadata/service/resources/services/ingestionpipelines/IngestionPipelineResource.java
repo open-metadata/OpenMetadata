@@ -715,7 +715,8 @@ public class IngestionPipelineResource
                     .withCode(500)
                     .withReason(
                         String.format("Error deploying [%s] due to [%s]", id, e.getMessage()))
-                    .withPlatform(pipelineServiceClient.getPlatform());
+                    .withPlatform(
+                        pipelineServiceClient != null ? pipelineServiceClient.getPlatform() : null);
               }
             })
         .collect(Collectors.toList());
@@ -1307,6 +1308,11 @@ public class IngestionPipelineResource
 
   private PipelineServiceClientResponse deployPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
     Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =
@@ -1331,6 +1337,11 @@ public class IngestionPipelineResource
 
   public PipelineServiceClientResponse triggerPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
     Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =

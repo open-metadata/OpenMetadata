@@ -44,16 +44,12 @@ import {
   verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
 
-const adminUser = new UserClass();
-const persona = new PersonaClass();
+let adminUser: UserClass;
+let persona: PersonaClass;
 
 // Test domain and data products for comprehensive testing
-const testDomain = new Domain();
-const testDataProducts = [
-  new DataProduct([testDomain]),
-  new DataProduct([testDomain]),
-  new DataProduct([testDomain]),
-];
+let testDomain: Domain;
+let testDataProducts: DataProduct[] = [];
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -66,6 +62,15 @@ const test = base.extend<{ page: Page }>({
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
+
+  adminUser = new UserClass();
+  persona = new PersonaClass();
+  testDomain = new Domain();
+  testDataProducts = [
+    new DataProduct([testDomain]),
+    new DataProduct([testDomain]),
+    new DataProduct([testDomain]),
+  ];
 
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);

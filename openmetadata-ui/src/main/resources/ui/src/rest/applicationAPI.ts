@@ -178,3 +178,26 @@ export const getAgentRuns = async (
 
   return response.data;
 };
+
+export interface SearchIndexRetryRecord {
+  entityId: string;
+  entityFqn: string;
+  failureReason: string;
+  status: string;
+  entityType: string;
+  retryCount: number;
+  claimedAt: string | null;
+}
+
+export const getLiveIndexingQueue = async (
+  appName: string,
+  params?: { limit?: number; offset?: number }
+) => {
+  const response = await APIClient.get<
+    PagingResponse<SearchIndexRetryRecord[]>
+  >(`${BASE_URL}/name/${getEncodedFqn(appName)}/live-indexing-queue`, {
+    params,
+  });
+
+  return response.data;
+};
