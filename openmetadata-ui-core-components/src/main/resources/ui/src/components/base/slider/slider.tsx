@@ -2,7 +2,9 @@ import { cx, sortCx } from '@/utils/cx';
 import {
   type MouseEvent,
   type ReactNode,
+  useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -17,6 +19,10 @@ import {
 } from 'react-aria-components';
 import { createPortal } from 'react-dom';
 
+// Styles for AriaSliderOutput (the per-thumb value label).
+// 'top-floating' and 'bottom-floating' intentionally use sr-only: the visual
+// tooltip is rendered via a React portal, so the output element only needs to
+// be present for screen readers.
 const styles = sortCx({
   default: 'tw:hidden',
   bottom:
@@ -58,6 +64,7 @@ export const Slider = ({
   ...rest
 }: SliderProps) => {
   const trackRef = useRef<HTMLDivElement>(null);
+  const trackRectRef = useRef<DOMRect | null>(null);
   const [hoverInfo, setHoverInfo] = useState<{
     percent: number;
     value: number;
@@ -80,28 +87,56 @@ export const Slider = ({
     }
   }, [isControlled, rest.value]);
 
+  // Cache the track's bounding rect in a ref so the render prop can read it
+  // without forcing a synchronous layout reflow on every drag/hover re-render.
+  // ResizeObserver keeps the cache fresh when the track changes size.
+  useLayoutEffect(() => {
+    const el = trackRef.current;
+    if (!el) {
+      return;
+    }
+    const update = () => {
+      trackRectRef.current = el.getBoundingClientRect();
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
+
   const activeValues = isControlled ? toArray(rest.value!) : internalValues;
 
   // Snaps a raw value to the nearest step boundary and clamps it within
-  // [minValue, maxValue]. No-op when step is not set.
-  const snapToStep = (raw: number): number => {
-    if (!step) {
-      return raw;
-    }
+  // [minValue, maxValue]. No-op when step is not set or invalid.
+  const snapToStep = useCallback(
+    (raw: number): number => {
+      if (!step || step <= 0) {
+        return raw;
+      }
 
-    return Math.min(
-      maxValue,
-      Math.max(minValue, Math.round((raw - minValue) / step) * step + minValue)
-    );
-  };
+      return Math.min(
+        maxValue,
+        Math.max(
+          minValue,
+          Math.round((raw - minValue) / step) * step + minValue
+        )
+      );
+    },
+    [step, minValue, maxValue]
+  );
 
   // Minimum of 2 prevents division by zero in the position formula
   // (i / (resolvedRangeCount - 1)) when rangeCount is 1.
   const resolvedRangeCount = Math.max(2, rangeCount ?? 2);
-  const rangeValues = Array.from({ length: resolvedRangeCount }, (_, i) =>
-    snapToStep(
-      minValue + (i / (resolvedRangeCount - 1)) * (maxValue - minValue)
-    )
+  const rangeValues = useMemo(
+    () =>
+      Array.from({ length: resolvedRangeCount }, (_, i) =>
+        snapToStep(
+          minValue + (i / (resolvedRangeCount - 1)) * (maxValue - minValue)
+        )
+      ),
+    [resolvedRangeCount, minValue, maxValue, snapToStep]
   );
 
   const numberFormatter = useMemo(
@@ -127,6 +162,9 @@ export const Slider = ({
     }
 
     const rect = trackRef.current.getBoundingClientRect();
+    if (rect.width === 0) {
+      return;
+    }
     const rawPercent = Math.max(
       0,
       Math.min(1, (e.clientX - rect.left) / rect.width)
@@ -176,7 +214,7 @@ export const Slider = ({
               ? getThumbPercent(0)
               : getThumbPercent(1) - fillStart;
 
-          const trackRect = trackRef.current?.getBoundingClientRect();
+          const trackRect = trackRectRef.current;
           // thumbTopY / thumbBottomY are used to position portalled tooltips in
           // fixed coordinates. ±12 converts from track center to the top/bottom
           // edge of the 24 px (size-6) thumb.
@@ -328,6 +366,9 @@ export const Slider = ({
             // Use epsilon comparison to handle floating-point imprecision in
             // step-snapped range labels vs. the values emitted by react-aria.
             const isActive = activeValues.some((v) => isApproxEqual(v, value));
+            // First label: left-aligned to prevent overflow past the track start.
+            // Last label: right-aligned to prevent overflow past the track end.
+            // All others: centered on their tick position.
             let translateClass = 'tw:-translate-x-1/2';
             if (isFirst) {
               translateClass = '';
@@ -342,6 +383,8 @@ export const Slider = ({
                   translateClass,
                   isActive ? 'tw:text-brand-secondary tw:font-medium' : ''
                 )}
+                // Composite key: step-snapping can produce duplicate values
+                // (e.g. rangeCount=10 with step=5), so value alone is not unique.
                 key={`${value}-${i}`}
                 style={{ left: `${percent}%` }}>
                 {formatRangeValue(value)}

@@ -228,7 +228,11 @@ const ControlledSliderDemo = () => {
         minValue={0}
         step={10}
         value={value}
-        onChange={(v) => setValue(v as number)}
+        onChange={(v) => {
+          if (typeof v === 'number') {
+            setValue(v);
+          }
+        }}
       />
       <button
         style={{ marginTop: 8, padding: '4px 12px' }}
