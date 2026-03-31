@@ -87,9 +87,27 @@ export const Slider = ({
     }
   }, [isControlled, rest.value]);
 
+  // During drag, React Aria calls setPointerCapture on the thumb, routing all
+  // pointer events to the thumb element and bypassing the track's onMouseMove.
+  // This leaves hoverInfo stale at the pre-drag position even after the button
+  // is released. A window-level pointerup listener always fires (even when
+  // pointer is captured) and clears the ghost on mouse-up.
+  useEffect(() => {
+    if (!showHoverPreview) {
+      return;
+    }
+    const clearHover = () => setHoverInfo(null);
+    globalThis.addEventListener('pointerup', clearHover);
+
+    return () => globalThis.removeEventListener('pointerup', clearHover);
+  }, [showHoverPreview]);
+
   // Cache the track's bounding rect in a ref so the render prop can read it
   // without forcing a synchronous layout reflow on every drag/hover re-render.
-  // ResizeObserver keeps the cache fresh when the track changes size.
+  // ResizeObserver keeps the cache fresh when the track changes size; the
+  // scroll listener (capture phase) keeps it fresh when the page or any
+  // scrollable ancestor moves, since getBoundingClientRect returns
+  // viewport-relative coordinates that change on scroll.
   useLayoutEffect(() => {
     const el = trackRef.current;
     if (!el) {
@@ -101,8 +119,12 @@ export const Slider = ({
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
+    globalThis.addEventListener('scroll', update, true);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      globalThis.removeEventListener('scroll', update, true);
+    };
   }, []);
 
   const activeValues = isControlled ? toArray(rest.value!) : internalValues;
@@ -203,7 +225,13 @@ export const Slider = ({
         onMouseLeave={handleMouseLeave}
         onMouseMove={handleMouseMove}>
         {({
-          state: { values, getThumbValue, getThumbPercent, isDisabled },
+          state: {
+            values,
+            getThumbValue,
+            getThumbPercent,
+            isThumbDragging,
+            isDisabled,
+          },
         }) => {
           // fillStart / fillWidth define the filled portion of the track as
           // fractions in [0, 1]. Single-thumb: fill from left edge to thumb.
@@ -236,6 +264,7 @@ export const Slider = ({
                 Math.abs(getThumbPercent(i) - hoverInfo.percent) <
                 thumbRadiusFraction
             );
+          const isDraggingAnyThumb = values.some((_, i) => isThumbDragging(i));
 
           return (
             <>
@@ -254,13 +283,17 @@ export const Slider = ({
                 }}
               />
 
-              {/* Hover ghost — suppressed when slider is disabled */}
-              {showHoverPreview && hoverInfo && !isOverThumb && !isDisabled && (
-                <span
-                  className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2 tw:size-5 tw:rounded-full tw:border-2 tw:border-brand-solid tw:bg-slider-handle-bg tw:opacity-60"
-                  style={{ left: `${hoverInfo.percent * 100}%` }}
-                />
-              )}
+              {/* Hover ghost — suppressed when slider is disabled or being dragged */}
+              {showHoverPreview &&
+                hoverInfo &&
+                !isOverThumb &&
+                !isDisabled &&
+                !isDraggingAnyThumb && (
+                  <span
+                    className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2 tw:size-5 tw:rounded-full tw:border-2 tw:border-brand-solid tw:bg-slider-handle-bg tw:opacity-60"
+                    style={{ left: `${hoverInfo.percent * 100}%` }}
+                  />
+                )}
 
               {values.map((_, index) => {
                 const thumbCenterX = trackRect
@@ -332,11 +365,12 @@ export const Slider = ({
                 );
               })}
 
-              {/* Hover-preview tooltip — suppressed when slider is disabled */}
+              {/* Hover-preview tooltip — suppressed when slider is disabled or being dragged */}
               {showHoverPreview &&
                 hoverInfo &&
                 !isOverThumb &&
                 !isDisabled &&
+                !isDraggingAnyThumb &&
                 trackRect &&
                 createPortal(
                   <div
