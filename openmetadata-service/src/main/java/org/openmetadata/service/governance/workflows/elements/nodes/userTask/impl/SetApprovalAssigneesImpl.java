@@ -105,7 +105,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           if (teamFqn != null && !teamFqn.trim().isEmpty()) {
             try {
               MessageParser.EntityLink teamLink = new MessageParser.EntityLink("team", teamFqn);
-              Team team = (Team) Entity.getEntity(teamLink, "users", Include.ALL);
+              Team team = Entity.getEntity(teamLink, "users", Include.ALL);
               if (team.getUsers() != null) {
                 assignees.addAll(getEntityLinkStringFromEntityReference(team.getUsers()));
               }
@@ -156,9 +156,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           hasAssignees ? "create USER TASK" : "AUTO-APPROVE");
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
-          exc);
+          "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }

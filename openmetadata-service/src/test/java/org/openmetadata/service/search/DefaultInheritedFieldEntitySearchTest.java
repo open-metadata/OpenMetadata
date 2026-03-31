@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 import java.io.StringReader;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,7 +76,7 @@ class DefaultInheritedFieldEntitySearchTest {
 
   @Test
   @SuppressWarnings("resource")
-  void shouldRespectMaxPageSizeLimit() throws Exception {
+  void shouldRespectMaxPageSizeLimit() throws IOException {
     // Given: A query requesting 2500 entities (exceeds MAX_PAGE_SIZE=1000)
     InheritedFieldQuery query = InheritedFieldQuery.forDomain("LargeDomain", 0, 2500);
 

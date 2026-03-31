@@ -162,7 +162,7 @@ export const removeAndCheckWidget = async (
     .locator(`[data-testid="${widgetKey}"] [data-testid="more-options-button"]`)
     .click();
 
-  await page.getByText('Remove').click();
+  await page.locator('.ant-dropdown:visible [data-menu-id*="remove"]').click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };

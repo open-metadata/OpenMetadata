@@ -446,7 +446,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
     parameterValues.forEach(
         param -> {
-          if (parameterValuesText.length() > 0) {
+          if (!parameterValuesText.isEmpty()) {
             parameterValuesText.append(", ");
           }
 
@@ -520,7 +520,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     Column column1 =
         Column.builder().type("Column").width("auto").items(List.of(imageItem)).build();
 
-    TextBlock textBlock1 = createTextBlock("Connection Successful \u2705", "Bolder", "Large");
+    TextBlock textBlock1 = createTextBlock("Connection Successful ✅", "Bolder", "Large");
     TextBlock textBlock2 = createTextBlock(CONNECTION_TEST_DESCRIPTION, null, null);
 
     Column column2 =

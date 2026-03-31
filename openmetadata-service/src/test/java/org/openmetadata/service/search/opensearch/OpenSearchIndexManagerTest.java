@@ -306,7 +306,7 @@ class OpenSearchIndexManagerTest {
   }
 
   @Test
-  void testCreateIndex_HandlesInvalidJson() throws IOException {
+  void testCreateIndex_HandlesInvalidJson() {
     String invalidJson = "invalid json";
     when(indexMapping.getIndexName(CLUSTER_ALIAS)).thenReturn(TEST_INDEX);
 
@@ -315,7 +315,7 @@ class OpenSearchIndexManagerTest {
   }
 
   @Test
-  void testUpdateIndex_HandlesInvalidJson() throws IOException {
+  void testUpdateIndex_HandlesInvalidJson() {
     String invalidJson = "invalid json";
     when(indexMapping.getIndexName(CLUSTER_ALIAS)).thenReturn(TEST_INDEX);
 

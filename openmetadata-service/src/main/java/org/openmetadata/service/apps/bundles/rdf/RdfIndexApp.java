@@ -576,7 +576,6 @@ public class RdfIndexApp extends AbstractNativeApplication {
         }
 
         int offset = batch * batchSize;
-        final int currentBatch = batch;
         producerExecutor.submit(
             () -> {
               try {
@@ -687,8 +686,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       return;
     }
 
-    StepStats entityStats =
-        (StepStats) stats.getEntityStats().getAdditionalProperties().get(entityType);
+    StepStats entityStats = stats.getEntityStats().getAdditionalProperties().get(entityType);
     if (entityStats != null) {
       entityStats.withSuccessRecords(
           entityStats.getSuccessRecords() + currentEntityStats.getSuccessRecords());
@@ -699,11 +697,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
     StepStats jobStats = stats.getJobStats();
     int totalSuccess =
         stats.getEntityStats().getAdditionalProperties().values().stream()
-            .mapToInt(s -> ((StepStats) s).getSuccessRecords())
+            .mapToInt(StepStats::getSuccessRecords)
             .sum();
     int totalFailed =
         stats.getEntityStats().getAdditionalProperties().values().stream()
-            .mapToInt(s -> ((StepStats) s).getFailedRecords())
+            .mapToInt(StepStats::getFailedRecords)
             .sum();
 
     jobStats.withSuccessRecords(totalSuccess).withFailedRecords(totalFailed);

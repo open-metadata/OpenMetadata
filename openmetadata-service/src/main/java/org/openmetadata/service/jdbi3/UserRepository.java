@@ -304,7 +304,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Use the custom DAO method for optimized update
     // Note: @BindFQN will automatically hash the fqn, so we don't pre-hash it
-    ((UserDAO) daoCollection.userDAO()).updateLastActivityTime(fqn, lastActivityTime);
+    daoCollection.userDAO().updateLastActivityTime(fqn, lastActivityTime);
   }
 
   @Transaction
@@ -315,7 +315,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Bulk update all users' activity times in a single query
     // This is much more efficient than individual updates
-    UserDAO userDAO = (UserDAO) daoCollection.userDAO();
+    UserDAO userDAO = daoCollection.userDAO();
 
     // Build the CASE statement and collect nameHashes
     StringBuilder caseBuilder = new StringBuilder();
@@ -1319,80 +1319,44 @@ public class UserRepository extends EntityRepository<User> {
       updated.setEmail(original.getEmail().toLowerCase());
       compareAndUpdate(
           "lastLoginTime",
-          () -> {
-            recordChange(
-                "lastLoginTime",
-                original.getLastLoginTime(),
-                updated.getLastLoginTime(),
-                false,
-                objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "lastLoginTime",
+                  original.getLastLoginTime(),
+                  updated.getLastLoginTime(),
+                  false,
+                  objectMatch,
+                  false));
 
-      compareAndUpdate(
-          "roles",
-          () -> {
-            updateRoles(original, updated);
-          });
-      compareAndUpdate(
-          "teams",
-          () -> {
-            updateTeams(original, updated);
-          });
-      compareAndUpdate(
-          "personas",
-          () -> {
-            updatePersonas(original, updated);
-          });
-      compareAndUpdate(
-          "defaultPersona",
-          () -> {
-            updateDefaultPersona(original, updated);
-          });
+      compareAndUpdate("roles", () -> updateRoles(original, updated));
+      compareAndUpdate("teams", () -> updateTeams(original, updated));
+      compareAndUpdate("personas", () -> updatePersonas(original, updated));
+      compareAndUpdate("defaultPersona", () -> updateDefaultPersona(original, updated));
       compareAndUpdate(
           "profile",
-          () -> {
-            recordChange("profile", original.getProfile(), updated.getProfile(), true);
-          });
+          () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
       compareAndUpdate(
           "timezone",
-          () -> {
-            recordChange("timezone", original.getTimezone(), updated.getTimezone());
-          });
+          () -> recordChange("timezone", original.getTimezone(), updated.getTimezone()));
       compareAndUpdate(
-          "isBot",
-          () -> {
-            recordChange("isBot", original.getIsBot(), updated.getIsBot());
-          });
+          "isBot", () -> recordChange("isBot", original.getIsBot(), updated.getIsBot()));
       compareAndUpdate(
-          "isAdmin",
-          () -> {
-            recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
-          });
+          "isAdmin", () -> recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin()));
       compareAndUpdate(
           "isEmailVerified",
-          () -> {
-            recordChange(
-                "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
-          });
+          () ->
+              recordChange(
+                  "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified()));
       compareAndUpdate(
           "allowImpersonation",
-          () -> {
-            recordChange(
-                "allowImpersonation",
-                original.getAllowImpersonation(),
-                updated.getAllowImpersonation());
-          });
+          () ->
+              recordChange(
+                  "allowImpersonation",
+                  original.getAllowImpersonation(),
+                  updated.getAllowImpersonation()));
+      compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
       compareAndUpdate(
-          "personaPreferences",
-          () -> {
-            updatePersonaPreferences(original, updated);
-          });
-      compareAndUpdate(
-          "authenticationMechanism",
-          () -> {
-            updateAuthenticationMechanism(original, updated);
-          });
+          "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
     }
 
@@ -1562,8 +1526,7 @@ public class UserRepository extends EntityRepository<User> {
               systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
 
           if (!isAssignedPersona && !isSystemDefaultPersona) {
-            LOG.warn(
-                "Persona with ID %s is not assigned to this user".formatted(pref.getPersonaId()));
+            LOG.warn("Persona with ID {} is not assigned to this user", pref.getPersonaId());
           }
           if (pref.getLandingPageSettings() != null) {
             UserUtil.validateUserPersonaPreferencesImage(pref.getLandingPageSettings());

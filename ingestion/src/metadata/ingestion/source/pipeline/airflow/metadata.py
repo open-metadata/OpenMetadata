@@ -200,13 +200,23 @@ class AirflowSource(PipelineServiceSource):
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ) -> "AirflowSource":
+    ):
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (
+            AirflowRestApiConnection,
+        )
+
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
             raise InvalidSourceException(
                 f"Expected AirflowConnection, but got {connection}"
             )
+        if isinstance(connection.connection, AirflowRestApiConnection):
+            from metadata.ingestion.source.pipeline.airflow.api.source import (
+                AirflowApiSource,
+            )
+
+            return AirflowApiSource(config, metadata)
         return cls(config, metadata)
 
     @property
@@ -394,15 +404,22 @@ class AirflowSource(PipelineServiceSource):
                     ]
 
                     # DagRun objects are built with logical_date (SDK is Airflow 3.x)
-                    execution_date = dag_run.logical_date
+                    # Fall back to start_date if logical_date is None (e.g. manually triggered runs)
+                    execution_date = dag_run.logical_date or dag_run.start_date
                     timestamp = datetime_to_ts(execution_date)
+                    if timestamp is None:
+                        logger.warning(
+                            f"Skipping pipeline status for run {dag_run.run_id}: "
+                            "both logical_date and start_date are None"
+                        )
+                        continue
                     pipeline_status = PipelineStatus(
                         executionId=dag_run.run_id,
                         taskStatus=task_statuses,
                         executionStatus=STATUS_MAP.get(
                             dag_run.state, StatusType.Pending.value
                         ),
-                        timestamp=Timestamp(timestamp) if timestamp else None,
+                        timestamp=Timestamp(timestamp),
                     )
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,

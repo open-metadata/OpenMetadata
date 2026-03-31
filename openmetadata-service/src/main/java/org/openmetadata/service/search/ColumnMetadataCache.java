@@ -29,8 +29,7 @@ public class ColumnMetadataCache {
    * @param columnFqns Set of column FQNs to load metadata for
    * @param entityFetcher Function to fetch entity documents by FQN
    */
-  public void loadColumnMetadata(Set<String> columnFqns, EntityDocumentFetcher entityFetcher)
-      throws IOException {
+  public void loadColumnMetadata(Set<String> columnFqns, EntityDocumentFetcher entityFetcher) {
     // Group column FQNs by parent entity FQN
     Map<String, Set<String>> entityToColumns = new HashMap<>();
 

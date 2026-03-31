@@ -19,7 +19,6 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -106,8 +105,7 @@ public class TestCaseDimensionResultResource
                   "Filter by dimension name (e.g., 'column' to get all column dimension results)",
               schema = @Schema(type = "string"))
           @QueryParam("dimensionName")
-          String dimensionName)
-      throws IOException {
+          String dimensionName) {
     TestCase testCase = getTestCase(testCaseFQN);
     ResourceContextInterface testCaseResourceContext =
         TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
@@ -167,8 +165,7 @@ public class TestCaseDimensionResultResource
               description = "End timestamp to list dimensions to",
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
-          Long endTs)
-      throws IOException {
+          Long endTs) {
     TestCase testCase = getTestCase(testCaseFQN);
     ResourceContextInterface testCaseResourceContext =
         TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();

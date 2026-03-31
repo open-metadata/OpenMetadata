@@ -1,7 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;

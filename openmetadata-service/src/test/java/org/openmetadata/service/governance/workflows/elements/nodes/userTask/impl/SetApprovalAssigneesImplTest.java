@@ -89,7 +89,7 @@ class SetApprovalAssigneesImplTest {
     capturedVars = new HashMap<>();
     doAnswer(
             inv -> {
-              capturedVars.put((String) inv.getArgument(0), inv.getArgument(1));
+              capturedVars.put(inv.getArgument(0), inv.getArgument(1));
               return null;
             })
         .when(execution)

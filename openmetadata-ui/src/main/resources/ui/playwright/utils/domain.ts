@@ -1786,3 +1786,33 @@ export const verifyEndOfDescriptionReachable = async (
 
   await expect(lateContent).toBeInViewport();
 };
+
+export const openDataProductDrawer = async (page: Page, domain: Domain) => {
+  await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+  await page.getByTestId('add-entity-button').click();
+  await expect(page.getByTestId('form-heading')).toContainText(
+    'Add Data Product'
+  );
+
+  await page.getByTestId('name').locator('input').fill(`test-dp-${Date.now()}`);
+
+  const descriptionEditor = page.locator('[contenteditable="true"]').first();
+  await descriptionEditor.waitFor({ state: 'visible', timeout: 10000 });
+  await descriptionEditor.click();
+  await page.keyboard.type('Test data product description');
+
+  const domainInput = page.getByTestId('domain-select');
+  await domainInput.scrollIntoViewIfNeeded();
+  await domainInput.waitFor({ state: 'visible' });
+  await domainInput.click();
+
+  const searchDomain = page.waitForResponse(
+    /\/api\/v1\/search\/query\?q=.*index=domain.*/
+  );
+  await domainInput.fill(domain.data.displayName);
+  await searchDomain;
+
+  const domainOption = page.getByText(domain.data.displayName);
+  await domainOption.waitFor({ state: 'visible', timeout: 5000 });
+  await domainOption.click();
+};

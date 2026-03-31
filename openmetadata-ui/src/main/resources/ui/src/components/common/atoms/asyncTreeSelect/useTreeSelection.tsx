@@ -104,13 +104,33 @@ export const useTreeSelection = <T = unknown,>({
   );
 
   const toggleNodeSelection = useCallback(
-    (node: TreeNode<T>) => {
+    (node: TreeNode<T>, parentNode?: TreeNode<T>) => {
       const newSelectedNodes = new Map(selectedNodes);
       const nodeId = node.id;
       const isSelected = selectedNodes.has(nodeId);
 
       if (multiple) {
-        if (cascadeSelection) {
+        // Check if this is a radio button node (mutually exclusive)
+        if (node.isParentMutuallyExclusive === true) {
+          // Find parent and remove all sibling selections
+          // If parentNode is passed, use it directly (O(1))
+          // Otherwise fall back to getParentNode (O(N))
+          const parent = parentNode || getParentNode(nodeId, treeData);
+          if (parent?.children) {
+            parent.children.forEach((sibling) => {
+              if (sibling.id !== nodeId) {
+                newSelectedNodes.delete(sibling.id);
+              }
+            });
+          }
+
+          // Then toggle this node
+          if (!isSelected) {
+            newSelectedNodes.set(nodeId, node);
+          } else {
+            newSelectedNodes.delete(nodeId);
+          }
+        } else if (cascadeSelection) {
           // Cascade selection mode: select/deselect node and all children
           if (isSelected) {
             // Deselect node and all children

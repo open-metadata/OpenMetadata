@@ -574,8 +574,7 @@ public class SettingsCache {
   public static Map<String, Float> getAggregatedSearchFields() {
     try {
       Settings aggregatedFields = CACHE.get(SEARCH_SETTINGS_AGGREGATED_FIELDS);
-      Map<String, Float> fields = (Map<String, Float>) aggregatedFields.getConfigValue();
-      return fields;
+      return (Map<String, Float>) aggregatedFields.getConfigValue();
     } catch (Exception ex) {
       LOG.error("Failed to fetch aggregated search fields", ex);
       // Return default fields as fallback
@@ -642,9 +641,8 @@ public class SettingsCache {
           }
           LOG.info("Loaded Email Setting");
         }
-        case OPEN_METADATA_BASE_URL_CONFIGURATION -> {
-          fetchedSettings = Entity.getSystemRepository().getOMBaseUrlConfigInternal();
-        }
+        case OPEN_METADATA_BASE_URL_CONFIGURATION -> fetchedSettings =
+            Entity.getSystemRepository().getOMBaseUrlConfigInternal();
         case SLACK_APP_CONFIGURATION -> {
           // Only if available
           fetchedSettings = Entity.getSystemRepository().getSlackApplicationConfigInternal();

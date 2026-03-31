@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import es.co.elastic.clients.util.NamedValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -519,6 +520,6 @@ public class SearchSourceBuilderFactoryTest {
     assertNotNull(builder.highlighter());
     assertEquals(
         Set.copyOf(List.of(expectedFields)),
-        Set.copyOf(builder.highlighter().fields().stream().map(field -> field.name()).toList()));
+        Set.copyOf(builder.highlighter().fields().stream().map(NamedValue::name).toList()));
   }
 }

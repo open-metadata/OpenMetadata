@@ -29,7 +29,7 @@ public interface LineageGraphExecutor {
    * @return Estimated node count
    * @throws IOException if search backend communication fails
    */
-  int estimateGraphSize(LineageQueryContext context) throws IOException;
+  int estimateGraphSize(LineageQueryContext context);
 
   /**
    * Executes lineage query using scroll API for large result sets.

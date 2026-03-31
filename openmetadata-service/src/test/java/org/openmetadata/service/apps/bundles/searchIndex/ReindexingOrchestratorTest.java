@@ -1,6 +1,8 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -43,6 +45,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner.CleanupResult;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.ReindexingException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -140,7 +143,7 @@ class ReindexingOrchestratorTest {
       verify(strategy, times(2)).addListener(any(ReindexingProgressListener.class));
       verify(strategy).execute(any(ReindexingConfiguration.class), eq(jobContext));
       verify(context).storeRunStats(stats);
-      verify(context, times(2)).storeRunRecord(anyString());
+      verify(context, times(3)).storeRunRecord(anyString());
       assertEquals(EventPublisherJob.Status.COMPLETED, orchestrator.getJobData().getStatus());
       assertSame(stats, orchestrator.getJobData().getStats());
       assertEquals(
@@ -266,7 +269,7 @@ class ReindexingOrchestratorTest {
     orchestrator.stop();
 
     verify(strategy).stop();
-    verify(context).storeRunRecord(anyString());
+    verify(context, times(2)).storeRunRecord(anyString());
     verify(context).pushStatusUpdate(appRunRecord, true);
     assertEquals(EventPublisherJob.Status.STOPPED, jobData.getStatus());
     assertEquals(AppRunRecord.Status.STOPPED, appRunRecord.getStatus());
@@ -298,7 +301,7 @@ class ReindexingOrchestratorTest {
 
       assertTrue(jobData.getEntities().contains(Entity.TABLE));
       assertTrue(jobData.getEntities().contains(reportType));
-      assertTrue(!jobData.getEntities().contains(Entity.USER));
+      assertFalse(jobData.getEntities().contains(Entity.USER));
       assertEquals(7L, total);
     }
   }
@@ -381,7 +384,7 @@ class ReindexingOrchestratorTest {
     InvocationTargetException thrown =
         assertThrows(
             InvocationTargetException.class, () -> invokePrivate("loadJobData", new Class<?>[0]));
-    assertTrue(thrown.getCause() instanceof SearchIndexApp.ReindexingException);
+    assertInstanceOf(ReindexingException.class, thrown.getCause());
   }
 
   @Test
@@ -451,7 +454,7 @@ class ReindexingOrchestratorTest {
       invokePrivate("finalizeJobExecution", new Class<?>[0]);
 
       assertEquals(2, cleanerConstruction.constructed().size());
-      verify(context).storeRunRecord(anyString());
+      verify(context, times(2)).storeRunRecord(anyString());
       assertEquals(AppRunRecord.Status.STOPPED, appRunRecord.getStatus());
     }
   }

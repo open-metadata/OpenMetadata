@@ -256,7 +256,7 @@ public class ColumnFilterMatcher {
     }
 
     for (String fromCol : colLineage.getFromColumns()) {
-      if (fromCol != null && matchesColumnName(fromCol, filterValue)) {
+      if (matchesColumnName(fromCol, filterValue)) {
         return true;
       }
     }
@@ -269,7 +269,7 @@ public class ColumnFilterMatcher {
    */
   private static boolean matchesToColumn(ColumnLineage colLineage, String filterValue) {
     String toCol = colLineage.getToColumn();
-    return toCol != null && matchesColumnName(toCol, filterValue);
+    return matchesColumnName(toCol, filterValue);
   }
 
   /**

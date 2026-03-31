@@ -271,7 +271,7 @@ public class OpenSearchQueryBuilder {
   }
 
   public static Query nestedQuery(String path, Query query) {
-    return Query.of(q -> q.nested(n -> n.path(path).query(query)));
+    return Query.of(q -> q.nested(n -> n.path(path).query(query).ignoreUnmapped(true)));
   }
 
   public static Query functionScoreQuery(

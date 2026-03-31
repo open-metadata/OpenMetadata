@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -649,6 +650,66 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void propagateCertificationTagsDoesNothingForNonCertificationTag() {
+    Tag tag = mock(Tag.class);
+    when(tag.getClassification())
+        .thenReturn(new EntityReference().withFullyQualifiedName("OtherClassification"));
+
+    repository.propagateCertificationTags(
+        Entity.TAG, tag, changeDescription(List.of(), List.of(), List.of()));
+
+    verifyNoInteractions(searchClient);
+  }
+
+  @Test
+  void propagateCertificationTagsUsesOldFqnWhenTagRenamed() {
+    Tag tag = mock(Tag.class);
+    when(tag.getClassification())
+        .thenReturn(new EntityReference().withFullyQualifiedName("Certification"));
+    when(tag.getName()).thenReturn("Platinum");
+    when(tag.getDescription()).thenReturn("Top tier");
+    when(tag.getFullyQualifiedName()).thenReturn("Certification.Platinum");
+    when(tag.getStyle()).thenReturn(null);
+
+    FieldChange nameChange =
+        new FieldChange().withName("name").withOldValue("Gold").withNewValue("Platinum");
+
+    repository.propagateCertificationTags(
+        Entity.TAG, tag, changeDescription(List.of(), List.of(nameChange), List.of()));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, String>> keyCaptor = ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(SearchClient.DATA_ASSET_SEARCH_ALIAS), keyCaptor.capture(), any(Pair.class));
+    assertEquals("Certification.Gold", keyCaptor.getValue().getRight());
+  }
+
+  @Test
+  void propagateCertificationTagsUsesQuotedOldNameWhenTagHasNoParentFqn() {
+    Tag tag = mock(Tag.class);
+    when(tag.getClassification())
+        .thenReturn(new EntityReference().withFullyQualifiedName("Certification"));
+    when(tag.getName()).thenReturn("NewName");
+    when(tag.getDescription()).thenReturn("Some description");
+    when(tag.getFullyQualifiedName()).thenReturn("NewName");
+    when(tag.getStyle()).thenReturn(null);
+
+    FieldChange nameChange =
+        new FieldChange().withName("name").withOldValue("OldName").withNewValue("NewName");
+
+    repository.propagateCertificationTags(
+        Entity.TAG, tag, changeDescription(List.of(), List.of(nameChange), List.of()));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, String>> keyCaptor = ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(SearchClient.DATA_ASSET_SEARCH_ALIAS), keyCaptor.capture(), any(Pair.class));
+    assertEquals("OldName", keyCaptor.getValue().getRight());
+  }
+
+  @Test
   void deleteAndSoftDeleteOperationsSkipUnsupportedTypesButHandleMappedEntities()
       throws IOException {
     EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
@@ -673,7 +734,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void deleteEntityIndexRemovesTagReferencesFromChildren() throws Exception {
+  void deleteEntityIndexRemovesTagReferencesFromChildren() {
     EntityInterface tag = mockEntity(Entity.TAG, UUID.randomUUID(), "revenue");
     when(tag.getFullyQualifiedName()).thenReturn("Glossary.Revenue");
 
@@ -1039,7 +1100,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void domainUpdateWrappersDelegateToSearchClient() throws IOException {
+  void domainUpdateWrappersDelegateToSearchClient() {
     EntityReference domain =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN);
     List<String> oldDomains = List.of("old.domain");
@@ -1473,7 +1534,7 @@ class SearchRepositoryBehaviorTest {
     assertSame(embeddingClient, spyRepository.getEmbeddingClient());
     assertSame(vectorService, spyRepository.getVectorIndexService());
     assertNotNull(spyRepository.getVectorEmbeddingHandler());
-    verify(vectorService).ensureHybridSearchPipeline(0.6, 0.4);
+    verify(vectorService).ensureHybridSearchPipeline(0.4, 0.6);
   }
 
   @Test
@@ -1631,8 +1692,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void createReindexHandlerAndDeleteRelationshipHelpersUseExpectedImplementations()
-      throws IOException {
+  void createReindexHandlerAndDeleteRelationshipHelpersUseExpectedImplementations() {
     repository.createReindexHandler();
 
     repository.deleteRelationshipFromSearch(
@@ -1647,7 +1707,7 @@ class SearchRepositoryBehaviorTest {
                     "upstreamEntityRelationship.docId.keyword",
                     "00000000-0000-0000-0000-000000000001-00000000-0000-0000-0000-000000000002")),
             any(org.apache.commons.lang3.tuple.Pair.class));
-    assertTrue(repository.createReindexHandler() instanceof RecreateWithEmbeddings);
+    assertInstanceOf(RecreateWithEmbeddings.class, repository.createReindexHandler());
   }
 
   @Test

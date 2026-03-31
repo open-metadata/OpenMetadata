@@ -625,9 +625,9 @@ public abstract class SecretsManager {
             tags.put(keyValue.split(":")[0], keyValue.split(":")[1]);
           } catch (Exception e) {
             LOG.error(
-                String.format(
-                    "The SecretsConfig could not extract tag from [%s] due to [%s]",
-                    keyValue, e.getMessage()));
+                "The SecretsConfig could not extract tag from [{}] due to [{}]",
+                keyValue,
+                e.getMessage());
           }
         });
     return tags;

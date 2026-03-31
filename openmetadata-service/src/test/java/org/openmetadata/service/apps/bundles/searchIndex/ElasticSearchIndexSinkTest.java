@@ -109,7 +109,7 @@ class ElasticSearchIndexSinkTest {
   }
 
   @Test
-  void writeTracksBulkItemFailuresWithoutDoubleCountingStats() throws Exception {
+  void writeTracksBulkItemFailuresWithoutDoubleCountingStats() {
     EntityInterface firstEntity = mock(EntityInterface.class);
     EntityInterface secondEntity = mock(EntityInterface.class);
     when(firstEntity.getId()).thenReturn(UUID.randomUUID());
@@ -143,7 +143,7 @@ class ElasticSearchIndexSinkTest {
   }
 
   @Test
-  void writeTracksConversionFailuresWithoutDoubleCountingBulkResults() throws Exception {
+  void writeTracksConversionFailuresWithoutDoubleCountingBulkResults() {
     EntityInterface entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
@@ -223,7 +223,7 @@ class ElasticSearchIndexSinkTest {
   }
 
   @Test
-  void closeDelegatesToSearchClient() throws Exception {
+  void closeDelegatesToSearchClient() {
     try (MockedConstruction<ElasticsearchAsyncClient> asyncConstruction =
         mockConstruction(ElasticsearchAsyncClient.class)) {
       ElasticSearchIndexSink sink = new ElasticSearchIndexSink(searchClient, 4096, 1, 3, 10, 50);
