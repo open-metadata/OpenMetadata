@@ -154,12 +154,14 @@ jobs:
             The following files have style issues that need to be fixed:
             ${{ steps.changed-files.outputs.all_changed_files }}
 
-            **Fix locally (fast — changed files only):**
+            **Fix locally (fast — only for changed files in the branch):**
             ```bash
-            cd openmetadata-ui/src/main/resources/ui
-            yarn ui-checkstyle:changed
+            make ui-checkstyle-src-changed
             ```
-            Or to fix all files: `yarn ui-checkstyle`
+            Or to fix all files: 
+            ```bash
+            make ui-checkstyle-src
+            ```
           edit-mode: replace
 
       - name: Delete comment on success
@@ -255,8 +257,7 @@ jobs:
 
             **Fix locally:**
             ```bash
-            cd openmetadata-ui/src/main/resources/ui
-            yarn license-header-fix
+            make license-header-fix
             ```
           edit-mode: replace
 
@@ -341,10 +342,9 @@ jobs:
 
             </details>
 
-            **Fix locally:**
+            **Run locally to get details about typescript errors:**
             ```bash
-            cd openmetadata-ui/src/main/resources/ui
-            yarn tsc:check
+            make tsc-src-fix
             ```
           edit-mode: replace
 
@@ -428,8 +428,7 @@ jobs:
 
             **Fix locally:**
             ```bash
-            cd openmetadata-ui/src/main/resources/ui
-            yarn i18n
+            make i18n-sync-fix
             ```
           edit-mode: replace
 
@@ -513,8 +512,7 @@ jobs:
 
             **Fix locally:**
             ```bash
-            cd openmetadata-ui/src/main/resources/ui
-            yarn generate:app-docs
+            make generate-app-docs
             ```
           edit-mode: replace
 
@@ -615,12 +613,14 @@ jobs:
             The following files have style issues that need to be fixed:
             ${{ steps.changed-files.outputs.all_changed_files }}
 
-            **Fix locally (fast — changed files only):**
+            **Fix locally (fast — only for changed files in the branch):**
             ```bash
-            cd openmetadata-ui/src/main/resources/ui
-            yarn ui-checkstyle:playwright:changed
+            make ui-checkstyle-playwright-changed
             ```
-            Or to fix all playwright files: `yarn ui-checkstyle:playwright`
+            Or to fix all playwright files: 
+            ```bash
+            make ui-checkstyle-playwright
+            ```
           edit-mode: replace
 
       - name: Delete comment on success
@@ -719,10 +719,9 @@ jobs:
 
             </details>
 
-            **Fix locally:**
+            **Run locally to get details about typescript errors::**
             ```bash
-            cd openmetadata-ui/src/main/resources/ui
-            yarn tsc:playwright
+            make tsc-playwright-fix
             ```
           edit-mode: replace
 
@@ -818,12 +817,14 @@ jobs:
             The following files have style issues that need to be fixed:
             ${{ steps.changed-files.outputs.all_changed_files }}
 
-            **Fix locally (fast — changed files only):**
+            **Fix locally (fast — only for changed files in the branch):**
             ```bash
-            cd openmetadata-ui-core-components/src/main/resources/ui
-            yarn ui-checkstyle:changed
+            make ui-checkstyle-core-components-changed
             ```
-            Or to fix all files: `yarn lint:fix && yarn pretty`
+            Or to fix all files: 
+            ```bash
+            make ui-checkstyle-core-components
+            ```
           edit-mode: replace
 
       - name: Delete comment on success
