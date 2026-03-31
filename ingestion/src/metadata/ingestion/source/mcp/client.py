@@ -17,6 +17,7 @@ the JSON-RPC 2.0 protocol over various transports (Stdio, SSE, HTTP).
 
 import json
 import os
+import shutil
 import subprocess
 import threading
 import uuid
@@ -62,6 +63,9 @@ class McpProtocolError(Exception):
     """Exception raised for MCP protocol errors"""
 
 
+_CLIENT_NOT_INITIALIZED = "Client not initialized"
+
+
 class StdioTransport:
     """Transport for communicating with MCP server via stdin/stdout"""
 
@@ -90,15 +94,39 @@ class StdioTransport:
             self._message_id += 1
             return self._message_id
 
+    _SENSITIVE_ENV_VARS = {
+        "PATH",
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+    }
+
+    @staticmethod
+    def _validate_command(command: str) -> str:
+        """Validate and resolve the MCP server command to an absolute path."""
+        resolved = shutil.which(command)
+        if resolved is None:
+            raise McpProtocolError(
+                f"Command not found: {command}. "
+                "Ensure the MCP server command is installed and in PATH."
+            )
+        return resolved
+
     def connect(self) -> None:
         """Start the MCP server subprocess"""
+        resolved_command = self._validate_command(self.command)
         full_env = os.environ.copy()
         if self.env:
+            overridden = self._SENSITIVE_ENV_VARS & self.env.keys()
+            if overridden:
+                logger.warning(
+                    f"MCP server '{self.command}' overrides sensitive env vars: {overridden}"
+                )
             full_env.update(self.env)
 
         try:
-            self.process = subprocess.Popen(
-                [self.command] + self.args,
+            self.process = subprocess.Popen(  # noqa: S603
+                [resolved_command] + self.args,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -113,13 +141,23 @@ class StdioTransport:
             self._stderr_thread = threading.Thread(target=self._drain_stderr)
             self._stderr_thread.daemon = True
             self._stderr_thread.start()
-        except FileNotFoundError:
-            raise McpProtocolError(
-                f"Command not found: {self.command}. "
-                "Ensure the MCP server command is installed and in PATH."
-            )
         except Exception as e:
             raise McpProtocolError(f"Failed to start MCP server: {e}")
+
+    def _handle_response_line(self, line: str) -> None:
+        """Parse a single JSON-RPC response line and dispatch it."""
+        try:
+            response = json.loads(line)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse MCP response: {e}")
+            return
+        msg_id = response.get("id")
+        if msg_id is None:
+            return
+        with self._lock:
+            self._responses[msg_id] = response
+            if msg_id in self._response_events:
+                self._response_events[msg_id].set()
 
     def _read_responses(self) -> None:
         """Background thread to read responses from the server"""
@@ -130,16 +168,7 @@ class StdioTransport:
                     break
                 line = line.strip()
                 if line:
-                    try:
-                        response = json.loads(line)
-                        msg_id = response.get("id")
-                        if msg_id is not None:
-                            with self._lock:
-                                self._responses[msg_id] = response
-                                if msg_id in self._response_events:
-                                    self._response_events[msg_id].set()
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"Failed to parse MCP response: {e}")
+                    self._handle_response_line(line)
             except Exception as e:
                 if self._running:
                     logger.error(f"Error reading from MCP server: {e}")
@@ -293,7 +322,7 @@ class HttpTransport:
                     f"MCP error: {result['error'].get('message', 'Unknown error')}"
                 )
             return result.get("result", {})
-        except requests.RequestException as e:
+        except (requests.RequestException, ValueError) as e:
             raise McpProtocolError(f"HTTP request failed: {e}")
 
     def close(self) -> None:
@@ -379,7 +408,7 @@ class McpClient:
     def list_tools(self) -> List[Dict[str, Any]]:
         """List all tools available on the MCP server"""
         if not self._transport or not self._initialized:
-            raise McpProtocolError("Client not initialized")
+            raise McpProtocolError(_CLIENT_NOT_INITIALIZED)
 
         capabilities = self.server_config.capabilities or {}
         if not capabilities.get("tools"):
@@ -393,7 +422,7 @@ class McpClient:
     def list_resources(self) -> List[Dict[str, Any]]:
         """List all resources available on the MCP server"""
         if not self._transport or not self._initialized:
-            raise McpProtocolError("Client not initialized")
+            raise McpProtocolError(_CLIENT_NOT_INITIALIZED)
 
         capabilities = self.server_config.capabilities or {}
         if not capabilities.get("resources"):
@@ -407,7 +436,7 @@ class McpClient:
     def list_prompts(self) -> List[Dict[str, Any]]:
         """List all prompts available on the MCP server"""
         if not self._transport or not self._initialized:
-            raise McpProtocolError("Client not initialized")
+            raise McpProtocolError(_CLIENT_NOT_INITIALIZED)
 
         capabilities = self.server_config.capabilities or {}
         if not capabilities.get("prompts"):
@@ -426,7 +455,9 @@ class McpClient:
         self._initialized = False
 
 
-def parse_claude_desktop_config(config_path: str) -> List[McpServerInfo]:
+def parse_claude_desktop_config(
+    config_path: str, config: Optional[Dict] = None
+) -> List[McpServerInfo]:
     """
     Parse Claude Desktop configuration file to extract MCP server definitions.
 
@@ -441,17 +472,18 @@ def parse_claude_desktop_config(config_path: str) -> List[McpServerInfo]:
         }
     }
     """
-    path = Path(config_path).expanduser()
-    if not path.exists():
-        logger.warning(f"Config file not found: {config_path}")
-        return []
+    if config is None:
+        path = Path(config_path).expanduser()
+        if not path.exists():
+            logger.warning(f"Config file not found: {config_path}")
+            return []
 
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            config = json.load(f)
-    except json.JSONDecodeError as e:
-        logger.warning(f"Failed to parse config file {config_path}: {e}")
-        return []
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse config file {config_path}: {e}")
+            return []
 
     servers = []
     mcp_servers = config.get("mcpServers", {})
@@ -470,7 +502,9 @@ def parse_claude_desktop_config(config_path: str) -> List[McpServerInfo]:
     return servers
 
 
-def parse_vscode_config(config_path: str) -> List[McpServerInfo]:
+def parse_vscode_config(
+    config_path: str, config: Optional[Dict] = None
+) -> List[McpServerInfo]:
     """
     Parse VS Code settings.json to extract MCP server definitions.
 
@@ -485,17 +519,18 @@ def parse_vscode_config(config_path: str) -> List[McpServerInfo]:
         }
     }
     """
-    path = Path(config_path).expanduser()
-    if not path.exists():
-        logger.warning(f"VS Code settings not found: {config_path}")
-        return []
+    if config is None:
+        path = Path(config_path).expanduser()
+        if not path.exists():
+            logger.warning(f"VS Code settings not found: {config_path}")
+            return []
 
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            config = json.load(f)
-    except json.JSONDecodeError as e:
-        logger.warning(f"Failed to parse VS Code settings {config_path}: {e}")
-        return []
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse VS Code settings {config_path}: {e}")
+            return []
 
     servers = []
     mcp_servers = config.get("mcp.servers", {})
@@ -537,9 +572,9 @@ def discover_servers_from_config_files(
                 config = json.load(f)
 
             if "mcpServers" in config:
-                servers = parse_claude_desktop_config(config_path)
+                servers = parse_claude_desktop_config(config_path, config)
             elif "mcp.servers" in config:
-                servers = parse_vscode_config(config_path)
+                servers = parse_vscode_config(config_path, config)
             else:
                 logger.warning(f"Unknown config format in {config_path}")
                 continue

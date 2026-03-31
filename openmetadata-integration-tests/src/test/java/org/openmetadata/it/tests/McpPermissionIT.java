@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.ai.McpExecutionStatus;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.ai.McpTransportType;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -54,10 +55,9 @@ public class McpPermissionIT {
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-  public static class McpServerList extends org.openmetadata.schema.utils.ResultList<McpServer> {}
+  public static class McpServerList extends ResultList<McpServer> {}
 
-  public static class McpExecutionList
-      extends org.openmetadata.schema.utils.ResultList<McpExecution> {}
+  public static class McpExecutionList extends ResultList<McpExecution> {}
 
   @BeforeAll
   public static void setup() throws Exception {

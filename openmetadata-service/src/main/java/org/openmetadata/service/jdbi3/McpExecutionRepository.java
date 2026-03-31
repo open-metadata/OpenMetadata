@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.McpExecution;
 import org.openmetadata.schema.type.EntityReference;
@@ -46,11 +47,11 @@ public class McpExecutionRepository extends EntityTimeSeriesRepository<McpExecut
     }
   }
 
-  public void deleteExecutionData(java.util.UUID serverId, Long timestamp) {
+  public void deleteExecutionData(UUID serverId, Long timestamp) {
     timeSeriesDao.deleteAtTimestamp(serverId.toString(), null, timestamp);
   }
 
-  public void deleteByServerId(java.util.UUID serverId) {
+  public void deleteByServerId(UUID serverId) {
     ((CollectionDAO.McpExecutionDAO) timeSeriesDao)
         .deleteByServerId(timeSeriesDao.getTimeSeriesTableName(), serverId.toString());
   }
