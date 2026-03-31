@@ -3,7 +3,6 @@ package org.openmetadata.service.search.security;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.openmetadata.service.util.TestUtils.assertFieldDoesNotExist;
 import static org.openmetadata.service.util.TestUtils.assertFieldExists;
@@ -17,6 +16,7 @@ import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import jakarta.json.stream.JsonGenerator;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -288,6 +288,24 @@ class ElasticSearchRBACConditionEvaluatorTest {
     countBoolQueries(rootNode, boolQueryCount);
     assertEquals(
         6, boolQueryCount.get(), "There should be no more than 5 'bool' clauses in the query.");
+  }
+
+  @Test
+  void getIndexFilterFallsBackToLowercaseResourcesWhenSearchRepositoryIsUnavailable()
+      throws Exception {
+    Entity.setSearchRepository(null);
+
+    Method method = RBACConditionEvaluator.class.getDeclaredMethod("getIndexFilter", List.class);
+    method.setAccessible(true);
+
+    OMQueryBuilder queryBuilder =
+        (OMQueryBuilder) method.invoke(evaluator, List.of("TABLE", "MlModel"));
+    Query elasticQuery = ((ElasticQueryBuilder) queryBuilder).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+
+    assertTrue(generatedQuery.contains("\"_index\""));
+    assertTrue(generatedQuery.contains("\"table\""));
+    assertTrue(generatedQuery.contains("\"mlmodel\""));
   }
 
   @Test
@@ -1544,5 +1562,63 @@ class ElasticSearchRBACConditionEvaluatorTest {
         jsonContext,
         "$.bool.must_not[*].bool.must[?(@.terms._index[?(@ == 'column')])]",
         "Deny policy should include 'column' (child of table) in must_not _index filter");
+  }
+
+  @Test
+  void testNestedQueryWorksForMappedFields() {
+    // Verifies nested query produces correct structure for indexes that have the field mapped
+    ElasticQueryBuilderFactory factory = new ElasticQueryBuilderFactory();
+
+    OMQueryBuilder nested =
+        factory.nestedQuery("owners", factory.termQuery("owners.id", "user-abc"));
+    Query query = ((ElasticQueryBuilder) nested).build();
+    String json = serializeQueryToJson(query);
+
+    assertTrue(json.contains("\"path\":\"owners\""), "must target correct nested path");
+    assertTrue(json.contains("\"owners.id\""), "must query the nested field");
+    assertTrue(json.contains("\"user-abc\""), "must contain the search value");
+  }
+
+  @Test
+  void testNestedQueryDoesNotFailForUnmappedFields() {
+    // Verifies ignore_unmapped=true is set so indexes without the nested field don't throw errors
+    ElasticQueryBuilderFactory factory = new ElasticQueryBuilderFactory();
+
+    OMQueryBuilder nested =
+        factory.nestedQuery("owners", factory.termQuery("owners.id", "user-abc"));
+    Query query = ((ElasticQueryBuilder) nested).build();
+    String json = serializeQueryToJson(query);
+
+    assertTrue(
+        json.contains("\"ignore_unmapped\":true"),
+        "must set ignore_unmapped so query works on indexes without this nested field");
+  }
+
+  @Test
+  void testStaticNestedQueryWorksForMappedFields() {
+    Query inner = Query.of(q -> q.term(t -> t.field("owners.id").value("team-1")));
+
+    Query nested =
+        org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.nestedQuery(
+            "owners", inner);
+    String json = serializeQueryToJson(nested);
+
+    assertTrue(json.contains("\"path\":\"owners\""), "must target correct nested path");
+    assertTrue(json.contains("\"owners.id\""), "must query the nested field");
+    assertTrue(json.contains("\"team-1\""), "must contain the search value");
+  }
+
+  @Test
+  void testStaticNestedQueryDoesNotFailForUnmappedFields() {
+    Query inner = Query.of(q -> q.term(t -> t.field("owners.id").value("team-1")));
+
+    Query nested =
+        org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.nestedQuery(
+            "owners", inner);
+    String json = serializeQueryToJson(nested);
+
+    assertTrue(
+        json.contains("\"ignore_unmapped\":true"),
+        "must set ignore_unmapped so query works on indexes without this nested field");
   }
 }

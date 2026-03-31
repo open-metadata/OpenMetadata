@@ -1,0 +1,65 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/microsoftAccessConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MicrosoftAccessConnection",
+  "description": "Microsoft Access Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.MicrosoftAccessConnection",
+  "definitions": {
+    "microsoftAccessType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["MicrosoftAccess"],
+      "default": "MicrosoftAccess"
+    },
+    "localFilePath": {
+      "title": "Local File Path",
+      "description": "Local filesystem path to a single Access database file or a directory containing Access files.",
+      "type": "object",
+      "properties": {
+        "localFilePath": {
+          "type": "string",
+          "title": "Local File Path",
+          "description": "Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g. ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be ingested."
+        }
+      },
+      "required": ["localFilePath"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/microsoftAccessType",
+      "default": "MicrosoftAccess"
+    },
+    "connection": {
+      "title": "Access Database Location (Local Path or S3)",
+      "description": "Choose between local file system path (object) or S3 bucket location (object) for Access database files.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/localFilePath"
+        },
+        {
+          "$ref": "../storage/s3Connection.json"
+        }
+      ]
+    },
+    "tableFilterPattern": {
+      "title": "Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsViewLineageExtraction": {
+      "title": "Supports View Lineage Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["connection"]
+}

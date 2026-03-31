@@ -13,7 +13,8 @@
 import {
   COMBO_HEADER_HEIGHT,
   DATA_MODE_ASSET_CIRCLE_SIZE,
-  DATA_MODE_ASSET_LABEL_FONT_SIZE,
+  DATA_MODE_ASSET_LABEL_LAYOUT_STACK,
+  DATA_MODE_TERM_TO_FIRST_RING_GAP,
   LayoutEngine,
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
@@ -365,7 +366,7 @@ export function computeDataModePositions(
   }
 
   const ASSET_NODE_DIAMETER = DATA_MODE_ASSET_CIRCLE_SIZE;
-  const LABEL_HEIGHT = DATA_MODE_ASSET_LABEL_FONT_SIZE + 10;
+  const LABEL_HEIGHT = DATA_MODE_ASSET_LABEL_LAYOUT_STACK;
   const SAFETY_PAD = DATA_MODE_RING_SAFETY_PAD;
   const RING_GAP = ASSET_NODE_DIAMETER + LABEL_HEIGHT + SAFETY_PAD;
 
@@ -392,7 +393,6 @@ export function computeDataModePositions(
   const MIN_TERM_SPACING = 200;
   const termRadius =
     N === 1 ? 0 : Math.max(280, (N * MIN_TERM_SPACING) / (2 * Math.PI));
-  const TERM_TO_FIRST_RING_GAP = 100;
 
   termNodes.forEach((term, i) => {
     const termAngle =
@@ -407,27 +407,26 @@ export function computeDataModePositions(
       return;
     }
 
-    const sectorFraction = N === 1 ? 1 : Math.min(0.9 / N, 0.25);
-    const halfSector = sectorFraction * Math.PI;
-
     let placed = 0;
     let ringIdx = 0;
 
     while (placed < M) {
       const firstAssetRingRadius =
-        termRadius + TERM_TO_FIRST_RING_GAP + ASSET_NODE_DIAMETER;
+        DATA_MODE_TERM_TO_FIRST_RING_GAP + ASSET_NODE_DIAMETER;
       const ringRadius = firstAssetRingRadius + ringIdx * RING_GAP;
 
-      const capacity = assetsPerArc(ringRadius, sectorFraction);
+      const capacity = assetsPerArc(ringRadius, 1);
       const toPlace = Math.min(capacity, M - placed);
 
       for (let k = 0; k < toPlace; k++) {
         const assetId = assets[placed + k];
-        const frac = toPlace === 1 ? 0.5 : k / (toPlace - 1);
-        const assetAngle = termAngle - halfSector + frac * 2 * halfSector;
+        const assetAngle =
+          toPlace === 1
+            ? -Math.PI / 2
+            : -Math.PI / 2 + (2 * Math.PI * k) / toPlace;
         positions[assetId] = {
-          x: ringRadius * Math.cos(assetAngle),
-          y: ringRadius * Math.sin(assetAngle),
+          x: tx + ringRadius * Math.cos(assetAngle),
+          y: ty + ringRadius * Math.sin(assetAngle),
         };
       }
 

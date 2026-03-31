@@ -945,6 +945,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             {renderCustomPropertiesTab()}
           </div>
         );
+      case EntityRightPanelTab.RELATIONS:
+        return null;
       case EntityRightPanelTab.OVERVIEW:
       default:
         return (

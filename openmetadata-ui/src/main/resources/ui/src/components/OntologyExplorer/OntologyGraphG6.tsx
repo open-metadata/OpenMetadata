@@ -37,10 +37,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       settings,
       nodePositions,
       selectedNodeId,
+      expandedTermIds,
       glossaryColorMap,
       dataSignature = '',
       explorationMode = 'model',
       hierarchyCombos,
+      graphSearchHighlight = null,
       focusNodeId,
       onNodeClick,
       onNodeDoubleClick,
@@ -70,11 +72,13 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         explorationMode,
         settings,
         selectedNodeId: selectedNodeId ?? null,
+        expandedTermIds,
         clickedEdgeId,
         nodePositions,
         glossaryColorMap,
         layoutType,
         hierarchyCombos: hierarchyCombos ?? [],
+        graphSearchHighlight,
       });
 
     const { graphRef, extractNodePositions } = useOntologyGraph({
@@ -87,6 +91,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       layoutType,
       focusNodeId,
       selectedNodeId,
+      expandedTermIds,
       dataSignature,
       onNodeClick,
       onNodeDoubleClick,
@@ -133,7 +138,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
 
     return (
       <div
-        className="w-full h-full relative ontology-g6-container"
+        className="tw:w-full tw:h-full tw:relative ontology-g6-container"
         ref={containerRef}
       />
     );

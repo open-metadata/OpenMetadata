@@ -519,14 +519,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     Long minStartTime =
         pipelineStatus.getTaskStatus().stream()
-            .map(task -> task.getStartTime())
+            .map(Status::getStartTime)
             .filter(java.util.Objects::nonNull)
             .min(Long::compare)
             .orElse(null);
 
     Long maxEndTime =
         pipelineStatus.getTaskStatus().stream()
-            .map(task -> task.getEndTime())
+            .map(Status::getEndTime)
             .filter(java.util.Objects::nonNull)
             .max(Long::compare)
             .orElse(null);
@@ -987,43 +987,32 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      compareAndUpdate("tasks", () -> updateTasks(original, updated));
       compareAndUpdate(
-          "tasks",
-          () -> {
-            updateTasks(original, updated);
-          });
-      compareAndUpdate(
-          "state",
-          () -> {
-            recordChange("state", original.getState(), updated.getState());
-          });
+          "state", () -> recordChange("state", original.getState(), updated.getState()));
       compareAndUpdate(
           "sourceUrl",
-          () -> {
-            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-          });
+          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
           "concurrency",
-          () -> {
-            recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
-          });
+          () -> recordChange("concurrency", original.getConcurrency(), updated.getConcurrency()));
       compareAndUpdate(
           "pipelineLocation",
-          () -> {
-            recordChange(
-                "pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
-          });
+          () ->
+              recordChange(
+                  "pipelineLocation",
+                  original.getPipelineLocation(),
+                  updated.getPipelineLocation()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
 
     private void updateTasks(Pipeline original, Pipeline updated) {
@@ -1506,7 +1495,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           new ArrayList<>(tableObservabilityList.subList(startIndex, endIndex));
 
       // Generate cursors
-      if (paginatedList.size() > 0) {
+      if (!paginatedList.isEmpty()) {
         // Generate before cursor if not at start
         if (startIndex > 0) {
           beforeCursor = RestUtil.encodeCursor(paginatedList.get(0).getTableFqn());
@@ -2333,7 +2322,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
    * Used for backfilling existing data after deploying the indexing fix.
    * This method should be called manually after deployment to populate ES with historical data.
    */
-  public void reindexPipelineExecutions() throws IOException {
+  public void reindexPipelineExecutions() {
     LOG.info("Starting pipeline execution reindexing from MySQL to Elasticsearch");
 
     // Get all pipelines

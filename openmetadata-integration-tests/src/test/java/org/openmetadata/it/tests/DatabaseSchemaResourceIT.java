@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -26,6 +27,8 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.DatabaseSchemas;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -1869,5 +1872,111 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     CreateDatabaseSchema request = new CreateDatabaseSchema();
     request.setName(ns.prefix("invalid_schema"));
     return request;
+  }
+
+  @Test
+  void testRegexListDatabaseSchema(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("schema_regex_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchemas.create().name("public").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchemas.create().name("staging_v1").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchemas.create().name("staging_v2").in(database.getFullyQualifiedName()).execute();
+
+    ListResponse<DatabaseSchema> response =
+        client
+            .databaseSchemas()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            ".*staging.*")));
+    List<DatabaseSchema> schemas = response.getData();
+    assertFalse(schemas.isEmpty(), "Should find schemas matching staging regex");
+    assertTrue(
+        schemas.stream().allMatch(s -> s.getName().contains("staging")),
+        "All returned schemas should contain 'staging' in name");
+  }
+
+  @Test
+  void testRegexListDatabaseSchema_noMatch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("schema_nomatch_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchemas.create().name("my_schema").in(database.getFullyQualifiedName()).execute();
+
+    ListResponse<DatabaseSchema> response =
+        client
+            .databaseSchemas()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            ".*nonexistent.*")));
+    assertTrue(response.getData().isEmpty(), "No schemas should match a nonexistent regex");
+  }
+
+  @Test
+  void testRegexListDatabaseSchema_regexOnlyNoDatabaseFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create()
+            .name("unique_regex_schema_db")
+            .in(service.getFullyQualifiedName())
+            .execute();
+    DatabaseSchemas.create()
+        .name("unique_regex_schema")
+        .in(database.getFullyQualifiedName())
+        .execute();
+
+    ListResponse<DatabaseSchema> response =
+        client
+            .databaseSchemas()
+            .list(
+                new ListParams()
+                    .setQueryParams(Map.of("databaseSchemaRegex", ".*unique_regex_schema")));
+    assertFalse(
+        response.getData().isEmpty(), "Should find schemas using regex without database filter");
+    assertTrue(
+        response.getData().stream().allMatch(s -> s.getName().equals("unique_regex_schema")),
+        "All returned schemas should be unique_regex_schema");
+  }
+
+  @Test
+  void testRegexListDatabaseSchema_excludeMode(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("excl_mode_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchemas.create().name("keep_schema").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchemas.create().name("temp_schema").in(database.getFullyQualifiedName()).execute();
+
+    ListResponse<DatabaseSchema> response =
+        client
+            .databaseSchemas()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            "temp.*",
+                            "regexMode",
+                            "exclude")));
+    List<DatabaseSchema> schemas = response.getData();
+    assertFalse(schemas.isEmpty(), "Should return schemas not matching the exclude regex");
+    assertTrue(
+        schemas.stream().noneMatch(s -> s.getName().startsWith("temp")),
+        "Excluded schemas should not appear in results");
   }
 }

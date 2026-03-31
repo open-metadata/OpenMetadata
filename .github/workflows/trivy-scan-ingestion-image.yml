@@ -8,7 +8,7 @@ on:
           - "ingestion/Dockerfile.ci"
     
 concurrency: 
-  group: trivy-ingestion-scan-${{ github.head_ref || github.run_id }}
+  group: trivy-ingestion-scan-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:

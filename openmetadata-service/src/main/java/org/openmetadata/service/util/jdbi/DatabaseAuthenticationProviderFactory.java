@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -39,8 +40,8 @@ public class DatabaseAuthenticationProviderFactory {
         for (String pair : pairs) {
           int idx = pair.indexOf("=");
           queryPairs.put(
-              URLDecoder.decode(pair.substring(0, idx), "UTF-8"),
-              URLDecoder.decode(pair.substring(idx + 1), "UTF-8"));
+              URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8),
+              URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8));
         }
       }
       return queryPairs;

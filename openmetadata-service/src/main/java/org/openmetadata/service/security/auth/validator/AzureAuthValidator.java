@@ -61,12 +61,7 @@ public class AzureAuthValidator {
         return clientIdValidation;
       }
 
-      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, tenantId);
-      if (publicKeyValidation != null) {
-        return publicKeyValidation;
-      }
-
-      return null;
+      return validatePublicKeyUrls(authConfig, tenantId);
     } catch (Exception e) {
       LOG.error("Azure public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -155,13 +150,7 @@ public class AzureAuthValidator {
         return publicKeyValidation;
       }
 
-      FieldError credentialsValidation =
-          validateClientCredentials(tenantId, oidcConfig.getId(), oidcConfig.getSecret());
-      if (credentialsValidation != null) {
-        return credentialsValidation;
-      }
-
-      return null;
+      return validateClientCredentials(tenantId, oidcConfig.getId(), oidcConfig.getSecret());
     } catch (Exception e) {
       LOG.error("Azure confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError("", "Failed azure confidential validation");
@@ -306,6 +295,11 @@ public class AzureAuthValidator {
   }
 
   private FieldError validatePublicClientId(String tenantId, String clientId) {
+    if (!isValidGuid(clientId)) {
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
+          "Invalid Azure client ID format. Must be a valid GUID");
+    }
     return validateClientIdViaTokenEndpoint(tenantId, clientId, "azure-public-client-id", "public");
   }
 

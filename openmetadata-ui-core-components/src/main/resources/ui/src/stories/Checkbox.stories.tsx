@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Checkbox } from "../components/base/checkbox/checkbox";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Checkbox } from '../components/base/checkbox/checkbox';
 
 const meta = {
-  title: "Components/Checkbox",
+  title: 'Components/Checkbox',
   component: Checkbox,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Checkbox>;
 
 export default meta;
@@ -27,32 +27,32 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    label: "Accept terms and conditions",
-    size: "sm",
+    label: 'Accept terms and conditions',
+    size: 'sm',
   },
 };
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Checkbox size="sm" label="Small checkbox" />
-      <Checkbox size="md" label="Medium checkbox" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Checkbox label="Small checkbox" size="sm" />
+      <Checkbox label="Medium checkbox" size="md" />
     </div>
   ),
 };
 
 export const WithHint: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Checkbox
-        size="sm"
-        label="Enable notifications"
         hint="You will receive email updates about your activity."
+        label="Enable notifications"
+        size="sm"
       />
       <Checkbox
-        size="md"
-        label="Subscribe to newsletter"
         hint="Get weekly updates delivered to your inbox."
+        label="Subscribe to newsletter"
+        size="md"
       />
     </div>
   ),
@@ -60,19 +60,19 @@ export const WithHint: StoryObj = {
 
 export const States: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Checkbox label="Unchecked" />
-      <Checkbox label="Checked" defaultSelected />
-      <Checkbox label="Indeterminate" isIndeterminate />
-      <Checkbox label="Disabled" isDisabled />
-      <Checkbox label="Disabled checked" isDisabled defaultSelected />
+      <Checkbox defaultSelected label="Checked" />
+      <Checkbox isIndeterminate label="Indeterminate" />
+      <Checkbox isDisabled label="Disabled" />
+      <Checkbox defaultSelected isDisabled label="Disabled checked" />
     </div>
   ),
 };
 
 export const WithoutLabel: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 12 }}>
+    <div style={{ display: 'flex', gap: 12 }}>
       <Checkbox />
       <Checkbox defaultSelected />
       <Checkbox isIndeterminate />

@@ -107,4 +107,39 @@ test.describe.serial('System Level Certification Tags', () => {
       await afterAction();
     }
   });
+
+  test('should show certifications after re-enabling classification', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await setCertificationClassificationDisabled(apiContext, true);
+
+    try {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
+
+      for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
+        await expect(page.getByTestId(`radio-btn-${tagFqn}`)).not.toBeVisible();
+      }
+
+      await closeCertificationDropdown(page);
+
+      await setCertificationClassificationDisabled(apiContext, false);
+
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
+
+      for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
+        await expect(page.getByTestId(`radio-btn-${tagFqn}`)).toBeVisible();
+      }
+
+      await closeCertificationDropdown(page);
+    } finally {
+      await setCertificationClassificationDisabled(apiContext, false);
+      await afterAction();
+    }
+  });
 });

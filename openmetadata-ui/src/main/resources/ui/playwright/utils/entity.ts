@@ -1053,6 +1053,17 @@ export const openColumnDetailPanel = async ({
       )
     : null;
 
+  const columnsProfileResponsePromise =
+    entityType === 'table'
+      ? page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/tables/name/') &&
+            response.url().includes('/columns') &&
+            response.url().includes('profile') &&
+            response.request().method() === 'GET',
+          { timeout: 90_000 }
+        )
+      : null;
   if (entityType === 'MlModel') {
     const columnName = page
       .locator(`[${rowSelector}="${columnId}"]`)
@@ -1081,6 +1092,10 @@ export const openColumnDetailPanel = async ({
   if (apiResponsePromise) {
     const apiResponse = await apiResponsePromise;
     expect(apiResponse.status()).toBe(200);
+  }
+
+  if (columnsProfileResponsePromise) {
+    await columnsProfileResponsePromise;
   }
 
   const panelContainer = page.locator('.column-detail-panel');
@@ -2188,15 +2203,7 @@ export const checkExploreSearchFilter = async (
   entity?: EntityClass
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  if (filterKey === 'tier.tagFQN') {
-    const tierList = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN**`
-    );
-    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-    await tierList;
-  } else {
-    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  }
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
   await searchAndClickOnOption(
     page,
     {
@@ -2207,17 +2214,11 @@ export const checkExploreSearchFilter = async (
     true
   );
 
-  const rawFilterValue = (filterValue ?? '').replace(/ /g, '+').toLowerCase();
-
-  // Use JSON.stringify to properly escape both backslashes and double quotes
+  const rawFilterValue = (filterValue ?? '').replaceAll(' ', '+').toLowerCase();
   const escapedValue = JSON.stringify(rawFilterValue).slice(1, -1);
-
-  const filterValueForSearchURL =
-    filterKey === 'tier.tagFQN'
-      ? filterValue
-      : /["%]/.test(filterValue ?? '')
-      ? escapedValue
-      : rawFilterValue;
+  const filterValueForSearchURL = /["%]/.test(filterValue ?? '')
+    ? escapedValue
+    : rawFilterValue;
 
   // Use a predicate to check the response URL contains the correct filter
   const queryRes = page.waitForResponse(

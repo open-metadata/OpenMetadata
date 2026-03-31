@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import {
   EDIT_USER_FOR_TEAM_RULES,
@@ -198,7 +198,11 @@ test.describe('Teams Page', () => {
 
       // Click on add new user
       const fetchUsersResponse = page.waitForResponse(
-        '/api/v1/users?limit=25&isBot=false'
+        (response) =>
+          response.url().includes('/api/v1/users') &&
+          response.url().includes('limit=25') &&
+          response.request().method() === 'GET' &&
+          response.status() === 200
       );
       await page.locator('[data-testid="add-new-user"]').click();
       await fetchUsersResponse;
@@ -645,7 +649,11 @@ test.describe('Teams Page', () => {
     await page.locator('[data-testid="users"]').click();
 
     const fetchUsersResponse = page.waitForResponse(
-      '/api/v1/users?limit=25&isBot=false'
+      (response) =>
+        response.url().includes('/api/v1/users') &&
+        response.url().includes('limit=25') &&
+        response.request().method() === 'GET' &&
+        response.status() === 200
     );
     await page.locator('[data-testid="add-new-user"]').click();
     await fetchUsersResponse;
@@ -808,7 +816,7 @@ test.describe('Teams Page', () => {
             new URL(res.url()).searchParams.get('include') === 'deleted'
         );
 
-        await deletedToggle.click({ force: true });
+        await deletedToggle.click();
         await expect(deletedToggle).toHaveAttribute('aria-checked', 'true');
 
         const teamsResponse = await teamsResponsePromise;

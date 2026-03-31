@@ -39,6 +39,9 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -1607,5 +1610,95 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     CreateDatabase request = new CreateDatabase();
     request.setName(ns.prefix("invalid_database"));
     return request;
+  }
+
+  @Test
+  void testRegexListDatabase(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Databases.create().name("analytics_prod").in(service.getFullyQualifiedName()).execute();
+    Databases.create().name("analytics_staging").in(service.getFullyQualifiedName()).execute();
+    Databases.create().name("warehouse").in(service.getFullyQualifiedName()).execute();
+
+    ListResponse<Database> response =
+        client
+            .databases()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "service",
+                            service.getFullyQualifiedName(),
+                            "databaseRegex",
+                            ".*analytics.*")));
+    List<Database> databases = response.getData();
+    assertFalse(databases.isEmpty(), "Should find databases matching analytics regex");
+    assertTrue(
+        databases.stream().allMatch(d -> d.getName().contains("analytics")),
+        "All returned databases should contain 'analytics' in name");
+  }
+
+  @Test
+  void testRegexListDatabase_noMatch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Databases.create().name("mydb").in(service.getFullyQualifiedName()).execute();
+
+    ListResponse<Database> response =
+        client
+            .databases()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "service",
+                            service.getFullyQualifiedName(),
+                            "databaseRegex",
+                            ".*zzz_no_match.*")));
+    assertTrue(response.getData().isEmpty(), "No databases should match a nonexistent regex");
+  }
+
+  @Test
+  void testRegexListDatabase_regexOnlyNoServiceFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Databases.create().name("unique_regex_db").in(service.getFullyQualifiedName()).execute();
+
+    ListResponse<Database> response =
+        client
+            .databases()
+            .list(new ListParams().setQueryParams(Map.of("databaseRegex", ".*unique_regex_db")));
+    assertFalse(
+        response.getData().isEmpty(), "Should find databases using regex without service filter");
+    assertTrue(
+        response.getData().stream().allMatch(d -> d.getName().equals("unique_regex_db")),
+        "All returned databases should be unique_regex_db");
+  }
+
+  @Test
+  void testRegexListDatabase_excludeMode(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Databases.create().name("keep_db").in(service.getFullyQualifiedName()).execute();
+    Databases.create().name("temp_db").in(service.getFullyQualifiedName()).execute();
+
+    ListResponse<Database> response =
+        client
+            .databases()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "service",
+                            service.getFullyQualifiedName(),
+                            "databaseRegex",
+                            "temp.*",
+                            "regexMode",
+                            "exclude")));
+    List<Database> databases = response.getData();
+    assertFalse(databases.isEmpty(), "Should return databases not matching the exclude regex");
+    assertTrue(
+        databases.stream().noneMatch(d -> d.getName().startsWith("temp")),
+        "Excluded databases should not appear in results");
   }
 }

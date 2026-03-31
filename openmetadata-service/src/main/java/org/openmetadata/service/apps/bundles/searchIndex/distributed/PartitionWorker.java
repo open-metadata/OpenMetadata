@@ -155,6 +155,11 @@ public class PartitionWorker {
         rangeStart,
         rangeEnd);
 
+    if (stopped.get() || Thread.currentThread().isInterrupted()) {
+      LOG.info("Skipping partition {} because worker is already stopped", partition.getId());
+      return new PartitionResult(0, 0, true);
+    }
+
     AtomicLong successCount = new AtomicLong(0);
     AtomicLong failedCount = new AtomicLong(0);
     AtomicLong readerFailedCount = new AtomicLong(0);
@@ -649,6 +654,7 @@ public class PartitionWorker {
 
     SearchIndexPartition updated =
         partition.toBuilder()
+            .status(PartitionStatus.PROCESSING)
             .cursor(cursor)
             .processedCount(processed)
             .successCount(success)

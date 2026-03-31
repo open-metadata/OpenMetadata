@@ -29,8 +29,7 @@ public class ColumnMetadataCache {
    * @param columnFqns Set of column FQNs to load metadata for
    * @param entityFetcher Function to fetch entity documents by FQN
    */
-  public void loadColumnMetadata(Set<String> columnFqns, EntityDocumentFetcher entityFetcher)
-      throws IOException {
+  public void loadColumnMetadata(Set<String> columnFqns, EntityDocumentFetcher entityFetcher) {
     // Group column FQNs by parent entity FQN
     Map<String, Set<String>> entityToColumns = new HashMap<>();
 
@@ -46,7 +45,7 @@ public class ColumnMetadataCache {
       String parentFqn = entry.getKey();
       try {
         Map<String, Object> entityDoc = entityFetcher.fetchEntity(parentFqn);
-        extractColumnMetadata(entityDoc, entry.getValue());
+        extractColumnMetadata(parentFqn, entityDoc, entry.getValue());
       } catch (Exception e) {
         LOG.warn("Failed to fetch metadata for parent entity: {}", parentFqn, e);
       }
@@ -104,7 +103,8 @@ public class ColumnMetadataCache {
   /**
    * Extracts column metadata from parent entity document.
    */
-  private void extractColumnMetadata(Map<String, Object> entityDoc, Set<String> columnFqns) {
+  private void extractColumnMetadata(
+      String parentFqn, Map<String, Object> entityDoc, Set<String> columnFqns) {
     if (entityDoc == null || !entityDoc.containsKey("columns")) {
       return;
     }
@@ -116,10 +116,15 @@ public class ColumnMetadataCache {
 
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> columns = (List<Map<String, Object>>) columnsObj;
+    String entityFqn =
+        entityDoc.get("fullyQualifiedName") instanceof String
+            ? (String) entityDoc.get("fullyQualifiedName")
+            : parentFqn;
 
     for (Map<String, Object> column : columns) {
       String columnName = (String) column.get("name");
-      if (columnName != null && columnFqns.contains(columnName)) {
+      String columnFqn = getColumnFqn(entityFqn, column);
+      if (columnFqn != null && columnFqns.contains(columnFqn)) {
         ColumnMetadata metadata = new ColumnMetadata();
 
         // Extract tags
@@ -135,9 +140,23 @@ public class ColumnMetadataCache {
           metadata.setTags(tagFqns);
         }
 
-        cache.put(columnName, metadata);
+        cache.put(columnFqn, metadata);
       }
     }
+  }
+
+  private String getColumnFqn(String entityFqn, Map<String, Object> column) {
+    Object fullyQualifiedName = column.get("fullyQualifiedName");
+    if (fullyQualifiedName instanceof String && !nullOrEmpty((String) fullyQualifiedName)) {
+      return (String) fullyQualifiedName;
+    }
+
+    Object name = column.get("name");
+    if (!nullOrEmpty(entityFqn) && name instanceof String) {
+      return entityFqn + "." + name;
+    }
+
+    return null;
   }
 
   /**

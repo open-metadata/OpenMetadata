@@ -87,6 +87,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         render: (_, record) => (
           <Link
             className="link-hover"
+            data-testid={`team-name-${record.name}`}
             to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
             {stringToHTML(
               highlightSearchText(getEntityName(record), searchTerm)

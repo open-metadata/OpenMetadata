@@ -174,16 +174,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return new ResultList<>(new ArrayList<>(), null, null, 0);
     }
 
-    InheritedFieldQuery query =
-        InheritedFieldQuery.forGlossaryTerm(term.getFullyQualifiedName(), offset, limit);
+    String fqn = term.getFullyQualifiedName();
+    InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, offset, limit);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
             query,
             () -> {
-              LOG.warn(
-                  "Search fallback for glossary term {} assets. Returning empty list.",
-                  term.getFullyQualifiedName());
+              LOG.warn("Search fallback for glossary term {} assets. Returning empty list.", fqn);
               return new InheritedFieldResult(new ArrayList<>(), 0);
             });
 
@@ -196,31 +194,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return getGlossaryTermAssets(term.getId(), limit, offset);
   }
 
-  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount() {
+  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount(String parent) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for glossary term asset counts");
       return new HashMap<>();
     }
 
-    List<GlossaryTerm> allGlossaryTerms =
-        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    List<String> fqns;
+    if (parent != null && !parent.isEmpty()) {
+      fqns =
+          daoCollection.glossaryTermDAO().getNestedTerms(parent).stream()
+              .map(json -> JsonUtils.readTree(json).path("fullyQualifiedName").asText())
+              .collect(Collectors.toList());
+    } else {
+      fqns =
+          listAll(getFields("fullyQualifiedName"), new ListFilter(null)).stream()
+              .map(GlossaryTerm::getFullyQualifiedName)
+              .collect(Collectors.toList());
+    }
+
     Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();
 
-    for (GlossaryTerm term : allGlossaryTerms) {
-      InheritedFieldQuery query =
-          InheritedFieldQuery.forGlossaryTerm(term.getFullyQualifiedName(), 0, 0);
+    for (String fqn : fqns) {
+      InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, 0, 0);
 
       Integer count =
           inheritedFieldEntitySearch.getCountForField(
               query,
               () -> {
-                LOG.warn(
-                    "Search fallback for glossary term {} asset count. Returning 0.",
-                    term.getFullyQualifiedName());
+                LOG.warn("Search fallback for glossary term {} asset count. Returning 0.", fqn);
                 return 0;
               });
 
-      glossaryTermAssetCounts.put(term.getFullyQualifiedName(), count);
+      glossaryTermAssetCounts.put(fqn, count);
     }
 
     return glossaryTermAssetCounts;
@@ -1978,21 +1984,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       validateParent();
-      compareAndUpdate(
-          "synonyms",
-          () -> {
-            updateSynonyms(original, updated);
-          });
+      compareAndUpdate("synonyms", this::run);
       compareAndUpdate(
           "references",
           () -> {
             updateReferences(original, updated);
           });
-      compareAndUpdate(
-          "relatedTerms",
-          () -> {
-            updateRelatedTerms(original, updated);
-          });
+      compareAndUpdate("relatedTerms", () -> updateRelatedTerms(original, updated));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
@@ -2345,6 +2343,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTerm(tagRecord.getId(), visited);
       }
+    }
+
+    private void run() {
+      updateSynonyms(original, updated);
     }
   }
 

@@ -186,11 +186,7 @@ export const getGlossaryTermDetailPageTabs = (
             ),
             key: EntityTabs.RELATIONS_GRAPH,
             children: (
-              <OntologyExplorer
-                height="calc(100vh - 240px)"
-                scope="term"
-                showHeader={false}
-              />
+              <OntologyExplorer height="100%" scope="term" showHeader={false} />
             ),
           },
           {

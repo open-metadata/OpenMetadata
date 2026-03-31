@@ -608,10 +608,15 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         }
 
         try:
-            self.client.patch(
+            resp = self.client.patch(
                 path=f"{self.get_suffix(AutomationWorkflow)}/{model_str(automation_workflow.id)}",
                 data=json.dumps([result_data, status_data]),
             )
+            if resp is None:
+                logger.error(
+                    "PATCH returned None for automation workflow "
+                    f"[{model_str(automation_workflow)}] — the server may have rejected the request"
+                )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(

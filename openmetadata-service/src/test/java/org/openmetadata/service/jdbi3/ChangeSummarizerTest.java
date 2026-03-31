@@ -39,7 +39,7 @@ public class ChangeSummarizerTest {
     result =
         changeSummarizer.summarizeChanges(
             result, changes, ChangeSource.AUTOMATED, "older-change", updatedAt - 100);
-    assert result.size() == 0;
+    assert result.isEmpty();
   }
 
   @Test
@@ -59,7 +59,7 @@ public class ChangeSummarizerTest {
     result =
         changeSummarizer.summarizeChanges(
             result, changes, ChangeSource.AUTOMATED, "older-change", updatedAt - 100);
-    assert result.size() == 0;
+    assert result.isEmpty();
   }
 
   @Test

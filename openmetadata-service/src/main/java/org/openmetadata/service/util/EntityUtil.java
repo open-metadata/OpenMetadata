@@ -1142,6 +1142,31 @@ public final class EntityUtil {
     }
   }
 
+  public static EntityReference validateEntityReference(EntityReference entityReference) {
+    return validateEntityReference(entityReference, null);
+  }
+
+  public static EntityReference validateEntityReference(
+      EntityReference entityReference, String expectedType) {
+    if (entityReference == null) {
+      throw new IllegalArgumentException("Entity reference must not be null");
+    }
+    if (entityReference.getId() == null) {
+      throw new IllegalArgumentException("Entity reference id must not be null");
+    }
+    if (nullOrEmpty(entityReference.getType())) {
+      throw new IllegalArgumentException("Entity reference type must not be null or empty");
+    }
+    if (!nullOrEmpty(expectedType) && !expectedType.equals(entityReference.getType())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid entity type '%s'. Expected '%s'.", entityReference.getType(), expectedType));
+    }
+    EntityReference ref = Entity.getEntityReference(entityReference, NON_DELETED);
+    copy(ref, entityReference);
+    return entityReference;
+  }
+
   public static boolean isNullOrEmptyChangeDescription(ChangeDescription changeDescription) {
     if (changeDescription == null) {
       return true;

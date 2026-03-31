@@ -10,25 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Grid } from "../components/base/grid/grid";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Grid } from '../components/base/grid/grid';
 
 const meta = {
-  title: "Components/Grid",
+  title: 'Components/Grid',
   component: Grid,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Grid>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 const Tile = ({ children }: { children: React.ReactNode }) => (
-  <div
-    className="tw:rounded tw:bg-blue-100 tw:p-4 tw:text-center tw:text-sm tw:font-medium tw:text-blue-700"
-  >
+  <div className="tw:rounded tw:bg-blue-100 tw:p-4 tw:text-center tw:text-sm tw:font-medium tw:text-blue-700">
     {children}
   </div>
 );

@@ -252,9 +252,11 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     blocks.add(Blocks.divider());
 
     // View event link
-    String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
-
-    blocks.add(Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
+    if (!nullOrEmpty(outgoingMessage.getEntityUrl())) {
+      String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
+      blocks.add(
+          Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
+    }
 
     // Context Block
     blocks.add(
@@ -338,9 +340,11 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     blocks.add(Blocks.divider());
 
     // View event link
-    String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
-
-    blocks.add(Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
+    if (!nullOrEmpty(outgoingMessage.getEntityUrl())) {
+      String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
+      blocks.add(
+          Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
+    }
 
     // Context Block
     blocks.add(
@@ -457,9 +461,11 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     blocks.add(Blocks.divider());
 
     // View event link
-    String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
-
-    blocks.add(Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
+    if (!nullOrEmpty(outgoingMessage.getEntityUrl())) {
+      String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
+      blocks.add(
+          Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
+    }
 
     // Context Block
     blocks.add(
