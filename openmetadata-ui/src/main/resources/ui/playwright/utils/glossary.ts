@@ -1874,3 +1874,163 @@ export const openAddGlossaryTermModal = async (page: Page) => {
   await page.click('[data-testid="add-new-tag-button-header"]');
   await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 };
+
+/**
+ * Verify that a glossary term node renders with a radio button (mutually exclusive parent)
+ */
+export const verifyRadioButtonRendered = async (
+  page: Page,
+  nodeFqn: string
+) => {
+  const nodeLocator = page.locator(`[data-nodeid="${nodeFqn}"]`);
+  const radioInput = nodeLocator.locator('input[type="radio"]');
+  await expect(radioInput).toBeVisible();
+
+  return radioInput;
+};
+
+/**
+ * Verify that a glossary term node renders with a checkbox (non-mutually exclusive parent)
+ */
+export const verifyCheckboxRendered = async (page: Page, nodeFqn: string) => {
+  const nodeLocator = page.locator(`[data-nodeid="${nodeFqn}"]`);
+  const checkbox = nodeLocator.locator('input[type="checkbox"]');
+  await expect(checkbox).toBeVisible();
+
+  return checkbox;
+};
+
+/**
+ * Navigate to a glossary term in the tree selector and optionally select it
+ */
+export const navigateAndSelectGlossaryTermInTree = async (
+  page: Page,
+  glossaryName: string,
+  termFqn: string,
+  parentTermFqn?: string
+) => {
+  // Expand glossary
+  const glossaryNode = page.locator(`[data-nodeid="${glossaryName}"]`);
+  await glossaryNode.click();
+  await page.waitForResponse('/api/v1/glossaryTerms?*');
+
+  // Expand parent if provided
+  if (parentTermFqn) {
+    const parentNode = page.locator(`[data-nodeid="${parentTermFqn}"]`);
+    await parentNode.click();
+  }
+
+  // Click on the term
+  const termNode = page.locator(`[data-nodeid="${termFqn}"]`);
+  await termNode.click();
+
+  return termNode;
+};
+
+/**
+ * Open glossary tag selector on entity right panel
+ */
+export const openGlossaryTagSelector = async (page: Page) => {
+  await page.click(
+    '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
+  );
+  await page.waitForSelector('[role="presentation"]', { state: 'visible' });
+};
+
+/**
+ * Verify that ME sibling was auto-deselected when another sibling was selected
+ */
+export const verifyMutualExclusivitySelection = async (
+  page: Page,
+  selectedFqn: string,
+  deselectedFqn: string
+) => {
+  const selectedNode = page.locator(`[data-nodeid="${selectedFqn}"]`);
+  const selectedRadio = selectedNode.locator('input[type="radio"]');
+  await expect(selectedRadio).toBeChecked();
+
+  const deselectedNode = page.locator(`[data-nodeid="${deselectedFqn}"]`);
+  const deselectedRadio = deselectedNode.locator('input[type="radio"]');
+  await expect(deselectedRadio).not.toBeChecked();
+};
+
+// -- MUI Glossary Tree Select helpers --
+
+export const getTreeDropdown = (page: Page) => page.getByRole('tooltip');
+
+export const getTreeNode = (page: Page, nodeId: string) =>
+  getTreeDropdown(page).getByTestId(`tree-node-${nodeId}`);
+
+export const getSelectionControl = (page: Page, nodeId: string) =>
+  getTreeDropdown(page).getByTestId(new RegExp(`^(radio|checkbox)-${nodeId}$`));
+
+export const expandTreeNodeByName = async (page: Page, displayName: string) => {
+  const tooltip = getTreeDropdown(page);
+  const nodeText = tooltip.getByText(displayName, { exact: true });
+  await expect(nodeText).toBeVisible({ timeout: 10000 });
+  await nodeText.scrollIntoViewIfNeeded();
+
+  const treeItem = nodeText.locator(
+    'xpath=ancestor::li[contains(@class, "MuiTreeItem-root")][1]'
+  );
+  const iconContainer = treeItem.locator(
+    '> .MuiTreeItem-content > .MuiTreeItem-iconContainer'
+  );
+  await expect(iconContainer).toBeVisible({ timeout: 5000 });
+  await iconContainer.click();
+  await waitForAllLoadersToDisappear(page);
+};
+
+export const expandToGlossaryTermChildren = async (
+  page: Page,
+  glossaryDisplayName: string,
+  parentTermDisplayName?: string
+) => {
+  const glossaryField = page.getByTestId('glossary-terms');
+  await expect(glossaryField).toBeVisible();
+  await glossaryField.click();
+
+  await expect(page.locator('.MuiTreeItem-root').first()).toBeVisible({
+    timeout: 10000,
+  });
+
+  if (parentTermDisplayName) {
+    await expandTreeNodeByName(page, glossaryDisplayName);
+    await expandTreeNodeByName(page, parentTermDisplayName);
+  } else {
+    const searchResponse = page.waitForResponse(
+      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
+    );
+    await glossaryField.fill(glossaryDisplayName);
+    await searchResponse;
+    await waitForAllLoadersToDisappear(page);
+    await expandTreeNodeByName(page, glossaryDisplayName);
+  }
+};
+
+export const expectRadio = async (page: Page, nodeId: string) => {
+  const control = getSelectionControl(page, nodeId);
+  await expect(control).toBeVisible();
+  await expect(control).toHaveAttribute('data-testid', `radio-${nodeId}`);
+};
+
+export const expectCheckbox = async (page: Page, nodeId: string) => {
+  const control = getSelectionControl(page, nodeId);
+  await expect(control).toBeVisible();
+  await expect(control).toHaveAttribute('data-testid', `checkbox-${nodeId}`);
+};
+
+export const expectChecked = async (page: Page, nodeId: string) => {
+  const control = getSelectionControl(page, nodeId);
+  await expect(control).toHaveClass(/Mui-checked/);
+};
+
+export const expectNotChecked = async (page: Page, nodeId: string) => {
+  const control = getSelectionControl(page, nodeId);
+  await expect(control).not.toHaveClass(/Mui-checked/);
+};
+
+export const clickTreeNode = async (page: Page, nodeId: string) => {
+  const node = getTreeNode(page, nodeId);
+  await node.click();
+};
