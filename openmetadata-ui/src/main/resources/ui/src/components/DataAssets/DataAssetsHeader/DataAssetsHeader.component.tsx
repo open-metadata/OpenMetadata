@@ -366,7 +366,7 @@ export const DataAssetsHeader = ({
       fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
-      const asset = dataAsset as Container;
+      const asset = dataAsset;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
   }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
@@ -765,67 +765,46 @@ export const DataAssetsHeader = ({
             />
             <Divider className="self-center vertical-divider" type="vertical" />
             {tierSuggestionRender ?? (
-              <TierCard
-                currentTier={tier?.tagFQN}
-                footerActionButtonsClassName="p-x-md"
-                updateTier={onTierUpdate}>
-                <Space
-                  className="d-flex align-start"
-                  data-testid="header-tier-container">
+              <Space
+                className="d-flex align-start"
+                data-testid="header-tier-container">
+                <div className="d-flex flex-col gap-2">
+                  <div className="tier-heading-container d-flex items-center gap-1">
+                    <span className="entity-no-tier">{t('label.tier')}</span>
+                    {editTierPermission && (
+                      <TierCard
+                        currentTier={tier?.tagFQN}
+                        footerActionButtonsClassName="p-x-md"
+                        updateTier={onTierUpdate}>
+                        <EditIconButton
+                          newLook
+                          data-testid="edit-tier"
+                          size="small"
+                          title={t('label.edit-entity', {
+                            entity: t('label.tier'),
+                          })}
+                        />
+                      </TierCard>
+                    )}
+                  </div>
                   {tier ? (
-                    <div className="d-flex flex-col gap-2">
-                      <div className="tier-heading-container d-flex items-center gap-1">
-                        <span className="entity-no-tier ">
-                          {t('label.tier')}
-                        </span>
-
-                        {editTierPermission && (
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-tier"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.tier'),
-                            })}
-                          />
-                        )}
-                      </div>
-
-                      <TagsV1
-                        hideIcon
-                        startWith={TAG_START_WITH.SOURCE_ICON}
-                        tag={tier}
-                        tagProps={{
-                          'data-testid': 'Tier',
-                        }}
-                      />
-                    </div>
+                    <TagsV1
+                      hideIcon
+                      startWith={TAG_START_WITH.SOURCE_ICON}
+                      tag={tier}
+                      tagProps={{
+                        'data-testid': 'Tier',
+                      }}
+                    />
                   ) : (
-                    <div className="flex items-center flex-col gap-2">
-                      <div className="tier-heading-container d-flex items-center gap-1">
-                        <span className="entity-no-tier">
-                          {t('label.tier')}
-                        </span>
-                        {editTierPermission && (
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-tier"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.tier'),
-                            })}
-                          />
-                        )}
-                      </div>
-                      <span
-                        className="font-medium no-tier-text text-sm"
-                        data-testid="Tier">
-                        {NO_DATA_PLACEHOLDER}
-                      </span>
-                    </div>
+                    <span
+                      className="font-medium no-tier-text text-sm"
+                      data-testid="Tier">
+                      {NO_DATA_PLACEHOLDER}
+                    </span>
                   )}
-                </Space>
-              </TierCard>
+                </div>
+              </Space>
             )}
 
             {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
@@ -836,7 +815,7 @@ export const DataAssetsHeader = ({
                 />
                 <RetentionPeriod
                   hasPermission={permissions.EditAll && !dataAsset.deleted}
-                  retentionPeriod={(dataAsset as Table).retentionPeriod}
+                  retentionPeriod={dataAsset.retentionPeriod}
                   onUpdate={onUpdateRetentionPeriod}
                 />
               </>
@@ -856,24 +835,24 @@ export const DataAssetsHeader = ({
                   className="self-center vertical-divider"
                   type="vertical"
                 />
-                <Certification
-                  currentCertificate={
-                    'certification' in dataAsset
-                      ? dataAsset.certification?.tagLabel?.tagFQN
-                      : undefined
-                  }
-                  permission={false}
-                  onCertificationUpdate={onCertificationUpdate}>
-                  <div className="d-flex align-start extra-info-container">
-                    <Typography.Text
-                      className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-                      data-testid="certification-label">
-                      <div className="flex gap-2">
-                        <span className="extra-info-label-heading">
-                          {t('label.certification')}
-                        </span>
+                <div className="d-flex align-start extra-info-container">
+                  <Typography.Text
+                    className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+                    data-testid="certification-label">
+                    <div className="flex gap-2">
+                      <span className="extra-info-label-heading">
+                        {t('label.certification')}
+                      </span>
 
-                        {editCertificationPermission && (
+                      {editCertificationPermission && (
+                        <Certification
+                          currentCertificate={
+                            'certification' in dataAsset
+                              ? dataAsset.certification?.tagLabel?.tagFQN
+                              : undefined
+                          }
+                          permission={editCertificationPermission}
+                          onCertificationUpdate={onCertificationUpdate}>
                           <EditIconButton
                             newLook
                             data-testid="edit-certification"
@@ -882,21 +861,23 @@ export const DataAssetsHeader = ({
                               entity: t('label.certification'),
                             })}
                           />
-                        )}
-                      </div>
-                      <div className="font-medium certification-value">
-                        {(dataAsset as Table).certification ? (
-                          <CertificationTag
-                            showName
-                            certification={(dataAsset as Table).certification!}
-                          />
-                        ) : (
-                          NO_DATA_PLACEHOLDER
-                        )}
-                      </div>
-                    </Typography.Text>
-                  </div>
-                </Certification>
+                        </Certification>
+                      )}
+                    </div>
+                    <div
+                      className="font-medium certification-value"
+                      data-testid="certification-value">
+                      {(dataAsset as Table).certification ? (
+                        <CertificationTag
+                          showName
+                          certification={(dataAsset as Table).certification!}
+                        />
+                      ) : (
+                        NO_DATA_PLACEHOLDER
+                      )}
+                    </div>
+                  </Typography.Text>
+                </div>
               </>
             )}
 

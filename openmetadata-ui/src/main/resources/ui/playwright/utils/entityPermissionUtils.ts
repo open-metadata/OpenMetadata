@@ -223,6 +223,16 @@ export const testCommonOperations = async (
     await checkElementVisibility(testUserPage, config, effect);
   }
 
+  if (effect === 'deny') {
+    await testUserPage.getByTestId('Tier').click();
+    await expect(testUserPage.getByTestId('cards')).not.toBeVisible();
+
+    await testUserPage.getByTestId('certification-value').click();
+    await expect(
+      testUserPage.getByTestId('certification-cards')
+    ).not.toBeVisible();
+  }
+
   // Check custom properties
   const customPropertiesLocator = testUserPage.locator(
     '[data-testid="custom_properties"]'
