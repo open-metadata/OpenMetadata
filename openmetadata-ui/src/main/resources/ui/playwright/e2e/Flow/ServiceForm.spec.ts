@@ -15,7 +15,6 @@ import { expect, test } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
-import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import {
   CERT_FILE,
   lookerFormDetails,
@@ -27,8 +26,8 @@ import {
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
+  getApiContext,
   redirectToHomePage,
-  toastNotification,
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -371,26 +370,16 @@ test.describe(
           'Name already exists.'
         );
 
-        await page.getByRole('link', { name: 'Database Services' }).click();
-        await waitForAllLoadersToDisappear(page);
-        await page
-          .getByTestId(`service-name-${SERVICE_NAMES.service1}`)
-          .click();
-        await page.getByTestId('manage-button').click();
-        await page.getByTestId('delete-button-title').click();
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
+        const { apiContext, afterAction } = await getApiContext(page);
 
-        const deleteResponse = page.waitForResponse(
-          `/api/v1/services/databaseServices/async/*?hardDelete=false&recursive=true`
+        // Cleanup the created service
+        await apiContext.delete(
+          `/api/v1/services/databaseServices/name/${encodeURIComponent(
+            SERVICE_NAMES.service1
+          )}?recursive=true&hardDelete=true`
         );
-        await page.getByTestId('confirm-button').click();
-        await deleteResponse;
 
-        await toastNotification(
-          page,
-          /(deleted successfully!|Delete operation initiated)/,
-          BIG_ENTITY_DELETE_TIMEOUT
-        );
+        await afterAction();
       });
     });
 
