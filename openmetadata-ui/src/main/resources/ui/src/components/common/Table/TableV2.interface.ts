@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum Status {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
+export interface FlatRow<T> {
+  record: T;
+  depth: number;
+  actualIndex: number;
+  hasChildren: boolean;
+  rowKey: string;
+}
+
+/** Structural aliases to avoid a direct react-aria-components peer import. */
+export type AriaKey = string | number;
+export type AriaSelection = 'all' | Set<AriaKey>;
+export interface AriaSortDescriptor {
+  column?: AriaKey;
+  direction?: 'ascending' | 'descending';
 }
