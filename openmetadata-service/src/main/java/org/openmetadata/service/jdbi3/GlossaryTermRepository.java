@@ -200,32 +200,33 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return new HashMap<>();
     }
 
-    List<GlossaryTerm> allGlossaryTerms;
+    List<String> fqns;
     if (parent != null && !parent.isEmpty()) {
-      allGlossaryTerms =
-          JsonUtils.readObjects(
-              daoCollection.glossaryTermDAO().getNestedTerms(parent), GlossaryTerm.class);
+      fqns =
+          daoCollection.glossaryTermDAO().getNestedTerms(parent).stream()
+              .map(json -> JsonUtils.readTree(json).path("fullyQualifiedName").asText())
+              .collect(Collectors.toList());
     } else {
-      allGlossaryTerms = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+      fqns =
+          listAll(getFields("fullyQualifiedName"), new ListFilter(null)).stream()
+              .map(GlossaryTerm::getFullyQualifiedName)
+              .collect(Collectors.toList());
     }
 
     Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();
 
-    for (GlossaryTerm term : allGlossaryTerms) {
-      InheritedFieldQuery query =
-          InheritedFieldQuery.forGlossaryTerm(term.getFullyQualifiedName(), 0, 0);
+    for (String fqn : fqns) {
+      InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, 0, 0);
 
       Integer count =
           inheritedFieldEntitySearch.getCountForField(
               query,
               () -> {
-                LOG.warn(
-                    "Search fallback for glossary term {} asset count. Returning 0.",
-                    term.getFullyQualifiedName());
+                LOG.warn("Search fallback for glossary term {} asset count. Returning 0.", fqn);
                 return 0;
               });
 
-      glossaryTermAssetCounts.put(term.getFullyQualifiedName(), count);
+      glossaryTermAssetCounts.put(fqn, count);
     }
 
     return glossaryTermAssetCounts;
