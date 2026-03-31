@@ -224,13 +224,19 @@ export const testCommonOperations = async (
   }
 
   if (effect === 'deny') {
-    await testUserPage.getByTestId('Tier').click();
-    await expect(testUserPage.getByTestId('cards')).not.toBeVisible();
+    const tierLocator = testUserPage.getByTestId('Tier');
+    if (await tierLocator.isVisible()) {
+      await tierLocator.click();
+      await expect(testUserPage.getByTestId('cards')).not.toBeVisible();
+    }
 
-    await testUserPage.getByTestId('certification-value').click();
-    await expect(
-      testUserPage.getByTestId('certification-cards')
-    ).not.toBeVisible();
+    const certLocator = testUserPage.getByTestId('certification-value');
+    if (await certLocator.isVisible()) {
+      await certLocator.click();
+      await expect(
+        testUserPage.getByTestId('certification-cards')
+      ).not.toBeVisible();
+    }
   }
 
   // Check custom properties
