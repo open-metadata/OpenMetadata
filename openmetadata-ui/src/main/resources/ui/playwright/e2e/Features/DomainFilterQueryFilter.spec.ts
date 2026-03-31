@@ -463,7 +463,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       // Step 1: Apply Tier1 quick filter
       await page.getByTestId('search-dropdown-Tier').click();
       await waitForAllLoadersToDisappear(page);
-      const tier1Option = page.getByTestId('Tier.Tier1');
+      const tier1Option = page.getByTestId('tier.tier1');
       await tier1Option.waitFor({ state: 'visible' });
       await tier1Option.click();
 
@@ -955,7 +955,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     );
 
     // --- SubDomain1: Tier5 Filter ---
-    await applyTierFilter('Tier.Tier5');
+    await applyTierFilter('tier.tier5');
     await expectVisible(
       subDomain1Table1.entityResponseData?.fullyQualifiedName
     );
@@ -1060,7 +1060,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     );
 
     // --- SubSubDomain: Tier5 Filter ---
-    await applyTierFilter('Tier.Tier5');
+    await applyTierFilter('tier.tier5');
     await expectVisible(
       subSubDomainTable1.entityResponseData?.fullyQualifiedName
     );
@@ -1157,7 +1157,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
 
     // --- SubDomain2: Tier5 Filter ---
-    await applyTierFilter('Tier.Tier5');
+    await applyTierFilter('tier.tier5');
     await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
     await expectNotVisible(
       subDomain1Table1.entityResponseData?.fullyQualifiedName
@@ -1213,7 +1213,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     await expectVisible(subDomain2Table.entityResponseData?.fullyQualifiedName);
 
     // --- RootDomain: Tier1 Filter (only rootTable has Tier1) ---
-    await applyTierFilter('Tier.Tier1');
+    await applyTierFilter('tier.tier1');
     await expectVisible(rootTable.entityResponseData?.fullyQualifiedName);
     await expectNotVisible(
       subDomain1Table1.entityResponseData?.fullyQualifiedName
@@ -1227,7 +1227,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     await clearFilters();
 
     // --- RootDomain: Tier5 Filter (multiple tables have Tier5) ---
-    await applyTierFilter('Tier.Tier5');
+    await applyTierFilter('tier.tier5');
     await expectNotVisible(rootTable.entityResponseData?.fullyQualifiedName);
     await expectVisible(
       subDomain1Table1.entityResponseData?.fullyQualifiedName
