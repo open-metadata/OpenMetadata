@@ -135,11 +135,7 @@ public class QueryFilterBuilder {
     ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
     ArrayNode mustArray = boolNode.putArray(MUST_KEY);
 
-    if (query.isSupportsHierarchy()) {
-      addHierarchyCondition(mustArray, query.getFieldPath(), query.getFieldValue());
-    } else {
-      addExactMatchCondition(mustArray, query.getFieldPath(), query.getFieldValue());
-    }
+    addExactMatchCondition(mustArray, query.getFieldPath(), query.getFieldValue());
     addCommonFilters(mustArray, query);
 
     return serializeQuery(queryFilter);

@@ -166,7 +166,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public ResultList<EntityReference> getGlossaryTermAssets(
-      UUID glossaryTermId, int limit, int offset, String parent) {
+      UUID glossaryTermId, int limit, int offset) {
     GlossaryTerm term = get(null, glossaryTermId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -175,16 +175,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     String fqn = term.getFullyQualifiedName();
-    boolean parentProvided = parent != null && !parent.isEmpty();
-
-    if (parentProvided && !FullyQualifiedName.isParent(fqn, parent)) {
-      return new ResultList<>(new ArrayList<>(), null, null, 0);
-    }
-
-    InheritedFieldQuery query =
-        parentProvided
-            ? InheritedFieldQuery.forGlossaryTermChildren(parent, offset, limit)
-            : InheritedFieldQuery.forGlossaryTerm(fqn, offset, limit);
+    InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, offset, limit);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -198,9 +189,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public ResultList<EntityReference> getGlossaryTermAssetsByName(
-      String termName, int limit, int offset, String parent) {
+      String termName, int limit, int offset) {
     GlossaryTerm term = getByName(null, termName, getFields("id,fullyQualifiedName"));
-    return getGlossaryTermAssets(term.getId(), limit, offset, parent);
+    return getGlossaryTermAssets(term.getId(), limit, offset);
   }
 
   public Map<String, Integer> getAllGlossaryTermsWithAssetsCount(String parent) {

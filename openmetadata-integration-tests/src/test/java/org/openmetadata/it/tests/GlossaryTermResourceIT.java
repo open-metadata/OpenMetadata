@@ -18,8 +18,6 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
-import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateTaskDetails;
@@ -27,24 +25,17 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CreateThread;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.fluent.Columns;
-import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -2659,150 +2650,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
-  void get_termAssetsById_withParentFilter(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    CreateGlossary createGlossary =
-        new CreateGlossary()
-            .withName(ns.prefix("idag"))
-            .withDescription("Glossary for assets by id test");
-    Glossary glossary = client.glossaries().create(createGlossary);
-
-    // Create parent term and child term (short names to stay within tagFQN varchar(256) limit)
-    CreateGlossaryTerm parentReq =
-        new CreateGlossaryTerm()
-            .withName("p1")
-            .withGlossary(glossary.getFullyQualifiedName())
-            .withDescription("Parent term");
-    GlossaryTerm parentTerm = createEntity(parentReq);
-
-    CreateGlossaryTerm childReq =
-        new CreateGlossaryTerm()
-            .withName("c1")
-            .withGlossary(glossary.getFullyQualifiedName())
-            .withParent(parentTerm.getFullyQualifiedName())
-            .withDescription("Child term");
-    GlossaryTerm childTerm = createEntity(childReq);
-
-    // Create a table tagged with the child term so there is a real asset to find
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    Column col = Columns.build("id").withType(ColumnDataType.BIGINT).create();
-    TagLabel glossaryTag =
-        new TagLabel()
-            .withTagFQN(childTerm.getFullyQualifiedName())
-            .withSource(TagLabel.TagSource.GLOSSARY);
-    Tables.create()
-        .name(ns.prefix("idt"))
-        .inSchema(schema.getFullyQualifiedName())
-        .withColumns(List.of(col))
-        .withTags(List.of(glossaryTag))
-        .execute();
-
-    ObjectMapper mapper = new ObjectMapper();
-
-    // Wait for ES to index the tagged asset, then verify matching parent returns it
-    Awaitility.await("wait for asset to appear for child term with matching parent")
-        .atMost(java.time.Duration.ofSeconds(30))
-        .pollInterval(java.time.Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              String res =
-                  getTermAssetsById(
-                      client, childTerm.getId().toString(), parentTerm.getFullyQualifiedName());
-              JsonNode node = mapper.readTree(res);
-              assertTrue(
-                  node.path("paging").path("total").asInt() > 0,
-                  "Matching parent should return the tagged asset");
-            });
-
-    // Query parent term assets with parent filter = glossary — should succeed
-    String parentResult =
-        getTermAssetsById(client, parentTerm.getId().toString(), glossary.getFullyQualifiedName());
-    assertNotNull(parentResult);
-
-    // Query child term assets with a non-matching parent — should return empty (total=0)
-    String emptyResult =
-        getTermAssetsById(client, childTerm.getId().toString(), "nonexistent.glossary");
-    JsonNode emptyNode = mapper.readTree(emptyResult);
-    assertEquals(
-        0,
-        emptyNode.path("paging").path("total").asInt(),
-        "Non-matching parent should return empty result");
-  }
-
-  @Test
-  void get_termAssetsByName_withParentFilter(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    CreateGlossary createGlossary =
-        new CreateGlossary()
-            .withName(ns.prefix("nag"))
-            .withDescription("Glossary for assets by name test");
-    Glossary glossary = client.glossaries().create(createGlossary);
-
-    // Short names to stay within tagFQN varchar(256) limit
-    CreateGlossaryTerm parentReq =
-        new CreateGlossaryTerm()
-            .withName("p1")
-            .withGlossary(glossary.getFullyQualifiedName())
-            .withDescription("Parent term");
-    GlossaryTerm parentTerm = createEntity(parentReq);
-
-    CreateGlossaryTerm childReq =
-        new CreateGlossaryTerm()
-            .withName("c1")
-            .withGlossary(glossary.getFullyQualifiedName())
-            .withParent(parentTerm.getFullyQualifiedName())
-            .withDescription("Child term");
-    GlossaryTerm childTerm = createEntity(childReq);
-
-    // Create a table tagged with the child term
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    Column col = Columns.build("id").withType(ColumnDataType.BIGINT).create();
-    TagLabel glossaryTag =
-        new TagLabel()
-            .withTagFQN(childTerm.getFullyQualifiedName())
-            .withSource(TagLabel.TagSource.GLOSSARY);
-    Tables.create()
-        .name(ns.prefix("nat"))
-        .inSchema(schema.getFullyQualifiedName())
-        .withColumns(List.of(col))
-        .withTags(List.of(glossaryTag))
-        .execute();
-
-    ObjectMapper mapper = new ObjectMapper();
-
-    // Wait for ES to index, then verify matching parent returns the asset
-    Awaitility.await("wait for asset to appear for child term by name with matching parent")
-        .atMost(java.time.Duration.ofSeconds(30))
-        .pollInterval(java.time.Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              String res =
-                  getTermAssetsByName(
-                      client,
-                      childTerm.getFullyQualifiedName(),
-                      parentTerm.getFullyQualifiedName());
-              JsonNode node = mapper.readTree(res);
-              assertTrue(
-                  node.path("paging").path("total").asInt() > 0,
-                  "Matching parent should return the tagged asset");
-            });
-
-    // Query with non-matching parent — should return empty (total=0)
-    String emptyResult =
-        getTermAssetsByName(client, childTerm.getFullyQualifiedName(), "nonexistent.glossary");
-    JsonNode emptyNode = mapper.readTree(emptyResult);
-    assertEquals(
-        0,
-        emptyNode.path("paging").path("total").asInt(),
-        "Non-matching parent should return empty result");
-  }
-
-  @Test
-  void get_termAssetsById_withoutParentFilter(TestNamespace ns) {
+  void get_termAssetsById(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     CreateGlossary createGlossary =
@@ -2818,13 +2666,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term for no-parent test");
     GlossaryTerm term = createEntity(termReq);
 
-    // Without parent param — should return all assets for the term
-    String result = getTermAssetsById(client, term.getId().toString(), null);
+    String result = getTermAssetsById(client, term.getId().toString());
     assertNotNull(result);
   }
 
   @Test
-  void get_termAssetsByName_withoutParentFilter(TestNamespace ns) {
+  void get_termAssetsByName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     CreateGlossary createGlossary =
@@ -2840,8 +2687,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term for no-parent name test");
     GlossaryTerm term = createEntity(termReq);
 
-    // Without parent param — should return all assets for the term
-    String result = getTermAssetsByName(client, term.getFullyQualifiedName(), null);
+    String result = getTermAssetsByName(client, term.getFullyQualifiedName());
     assertNotNull(result);
   }
 
@@ -2856,26 +2702,20 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             HttpMethod.GET, "/v1/glossaryTerms/assets/counts", null, optionsBuilder.build());
   }
 
-  private String getTermAssetsById(OpenMetadataClient client, String id, String parent) {
+  private String getTermAssetsById(OpenMetadataClient client, String id) {
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     optionsBuilder.queryParam("limit", "10");
     optionsBuilder.queryParam("offset", "0");
-    if (parent != null) {
-      optionsBuilder.queryParam("parent", parent);
-    }
     return client
         .getHttpClient()
         .executeForString(
             HttpMethod.GET, "/v1/glossaryTerms/" + id + "/assets", null, optionsBuilder.build());
   }
 
-  private String getTermAssetsByName(OpenMetadataClient client, String fqn, String parent) {
+  private String getTermAssetsByName(OpenMetadataClient client, String fqn) {
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     optionsBuilder.queryParam("limit", "10");
     optionsBuilder.queryParam("offset", "0");
-    if (parent != null) {
-      optionsBuilder.queryParam("parent", parent);
-    }
     return client
         .getHttpClient()
         .executeForString(

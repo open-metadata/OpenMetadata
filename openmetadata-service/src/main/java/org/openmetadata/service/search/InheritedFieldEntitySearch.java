@@ -244,19 +244,6 @@ public interface InheritedFieldEntitySearch {
           .build();
     }
 
-    public static InheritedFieldQuery forGlossaryTermChildren(
-        String parentFqn, int offset, int limit) {
-      return builder()
-          .fieldPath("tags.tagFQN")
-          .fieldValue(parentFqn)
-          .supportsHierarchy(true)
-          .filterType(QueryFilterType.TAG_ASSETS)
-          .includeDeleted(true)
-          .from(offset)
-          .size(limit)
-          .build();
-    }
-
     public static InheritedFieldQuery forTeam(String teamId, int offset, int limit) {
       return builder()
           .fieldPath("owners.id")

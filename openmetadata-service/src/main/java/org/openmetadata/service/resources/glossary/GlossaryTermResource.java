@@ -873,15 +873,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @DefaultValue("0")
           @Min(0)
           @QueryParam("offset")
-          int offset,
-      @Parameter(
-              description =
-                  "Parent scope filter. "
-                      + "When provided, only returns assets if the requested term is a descendant of this parent FQN; "
-                      + "otherwise returns an empty result.")
-          @QueryParam("parent")
-          String parent) {
-    return Response.ok(repository.getGlossaryTermAssets(id, limit, offset, parent)).build();
+          int offset) {
+    return Response.ok(repository.getGlossaryTermAssets(id, limit, offset)).build();
   }
 
   @GET
@@ -922,15 +915,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @DefaultValue("0")
           @Min(0)
           @QueryParam("offset")
-          int offset,
-      @Parameter(
-              description =
-                  "Parent scope filter. "
-                      + "When provided, only returns assets if the requested term is a descendant of this parent FQN; "
-                      + "otherwise returns an empty result.")
-          @QueryParam("parent")
-          String parent) {
-    return Response.ok(repository.getGlossaryTermAssetsByName(fqn, limit, offset, parent)).build();
+          int offset) {
+    return Response.ok(repository.getGlossaryTermAssetsByName(fqn, limit, offset)).build();
   }
 
   @PUT
