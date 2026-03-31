@@ -302,21 +302,12 @@ export const AddTestCaseList = ({
         setTotalCount(testCaseResponse.paging.total ?? 0);
         if (selectedTestNames.length > 0 && hydrateSelectedFromProp) {
           const hydratedMap = new Map<string, TestCase>();
-          testCaseResponse.data.forEach((hit) => {
+          [...items, ...testCaseResponse.data].forEach((hit) => {
             if (selectedTestNames.includes(hit.name)) {
               hydratedMap.set(hit.id ?? '', hit);
             }
           });
           setSelectedItems(hydratedMap);
-          if (hydratedMap.size > 0) {
-            const testCases = [...hydratedMap.values()];
-            onChange?.({
-              selectAll: false,
-              includeIds: testCases.map((c) => c.id ?? '').filter(Boolean),
-              excludeIds: [],
-              testCases,
-            });
-          }
         }
         setItems(
           page === 1
@@ -329,6 +320,7 @@ export const AddTestCaseList = ({
       }
     },
     [
+      items,
       testCaseFilters,
       selectedTestNames,
       testCaseParams,
@@ -547,28 +539,6 @@ export const AddTestCaseList = ({
     },
     [selectAll, selectedItems, items, excludedIds, onChange]
   );
-
-  useEffect(() => {
-    if (!isInitialSearchFilterLoad.current) {
-      setSelectAll(false);
-      setExcludedIds(new Set());
-      setSelectedItems(new Map());
-      onChange?.({
-        selectAll: false,
-        includeIds: [],
-        excludeIds: [],
-        testCases: [],
-      });
-    }
-  }, [
-    searchTerm,
-    filterStatus,
-    filterTestType,
-    filterTables,
-    filterColumns,
-    testCaseFilters,
-    testCaseParams,
-  ]);
 
   useEffect(() => {
     fetchTestCases({

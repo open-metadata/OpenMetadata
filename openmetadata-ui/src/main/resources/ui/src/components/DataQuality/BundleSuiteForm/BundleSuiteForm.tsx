@@ -193,6 +193,12 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
     [t]
   );
 
+  const selectedTestNames = useMemo(() => {
+    return testCaseSelectionPayload.testCases
+      ?.map((tc) => tc.name ?? '')
+      .filter(Boolean);
+  }, [testCaseSelectionPayload.testCases]);
+
   // =============================================
   // HOOKS - Effects
   // =============================================
@@ -413,9 +419,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
               },
             ]}>
             <AddTestCaseList
-              selectedTest={(testCaseSelectionPayload.testCases ?? []).map(
-                (tc) => getEntityName(tc)
-              )}
+              selectedTest={selectedTestNames}
               showButton={false}
               onChange={handleTestCaseSelection}
             />
