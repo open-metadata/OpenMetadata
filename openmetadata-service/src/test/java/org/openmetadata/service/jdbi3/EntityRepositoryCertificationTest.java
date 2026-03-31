@@ -558,7 +558,7 @@ class EntityRepositoryCertificationTest {
   }
 
   @Test
-  void applyCertificationPropagatesAppliedBy() {
+  void applyCertificationUsesEntityUpdatedByAsAppliedBy() {
     TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
     Pipeline entity =
         new Pipeline()
@@ -586,7 +586,7 @@ class EntityRepositoryCertificationTest {
   }
 
   @Test
-  void applyCertificationBatchPropagatesAppliedBy() {
+  void applyCertificationBatchUsesEntityUpdatedByAsAppliedBy() {
     TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
     Pipeline entity =
         new Pipeline()

@@ -259,7 +259,11 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS, TabSpecificField.CERTIFICATION].join(','),
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.CERTIFICATION,
+        ].join(','),
         paging,
         root: true,
         include: Include.NonDeleted,
@@ -275,7 +279,11 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS, TabSpecificField.CERTIFICATION].join(','),
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.CERTIFICATION,
+        ].join(','),
         paging,
         root: true,
         include: Include.NonDeleted,
