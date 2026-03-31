@@ -16,7 +16,7 @@ import type { HTMLAttributes, ReactNode } from 'react';
 export type DividerOrientation = 'horizontal' | 'vertical';
 export type DividerLabelAlignment = 'start' | 'center' | 'end';
 
-export interface DividerProps extends HTMLAttributes<HTMLHRElement> {
+export interface DividerProps extends HTMLAttributes<HTMLDivElement> {
   orientation?: DividerOrientation;
   label?: ReactNode;
   labelAlign?: DividerLabelAlignment;
@@ -31,7 +31,7 @@ export const Divider = ({
 }: DividerProps) => {
   if (orientation === 'vertical') {
     return (
-      <hr
+      <div
         {...props}
         aria-orientation="vertical"
         className={cx(
@@ -44,7 +44,7 @@ export const Divider = ({
 
   if (!label) {
     return (
-      <hr
+      <div
         {...props}
         aria-orientation="horizontal"
         className={cx(
