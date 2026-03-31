@@ -1,4 +1,5 @@
 import { cx, sortCx } from '@/utils/cx';
+import { useResizeObserver } from '@/hooks/use-resize-observer';
 import {
   type MouseEvent,
   type ReactNode,
@@ -102,30 +103,33 @@ export const Slider = ({
     return () => globalThis.removeEventListener('pointerup', clearHover);
   }, [showHoverPreview]);
 
-  // Cache the track's bounding rect in a ref so the render prop can read it
-  // without forcing a synchronous layout reflow on every drag/hover re-render.
-  // ResizeObserver keeps the cache fresh when the track changes size; the
-  // scroll listener (capture phase) keeps it fresh when the page or any
-  // scrollable ancestor moves, since getBoundingClientRect returns
-  // viewport-relative coordinates that change on scroll.
+  // Three-part rect cache strategy:
+  // 1. useLayoutEffect — synchronous initial measurement before first render.
+  // 2. useResizeObserver — keeps the cache fresh on element resize (feature-
+  //    detected; falls back to window.resize in environments without
+  //    ResizeObserver, so no runtime throw in older browsers or test runners).
+  // 3. useEffect + scroll listener — keeps the cache fresh when the page or a
+  //    scrollable ancestor moves (capture phase catches all ancestor scrolls).
   useLayoutEffect(() => {
-    const el = trackRef.current;
-    if (!el) {
-      return;
+    if (trackRef.current) {
+      trackRectRef.current = trackRef.current.getBoundingClientRect();
     }
-    const update = () => {
-      trackRectRef.current = el.getBoundingClientRect();
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    globalThis.addEventListener('scroll', update, true);
-
-    return () => {
-      observer.disconnect();
-      globalThis.removeEventListener('scroll', update, true);
-    };
   }, []);
+
+  const updateTrackRect = useCallback(() => {
+    if (trackRef.current) {
+      trackRectRef.current = trackRef.current.getBoundingClientRect();
+    }
+  }, []);
+
+  useResizeObserver({ ref: trackRef, onResize: updateTrackRect });
+
+  useEffect(() => {
+    globalThis.addEventListener('scroll', updateTrackRect, true);
+
+    return () =>
+      globalThis.removeEventListener('scroll', updateTrackRect, true);
+  }, [updateTrackRect]);
 
   const activeValues = isControlled ? toArray(rest.value!) : internalValues;
 
@@ -183,7 +187,8 @@ export const Slider = ({
       return;
     }
 
-    const rect = trackRef.current.getBoundingClientRect();
+    const rect =
+      trackRectRef.current ?? trackRef.current.getBoundingClientRect();
     if (rect.width === 0) {
       return;
     }

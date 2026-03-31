@@ -236,6 +236,7 @@ const ControlledSliderDemo = () => {
       />
       <button
         style={{ marginTop: 8, padding: '4px 12px' }}
+        type="button"
         onClick={() => setValue(70)}>
         Set to 70
       </button>
