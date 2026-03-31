@@ -217,7 +217,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         tableRepo.getDao().findEntityByNames(new ArrayList<>(fqnToEntityLink.keySet()), ALL);
     tableRepo.setFieldsInBulk(
         new Fields(
-            Set.of("tags", "columns", FIELD_OWNERS, "domains", FIELD_FOLLOWERS),
+            Set.of("tags", "columns", FIELD_OWNERS, "domains", "dataProducts", FIELD_FOLLOWERS),
             String.join(",", tableFields)),
         tables);
 
@@ -453,6 +453,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (table != null) {
       inheritOwners(testCase, fields, table);
       inheritDomains(testCase, fields, table);
+      inheritDataProducts(testCase, fields, table);
       inheritTags(testCase, fields, table);
       inheritFollowers(testCase, fields, table);
     }

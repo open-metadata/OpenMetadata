@@ -3852,6 +3852,53 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         "Test case should inherit non-conflicting tag (Sensitive) from table");
   }
 
+  @Test
+  void test_testCaseSearchIndexUpdatedWhenTableTagChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    // 1. Create a table without tags and a test case linked to it
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_tag_propagation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // 2. Update the table to add a tag via PUT
+    Table fetchedTable = client.tables().get(table.getId().toString(), "tags");
+    fetchedTable.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    // 3. Verify the test case search index document is updated with the inherited tag
+    String testCaseId = testCase.getId().toString();
+    Awaitility.await(
+            "Test case search index should contain inherited tag from table after table tag update")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + testCaseId)
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+
+              assertTrue(
+                  searchResponse.contains(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+                  "Test case search index should contain the inherited tag '"
+                      + shared.PII_SENSITIVE_TAG_LABEL.getTagFQN()
+                      + "' from the table, but got: "
+                      + searchResponse);
+            });
+  }
+
   private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
     if (tags == null || tags.isEmpty()) {
       return "";
