@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Form, Modal, Select } from 'antd';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -39,9 +45,9 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [form] = Form.useForm<{
-    testSuiteId?: string;
-  }>();
+  const [selectedSuiteId, setSelectedSuiteId] = useState<string | undefined>(
+    undefined
+  );
   const [options, setOptions] = useState<
     { label: string; value: string; suite: TestSuite }[]
   >([]);
@@ -93,10 +99,10 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
 
   useEffect(() => {
     if (open) {
-      form.setFieldsValue({ testSuiteId: undefined });
+      setSelectedSuiteId(undefined);
       fetchLogicalSuites('');
     }
-  }, [open, form, fetchLogicalSuites]);
+  }, [open, fetchLogicalSuites]);
 
   const handleOk = async () => {
     if (selectedIds.length === 0) {
@@ -105,21 +111,22 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
       return;
     }
 
+    if (!selectedSuiteId) {
+      return;
+    }
+
     try {
-      const values = await form.validateFields(['testSuiteId']);
-      const testSuiteId = values.testSuiteId;
-      if (!testSuiteId) {
-        return;
-      }
       setSubmitting(true);
-      await addTestCasesToLogicalTestSuiteBulk(testSuiteId, {
+      await addTestCasesToLogicalTestSuiteBulk(selectedSuiteId, {
         selectAll: false,
         includeIds: selectedIds,
         excludeIds: [],
       });
       showSuccessToast(t('message.test-cases-added-to-bundle-suite'));
 
-      const selectedSuite = options.find((opt) => opt.value === testSuiteId);
+      const selectedSuite = options.find(
+        (opt) => opt.value === selectedSuiteId
+      );
       if (selectedSuite?.suite.fullyQualifiedName) {
         navigate(getTestSuitePath(selectedSuite.suite.fullyQualifiedName));
       }
@@ -127,9 +134,6 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
       onAddedToExisting();
       onCancel();
     } catch (error) {
-      if ((error as { errorFields?: unknown }).errorFields) {
-        return;
-      }
       showErrorToast(error as AxiosError);
     } finally {
       setSubmitting(false);
@@ -137,44 +141,56 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
   };
 
   return (
-    <Modal
-      bodyStyle={{ minHeight: '175px' }}
-      cancelText={t('label.cancel')}
-      confirmLoading={submitting}
-      okButtonProps={{ disabled: selectedIds.length === 0 }}
-      okText={t('label.add')}
-      open={open}
-      title={t('label.add-test-cases-to-bundle-suite')}
-      onCancel={onCancel}
-      onOk={handleOk}>
-      <Form form={form}>
-        <Form.Item
-          name="testSuiteId"
-          rules={[
-            {
-              required: true,
-              message: t('label.field-required', {
+    <ModalOverlay isDismissable isOpen={open} onOpenChange={onCancel}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          title={t('label.add-test-cases-to-bundle-suite')}
+          onClose={onCancel}>
+          <Dialog.Content className="tw:min-h-45">
+            <Select
+              allowClear
+              showSearch
+              className="w-full"
+              data-testid="bundle-suite-select"
+              disabled={submitting}
+              filterOption={false}
+              getPopupContainer={getPopupContainer}
+              listHeight={150}
+              loading={optionsLoading}
+              options={options}
+              placeholder={t('label.select-field', {
                 field: t('label.bundle-suite'),
-              }),
-            },
-          ]}>
-          <Select
-            allowClear
-            showSearch
-            className="w-full"
-            filterOption={false}
-            getPopupContainer={getPopupContainer}
-            listHeight={100}
-            loading={optionsLoading}
-            options={options}
-            placeholder={t('label.select-field', {
-              field: t('label.bundle-suite'),
-            })}
-            onSearch={(value) => debouncedSearch(value)}
-          />
-        </Form.Item>
-      </Form>
-    </Modal>
+              })}
+              value={selectedSuiteId}
+              onChange={(value) => setSelectedSuiteId(value)}
+              onSearch={(value) => debouncedSearch(value)}
+            />
+          </Dialog.Content>
+          <Dialog.Footer>
+            <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
+              <Button
+                color="secondary"
+                data-testid="cancel-button"
+                disabled={submitting}
+                onPress={onCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="add-button"
+                isDisabled={
+                  !selectedSuiteId || selectedIds.length === 0 || submitting
+                }
+                isLoading={submitting}
+                onPress={handleOk}>
+                {t('label.add')}
+              </Button>
+            </div>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

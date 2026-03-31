@@ -148,7 +148,7 @@ export const addTestCaseToLogicalTestSuite = async (
   testCaseName: string
 ) => {
   await page.goto(`test-suites/${testSuiteName}`);
-  await page.locator('[data-testid="loader"]').waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );

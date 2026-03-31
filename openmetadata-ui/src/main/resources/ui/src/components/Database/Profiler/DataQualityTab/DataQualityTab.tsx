@@ -12,10 +12,12 @@
  */
 
 import {
+  Box,
   Button,
   Dropdown,
   Skeleton,
   Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, DotsVertical } from '@untitledui/icons';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
@@ -620,13 +622,17 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <div className="data-quality-table-header">{tableHeader}</div>
       )}
       {enableBulkActions && selectedRowKeys.length > 0 && (
-        <div className="tw:mb-3 tw:flex tw:flex-wrap tw:items-center tw:gap-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2">
-          <span className="tw:text-sm tw:text-(--color-text-primary)">
+        <Box
+          align="center"
+          className="tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2"
+          gap={3}
+          wrap="wrap">
+          <Typography size="text-sm">
             {t('label.bundle-test-case-selected-count', {
               count: selectedRowKeys.length,
             })}
-          </span>
-          <div className="tw:ml-auto tw:flex tw:items-center tw:gap-3">
+          </Typography>
+          <Box align="center" className="tw:ml-auto" gap={3}>
             <Dropdown.Root>
               <Button
                 color="primary"
@@ -671,8 +677,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               size="sm"
               onClick={() => setSelectedRowKeys([])}
             />
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
       <Table
         columns={columns}
