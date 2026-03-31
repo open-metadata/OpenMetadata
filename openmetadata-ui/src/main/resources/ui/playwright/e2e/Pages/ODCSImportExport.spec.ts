@@ -50,8 +50,6 @@ import {
 } from '../../utils/odcsImportExport';
 import { test } from '../fixtures/pages';
 
-test.use({ trace: 'on' });
-
 test.describe('ODCS Import/Export', () => {
   test.slow(true);
   test.beforeEach(async ({ page }) => {

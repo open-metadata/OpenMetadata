@@ -204,7 +204,13 @@ export const addOwnerWithoutValidation = async ({
       (await usersTab.getAttribute('aria-selected')) === 'true';
 
     if (!isTabAlreadySelected) {
+      const userListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.request().method() === 'GET'
+      );
       await usersTab.click();
+      await userListResponse;
     }
   }
   await waitForAllLoadersToDisappear(page);

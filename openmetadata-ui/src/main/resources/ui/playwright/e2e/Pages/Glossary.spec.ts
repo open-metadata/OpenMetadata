@@ -110,8 +110,6 @@ const user3 = new UserClass();
 const user4 = new UserClass();
 const adminUser = new UserClass();
 
-test.use({ trace: 'on' });
-
 test.describe('Glossary tests', () => {
   test.beforeAll(async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);

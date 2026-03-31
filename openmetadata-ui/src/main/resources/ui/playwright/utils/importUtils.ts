@@ -774,6 +774,8 @@ export const fillRowDetails = async (
   const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
 
   await expect(async () => {
+    // Re-click the cell to reset state before pressing Enter
+    await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
     const certificationResponse = page.waitForResponse(
       '/api/v1/tags?parent=Certification*'
     );

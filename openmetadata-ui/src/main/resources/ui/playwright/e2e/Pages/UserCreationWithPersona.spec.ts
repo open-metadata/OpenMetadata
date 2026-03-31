@@ -28,8 +28,6 @@ import { test } from '../fixtures/pages';
 const adminUser = new UserClass();
 const persona1 = new PersonaClass();
 
-test.use({ trace: 'on' });
-
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.create(apiContext);

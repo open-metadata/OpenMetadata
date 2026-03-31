@@ -49,7 +49,6 @@ import { visitServiceDetailsPage } from '../../utils/service';
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  trace: 'on',
 });
 
 const user1 = new UserClass();

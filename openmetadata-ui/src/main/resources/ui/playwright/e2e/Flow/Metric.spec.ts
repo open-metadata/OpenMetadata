@@ -46,8 +46,6 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-test.use({ trace: 'on' });
-
 test.describe(
   'Metric Entity Special Test Cases',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
