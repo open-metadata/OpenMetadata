@@ -4535,7 +4535,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             TagLabel.LabelType.AUTOMATED.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
             null,
-            tagLabel.getAppliedBy(),
+            entity.getUpdatedBy(),
             metadata);
   }
 
@@ -4570,7 +4570,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .withTagFQN(cert.getTagLabel().getTagFQN())
               .withLabelType(TagLabel.LabelType.AUTOMATED)
               .withState(TagLabel.State.CONFIRMED)
-              .withAppliedBy(cert.getTagLabel().getAppliedBy())
+              .withAppliedBy(entity.getUpdatedBy())
               .withMetadata(new TagLabelMetadata().withExpiryDate(cert.getExpiryDate()));
       certTagsByTarget.put(entity.getFullyQualifiedName(), List.of(tagLabel));
     }
@@ -7262,7 +7262,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Period datePeriod = Period.parse(assetCertificationSettings.getValidityPeriod());
       LocalDateTime targetDateTime = nowDateTime.plus(datePeriod);
       updatedCertification.setExpiryDate(targetDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
-      updatedCertification.getTagLabel().setAppliedBy(updatingUser.getName());
 
       applyCertification(updated);
 
@@ -9082,8 +9081,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                       Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
                           .filter(list -> !list.isEmpty())
                           .orElseGet(ArrayList::new);
-                  if (certClassification != null && !tags.isEmpty()) {
-                    tags = new ArrayList<>(tags);
+                  if (certClassification != null) {
                     tags.removeIf(
                         tag ->
                             certClassification.equals(

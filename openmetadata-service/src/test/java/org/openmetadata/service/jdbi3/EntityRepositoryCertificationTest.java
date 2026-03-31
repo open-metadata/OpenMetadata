@@ -559,12 +559,13 @@ class EntityRepositoryCertificationTest {
 
   @Test
   void applyCertificationPropagatesAppliedBy() {
-    TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold").withAppliedBy("alice");
+    TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
     Pipeline entity =
         new Pipeline()
             .withId(UUID.randomUUID())
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
+            .withUpdatedBy("alice")
             .withCertification(new AssetCertification().withTagLabel(tagLabel));
 
     when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString())).thenReturn(List.of());
@@ -586,12 +587,13 @@ class EntityRepositoryCertificationTest {
 
   @Test
   void applyCertificationBatchPropagatesAppliedBy() {
-    TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold").withAppliedBy("bob");
+    TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
     Pipeline entity =
         new Pipeline()
             .withId(UUID.randomUUID())
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
+            .withUpdatedBy("bob")
             .withCertification(new AssetCertification().withTagLabel(tagLabel));
 
     @SuppressWarnings("unchecked")
