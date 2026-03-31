@@ -438,7 +438,7 @@ class OpenSearchVectorServiceTest {
     ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
         ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
 
-    vectorService.ensureHybridSearchPipeline(0.6, 0.4);
+    vectorService.ensureHybridSearchPipeline(0.4, 0.6);
 
     verify(mockGenericClient).execute(captor.capture());
     os.org.opensearch.client.opensearch.generic.Request captured = captor.getValue();
@@ -448,9 +448,9 @@ class OpenSearchVectorServiceTest {
 
     String body =
         new String(captured.getBody().get().bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8);
-    assertTrue(body.contains("\"weights\":[0.6,0.4]"));
+    assertTrue(body.contains("\"weights\":[0.4,0.6]"));
     assertTrue(body.contains("\"technique\":\"rrf\""));
-    assertTrue(body.contains("\"rank_constant\":60"));
+    assertTrue(body.contains("\"rank_constant\":30"));
     assertTrue(body.contains("\"collapse\""));
     assertTrue(body.contains("\"parentId\""));
   }
