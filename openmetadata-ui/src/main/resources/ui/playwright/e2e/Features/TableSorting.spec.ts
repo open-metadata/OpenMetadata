@@ -127,18 +127,6 @@ test.describe('Table Sorting', () => {
       await afterAction();
     });
 
-    test.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await apiContext.delete(
-        `/api/v1/apiEndpoints/name/${encodeURIComponent(
-          apiEndpoint2.entityResponseData.fullyQualifiedName ?? ''
-        )}?hardDelete=true&recursive=true`
-      );
-
-      await afterAction();
-    });
-
     test('should have sorting on name column', async ({ page }) => {
       await page.goto(
         `/apiEndpoint/${apiEndpoint2.entityResponseData.fullyQualifiedName}`
