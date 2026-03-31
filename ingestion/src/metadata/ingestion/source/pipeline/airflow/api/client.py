@@ -67,7 +67,7 @@ class AirflowApiClient:
             self.mwaa_client = MWAAClient(
                 auth_config.mwaaConfig.awsConfig, environment_name
             )
-            self.client = None  # No need for TrackedREST client with MWAA
+            self.client = None  # No need for REST client with MWAA
         else:
             # Use standard REST client for other authentication types
             self.mwaa_client = None

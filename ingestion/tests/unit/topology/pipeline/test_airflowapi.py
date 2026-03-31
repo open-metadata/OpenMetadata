@@ -37,7 +37,7 @@ from metadata.utils.helpers import datetime_to_ts
 
 
 def _make_client(mock_rest_cls, api_version="v1"):
-    """Create an AirflowApiClient with mocked TrackedREST using AccessToken auth."""
+    """Create an AirflowApiClient with mocked REST using AccessToken auth."""
     mock_rest_cls.return_value = MagicMock()
     auth_config = AccessToken(token="test_token")
     rest_config = MagicMock()
@@ -183,13 +183,13 @@ class TestModels:
 
 
 class TestClientApiVersionDetection:
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_auto_detect_v2(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls, api_version="auto")
         mock_rest.get.return_value = {"version": "3.0.0"}
         assert client.api_version == "v2"
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_auto_detect_v1_fallback(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls, api_version="auto")
 
@@ -201,7 +201,7 @@ class TestClientApiVersionDetection:
         mock_rest.get.side_effect = side_effect
         assert client.api_version == "v1"
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_explicit_version(self, mock_rest_cls):
         client, _ = _make_client(mock_rest_cls, api_version="v1")
         assert client.api_version == "v1"
@@ -211,7 +211,7 @@ class TestClientApiVersionDetection:
 
 
 class TestClientBuildDagDetails:
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_build_dag_details_normalizes_tags(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {"tasks": []}
@@ -225,7 +225,7 @@ class TestClientBuildDagDetails:
         assert result.tags == ["team:data", "env:prod"]
         assert result.owners == ["admin"]
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_build_dag_details_with_tasks(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {
@@ -261,12 +261,12 @@ class TestClientBuildDagDetails:
 
 
 class TestClientDateField:
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_v1_uses_execution_date(self, mock_rest_cls):
         client, _ = _make_client(mock_rest_cls, api_version="v1")
         assert client._date_field == "execution_date"
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_v2_uses_logical_date(self, mock_rest_cls):
         client, _ = _make_client(mock_rest_cls, api_version="v2")
         assert client._date_field == "logical_date"
@@ -311,7 +311,7 @@ class TestSourceUrlGeneration:
 
 
 class TestPaginateGetAllDags:
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_single_page(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {
@@ -324,7 +324,7 @@ class TestPaginateGetAllDags:
         assert result[0]["dag_id"] == "a"
         assert mock_rest.get.call_count == 1
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_multiple_pages(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
 
@@ -348,7 +348,7 @@ class TestPaginateGetAllDags:
         assert result[-1]["dag_id"] == "dag_249"
         assert mock_rest.get.call_count == 3
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_empty_response(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {"dags": [], "total_entries": 0}
@@ -361,7 +361,7 @@ class TestPaginateGetAllDags:
 
 
 class TestPaginateTaskInstances:
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_single_page_task_instances(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {
@@ -379,7 +379,7 @@ class TestPaginateTaskInstances:
         assert result[1].task_id == "t2"
         assert result[1].state == "failed"
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_multi_page_task_instances(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
 
@@ -403,7 +403,7 @@ class TestPaginateTaskInstances:
         assert result[-1].task_id == "t_149"
         assert mock_rest.get.call_count == 2
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_task_instances_api_error_returns_empty(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.side_effect = Exception("Connection refused")
@@ -416,7 +416,7 @@ class TestPaginateTaskInstances:
 
 
 class TestAuthErrorPropagation:
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_401_is_raised_during_version_detection(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls, api_version="auto")
         response = MagicMock()
@@ -426,7 +426,7 @@ class TestAuthErrorPropagation:
         with pytest.raises(HTTPError):
             client._detect_api_version()
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_403_is_raised_during_version_detection(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls, api_version="auto")
         response = MagicMock()
@@ -436,7 +436,7 @@ class TestAuthErrorPropagation:
         with pytest.raises(HTTPError):
             client._detect_api_version()
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_404_falls_through_to_next_version(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls, api_version="auto")
         response_404 = MagicMock()
@@ -450,7 +450,7 @@ class TestAuthErrorPropagation:
         mock_rest.get.side_effect = side_effect
         assert client._detect_api_version() == "v1"
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_connection_error_is_raised(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls, api_version="auto")
         mock_rest.get.side_effect = RequestsConnectionError("Connection refused")
@@ -458,7 +458,7 @@ class TestAuthErrorPropagation:
         with pytest.raises(RequestsConnectionError):
             client._detect_api_version()
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_timeout_error_is_raised(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls, api_version="auto")
         mock_rest.get.side_effect = TimeoutError("timed out")
@@ -471,7 +471,7 @@ class TestAuthErrorPropagation:
 
 
 class TestBuildDagDetailsTagEdgeCases:
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_empty_tag_names_are_filtered(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {"tasks": []}
@@ -483,7 +483,7 @@ class TestBuildDagDetailsTagEdgeCases:
         result = client.build_dag_details(dag_data)
         assert result.tags == ["valid_tag"]
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_non_string_non_dict_tags_are_skipped(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {"tasks": []}
@@ -495,7 +495,7 @@ class TestBuildDagDetailsTagEdgeCases:
         result = client.build_dag_details(dag_data)
         assert result.tags == ["good"]
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_string_tags_are_kept(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {"tasks": []}
@@ -683,7 +683,7 @@ class TestYieldPipeline:
 
 
 class TestClientGetDagRuns:
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_parses_dag_runs_with_logical_date(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {
@@ -704,7 +704,7 @@ class TestClientGetDagRuns:
         assert runs[0].state == "success"
         assert runs[0].execution_date is not None
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_returns_empty_on_api_error(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.side_effect = Exception("API down")

@@ -46,7 +46,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-_TRACKED_REST_PATH = "metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST"
+_TRACKED_REST_PATH = "metadata.ingestion.source.pipeline.airflow.api.client.REST"
 _BASIC_AUTH_CALLBACK_PATH = (
     "metadata.ingestion.source.pipeline.airflow.api.client.build_basic_auth_callback"
 )
@@ -456,7 +456,7 @@ class TestAirflowApiMockedIntegration:
     @staticmethod
     def _fake_rest(mock_tracked_rest_cls, responses):
         """
-        Configure the mock TrackedREST instance's .get() to return *responses*.
+        Configure the mock REST instance's .get() to return *responses*.
 
         *responses* can be:
           - a single value  → always returns that value

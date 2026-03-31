@@ -396,14 +396,14 @@ class TestGcpCredentialTypeCoverage:
 
 class TestAirflowApiClientAuthConfig:
     """
-    End-to-end tests for AirflowApiClient.__init__. TrackedREST is patched so
+    End-to-end tests for AirflowApiClient.__init__.REST is patched so
     no network calls are made; we inspect the ClientConfig passed to it.
 
     auth_variant instances are real Pydantic models — isinstance() checks in
     client.py dispatch correctly without any authType discriminator field.
     """
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_access_token_sets_bearer_mode_and_static_token(self, mock_rest_cls):
         variant = AccessToken(token="static_token_value")
         config = _make_config(variant)
@@ -416,7 +416,7 @@ class TestAirflowApiClientAuthConfig:
         assert token == "static_token_value"
         assert expiry == 0
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     @patch(
         "metadata.ingestion.source.pipeline.airflow.api.auth.try_exchange_jwt",
         return_value="jwt_from_airflow3",
@@ -432,7 +432,7 @@ class TestAirflowApiClientAuthConfig:
         token, _ = client_config.auth_token()
         assert token == "Bearer jwt_from_airflow3"
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     @patch(
         "metadata.ingestion.source.pipeline.airflow.api.auth.try_exchange_jwt",
         return_value=None,
@@ -451,7 +451,7 @@ class TestAirflowApiClientAuthConfig:
         expected = base64.b64encode(b"admin:secret").decode()
         assert token == f"Basic {expected}"
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
     @patch("google.auth.default")
     def test_gcp_credentials_sets_bearer_with_live_callback(
@@ -477,7 +477,7 @@ class TestAirflowApiClientAuthConfig:
         assert token == "gcp_tok"
         assert returned_expiry == expiry
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_unknown_auth_type_sets_no_auth_header(self, mock_rest_cls):
         config = _make_config(MagicMock())
         AirflowApiClient(config)
@@ -486,7 +486,7 @@ class TestAirflowApiClientAuthConfig:
         assert client_config.auth_header is None
         assert client_config.auth_token is None
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_base_url_uses_host_port(self, mock_rest_cls):
         variant = AccessToken(token="tok")
         config = _make_config(variant)
@@ -496,7 +496,7 @@ class TestAirflowApiClientAuthConfig:
         client_config = mock_rest_cls.call_args[0][0]
         assert "my-composer.example.com" in client_config.base_url
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_verify_ssl_false_passed_to_client(self, mock_rest_cls):
         variant = AccessToken(token="tok")
         config = _make_config(variant)
@@ -506,7 +506,7 @@ class TestAirflowApiClientAuthConfig:
         client_config = mock_rest_cls.call_args[0][0]
         assert client_config.verify is False
 
-    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.REST")
     def test_api_version_is_api(self, mock_rest_cls):
         variant = AccessToken(token="tok")
         config = _make_config(variant)
