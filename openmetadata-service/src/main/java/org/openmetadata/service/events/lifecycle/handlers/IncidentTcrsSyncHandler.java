@@ -60,7 +60,7 @@ public class IncidentTcrsSyncHandler implements EntityLifecycleEventHandler {
     String testCaseFqn = link.getEntityFQN();
     UUID stateId = UUID.fromString(link.getArrayFieldName());
 
-    if (tcrRecordExists(stateId)) {
+    if (incidentResolutionStatusExists(stateId)) {
       LOG.debug("[{}] TCRS(New) already exists for stateId={}, skipping.", HANDLER_NAME, stateId);
       return;
     }
@@ -76,7 +76,7 @@ public class IncidentTcrsSyncHandler implements EntityLifecycleEventHandler {
             .withUpdatedBy(updatedBy)
             .withUpdatedAt(System.currentTimeMillis());
 
-    insertTcrsRecord(testCaseFqn, tcrs);
+    insertIncidentResolutionStatus(testCaseFqn, tcrs);
     LOG.info(
         "[{}] Synced Task created -> TCRS(New) for testCase='{}', stateId='{}'",
         HANDLER_NAME,
@@ -95,7 +95,8 @@ public class IncidentTcrsSyncHandler implements EntityLifecycleEventHandler {
     String testCaseFqn = link.getEntityFQN();
     UUID stateId = UUID.fromString(link.getArrayFieldName());
 
-    TestCaseResolutionStatusTypes tcrsType = mapTaskChangeToTcrsType(task, changeDescription);
+    TestCaseResolutionStatusTypes tcrsType =
+        mapTaskChangeToResolutionStatusType(task, changeDescription);
     if (tcrsType == null) {
       return;
     }
@@ -119,7 +120,7 @@ public class IncidentTcrsSyncHandler implements EntityLifecycleEventHandler {
       tcrs.withTestCaseResolutionStatusDetails(resolved);
     }
 
-    insertTcrsRecord(testCaseFqn, tcrs);
+    insertIncidentResolutionStatus(testCaseFqn, tcrs);
     LOG.info(
         "[{}] Synced Task update -> TCRS({}) for testCase='{}', stateId='{}'",
         HANDLER_NAME,
@@ -145,7 +146,7 @@ public class IncidentTcrsSyncHandler implements EntityLifecycleEventHandler {
     }
   }
 
-  private TestCaseResolutionStatusTypes mapTaskChangeToTcrsType(
+  private TestCaseResolutionStatusTypes mapTaskChangeToResolutionStatusType(
       Task task, ChangeDescription changeDescription) {
     if (isTerminalStatus(task.getStatus())) {
       return TestCaseResolutionStatusTypes.Resolved;
@@ -197,7 +198,7 @@ public class IncidentTcrsSyncHandler implements EntityLifecycleEventHandler {
     return task.getCreatedBy();
   }
 
-  private boolean tcrRecordExists(UUID stateId) {
+  private boolean incidentResolutionStatusExists(UUID stateId) {
     List<String> records =
         ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO)
                 Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao())
@@ -205,7 +206,7 @@ public class IncidentTcrsSyncHandler implements EntityLifecycleEventHandler {
     return !records.isEmpty();
   }
 
-  private void insertTcrsRecord(String testCaseFqn, TestCaseResolutionStatus tcrs) {
+  private void insertIncidentResolutionStatus(String testCaseFqn, TestCaseResolutionStatus tcrs) {
     Entity.getCollectionDAO()
         .testCaseResolutionStatusTimeSeriesDao()
         .insert(testCaseFqn, Entity.TEST_CASE_RESOLUTION_STATUS, JsonUtils.pojoToJson(tcrs));
@@ -224,7 +225,9 @@ public class IncidentTcrsSyncHandler implements EntityLifecycleEventHandler {
 
   private String extractStringValue(Object value) {
     if (value instanceof String s) {
-      return s.startsWith("\"") ? s.substring(1, s.length() - 1) : s;
+      return (s.length() >= 2 && s.startsWith("\"") && s.endsWith("\""))
+          ? s.substring(1, s.length() - 1)
+          : s;
     }
     return value != null ? value.toString() : null;
   }
