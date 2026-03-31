@@ -422,6 +422,11 @@ public class ReindexingOrchestrator {
       appRecord.setSuccessContext(successContext);
     }
 
+    // Persist before broadcasting so OmAppJobListener.jobWasExecuted() sees the correct
+    // terminal status (FAILED, STOPPED, etc.) rather than the initial RUNNING record,
+    // and so the database is consistent before the UI is notified.
+    context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
+
     if (WebSocketManager.getInstance() != null) {
       String messageJson = JsonUtils.pojoToJson(appRecord);
       WebSocketManager.getInstance()
