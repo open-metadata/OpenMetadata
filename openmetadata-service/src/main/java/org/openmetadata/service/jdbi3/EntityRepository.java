@@ -4535,7 +4535,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             TagLabel.LabelType.AUTOMATED.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
             null,
-            null,
+            tagLabel.getAppliedBy(),
             metadata);
   }
 
@@ -4570,6 +4570,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .withTagFQN(cert.getTagLabel().getTagFQN())
               .withLabelType(TagLabel.LabelType.AUTOMATED)
               .withState(TagLabel.State.CONFIRMED)
+              .withAppliedBy(cert.getTagLabel().getAppliedBy())
               .withMetadata(new TagLabelMetadata().withExpiryDate(cert.getExpiryDate()));
       certTagsByTarget.put(entity.getFullyQualifiedName(), List.of(tagLabel));
     }
@@ -7261,6 +7262,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Period datePeriod = Period.parse(assetCertificationSettings.getValidityPeriod());
       LocalDateTime targetDateTime = nowDateTime.plus(datePeriod);
       updatedCertification.setExpiryDate(targetDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+      updatedCertification.getTagLabel().setAppliedBy(updatingUser.getName());
 
       applyCertification(updated);
 
@@ -9069,15 +9071,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Map<String, List<TagLabel>> targetHashToTagLabel =
         populateTagLabel(listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs)));
+    String certClassification = getCertificationClassification();
     return entityFQNs.stream()
         .collect(
             Collectors.toMap(
                 Function.identity(),
                 fqn -> {
                   String targetFQNHash = FullyQualifiedName.buildHash(fqn);
-                  return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
-                      .filter(list -> !list.isEmpty())
-                      .orElseGet(ArrayList::new);
+                  List<TagLabel> tags =
+                      Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
+                          .filter(list -> !list.isEmpty())
+                          .orElseGet(ArrayList::new);
+                  if (certClassification != null && !tags.isEmpty()) {
+                    tags = new ArrayList<>(tags);
+                    tags.removeIf(
+                        tag ->
+                            certClassification.equals(
+                                FullyQualifiedName.getParentFQN(tag.getTagFQN())));
+                  }
+                  return tags;
                 },
                 (a, b) -> a));
   }
