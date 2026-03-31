@@ -38,6 +38,7 @@ export const Divider = ({
           'tw:self-stretch tw:w-px tw:shrink-0 tw:bg-border-secondary',
           className
         )}
+        role="separator"
       />
     );
   }
@@ -51,6 +52,7 @@ export const Divider = ({
           'tw:w-full tw:h-px tw:shrink-0 tw:bg-border-secondary',
           className
         )}
+        role="separator"
       />
     );
   }

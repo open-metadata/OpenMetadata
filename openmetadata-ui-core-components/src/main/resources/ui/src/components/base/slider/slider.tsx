@@ -1,5 +1,12 @@
 import { cx, sortCx } from '@/utils/cx';
-import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { SliderProps as AriaSliderProps } from 'react-aria-components';
 import {
   Label as AriaLabel,
@@ -97,13 +104,18 @@ export const Slider = ({
     )
   );
 
+  const numberFormatter = useMemo(
+    () =>
+      formatOptions ? new Intl.NumberFormat(undefined, formatOptions) : null,
+    [formatOptions]
+  );
+
   const formatRangeValue = (value: number): string => {
     if (labelFormatter) {
       return labelFormatter(value);
     }
-
-    if (formatOptions) {
-      return new Intl.NumberFormat(undefined, formatOptions).format(value);
+    if (numberFormatter) {
+      return numberFormatter.format(value);
     }
 
     return String(value);
@@ -119,8 +131,11 @@ export const Slider = ({
       0,
       Math.min(1, (e.clientX - rect.left) / rect.width)
     );
-    const snappedValue = snapToStep(minValue + rawPercent * (maxValue - minValue));
-    const snappedPercent = (snappedValue - minValue) / (maxValue - minValue);
+    const snappedValue = snapToStep(
+      minValue + rawPercent * (maxValue - minValue)
+    );
+    const range = maxValue - minValue;
+    const snappedPercent = range === 0 ? 0 : (snappedValue - minValue) / range;
 
     setHoverInfo({
       percent: snappedPercent,
@@ -149,7 +164,9 @@ export const Slider = ({
         ref={trackRef}
         onMouseLeave={handleMouseLeave}
         onMouseMove={handleMouseMove}>
-        {({ state: { values, getThumbValue, getThumbPercent, isDisabled } }) => {
+        {({
+          state: { values, getThumbValue, getThumbPercent, isDisabled },
+        }) => {
           // fillStart / fillWidth define the filled portion of the track as
           // fractions in [0, 1]. Single-thumb: fill from left edge to thumb.
           // Range (two thumbs): fill between the two thumbs.
@@ -177,7 +194,9 @@ export const Slider = ({
           const isOverThumb =
             hoverInfo !== null &&
             values.some(
-              (_, i) => Math.abs(getThumbPercent(i) - hoverInfo.percent) < thumbRadiusFraction
+              (_, i) =>
+                Math.abs(getThumbPercent(i) - hoverInfo.percent) <
+                thumbRadiusFraction
             );
 
           return (
@@ -212,13 +231,18 @@ export const Slider = ({
 
                 return (
                   <AriaSliderThumb
-                    className={({ isFocusVisible, isDragging, isDisabled: thumbDisabled }) =>
+                    className={({
+                      isFocusVisible,
+                      isDragging,
+                      isDisabled: thumbDisabled,
+                    }) =>
                       cx(
                         'tw:top-1/2 tw:box-border tw:size-6 tw:rounded-full tw:bg-slider-handle-bg tw:shadow-md tw:ring-2 tw:ring-slider-handle-border tw:ring-inset',
                         thumbDisabled
                           ? 'tw:cursor-not-allowed tw:opacity-50'
                           : 'tw:cursor-grab',
-                        isFocusVisible && !thumbDisabled &&
+                        isFocusVisible &&
+                          !thumbDisabled &&
                           'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',
                         isDragging && !thumbDisabled && 'tw:cursor-grabbing'
                       )
@@ -296,7 +320,9 @@ export const Slider = ({
       {showRange && (
         <div className="tw:relative tw:mt-0.5 tw:w-full tw:h-4 tw:text-xs tw:text-tertiary">
           {rangeValues.map((value, i) => {
-            const percent = ((value - minValue) / (maxValue - minValue)) * 100;
+            const range = maxValue - minValue;
+            const percent =
+              range === 0 ? 0 : ((value - minValue) / range) * 100;
             const isFirst = i === 0;
             const isLast = i === rangeValues.length - 1;
             // Use epsilon comparison to handle floating-point imprecision in
@@ -316,7 +342,7 @@ export const Slider = ({
                   translateClass,
                   isActive ? 'tw:text-brand-secondary tw:font-medium' : ''
                 )}
-                key={value}
+                key={`${value}-${i}`}
                 style={{ left: `${percent}%` }}>
                 {formatRangeValue(value)}
               </span>
