@@ -14,6 +14,7 @@ Time utility functions
 """
 
 from datetime import datetime, time, timedelta
+from datetime import timezone as dt_timezone
 from math import floor
 from typing import Optional, Union
 
@@ -161,6 +162,17 @@ def convert_timestamp(timestamp: str) -> Union[int, float]:
     if len(timestamp) < 13:  # check for ms timestamp
         return int(timestamp)
     return float(timestamp) / 1000
+
+
+def utc_from_timestamp(ts: Union[int, float]) -> datetime:
+    """Convert a Unix timestamp to a naive UTC datetime.
+
+    Returns a timezone-naive datetime in UTC. This is safe across
+    Python 3.10-3.12 (avoids the deprecated datetime.utcfromtimestamp)
+    and returns naive datetimes to stay compatible with database query
+    results which are typically timezone-naive.
+    """
+    return datetime.fromtimestamp(ts, tz=dt_timezone.utc).replace(tzinfo=None)
 
 
 @deprecated("Use `datetime_to_timestamp` instead", "1.7.0")

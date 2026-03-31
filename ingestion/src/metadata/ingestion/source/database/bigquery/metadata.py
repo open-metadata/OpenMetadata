@@ -87,7 +87,9 @@ from metadata.ingestion.source.database.bigquery.models import (
 )
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
     BIGQUERY_GET_TABLE_DDLS,
+    BIGQUERY_GET_TABLE_DDLS_BY_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -543,18 +545,47 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
         self._table_ddl_cache.clear()
 
+        database = self.context.get().database
+
         try:
-            database = self.context.get().database
-            query = BIGQUERY_GET_TABLE_DDLS.format(
+            dataset_obj = self.get_dataset_obj(schema_name)
+            location = getattr(dataset_obj, "location", None)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                "Could not retrieve dataset location for '%s.%s', "
+                "falling back to dataset-scoped query: %s",
+                database,
+                schema_name,
+                exc,
+            )
+            location = None
+
+        query = (
+            BIGQUERY_GET_TABLE_DDLS_BY_REGION.format(
+                database_name=database,
+                schema_name=schema_name,
+                region=location,
+            )
+            if location
+            else BIGQUERY_GET_TABLE_DDLS.format(
                 database_name=database,
                 schema_name=schema_name,
             )
+        )
+
+        try:
             with self.engine.connect() as conn:
                 results = conn.execute(text(query)).all()
             for row in results:
                 self._table_ddl_cache[row.table_name] = row.ddl
         except Exception as exc:
-            logger.warning(f"Error pre-fetching table DDLs for {schema_name}: {exc}")
+            logger.warning(
+                "Error pre-fetching table DDLs for '%s.%s': %s",
+                database,
+                schema_name,
+                exc,
+            )
             logger.debug(traceback.format_exc())
 
     def yield_tag(
@@ -1157,21 +1188,50 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     def get_stored_procedures(self) -> Iterable[BigQueryStoredProcedure]:
         """List BigQuery Stored Procedures"""
         if self.source_config.includeStoredProcedures:
-            with self.engine.connect() as conn:
-                results = conn.execute(
-                    text(
-                        BIGQUERY_GET_STORED_PROCEDURES.format(
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
-                        )
-                    )
-                ).all()
-            for row in results:
-                row_dict = row._asdict() if hasattr(row, "_asdict") else row
-                stored_procedure = BigQueryStoredProcedure.model_validate(row_dict)
-                if self.is_stored_procedure_filtered(stored_procedure.name):
-                    continue
-                yield stored_procedure
+            database = self.context.get().database
+            schema = self.context.get().database_schema
+            try:
+                dataset_obj = self.get_dataset_obj(schema)
+                location = getattr(dataset_obj, "location", None)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.debug(
+                    "Could not retrieve dataset location for '%s.%s', "
+                    "falling back to dataset-scoped query: %s",
+                    database,
+                    schema,
+                    exc,
+                )
+                location = None
+            query = (
+                BIGQUERY_GET_STORED_PROCEDURES_BY_REGION.format(
+                    database_name=database,
+                    schema_name=schema,
+                    region=location,
+                )
+                if location
+                else BIGQUERY_GET_STORED_PROCEDURES.format(
+                    database_name=database,
+                    schema_name=schema,
+                )
+            )
+            try:
+                with self.engine.connect() as conn:
+                    results = conn.execute(text(query)).all()
+                for row in results:
+                    row_dict = row._asdict() if hasattr(row, "_asdict") else row
+                    stored_procedure = BigQueryStoredProcedure.model_validate(row_dict)
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
+                    yield stored_procedure
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Error listing stored procedures for schema '%s.%s': %s",
+                    database,
+                    schema,
+                    exc,
+                )
 
     def yield_stored_procedure(
         self, stored_procedure: BigQueryStoredProcedure
