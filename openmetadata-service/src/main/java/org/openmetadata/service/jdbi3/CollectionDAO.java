@@ -6154,8 +6154,9 @@ public interface CollectionDAO {
             new UsageStats()
                 .withCount(r.getInt("count30"))
                 .withPercentileRank(r.getDouble("percentile30"));
+        java.sql.Date usageDate = r.getDate("usageDate");
         return new UsageDetails()
-            .withDate(r.getString("usageDate"))
+            .withDate(usageDate != null ? usageDate.toString() : null)
             .withDailyStats(dailyStats)
             .withWeeklyStats(weeklyStats)
             .withMonthlyStats(monthlyStats);
@@ -6197,9 +6198,10 @@ public interface CollectionDAO {
             new UsageStats()
                 .withCount(r.getInt("count30"))
                 .withPercentileRank(r.getDouble("percentile30"));
+        java.sql.Date usageDate = r.getDate("usageDate");
         UsageDetails usageDetails =
             new UsageDetails()
-                .withDate(r.getString("usageDate"))
+                .withDate(usageDate != null ? usageDate.toString() : null)
                 .withDailyStats(dailyStats)
                 .withWeeklyStats(weeklyStats)
                 .withMonthlyStats(monthlyStats);
@@ -7875,6 +7877,9 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM apps_extension_time_series WHERE appId = :appId AND extension = :extension")
     void delete(@Bind("appId") String appId, @Bind("extension") String extension);
+
+    @SqlUpdate("DELETE FROM apps_extension_time_series WHERE appId = :appId")
+    void deleteAllByAppId(@Bind("appId") String appId);
 
     @SqlQuery(
         "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND <service_filter>")
@@ -9931,6 +9936,9 @@ public interface CollectionDAO {
         "DELETE FROM search_index_job WHERE status IN ('COMPLETED', 'FAILED', 'STOPPED') AND completedAt < :before")
     int deleteOldJobs(@Bind("before") long before);
 
+    @SqlUpdate("DELETE FROM search_index_job")
+    void deleteAll();
+
     @SqlUpdate(
         "UPDATE search_index_job SET registeredServerCount = :serverCount, updatedAt = :updatedAt WHERE id = :id")
     void updateRegisteredServerCount(
@@ -10246,6 +10254,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM search_index_partition WHERE jobId = :jobId")
     void deleteByJobId(@Bind("jobId") String jobId);
+
+    @SqlUpdate("DELETE FROM search_index_partition")
+    void deleteAll();
 
     @SqlQuery(
         "SELECT assignedServer, "
@@ -10887,6 +10898,16 @@ public interface CollectionDAO {
       return claimed;
     }
 
+    @SqlQuery(
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+            + "FROM search_index_retry_queue ORDER BY retryCount DESC, claimedAt DESC "
+            + "LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
+    List<SearchIndexRetryRecord> listAll(@Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_retry_queue")
+    int countAll();
+
     class SearchIndexRetryRecordMapper implements RowMapper<SearchIndexRetryRecord> {
       @Override
       public SearchIndexRetryRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -11137,6 +11158,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM search_index_server_stats WHERE jobId = :jobId")
     void deleteByJobId(@Bind("jobId") String jobId);
+
+    @SqlUpdate("DELETE FROM search_index_server_stats")
+    void deleteAll();
 
     class ServerStatsMapper implements RowMapper<ServerStatsRecord> {
       @Override

@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -537,6 +538,91 @@ class DistributedIndexingStrategyTest {
       assertEquals(5, result.totalRecords());
       assertNotNull(result.finalStats());
       assertEquals(1, executorConstruction.constructed().size());
+    }
+  }
+
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void executeClosesSinkAndReturnsFailedWhenDoExecuteThrowsAndSinkCloseAlsoFails()
+      throws Exception {
+    EntityRepository entityRepository = mock(EntityRepository.class);
+    EntityDAO entityDao = mock(EntityDAO.class);
+    BulkSink bulkSink = mock(BulkSink.class);
+
+    when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    doThrow(new RuntimeException("close failed")).when(bulkSink).close();
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<DistributedSearchIndexExecutor> executorConstruction =
+            mockConstruction(
+                DistributedSearchIndexExecutor.class,
+                (mock, context) -> {
+                  when(mock.createJob(
+                          any(Set.class), any(EventPublisherJob.class), eq("admin"), any()))
+                      .thenReturn(
+                          SearchIndexJob.builder().id(UUID.randomUUID()).totalRecords(5).build());
+                  org.mockito.Mockito.doThrow(new RuntimeException("execute failed"))
+                      .when(mock)
+                      .execute(any(), any(), eq(false), any());
+                })) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
+
+      ExecutionResult result =
+          strategy.execute(
+              ReindexingConfiguration.builder()
+                  .entities(Set.of(Entity.TABLE))
+                  .batchSize(10)
+                  .maxConcurrentRequests(1)
+                  .payloadSize(512L)
+                  .build(),
+              context(APP_ID));
+
+      assertEquals(ExecutionResult.Status.FAILED, result.status());
+      verify(bulkSink).close();
+    }
+  }
+
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void executeClosesSinkSuccessfullyWhenDoExecuteThrows() throws Exception {
+    EntityRepository entityRepository = mock(EntityRepository.class);
+    EntityDAO entityDao = mock(EntityDAO.class);
+    BulkSink bulkSink = mock(BulkSink.class);
+
+    when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<DistributedSearchIndexExecutor> executorConstruction =
+            mockConstruction(
+                DistributedSearchIndexExecutor.class,
+                (mock, context) -> {
+                  when(mock.createJob(
+                          any(Set.class), any(EventPublisherJob.class), eq("admin"), any()))
+                      .thenReturn(
+                          SearchIndexJob.builder().id(UUID.randomUUID()).totalRecords(5).build());
+                  org.mockito.Mockito.doThrow(new RuntimeException("execute failed"))
+                      .when(mock)
+                      .execute(any(), any(), eq(false), any());
+                })) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
+
+      ExecutionResult result =
+          strategy.execute(
+              ReindexingConfiguration.builder()
+                  .entities(Set.of(Entity.TABLE))
+                  .batchSize(10)
+                  .maxConcurrentRequests(1)
+                  .payloadSize(512L)
+                  .build(),
+              context(APP_ID));
+
+      assertEquals(ExecutionResult.Status.FAILED, result.status());
+      verify(bulkSink).close();
+      assertNull(getField("searchIndexSink"));
     }
   }
 

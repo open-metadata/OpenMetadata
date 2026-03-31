@@ -230,28 +230,25 @@ public class JobRecoveryManager {
    * @return true if the job is orphaned
    */
   private boolean isJobOrphaned(SearchIndexJob job) {
-    SearchReindexLockDAO lockDAO = collectionDAO.searchReindexLockDAO();
-
-    SearchReindexLockDAO.LockInfo lockInfo = lockDAO.getLockInfo("SEARCH_REINDEX_LOCK");
-
-    if (lockInfo == null) {
-      return true;
-    }
-
-    if (!lockInfo.jobId().equals(job.getId().toString())) {
-      return true;
-    }
-
     long now = System.currentTimeMillis();
 
-    if (lockInfo.expiresAt() < now) {
-      return true;
+    // Primary check: is job.updatedAt recent? Partition workers touch this every 2 min
+    // via completePartition → touchJobThrottled. If it's fresh, the job is alive
+    // regardless of lock state (covers the recovery case where lock was released).
+    long lastUpdateThreshold = now - ABANDONED_LOCK_THRESHOLD_MS;
+    if (job.getUpdatedAt() >= lastUpdateThreshold) {
+      return false;
     }
 
-    // Lock is valid — also check that the coordinator is making progress
-    // (the lock refresh loop touches updatedAt every 60s alongside the lock)
-    long lastUpdateThreshold = now - ABANDONED_LOCK_THRESHOLD_MS;
-    if (job.getUpdatedAt() < lastUpdateThreshold) {
+    // Secondary check: does a valid lock exist for this job?
+    SearchReindexLockDAO lockDAO = collectionDAO.searchReindexLockDAO();
+    SearchReindexLockDAO.LockInfo lockInfo = lockDAO.getLockInfo("SEARCH_REINDEX_LOCK");
+
+    if (lockInfo != null
+        && lockInfo.jobId().equals(job.getId().toString())
+        && lockInfo.expiresAt() >= now) {
+      // Lock is valid but updatedAt is stale — coordinator may have crashed
+      // while holding the lock. Consider orphaned.
       LOG.debug(
           "Job {} has valid lock but updatedAt is {} ms stale, considering orphaned",
           job.getId(),
@@ -259,7 +256,8 @@ public class JobRecoveryManager {
       return true;
     }
 
-    return false;
+    // No valid lock AND updatedAt is stale — orphaned
+    return true;
   }
 
   /**
@@ -348,8 +346,15 @@ public class JobRecoveryManager {
         resetPartitionForRetry(partition);
       }
 
+      // Touch job.updatedAt so OrphanJobMonitor doesn't immediately re-detect it as orphaned.
+      // Without this, the 10-min staleness check in isJobOrphaned() triggers on the next cycle
+      // because neither participants nor partition workers update job.updatedAt.
+      collectionDAO
+          .searchIndexJobDAO()
+          .touchJob(job.getId().toString(), System.currentTimeMillis());
+
       LOG.info(
-          "Recovered job {}: reset {} processing partitions to pending",
+          "Recovered job {}: reset {} processing partitions to pending, refreshed updatedAt",
           job.getId(),
           processing.size());
       return true;
