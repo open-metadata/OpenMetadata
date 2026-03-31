@@ -623,7 +623,7 @@ class JobRecoveryManagerTest {
         now - TimeUnit.MINUTES.toMillis(30),
         status == IndexJobStatus.RUNNING ? now - TimeUnit.MINUTES.toMillis(29) : null,
         null,
-        now - TimeUnit.MINUTES.toMillis(5),
+        now - TimeUnit.MINUTES.toMillis(15),
         null,
         now - TimeUnit.MINUTES.toMillis(28),
         2);
