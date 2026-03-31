@@ -406,7 +406,9 @@ test.describe('Ontology Explorer', () => {
         glossary.responseData.displayName ?? glossary.responseData.name;
       await glossarySection.locator('input').click();
       await page.getByRole('option', { name: glossaryName }).click();
-      await expect(glossarySection.getByText(glossaryName).first()).toBeVisible();
+      await expect(
+        glossarySection.getByText(glossaryName).first()
+      ).toBeVisible();
     });
   });
 
