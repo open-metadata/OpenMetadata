@@ -14,7 +14,9 @@
 package org.openmetadata.service.audit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -62,7 +64,7 @@ class AuditLogConsumerTest {
   }
 
   @Test
-  void testOffsetRecordSerialization() throws Exception {
+  void testOffsetRecordSerialization() {
     // Test that the AuditLogOffset record can be serialized/deserialized
     long timestamp = System.currentTimeMillis();
     long offset = 100L;
@@ -72,8 +74,8 @@ class AuditLogConsumerTest {
 
     // Verify it can be parsed (this tests the format expected by the consumer)
     assertNotNull(json);
-    assertEquals(true, json.contains("timestamp"));
-    assertEquals(true, json.contains("currentOffset"));
+    assertTrue(json.contains("timestamp"));
+    assertTrue(json.contains("currentOffset"));
   }
 
   @Test
@@ -100,7 +102,7 @@ class AuditLogConsumerTest {
   }
 
   @Test
-  void testCreateValidChangeEventJson() throws Exception {
+  void testCreateValidChangeEventJson() {
     // Test that we can create valid ChangeEvent JSON for processing
     ChangeEvent event = new ChangeEvent();
     event.setId(UUID.randomUUID());
@@ -152,14 +154,13 @@ class AuditLogConsumerTest {
 
     // Offset should have advanced
     assertEquals(3L, lastSuccessfulOffset);
-    assertEquals(true, lastSuccessfulOffset > currentOffset);
+    assertTrue(lastSuccessfulOffset > currentOffset);
   }
 
   @Test
   void testOffsetNotAdvancedOnFailure() {
     // Test that offset doesn't advance when processing fails
-    long currentOffset = 0;
-    long lastSuccessfulOffset = currentOffset;
+    long lastSuccessfulOffset = 0;
 
     // Simulate processing where 2nd event fails
     List<Long> eventOffsets = List.of(1L, 2L, 3L);
@@ -192,7 +193,7 @@ class AuditLogConsumerTest {
 
     // Should stop if processed < batchSize
     boolean shouldContinue = processedInBatch >= batchSize;
-    assertEquals(false, shouldContinue);
+    assertFalse(shouldContinue);
   }
 
   @Test
@@ -203,7 +204,7 @@ class AuditLogConsumerTest {
 
     // Should continue if processed >= batchSize
     boolean shouldContinue = processedInBatch >= batchSize;
-    assertEquals(true, shouldContinue);
+    assertTrue(shouldContinue);
   }
 
   private ChangeEvent createChangeEvent(String userName) {

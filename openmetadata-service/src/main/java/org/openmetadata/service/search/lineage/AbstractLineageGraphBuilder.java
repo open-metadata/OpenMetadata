@@ -2,6 +2,7 @@ package org.openmetadata.service.search.lineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -46,10 +47,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
 
   /**
    * Calculates the current depth level in lineage traversal.
-   *
-   * @param lineageRequest The lineage request containing depth configuration
-   * @param remainingDepth The remaining depth to traverse
-   * @return The current depth level
    */
   protected int calculateCurrentDepth(SearchLineageRequest lineageRequest, int remainingDepth) {
     if (lineageRequest.getDirection() == null) {
@@ -66,9 +63,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
 
   /**
    * Validates layer pagination parameters.
-   *
-   * @param lineageRequest The lineage request containing layer parameters
-   * @throws IllegalArgumentException if parameters are invalid
    */
   protected void validateLayerParameters(SearchLineageRequest lineageRequest) {
     if (lineageRequest.getLayerFrom() < 0 || lineageRequest.getLayerSize() < 0) {
@@ -79,12 +73,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
 
   /**
    * Paginates a list using offset and limit.
-   *
-   * @param list The list to paginate
-   * @param from The starting index (0-based)
-   * @param size The maximum number of elements to return
-   * @param <T> The type of elements in the list
-   * @return A sublist containing the paginated elements
    */
   protected <T> List<T> paginateList(List<T> list, int from, int size) {
     if (list == null || list.isEmpty() || from >= list.size()) {
@@ -97,9 +85,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   /**
    * Reports progress for lineage query execution.
    * Delegates to the progress tracker in the context if available.
-   *
-   * @param context The lineage query context containing progress tracker
-   * @param processedNodes Number of nodes processed so far
    */
   protected void trackProgress(LineageQueryContext context, int processedNodes) {
     if (context == null || context.getProgressTracker() == null) {
@@ -116,9 +101,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   /**
    * Checks cache for existing lineage result.
    * Returns cached result if available and caching is enabled.
-   *
-   * @param request The lineage request
-   * @return Optional containing cached result if present, empty otherwise
    */
   protected java.util.Optional<SearchLineageResult> checkCache(SearchLineageRequest request) {
     if (!config.isEnableCaching()) {
@@ -133,9 +115,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
    * Caches lineage result if eligible.
    * Only caches small and medium graphs (< 50K nodes).
    * Large and streaming graphs are not cached.
-   *
-   * @param request The lineage request
-   * @param result The lineage result to cache
    */
   protected void cacheResult(SearchLineageRequest request, SearchLineageResult result) {
     if (!config.isEnableCaching()) {
@@ -165,8 +144,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   /**
    * Invalidates cache entry for the given entity FQN.
    * Should be called when entity is updated or lineage edges change.
-   *
-   * @param fqn The fully qualified name of the entity
    */
   protected void invalidateCache(String fqn) {
     if (!config.isEnableCaching()) {
@@ -183,10 +160,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   /**
    * Applies node-level filters in-memory on unfiltered result while preserving paths.
    * This method filters nodes based on the queryFilter and traces paths from root to matching nodes.
-   *
-   * @param unfilteredResult The unfiltered lineage result containing all nodes and edges
-   * @param request The lineage request containing the query filter and root FQN
-   * @return Filtered result with paths preserved from root to matching nodes
    */
   protected SearchLineageResult applyInMemoryFiltersWithPathPreservation(
       SearchLineageResult unfilteredResult, SearchLineageRequest request) {
@@ -218,10 +191,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   /**
    * Checks if a node matches the filter criteria (in-memory).
    * Parses ES Query DSL or query strings and matches against entity fields.
-   *
-   * @param node The node to check
-   * @param queryFilter The query filter (ES Query DSL JSON or simple query string)
-   * @return true if the node matches the filter, false otherwise
    */
   protected boolean matchesNodeFilter(NodeInformation node, String queryFilter) {
     if (node == null || node.getEntity() == null || nullOrEmpty(queryFilter)) {
@@ -240,13 +209,9 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   /**
    * Main entry point for building lineage graphs with strategy selection.
    * Uses adaptive strategy based on estimated graph size.
-   *
-   * @param request The lineage search request
-   * @return Complete lineage result
-   * @throws java.io.IOException if search backend communication fails
    */
   protected SearchLineageResult buildLineageGraphWithStrategy(SearchLineageRequest request)
-      throws java.io.IOException {
+      throws IOException {
 
     // 1. Estimate graph size
     int estimatedSize = estimateGraphSizeForRequest(request);
@@ -269,10 +234,6 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
 
   /**
    * Builds query context from request and estimated size.
-   *
-   * @param request The lineage request
-   * @param estimatedSize Estimated node count
-   * @return Query context
    */
   protected LineageQueryContext buildQueryContext(SearchLineageRequest request, int estimatedSize) {
 
@@ -301,13 +262,8 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   /**
    * Estimates graph size for a lineage request.
    * Wrapper that creates a context for the estimation.
-   *
-   * @param request The lineage request
-   * @return Estimated node count
-   * @throws java.io.IOException if estimation fails
    */
-  protected int estimateGraphSizeForRequest(SearchLineageRequest request)
-      throws java.io.IOException {
+  protected int estimateGraphSizeForRequest(SearchLineageRequest request) {
     // Create a minimal context for estimation (estimated size = 0 is placeholder)
     LineageQueryContext estimationContext =
         LineageQueryContext.builder()
@@ -324,24 +280,15 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   /**
    * Abstract method for backend-specific graph size estimation.
    * Must be implemented by ES/OS builders.
-   *
-   * @param context Query context
-   * @return Estimated node count
-   * @throws java.io.IOException if estimation fails
    */
   @Override
-  public abstract int estimateGraphSize(LineageQueryContext context) throws java.io.IOException;
+  public abstract int estimateGraphSize(LineageQueryContext context);
 
   /**
    * Abstract method for backend-specific in-memory graph execution.
    * Must be implemented by ES/OS builders.
-   *
-   * @param context Query context
-   * @param batchSize Batch size for queries
-   * @return Lineage result
-   * @throws java.io.IOException if execution fails
    */
   @Override
   public abstract SearchLineageResult executeInMemory(LineageQueryContext context, int batchSize)
-      throws java.io.IOException;
+      throws IOException;
 }

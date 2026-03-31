@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
@@ -2063,12 +2063,15 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         const columnFqn =
           (entity as TableClass).entityResponseData.columns[0]
             .fullyQualifiedName ?? '';
+        const tableFqn =
+          (entity as TableClass).entityResponseData.fullyQualifiedName ?? '';
 
         for (const type of properties) {
           await test.step(`Set ${type} custom property on column and verify in UI`, async () => {
             await verifyTableColumnCustomPropertyPersistence({
               page,
               columnFqn,
+              tableFqn,
               propertyName: customPropertyValue[type].property.name,
               propertyType: type,
               users,

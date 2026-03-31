@@ -48,7 +48,7 @@ public interface AuthenticatorHandler {
   void validatePassword(String providedIdentity, String reqPassword, User omUser)
       throws TemplateException, IOException;
 
-  User lookUserInProvider(String email, String pwd) throws TemplateException, IOException;
+  User lookUserInProvider(String email, String pwd) throws IOException;
 
   default User registerUser(RegistrationRequest registrationRequest) {
     throw new CustomExceptionMessage(

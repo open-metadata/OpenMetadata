@@ -857,7 +857,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    * @param requestBuilder the request builder to apply RBAC constraints to
    */
   private void applyRbacQueryWithCaching(
-      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) throws IOException {
+      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
     if (!shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       return;
     }
@@ -946,8 +946,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
         if (jsonObject.containsKey("_source")) {
           JsonValue sourceValue = jsonObject.get("_source");
-          if (sourceValue instanceof JsonObject) {
-            JsonObject sourceObject = (JsonObject) sourceValue;
+          if (sourceValue instanceof JsonObject sourceObject) {
             if (sourceObject.containsKey("include")) {
               JsonArray includesArray = sourceObject.getJsonArray("include");
               includes = new String[includesArray.size()];
@@ -1502,11 +1501,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       requestBuilder.size(request.getSize());
 
       // Apply RBAC constraints using applyRbacQueryWithCaching
-      try {
-        applyRbacQueryWithCaching(subjectContext, requestBuilder);
-      } catch (IOException e) {
-        LOG.warn("Failed to apply RBAC query with caching, continuing without RBAC", e);
-      }
+      applyRbacQueryWithCaching(subjectContext, requestBuilder);
 
       // Add aggregations for fallback NLQ search
       addAggregationsToNLQQuery(requestBuilder, request.getIndex());

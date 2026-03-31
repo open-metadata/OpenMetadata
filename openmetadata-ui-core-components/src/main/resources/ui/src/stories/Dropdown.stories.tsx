@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Copy01, Edit01, HelpCircle, Trash01, User01 } from "@untitledui/icons";
-import type { Meta, StoryObj } from "@storybook/react";
-import { Dropdown } from "../components/base/dropdown/dropdown";
+import { Edit01, HelpCircle, Trash01, User01 } from '@untitledui/icons';
+import type { Meta, StoryObj } from '@storybook/react';
+import { Dropdown } from '../components/base/dropdown/dropdown';
 
 const meta = {
-  title: "Components/Dropdown",
+  title: 'Components/Dropdown',
   component: Dropdown.Root,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Dropdown.Root>;
 
 export default meta;
@@ -32,12 +32,12 @@ export const Default: Story = {
       <Dropdown.DotsButton />
       <Dropdown.Popover>
         <Dropdown.Menu aria-label="Actions">
-          <Dropdown.Item label="Edit" icon={Edit01} />
-          <Dropdown.Item label="Invite user" icon={User01} />
+          <Dropdown.Item icon={Edit01} label="Edit" />
+          <Dropdown.Item icon={User01} label="Invite user" />
           <Dropdown.Separator />
-          <Dropdown.Item label="Help" icon={HelpCircle} />
+          <Dropdown.Item icon={HelpCircle} label="Help" />
           <Dropdown.Separator />
-          <Dropdown.Item label="Delete" icon={Trash01} />
+          <Dropdown.Item icon={Trash01} label="Delete" />
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>
@@ -54,15 +54,15 @@ export const WithSections: StoryObj = {
             <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold tw:text-fg-quaternary">
               Account
             </Dropdown.SectionHeader>
-            <Dropdown.Item label="Profile" icon={User01} />
-            <Dropdown.Item label="Help" icon={HelpCircle} />
+            <Dropdown.Item icon={User01} label="Profile" />
+            <Dropdown.Item icon={HelpCircle} label="Help" />
           </Dropdown.Section>
           <Dropdown.Separator />
           <Dropdown.Section>
             <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold tw:text-fg-quaternary">
               Danger Zone
             </Dropdown.SectionHeader>
-            <Dropdown.Item label="Delete" icon={Trash01} />
+            <Dropdown.Item icon={Trash01} label="Delete" />
           </Dropdown.Section>
         </Dropdown.Menu>
       </Dropdown.Popover>
@@ -76,11 +76,11 @@ export const WithAddon: StoryObj = {
       <Dropdown.DotsButton />
       <Dropdown.Popover>
         <Dropdown.Menu aria-label="Actions with addons">
-          <Dropdown.Item label="Edit" addon="⌘E" />
-          <Dropdown.Item label="Copy" addon="⌘C" />
-          <Dropdown.Item label="Paste" addon="⌘V" />
+          <Dropdown.Item addon="⌘E" label="Edit" />
+          <Dropdown.Item addon="⌘C" label="Copy" />
+          <Dropdown.Item addon="⌘V" label="Paste" />
           <Dropdown.Separator />
-          <Dropdown.Item label="Delete" addon="⌫" />
+          <Dropdown.Item addon="⌫" label="Delete" />
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>
@@ -94,7 +94,7 @@ export const WithDisabledItem: StoryObj = {
       <Dropdown.Popover>
         <Dropdown.Menu aria-label="Actions with disabled">
           <Dropdown.Item label="Edit" />
-          <Dropdown.Item label="Disabled Action" isDisabled />
+          <Dropdown.Item isDisabled label="Disabled Action" />
           <Dropdown.Separator />
           <Dropdown.Item label="Delete" />
         </Dropdown.Menu>

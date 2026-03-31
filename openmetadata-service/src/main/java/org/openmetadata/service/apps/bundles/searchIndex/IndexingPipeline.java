@@ -3,7 +3,6 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,8 +20,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
@@ -239,11 +236,9 @@ public class IndexingPipeline implements AutoCloseable {
 
         try {
           if (!EntityReader.TIME_SERIES_ENTITIES.contains(entityType)) {
-            searchIndexSink.write(
-                (java.util.List<EntityInterface>) entities.getData(), contextData);
+            searchIndexSink.write(entities.getData(), contextData);
           } else {
-            searchIndexSink.write(
-                (java.util.List<EntityTimeSeriesInterface>) entities.getData(), contextData);
+            searchIndexSink.write(entities.getData(), contextData);
           }
 
           StepStats entityStats = new StepStats();
@@ -291,7 +286,7 @@ public class IndexingPipeline implements AutoCloseable {
     }
   }
 
-  private void closeSink() throws IOException {
+  private void closeSink() {
     if (searchIndexSink != null) {
       int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
       if (pendingVectorTasks > 0) {

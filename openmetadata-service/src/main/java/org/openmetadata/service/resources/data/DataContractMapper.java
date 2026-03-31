@@ -27,36 +27,33 @@ public class DataContractMapper {
     EntityReference entity = create.getEntity();
 
     // Build basic fields
-    DataContract dataContract =
-        new DataContract()
-            .withId(UUID.randomUUID())
-            .withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withEntity(entity)
-            .withEntityStatus(create.getEntityStatus())
-            .withSchema(create.getSchema())
-            .withSemantics(create.getSemantics())
-            .withQualityExpectations(create.getQualityExpectations())
-            .withOwners(create.getOwners())
-            .withReviewers(create.getReviewers())
-            .withEffectiveFrom(create.getEffectiveFrom())
-            .withEffectiveUntil(create.getEffectiveUntil())
-            .withSourceUrl(create.getSourceUrl())
-            .withTermsOfUse(
-                create.getTermsOfUse() != null
-                    ? new org.openmetadata.schema.entity.data.TermsOfUse()
-                        .withContent(create.getTermsOfUse())
-                        .withInherited(false)
-                    : null)
-            .withSecurity(create.getSecurity())
-            .withSla(create.getSla())
-            .withExtension(create.getExtension())
-            .withOdcsQualityRules(create.getOdcsQualityRules())
-            .withUpdatedBy(user)
-            .withUpdatedAt(System.currentTimeMillis());
-
-    return dataContract;
+    return new DataContract()
+        .withId(UUID.randomUUID())
+        .withName(create.getName())
+        .withDisplayName(create.getDisplayName())
+        .withDescription(create.getDescription())
+        .withEntity(entity)
+        .withEntityStatus(create.getEntityStatus())
+        .withSchema(create.getSchema())
+        .withSemantics(create.getSemantics())
+        .withQualityExpectations(create.getQualityExpectations())
+        .withOwners(create.getOwners())
+        .withReviewers(create.getReviewers())
+        .withEffectiveFrom(create.getEffectiveFrom())
+        .withEffectiveUntil(create.getEffectiveUntil())
+        .withSourceUrl(create.getSourceUrl())
+        .withTermsOfUse(
+            create.getTermsOfUse() != null
+                ? new org.openmetadata.schema.entity.data.TermsOfUse()
+                    .withContent(create.getTermsOfUse())
+                    .withInherited(false)
+                : null)
+        .withSecurity(create.getSecurity())
+        .withSla(create.getSla())
+        .withExtension(create.getExtension())
+        .withOdcsQualityRules(create.getOdcsQualityRules())
+        .withUpdatedBy(user)
+        .withUpdatedAt(System.currentTimeMillis());
   }
 
   public static DataContract trimFields(DataContract dataContract, Include include) {

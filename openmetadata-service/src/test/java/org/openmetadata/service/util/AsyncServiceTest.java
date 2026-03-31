@@ -1,6 +1,7 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -207,7 +208,7 @@ class AsyncServiceTest {
                           throw new Exception("checked");
                         })
                     .join());
-    assertTrue(exception.getCause() instanceof RuntimeException);
+    assertInstanceOf(RuntimeException.class, exception.getCause());
     assertEquals("checked", exception.getCause().getCause().getMessage());
 
     CompletionException runtimeException =
@@ -220,7 +221,7 @@ class AsyncServiceTest {
                           throw new IllegalStateException("runtime");
                         })
                     .join());
-    assertTrue(runtimeException.getCause() instanceof IllegalStateException);
+    assertInstanceOf(IllegalStateException.class, runtimeException.getCause());
     assertEquals("runtime", runtimeException.getCause().getMessage());
 
     service.shutdown();

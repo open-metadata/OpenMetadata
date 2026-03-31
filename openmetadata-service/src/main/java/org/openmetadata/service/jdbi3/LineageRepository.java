@@ -146,10 +146,9 @@ public class LineageRepository {
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
     boolean relationAlreadyExists =
-        Boolean.FALSE.equals(
-            nullOrEmpty(
-                dao.relationshipDAO()
-                    .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal())));
+        !nullOrEmpty(
+            dao.relationshipDAO()
+                .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal()));
 
     if (lineageDetails.getPipeline() != null) {
       // Validate pipeline entity
@@ -495,14 +494,14 @@ public class LineageRepository {
       for (ColumnLineage columnLineage : columnsLineage) {
         if (!toColumns.contains(
             columnLineage.getToColumn().replace(to.getFullyQualifiedName() + ".", ""))) {
-          LOG.debug("Invalid toColumn: " + columnLineage.getToColumn());
+          LOG.debug("Invalid toColumn: {}", columnLineage.getToColumn());
           continue;
         }
         List<String> filteredFromColumns = new ArrayList<>();
         boolean updateFromColumns = false;
         for (String fromColumn : columnLineage.getFromColumns()) {
           if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
-            LOG.debug("Invalid fromColumn: " + fromColumn);
+            LOG.debug("Invalid fromColumn: {}", fromColumn);
             updateFromColumns = true;
             continue;
           }

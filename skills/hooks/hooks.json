@@ -1,0 +1,51 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/openmetadata-workflow/SKILL.md\"",
+            "timeout": 5
+          }
+        ],
+        "description": "Load OpenMetadata workflow skill at session start"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q -- '--no-verify'; then echo '{\"decision\": \"block\", \"reason\": \"Do not skip pre-commit hooks. Fix the underlying issue instead.\"}'; exit 2; fi"
+          }
+        ],
+        "description": "Block --no-verify on git commits"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.java$'; then echo 'Reminder: run `mvn spotless:apply` before committing Java changes.'; fi"
+          }
+        ],
+        "description": "Remind to format Java after edits"
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE 'openmetadata-spec/src/main/resources/json/schema/.*\\.json$'; then echo 'Schema file modified. Run `make generate` to regenerate models.'; fi"
+          }
+        ],
+        "description": "Remind to regenerate after schema changes"
+      }
+    ]
+  }
+}

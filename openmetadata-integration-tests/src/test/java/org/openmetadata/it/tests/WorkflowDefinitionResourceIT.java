@@ -9554,10 +9554,15 @@ public class WorkflowDefinitionResourceIT {
     // Step 1: Create three users
     LOG.debug("Creating test users for self-approval prevention testing");
 
+    // Intentionally use a dotted username to cover the FQN quoting path:
+    // OpenMetadata quotes names containing dots (e.g. "ram.balaji"), so the entity link stored in
+    // the assignees list is <#E::user::"approver1.TIMESTAMP"> while event.getUserName() returns the
+    // raw unquoted value. The self-approval prevention must use FullyQualifiedName.quoteName()
+    // before comparing — this test explicitly validates that fix.
     CreateUser createUser1 =
         new CreateUser()
-            .withName("approver1_" + uniqueSuffix)
-            .withEmail("approver1_" + uniqueSuffix + "@example.com")
+            .withName("approver1." + uniqueSuffix)
+            .withEmail("approver1." + uniqueSuffix + "@example.com")
             .withDisplayName("Test Approver 1")
             .withIsAdmin(true); // Make user1 an admin so they can update reviewers
     User user1 = client.users().create(createUser1);
@@ -9771,13 +9776,13 @@ public class WorkflowDefinitionResourceIT {
                 + "]}]",
             user1.getId(),
             user1.getName(),
-            user1.getFullyQualifiedName(),
+            user1.getFullyQualifiedName().replace("\"", "\\\""),
             user2.getId(),
             user2.getName(),
-            user2.getFullyQualifiedName(),
+            user2.getFullyQualifiedName().replace("\"", "\\\""),
             user3.getId(),
             user3.getName(),
-            user3.getFullyQualifiedName());
+            user3.getFullyQualifiedName().replace("\"", "\\\""));
 
     // Update the classification to add reviewers (INCLUDING user1 who is making the update)
     JsonNode patch = MAPPER.readTree(reviewersJson);

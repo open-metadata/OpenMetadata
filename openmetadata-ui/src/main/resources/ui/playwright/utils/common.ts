@@ -1009,11 +1009,6 @@ export const testTableSorting = async (
     return (await firstCell.textContent())?.trim();
   };
 
-  const rowCount = await page.locator(visibleRowSelector).count();
-  if (rowCount <= 1) {
-    return;
-  }
-
   const initialValue = await getFirstCellValue();
 
   await header.click();

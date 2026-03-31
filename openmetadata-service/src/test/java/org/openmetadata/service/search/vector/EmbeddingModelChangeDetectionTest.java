@@ -49,9 +49,7 @@ class EmbeddingModelChangeDetectionTest {
   @Test
   void testChunkingLargeText() {
     StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < 500; i++) {
-      sb.append("word ");
-    }
+    sb.append("word ".repeat(500));
     var chunks = TextChunkManager.chunk(sb.toString());
     assertTrue(chunks.size() > 1);
   }

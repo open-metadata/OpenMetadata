@@ -36,9 +36,9 @@ import {
   selectDomain,
   setupAssetsForDomain,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { performUserLogin } from '../../utils/user';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const test = base.extend<{
   page: Page;

@@ -154,8 +154,7 @@ public interface MessageDecorator<T> {
     String entityUrl = "";
     switch (entityType) {
       case Entity.TEST_CASE:
-        if (entityInterface instanceof TestCase) {
-          TestCase testCase = (TestCase) entityInterface;
+        if (entityInterface instanceof TestCase testCase) {
           entityUrl = getEntityUrl("test-case", testCase.getFullyQualifiedName(), "issues");
         }
         break;

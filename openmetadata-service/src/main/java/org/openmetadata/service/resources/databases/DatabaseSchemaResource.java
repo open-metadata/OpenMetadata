@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -139,6 +140,12 @@ public class DatabaseSchemaResource
               schema = @Schema(type = "string", example = "customerDatabase"))
           @QueryParam("database")
           String databaseParam,
+      @Parameter(
+              description =
+                  "Filter schemas by regex pattern applied to the schema `name` by default. To apply the regex to the fullyQualifiedName instead, set `regexFilterByFqn=true`. For better performance use in combination with the `database` query filter.",
+              schema = @Schema(type = "string", example = "finance_.*"))
+          @QueryParam("databaseSchemaRegex")
+          String databaseSchemaParamRegex,
       @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -160,8 +167,32 @@ public class DatabaseSchemaResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "When true, regex filters match against fullyQualifiedName instead of name. Default is false.",
+              schema = @Schema(type = "boolean", example = "false"))
+          @QueryParam("regexFilterByFqn")
+          @DefaultValue("false")
+          boolean regexFilterByFqn,
+      @Parameter(
+              description =
+                  "Controls how regex filters are applied. 'include' returns matching entities, 'exclude' returns non-matching entities. Default is 'include'.",
+              schema = @Schema(implementation = RegexMode.class))
+          @QueryParam("regexMode")
+          @DefaultValue("include")
+          RegexMode regexMode) {
     ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
+    if (regexFilterByFqn) {
+      filter.addQueryParam("regexFilterByFqn", true);
+    }
+    if (regexMode != null) {
+      filter.addQueryParam("regexMode", regexMode.value());
+    }
+    if (databaseSchemaParamRegex != null) {
+      filter.addQueryParam("databaseSchemaRegex", databaseSchemaParamRegex);
+      filter.addQueryParam("databaseSchemaRegexField", "name");
+    }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

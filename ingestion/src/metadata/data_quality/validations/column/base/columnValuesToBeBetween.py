@@ -40,7 +40,7 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import is_date_time
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
-from metadata.utils.time_utils import convert_timestamp
+from metadata.utils.time_utils import convert_timestamp, utc_from_timestamp
 
 logger = test_suite_logger()
 
@@ -127,7 +127,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             min_bound = self.get_test_case_param_value(
                 self.test_case.parameterValues,  # type: ignore
                 self.MIN_BOUND,
-                type_=datetime.fromtimestamp,
+                type_=utc_from_timestamp,
                 default=datetime.min,
                 pre_processor=convert_timestamp,
             )
@@ -135,7 +135,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             max_bound = self.get_test_case_param_value(
                 self.test_case.parameterValues,  # type: ignore
                 self.MAX_BOUND,
-                type_=datetime.fromtimestamp,
+                type_=utc_from_timestamp,
                 default=datetime.max,
                 pre_processor=convert_timestamp,
             )

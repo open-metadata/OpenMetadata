@@ -32,6 +32,10 @@ class MockTextEncoder {
 }
 global.TextEncoder = MockTextEncoder as unknown as typeof TextEncoder;
 
+jest.mock('@melloware/react-logviewer', () => ({
+  LazyLog: jest.fn().mockReturnValue(<div data-testid="lazy-log-mock" />),
+}));
+
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   ...jest.requireActual('../../../../utils/date-time/DateTimeUtils'),
   formatDateTimeWithTimezone: jest
