@@ -227,14 +227,15 @@ class SearchIndexRetryQueueIT {
     String entityId = UUID.randomUUID().toString();
     String entityFqn = ns.prefix("rq") + ".entity";
 
-    retryQueueDAO.upsert(entityId, entityFqn, "failure", SearchIndexRetryQueue.STATUS_PENDING, "");
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "failure", SearchIndexRetryQueue.STATUS_COMPLETED, "");
 
     int first =
-        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_COMPLETED);
     assertEquals(1, first);
 
     int second =
-        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_COMPLETED);
     assertEquals(0, second);
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
