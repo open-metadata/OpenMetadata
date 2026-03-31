@@ -342,7 +342,7 @@ jobs:
 
             </details>
 
-            **Fix locally:**
+            **Run locally to get details about typescript errors:**
             ```bash
             make tsc-src-fix
             ```
@@ -719,7 +719,7 @@ jobs:
 
             </details>
 
-            **Fix locally:**
+            **Run locally to get details about typescript errors::**
             ```bash
             make tsc-playwright-fix
             ```
