@@ -24,12 +24,7 @@ import {
   supersetFormDetails4,
 } from '../../constant/serviceForm';
 import { UserClass } from '../../support/user/UserClass';
-import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
-} from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
 
@@ -369,8 +364,10 @@ test.describe(
         await expect(page.locator('#name_help')).toContainText(
           'Name already exists.'
         );
+      });
 
-        const { apiContext, afterAction } = await getApiContext(page);
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
 
         // Cleanup the created service
         await apiContext.delete(
@@ -400,27 +397,36 @@ test.describe(
           .fill(`${SERVICE_NAMES.service2}`);
         await page.getByTestId('next-button').click();
 
-        await page.locator('#root\\/clientId').clear();
-        await page.fill('#root\\/clientId', lookerFormDetails.clientId);
+        await page.locator(String.raw`#root\/clientId`).clear();
+        await page.fill(
+          String.raw`#root\/clientId`,
+          lookerFormDetails.clientId
+        );
 
-        await page.locator('#root\\/clientSecret').clear();
-        await page.fill('#root\\/clientSecret', lookerFormDetails.clientSecret);
+        await page.locator(String.raw`#root\/clientSecret`).clear();
+        await page.fill(
+          String.raw`#root\/clientSecret`,
+          lookerFormDetails.clientSecret
+        );
 
-        await page.locator('#root\\/hostPort').clear();
-        await page.fill('#root\\/hostPort', lookerFormDetails.hostPort);
+        await page.locator(String.raw`#root\/hostPort`).clear();
+        await page.fill(
+          String.raw`#root\/hostPort`,
+          lookerFormDetails.hostPort
+        );
 
         await page
           .getByTestId('select-widget-root/gitCredentials__oneof_select')
           .click();
         await page.click(`.ant-select-dropdown:visible [title="Local Path"]`);
 
-        await page.locator('#root\\/gitCredentials').waitFor({
+        await page.locator(String.raw`#root\/gitCredentials`).waitFor({
           state: 'visible',
         });
 
-        await page.locator('#root\\/gitCredentials').clear();
+        await page.locator(String.raw`#root\/gitCredentials`).clear();
         await page.fill(
-          '#root\\/gitCredentials',
+          String.raw`#root\/gitCredentials`,
           lookerFormDetails.gitCredentials
         );
 
