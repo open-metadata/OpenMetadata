@@ -28,6 +28,10 @@ export interface TestCase {
      */
     createdBy?: string;
     /**
+     * List of data products this entity is part of.
+     */
+    dataProducts?: EntityReference[];
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -220,8 +224,7 @@ export interface FieldChange {
 }
 
 /**
- * Domains the test case belongs to. When not set, the test case inherits the domain from
- * the table it belongs to.
+ * List of data products this entity is part of.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

@@ -219,7 +219,7 @@ public final class CommonUtil {
     }
   }
 
-  public static String CapitalizeFirst(String str) {
+  public static String capitalizeFirst(String str) {
     if (str == null || str.isEmpty()) return str;
     return Character.toUpperCase(str.charAt(0)) + str.substring(1);
   }

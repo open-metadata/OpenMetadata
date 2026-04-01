@@ -1,6 +1,6 @@
 package org.openmetadata.service.search;
 
-import static org.openmetadata.common.utils.CommonUtil.CapitalizeFirst;
+import static org.openmetadata.common.utils.CommonUtil.capitalizeFirst;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
@@ -1803,7 +1803,7 @@ public class SearchRepository {
         } else {
           List<EntityReference> refs = resolveEntityReferenceList(field.getName(), entity);
           refs.forEach(r -> r.setInherited(true));
-          data.put("updated" + CapitalizeFirst(field.getName()), refs);
+          data.put("updated" + capitalizeFirst(field.getName()), refs);
           script.append(generateAddListScript(field.getName()));
         }
       }
@@ -1859,7 +1859,7 @@ public class SearchRepository {
         } else {
           List<EntityReference> refs = resolveEntityReferenceList(field.getName(), entity);
           refs.forEach(r -> r.setInherited(true));
-          data.put("removed" + CapitalizeFirst(field.getName()), refs);
+          data.put("removed" + capitalizeFirst(field.getName()), refs);
           script.append(generateRemoveListScript(field.getName()));
         }
       }
@@ -1909,7 +1909,7 @@ public class SearchRepository {
         } else {
           List<EntityReference> refs = resolveEntityReferenceList(field.getName(), entity);
           refs.forEach(r -> r.setInherited(true));
-          data.put("updated" + CapitalizeFirst(field.getName()), refs);
+          data.put("updated" + capitalizeFirst(field.getName()), refs);
           script.append(generateAddListScript(field.getName()));
         }
       }
@@ -1974,7 +1974,7 @@ public class SearchRepository {
   }
 
   private String generateAddListScript(String fieldName) {
-    String cap = CapitalizeFirst(fieldName);
+    String cap = capitalizeFirst(fieldName);
     return String.format(
         """
         if (ctx._source.%s == null || ctx._source.%s.isEmpty() ||
@@ -1986,7 +1986,7 @@ public class SearchRepository {
   }
 
   private String generateRemoveListScript(String fieldName) {
-    String cap = CapitalizeFirst(fieldName);
+    String cap = capitalizeFirst(fieldName);
     return String.format(
         """
         if (ctx._source.%s != null) {
