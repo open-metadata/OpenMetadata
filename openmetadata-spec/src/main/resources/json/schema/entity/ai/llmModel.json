@@ -390,6 +390,10 @@
       "description": "Data products this model is part of",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
+    },
     "tags": {
       "description": "Tags for this LLM Model",
       "type": "array",
