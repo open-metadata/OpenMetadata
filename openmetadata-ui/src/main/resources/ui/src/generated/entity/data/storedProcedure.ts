@@ -33,6 +33,10 @@ export interface StoredProcedure {
      */
     databaseSchema?: EntityReference;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -437,6 +441,8 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Reference to Database Schema that contains this stored procedure.
+ *
+ * Reference to the data contract for this entity.
  *
  * List of data products this entity is part of.
  *
