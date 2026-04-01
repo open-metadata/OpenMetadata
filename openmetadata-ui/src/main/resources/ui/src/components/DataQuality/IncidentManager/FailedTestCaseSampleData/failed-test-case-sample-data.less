@@ -1,0 +1,63 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../../styles/variables.less';
+
+.ant-table-cell.failed-sample-data-column,
+.ant-table-row:hover .ant-table-cell.failed-sample-data-column {
+  background-color: fade(@red-3, 5%);
+
+  .ant-typography {
+    color: @red-3;
+  }
+}
+
+.ant-table-wrapper
+  .ant-table-bordered
+  .ant-table-container
+  .ant-table-content
+  > table
+  tbody
+  > tr
+  td.ant-table-cell.diff-type-sample-data-column {
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  padding-right: 16px;
+}
+
+.add-sample-data {
+  background: fade(@green-3, 5%);
+
+  .diff-type-sample-data-column {
+    .ant-typography {
+      color: @green-3;
+    }
+  }
+}
+.remove-sample-data {
+  background: fade(@red-3, 5%);
+
+  .diff-type-sample-data-column {
+    .ant-typography {
+      color: @red-3;
+    }
+  }
+}
+.not-equal-sample-data {
+  background: #f8f8f8;
+
+  .diff-type-sample-data-column {
+    .ant-typography {
+      color: @grey-4;
+    }
+  }
+}
