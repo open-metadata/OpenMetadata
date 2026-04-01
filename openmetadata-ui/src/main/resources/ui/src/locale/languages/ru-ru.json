@@ -273,6 +273,7 @@
     "clear": "Очистить",
     "clear-entity": "Очистить {{entity}}",
     "clear-filter-plural": "Сбросить фильтры",
+    "clear-selection": "Очистить выбор",
     "click-here": "Нажмите здесь",
     "click-to-upload": "Нажмите для загрузки",
     "client-email": "Email клиента",

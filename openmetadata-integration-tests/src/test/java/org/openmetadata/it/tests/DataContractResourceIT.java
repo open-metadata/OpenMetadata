@@ -61,6 +61,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     supportsOwners = false;
     supportsTags = false;
     supportsDataProducts = false;
+    supportsDataContract = false;
     supportsDomains = false;
     supportsPatchDomains = false;
     supportsSearchIndex = false; // DataContract doesn't have a search index

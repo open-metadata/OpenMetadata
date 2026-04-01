@@ -273,6 +273,7 @@
     "clear": "지우기",
     "clear-entity": "{{entity}} 지우기",
     "clear-filter-plural": "필터 지우기",
+    "clear-selection": "선택 취소",
     "click-here": "여기를 클릭",
     "click-to-upload": "클릭하여 업로드",
     "client-email": "클라이언트 이메일",
