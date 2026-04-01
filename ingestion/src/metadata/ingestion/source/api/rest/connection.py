@@ -68,14 +68,10 @@ def get_connection(connection: RestConnection) -> Union[Response, Dict]:
     """
     schema_conn = connection.openAPISchemaConnection
     if isinstance(schema_conn, OpenAPISchemaURL):
-        verify = True
-        if connection.verifySSL:
-            verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
-            verify_result = verify_ssl_fn(connection.sslConfig)
-            if verify_result is None:
-                verify = True
-            else:
-                verify = verify_result
+        verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
+        verify = verify_ssl_fn(connection.sslConfig)
+        if verify is None:
+            verify = True
         headers = {}
         if connection.token:
             headers["Authorization"] = f"Bearer {connection.token.get_secret_value()}"
