@@ -3835,7 +3835,7 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
       await expect(page.locator('.action--DELETE').first()).toBeVisible();
     });
 
-    await test.step('Delete the first rule condition and verify rule error is shown', async () => {
+    await test.step('Delete the filled rule condition and verify rule error is shown', async () => {
       const deleteButtons = page.locator('.action--DELETE');
       await deleteButtons.first().click();
 
@@ -3844,7 +3844,6 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
     });
 
     await test.step('select Is Set operator and error is hidden', async () => {
-      const ruleLocator = page.locator('.group').nth(0);
       await selectOption(
         page,
         page.locator('.rule--field .ant-select'),
@@ -3853,7 +3852,7 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        page.locator('.rule--operator .ant-select'),
         'Is Set'
       );
       await expect(page.getByText(/rule is required/i)).not.toBeVisible();

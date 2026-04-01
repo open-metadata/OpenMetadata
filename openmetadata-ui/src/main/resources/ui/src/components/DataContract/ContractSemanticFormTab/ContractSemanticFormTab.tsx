@@ -39,7 +39,10 @@ import {
   DataContract,
   SemanticsRule,
 } from '../../../generated/entity/data/dataContract';
-import { getSematicRuleFields } from '../../../utils/DataContract/DataContractUtils';
+import {
+  getSematicRuleFields,
+  semanticRuleValidator,
+} from '../../../utils/DataContract/DataContractUtils';
 import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
@@ -324,21 +327,7 @@ export const ContractSemanticFormTab: React.FC<{
                               rules={[
                                 {
                                   required: true,
-                                  validator: (_, value) => {
-                                    if (
-                                      !value ||
-                                      value === '""' ||
-                                      value === '{}'
-                                    ) {
-                                      return Promise.reject(
-                                        t('message.field-text-is-required', {
-                                          fieldText: t('label.rule'),
-                                        })
-                                      );
-                                    }
-
-                                    return Promise.resolve();
-                                  },
+                                  validator: semanticRuleValidator,
                                 },
                               ]}>
                               <QueryBuilderWidgetV1

@@ -193,7 +193,7 @@ const QueryBuilderWidgetV1: FC<{
         );
       }
 
-      onChange?.(!isEmpty(data) ? JSON.stringify(qFilter) : '');
+      onChange?.(isEmpty(data) ? '' : JSON.stringify(qFilter));
     } else {
       const jsonTree = QbUtils.getTree(nTree);
       try {
@@ -209,7 +209,7 @@ const QueryBuilderWidgetV1: FC<{
     if (props.getQueryActions && queryActionsRef.current) {
       props.getQueryActions(queryActionsRef.current);
     }
-  }, [treeInternal]);
+  }, [treeInternal, props.getQueryActions]);
 
   return (
     <div
@@ -244,13 +244,18 @@ const QueryBuilderWidgetV1: FC<{
                       config={{
                         ...builderProps.config,
                         settings: {
-                          ...builderProps.config.settings,
+                          ...builderProps.config?.settings,
                           renderButton: (btnProps, ctx) => {
-                            if (hasOnlyOneRule && btnProps.type === 'delRule') {
-                              return null as unknown as ReactElement<typeof btnProps>;
+                            if (
+                              (hasOnlyOneRule && btnProps.type === 'delRule') ||
+                              !builderProps.config?.settings?.renderButton
+                            ) {
+                              return null as unknown as ReactElement<
+                                typeof btnProps
+                              >;
                             }
 
-                            return builderProps.config.settings.renderButton!(
+                            return builderProps.config?.settings?.renderButton?.(
                               btnProps,
                               ctx
                             );
