@@ -34,6 +34,8 @@ import {
   EDGE_LINE_WIDTH_DEFAULT,
   EDGE_LINE_WIDTH_HIGHLIGHTED,
   EDGE_STROKE_COLOR,
+  FIT_VIEW_ZOOM_OUT,
+  FIT_VIEW_ZOOM_OUT_DATA_MODE,
   HIERARCHY_BADGE_OFFSET_Y,
   HIERARCHY_BADGE_TEXT_INSET,
   LayoutEngine,
@@ -44,8 +46,6 @@ import {
   NODE_BORDER_COLOR,
   NODE_BORDER_RADIUS,
   NODE_FILL_DEFAULT,
-  FIT_VIEW_ZOOM_OUT,
-  FIT_VIEW_ZOOM_OUT_DATA_MODE,
   NODE_LABEL_FILL,
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
@@ -63,9 +63,7 @@ import { computeAssetRingPositions } from '../utils/layoutCalculations';
 
 const elementIdSet = <T extends { id?: string }>(elements: readonly T[]) =>
   new Set(
-    elements
-      .map(({ id }) => id)
-      .filter((id): id is string => Boolean(id))
+    elements.map(({ id }) => id).filter((id): id is string => Boolean(id))
   );
 
 const sameStringSet = (a: Set<string>, b: Set<string>) =>
@@ -709,8 +707,7 @@ export function useOntologyGraph({
       : '';
 
     const termFingerprintChanged =
-      dataSignatureChanged ||
-      newTermFingerprint !== termFingerprintRef.current;
+      dataSignatureChanged || newTermFingerprint !== termFingerprintRef.current;
     const assetFingerprintChanged =
       newAssetFingerprint !== assetFingerprintRef.current;
     const structuralChanged = termFingerprintChanged || assetFingerprintChanged;

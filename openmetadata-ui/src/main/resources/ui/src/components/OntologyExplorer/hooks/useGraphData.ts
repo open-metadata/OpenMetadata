@@ -717,5 +717,11 @@ export function useGraphDataBuilder({
     return map;
   }, [explorationMode, inputNodes, mergedEdgesList]);
 
-  return { graphData, mergedEdgesList, neighborSet, computeNodeColor, assetToTermMap };
+  return {
+    graphData,
+    mergedEdgesList,
+    neighborSet,
+    computeNodeColor,
+    assetToTermMap,
+  };
 }
