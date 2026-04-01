@@ -133,6 +133,19 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/test_suite_index_mapping.json")
           .build();
 
+  private static final List<String> MOCK_ENTITY_TYPES =
+      List.of(
+          Entity.TABLE,
+          Entity.GLOSSARY_TERM,
+          Entity.TAG,
+          Entity.PAGE,
+          Entity.DOMAIN,
+          Entity.DATABASE_SERVICE,
+          Entity.TEST_SUITE,
+          Entity.GLOSSARY,
+          Entity.CLASSIFICATION,
+          Entity.QUERY);
+
   private SearchClient searchClient;
   private SearchIndexFactory searchIndexFactory;
   private SearchRepository repository;
@@ -174,18 +187,7 @@ class SearchRepositoryBehaviorTest {
       repoMapField.setAccessible(true);
       Map<String, Object> repoMap = (Map<String, Object>) repoMapField.get(null);
 
-      for (String entityType :
-          List.of(
-              Entity.TABLE,
-              Entity.GLOSSARY_TERM,
-              Entity.TAG,
-              Entity.PAGE,
-              Entity.DOMAIN,
-              Entity.DATABASE_SERVICE,
-              Entity.TEST_SUITE,
-              Entity.GLOSSARY,
-              Entity.CLASSIFICATION,
-              Entity.QUERY)) {
+      for (String entityType : MOCK_ENTITY_TYPES) {
         List<PropagationDescriptor> descriptors = buildDescriptorsFor(entityType);
         EntityRepository<?> mockRepo = mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
@@ -202,7 +204,7 @@ class SearchRepositoryBehaviorTest {
       Field repoMapField = Entity.class.getDeclaredField("ENTITY_REPOSITORY_MAP");
       repoMapField.setAccessible(true);
       Map<String, Object> repoMap = (Map<String, Object>) repoMapField.get(null);
-      repoMap.clear();
+      MOCK_ENTITY_TYPES.forEach(repoMap::remove);
     } catch (Exception e) {
       throw new RuntimeException("Failed to clear mock entity repositories", e);
     }
