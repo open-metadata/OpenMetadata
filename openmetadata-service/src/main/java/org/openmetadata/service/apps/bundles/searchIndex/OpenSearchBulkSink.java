@@ -42,7 +42,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.VectorBulkProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -137,7 +136,6 @@ public class OpenSearchBulkSink implements BulkSink {
   private final CopyOnWriteArrayList<Thread> pendingThreads;
   private final AtomicLong vectorSuccess = new AtomicLong(0);
   private final AtomicLong vectorFailed = new AtomicLong(0);
-  private VectorBulkProcessor vectorBulkProcessor;
 
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
@@ -464,10 +462,6 @@ public class OpenSearchBulkSink implements BulkSink {
       awaitVectorCompletion(300);
     } catch (Exception e) {
       LOG.warn("Error awaiting vector completion during close: {}", e.getMessage());
-    }
-
-    if (vectorBulkProcessor != null) {
-      vectorBulkProcessor.close();
     }
 
     vectorExecutor.shutdown();

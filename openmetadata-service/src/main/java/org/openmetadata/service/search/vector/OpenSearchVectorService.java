@@ -17,15 +17,11 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.VectorBulkProcessor;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
-import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
-import os.org.opensearch.client.opensearch.core.BulkRequest;
-import os.org.opensearch.client.opensearch.core.BulkResponse;
-import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
-import os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
@@ -42,6 +38,8 @@ public class OpenSearchVectorService implements VectorIndexService {
   private final OpenSearchClient client;
   @Getter private final EmbeddingClient embeddingClient;
   private final String language;
+  private VectorBulkProcessor centralBulkProcessor;
+  private String centralBulkProcessorIndex;
 
   public OpenSearchVectorService(
       OpenSearchClient client, EmbeddingClient embeddingClient, String language) {
@@ -458,53 +456,37 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public void bulkIndex(List<Map<String, Object>> documents, String targetIndex) {
     if (documents == null || documents.isEmpty()) {
       return;
     }
 
-    try {
-      List<BulkOperation> operations = new ArrayList<>();
-      for (int i = 0; i < documents.size(); i++) {
-        Map<String, Object> doc = documents.get(i);
-        String parentId = (String) doc.get("parent_id");
-        int chunkIndex = doc.containsKey("chunk_index") ? (int) doc.get("chunk_index") : i;
-        String docId = parentId + "-" + chunkIndex;
+    VectorBulkProcessor processor = getOrCreateBulkProcessor(targetIndex);
+    for (int i = 0; i < documents.size(); i++) {
+      Map<String, Object> doc = documents.get(i);
+      String parentId = (String) doc.get("parent_id");
+      int chunkIndex = doc.containsKey("chunk_index") ? (int) doc.get("chunk_index") : i;
+      String docId = parentId + "-" + chunkIndex;
+      processor.addChunk(docId, doc);
+    }
+  }
 
-        operations.add(
-            BulkOperation.of(
-                op -> op.index(idx -> idx.index(targetIndex).id(docId).document(doc))));
+  private synchronized VectorBulkProcessor getOrCreateBulkProcessor(String targetIndex) {
+    if (centralBulkProcessor == null || !targetIndex.equals(centralBulkProcessorIndex)) {
+      if (centralBulkProcessor != null) {
+        centralBulkProcessor.close();
       }
+      centralBulkProcessor = new VectorBulkProcessor(client, targetIndex);
+      centralBulkProcessorIndex = targetIndex;
+    }
+    return centralBulkProcessor;
+  }
 
-      BulkRequest bulkRequest =
-          BulkRequest.of(b -> b.operations(operations).refresh(Refresh.False));
-      BulkResponse response = client.bulk(bulkRequest);
-
-      if (response.errors()) {
-        long errorCount = 0;
-        for (BulkResponseItem item : response.items()) {
-          if (item.error() != null) {
-            errorCount++;
-            LOG.warn(
-                "Bulk vector indexing error for document [{}] in [{}]: type={}, reason={}",
-                item.id(),
-                targetIndex,
-                item.error().type(),
-                item.error().reason());
-          }
-        }
-        LOG.warn(
-            "Bulk vector indexing completed with {}/{} errors in {}",
-            errorCount,
-            documents.size(),
-            targetIndex);
-      } else {
-        LOG.debug(
-            "Successfully bulk indexed {} vector documents in {}", documents.size(), targetIndex);
-      }
-    } catch (Exception e) {
-      LOG.error("Bulk vector indexing failed in {}: {}", targetIndex, e.getMessage(), e);
+  public synchronized void flushBulkProcessor() {
+    if (centralBulkProcessor != null) {
+      centralBulkProcessor.close();
+      centralBulkProcessor = null;
+      centralBulkProcessorIndex = null;
     }
   }
 

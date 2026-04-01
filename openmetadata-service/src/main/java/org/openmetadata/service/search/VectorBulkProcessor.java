@@ -3,6 +3,9 @@ package org.openmetadata.service.search;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
@@ -18,16 +21,19 @@ import os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 public class VectorBulkProcessor implements AutoCloseable {
   private static final int DEFAULT_MAX_BULK_ACTIONS = 500;
   private static final long DEFAULT_MAX_PAYLOAD_BYTES = 50L * 1024 * 1024;
+  private static final long FLUSH_INTERVAL_MS = 1000;
 
   private final OpenSearchClient client;
   private final String targetIndex;
   private final int maxBulkActions;
   private final long maxPayloadBytes;
+  private final ScheduledExecutorService scheduler;
 
   private final List<VectorChunk> buffer = new ArrayList<>();
   private final AtomicLong payloadSize = new AtomicLong(0);
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
+  private volatile boolean closed = false;
   private StageStatsTracker statsTracker;
 
   public record VectorChunk(String chunkId, Map<String, Object> document, long estimatedSize) {}
@@ -42,6 +48,13 @@ public class VectorBulkProcessor implements AutoCloseable {
     this.targetIndex = targetIndex;
     this.maxBulkActions = maxBulkActions;
     this.maxPayloadBytes = maxPayloadBytes;
+    this.scheduler = Executors.newScheduledThreadPool(1);
+    scheduler.scheduleAtFixedRate(
+        this::flushIfNeeded, FLUSH_INTERVAL_MS, FLUSH_INTERVAL_MS, TimeUnit.MILLISECONDS);
+  }
+
+  public String getTargetIndex() {
+    return targetIndex;
   }
 
   public void setStatsTracker(StageStatsTracker tracker) {
@@ -131,6 +144,12 @@ public class VectorBulkProcessor implements AutoCloseable {
     }
   }
 
+  private synchronized void flushIfNeeded() {
+    if (!buffer.isEmpty() && !closed) {
+      flush();
+    }
+  }
+
   private boolean shouldFlush(long additionalSize) {
     return buffer.size() >= maxBulkActions || payloadSize.get() + additionalSize > maxPayloadBytes;
   }
@@ -163,6 +182,8 @@ public class VectorBulkProcessor implements AutoCloseable {
 
   @Override
   public void close() {
+    closed = true;
+    scheduler.shutdown();
     flush();
   }
 }
