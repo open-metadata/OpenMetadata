@@ -788,6 +788,7 @@
     "export": "导出",
     "export-as-type": "导出为 {{type}}",
     "export-entity": "导出{{entity}}",
+    "export-graph": "导出图表",
     "export-odcs": "导出为 ODCS",
     "export-ontology": "导出为本体",
     "export-type": "导出类型",

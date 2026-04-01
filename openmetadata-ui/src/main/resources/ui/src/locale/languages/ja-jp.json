@@ -788,6 +788,7 @@
     "export": "エクスポート",
     "export-as-type": "{{type}}としてエクスポート",
     "export-entity": "{{entity}} をエクスポート",
+    "export-graph": "グラフをエクスポート",
     "export-odcs": "ODCS としてエクスポート",
     "export-ontology": "オントロジーとしてエクスポート",
     "export-type": "エクスポートタイプ",

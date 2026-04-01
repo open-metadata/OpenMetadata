@@ -788,6 +788,7 @@
     "export": "صادر کردن",
     "export-as-type": "صادرات به عنوان {{type}}",
     "export-entity": "صادر کردن {{entity}}",
+    "export-graph": "صادر کردن نمودار",
     "export-odcs": "Export as ODCS",
     "export-ontology": "خروجی به عنوان هستی‌شناسی",
     "export-type": "نوع صادرات",

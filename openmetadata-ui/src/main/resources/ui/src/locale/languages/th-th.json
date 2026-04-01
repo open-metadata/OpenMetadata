@@ -788,6 +788,7 @@
     "export": "ส่งออก",
     "export-as-type": "ส่งออกเป็น {{type}}",
     "export-entity": "ส่งออก {{entity}}",
+    "export-graph": "ส่งออกกราฟ",
     "export-odcs": "Export as ODCS",
     "export-ontology": "ส่งออกเป็นออนโทโลยี",
     "export-type": "ประเภทการส่งออก",

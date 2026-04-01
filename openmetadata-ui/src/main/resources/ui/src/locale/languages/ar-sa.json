@@ -788,6 +788,7 @@
     "export": "تصدير",
     "export-as-type": "تصدير كـ {{type}}",
     "export-entity": "تصدير {{entity}}",
+    "export-graph": "تصدير الرسم البياني",
     "export-odcs": "تصدير كـ ODCS",
     "export-ontology": "تصدير كأنطولوجيا",
     "export-type": "نوع التصدير",

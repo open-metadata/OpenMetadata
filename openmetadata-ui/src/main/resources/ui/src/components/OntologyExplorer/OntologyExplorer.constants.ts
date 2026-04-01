@@ -378,6 +378,10 @@ export const TERM_LABEL_BG_PADDING: [number, number, number, number] = [
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 3;
 export const DEFAULT_ZOOM = 1;
+/** Post-`fitView` scale for model / hierarchy (smaller = more zoomed out). */
+export const FIT_VIEW_ZOOM_OUT = 0.2;
+/** Stronger zoom-out after `fitView` in data mode so the graph does not feel tight. */
+export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.38;
 
 export const DATA_MODE_ASSET_CIRCLE_SIZE = 20;
 export const DATA_MODE_ASSET_LABEL_FONT_SIZE = 12;
@@ -390,8 +394,8 @@ export const DATA_MODE_ASSET_LABEL_BOX_PADDING: [
   number,
   number
 ] = [6, 10, 6, 10];
-/** Vertical stack allowance for layout (circle + gap + label pill). */
-export const DATA_MODE_ASSET_LABEL_LAYOUT_STACK = 42;
+/** Vertical stack allowance for layout (circle + gap + label card; includes clearance below circle). */
+export const DATA_MODE_ASSET_LABEL_LAYOUT_STACK = 54;
 /** Extra radial gap from term node center to the first asset ring (longer connector feel in data mode). */
 export const DATA_MODE_TERM_TO_FIRST_RING_GAP = 168;
 export const COMBO_HEADER_HEIGHT = 34;
@@ -422,7 +426,6 @@ export function toLayoutEngineType(layout: LayoutType): LayoutEngineType {
 export const COMBO_PADDING = 48;
 export const COMBO_LABEL_PADDING_TOP_BOTTOM = 10;
 export const DATA_MODE_TERM_NODE_SIZE = 30;
-export const DATA_MODE_TERM_RADIUS = 15;
 /** White ring around term circle and matching label pill in data mode. */
 export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 4;
 /** Outer soft ring behind the term circle (G6 halo), light gray like elevated selection. */
@@ -443,9 +446,12 @@ export const DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING: [
   number,
   number,
   number
-] = [3, 3, 3, 3];
+] = [2, 3, 2, 3];
 export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER = 22;
 export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE = 26;
+/** Extra width for `"{count} +"` text: base + per character (keeps pill smaller than 18 + len*8). */
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR = 5;
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN = 10;
 export const HIERARCHY_BADGE_OFFSET_X = 0;
 export const HIERARCHY_BADGE_OFFSET_Y = -18;
 export const HIERARCHY_BADGE_TEXT_INSET = 16;
@@ -456,6 +462,13 @@ export const DATA_MODE_LABEL_OFFSET_Y = 10;
 export const DATA_MODE_TERM_LABEL_BG_RADIUS = 6;
 export const DATA_MODE_TERM_LABEL_FONT_WEIGHT = 600;
 export const DATA_MODE_ASSET_LABEL_FONT_WEIGHT = 500;
+export const DATA_MODE_ASSET_NAME_ENTITY_GAP = 6;
+export const DATA_MODE_ASSET_CARD_INSET_H = 4;
+export const DATA_MODE_ASSET_CARD_CLEAR_BELOW_CIRCLE = 12;
+export const DATA_MODE_ASSET_BADGE_Z_INDEX = -1;
+export const DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK = '#D5D7DA';
+export const DATA_MODE_ENTITY_BADGE_FONT_SIZE = 10;
+export const DATA_MODE_ENTITY_BADGE_VERTICAL_NUDGE_UP = 6;
 export const COMBO_LINE_WIDTH = 0.8;
 export const COMBO_RADIUS = 10;
 export const COMBO_LABEL_FONT_SIZE = 12;

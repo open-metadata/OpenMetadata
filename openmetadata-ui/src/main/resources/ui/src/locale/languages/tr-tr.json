@@ -788,6 +788,7 @@
     "export": "Dışa Aktar",
     "export-as-type": "{{type}} olarak dışa aktar",
     "export-entity": "{{entity}} Dışa Aktar",
+    "export-graph": "Grafiği dışa aktar",
     "export-odcs": "Export as ODCS",
     "export-ontology": "Ontoloji Olarak Dışarı Aktar",
     "export-type": "Dışa Aktarma Türü",

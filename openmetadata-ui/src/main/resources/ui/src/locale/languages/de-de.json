@@ -788,6 +788,7 @@
     "export": "Exportieren",
     "export-as-type": "Exportieren als {{type}}",
     "export-entity": "{{entity}} exportieren",
+    "export-graph": "Graph exportieren",
     "export-odcs": "Als ODCS exportieren",
     "export-ontology": "Als Ontologie exportieren",
     "export-type": "Exporttyp",

@@ -788,6 +788,7 @@
     "export": "ייצא",
     "export-as-type": "ייצא כ {{type}}",
     "export-entity": "ייצא {{entity}}",
+    "export-graph": "ייצא גרף",
     "export-odcs": "ייצא כ-ODCS",
     "export-ontology": "ייצא כאונטולוגיה",
     "export-type": "סוג ייצוא",

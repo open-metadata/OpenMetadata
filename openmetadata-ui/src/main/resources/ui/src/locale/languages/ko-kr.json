@@ -788,6 +788,7 @@
     "export": "내보내기",
     "export-as-type": "{{type}}(으)로 내보내기",
     "export-entity": "{{entity}} 내보내기",
+    "export-graph": "그래프 내보내기",
     "export-odcs": "ODCS로 내보내기",
     "export-ontology": "온톨로지로 내보내기",
     "export-type": "내보내기 유형",
