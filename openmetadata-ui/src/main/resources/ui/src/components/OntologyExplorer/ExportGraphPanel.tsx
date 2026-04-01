@@ -33,8 +33,8 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
   const [open, setOpen] = useState(false);
 
   const items = [
-    { id: EXPORT_PNG, label: 'PNG' },
-    { id: EXPORT_SVG, label: 'SVG' },
+    { id: EXPORT_PNG, label: t('label.png-uppercase') },
+    { id: EXPORT_SVG, label: t('label.svg-uppercase') },
   ];
 
   const handleAction = async (key: Key) => {

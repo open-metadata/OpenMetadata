@@ -19,6 +19,9 @@ import {
 /** Synthetic id for the glossary/relation "All" option in ontology filter autocompletes */
 export const ONTOLOGY_AUTOCOMPLETE_ALL_ID = '__all__';
 
+/** Max parallel `getGlossaryTermsAssetCounts` calls when multiple glossaries are selected */
+export const GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY = 4;
+
 export const withoutOntologyAutocompleteAll = (ids: string[]): string[] =>
   ids.filter((id) => id !== ONTOLOGY_AUTOCOMPLETE_ALL_ID);
 
@@ -430,13 +433,14 @@ export const DATA_MODE_TERM_NODE_SIZE = 30;
 export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 4;
 /** Outer soft ring behind the term circle (G6 halo), light gray like elevated selection. */
 export const DATA_MODE_TERM_HALO_LINE_WIDTH = 11;
-export const DATA_MODE_TERM_HALO_STROKE = '#E8EBF3';
-export const DATA_MODE_TERM_HALO_STROKE_OPACITY = 0.92;
-export const DATA_MODE_TERM_NODE_SHADOW_COLOR = 'rgba(15, 23, 42, 0.14)';
+export const DATA_MODE_TERM_HALO_STROKE = '#e8ecf0';
+export const DATA_MODE_TERM_HALO_STROKE_OPACITY = 0.9;
+export const DATA_MODE_TERM_HALO_SHADOW_COLOR = 'rgba(203, 213, 225, 0.45)';
+export const DATA_MODE_TERM_HALO_SHADOW_BLUR = 8;
+export const DATA_MODE_TERM_NODE_SHADOW_COLOR = 'rgba(241, 245, 249, 0.92)';
 export const DATA_MODE_TERM_NODE_SHADOW_BLUR = 16;
 export const DATA_MODE_TERM_NODE_SHADOW_OFFSET_Y = 5;
-/** Lift under the term name pill so it matches the reference “card” look. */
-export const DATA_MODE_TERM_LABEL_SHADOW_COLOR = 'rgba(15, 23, 42, 0.12)';
+export const DATA_MODE_TERM_LABEL_SHADOW_COLOR = 'rgba(226, 232, 240, 0.65)';
 export const DATA_MODE_TERM_LABEL_SHADOW_BLUR = 14;
 export const DATA_MODE_TERM_LABEL_SHADOW_OFFSET_Y = 4;
 export const NODE_BADGE_OFFSET_X = 8;
@@ -446,9 +450,9 @@ export const DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING: [
   number,
   number,
   number
-] = [2, 3, 2, 3];
-export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER = 22;
-export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE = 26;
+] = [4, 4, 4, 4];
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER = 24;
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE = 28;
 /** Extra width for `"{count} +"` text: base + per character (keeps pill smaller than 18 + len*8). */
 export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR = 5;
 export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN = 10;

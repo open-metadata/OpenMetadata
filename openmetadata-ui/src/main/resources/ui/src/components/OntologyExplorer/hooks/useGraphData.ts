@@ -534,7 +534,7 @@ export function useGraphDataBuilder({
         : null;
 
     const g6Edges: EdgeData[] = edgesForGraph.map((edge) => {
-      const edgeId = `edge-${edge.from}-${edge.to}`;
+      const edgeId = `edge-${edge.from}-${edge.to}-${edge.relationType}`;
       const fromGlossary = nodeIdToGlossaryId.get(edge.from);
       const toGlossary = nodeIdToGlossaryId.get(edge.to);
       const isCrossTeam = Boolean(

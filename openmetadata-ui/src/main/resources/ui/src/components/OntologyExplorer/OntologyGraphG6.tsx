@@ -62,21 +62,26 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
 
     const layoutType = getLayoutType();
 
-    const { graphData, mergedEdgesList, neighborSet, computeNodeColor, assetToTermMap } =
-      useGraphDataBuilder({
-        inputNodes,
-        inputEdges,
-        explorationMode,
-        settings,
-        selectedNodeId: selectedNodeId ?? null,
-        expandedTermIds,
-        clickedEdgeId,
-        nodePositions,
-        glossaryColorMap,
-        layoutType,
-        hierarchyCombos: hierarchyCombos ?? [],
-        graphSearchHighlight,
-      });
+    const {
+      graphData,
+      mergedEdgesList,
+      neighborSet,
+      computeNodeColor,
+      assetToTermMap,
+    } = useGraphDataBuilder({
+      inputNodes,
+      inputEdges,
+      explorationMode,
+      settings,
+      selectedNodeId: selectedNodeId ?? null,
+      expandedTermIds,
+      clickedEdgeId,
+      nodePositions,
+      glossaryColorMap,
+      layoutType,
+      hierarchyCombos: hierarchyCombos ?? [],
+      graphSearchHighlight,
+    });
 
     const { graphRef, extractNodePositions } = useOntologyGraph({
       containerRef,

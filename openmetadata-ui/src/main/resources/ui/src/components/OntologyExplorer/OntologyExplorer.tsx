@@ -69,6 +69,7 @@ import GraphSettingsPanel from './GraphSettingsPanel';
 import NodeContextMenu from './NodeContextMenu';
 import OntologyControlButtons from './OntologyControlButtons';
 import {
+  GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY,
   LayoutType,
   RELATION_COLORS,
   toLayoutEngineType,
@@ -618,12 +619,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
         const mergedResponse: Record<string, number> = {};
         if (glossaryFqnsToFetch.length > 0) {
-          const responses = await Promise.all(
-            glossaryFqnsToFetch.map((fqn) => getGlossaryTermsAssetCounts(fqn))
-          );
-          responses.forEach((response) => {
-            Object.assign(mergedResponse, response);
-          });
+          const { length } = glossaryFqnsToFetch;
+          const batchSize = GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY;
+          for (let i = 0; i < length; i += batchSize) {
+            const batch = glossaryFqnsToFetch.slice(i, i + batchSize);
+            const responses = await Promise.all(
+              batch.map((fqn) => getGlossaryTermsAssetCounts(fqn))
+            );
+            responses.forEach((response) => {
+              Object.assign(mergedResponse, response);
+            });
+          }
         } else {
           Object.assign(mergedResponse, await getGlossaryTermsAssetCounts());
         }

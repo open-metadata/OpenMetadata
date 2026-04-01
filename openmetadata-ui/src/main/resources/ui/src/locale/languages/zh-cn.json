@@ -1955,6 +1955,7 @@
     "supported-language-plural": "支持的语言",
     "supported-service-plural": "支持的服务",
     "supports-yaml-format": "支持 YAML 格式 (.yaml, .yml)",
+    "svg-uppercase": "SVG",
     "switch-persona": "切换角色",
     "symmetric": "对称",
     "sync-alert-offset": "同步警报",
