@@ -12,11 +12,11 @@
  */
 
 import {
-  EdgeData as G6EdgeData,
   ExtensionCategory,
+  EdgeData as G6EdgeData,
+  NodeData as G6NodeData,
   Graph,
   IElementEvent,
-  NodeData as G6NodeData,
   NodePortStyleProps,
   register,
 } from '@antv/g6';
@@ -412,7 +412,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       graph.updateNodeData(
         (g6Data.nodes ?? []).map((n) => ({
           id: n.id,
-          data: { highlighted: pathNodes.has(n.id) },
+          data: { ...n.data, highlighted: pathNodes.has(n.id) },
         }))
       );
       void graph.draw();
@@ -429,7 +429,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       graph.updateNodeData(
         (g6Data.nodes ?? []).map((n) => ({
           id: n.id,
-          data: { highlighted: false },
+          data: { ...n.data, highlighted: false },
         }))
       );
       void graph.draw();
