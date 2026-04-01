@@ -98,45 +98,44 @@ export const deletedUserChecks = async (page: Page) => {
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
   await settingClick(page, GlobalSettingOptions.USERS);
+
   await page
     .getByTestId('user-list-v1-component')
     .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
-  const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=*&from=0&size=*'
-  );
-  const loaderPromise = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
+    .waitFor({ state: 'detached' });
+
   const searchBar = page.getByTestId('searchbar');
 
   await expect
     .poll(
       async () => {
-        const searchRequest = page.waitForResponse((response) =>
-          response.url().includes('/api/v1/search/query')
+        const searchRequest = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes(encodeURIComponent(userName)) &&
+            response.request().method() === 'GET'
         );
+
         await searchBar.clear();
         await searchBar.fill(userName);
         await searchRequest;
-        await loaderPromise.catch(() => undefined);
 
-        return await page.getByTestId(userName).count();
+        await page
+          .getByTestId('user-list-v1-component')
+          .getByTestId('loader')
+          .waitFor({ state: 'detached' })
+          .catch(() => undefined);
+
+        return page.getByTestId(userName).count();
       },
       {
-        timeout: 60000,
-        intervals: [1000, 2000, 5000],
+        timeout: 60_000,
+        intervals: [1_000, 2_000, 5_000],
         message: `Timed out waiting for user ${userName} to become visible in the user list`,
       }
     )
     .toBeGreaterThan(0);
 
-  await userResponse.catch(() => undefined);
   await page.getByTestId(userName).click();
 };
 

@@ -781,13 +781,20 @@ export const assignTag = async (
   await expect(tagButton).toBeVisible();
   await tagButton.click();
 
-  await expect(page.locator('#tagsForm_tags')).toBeVisible();
+  // await expect(page.locator('#tagsForm_tags')).toBeVisible();
+  const tagSelector = page.getByTestId('tag-selector');
+  await expect(tagSelector).toBeVisible();
+
+  const tagInput = tagSelector.locator('input');
+  await expect(tagInput).toBeVisible();
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.request().method() === 'GET'
   );
 
-  await page.locator('#tagsForm_tags').fill(tag);
+  await tagInput.fill(tag);
 
   await searchTags;
 
