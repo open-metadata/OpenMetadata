@@ -1871,22 +1871,23 @@ public class SearchRepository {
         script.append(generateDeleteTagLabelListScript());
       }
       case ENTITY_REFERENCE -> {
-        EntityReference ref =
-            JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
-        script.append(
-            String.format(
-                REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                field.getName(),
-                field.getName(),
-                field.getName()));
-        data.put(field.getName(), ref);
+        Object oldValue = field.getOldValue();
+        if (!nullOrEmpty(oldValue)) {
+          EntityReference ref = JsonUtils.readValue(oldValue.toString(), EntityReference.class);
+          script.append(
+              String.format(
+                  REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                  field.getName(),
+                  field.getName(),
+                  field.getName()));
+          data.put(field.getName(), ref);
+        }
       }
       case SIMPLE_VALUE -> {
-        script.append(
-            String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+        script.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
       }
       case RAW_REPLACE -> {
-        data.put(field.getName(), field.getNewValue());
+        data.put(field.getName(), field.getOldValue());
         script.append(
             String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
       }
@@ -1935,6 +1936,9 @@ public class SearchRepository {
                 field.getName(),
                 field.getName(),
                 field.getName()));
+        data.put(
+            "entityBeforeUpdate",
+            JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class));
         data.put(field.getName(), ref);
       }
       case SIMPLE_VALUE -> {

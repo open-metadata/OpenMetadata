@@ -28,7 +28,8 @@ export interface TestCase {
      */
     createdBy?: string;
     /**
-     * List of data products this entity is part of.
+     * List of data products this test case is part of. When not set, the test case inherits the
+     * data products from the table it belongs to.
      */
     dataProducts?: EntityReference[];
     /**
@@ -224,7 +225,8 @@ export interface FieldChange {
 }
 
 /**
- * List of data products this entity is part of.
+ * List of data products this test case is part of. When not set, the test case inherits the
+ * data products from the table it belongs to.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

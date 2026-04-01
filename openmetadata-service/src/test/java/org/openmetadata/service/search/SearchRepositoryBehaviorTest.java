@@ -1290,12 +1290,16 @@ class SearchRepositoryBehaviorTest {
         changeDescription(
             List.of(),
             List.of(),
-            List.of(new FieldChange().withName(Entity.FIELD_TEST_SUITES).withNewValue(List.of())));
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TEST_SUITES)
+                    .withOldValue(List.of("suite1", "suite2"))));
 
     Pair<String, Map<String, Object>> updates =
         invokeGetInheritedFieldChanges(changeDescription, tableEntity);
 
     assertTrue(updates.getLeft().contains("ctx._source.testSuites = params.testSuites"));
+    assertEquals(List.of("suite1", "suite2"), updates.getRight().get(Entity.FIELD_TEST_SUITES));
   }
 
   @Test
