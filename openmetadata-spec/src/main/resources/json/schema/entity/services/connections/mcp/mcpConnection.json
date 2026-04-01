@@ -1,0 +1,147 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/mcp/mcpConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "McpConnection",
+  "description": "MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP servers, their tools, resources, and prompts.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.mcp.McpConnection",
+  "definitions": {
+    "mcpType": {
+      "description": "Service type",
+      "type": "string",
+      "enum": ["Mcp"],
+      "default": "Mcp"
+    },
+    "discoveryMethod": {
+      "description": "Method to discover MCP servers",
+      "type": "string",
+      "enum": ["ConfigFile", "DirectConnection", "Registry"],
+      "javaEnums": [
+        {"name": "ConfigFile", "description": "Discover servers from configuration files (e.g., claude_desktop_config.json)"},
+        {"name": "DirectConnection", "description": "Connect directly to a specific MCP server"},
+        {"name": "Registry", "description": "Discover servers from an MCP registry"}
+      ]
+    },
+    "transportType": {
+      "description": "MCP transport protocol type",
+      "type": "string",
+      "enum": ["Stdio", "SSE", "StreamableHTTP"],
+      "javaEnums": [
+        {"name": "Stdio", "description": "Standard input/output transport - spawns a subprocess"},
+        {"name": "SSE", "description": "Server-Sent Events transport over HTTP"},
+        {"name": "StreamableHTTP", "description": "Streamable HTTP transport"}
+      ]
+    },
+    "mcpServerConfig": {
+      "type": "object",
+      "description": "Configuration for a single MCP server to connect to directly",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name to assign to this MCP server"
+        },
+        "transport": {
+          "$ref": "#/definitions/transportType",
+          "default": "Stdio"
+        },
+        "command": {
+          "type": "string",
+          "description": "Command to execute for Stdio transport (e.g., 'npx', 'uvx', 'python')"
+        },
+        "args": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Arguments to pass to the command"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "description": "Environment variables for the server process"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL for SSE or StreamableHTTP transport"
+        },
+        "apiKey": {
+          "type": "string",
+          "format": "password",
+          "description": "API key for authenticated MCP servers"
+        }
+      },
+      "required": ["name"]
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/mcpType",
+      "default": "Mcp"
+    },
+    "discoveryMethod": {
+      "title": "Discovery Method",
+      "description": "How to discover MCP servers",
+      "$ref": "#/definitions/discoveryMethod",
+      "default": "ConfigFile"
+    },
+    "configFilePaths": {
+      "title": "Config File Paths",
+      "description": "Paths to MCP configuration files to scan for server definitions. Supports Claude Desktop config, VS Code settings, etc.",
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "servers": {
+      "title": "Direct Server Connections",
+      "description": "List of MCP servers to connect to directly (when discoveryMethod is DirectConnection)",
+      "type": "array",
+      "items": {"$ref": "#/definitions/mcpServerConfig"},
+      "default": []
+    },
+    "registryUrl": {
+      "title": "Registry URL",
+      "description": "URL of MCP registry to query for server discovery (when discoveryMethod is Registry)",
+      "type": "string"
+    },
+    "connectionTimeout": {
+      "title": "Connection Timeout",
+      "description": "Timeout in seconds for connecting to MCP servers",
+      "type": "integer",
+      "default": 30
+    },
+    "initializationTimeout": {
+      "title": "Initialization Timeout",
+      "description": "Timeout in seconds for MCP server initialization handshake",
+      "type": "integer",
+      "default": 60
+    },
+    "fetchTools": {
+      "title": "Fetch Tools",
+      "description": "Whether to fetch and catalog tools from MCP servers",
+      "type": "boolean",
+      "default": true
+    },
+    "fetchResources": {
+      "title": "Fetch Resources",
+      "description": "Whether to fetch and catalog resources from MCP servers",
+      "type": "boolean",
+      "default": true
+    },
+    "fetchPrompts": {
+      "title": "Fetch Prompts",
+      "description": "Whether to fetch and catalog prompts from MCP servers",
+      "type": "boolean",
+      "default": true
+    },
+    "serverFilterPattern": {
+      "description": "Regex to only fetch servers with names matching the pattern",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Server Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

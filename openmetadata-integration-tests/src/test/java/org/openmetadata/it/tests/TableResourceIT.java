@@ -123,6 +123,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   private DatabaseSchema lastCreatedSchema;

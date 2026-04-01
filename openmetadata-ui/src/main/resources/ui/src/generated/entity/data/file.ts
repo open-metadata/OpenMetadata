@@ -33,6 +33,10 @@ export interface File {
      */
     createdTime?: number;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -708,6 +712,8 @@ export interface CustomMetric {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Reference to the data contract for this entity.
  *
  * Parent directory containing this file
  *

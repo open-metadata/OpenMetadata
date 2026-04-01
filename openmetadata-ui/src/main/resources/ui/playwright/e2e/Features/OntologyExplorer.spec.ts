@@ -16,6 +16,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
+  clickOutside,
   getAuthContext,
   getToken,
   redirectToHomePage,
@@ -397,18 +398,18 @@ test.describe('Ontology Explorer', () => {
       ).toBeVisible();
     });
 
-    test('should show selected glossary chip when a glossary is selected', async ({
+    test('should filter the graph to the selected glossary (stats match canvas data)', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
-      const glossarySection = page.getByTestId('glossary-filter-section');
       const glossaryName =
         glossary.responseData.displayName ?? glossary.responseData.name;
-      await glossarySection.locator('input').click();
-      await page.getByRole('option', { name: glossaryName }).click();
-      await expect(
-        glossarySection.getByText(glossaryName).first()
-      ).toBeVisible();
+      await applyGlossaryFilter(page, glossaryName);
+      await clickOutside(page);
+
+      const stats = page.getByTestId('ontology-explorer-stats');
+      await expect(stats).toContainText('2 Terms');
+      await expect(stats).toContainText('1 Relations');
     });
   });
 
@@ -428,23 +429,28 @@ test.describe('Ontology Explorer', () => {
       ).toBeVisible();
     });
 
-    test('should show selected relation type chip when a relation type is selected', async ({
+    test('should filter graph edges by relation type (stats match canvas data)', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
+      const glossaryName =
+        glossary.responseData.displayName ?? glossary.responseData.name;
+      await applyGlossaryFilter(page, glossaryName);
+      await clickOutside(page);
+
+      const stats = page.getByTestId('ontology-explorer-stats');
+      await expect(stats).toContainText('1 Relations');
+
       const relationSection = page.getByTestId('relation-type-filter-section');
       await relationSection.locator('input').click();
-      const allItems = page.getByRole('option');
-      const count = await allItems.count();
-      if (count > 1) {
-        const itemText = await allItems.nth(1).textContent();
-        await allItems.nth(1).click();
-        if (itemText) {
-          await expect(
-            relationSection.getByText(itemText.trim()).first()
-          ).toBeVisible();
-        }
-      }
+      await page.getByRole('option', { name: /^Synonym$/i }).click();
+      await clickOutside(page);
+      await expect(stats).toContainText('0 Relations');
+
+      await relationSection.locator('input').click();
+      await page.getByRole('option', { name: /^All$/i }).first().click();
+      await clickOutside(page);
+      await expect(stats).toContainText('1 Relations');
     });
   });
 
