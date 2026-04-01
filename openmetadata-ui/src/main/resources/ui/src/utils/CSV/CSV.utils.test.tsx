@@ -32,6 +32,17 @@ import {
   splitCSV,
 } from './CSV.utils';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+    <div data-testid="tooltip" title={title}>
+      {children}
+    </div>
+  )),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <>{children}</>),
+}));
+
 jest.mock(
   '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () =>
@@ -1065,6 +1076,32 @@ describe('CSVUtils', () => {
         screen.getByTestId('rich-text-editor-previewer')
       ).toBeInTheDocument();
       expect(screen.getByText(description)).toBeInTheDocument();
+    });
+
+    it('should render truncated text with tooltip for parameterValues column', () => {
+      const paramValue =
+        '{"name":"accepted_values","value":"placed,shipped,completed"}';
+      const result = renderColumnDataEditor('parameterValues', {
+        value: paramValue,
+        data: { details: '', glossaryStatus: '' },
+      });
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByText(paramValue)).toBeInTheDocument();
+      expect(screen.getByText(paramValue).closest('span')).toHaveClass(
+        'tw:block',
+        'tw:truncate'
+      );
+    });
+
+    it('should return value as-is for parameterValues column when value is empty', () => {
+      const result = renderColumnDataEditor('parameterValues', {
+        value: '',
+        data: { details: '', glossaryStatus: '' },
+      });
+
+      expect(result).toBe('');
     });
 
     it('should render different content for different column types', () => {

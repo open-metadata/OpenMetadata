@@ -25,9 +25,16 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToNotMatchRegex import (
     BaseColumnValuesToNotMatchRegexValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
@@ -37,7 +44,10 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToNotMatchRegexValidator(
-    BaseColumnValuesToNotMatchRegexValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToNotMatchRegexValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column values to not match regex test case"""
 
@@ -130,3 +140,18 @@ class ColumnValuesToNotMatchRegexValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        expression = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "forbiddenRegex",
+            str,
+        )
+        return {
+            "filters": [(self.get_column(), "regexp_match", expression)],
+            "or_filter": False,
+        }
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

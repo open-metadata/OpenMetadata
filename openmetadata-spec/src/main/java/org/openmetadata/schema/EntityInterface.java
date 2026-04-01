@@ -118,6 +118,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default EntityReference getDataContract() {
+    return null;
+  }
+
   default Style getStyle() {
     return null;
   }
@@ -193,6 +197,10 @@ public interface EntityInterface {
   }
 
   default void setDataProducts(List<EntityReference> dataProducts) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setDataContract(EntityReference dataContract) {
     /* no-op implementation to be overridden */
   }
 

@@ -110,6 +110,7 @@
     <spring.version>6.2.11</spring.version>
     <log4j.version>2.25.3</log4j.version>
     <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
+    <org.junit.platform.version>1.11.4</org.junit.platform.version>
     <dropwizard-health.version>5.0.0</dropwizard-health.version>
     <handlebars.version>4.5.0</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
