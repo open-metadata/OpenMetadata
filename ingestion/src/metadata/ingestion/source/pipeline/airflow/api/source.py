@@ -127,7 +127,7 @@ class AirflowApiSource(PipelineServiceSource):
         return f"{host}/dags/{quote(dag_id)}/grid"
 
     def get_owners(self, owners: Optional[List[str]]) -> Optional[EntityReferenceList]:
-        if not owners:
+        if not self.source_config.includeOwners or not owners:
             return None
         refs = EntityReferenceList(root=[])
         for owner_name in owners:

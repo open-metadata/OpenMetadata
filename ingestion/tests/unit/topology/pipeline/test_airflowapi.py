@@ -701,6 +701,13 @@ class TestGetOwners:
         source.metadata = MagicMock()
         return source
 
+    def test_returns_none_when_include_owners_disabled(self):
+        source = self._make_source()
+        source.source_config.includeOwners = False
+        result = AirflowApiSource.get_owners(source, ["admin"])
+        assert result is None
+        source.metadata.get_reference_by_name.assert_not_called()
+
     def test_returns_none_for_none_owners(self):
         source = self._make_source()
         result = AirflowApiSource.get_owners(source, None)
