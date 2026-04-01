@@ -119,7 +119,7 @@ jobs:
             echo "No added or modified files to process."
             exit 0
           fi
-          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | grep -E '\.(ts|tsx|js|jsx)$' | tr '\n' ' ')
+          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx|js|jsx)$/ { printf "%s ", $0 }')
           if [ -n "$TS_FILES" ]; then
             yarn organize-imports:cli $TS_FILES
           fi
@@ -581,10 +581,7 @@ jobs:
             echo "No added or modified files to process."
             exit 0
           fi
-          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | grep -E '\.(ts|tsx|js|jsx)$' | tr '\n' ' ')
-          if [ -n "$TS_FILES" ]; then
-            yarn organize-imports:cli $TS_FILES
-          fi
+          yarn organize-imports:cli $CHANGED_FILES
           yarn lint:base --fix $CHANGED_FILES
           yarn pretty:base --write $CHANGED_FILES
           if [ -n "$(git status --porcelain)" ]; then
