@@ -273,6 +273,7 @@
     "clear": "ลบ",
     "clear-entity": "ลบ {{entity}}",
     "clear-filter-plural": "ล้างตัวกรอง",
+    "clear-selection": "ล้างการเลือก",
     "click-here": "คลิกที่นี่",
     "click-to-upload": "คลิกเพื่ออัปโหลด",
     "client-email": "อีเมลของลูกค้า",
