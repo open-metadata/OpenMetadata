@@ -12,11 +12,11 @@
  */
 
 import {
-  EdgeData as G6EdgeData,
   ExtensionCategory,
+  EdgeData as G6EdgeData,
+  NodeData as G6NodeData,
   Graph,
   IElementEvent,
-  NodeData as G6NodeData,
   NodePortStyleProps,
   register,
 } from '@antv/g6';
@@ -52,6 +52,7 @@ import { ReactComponent as ZoomInIcon } from '../../assets/svg/ic-zoom-in.svg';
 import { ReactComponent as ZoomOutIcon } from '../../assets/svg/ic-zoom-out.svg';
 import { ReactComponent as RefreshIcon } from '../../assets/svg/reload.svg';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
+import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
@@ -94,8 +95,10 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   depth = 1,
 }) => {
   const { t } = useTranslation();
+  const { brandColors } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<Graph | null>(null);
+  const selectedNodeIdRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [selectedDepth, setSelectedDepth] = useState(depth);
@@ -128,6 +131,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           ]
         : [],
     [entity?.fullyQualifiedName, entityType, t, isFullscreen]
+  );
+
+  const nodeLabelById = useMemo(
+    () => new Map(graphData?.nodes.map((n) => [n.id, n.label]) ?? []),
+    [graphData]
   );
 
   const fetchGraphData = useCallback(async () => {
@@ -371,7 +379,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           labelBackgroundPadding: [3, 6],
         },
         state: {
-          selected: { stroke: '#1677ff', lineWidth: 2.5, haloOpacity: 0 },
+          selected: {
+            stroke: brandColors?.primaryColor,
+            lineWidth: 1.5,
+            haloOpacity: 0,
+          },
         },
       },
     });
@@ -390,34 +402,49 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       }
     });
 
+    const applyPathHighlight = (nodeId: string) => {
+      const { nodeIds: pathNodes, edgeIds: pathEdges } = findHighlightPath(
+        focusNodeId,
+        nodeId,
+        g6Data.nodes ?? [],
+        g6Data.edges ?? []
+      );
+      graph.updateNodeData(
+        (g6Data.nodes ?? []).map((n) => ({
+          id: n.id,
+          data: { highlighted: pathNodes.has(n.id) },
+        }))
+      );
+      void graph.draw();
+      (g6Data.edges ?? []).forEach((e) => {
+        const edgeId = String(e.id);
+        void graph.setElementState(
+          edgeId,
+          pathEdges.has(edgeId) ? 'selected' : []
+        );
+      });
+    };
+
+    const clearAllHighlights = () => {
+      graph.updateNodeData(
+        (g6Data.nodes ?? []).map((n) => ({
+          id: n.id,
+          data: { highlighted: false },
+        }))
+      );
+      void graph.draw();
+      (g6Data.edges ?? []).forEach(
+        (e) => void graph.setElementState(String(e.id), [])
+      );
+    };
+
     graph.on('node:click', (evt: IElementEvent) => {
       const nodeId = evt.target.id;
       if (nodeId) {
         const node = graphData.nodes.find((n) => n.id === nodeId);
         setSelectedNode(node || null);
-
-        const { nodeIds: pathNodes, edgeIds: pathEdges } = findHighlightPath(
-          focusNodeId,
-          nodeId,
-          g6Data.nodes ?? [],
-          g6Data.edges ?? []
-        );
-
-        graph.updateNodeData(
-          (g6Data.nodes ?? []).map((n) => ({
-            id: n.id,
-            data: { highlighted: pathNodes.has(n.id) },
-          }))
-        );
-        void graph.draw();
-
-        (g6Data.edges ?? []).forEach((e) => {
-          const edgeId = String(e.id);
-          void graph.setElementState(
-            edgeId,
-            pathEdges.has(edgeId) ? 'selected' : []
-          );
-        });
+        selectedNodeIdRef.current = nodeId;
+        applyPathHighlight(nodeId);
       }
     });
 
@@ -439,31 +466,25 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     graph.on('node:pointerover', (evt: IElementEvent) => {
       const nodeId = evt.target.id;
       if (nodeId) {
-        void graph.setElementState(nodeId, 'hover');
+        applyPathHighlight(nodeId);
       }
     });
 
     graph.on('node:pointerleave', (evt: IElementEvent) => {
       const nodeId = evt.target.id;
       if (nodeId) {
-        void graph.setElementState(nodeId, []);
+        if (selectedNodeIdRef.current) {
+          applyPathHighlight(selectedNodeIdRef.current);
+        } else {
+          clearAllHighlights();
+        }
       }
     });
 
     graph.on('canvas:click', () => {
       setSelectedNode(null);
-
-      graph.updateNodeData(
-        (g6Data.nodes ?? []).map((n) => ({
-          id: n.id,
-          data: { highlighted: false },
-        }))
-      );
-      void graph.draw();
-
-      (g6Data.edges ?? []).forEach(
-        (e) => void graph.setElementState(String(e.id), [])
-      );
+      selectedNodeIdRef.current = null;
+      clearAllHighlights();
     });
 
     networkRef.current = graph;
@@ -490,7 +511,28 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
   const graphCanvas = (
     <>
-      <Card className="knowledge-graph-canvas" ref={containerRef} />
+      <Card
+        className="knowledge-graph-canvas"
+        data-testid="knowledge-graph-canvas"
+        ref={containerRef}
+      />
+
+      <div
+        aria-hidden="true"
+        className="tw:hidden"
+        data-testid="knowledge-graph-edges">
+        {graphData?.edges.map((edge) => (
+          <div
+            data-edge-label={edge.label}
+            data-edge-source={edge.from}
+            data-edge-target={edge.to}
+            data-testid={`edge-${nodeLabelById.get(edge.from) ?? edge.from}-${
+              edge.label
+            }-${nodeLabelById.get(edge.to) ?? edge.to}`}
+            key={`${edge.from}-${edge.label}-${edge.to}`}
+          />
+        ))}
+      </div>
 
       {selectedNode?.fullyQualifiedName && (
         <SlideoutMenu
@@ -577,14 +619,20 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           titleLinks={breadcrumbs}
         />
       )}
-      <Card className="knowledge-graph-container">
-        <Card className="knowledge-graph-controls" size="sm">
+      <Card
+        className="knowledge-graph-container"
+        data-testid="knowledge-graph-container">
+        <Card
+          className="knowledge-graph-controls"
+          data-testid="knowledge-graph-controls"
+          size="sm">
           <Card.Content className="tw:flex tw:items-center tw:gap-4">
             <Typography className="tw:text-secondary" weight="medium">
               {t('label.view-entity', { entity: t('label.mode') }) + ':'}
             </Typography>
             <Tabs
               className="tw:w-auto"
+              data-testid="layout-tabs"
               selectedKey={layout}
               onSelectionChange={(key) =>
                 setLayout(key as KnowledgeGraphLayout)
@@ -616,6 +664,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 showHoverPreview
                 showRange
                 className="depth-slider"
+                data-testid="depth-slider"
                 labelPosition="top-floating"
                 maxValue={5}
                 minValue={1}

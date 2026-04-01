@@ -28,7 +28,9 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
     <div
       className={`knowledge-graph-custom-node${
         highlighted ? ' highlighted' : ''
-      }`}>
+      }`}
+      data-node-id={nodeData.id}
+      data-testid={`node-${nodeData.data?.label as string}`}>
       <div className="entity-name-container">
         <div className="icon-container">
           {getEntityIcon(nodeData.data?.type as string, '', {
@@ -36,12 +38,16 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
             height: 12,
           })}
         </div>
-        <div className="asset-name" title={nodeData.data?.label as string}>
+        <div
+          className="asset-name"
+          data-testid="label"
+          title={nodeData.data?.label as string}>
           {nodeData.data?.label as string}
         </div>
       </div>
       <div
         className="asset-type-tag"
+        data-testid="type-tag"
         style={
           colorMain && colorLight
             ? { color: colorMain, backgroundColor: colorLight, border: 'none' }
