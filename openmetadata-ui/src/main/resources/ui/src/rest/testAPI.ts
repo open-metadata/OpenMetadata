@@ -25,6 +25,7 @@ import { CreateTestDefinition } from '../generated/api/tests/createTestDefinitio
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
+  TableData,
   TestCase,
   TestCaseDimensionResult,
   TestCaseResult,
@@ -469,6 +470,24 @@ export const exportTestCasesInCSV = async (
   const response = await APIClient.get(
     `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,
     { params }
+  );
+
+  return response.data;
+};
+
+export const getTestCaseFailedSampleData = async (
+  id: string
+): Promise<TableData> => {
+  const response = await APIClient.get<TableData>(
+    `${testCaseUrl}/${id}/failedRowsSample`
+  );
+
+  return response.data;
+};
+
+export const deleteTestCaseFailedSampleData = async (id: string) => {
+  const response = await APIClient.delete(
+    `${testCaseUrl}/${id}/failedRowsSample`
   );
 
   return response.data;

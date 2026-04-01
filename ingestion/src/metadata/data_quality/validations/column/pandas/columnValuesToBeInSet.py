@@ -13,6 +13,7 @@
 Validator for column value to be in set test case
 """
 
+from ast import literal_eval
 from collections import defaultdict
 from typing import List, Optional, cast
 
@@ -27,10 +28,17 @@ from metadata.data_quality.validations.column.base.columnValuesToBeInSet import 
     BaseColumnValuesToBeInSetValidator,
 )
 from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    PandasFailedRowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_pandas,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
@@ -41,7 +49,10 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToBeInSetValidator(
-    BaseColumnValuesToBeInSetValidator, PandasValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeInSetValidator,
+    PandasValidatorMixin,
+    PandasFailedRowSamplerMixin,
 ):
     """Validator for column value to be in set test case"""
 
@@ -196,3 +207,15 @@ class ColumnValuesToBeInSetValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        items = self.get_test_case_param_value(
+            self.test_case.parameterValues,
+            "allowedValues",
+            literal_eval,
+        )
+        return f"~{self.get_column().name}.isin({items})"
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)
