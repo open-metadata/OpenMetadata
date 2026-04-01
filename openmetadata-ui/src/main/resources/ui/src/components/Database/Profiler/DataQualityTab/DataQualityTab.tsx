@@ -489,7 +489,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     ];
 
     return data.map((col) =>
-      col.width
+      col.width && !col.fixed
         ? {
             ...col,
             onCell: () => ({
