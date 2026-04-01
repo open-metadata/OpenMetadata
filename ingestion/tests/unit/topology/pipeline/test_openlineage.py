@@ -1169,7 +1169,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsNotNone(result.topic_details)
         self.assertIsNone(result.table_details)
         self.assertEqual(result.topic_details.name, "my-events-topic")
-        self.assertEqual(result.topic_details.broker_hostname, "broker-host")
+        self.assertEqual(result.topic_details.broker_hostname, "broker-host:9092")
 
     def test_entity_detection_non_kafka_namespace_returns_table(self):
         """Test that non-kafka namespaces (e.g. bigquery, hive) are detected as tables."""
@@ -1193,7 +1193,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             {"name": "topic1", "namespace": "kafka://my-broker:9092"}
         )
         self.assertEqual(result.name, "topic1")
-        self.assertEqual(result.broker_hostname, "my-broker")
+        self.assertEqual(result.broker_hostname, "my-broker:9092")
 
         # Broker without port
         result = OpenlineageSource._get_topic_details(

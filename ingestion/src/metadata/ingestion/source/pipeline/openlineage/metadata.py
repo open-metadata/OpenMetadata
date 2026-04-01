@@ -62,6 +62,13 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     TopicDetails,
     TopicFQN,
 )
+from metadata.ingestion.source.pipeline.openlineage.service_resolver import (
+    build_service_name,
+    extract_integration_type,
+    find_pipeline_by_namespace,
+    get_or_create_pipeline_service,
+    resolve_pipeline_service_type,
+)
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     FQNNotFoundException,
     message_to_open_lineage_event,
@@ -87,6 +94,8 @@ class OpenlineageSource(PipelineServiceSource):
     """
 
     _db_service_names_warned: bool = False
+    _service_cache: Dict[str, str]
+    _current_pipeline_service: Optional[str] = None
 
     @classmethod
     def create(
@@ -102,7 +111,8 @@ class OpenlineageSource(PipelineServiceSource):
         return cls(config, metadata)
 
     def prepare(self):
-        """Nothing to prepare"""
+        self._service_cache = {}
+        self._current_pipeline_service = None
 
     def close(self) -> None:
         self.metadata.compute_percentile(Pipeline, self.today)
@@ -192,11 +202,15 @@ class OpenlineageSource(PipelineServiceSource):
         except KeyError:
             raise ValueError("Topic name is not present")
 
-        broker_hostname = urlparse(namespace).hostname
+        parsed = urlparse(namespace)
+        broker_hostname = parsed.hostname
         if not broker_hostname:
             raise ValueError(
                 f"Could not extract broker hostname from namespace: {namespace}"
             )
+
+        if parsed.port:
+            broker_hostname = f"{broker_hostname}:{parsed.port}"
 
         return TopicDetails(name=name, broker_hostname=broker_hostname)
 
@@ -240,9 +254,9 @@ class OpenlineageSource(PipelineServiceSource):
                         bootstrap_servers = svc.connection.config.bootstrapServers or ""
                         svc_fqn = svc.fullyQualifiedName.root
                         for broker in bootstrap_servers.split(","):
-                            hostname = broker.strip().split(":")[0]
-                            if hostname:
-                                self._broker_to_service[hostname] = svc_fqn
+                            broker = broker.strip()
+                            if broker:
+                                self._broker_to_service[broker] = svc_fqn
                     except Exception:
                         logger.debug(
                             f"Could not extract bootstrapServers from service {svc.name}"
@@ -514,16 +528,50 @@ class OpenlineageSource(PipelineServiceSource):
 
         return OpenlineageSource._create_output_lineage_dict(_result)
 
+    def _resolve_pipeline_service(self, pipeline_details: OpenLineageEvent) -> str:
+        """
+        Resolve the pipeline service for the current event.
+
+        Resolution order:
+        1. **Namespace fallback** — try ``namespace.jobName`` as a pipeline
+           FQN.  If a pipeline already exists (e.g. ingested by a native
+           Airflow connector), reuse its service.
+        2. **Integration type** — extract from
+           ``job.facets.jobType.integration`` and create a typed service
+           (e.g. ``spark_openlineage``).
+        3. **Default** — fall back to the configured OpenLineage service.
+        """
+        fallback = self.context.get().pipeline_service
+
+        ns_result = find_pipeline_by_namespace(self.metadata, pipeline_details)
+        if ns_result:
+            service_name, _ = ns_result
+            return service_name
+
+        integration = extract_integration_type(pipeline_details)
+        service_name = build_service_name(integration, fallback)
+
+        if service_name != fallback:
+            service_type = resolve_pipeline_service_type(integration)
+            get_or_create_pipeline_service(
+                self.metadata, service_name, service_type, self._service_cache
+            )
+
+        return service_name
+
     def yield_pipeline(
         self, pipeline_details: OpenLineageEvent
     ) -> Iterable[Either[CreatePipelineRequest]]:
         pipeline_name = self.get_pipeline_name(pipeline_details)
+        self._current_pipeline_service = self._resolve_pipeline_service(
+            pipeline_details
+        )
         try:
             description = f"""```json
             {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
             request = CreatePipelineRequest(
                 name=pipeline_name,
-                service=self.context.get().pipeline_service,
+                service=self._current_pipeline_service,
                 description=description,
             )
 
@@ -597,10 +645,13 @@ class OpenlineageSource(PipelineServiceSource):
             for n in product(input_edges, output_edges)
         ]
 
+        service_name = (
+            self._current_pipeline_service or self.context.get().pipeline_service
+        )
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
-            service_name=self.context.get().pipeline_service,
+            service_name=service_name,
             pipeline_name=self.context.get().pipeline,
         )
 
