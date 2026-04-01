@@ -11,6 +11,7 @@
 """
 Airflow REST API source to extract metadata via Airflow REST API
 """
+
 import traceback
 from typing import Iterable, List, Optional
 from urllib.parse import quote
@@ -147,16 +148,20 @@ class AirflowApiSource(PipelineServiceSource):
         try:
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.dag_id),
-                description=Markdown(pipeline_details.description)
-                if pipeline_details.description
-                else None,
+                description=(
+                    Markdown(pipeline_details.description)
+                    if pipeline_details.description
+                    else None
+                ),
                 sourceUrl=SourceUrl(self._get_dag_source_url(pipeline_details.dag_id)),
                 state=self.get_pipeline_state(pipeline_details),
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
-                startDate=pipeline_details.start_date.isoformat()
-                if pipeline_details.start_date
-                else None,
+                startDate=(
+                    pipeline_details.start_date.isoformat()
+                    if pipeline_details.start_date
+                    else None
+                ),
                 tasks=self._build_tasks(pipeline_details),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 scheduleInterval=pipeline_details.schedule_interval,

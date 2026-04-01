@@ -12,6 +12,7 @@
  */
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
   DATA_MODE_ASSET_EDGE_STROKE_COLOR,
@@ -19,6 +20,7 @@ import {
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_STROKE_COLOR,
+  LayoutEngine,
   NODE_BORDER_COLOR,
   RELATION_COLORS,
 } from '../OntologyExplorer.constants';
@@ -44,10 +46,7 @@ import {
   getCanvasColor,
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
-import {
-  computeDataModePositions,
-  computeGlossaryGroupPositions,
-} from '../utils/layoutCalculations';
+import { computeGlossaryGroupPositions } from '../utils/layoutCalculations';
 
 const INVERSE_RELATION_PAIRS: Record<string, string> = {
   broader: 'narrower',
@@ -216,7 +215,6 @@ export function useGraphDataBuilder({
 
     let nodesForGraph: OntologyNode[];
     let edgesForGraph: MergedEdge[];
-    let dataModePositions: Record<string, { x: number; y: number }> = {};
     let termAssetCountMap = new Map<string, number>();
 
     if (explorationMode === 'data') {
@@ -299,13 +297,6 @@ export function useGraphDataBuilder({
       edgesForGraph = mergedEdgesList.filter(
         (e) => visibleIds.has(e.from) && visibleIds.has(e.to)
       );
-
-      const visTermNodes = nodesForGraph.filter((n) => !allAssetIds.has(n.id));
-      dataModePositions = computeDataModePositions(
-        visTermNodes,
-        edgesForGraph,
-        visibleAssetIds
-      );
     } else if (explorationMode === 'hierarchy') {
       nodesForGraph = inputNodes;
       edgesForGraph = inputEdges.map((e) => ({
@@ -339,6 +330,17 @@ export function useGraphDataBuilder({
     const groupPositions: Record<string, { x: number; y: number }> =
       needsGroupLayout
         ? computeGlossaryGroupPositions(nodesForGraph, layoutType)
+        : {};
+
+    // Pre-compute term positions for data mode using a grid layout (no overlaps guaranteed).
+    const dataModeTermPositions: Record<string, { x: number; y: number }> =
+      explorationMode === 'data'
+        ? computeGlossaryGroupPositions(
+            nodesForGraph.filter(
+              (n) => n.type !== 'dataAsset' && n.type !== 'metric'
+            ),
+            LayoutEngine.Dagre
+          )
         : {};
 
     const localAssetToTermColor = new Map<string, string>();
@@ -378,11 +380,14 @@ export function useGraphDataBuilder({
       const label = isInModelMode
         ? truncateNodeLabelByWidth(rawLabel, nodeWidth)
         : rawLabel;
+      const isDataAsset = node.type === 'dataAsset' || node.type === 'metric';
       const pos =
-        explorationMode === 'data'
-          ? dataModePositions[node.id]
-          : explorationMode === 'hierarchy'
+        explorationMode === 'hierarchy'
           ? nodePositions?.[node.id]
+          : explorationMode === 'data'
+          ? isDataAsset
+            ? undefined
+            : dataModeTermPositions[node.id]
           : groupPositions[node.id] ?? nodePositions?.[node.id];
       const isSelected =
         explorationMode === 'hierarchy'
@@ -400,8 +405,7 @@ export function useGraphDataBuilder({
 
       const isInHierarchyMode = explorationMode === 'hierarchy';
       const isInDataMode = explorationMode === 'data';
-      const isDataAssetOrMetric =
-        node.type === 'dataAsset' || node.type === 'metric';
+      const isDataAssetOrMetric = isDataAsset;
 
       if (isInHierarchyMode) {
         const comboId = `hierarchy-combo-${node.glossaryId}`;
@@ -440,6 +444,10 @@ export function useGraphDataBuilder({
         const sz = DATA_MODE_ASSET_CIRCLE_SIZE;
         const assetColor =
           localAssetToTermColor.get(node.id) ?? NODE_BORDER_COLOR;
+        const entityTypeLabel =
+          node.entityRef?.type !== undefined
+            ? entityUtilClassBase.getFormattedEntityType(node.entityRef.type)
+            : undefined;
 
         return {
           id: node.id,
@@ -460,7 +468,8 @@ export function useGraphDataBuilder({
             getCanvasColor,
             label,
             assetColor,
-            pos
+            pos,
+            entityTypeLabel
           ),
         };
       }
@@ -524,8 +533,8 @@ export function useGraphDataBuilder({
           )
         : null;
 
-    const g6Edges: EdgeData[] = edgesForGraph.map((edge, index) => {
-      const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
+    const g6Edges: EdgeData[] = edgesForGraph.map((edge) => {
+      const edgeId = `edge-${edge.from}-${edge.to}-${edge.relationType}`;
       const fromGlossary = nodeIdToGlossaryId.get(edge.from);
       const toGlossary = nodeIdToGlossaryId.get(edge.to);
       const isCrossTeam = Boolean(
@@ -684,5 +693,35 @@ export function useGraphDataBuilder({
     graphSearchHighlight,
   ]);
 
-  return { graphData, mergedEdgesList, neighborSet, computeNodeColor };
+  const assetToTermMap = useMemo(() => {
+    if (explorationMode !== 'data') {
+      return {} as Record<string, string>;
+    }
+    const map: Record<string, string> = {};
+    const allAssetIds = new Set(
+      inputNodes
+        .filter((n) => n.type === 'dataAsset' || n.type === 'metric')
+        .map((n) => n.id)
+    );
+    const allTermIds = new Set(
+      inputNodes.filter((n) => !allAssetIds.has(n.id)).map((n) => n.id)
+    );
+    mergedEdgesList.forEach((edge) => {
+      if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
+        map[edge.to] = edge.from;
+      } else if (allAssetIds.has(edge.from) && allTermIds.has(edge.to)) {
+        map[edge.from] = edge.to;
+      }
+    });
+
+    return map;
+  }, [explorationMode, inputNodes, mergedEdgesList]);
+
+  return {
+    graphData,
+    mergedEdgesList,
+    neighborSet,
+    computeNodeColor,
+    assetToTermMap,
+  };
 }

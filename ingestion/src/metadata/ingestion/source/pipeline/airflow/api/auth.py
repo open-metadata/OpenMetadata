@@ -11,6 +11,7 @@
 """
 Auth helper functions for the Airflow REST API client.
 """
+
 import base64
 import traceback
 from datetime import datetime, timedelta, timezone
