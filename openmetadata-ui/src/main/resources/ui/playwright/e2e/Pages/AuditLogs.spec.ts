@@ -306,28 +306,33 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Add EntityType filter (should coexist with User filter)', async () => {
-      const entityTypeFilter = page.getByTestId('search-dropdown-Entity Type');
-      await entityTypeFilter.click();
+      await page.getByTestId('search-dropdown-Entity Type').click();
 
-      const auditLogResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/audit/logs') &&
-          response.url().includes('userName=admin') &&
-          response.url().includes('entityType=') &&
-          response.request().method() === 'GET'
-      );
+      const tableOption = page.getByRole('menuitem', { name: /table/i });
+      await expect(tableOption).toBeVisible();
+      await tableOption.click();
 
-      await page.locator('.ant-dropdown-menu-item:visible').first().click();
-      await page.getByTestId('update-btn').click();
-      const response = await auditLogResponse;
+      const [response] = await Promise.all([
+        page.waitForResponse((response) => {
+          if (
+            !response.url().includes('/api/v1/audit/logs') ||
+            response.request().method() !== 'GET'
+          ) {
+            return false;
+          }
+
+          const url = new URL(response.url());
+          return (
+            url.searchParams.get('userName') === 'admin' &&
+            !!url.searchParams.get('entityType')
+          );
+        }),
+        page.getByTestId('update-btn').click(),
+      ]);
+
       expect(response.status()).toBe(200);
-
-      const entityFilterTag = page.getByTestId('filter-chip-entityType');
-      await expect(entityFilterTag).toBeVisible();
-
-      const responseUrl = response.url();
-      expect(responseUrl).toContain('userName=');
-      expect(responseUrl).toContain('entityType=');
+      await expect(page.getByTestId('filter-chip-user')).toContainText('admin');
+      await expect(page.getByTestId('filter-chip-entityType')).toBeVisible();
     });
 
     await test.step('Verify both User and EntityType filters are active simultaneously', async () => {

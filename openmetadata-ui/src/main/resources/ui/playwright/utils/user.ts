@@ -118,7 +118,9 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   await expect
     .poll(
       async () => {
-        const searchRequest = page.waitForResponse('/api/v1/search/query*');
+        const searchRequest = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/search/query')
+        );
         await searchBar.clear();
         await searchBar.fill(userName);
         await searchRequest;
