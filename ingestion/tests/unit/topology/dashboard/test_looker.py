@@ -336,10 +336,9 @@ class LookerUnitTest(TestCase):
 
         self.assertEqual(
             self.looker._clean_table_name(
-                "`table_catalog`.`table_schema`.`table_name`",
-                Dialect.DATABRICKS
+                "`table_catalog`.`table_schema`.`table_name`", Dialect.DATABRICKS
             ),
-            "table_catalog.table_schema.table_name"
+            "table_catalog.table_schema.table_name",
         )
 
     def test_render_table_name(self):
