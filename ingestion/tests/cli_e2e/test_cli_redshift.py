@@ -13,8 +13,8 @@
 Redshift E2E tests
 """
 from typing import List, Tuple
-from unittest import skip
 
+import pytest
 from sqlalchemy import text
 
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
@@ -256,7 +256,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             """,
         ]
 
-    @skip("Skipped due to Redshift instance issue")
+    @pytest.mark.skip(reason="Skipped due to Redshift instance issue")
     def test_profiler_with_time_partition(self) -> None:
         pass
 
