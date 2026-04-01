@@ -126,13 +126,22 @@ const mockAuthData = {
   isAdminUser: true,
   isAuthDisabled: false,
 };
-jest.mock('react-router-dom', () => ({
-  Link: jest
-    .fn()
-    .mockImplementation(({ children, ...rest }) => (
-      <span {...rest}>{children}</span>
-    )),
-}));
+const mockNavigateDataQualityTab = jest.fn();
+
+jest.mock('react-router-dom', () => {
+  const actual =
+    jest.requireActual<typeof import('react-router-dom')>('react-router-dom');
+
+  return {
+    ...actual,
+    Link: jest
+      .fn()
+      .mockImplementation(({ children, ...rest }) => (
+        <span {...rest}>{children}</span>
+      )),
+    useNavigate: () => mockNavigateDataQualityTab,
+  };
+});
 jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: () => {
     return {

@@ -56,17 +56,15 @@ public class StatsReconciler {
       }
     }
 
-    int jobSuccess = sinkSuccess;
     int jobFailed = readerFailed + processFailed + sinkFailed;
     int jobTotal = readerTotal;
-    int jobWarnings = readerWarnings;
 
     jobStats.setTotalRecords(jobTotal);
-    jobStats.setSuccessRecords(jobSuccess);
+    jobStats.setSuccessRecords(sinkSuccess);
     jobStats.setFailedRecords(jobFailed);
-    jobStats.setWarningRecords(jobWarnings);
+    jobStats.setWarningRecords(readerWarnings);
 
-    int computedTotal = jobSuccess + jobFailed;
+    int computedTotal = sinkSuccess + jobFailed;
     if (computedTotal != jobTotal && jobTotal > 0) {
       LOG.warn(
           "Stats discrepancy detected: total={}, success+failed={}. "

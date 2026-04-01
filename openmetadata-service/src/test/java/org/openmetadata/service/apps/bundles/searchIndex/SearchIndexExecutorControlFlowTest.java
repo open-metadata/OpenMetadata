@@ -90,7 +90,8 @@ class SearchIndexExecutorControlFlowTest {
   }
 
   @Test
-  void hasReachedEndCursorHandlesNumericJsonAndFallbackComparisons() throws Exception {
+  void hasReachedEndCursorHandlesNumericOffsetsOnly() throws Exception {
+    // Numeric offsets still work (used by time-series readers)
     assertTrue(
         (Boolean)
             invokePrivateMethod(
@@ -105,20 +106,23 @@ class SearchIndexExecutorControlFlowTest {
                 new Class<?>[] {String.class, String.class},
                 RestUtil.encodeCursor("4"),
                 RestUtil.encodeCursor("5")));
-    assertTrue(
+
+    // JSON entity cursors are no longer compared in Java — always returns false.
+    // Entity boundary enforcement is now handled at the SQL level via BoundedListFilter.
+    assertFalse(
         (Boolean)
             invokePrivateMethod(
                 "hasReachedEndCursor",
                 new Class<?>[] {String.class, String.class},
                 RestUtil.encodeCursor("{\"name\":\"b\",\"id\":\"2\"}"),
                 RestUtil.encodeCursor("{\"name\":\"a\",\"id\":\"9\"}")));
-    assertTrue(
+    assertFalse(
         (Boolean)
             invokePrivateMethod(
                 "hasReachedEndCursor",
                 new Class<?>[] {String.class, String.class},
-                RestUtil.encodeCursor("z"),
-                RestUtil.encodeCursor("a")));
+                RestUtil.encodeCursor("{\"name\":\"echo\",\"id\":\"1\"}"),
+                RestUtil.encodeCursor("{\"name\":\"Foxtrot\",\"id\":\"2\"}")));
   }
 
   @Test
@@ -1601,6 +1605,114 @@ class SearchIndexExecutorControlFlowTest {
 
     assertEquals(1, batchFailures.get(Entity.TABLE).get());
     assertTrue(producerPhaser.isTerminated());
+  }
+
+  /**
+   * Validates the full cursor decode → BoundedListFilter flow: an encoded boundary cursor
+   * is decoded and used to construct a filter with the correct SQL boundary condition.
+   * This is the core mechanism that replaces the broken Java-side hasReachedEndCursor comparison.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void encodedBoundaryCursorProducesCorrectBoundedFilter() {
+    // The exact cursor that would be produced by getCursorAtOffset for entity "Foxtrot"
+    String boundaryCursorJson =
+        "{\"name\":\"Foxtrot\",\"id\":\"00000000-0000-0000-0000-000000000006\"}";
+    String encodedBoundary = RestUtil.encodeCursor(boundaryCursorJson);
+
+    // Decode — same logic as submitEntityReaders
+    String decoded = RestUtil.decodeCursor(encodedBoundary);
+    Map<String, String> cursorMap =
+        org.openmetadata.schema.utils.JsonUtils.readValue(decoded, Map.class);
+
+    assertEquals("Foxtrot", cursorMap.get("name"));
+    assertEquals("00000000-0000-0000-0000-000000000006", cursorMap.get("id"));
+
+    // Construct BoundedListFilter with decoded values
+    org.openmetadata.service.jdbi3.BoundedListFilter filter =
+        new org.openmetadata.service.jdbi3.BoundedListFilter(
+            org.openmetadata.schema.type.Include.ALL, cursorMap.get("name"), cursorMap.get("id"));
+
+    String condition = filter.getCondition(null);
+    assertTrue(condition.contains("name < :reindexEndName"));
+    assertTrue(condition.contains("name = :reindexEndName AND id <= :reindexEndId"));
+    assertEquals("Foxtrot", filter.getQueryParams().get("reindexEndName"));
+    assertEquals(
+        "00000000-0000-0000-0000-000000000006", filter.getQueryParams().get("reindexEndId"));
+  }
+
+  /**
+   * Verifies that a BoundedListFilter and a plain ListFilter produce different conditions,
+   * confirming the non-last reader gets a bounded query while the last reader does not.
+   */
+  @Test
+  void boundedVsUnboundedFilterProduceDifferentConditions() {
+    ListFilter unbounded = new ListFilter(org.openmetadata.schema.type.Include.ALL);
+    org.openmetadata.service.jdbi3.BoundedListFilter bounded =
+        new org.openmetadata.service.jdbi3.BoundedListFilter(
+            org.openmetadata.schema.type.Include.ALL,
+            "Foxtrot",
+            "00000000-0000-0000-0000-000000000006");
+
+    String unboundedCond = unbounded.getCondition(null);
+    String boundedCond = bounded.getCondition(null);
+
+    assertFalse(unboundedCond.contains("reindexEndName"));
+    assertTrue(boundedCond.contains("reindexEndName"));
+    assertTrue(boundedCond.startsWith(unboundedCond));
+  }
+
+  /**
+   * Validates that the old Java-side cursor comparison no longer applies to entity cursors.
+   * This is the exact scenario that caused the bug: "echo".compareTo("Foxtrot") > 0 in Java
+   * but "echo" < "Foxtrot" in MySQL case-insensitive collation.
+   */
+  @Test
+  void hasReachedEndCursorNoLongerComparesEntityCursors() throws Exception {
+    // This is the exact pair that triggered the bug:
+    // Java: "echo" > "Foxtrot" (e=101 > F=70) → old code returned TRUE (stop reader)
+    // MySQL: "echo" < "Foxtrot" (case-insensitive: e < f) → reader should continue
+    String echoCursor =
+        RestUtil.encodeCursor(
+            "{\"name\":\"echo\",\"id\":\"00000000-0000-0000-0000-000000000005\"}");
+    String foxtrotCursor =
+        RestUtil.encodeCursor(
+            "{\"name\":\"Foxtrot\",\"id\":\"00000000-0000-0000-0000-000000000006\"}");
+
+    // After fix: hasReachedEndCursor returns FALSE for entity cursors (boundary is in SQL now)
+    assertFalse(
+        (Boolean)
+            invokePrivateMethod(
+                "hasReachedEndCursor",
+                new Class<?>[] {String.class, String.class},
+                echoCursor,
+                foxtrotCursor),
+        "Entity cursor comparison must not happen in Java — SQL boundary handles it");
+  }
+
+  /**
+   * Verifies that the old bug scenario is now impossible: mixed-case names at boundaries
+   * cannot cause missing entities because the boundary is enforced in SQL, not Java.
+   */
+  @Test
+  void mixedCaseEntityNamesAtBoundaryProduceBoundedSqlCondition() {
+    // Simulate the exact scenario: boundary entity is "Foxtrot"
+    org.openmetadata.service.jdbi3.BoundedListFilter filter =
+        new org.openmetadata.service.jdbi3.BoundedListFilter(
+            org.openmetadata.schema.type.Include.ALL,
+            "Foxtrot",
+            "00000000-0000-0000-0000-000000000006");
+
+    String condition = filter.getCondition(null);
+
+    // The SQL condition ensures the DB collation handles the comparison.
+    // On MySQL: WHERE ... AND (name < 'Foxtrot' OR (name = 'Foxtrot' AND id <= 'uuid'))
+    // The DB evaluates "echo" < "Foxtrot" as TRUE (case-insensitive), so "echo" IS included.
+    // "Foxtrot" itself is included (id <= boundary id).
+    // "golf" is excluded (name > "Foxtrot" case-insensitively).
+    assertTrue(condition.contains("name < :reindexEndName"));
+    assertTrue(condition.contains("name = :reindexEndName AND id <= :reindexEndId"));
+    assertEquals("Foxtrot", filter.getQueryParams().get("reindexEndName"));
   }
 
   private Stats initializeStats(Set<String> entities) {

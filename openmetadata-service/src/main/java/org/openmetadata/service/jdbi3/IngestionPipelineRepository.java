@@ -18,8 +18,13 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -28,6 +33,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +68,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.logstorage.LogStorageInterface;
+import org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
+import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressState;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -733,47 +741,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "processingEngine",
-          () -> {
-            updateProcessingEngine(original, updated);
-          });
-      compareAndUpdate(
-          "sourceConfig",
-          () -> {
-            updateSourceConfig();
-          });
+      compareAndUpdate("processingEngine", () -> updateProcessingEngine(original, updated));
+      compareAndUpdate("sourceConfig", this::updateSourceConfig);
       compareAndUpdate(
           "airflowConfig",
-          () -> {
-            updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
-          });
+          () -> updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig()));
       compareAndUpdate(
-          "loggerLevel",
-          () -> {
-            updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
-          });
+          "loggerLevel", () -> updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel()));
+      compareAndUpdate("enabled", () -> updateEnabled(original.getEnabled(), updated.getEnabled()));
       compareAndUpdate(
-          "enabled",
-          () -> {
-            updateEnabled(original.getEnabled(), updated.getEnabled());
-          });
-      compareAndUpdate(
-          "deployed",
-          () -> {
-            updateDeployed(original.getDeployed(), updated.getDeployed());
-          });
+          "deployed", () -> updateDeployed(original.getDeployed(), updated.getDeployed()));
       compareAndUpdate(
           "raiseOnError",
-          () -> {
-            updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
-          });
+          () -> updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError()));
       compareAndUpdate(
           "enableStreamableLogs",
-          () -> {
-            updateEnableStreamableLogs(
-                original.getEnableStreamableLogs(), updated.getEnableStreamableLogs());
-          });
+          () ->
+              updateEnableStreamableLogs(
+                  original.getEnableStreamableLogs(), updated.getEnableStreamableLogs()));
 
       deployIfRequired(original, updated);
     }
@@ -1064,80 +1049,74 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         return Response.ok()
             .type("text/event-stream")
             .entity(
-                new jakarta.ws.rs.core.StreamingOutput() {
-                  @Override
-                  public void write(java.io.OutputStream output) {
-                    try {
-                      // Send SSE headers
-                      output.write("retry: 1000\n\n".getBytes());
-                      output.flush();
-
-                      // Create listener for live logs
-                      org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener listener =
-                          logLine -> {
-                            try {
-                              String event =
-                                  String.format("data: %s\n\n", logLine.replace("\n", "\ndata: "));
-                              output.write(event.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                              output.flush();
-                            } catch (IOException e) {
-                              LOG.debug("Client disconnected for {}/{}", pipelineFQN, runId);
-                              throw new RuntimeException(e);
-                            }
-                          };
-
-                      // Send recent logs first (from memory cache)
-                      java.util.List<String> recentLogs =
-                          s3Storage.getRecentLogs(pipelineFQN, runId, 100);
-                      for (String line : recentLogs) {
-                        output.write(
-                            String.format("data: %s\n\n", line)
-                                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                      }
-                      output.flush();
-
-                      // Then stream from S3 for complete history
-                      java.io.InputStream logStream =
-                          logStorage.getLogInputStream(pipelineFQN, runId);
-                      try (java.io.BufferedReader reader =
-                          new java.io.BufferedReader(
-                              new java.io.InputStreamReader(
-                                  logStream, java.nio.charset.StandardCharsets.UTF_8))) {
-                        String line;
-                        int skipLines = recentLogs.size(); // Skip lines we already sent
-                        while ((line = reader.readLine()) != null) {
-                          if (skipLines > 0) {
-                            skipLines--;
-                            continue;
-                          }
-                          output.write(
-                              ("data: " + line + "\n\n")
-                                  .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                          output.flush();
-                        }
-                      }
-
-                      // Register listener for new logs
-                      s3Storage.registerLogListener(pipelineFQN, runId, listener);
-
+                (StreamingOutput)
+                    output -> {
                       try {
-                        // Keep connection alive with periodic heartbeats
-                        while (!Thread.currentThread().isInterrupted()) {
-                          Thread.sleep(30000); // 30 second heartbeat
-                          output.write(": heartbeat\n\n".getBytes());
-                          output.flush();
+                        // Send SSE headers
+                        output.write("retry: 1000\n\n".getBytes());
+                        output.flush();
+
+                        // Create listener for live logs
+                        LogStreamListener listener =
+                            logLine -> {
+                              try {
+                                String event =
+                                    String.format(
+                                        "data: %s\n\n", logLine.replace("\n", "\ndata: "));
+                                output.write(event.getBytes(StandardCharsets.UTF_8));
+                                output.flush();
+                              } catch (IOException e) {
+                                LOG.debug("Client disconnected for {}/{}", pipelineFQN, runId);
+                                throw new RuntimeException(e);
+                              }
+                            };
+
+                        // Send recent logs first (from memory cache)
+                        List<String> recentLogs = s3Storage.getRecentLogs(pipelineFQN, runId, 100);
+                        for (String line : recentLogs) {
+                          output.write(
+                              String.format("data: %s\n\n", line).getBytes(StandardCharsets.UTF_8));
                         }
-                      } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                      } finally {
-                        // Cleanup listener
-                        s3Storage.unregisterLogListener(pipelineFQN, runId, listener);
+                        output.flush();
+
+                        // Then stream from S3 for complete history
+                        InputStream logStream = logStorage.getLogInputStream(pipelineFQN, runId);
+                        try (BufferedReader reader =
+                            new BufferedReader(
+                                new InputStreamReader(logStream, StandardCharsets.UTF_8))) {
+                          String line;
+                          int skipLines = recentLogs.size(); // Skip lines we already sent
+                          while ((line = reader.readLine()) != null) {
+                            if (skipLines > 0) {
+                              skipLines--;
+                              continue;
+                            }
+                            output.write(
+                                ("data: " + line + "\n\n").getBytes(StandardCharsets.UTF_8));
+                            output.flush();
+                          }
+                        }
+
+                        // Register listener for new logs
+                        s3Storage.registerLogListener(pipelineFQN, runId, listener);
+
+                        try {
+                          // Keep connection alive with periodic heartbeats
+                          while (!Thread.currentThread().isInterrupted()) {
+                            Thread.sleep(30000); // 30 second heartbeat
+                            output.write(": heartbeat\n\n".getBytes());
+                            output.flush();
+                          }
+                        } catch (InterruptedException e) {
+                          Thread.currentThread().interrupt();
+                        } finally {
+                          // Cleanup listener
+                          s3Storage.unregisterLogListener(pipelineFQN, runId, listener);
+                        }
+                      } catch (Exception e) {
+                        LOG.error("Error streaming logs", e);
                       }
-                    } catch (Exception e) {
-                      LOG.error("Error streaming logs", e);
-                    }
-                  }
-                })
+                    })
             .build();
       } else if (isLogStorageEnabled()) {
         // Default storage - fallback to traditional logs
@@ -1186,58 +1165,55 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return Response.ok()
         .type("text/event-stream")
         .entity(
-            new jakarta.ws.rs.core.StreamingOutput() {
-              @Override
-              public void write(java.io.OutputStream output) {
-                try {
-                  output.write("retry: 1000\n\n".getBytes());
-                  output.flush();
-
-                  IngestionProgressTracker.ProgressState currentState =
-                      progressTracker.getProgressState(pipelineFQN, runId);
-                  if (currentState != null && currentState.getLatestUpdate() != null) {
-                    String json =
-                        org.openmetadata.schema.utils.JsonUtils.pojoToJson(
-                            currentState.getLatestUpdate());
-                    output.write(
-                        String.format("data: %s\n\n", json)
-                            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                    output.flush();
-                  }
-
-                  java.util.function.Consumer<ProgressUpdate> listener =
-                      update -> {
-                        try {
-                          String json = org.openmetadata.schema.utils.JsonUtils.pojoToJson(update);
-                          output.write(
-                              String.format("data: %s\n\n", json)
-                                  .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                          output.flush();
-                        } catch (IOException e) {
-                          LOG.debug(
-                              "Client disconnected for progress stream {}/{}", pipelineFQN, runId);
-                          throw new RuntimeException(e);
-                        }
-                      };
-
-                  progressTracker.registerProgressListener(pipelineFQN, runId, listener);
-
+            (StreamingOutput)
+                output -> {
                   try {
-                    while (!Thread.currentThread().isInterrupted()) {
-                      Thread.sleep(30000);
-                      output.write(": heartbeat\n\n".getBytes());
+                    output.write("retry: 1000\n\n".getBytes());
+                    output.flush();
+
+                    ProgressState currentState =
+                        progressTracker.getProgressState(pipelineFQN, runId);
+                    if (currentState != null && currentState.getLatestUpdate() != null) {
+                      String json = JsonUtils.pojoToJson(currentState.getLatestUpdate());
+                      output.write(
+                          String.format("data: %s\n\n", json).getBytes(StandardCharsets.UTF_8));
                       output.flush();
                     }
-                  } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                  } finally {
-                    progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
+
+                    Consumer<ProgressUpdate> listener =
+                        update -> {
+                          try {
+                            String json = JsonUtils.pojoToJson(update);
+                            output.write(
+                                String.format("data: %s\n\n", json)
+                                    .getBytes(StandardCharsets.UTF_8));
+                            output.flush();
+                          } catch (IOException e) {
+                            LOG.debug(
+                                "Client disconnected for progress stream {}/{}",
+                                pipelineFQN,
+                                runId);
+                            throw new RuntimeException(e);
+                          }
+                        };
+
+                    progressTracker.registerProgressListener(pipelineFQN, runId, listener);
+
+                    try {
+                      while (!Thread.currentThread().isInterrupted()) {
+                        Thread.sleep(30000);
+                        output.write(": heartbeat\n\n".getBytes());
+                        output.flush();
+                      }
+                    } catch (InterruptedException e) {
+                      Thread.currentThread().interrupt();
+                    } finally {
+                      progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
+                    }
+                  } catch (Exception e) {
+                    LOG.error("Error streaming progress for {}/{}", pipelineFQN, runId, e);
                   }
-                } catch (Exception e) {
-                  LOG.error("Error streaming progress for {}/{}", pipelineFQN, runId, e);
-                }
-              }
-            })
+                })
         .build();
   }
 

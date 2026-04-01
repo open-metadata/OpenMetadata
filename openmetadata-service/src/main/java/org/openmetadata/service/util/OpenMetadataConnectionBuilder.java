@@ -77,9 +77,9 @@ public class OpenMetadataConnectionBuilder {
       initializeBotUser(getBotFromPipeline(ingestionPipeline));
     } catch (Exception e) {
       LOG.warn(
-          String.format(
-              "Could not initialize bot for pipeline [%s] due to [%s]",
-              ingestionPipeline.getPipelineType(), e));
+          "Could not initialize bot for pipeline [{}] due to ",
+          ingestionPipeline.getPipelineType(),
+          e);
       initializeBotUser(Entity.INGESTION_BOT_NAME);
     }
   }
@@ -215,7 +215,7 @@ public class OpenMetadataConnectionBuilder {
       }
       return user;
     } catch (EntityNotFoundException ex) {
-      LOG.debug((String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
+      LOG.debug("User for bot [{}] not found.", botName);
       return null;
     }
   }

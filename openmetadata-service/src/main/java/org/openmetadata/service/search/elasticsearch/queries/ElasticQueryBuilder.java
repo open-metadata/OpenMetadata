@@ -172,7 +172,7 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
 
   public ElasticQueryBuilder nestedQuery(String path, OMQueryBuilder innerQuery) {
     Query inner = ((ElasticQueryBuilder) innerQuery).build();
-    this.query = Query.of(q -> q.nested(n -> n.path(path).query(inner)));
+    this.query = Query.of(q -> q.nested(n -> n.path(path).query(inner).ignoreUnmapped(true)));
     return this;
   }
 

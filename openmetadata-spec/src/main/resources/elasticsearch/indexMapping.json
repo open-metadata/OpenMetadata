@@ -157,8 +157,7 @@
     "parentAliases": [
       "storageService",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": []
   },
@@ -169,8 +168,7 @@
     "parentAliases": [
       "driveService",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": [
       "file",
@@ -185,8 +183,7 @@
       "driveService",
       "directory",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": []
   },
@@ -198,8 +195,7 @@
       "driveService",
       "directory",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": [
       "worksheet"
@@ -213,8 +209,7 @@
       "driveService",
       "spreadsheet",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": []
   },
@@ -331,8 +326,7 @@
     "parentAliases": [
       "classification",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": []
   },

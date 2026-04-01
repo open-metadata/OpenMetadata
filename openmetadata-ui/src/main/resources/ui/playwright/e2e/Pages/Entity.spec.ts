@@ -589,7 +589,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             columnNameTestId,
             entityType: entity.type as EntityType,
           });
-
+          await waitForAllLoadersToDisappear(page);
           // Step 1: Add a glossary term first
           const glossaryEditButton = panelContainer.getByTestId(
             'edit-glossary-terms'

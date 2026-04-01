@@ -309,11 +309,7 @@ class BulkExecutorTest {
 
     AtomicBoolean taskExecuted = new AtomicBoolean(false);
 
-    Future<?> future =
-        executor.submitWithFuture(
-            () -> {
-              taskExecuted.set(true);
-            });
+    Future<?> future = executor.submitWithFuture(() -> taskExecuted.set(true));
 
     assertNotNull(future, "Should return a Future");
     future.get(5, TimeUnit.SECONDS);

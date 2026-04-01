@@ -62,10 +62,7 @@ public class GoogleAuthValidator {
       FieldError publicKeyCheck = validatePublicKeyUrls(authConfig.getPublicKeyUrls());
       if (publicKeyCheck != null) return publicKeyCheck;
 
-      FieldError clientIdCheck = validateClientId(authConfig.getClientId());
-      return clientIdCheck;
-
-      // Return null for success (no error)
+      return validateClientId(authConfig.getClientId());
     } catch (Exception e) {
       LOG.error("Google public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -126,15 +123,13 @@ public class GoogleAuthValidator {
         }
       }
 
-      FieldError credentialsCheck =
-          validateGoogleCredentials(
-              oidcConfig.getId(),
-              oidcConfig.getSecret(),
-              oidcConfig.getCallbackUrl(),
-              accessType,
-              prompt,
-              scope);
-      return credentialsCheck;
+      return validateGoogleCredentials(
+          oidcConfig.getId(),
+          oidcConfig.getSecret(),
+          oidcConfig.getCallbackUrl(),
+          accessType,
+          prompt,
+          scope);
     } catch (Exception e) {
       LOG.error("Google confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(

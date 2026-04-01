@@ -606,20 +606,18 @@ public class TopicRepository extends EntityRepository<Topic> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "maximumMessageSize",
-          () -> {
-            recordChange(
-                "maximumMessageSize",
-                original.getMaximumMessageSize(),
-                updated.getMaximumMessageSize());
-          });
+          () ->
+              recordChange(
+                  "maximumMessageSize",
+                  original.getMaximumMessageSize(),
+                  updated.getMaximumMessageSize()));
       compareAndUpdate(
           "minimumInSyncReplicas",
-          () -> {
-            recordChange(
-                "minimumInSyncReplicas",
-                original.getMinimumInSyncReplicas(),
-                updated.getMinimumInSyncReplicas());
-          });
+          () ->
+              recordChange(
+                  "minimumInSyncReplicas",
+                  original.getMinimumInSyncReplicas(),
+                  updated.getMinimumInSyncReplicas()));
       compareAndUpdate(
           "partitions",
           () -> {
@@ -630,22 +628,21 @@ public class TopicRepository extends EntityRepository<Topic> {
           });
       compareAndUpdate(
           "replicationFactor",
-          () -> {
-            recordChange(
-                "replicationFactor",
-                original.getReplicationFactor(),
-                updated.getReplicationFactor());
-          });
+          () ->
+              recordChange(
+                  "replicationFactor",
+                  original.getReplicationFactor(),
+                  updated.getReplicationFactor()));
       compareAndUpdate(
           "retentionTime",
-          () -> {
-            recordChange("retentionTime", original.getRetentionTime(), updated.getRetentionTime());
-          });
+          () ->
+              recordChange(
+                  "retentionTime", original.getRetentionTime(), updated.getRetentionTime()));
       compareAndUpdate(
           "retentionSize",
-          () -> {
-            recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());
-          });
+          () ->
+              recordChange(
+                  "retentionSize", original.getRetentionSize(), updated.getRetentionSize()));
       compareAndUpdate(
           "messageSchema",
           () -> {
@@ -673,30 +670,21 @@ public class TopicRepository extends EntityRepository<Topic> {
           });
       compareAndUpdate(
           "topicConfig",
-          () -> {
-            recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
-          });
-      compareAndUpdate(
-          "cleanupPolicies",
-          () -> {
-            updateCleanupPolicies(original, updated);
-          });
+          () -> recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig()));
+      compareAndUpdate("cleanupPolicies", () -> updateCleanupPolicies(original, updated));
       compareAndUpdate(
           "sourceUrl",
-          () -> {
-            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-          });
+          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
 
     private void updateCleanupPolicies(Topic original, Topic updated) {

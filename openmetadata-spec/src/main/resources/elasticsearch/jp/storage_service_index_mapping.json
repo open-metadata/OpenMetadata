@@ -73,6 +73,12 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "id": {
         "type": "text"
       },
@@ -407,7 +413,7 @@
       "descriptionStatus": {
         "type": "keyword"
       },
-"ownerDisplayName": {
+      "ownerDisplayName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },

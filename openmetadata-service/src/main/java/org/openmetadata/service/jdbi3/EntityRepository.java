@@ -2260,8 +2260,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T e : entities) {
       prepareInternal(e, false);
     }
-    List<T> createdEntities = createManyEntities(entities);
-    return createdEntities;
+    return createManyEntities(entities);
   }
 
   public final T create(UriInfo uriInfo, T entity) {
@@ -4536,7 +4535,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             TagLabel.LabelType.AUTOMATED.ordinal(),
             TagLabel.State.CONFIRMED.ordinal(),
             null,
-            null,
+            entity.getUpdatedBy(),
             metadata);
   }
 
@@ -4571,6 +4570,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .withTagFQN(cert.getTagLabel().getTagFQN())
               .withLabelType(TagLabel.LabelType.AUTOMATED)
               .withState(TagLabel.State.CONFIRMED)
+              .withAppliedBy(entity.getUpdatedBy())
               .withMetadata(new TagLabelMetadata().withExpiryDate(cert.getExpiryDate()));
       certTagsByTarget.put(entity.getFullyQualifiedName(), List.of(tagLabel));
     }
@@ -4724,9 +4724,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
-    return !supportsTags
-        ? null
-        : daoCollection.tagUsageDAO().getTagsByPrefix(prefix, postfix, true);
+    if (!supportsTags) {
+      return null;
+    }
+    Map<String, List<TagLabel>> result =
+        daoCollection.tagUsageDAO().getTagsByPrefix(prefix, postfix, true);
+    String certClassification = getCertificationClassification();
+    if (certClassification != null && result != null) {
+      result
+          .values()
+          .forEach(
+              tags ->
+                  tags.removeIf(
+                      tag ->
+                          certClassification.equals(
+                              FullyQualifiedName.getParentFQN(tag.getTagFQN()))));
+    }
+    return result;
   }
 
   protected List<EntityReference> getFollowers(T entity) {
@@ -5884,10 +5898,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return domainFqns.stream()
-        .map(
-            domainFqn -> {
-              return Entity.getEntityReferenceByName(DOMAIN, domainFqn, NON_DELETED);
-            })
+        .map(domainFqn -> Entity.getEntityReferenceByName(DOMAIN, domainFqn, NON_DELETED))
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
@@ -5901,10 +5912,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return domains.stream()
-        .map(
-            domain -> {
-              return Entity.getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED);
-            })
+        .map(domain -> Entity.getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED))
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
@@ -7877,14 +7885,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entityType, original.getChangeDescription().getPreviousVersion());
       String json =
           daoCollection.entityExtensionDAO().getExtension(original.getId(), extensionName);
-      T previousVersion = JsonUtils.readValue(json, entityClass);
 
       // IMPORTANT: Do NOT call setFieldsInternal here!
       // The JSON already contains the correct historical state of all fields including experts.
       // Calling setFieldsInternal would fetch current relationships from DB which is wrong.
       // The version history JSON is a complete snapshot of the entity at that point in time.
-
-      return previousVersion;
+      return JsonUtils.readValue(json, entityClass);
     }
   }
 
@@ -9064,15 +9070,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Map<String, List<TagLabel>> targetHashToTagLabel =
         populateTagLabel(listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs)));
+    String certClassification = getCertificationClassification();
     return entityFQNs.stream()
         .collect(
             Collectors.toMap(
                 Function.identity(),
                 fqn -> {
                   String targetFQNHash = FullyQualifiedName.buildHash(fqn);
-                  return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
-                      .filter(list -> !list.isEmpty())
-                      .orElseGet(ArrayList::new);
+                  List<TagLabel> tags =
+                      Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
+                          .filter(list -> !list.isEmpty())
+                          .orElseGet(ArrayList::new);
+                  if (certClassification != null) {
+                    tags.removeIf(
+                        tag ->
+                            certClassification.equals(
+                                FullyQualifiedName.getParentFQN(tag.getTagFQN())));
+                  }
+                  return tags;
                 },
                 (a, b) -> a));
   }
@@ -9698,10 +9713,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     BULK_JOBS.put(jobId, mergedJob);
 
     mergedJob.whenComplete(
-        (result, throwable) -> {
-          CompletableFuture.delayedExecutor(1, TimeUnit.HOURS)
-              .execute(() -> BULK_JOBS.remove(jobId));
-        });
+        (result, throwable) ->
+            CompletableFuture.delayedExecutor(1, TimeUnit.HOURS)
+                .execute(() -> BULK_JOBS.remove(jobId)));
 
     return mergedJob;
   }

@@ -546,28 +546,24 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           });
       compareAndUpdate(
           "searchIndexSettings",
-          () -> {
-            recordChange(
-                "searchIndexSettings",
-                original.getSearchIndexSettings(),
-                updated.getSearchIndexSettings());
-          });
+          () ->
+              recordChange(
+                  "searchIndexSettings",
+                  original.getSearchIndexSettings(),
+                  updated.getSearchIndexSettings()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
       compareAndUpdate(
           "indexType",
-          () -> {
-            recordChange("indexType", original.getIndexType(), updated.getIndexType());
-          });
+          () -> recordChange("indexType", original.getIndexType(), updated.getIndexType()));
     }
 
     private void updateSearchIndexFields(
