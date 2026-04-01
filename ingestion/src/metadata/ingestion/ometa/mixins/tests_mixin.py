@@ -394,6 +394,36 @@ class OMetaTestsMixin:
 
         return None
 
+    def get_failed_rows_sample(self, test_case: TestCase) -> Optional[TableData]:
+        """
+        GET failed row sample data for a test case.
+
+        :param test_case: The test case to retrieve sample data for
+        """
+        resp = None
+        try:
+            resp = self.client.get(
+                f"{self.get_suffix(TestCase)}/{test_case.id.root}/failedRowsSample",
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to GET failed rows sample for "
+                f"{test_case.fullyQualifiedName.root}: {exc}"
+            )
+
+        if resp:
+            try:
+                return TableData(**resp)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error parsing failed rows sample for "
+                    f"{test_case.fullyQualifiedName.root}: {exc}"
+                )
+
+        return None
+
     def ingest_inspection_query(
         self, test_case: TestCase, inspection_query: str
     ) -> Optional[TestCase]:

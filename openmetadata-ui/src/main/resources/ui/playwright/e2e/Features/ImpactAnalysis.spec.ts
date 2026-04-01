@@ -362,11 +362,11 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Tier').click();
 
     await expect(
-      page.getByTitle(EntityDataClass.tierTag1.responseData.displayName)
+      page.getByTitle(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
     ).toBeVisible();
 
     await page
-      .getByTitle(EntityDataClass.tierTag1.responseData.displayName)
+      .getByTitle(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
