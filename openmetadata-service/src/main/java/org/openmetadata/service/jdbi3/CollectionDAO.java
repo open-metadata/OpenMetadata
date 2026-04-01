@@ -1774,6 +1774,37 @@ public interface CollectionDAO {
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND relation = :relation "
+            + "AND fromEntity = :fromEntityType "
+            + "AND toEntity = :toEntityType "
+            + "<cond>")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatchWithCondition(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("relation") int relation,
+        @Bind("fromEntityType") String fromEntityType,
+        @Bind("toEntityType") String toEntityType,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findToBatch(
+        List<String> fromIds,
+        String fromEntityType,
+        String toEntityType,
+        int relation,
+        Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findToBatchWithCondition(fromIds, relation, fromEntityType, toEntityType, condition);
+    }
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation = :relation "
             + "<cond>")
     @UseRowMapper(RelationshipObjectMapper.class)
     List<EntityRelationshipObject> findToBatchAllTypesWithCondition(

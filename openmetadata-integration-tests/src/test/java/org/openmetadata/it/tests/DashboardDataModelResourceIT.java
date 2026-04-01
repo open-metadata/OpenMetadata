@@ -54,6 +54,7 @@ public class DashboardDataModelResourceIT
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   @Override

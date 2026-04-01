@@ -27,10 +27,12 @@ import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CHILDREN;
+import static org.openmetadata.service.Entity.FIELD_DATA_CONTRACT;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
@@ -377,6 +379,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomains;
   protected final boolean supportsDataProducts;
+  protected final boolean supportsDataContract;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
   @Getter protected final boolean supportsEntityStatus;
@@ -497,6 +500,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
       this.putFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
     }
+    this.supportsDataContract = allowedFields.contains(FIELD_DATA_CONTRACT);
     this.supportsStyle = allowedFields.contains(FIELD_STYLE);
     if (supportsStyle) {
       this.patchFields.addField(allowedFields, FIELD_STYLE);
@@ -2544,6 +2548,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         fields.contains(FIELD_DATA_PRODUCTS)
             ? getDataProducts(entity, relationIncludes.getIncludeFor(FIELD_DATA_PRODUCTS))
             : entity.getDataProducts());
+    entity.setDataContract(
+        fields.contains(FIELD_DATA_CONTRACT)
+            ? getDataContract(entity, relationIncludes.getIncludeFor(FIELD_DATA_CONTRACT))
+            : entity.getDataContract());
     entity.setFollowers(
         fields.contains(FIELD_FOLLOWERS)
             ? getFollowers(entity, relationIncludes.getIncludeFor(FIELD_FOLLOWERS))
@@ -2603,31 +2611,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  /**
-   * Count how many relationship fields are requested to determine if batch fetching is beneficial
-   */
-  private int countRelationshipFields(Fields fields) {
-    int count = 0;
-    if (fields.contains(FIELD_OWNERS)) count++;
-    if (fields.contains(FIELD_TAGS)) count++;
-    if (fields.contains(FIELD_CERTIFICATION)) count++;
-    if (fields.contains(FIELD_EXTENSION)) count++;
-    if (fields.contains(FIELD_DOMAINS)) count++;
-    if (fields.contains(FIELD_DATA_PRODUCTS)) count++;
-    if (fields.contains(FIELD_FOLLOWERS)) count++;
-    if (fields.contains(FIELD_CHILDREN)) count++;
-    if (fields.contains(FIELD_EXPERTS)) count++;
-    if (fields.contains(FIELD_REVIEWERS)) count++;
-    if (fields.contains(FIELD_VOTES)) count++;
-    return count;
-  }
-
   public final void clearFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? entity.getOwners() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? entity.getExtension() : null);
     entity.setDomains(fields.contains(FIELD_DOMAINS) ? entity.getDomains() : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
+    entity.setDataContract(fields.contains(FIELD_DATA_CONTRACT) ? entity.getDataContract() : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? entity.getFollowers() : null);
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? entity.getExperts() : null);
@@ -3848,6 +3838,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           "tags",
           "domains",
           "dataProducts",
+          "dataContract",
           "followers",
           "experts",
           "reviewers",
@@ -5399,6 +5390,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected List<EntityReference> getDataProducts(
       UUID entityId, String entityType, Include include) {
     return findFrom(entityId, entityType, Relationship.HAS, DATA_PRODUCT, include);
+  }
+
+  protected EntityReference getDataContract(T entity) {
+    return getDataContract(entity, NON_DELETED);
+  }
+
+  protected EntityReference getDataContract(T entity, Include include) {
+    if (!supportsDataContract) {
+      return null;
+    }
+
+    Optional<List<EntityReference>> bundleDataContract =
+        getRelationsFromReadBundle(entity, FIELD_DATA_CONTRACT, include);
+    if (bundleDataContract.isPresent()) {
+      List<EntityReference> refs = bundleDataContract.get();
+      return (refs == null || refs.isEmpty()) ? null : refs.get(0);
+    }
+
+    List<EntityReference> refs =
+        findTo(entity.getId(), entityType, Relationship.CONTAINS, DATA_CONTRACT, include);
+    return refs.isEmpty() ? null : refs.get(0);
   }
 
   public EntityInterface getParentEntity(T entity, String fields) {
@@ -8401,6 +8413,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     boolean loadDomains = supportsDomains && fields.contains(FIELD_DOMAINS);
     boolean loadReviewers = supportsReviewers && fields.contains(FIELD_REVIEWERS);
     boolean loadDataProducts = supportsDataProducts && fields.contains(FIELD_DATA_PRODUCTS);
+    boolean loadDataContract = supportsDataContract && fields.contains(FIELD_DATA_CONTRACT);
     boolean loadVotes = supportsVotes && fields.contains(FIELD_VOTES);
     boolean loadChildren = supportsChildren && fields.contains(FIELD_CHILDREN);
     boolean loadExperts = supportsExperts && fields.contains(FIELD_EXPERTS);
@@ -8410,6 +8423,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         && !loadDomains
         && !loadReviewers
         && !loadDataProducts
+        && !loadDataContract
         && !loadVotes
         && !loadChildren
         && !loadExperts) {
@@ -8434,7 +8448,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     List<Integer> outgoingRelations = new ArrayList<>();
-    if (loadChildren) {
+    if (loadChildren || loadDataContract) {
       outgoingRelations.add(Relationship.CONTAINS.ordinal());
     }
     if (loadExperts) {
@@ -8469,6 +8483,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<UUID, List<EntityReference>> upVotersByEntity = loadVotes ? new HashMap<>() : null;
     Map<UUID, List<EntityReference>> downVotersByEntity = loadVotes ? new HashMap<>() : null;
     Map<UUID, List<EntityReference>> childrenByEntity = loadChildren ? new HashMap<>() : null;
+    Map<UUID, EntityReference> dataContractByEntity = loadDataContract ? new HashMap<>() : null;
     Map<UUID, List<EntityReference>> expertsByEntity = loadExperts ? new HashMap<>() : null;
 
     for (CollectionDAO.EntityRelationshipObject record : incomingRecords) {
@@ -8550,6 +8565,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         case CONTAINS -> {
           if (loadChildren && entityType.equals(targetType)) {
             childrenByEntity.computeIfAbsent(entityId, ignored -> new ArrayList<>()).add(targetRef);
+          } else if (loadDataContract && DATA_CONTRACT.equals(targetType)) {
+            dataContractByEntity.putIfAbsent(entityId, targetRef);
           }
         }
         case EXPERT -> {
@@ -8597,6 +8614,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (loadChildren) {
         entity.setChildren(childrenByEntity.get(entityId));
       }
+      if (loadDataContract) {
+        entity.setDataContract(dataContractByEntity.get(entityId));
+      }
       if (loadExperts) {
         entity.setExperts(expertsByEntity.getOrDefault(entityId, Collections.emptyList()));
       }
@@ -8622,6 +8642,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     if (loadChildren) {
       handledFields.add(FIELD_CHILDREN);
+    }
+    if (loadDataContract) {
+      handledFields.add(FIELD_DATA_CONTRACT);
     }
     if (loadExperts) {
       handledFields.add(FIELD_EXPERTS);

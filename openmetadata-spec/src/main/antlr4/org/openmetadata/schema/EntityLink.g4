@@ -93,6 +93,21 @@ ENTITY_TYPE
     | 'spreadsheet'
     | 'worksheet'
     | 'webAnalyticEvent'
+    | 'llmService'
+    | 'metric'
+    | 'report'
+    | 'query'
+    | 'directory'
+    | 'file'
+    | 'type'
+    | 'aiApplication'
+    | 'llmModel'
+    | 'promptTemplate'
+    | 'aiGovernancePolicy'
+    | 'notificationTemplate'
+    | 'workflow'
+    | 'document'
+    | 'learningResource'
     ;
 
 ENTITY_FIELD

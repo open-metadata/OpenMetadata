@@ -34,6 +34,10 @@ export interface LlmModel {
     changeDescription?: ChangeDescription;
     costMetrics?:       CostMetrics;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * Data products this model is part of
      */
     dataProducts?: EntityReference[];
@@ -467,14 +471,16 @@ export interface CostMetrics {
 }
 
 /**
- * Data products this model is part of
+ * Reference to the data contract for this entity.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Data products this model is part of
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
