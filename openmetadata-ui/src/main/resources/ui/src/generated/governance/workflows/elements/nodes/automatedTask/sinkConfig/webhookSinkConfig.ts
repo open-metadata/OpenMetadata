@@ -30,6 +30,10 @@ export interface WebhookSinkConfig {
      * Additional HTTP headers to include in requests.
      */
     headers?:     { [key: string]: string };
+    /**
+     * Query parameters to append to the webhook URL.
+     */
+    queryParams?: { [key: string]: string };
     httpMethod?:  HTTPMethod;
     retryConfig?: RetryConfiguration;
     /**

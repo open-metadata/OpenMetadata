@@ -38,6 +38,14 @@
         "type": "string"
       }
     },
+    "queryParams": {
+      "title": "Query Parameters",
+      "description": "Query parameters to append to the webhook URL.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "authentication": {
       "title": "Authentication",
       "description": "Authentication configuration for webhook requests.",
