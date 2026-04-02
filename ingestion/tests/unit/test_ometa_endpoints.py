@@ -132,7 +132,6 @@ class OMetaEndpointTest(TestCase):
         entity = self.metadata.get_entity_from_create(CreateUserRequest)
         assert entity is User
 
-        entity = self.metadata.get_entity_from_create(CreateIngestionPipelineRequest)
         assert entity is IngestionPipeline
 
         entity = self.metadata.get_entity_from_create(CreateTestCaseResult)
@@ -140,3 +139,53 @@ class OMetaEndpointTest(TestCase):
 
         entity = self.metadata.get_entity_from_create(CreateTableProfileRequest)
         assert entity is TableProfile
+
+    def test_to_file_name_single_word(self):
+        """Single-word PascalCase names lowercase the first character"""
+        assert OpenMetadata._to_file_name("Table") == "table"
+        assert OpenMetadata._to_file_name("Database") == "database"
+        assert OpenMetadata._to_file_name("Chart") == "chart"
+        assert OpenMetadata._to_file_name("Pipeline") == "pipeline"
+        assert OpenMetadata._to_file_name("Topic") == "topic"
+        assert OpenMetadata._to_file_name("Container") == "container"
+
+    def test_to_file_name_multi_word(self):
+        """Multi-word PascalCase names convert to camelCase"""
+        assert OpenMetadata._to_file_name("GlossaryTerm") == "glossaryTerm"
+        assert OpenMetadata._to_file_name("SearchIndex") == "searchIndex"
+        assert OpenMetadata._to_file_name("StoredProcedure") == "storedProcedure"
+        assert OpenMetadata._to_file_name("DashboardDataModel") == "dashboardDataModel"
+        assert OpenMetadata._to_file_name("DataProduct") == "dataProduct"
+        assert OpenMetadata._to_file_name("DataContract") == "dataContract"
+        assert OpenMetadata._to_file_name("TestSuite") == "testSuite"
+        assert OpenMetadata._to_file_name("TestCase") == "testCase"
+        assert OpenMetadata._to_file_name("TestDefinition") == "testDefinition"
+        assert OpenMetadata._to_file_name("TestCaseResult") == "testCaseResult"
+        assert OpenMetadata._to_file_name("IngestionPipeline") == "ingestionPipeline"
+        assert OpenMetadata._to_file_name("EventSubscription") == "eventSubscription"
+        assert OpenMetadata._to_file_name("ChatConversation") == "chatConversation"
+        assert OpenMetadata._to_file_name("McpServer") == "mcpServer"
+        assert OpenMetadata._to_file_name("PromptTemplate") == "promptTemplate"
+        assert OpenMetadata._to_file_name("AgentExecution") == "agentExecution"
+        assert OpenMetadata._to_file_name("LearningResource") == "learningResource"
+        assert OpenMetadata._to_file_name("QueryCostRecord") == "queryCostRecord"
+        assert (
+            OpenMetadata._to_file_name("NotificationTemplate") == "notificationTemplate"
+        )
+        assert (
+            OpenMetadata._to_file_name("TestCaseResolutionStatus")
+            == "testCaseResolutionStatus"
+        )
+
+    def test_to_file_name_acronym_prefix(self):
+        """Leading acronyms are fully lowercased"""
+        assert OpenMetadata._to_file_name("APIEndpoint") == "apiEndpoint"
+        assert OpenMetadata._to_file_name("APICollection") == "apiCollection"
+        assert OpenMetadata._to_file_name("LLMModel") == "llmModel"
+        assert OpenMetadata._to_file_name("AIApplication") == "aiApplication"
+        assert OpenMetadata._to_file_name("AIGovernancePolicy") == "aiGovernancePolicy"
+
+    def test_to_file_name_mlmodel_override(self):
+        """MlModel uses all-lowercase override to match schema file naming"""
+        assert OpenMetadata._to_file_name("MlModel") == "mlmodel"
+        assert OpenMetadata._to_file_name("MlModelService") == "mlmodelService"

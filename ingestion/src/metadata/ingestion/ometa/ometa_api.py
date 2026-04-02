@@ -15,6 +15,7 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 
+import re
 import traceback
 from collections import OrderedDict
 from collections.abc import Generator
@@ -309,6 +310,10 @@ class OpenMetadata(
     api_path = "api"
     data_path = "data"
 
+    _FILE_NAME_PREFIX_OVERRIDES = {
+        "MlModel": "mlmodel",
+    }
+
     def __init__(
         self,
         config: OpenMetadataConnection,
@@ -444,30 +449,29 @@ class OpenMetadata(
 
         return file_name
 
+    @staticmethod
+    def _to_file_name(class_name: str) -> str:
+        """Convert a PascalCase entity class name to the module file name.
+
+        Handles leading acronyms (APIEndpoint -> apiEndpoint) and
+        standard PascalCase (GlossaryTerm -> glossaryTerm).
+        """
+        for prefix, replacement in OpenMetadata._FILE_NAME_PREFIX_OVERRIDES.items():
+            if class_name.startswith(prefix):
+                return replacement + class_name[len(prefix):]
+        match = re.match(r"^([A-Z]+)([A-Z][a-z])", class_name)
+        if match:
+            acronym = match.group(1)
+            return acronym.lower() + class_name[len(acronym):]
+        return class_name[0].lower() + class_name[1:]
+
     def get_entity_from_create(self, create: Type[C]) -> Type[T]:
         """
         Inversely, import the Entity type based on the create Entity class
         """
 
         class_name = create.__name__.replace("Create", "").replace("Request", "")
-        file_name = (
-            class_name.lower()
-            .replace("glossaryterm", "glossaryTerm")
-            .replace("dashboarddatamodel", "dashboardDataModel")
-            .replace("apiendpoint", "apiEndpoint")
-            .replace("apicollection", "apiCollection")
-            .replace("testsuite", "testSuite")
-            .replace("testdefinition", "testDefinition")
-            .replace("testcase", "testCase")
-            .replace("searchindex", "searchIndex")
-            .replace("storedprocedure", "storedProcedure")
-            .replace("ingestionpipeline", "ingestionPipeline")
-            .replace("dataproduct", "dataProduct")
-            .replace("datacontract", "dataContract")
-            .replace("chatconversation", "chatConversation")
-            .replace("eventsubscription", "eventSubscription")
-            .replace("mcpserver", "mcpServer")
-        )
+        file_name = self._to_file_name(class_name)
         class_path = ".".join(
             filter(
                 None,
