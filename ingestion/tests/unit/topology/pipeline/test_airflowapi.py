@@ -11,6 +11,7 @@
 """
 Tests for AirflowApi pipeline connector
 """
+
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 

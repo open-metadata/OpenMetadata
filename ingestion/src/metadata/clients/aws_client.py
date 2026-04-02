@@ -11,6 +11,7 @@
 """
 Module containing AWS Client
 """
+
 import datetime
 from enum import Enum
 from functools import partial

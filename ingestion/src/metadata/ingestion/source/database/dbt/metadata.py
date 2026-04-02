@@ -1104,6 +1104,36 @@ class DbtSource(DbtServiceSource):
                             or []
                         )
 
+                    if (
+                        self.source_config.includeTags
+                        and dbt_column_meta.openmetadata
+                        and dbt_column_meta.openmetadata.tags
+                    ):
+                        for tag_fqn in dbt_column_meta.openmetadata.tags:
+                            if not tag_fqn:
+                                continue
+                            try:
+                                tag_parts = fqn.split(tag_fqn)
+                            except Exception as exc:  # pylint: disable=broad-except
+                                logger.debug(traceback.format_exc())
+                                logger.warning(
+                                    f"Failed to parse tag FQN {tag_fqn!r} for column"
+                                    f" {column_name}: {exc}"
+                                )
+                                continue
+                            if len(tag_parts) >= 2:
+                                classification_name = tag_parts[0]
+                                tag_name = fqn.FQN_SEPARATOR.join(tag_parts[1:])
+                                dbt_column_tag_list.extend(
+                                    get_tag_labels(
+                                        metadata=self.metadata,
+                                        tags=[tag_name],
+                                        classification_name=classification_name,
+                                        include_tags=self.source_config.includeTags,
+                                    )
+                                    or []
+                                )
+
                 columns.append(
                     Column(
                         name=column_name,
@@ -1404,10 +1434,23 @@ class DbtSource(DbtServiceSource):
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain
 
-            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
+            if (
+                self.source_config.includeTags
+                and dbt_meta_info.openmetadata
+                and dbt_meta_info.openmetadata.tags
+            ):
                 for tag_fqn in dbt_meta_info.openmetadata.tags:
-                    # Parse classification.tag format
-                    tag_parts = tag_fqn.split(fqn.FQN_SEPARATOR)
+                    if not tag_fqn:
+                        continue
+                    try:
+                        tag_parts = fqn.split(tag_fqn)
+                    except Exception as exc:  # pylint: disable=broad-except
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Failed to parse tag FQN {tag_fqn!r} for table"
+                            f" {table_fqn}: {exc}"
+                        )
+                        continue
                     if len(tag_parts) >= 2:
                         classification_name = tag_parts[0]
                         tag_name = fqn.FQN_SEPARATOR.join(tag_parts[1:])
@@ -1416,7 +1459,7 @@ class DbtSource(DbtServiceSource):
                                 metadata=self.metadata,
                                 tags=[tag_name],
                                 classification_name=classification_name,
-                                include_tags=True,
+                                include_tags=self.source_config.includeTags,
                             )
                             or []
                         )
