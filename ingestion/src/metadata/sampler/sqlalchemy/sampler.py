@@ -226,15 +226,20 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         # Add new RandomNumFn column
         ds = self.get_dataset()
+        ds_columns = inspect(ds).c
+        random_column = next(
+            (col for col in ds_columns if col.name == RANDOM_LABEL), None
+        )
+
         if not columns:
-            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL]
+            sqa_columns = [col for col in ds_columns if col.name != RANDOM_LABEL]
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
             names = [col.name for col in columns]
             sqa_columns = [
                 col
-                for col in inspect(ds).c
+                for col in ds_columns
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
@@ -257,12 +262,10 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     select_columns.append(col)
 
             # Create query with modified columns
-            sqa_sample = (
-                client.query(*select_columns)
-                .select_from(ds)
-                .limit(self.sample_limit)
-                .all()
-            )
+            query = client.query(*select_columns).select_from(ds)
+            if random_column is not None:
+                query = query.order_by(random_column)
+            sqa_sample = query.limit(self.sample_limit).all()
 
         # Process rows: handle array columns and truncate large text values
         # to prevent OOM in downstream processing.
