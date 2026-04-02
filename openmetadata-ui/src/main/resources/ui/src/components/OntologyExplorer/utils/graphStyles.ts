@@ -440,6 +440,9 @@ export function buildDefaultRectNodeStyle(
   size: [number, number],
   pos?: NodeStylePosition
 ): Record<string, unknown> {
+  const labelPadH = NODE_LABEL_PADDING[1] + NODE_LABEL_PADDING[3];
+  const labelMaxWidthPx = Math.max(16, size[0] - labelPadH);
+
   return {
     size,
     fill: NODE_FILL_DEFAULT,
@@ -453,6 +456,10 @@ export function buildDefaultRectNodeStyle(
     labelFontWeight: NODE_LABEL_FONT_WEIGHT,
     labelPlacement: LABEL_PLACEMENT_CENTER,
     labelPadding: NODE_LABEL_PADDING,
+    labelMaxLines: 1,
+    labelMaxWidth: labelMaxWidthPx,
+    labelTextOverflow: '...',
+    labelWordWrap: true,
     shadowColor: getColor(NODE_SHADOW_COLOR, NODE_SHADOW_COLOR_FALLBACK),
     shadowBlur: NODE_SHADOW_BLUR,
     shadowOffsetY: NODE_SHADOW_OFFSET_Y,

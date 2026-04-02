@@ -286,6 +286,19 @@ export function useOntologyGraph({
     }
   }, []);
 
+  // Asset nodes are added/removed dynamically when badges are clicked. The graph
+  // init effect must NOT re-run for those changes — only when the term topology
+  // or exploration mode actually changes. Exclude asset-type nodes from the count
+  // used as the init-effect dependency.
+  const DATA_MODE_ASSET_TYPES = new Set(['dataAsset', 'metric']);
+  const termNodeCount = useMemo(
+    () =>
+      explorationMode === 'data'
+        ? inputNodes.filter((n) => !DATA_MODE_ASSET_TYPES.has(n.type)).length
+        : inputNodes.length,
+    [explorationMode, inputNodes]
+  );
+
   const hasBakedPositions = useMemo(() => {
     const hierarchyWithBakedLayout =
       explorationMode === 'hierarchy' &&
@@ -307,7 +320,7 @@ export function useOntologyGraph({
   }, [inputNodes, explorationMode, layoutType]);
 
   useEffect(() => {
-    if (!containerRef.current || inputNodes.length === 0) {
+    if (!containerRef.current || termNodeCount === 0) {
       return;
     }
 
@@ -726,7 +739,7 @@ export function useOntologyGraph({
       graph.destroy();
       graphRef.current = null;
     };
-  }, [inputNodes.length, explorationMode]);
+  }, [termNodeCount, explorationMode]);
 
   useEffect(() => {
     const graph = graphRef.current;
@@ -734,16 +747,7 @@ export function useOntologyGraph({
       return;
     }
 
-    if (justInitializedRef.current) {
-      justInitializedRef.current = false;
-
-      return;
-    }
-
     const dataSignatureChanged = prevDataSignatureRef.current !== dataSignature;
-    if (dataSignatureChanged) {
-      prevDataSignatureRef.current = dataSignature ?? '';
-    }
 
     const isDataMode = explorationMode === 'data';
     const assetTypeSet = new Set(['dataAsset', 'metric']);
@@ -779,6 +783,22 @@ export function useOntologyGraph({
       dataSignatureChanged || newTermFingerprint !== termFingerprintRef.current;
     const assetFingerprintChanged =
       newAssetFingerprint !== assetFingerprintRef.current;
+
+    // Seed fingerprint refs on the first post-init render so subsequent updates
+    // correctly detect what actually changed (avoids false termFingerprintChanged
+    // on the very first badge click after initialization).
+    if (justInitializedRef.current) {
+      justInitializedRef.current = false;
+      prevDataSignatureRef.current = dataSignature ?? '';
+      termFingerprintRef.current = newTermFingerprint;
+      assetFingerprintRef.current = newAssetFingerprint;
+
+      return;
+    }
+
+    if (dataSignatureChanged) {
+      prevDataSignatureRef.current = dataSignature ?? '';
+    }
     const structuralChanged = termFingerprintChanged || assetFingerprintChanged;
     const topologySynced = isGraphTopologySynced(graph, graphData);
     const canPatchInPlace = !structuralChanged && topologySynced;
@@ -826,15 +846,51 @@ export function useOntologyGraph({
           return;
         }
 
+        // For asset-only updates (badge click without term structure change),
+        // save current canvas positions of term nodes before setData resets them
+        // so that user-dragged positions survive the re-render.
+        const savedTermPositions: Record<string, { x: number; y: number }> = {};
+        if (isDataMode && !termFingerprintChanged) {
+          graph.getNodeData().forEach((node) => {
+            const pos = graph.getElementPosition(node.id as string);
+            if (pos) {
+              savedTermPositions[node.id as string] = {
+                x: pos[0],
+                y: pos[1],
+              };
+            }
+          });
+        }
+
         setClickedEdgeIdRef.current(null);
         graph.setData(graphData);
 
         if (isDataMode) {
           graph.draw();
+          // Restore term node positions that the user may have dragged before
+          // setData reset them to their baked layout coordinates.
+          if (Object.keys(savedTermPositions).length > 0) {
+            const posUpdates = graph
+              .getNodeData()
+              .filter((node) => savedTermPositions[node.id as string])
+              .map((node) => ({
+                id: node.id,
+                style: {
+                  ...(node.style ?? {}),
+                  x: savedTermPositions[node.id as string].x,
+                  y: savedTermPositions[node.id as string].y,
+                },
+              }));
+            if (posUpdates.length > 0) {
+              graph.updateNodeData(posUpdates);
+            }
+          }
           positionAssetNodes(graph);
           graph.draw();
-          await graph.fitView(undefined, { duration: 0 });
-          await graph.zoomBy(FIT_VIEW_ZOOM_OUT_DATA_MODE, { duration: 0 });
+          if (termFingerprintChanged) {
+            await graph.fitView(undefined, { duration: 0 });
+            await graph.zoomBy(FIT_VIEW_ZOOM_OUT_DATA_MODE, { duration: 0 });
+          }
         } else {
           if (!hasBakedPositions) {
             graph.setLayout(layoutOptions);
