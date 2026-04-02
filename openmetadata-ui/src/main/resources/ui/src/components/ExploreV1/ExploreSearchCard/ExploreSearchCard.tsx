@@ -261,13 +261,18 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       [entityLink]
     );
 
+    const serviceType =
+      'serviceType' in source && isString(source.serviceType)
+        ? source.serviceType
+        : undefined;
+
     const requestAccessUrl = useRequestAccessUrl({
       entityName: source.name,
       entityPath,
       entityType: source.entityType,
       fullyQualifiedName: source.fullyQualifiedName,
       service: source.service,
-      serviceType: source.serviceType,
+      serviceType,
       sourceUrl: (source as { sourceUrl?: string }).sourceUrl,
     });
 
