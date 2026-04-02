@@ -203,7 +203,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if (
             self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.sample_config.profileSample == 100
-            and not self.sample_config.randomizedSample
+            and self.sample_config.randomizedSample is False
         ):
             if self.partition_details:
                 return self._partitioned_table()
