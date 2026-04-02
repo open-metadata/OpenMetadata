@@ -708,6 +708,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(testCaseOpContext, testCaseResourceContext));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     test = addHref(uriInfo, repository.create(uriInfo, test));
+    addTestCaseToNamedTestSuites(test, create.getTestSuiteNames());
     return Response.created(test.getHref()).entity(test).build();
   }
 
@@ -864,6 +865,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
+    addTestCaseToNamedTestSuites(response.getEntity(), create.getTestSuiteNames());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -1591,6 +1593,21 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
     return filter.getExcludeIds();
+  }
+
+  private void addTestCaseToNamedTestSuites(TestCase testCase, List<String> testSuiteNames) {
+    if (nullOrEmpty(testSuiteNames)) {
+      return;
+    }
+    for (String testSuiteName : testSuiteNames) {
+      TestSuite testSuite =
+          Entity.getEntityByName(Entity.TEST_SUITE, testSuiteName, "domains,owners", ALL);
+      if (Boolean.TRUE.equals(testSuite.getBasic())) {
+        throw new IllegalArgumentException(
+            String.format("Test suite '%s' is a basic test suite and cannot be used here.", testSuiteName));
+      }
+      repository.addTestCasesToLogicalTestSuite(testSuite, List.of(testCase.getId()));
+    }
   }
 
   @Override

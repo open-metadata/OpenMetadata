@@ -72,6 +72,13 @@
       "minimum": 1,
       "maximum": 50,
       "default": 5
+    },
+    "testSuiteNames": {
+      "description": "Fully qualified names of the logical test suites to add this test case to upon creation.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
     }
   },
   "required": ["name", "testDefinition", "entityLink"],
