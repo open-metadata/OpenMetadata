@@ -280,6 +280,13 @@ public class WebhookSinkProvider implements SinkProvider {
 
   private Response sendRequest(String payload) {
     WebTarget target = client.target(config.getEndpoint());
+
+    if (config.getQueryParams() != null) {
+      for (Map.Entry<String, String> param : config.getQueryParams().entrySet()) {
+        target = target.queryParam(param.getKey(), param.getValue());
+      }
+    }
+
     Invocation.Builder request = target.request(MediaType.APPLICATION_JSON);
 
     // Add custom headers
