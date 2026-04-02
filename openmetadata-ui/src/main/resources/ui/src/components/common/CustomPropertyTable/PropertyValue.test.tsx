@@ -436,12 +436,10 @@ describe('Test PropertyValue Component', () => {
     expect(
       await screen.findByTestId('entityReference-value')
     ).toHaveTextContent('entityReferenceName');
-    expect(
-      await screen.findByTestId('entity-ref-fqn')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('entity-ref-fqn')
-    ).toHaveTextContent('entityReferenceFullyQualifiedName');
+    expect(await screen.findByTestId('entity-ref-fqn')).toBeInTheDocument();
+    expect(await screen.findByTestId('entity-ref-fqn')).toHaveTextContent(
+      'entityReferenceFullyQualifiedName'
+    );
 
     await act(async () => {
       fireEvent.click(iconElement);
