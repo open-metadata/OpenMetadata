@@ -12,7 +12,8 @@
 Tests for 100% PERCENTAGE sampling edge case (#21304).
 
 Verifies that the get_dataset() short-circuit at 100% correctly
-respects the randomizedSample flag, including None handling.
+respects the randomizedSample flag. None defaults to False (no randomization)
+since randomization is computationally heavy.
 """
 from unittest.mock import MagicMock, patch
 
@@ -59,12 +60,12 @@ class TestSQASampler100Pct:
         sampler.get_sample_query.assert_not_called()
         assert result == sampler._table
 
-    def test_100_pct_randomized_none_delegates_to_sample_query(self):
-        """100% + randomizedSample=None should NOT short-circuit (None != False)."""
+    def test_100_pct_randomized_none_returns_raw_dataset(self):
+        """100% + randomizedSample=None should short-circuit (None defaults to False)."""
         sampler = self._make_sampler(randomized_sample=None)
         result = sampler.get_dataset()
-        sampler.get_sample_query.assert_called_once()
-        assert result == sampler.get_sample_query.return_value
+        sampler.get_sample_query.assert_not_called()
+        assert result == sampler._table
 
 
 class TestDatalakeSampler100Pct:
@@ -111,9 +112,9 @@ class TestDatalakeSampler100Pct:
         sampler.get_sampled_dataframe.assert_not_called()
         assert result == sampler._table.dataframes
 
-    def test_100_pct_randomized_none_delegates_to_sampled_dataframe(self):
-        """100% + randomizedSample=None should NOT short-circuit (None != False)."""
+    def test_100_pct_randomized_none_returns_raw_dataset(self):
+        """100% + randomizedSample=None should short-circuit (None defaults to False)."""
         sampler = self._make_sampler(randomized_sample=None)
         result = sampler.get_dataset()
-        sampler.get_sampled_dataframe.assert_called_once()
-        assert result == sampler.get_sampled_dataframe.return_value
+        sampler.get_sampled_dataframe.assert_not_called()
+        assert result == sampler._table.dataframes

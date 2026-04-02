@@ -113,7 +113,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         if (
             self.sample_config.profileSample == 100
             and self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
-            and self.sample_config.randomizedSample is False
+            and not self.sample_config.randomizedSample
         ):
             return raw_dataset
         return self.get_sampled_dataframe(raw_dataset, self.sample_config)
