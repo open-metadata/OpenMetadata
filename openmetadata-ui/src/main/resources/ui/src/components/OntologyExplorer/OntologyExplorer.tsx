@@ -69,6 +69,7 @@ import GraphSettingsPanel from './GraphSettingsPanel';
 import NodeContextMenu from './NodeContextMenu';
 import OntologyControlButtons from './OntologyControlButtons';
 import {
+  DATA_MODE_ASSET_LOAD_PAGE_SIZE,
   GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY,
   LayoutType,
   RELATION_COLORS,
@@ -258,6 +259,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return map;
   }, [glossaries]);
 
+  const loadedAssetCountPerTerm = useMemo(() => {
+    const counts: Record<string, number> = {};
+    assetGraphData?.edges.forEach((e) => {
+      if (e.relationType === ASSET_RELATION_TYPE) {
+        counts[e.to] = (counts[e.to] ?? 0) + 1;
+      }
+    });
+
+    return counts;
+  }, [assetGraphData]);
+
   const combinedGraphData = useMemo(() => {
     if (!graphData) {
       return null;
@@ -274,6 +286,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         return {
           ...node,
           assetCount: termAssetCounts[node.id] ?? 0,
+          loadedAssetCount: loadedAssetCountPerTerm[node.id] ?? 0,
         };
       });
 
@@ -306,7 +319,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
 
     return graphData;
-  }, [graphData, assetGraphData, explorationMode, termAssetCounts]);
+  }, [
+    graphData,
+    assetGraphData,
+    explorationMode,
+    termAssetCounts,
+    loadedAssetCountPerTerm,
+  ]);
 
   const filteredGraphData = useMemo(() => {
     if (!combinedGraphData) {
@@ -657,17 +676,18 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
 
   const appendTermAssetsForTerm = useCallback(
-    async (termNode: OntologyNode, pageSize: number) => {
+    async (termNode: OntologyNode, pageSize: number, fromOffset = 0) => {
       if (!isTermNode(termNode) || !termNode.fullyQualifiedName) {
         return;
       }
 
       const size = Math.max(1, pageSize);
+      const pageNumber = Math.floor(fromOffset / size) + 1;
 
       try {
         const res = await searchQuery({
           query: '**',
-          pageNumber: 1,
+          pageNumber,
           pageSize: size,
           searchIndex: SearchIndex.ALL,
           queryFilter: getTermQuery({
@@ -1265,10 +1285,24 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     (
       node: OntologyNode,
       _position?: { x: number; y: number },
-      meta?: { dataModeAssetBadgeClick?: boolean }
+      meta?: {
+        dataModeAssetBadgeClick?: boolean;
+        dataModeLoadMoreBadgeClick?: boolean;
+      }
     ) => {
       setContextMenu(null);
       if (explorationMode === 'data' && isTermNode(node)) {
+        if (meta?.dataModeLoadMoreBadgeClick) {
+          const loaded = node.loadedAssetCount ?? 0;
+          void appendTermAssetsForTerm(
+            node,
+            DATA_MODE_ASSET_LOAD_PAGE_SIZE,
+            loaded
+          );
+          setSelectedNode(null);
+
+          return;
+        }
         if (meta?.dataModeAssetBadgeClick) {
           setExpandedTermIds((prev) => {
             const wasExpanded = prev.has(node.id);
@@ -1279,7 +1313,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               next.add(node.id);
               const count = termAssetCounts[node.id] ?? node.assetCount ?? 0;
               if (count > 0) {
-                void appendTermAssetsForTerm(node, count);
+                void appendTermAssetsForTerm(
+                  node,
+                  DATA_MODE_ASSET_LOAD_PAGE_SIZE,
+                  0
+                );
               }
             }
 
@@ -1319,10 +1357,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const handleGraphPaneClick = useCallback(() => {
     setContextMenu(null);
     setSelectedNode(null);
-    if (explorationMode === 'data') {
-      setExpandedTermIds(new Set());
-    }
-  }, [explorationMode]);
+  }, []);
 
   const statsItems = useMemo(() => {
     if (!graphDataToShow) {
