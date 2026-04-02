@@ -878,6 +878,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         TEST_DEFINITION,
         TEST_CASE,
         Relationship.CONTAINS);
+    addLogicalTestSuiteRelationships(test);
   }
 
   @Override
@@ -890,15 +891,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   protected void postCreate(TestCase testCase) {
     super.postCreate(testCase);
     updateTestSuite(testCase);
-    attachLogicalTestSuitesIfPresent(testCase);
-  }
-
-  @Override
-  protected void postCreate(List<TestCase> entities) {
-    super.postCreate(entities);
-    for (TestCase testCase : entities) {
-      attachLogicalTestSuitesIfPresent(testCase);
-    }
   }
 
   @Override
@@ -921,7 +913,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testSuiteRepository.postUpdate(original, testSuite);
   }
 
-  private void attachLogicalTestSuitesIfPresent(TestCase testCase) {
+  private void addLogicalTestSuiteRelationships(TestCase testCase) {
     if (testCase == null) return;
     if (testCase.getTestSuites() == null || testCase.getTestSuites().isEmpty()) return;
 
@@ -932,14 +924,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .collect(Collectors.toSet());
 
     for (UUID suiteId : suiteIds) {
-      TestSuite testSuite = Entity.getEntity(TEST_SUITE, suiteId, "basic", ALL);
-      if (Boolean.TRUE.equals(testSuite.getBasic())) {
-        throw new IllegalArgumentException(
-            "You are trying to add test cases to a basic test suite.");
-      }
-      addTestCasesToLogicalTestSuite(testSuite, List.of(testCase.getId()));
+      addRelationship(suiteId, testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
     }
 
+    // Keep request-only payload from being reused after relationships are persisted.
     testCase.setTestSuites(null);
   }
 
