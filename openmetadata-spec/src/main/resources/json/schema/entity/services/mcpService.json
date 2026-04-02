@@ -1,0 +1,138 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/mcpService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "McpService",
+  "description": "MCP (Model Context Protocol) Service for discovering and managing MCP servers. This service connects to MCP server configurations, registries, or individual servers to catalog tools, resources, and prompts for AI governance.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.McpService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "mcpServiceType": {
+      "description": "Type of MCP service - currently only Mcp is supported",
+      "type": "string",
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "enum": ["Mcp"],
+      "javaEnums": [
+        {"name": "Mcp"}
+      ]
+    },
+    "mcpConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.McpConnection",
+      "description": "MCP Service Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "mask": true,
+          "oneOf": [
+            {
+              "$ref": "./connections/mcp/mcpConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this MCP service instance",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this MCP service",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "serviceType": {
+      "description": "Type of MCP service",
+      "$ref": "#/definitions/mcpServiceType"
+    },
+    "description": {
+      "description": "Description of the MCP service",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this MCP service",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this MCP service to extract metadata",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "connection": {
+      "$ref": "#/definitions/mcpConnection"
+    },
+    "testConnectionResult": {
+      "description": "Result of the last test connection performed on this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
+    "tags": {
+      "description": "Tags for this MCP Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this MCP service",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    },
+    "dataProducts": {
+      "description": "List of data products this entity is part of",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this entity",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domains": {
+      "description": "Domains the MCP service belongs to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "ingestionRunner": {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["id", "name", "serviceType"],
+  "additionalProperties": false
+}

@@ -19,6 +19,7 @@ Prerequisites:
     - Sample data ingested (tables exist in sample_data service)
     - OpenLineage settings: enabled=true, eventTypeFilter includes COMPLETE
 """
+
 import json
 import uuid
 
