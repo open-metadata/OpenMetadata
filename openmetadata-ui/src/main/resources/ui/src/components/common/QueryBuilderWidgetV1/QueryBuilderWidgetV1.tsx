@@ -16,7 +16,9 @@ import {
     Builder,
     Config,
     ImmutableTree,
-    JsonTree, Query, Utils as QbUtils
+    JsonTree,
+    Query,
+    Utils as QbUtils
 } from '@react-awesome-query-builder/antd';
 import {
     Alert,

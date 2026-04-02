@@ -14,14 +14,14 @@
 import Icon from '@ant-design/icons';
 import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
 import {
-  Button,
-  Col,
-  Form,
-  FormListFieldData,
-  Input,
-  Row,
-  Switch,
-  Typography,
+    Button,
+    Col,
+    Form,
+    FormListFieldData,
+    Input,
+    Row,
+    Switch,
+    Typography
 } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
@@ -36,12 +36,12 @@ import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  DataContract,
-  SemanticsRule,
+    DataContract,
+    SemanticsRule
 } from '../../../generated/entity/data/dataContract';
 import {
-  getSematicRuleFields,
-  semanticRuleValidator,
+    getSematicRuleFields,
+    semanticRuleValidator
 } from '../../../utils/DataContract/DataContractUtils';
 import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
