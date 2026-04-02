@@ -19,16 +19,16 @@ import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contr
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import { DataContractProcessedResultCharts } from '../../components/DataContract/ContractExecutionChart/ContractExecutionChart.interface';
 import {
-  EDataContractTab,
-  SEMANTIC_TAG_OPERATORS,
+    EDataContractTab,
+    SEMANTIC_TAG_OPERATORS
 } from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import {
-  ContractExecutionStatus,
-  DataContract,
+    ContractExecutionStatus,
+    DataContract
 } from '../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { formatMonth } from '../date-time/DateTimeUtils';
