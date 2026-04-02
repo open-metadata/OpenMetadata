@@ -3804,15 +3804,12 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
   const table = new TableClass();
 
   test.beforeAll('Setup', async ({ browser }) => {
-    test.slow();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await table.create(apiContext);
     await afterAction();
   });
 
   test('Validate semantics fields', async ({ page }) => {
-    test.slow();
-
     await test.step('Navigate to semantics tab', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);

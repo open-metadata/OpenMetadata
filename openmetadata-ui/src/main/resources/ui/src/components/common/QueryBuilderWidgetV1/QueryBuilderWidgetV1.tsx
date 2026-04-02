@@ -14,7 +14,10 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import {
   Actions,
   Builder,
+  BuilderProps,
+  ButtonProps,
   Config,
+  ConfigContext,
   ImmutableTree,
   JsonTree,
   Query,
@@ -211,6 +214,40 @@ const QueryBuilderWidgetV1: FC<{
     }
   }, [treeInternal, props.getQueryActions]);
 
+  const hasOnlyOneRule = useMemo(
+    () => (QbUtils.getTree(treeInternal).children1?.length ?? 0) <= 1,
+    [treeInternal]
+  );
+
+  const renderBuilder = useCallback(
+    (builderProps: BuilderProps) => {
+      queryActionsRef.current = builderProps.actions;
+      const builderConfig = {
+        ...builderProps.config,
+        settings: {
+          ...builderProps.config?.settings,
+          renderButton: (btnProps: ButtonProps, ctx?: ConfigContext) => {
+            if (
+              (hasOnlyOneRule && btnProps.type === 'delRule') ||
+              !builderProps.config?.settings?.renderButton
+            ) {
+              return null as unknown as ReactElement<typeof btnProps>;
+            }
+
+            return builderProps.config?.settings?.renderButton?.(btnProps, ctx);
+          },
+        },
+      };
+
+      return (
+        <div className="query-builder-container query-builder qb-lite">
+          <Builder {...builderProps} config={builderConfig} />
+        </div>
+      );
+    },
+    [hasOnlyOneRule]
+  );
+
   return (
     <div
       className="query-builder-form-field"
@@ -232,40 +269,7 @@ const QueryBuilderWidgetV1: FC<{
             )}
             <Query
               {...config}
-              renderBuilder={(builderProps) => {
-                queryActionsRef.current = builderProps.actions;
-                const hasOnlyOneRule =
-                  (QbUtils.getTree(treeInternal).children1?.length ?? 0) <= 1;
-
-                return (
-                  <div className="query-builder-container query-builder qb-lite">
-                    <Builder
-                      {...builderProps}
-                      config={{
-                        ...builderProps.config,
-                        settings: {
-                          ...builderProps.config?.settings,
-                          renderButton: (btnProps, ctx) => {
-                            if (
-                              (hasOnlyOneRule && btnProps.type === 'delRule') ||
-                              !builderProps.config?.settings?.renderButton
-                            ) {
-                              return null as unknown as ReactElement<
-                                typeof btnProps
-                              >;
-                            }
-
-                            return builderProps.config?.settings?.renderButton?.(
-                              btnProps,
-                              ctx
-                            );
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                );
-              }}
+              renderBuilder={renderBuilder}
               value={treeInternal}
               onChange={handleChange}
             />
