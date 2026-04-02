@@ -429,6 +429,13 @@ class OpenMetadata(
         """
         Update the filename for services and schemas
         """
+        explicit_file_name_map = {
+            "CreateTableProfileRequest": "table",
+            "CreateTestCaseResult": "basic",
+        }
+        if create.__name__ in explicit_file_name_map:
+            return explicit_file_name_map[create.__name__]
+
         if "service" in create.__name__.lower():
             return file_name.replace("service", "Service")
 
