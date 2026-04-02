@@ -53,9 +53,6 @@ from metadata.generated.schema.entity.services.connections.database.dynamoDBConn
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueType,
 )
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
-    IcebergType,
-)
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBType,
 )
@@ -176,7 +173,6 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DomoDatabaseType.DomoDatabase.value,
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
-    IcebergType.Iceberg.value,
     MongoDBType.MongoDB.value,
     SalesforceType.Salesforce.value,
     SapErpType.SapErp.value,

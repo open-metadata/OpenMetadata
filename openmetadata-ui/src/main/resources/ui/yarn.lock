@@ -208,7 +208,26 @@
     "@babel/runtime" "^7.25.6"
     tslib "^2.5.3"
 
-"@antv/g6@^5.0.50":
+"@antv/g-svg@^2.0.38":
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/@antv/g-svg/-/g-svg-2.1.1.tgz#a42a707e51b4af732562d883abc12102c22794aa"
+  integrity sha512-gVzBkjqA8FzDTbkuIxj6L0Omz/X/hFbYLzK6alWr0sHTfywqP6czcjDUJU8DF2MRIY1Twy55uZYW4dqqLXOXXg==
+  dependencies:
+    "@antv/g-lite" "2.7.0"
+    "@antv/util" "^3.3.5"
+    "@babel/runtime" "^7.25.6"
+    gl-matrix "^3.4.3"
+    tslib "^2.5.3"
+
+"@antv/g6-extension-react@^0.2.6":
+  version "0.2.6"
+  resolved "https://registry.yarnpkg.com/@antv/g6-extension-react/-/g6-extension-react-0.2.6.tgz#be0dcf5796367514f247f4ab16eb974202f826d3"
+  integrity sha512-JWOiWMz/r4jG+Nn2Y28LfohpxfUaf9M/0brLdKBshSVa4DraQFfQvA9OTIbzahLLoxIXsKKG2KteQ9QcXL26Kw==
+  dependencies:
+    "@antv/g" "^6.1.24"
+    "@antv/g-svg" "^2.0.38"
+
+"@antv/g6@^5.0.51":
   version "5.0.51"
   resolved "https://registry.yarnpkg.com/@antv/g6/-/g6-5.0.51.tgz#b5085e27eca306af484a84ff13355b26672e0a66"
   integrity sha512-/88LJDZ7FHKtpyJibXOnJWZ8gFRp32mLb8KzEFrMuiIC/dsZgTf/oYVw6L4tLKooPXfXqUtrJb2tWFMGR04EMg==
@@ -225,7 +244,7 @@
     "@antv/util" "^3.3.11"
     bubblesets-js "^2.3.4"
 
-"@antv/g@^6.1.11", "@antv/g@^6.1.28":
+"@antv/g@^6.1.11", "@antv/g@^6.1.24", "@antv/g@^6.1.28":
   version "6.3.1"
   resolved "https://registry.yarnpkg.com/@antv/g/-/g-6.3.1.tgz#72e7ad5eeb9208da5150c6b531e4a9d3ff5a6898"
   integrity sha512-WYEKqy86LHB2PzTmrZXrIsIe+3Epeds2f68zceQ+BJtRoGki7Sy4IhlC8LrUMztgfT1t3d/0L745NWZwITroKA==
@@ -13959,16 +13978,6 @@ virtua@0.48.8:
   version "0.48.8"
   resolved "https://registry.yarnpkg.com/virtua/-/virtua-0.48.8.tgz#ded55346fb50f5b11bc837ab9a564d0deaecf0bb"
   integrity sha512-jpsxOw5V4B6hg44JePRLo9DL0TV7N1lBEVtPjKpAJebXyhI2s9lfiXJESaLapNtr3vtiSk/pWHiLf7B2a6UcgQ==
-
-vis-data@^7.1.4:
-  version "7.1.10"
-  resolved "https://registry.yarnpkg.com/vis-data/-/vis-data-7.1.10.tgz#70970baf2e0c219565673b1e322eb1b7293b807e"
-  integrity sha512-23juM9tdCaHTX5vyIQ7XBzsfZU0Hny+gSTwniLrfFcmw9DOm7pi3+h9iEBsoZMp5rX6KNqWwc1MF0fkAmWVuoQ==
-
-vis-network@^9.1.6:
-  version "9.1.13"
-  resolved "https://registry.yarnpkg.com/vis-network/-/vis-network-9.1.13.tgz#3cb785ab0a45489556414d9f503a7fadc50ca90b"
-  integrity sha512-HLeHd5KZS92qzO1kC59qMh1/FWAZxMUEwUWBwDMoj6RKj/Ajkrgy/heEYo0Zc8SZNQ2J+u6omvK2+a28GX1QuQ==
 
 vite-plugin-compression@^0.5.1:
   version "0.5.1"

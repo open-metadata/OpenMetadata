@@ -66,7 +66,6 @@ VERSIONS = {
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
     "starrocks": "pymysql~=1.0",
-    "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
@@ -296,14 +295,6 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
-    "iceberg": {
-        VERSIONS["pyiceberg"],
-        # Forcing the version of a few packages so it plays nicely with other requirements.
-        VERSIONS["pydantic"],
-        VERSIONS["adlfs"],
-        VERSIONS["gcsfs"],
-        VERSIONS["pyarrow"],
-    },
     "impala": {
         "presto-types-parser>=0.0.2",
         "impyla[kerberos]~=0.18.0",
@@ -463,7 +454,6 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
-    VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",

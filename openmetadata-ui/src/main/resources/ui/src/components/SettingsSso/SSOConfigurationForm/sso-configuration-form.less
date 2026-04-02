@@ -854,6 +854,32 @@
     }
   }
 }
+.metadata-upload-status-container {
+  background-color: @grey-9;
+  border: 1px solid @grey-15;
+  border-radius: @border-rad-xs;
+}
+
+.metadata-upload-status-icon-success {
+  background-color: @green-7;
+}
+
+.metadata-upload-status-icon-error {
+  background-color: @red-7;
+}
+
+.saml-metadata-upload-drop-zone {
+  &.ant-upload-drag {
+    background-color: @grey-9;
+    border: 1px solid @grey-15;
+    border-radius: @border-rad-xs;
+  }
+
+  &.ant-upload.ant-upload-drag:not(.ant-upload-disabled):hover {
+    border-color: @grey-15;
+  }
+}
+
 .sso-form-sticky-header {
   height: @size-lg;
   background-color: @white;

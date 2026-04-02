@@ -96,7 +96,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             key: t('label.table'),
             value: (
               <Link
-                className="text-primary no-underline truncate w-max-13 d-inline-block"
+                className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
                 title={getEntityName(columnSource.table)}
                 to={searchClassBase.getEntityLink({
                   ...columnSource.table,
