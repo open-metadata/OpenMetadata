@@ -410,9 +410,9 @@ class SampleTest(TestCase):
             sampler.fetch_sample_data()
             assert not mock_gsq.called
 
-    def test_full_percentage_none_randomized_uses_sample_query(self, sampler_mock):
-        """100% PERCENTAGE + randomizedSample=None should default to
-        randomized behavior (None is not False)."""
+    def test_full_percentage_none_randomized_skips_sample_query(self, sampler_mock):
+        """100% PERCENTAGE + randomizedSample=None should skip randomization
+        (None defaults to False since sorting is expensive)."""
         with patch.object(SQASampler, "build_table_orm", return_value=User):
             sampler = SQASampler(
                 service_connection_config=self.sqlite_conn,
@@ -430,7 +430,7 @@ class SampleTest(TestCase):
             sampler, "get_sample_query", wraps=sampler.get_sample_query
         ) as mock_gsq:
             sampler.fetch_sample_data()
-            assert mock_gsq.called
+            assert not mock_gsq.called
 
     @classmethod
     def tearDownClass(cls) -> None:
