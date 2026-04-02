@@ -527,6 +527,16 @@
     "parentAliases": ["all", "service"],
     "childAliases": ["llmModel"]
   },
+  "mcpService": {
+    "indexName": "mcp_service_search_index",
+    "indexMappingFile": "/elasticsearch/%s/mcp_service_index_mapping.json",
+    "alias": "mcpService",
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": ["mcpServer"]
+  },
   "aiAgent": {
     "indexName": "ai_agent_search_index",
     "indexMappingFile": "/elasticsearch/%s/ai_agent_index_mapping.json",
@@ -554,6 +564,27 @@
     "alias": "aiGovernancePolicy",
     "parentAliases": [
       "all"
+    ],
+    "childAliases": []
+  },
+  "mcpServer": {
+    "indexName": "mcp_server_search_index",
+    "indexMappingFile": "/elasticsearch/%s/mcp_server_index_mapping.json",
+    "alias": "mcpServer",
+    "parentAliases": [
+      "mcpService",
+      "all"
+    ],
+    "childAliases": [
+      "mcpExecution"
+    ]
+  },
+  "mcpExecution": {
+    "indexName": "mcp_execution_search_index",
+    "indexMappingFile": "/elasticsearch/%s/mcp_execution_index_mapping.json",
+    "alias": "mcpExecution",
+    "parentAliases": [
+      "mcpServer"
     ],
     "childAliases": []
   }
