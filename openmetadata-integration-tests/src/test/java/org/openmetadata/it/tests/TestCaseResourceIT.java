@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -45,6 +46,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 
 /**
@@ -952,6 +954,77 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               .list(new ListParams().setLimit(2).setAfter(page1.getPaging().getAfter()));
       assertNotNull(page2);
     }
+  }
+
+  @Test
+  void test_createTestCaseWithLogicalTestSuites(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    CreateTestSuite logicalSuiteReq = new CreateTestSuite();
+    logicalSuiteReq.setName(ns.prefix("logical_suite_create_request"));
+    TestSuite logicalSuite = client.testSuites().create(logicalSuiteReq);
+
+    EntityReference logicalSuiteRef =
+        new EntityReference()
+            .withId(logicalSuite.getId())
+            .withType(Entity.TEST_SUITE)
+            .withName(logicalSuite.getName());
+
+    CreateTestCase request =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("create_suite_request_tc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .testSuites(List.of(logicalSuiteRef))
+            .build();
+
+    TestCase created = client.testCases().create(request);
+
+    Awaitility.await("test case is attached to logical test suite")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched =
+                  client.testCases().get(created.getId().toString(), "testSuites");
+              assertNotNull(fetched.getTestSuites());
+              assertTrue(
+                  fetched.getTestSuites().stream()
+                      .anyMatch(ts -> ts.getId().equals(logicalSuite.getId())));
+            });
+
+    TestSuite updatedSuite =
+        client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(updatedSuite.getTests());
+    assertTrue(
+        updatedSuite.getTests().stream().anyMatch(ref -> ref.getId().equals(created.getId())));
+  }
+
+  @Test
+  void test_createTestCaseWithLogicalTestSuites_basicSuiteRejected(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    CreateTestSuite basicSuiteReq = new CreateTestSuite();
+    basicSuiteReq.setName(table.getFullyQualifiedName());
+    basicSuiteReq.setBasicEntityReference(table.getFullyQualifiedName());
+    TestSuite basicSuite = client.testSuites().create(basicSuiteReq);
+
+    EntityReference basicSuiteRef =
+        new EntityReference().withId(basicSuite.getId()).withType(Entity.TEST_SUITE);
+
+    CreateTestCase request =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("create_suite_request_basic_rejected_tc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .testSuites(List.of(basicSuiteRef))
+            .build();
+
+    assertThrows(Exception.class, () -> client.testCases().create(request));
   }
 
   @Test

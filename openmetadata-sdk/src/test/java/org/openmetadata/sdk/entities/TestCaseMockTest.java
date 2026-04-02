@@ -48,7 +48,7 @@ public class TestCaseMockTest {
     createRequest.setName("null-check-test");
     createRequest.setDisplayName("Null Check Test");
     createRequest.setDescription("Test to check for null values in column");
-    // createRequest.setTestSuite("quality-test-suite"); // Not available in CreateTestCase
+    // createRequest.setTestSuites(...); // Optional on CreateTestCase
 
     TestCase expectedTestCase = new TestCase();
     expectedTestCase.setId(UUID.randomUUID());

@@ -626,6 +626,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void prepare(TestCase test, boolean update) {
+    if (update) {
+      // `createOrUpdate` uses `prepare(..., update=true)`; ignoring `testSuites` avoids ambiguous
+      // semantics where an upsert could unintentionally rewrite logical-suite membership.
+      test.setTestSuites(null);
+    } else {
+      validateLogicalTestSuites(test);
+    }
+
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
@@ -659,6 +667,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // This avoids creating side entities when request validation fails early.
     var testSuite = getOrCreateTestSuite(test, table);
     test.setTestSuite(testSuite);
+  }
+
+  private void validateLogicalTestSuites(TestCase test) {
+    List<TestSuite> testSuites = test.getTestSuites();
+    if (testSuites == null || testSuites.isEmpty()) return;
+
+    Set<UUID> suiteIds =
+        testSuites.stream()
+            .filter(ts -> ts != null && ts.getId() != null)
+            .map(TestSuite::getId)
+            .collect(Collectors.toSet());
+
+    for (UUID suiteId : suiteIds) {
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, suiteId, "basic", ALL);
+      if (Boolean.TRUE.equals(testSuite.getBasic())) {
+        throw new IllegalArgumentException(
+            "You are trying to add test cases to a basic test suite.");
+      }
+    }
   }
 
   /*
@@ -863,6 +890,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   protected void postCreate(TestCase testCase) {
     super.postCreate(testCase);
     updateTestSuite(testCase);
+    attachLogicalTestSuitesIfPresent(testCase);
+  }
+
+  @Override
+  protected void postCreate(List<TestCase> entities) {
+    super.postCreate(entities);
+    for (TestCase testCase : entities) {
+      attachLogicalTestSuitesIfPresent(testCase);
+    }
   }
 
   @Override
@@ -883,6 +919,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "*", ALL);
     var original = TestSuiteRepository.copyTestSuite(testSuite);
     testSuiteRepository.postUpdate(original, testSuite);
+  }
+
+  private void attachLogicalTestSuitesIfPresent(TestCase testCase) {
+    if (testCase == null) return;
+    if (testCase.getTestSuites() == null || testCase.getTestSuites().isEmpty()) return;
+
+    Set<UUID> suiteIds =
+        testCase.getTestSuites().stream()
+            .filter(ts -> ts != null && ts.getId() != null)
+            .map(TestSuite::getId)
+            .collect(Collectors.toSet());
+
+    for (UUID suiteId : suiteIds) {
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, suiteId, "basic", ALL);
+      if (Boolean.TRUE.equals(testSuite.getBasic())) {
+        throw new IllegalArgumentException(
+            "You are trying to add test cases to a basic test suite.");
+      }
+      addTestCasesToLogicalTestSuite(testSuite, List.of(testCase.getId()));
+    }
+
+    testCase.setTestSuites(null);
   }
 
   @Transaction

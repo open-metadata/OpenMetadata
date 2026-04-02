@@ -34,6 +34,10 @@ export interface CreateTestCase {
     displayName?: string;
     entityLink:   string;
     /**
+     * Basic and Logical Test Suites this test case belongs to
+     */
+    testSuites?: EntityReference[];
+    /**
      * Name that identifies this test case.
      */
     name: string;
