@@ -446,6 +446,33 @@ describe('Test PropertyValue Component', () => {
     ).toBeInTheDocument();
   });
 
+  it('Should render FQN as subtitle in entity reference value', async () => {
+    const extension = {
+      yNumber: {
+        id: 'entityReferenceId',
+        name: 'customers',
+        fullyQualifiedName: 'snowflake.prod.analytics.customers',
+        type: 'table',
+      },
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'entityReference',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(
+      await screen.findByText('snowflake.prod.analytics.customers')
+    ).toBeInTheDocument();
+  });
+
   it('Should render entity reference select component for "entityReferenceList" type', async () => {
     const extension = {
       yNumber: [
