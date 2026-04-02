@@ -194,9 +194,16 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.sample_config.profileSample or (
+        if not self.sample_config.profileSample:
+            if self.partition_details:
+                return self._partitioned_table()
+
+            return self.raw_dataset
+
+        if (
             self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.sample_config.profileSample == 100
+            and not self.sample_config.randomizedSample
         ):
             if self.partition_details:
                 return self._partitioned_table()
