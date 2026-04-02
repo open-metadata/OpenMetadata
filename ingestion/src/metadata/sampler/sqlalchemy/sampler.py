@@ -167,7 +167,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 query = session_query.where(
                     rnd.c.random <= self.sample_config.profileSample
                 )
-                if self.sample_config.randomizedSample:
+                if self.sample_config.randomizedSample is not False:
                     query = query.order_by(rnd.c.random)
                 return query.cte(f"{self.get_sampler_table_name()}_sample")
 
@@ -177,12 +177,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             session_query = self._base_sample_query(
                 column,
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
-                if self.sample_config.randomizedSample
+                if self.sample_config.randomizedSample is not False
                 else None,
             )
             query = (
                 session_query.order_by(RANDOM_LABEL)
-                if self.sample_config.randomizedSample
+                if self.sample_config.randomizedSample is not False
                 else session_query
             )
             return query.limit(self.sample_config.profileSample).cte(
@@ -206,7 +206,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if (
             self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.sample_config.profileSample == 100
-            and not self.sample_config.randomizedSample
+            and self.sample_config.randomizedSample is False
         ):
             if self.partition_details:
                 return self._partitioned_table()
