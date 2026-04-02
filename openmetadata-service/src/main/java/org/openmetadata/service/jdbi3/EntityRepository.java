@@ -3026,6 +3026,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> dataProducts = entity.getDataProducts();
       List<EntityReference> followers = entity.getFollowers();
       List<EntityReference> experts = entity.getExperts();
+      AssetCertification certification = entity.getCertification();
       nullifyEntityFields(entity);
 
       String jsonCopy = gson.toJson(entity);
@@ -3039,6 +3040,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setDataProducts(dataProducts);
       entity.setFollowers(followers);
       entity.setExperts(experts);
+      entity.setCertification(certification);
     }
 
     dao.insertMany(nullifiedEntities);
@@ -3055,6 +3057,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> dataProducts = entity.getDataProducts();
       List<EntityReference> followers = entity.getFollowers();
       List<EntityReference> experts = entity.getExperts();
+      AssetCertification certification = entity.getCertification();
       nullifyEntityFields(entity);
 
       String jsonCopy = gson.toJson(entity);
@@ -3068,6 +3071,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setDataProducts(dataProducts);
       entity.setFollowers(followers);
       entity.setExperts(experts);
+      entity.setCertification(certification);
     }
 
     dao.updateMany(nullifiedEntities);
