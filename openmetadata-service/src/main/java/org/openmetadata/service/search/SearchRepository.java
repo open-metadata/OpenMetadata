@@ -1809,7 +1809,7 @@ public class SearchRepository {
       }
       case TAG_LABEL_LIST -> {
         List<TagLabel> tagLabels =
-            JsonUtils.readObjects((String) field.getNewValue(), TagLabel.class);
+            JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
         tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
         data.put("tagAdded", tagLabels);
         script.append(generateAddTagLabelListScript());
@@ -1865,7 +1865,7 @@ public class SearchRepository {
       }
       case TAG_LABEL_LIST -> {
         List<TagLabel> tagLabels =
-            JsonUtils.readObjects((String) field.getOldValue(), TagLabel.class);
+            JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
         tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
         data.put("tagDeleted", tagLabels);
         script.append(generateDeleteTagLabelListScript());
@@ -1916,10 +1916,10 @@ public class SearchRepository {
       }
       case TAG_LABEL_LIST -> {
         List<TagLabel> addedTags =
-            JsonUtils.readObjects((String) field.getNewValue(), TagLabel.class);
+            JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
         addedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
         List<TagLabel> deletedTags =
-            JsonUtils.readObjects((String) field.getOldValue(), TagLabel.class);
+            JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
         deletedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
         data.put("tagAdded", addedTags);
         data.put("tagDeleted", deletedTags);
