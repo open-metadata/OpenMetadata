@@ -50,19 +50,29 @@ public class OpenLineageEntityResolver {
   private final boolean autoCreateEntities;
   private final String defaultPipelineService;
   private final Map<String, String> namespaceToServiceMapping;
+  private final boolean normalizeDatasetNames;
 
   public OpenLineageEntityResolver(boolean autoCreateEntities, String defaultPipelineService) {
-    this(autoCreateEntities, defaultPipelineService, null);
+    this(autoCreateEntities, defaultPipelineService, null, false);
   }
 
   public OpenLineageEntityResolver(
       boolean autoCreateEntities,
       String defaultPipelineService,
       Map<String, String> namespaceToServiceMapping) {
+    this(autoCreateEntities, defaultPipelineService, namespaceToServiceMapping, false);
+  }
+
+  public OpenLineageEntityResolver(
+      boolean autoCreateEntities,
+      String defaultPipelineService,
+      Map<String, String> namespaceToServiceMapping,
+      boolean normalizeDatasetNames) {
     this.autoCreateEntities = autoCreateEntities;
     this.defaultPipelineService = defaultPipelineService;
     this.namespaceToServiceMapping =
         namespaceToServiceMapping != null ? namespaceToServiceMapping : Map.of();
+    this.normalizeDatasetNames = normalizeDatasetNames;
   }
 
   public EntityReference resolveTable(OpenLineageInputDataset dataset) {
@@ -296,6 +306,13 @@ public class OpenLineageEntityResolver {
           return identifiers.get(0).getName();
         }
       }
+    }
+    // When normalizeDatasetNames is enabled, convert path separators in
+    // file-system / S3-style dataset names (e.g. "my_schema/my_table") to dot
+    // notation (e.g. "my_schema.my_table") so the downstream split can extract
+    // schema and table correctly.
+    if (normalizeDatasetNames && datasetName != null && datasetName.contains("/")) {
+      datasetName = datasetName.replace("/", ".");
     }
     return datasetName;
   }

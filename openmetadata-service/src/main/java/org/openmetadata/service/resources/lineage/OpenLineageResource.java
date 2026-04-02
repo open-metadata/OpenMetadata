@@ -96,8 +96,12 @@ public class OpenLineageResource {
             ? settings.getNamespaceToServiceMapping().getAdditionalProperties()
             : null;
 
+    boolean normalizeDatasetNames =
+        settings.getNormalizeDatasetNames() != null ? settings.getNormalizeDatasetNames() : false;
+
     OpenLineageEntityResolver entityResolver =
-        new OpenLineageEntityResolver(autoCreate, pipelineService, namespaceMapping);
+        new OpenLineageEntityResolver(
+            autoCreate, pipelineService, namespaceMapping, normalizeDatasetNames);
     return new OpenLineageMapper(entityResolver, settings);
   }
 

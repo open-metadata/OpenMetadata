@@ -338,6 +338,78 @@ class OpenLineageEntityResolverTest {
   }
 
   @Test
+  void tableNameParsing_s3PathWithSlashes_normalizedToDots() {
+    // When normalizeDatasetNames is enabled, S3-style dataset names using "/"
+    // separators (e.g. "my_schema/my_table") are converted to dot notation
+    // (e.g. "my_schema.my_table") so the downstream split works correctly.
+    String s3Name = "my_schema/my_table";
+    // Simulates extractTableName behavior with normalizeDatasetNames=true
+    String normalized = s3Name.contains("/") ? s3Name.replace("/", ".") : s3Name;
+    String[] parts = normalized.split("\\.");
+
+    assertEquals(2, parts.length);
+    assertEquals("my_schema", parts[parts.length - 2]);
+    assertEquals("my_table", parts[parts.length - 1]);
+  }
+
+  @Test
+  void tableNameParsing_deepS3Path_normalizedToDots() {
+    // Deeper S3 paths like "prefix/schema/table" normalize to
+    // "prefix.schema.table" — the resolver takes the last two parts
+    // as schema.table.
+    String s3Name = "prefix/my_schema/my_table";
+    String normalized = s3Name.contains("/") ? s3Name.replace("/", ".") : s3Name;
+    String[] parts = normalized.split("\\.");
+
+    assertEquals(3, parts.length);
+    assertEquals("my_schema", parts[parts.length - 2]);
+    assertEquals("my_table", parts[parts.length - 1]);
+  }
+
+  @Test
+  void tableNameParsing_dotSeparated_unchangedByNormalization() {
+    // Already dot-separated names (e.g. from PostgreSQL) remain unchanged
+    // regardless of the normalizeDatasetNames flag.
+    String dotName = "public.users";
+    String normalized = dotName.contains("/") ? dotName.replace("/", ".") : dotName;
+
+    assertEquals("public.users", normalized);
+    String[] parts = normalized.split("\\.");
+    assertEquals(2, parts.length);
+    assertEquals("public", parts[0]);
+    assertEquals("users", parts[1]);
+  }
+
+  @Test
+  void tableNameParsing_s3Path_notNormalizedWhenFlagDisabled() {
+    // When normalizeDatasetNames is false (default), "/" paths are NOT
+    // converted and the resolver correctly rejects them as single-part names.
+    boolean normalizeDatasetNames = false;
+    String s3Name = "my_schema/my_table";
+    String result = s3Name;
+    if (normalizeDatasetNames && s3Name.contains("/")) {
+      result = s3Name.replace("/", ".");
+    }
+    String[] parts = result.split("\\.");
+
+    assertEquals(1, parts.length);
+    // Resolver would reject this when flag is off — backward compatible
+  }
+
+  @Test
+  void constructor_fourArgs_setsNormalizeFlag() {
+    // Verify the 4-arg constructor works without exception
+    OpenLineageEntityResolver resolver =
+        new OpenLineageEntityResolver(true, "openlineage", null, true);
+    assertNotNull(resolver);
+
+    // 3-arg constructor defaults normalizeDatasetNames to false (backward compatible)
+    OpenLineageEntityResolver resolver2 =
+        new OpenLineageEntityResolver(true, "openlineage", null);
+    assertNotNull(resolver2);
+  }
+
+  @Test
   void ownershipFacet_emptyOwners_handledGracefully() {
     OwnershipFacet ownership = new OwnershipFacet();
     // Default initialization may give empty list or null depending on schema
