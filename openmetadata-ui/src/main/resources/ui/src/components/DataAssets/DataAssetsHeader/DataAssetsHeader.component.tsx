@@ -61,6 +61,7 @@ import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import { useRequestAccessUrl } from '../../../hooks/useRequestAccessUrl';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -159,6 +160,17 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
+  const requestAccessUrl = useRequestAccessUrl({
+    entityName: dataAsset.name,
+    entityPath: dataAsset.fullyQualifiedName
+      ? getEntityDetailsPath(entityType, dataAsset.fullyQualifiedName)
+      : undefined,
+    entityType,
+    fullyQualifiedName: dataAsset.fullyQualifiedName,
+    service: dataAsset.service,
+    serviceType: get(dataAsset, 'serviceType', ''),
+    sourceUrl: (dataAsset as Table).sourceUrl,
+  });
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -683,6 +695,29 @@ export const DataAssetsHeader = ({
                           {t('label.view-in-service-type', {
                             serviceType: (dataAsset as Table).serviceType,
                           })}
+                        </Button>
+                      </Typography.Link>
+                    </Tooltip>
+                  )}
+                  {requestAccessUrl && (
+                    <Tooltip
+                      placement="bottom"
+                      title={`${t('label.request')} ${t('label.access')}`}>
+                      <Typography.Link
+                        className="cursor-pointer source-url-link"
+                        href={requestAccessUrl}
+                        rel="noopener noreferrer"
+                        target="_blank">
+                        <Button
+                          className="source-url-button cursor-pointer font-semibold"
+                          data-testid="request-access-button"
+                          icon={
+                            <Icon
+                              className="flex-center"
+                              component={LinkIcon}
+                            />
+                          }>
+                          {`${t('label.request')} ${t('label.access')}`}
                         </Button>
                       </Typography.Link>
                     </Tooltip>

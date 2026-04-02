@@ -31,6 +31,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
+import { useRequestAccessUrl } from '../../../hooks/useRequestAccessUrl';
 import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -255,6 +256,21 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       [source]
     );
 
+    const entityPath = useMemo(
+      () => (isObject(entityLink) ? entityLink.pathname : entityLink),
+      [entityLink]
+    );
+
+    const requestAccessUrl = useRequestAccessUrl({
+      entityName: source.name,
+      entityPath,
+      entityType: source.entityType,
+      fullyQualifiedName: source.fullyQualifiedName,
+      service: source.service,
+      serviceType: source.serviceType,
+      sourceUrl: (source as { sourceUrl?: string }).sourceUrl,
+    });
+
     const header = useMemo(() => {
       const hasGlossaryTermStatus =
         source.entityType === EntityType.GLOSSARY_TERM &&
@@ -414,8 +430,21 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ))}
           </div>
         ) : null}
-        {actionPopoverContent && (
-          <Space className="explore-card-actions">{actionPopoverContent}</Space>
+        {(requestAccessUrl || actionPopoverContent) && (
+          <Space className="explore-card-actions">
+            {requestAccessUrl && (
+              <Typography.Link
+                href={requestAccessUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+                onClick={(event) => event.stopPropagation()}>
+                <Button data-testid="request-access-button">
+                  {`${t('label.request')} ${t('label.access')}`}
+                </Button>
+              </Typography.Link>
+            )}
+            {actionPopoverContent}
+          </Space>
         )}
       </div>
     );

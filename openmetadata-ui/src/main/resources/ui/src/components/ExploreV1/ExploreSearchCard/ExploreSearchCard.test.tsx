@@ -13,6 +13,7 @@
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { useRequestAccessUrl } from '../../../hooks/useRequestAccessUrl';
 import searchClassBase from '../../../utils/SearchClassBase';
 import ExploreSearchCard from './ExploreSearchCard';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -46,6 +47,10 @@ jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
     .mockReturnValue(<div data-testid="domain-display">Domain Display</div>),
 }));
 
+jest.mock('../../../hooks/useRequestAccessUrl', () => ({
+  useRequestAccessUrl: jest.fn(),
+}));
+
 const baseSource: ExploreSearchCardProps['source'] = {
   id: 'base-1',
   fullyQualifiedName: 'test.fqn',
@@ -76,6 +81,7 @@ const renderCard = (
 describe('ExploreSearchCard - Domain section', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useRequestAccessUrl as jest.Mock).mockReturnValue(undefined);
   });
 
   it('renders  DomainDisplay component', () => {
@@ -106,5 +112,30 @@ describe('ExploreSearchCard - Domain section', () => {
     renderCard({ domains: [] });
 
     expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+  });
+
+  it('renders request access button when request access url is available', () => {
+    (useRequestAccessUrl as jest.Mock).mockReturnValue(
+      'https://access.example.com/new'
+    );
+
+    renderCard({
+      entityType: 'dashboard',
+      service: {
+        id: 'service-id',
+        name: 'sample_dashboard',
+        type: 'dashboardService',
+      },
+    });
+
+    const requestAccessButton = screen.getByTestId('request-access-button');
+    const requestAccessLink = requestAccessButton.closest('a');
+
+    expect(requestAccessButton).toBeInTheDocument();
+    expect(requestAccessLink).toHaveAttribute(
+      'href',
+      'https://access.example.com/new'
+    );
+    expect(requestAccessLink).toHaveAttribute('target', '_blank');
   });
 });

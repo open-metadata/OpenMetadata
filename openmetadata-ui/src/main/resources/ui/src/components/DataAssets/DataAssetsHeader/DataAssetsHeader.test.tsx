@@ -22,6 +22,7 @@ import { ContractExecutionStatus } from '../../../generated/entity/data/dataCont
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
+import { useRequestAccessUrl } from '../../../hooks/useRequestAccessUrl';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
@@ -75,6 +76,10 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn().mockReturnValue({
     serviceCategory: undefined,
   }),
+}));
+
+jest.mock('../../../hooks/useRequestAccessUrl', () => ({
+  useRequestAccessUrl: jest.fn(),
 }));
 
 jest.mock('../../../rest/applicationAPI', () => ({
@@ -255,6 +260,10 @@ describe('ExtraInfoLink component', () => {
 });
 
 describe('DataAssetsHeader component', () => {
+  beforeEach(() => {
+    (useRequestAccessUrl as jest.Mock).mockReturnValue(undefined);
+  });
+
   it('should call getContainerByName API on Page load for container assets', () => {
     const mockGetContainerByName = getContainerByName as jest.Mock;
     render(<DataAssetsHeader {...mockProps} />);
@@ -364,6 +373,20 @@ describe('DataAssetsHeader component', () => {
     render(<DataAssetsHeader {...mockProps} />);
 
     expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
+  });
+
+  it('should render request access button when request access url is present', () => {
+    const mockRequestAccessUrl = 'https://access.example.com/new';
+    (useRequestAccessUrl as jest.Mock).mockReturnValue(mockRequestAccessUrl);
+
+    render(<DataAssetsHeader {...mockProps} />);
+
+    const requestAccessButton = screen.getByTestId('request-access-button');
+    const requestAccessLink = requestAccessButton.closest('a');
+
+    expect(requestAccessButton).toBeInTheDocument();
+    expect(requestAccessLink).toHaveAttribute('href', mockRequestAccessUrl);
+    expect(requestAccessLink).toHaveAttribute('target', '_blank');
   });
 
   it('should render certification only when serviceCategory is undefined', () => {
