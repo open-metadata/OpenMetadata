@@ -24,8 +24,14 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -80,7 +86,9 @@ class HiveSource(CommonDbSourceService):
 
     def _get_validated_metastore_connection(
         self,
-    ) -> Optional[Union[PostgresConnection, MysqlConnection]]:  # noqa: UP007, UP045
+    ) -> Optional[
+        Union[PostgresConnection, MysqlConnection, MssqlConnection, OracleConnection]
+    ]:  # noqa: UP007, UP045
         """
         Validate and return the metastore connection if it exists.
         Handles cases where the connection may be a raw dict that needs validation.
@@ -90,18 +98,25 @@ class HiveSource(CommonDbSourceService):
         if not metastore_conn:
             return None
 
-        if isinstance(metastore_conn, (PostgresConnection, MysqlConnection)):
+        if isinstance(
+            metastore_conn,
+            (PostgresConnection, MysqlConnection, MssqlConnection, OracleConnection),
+        ):
             return metastore_conn
 
         if isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
-            try:
-                return PostgresConnection.model_validate(metastore_conn)
-            except ValidationError:
+            for conn_cls in (
+                PostgresConnection,
+                MysqlConnection,
+                MssqlConnection,
+                OracleConnection,
+            ):
                 try:
-                    return MysqlConnection.model_validate(metastore_conn)
+                    return conn_cls.model_validate(metastore_conn)
                 except ValidationError:
-                    logger.warning("Invalid metastore connection configuration")
-                    return None
+                    continue
+            logger.warning("Invalid metastore connection configuration")
+            return None
 
         return None
 

@@ -29,8 +29,14 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveConnection,
     HiveScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -57,6 +63,8 @@ from metadata.utils.ssl_manager import check_ssl_and_init
 
 HIVE_POSTGRES_SCHEME = "hive+postgres"
 HIVE_MYSQL_SCHEME = "hive+mysql"
+HIVE_MSSQL_SCHEME = "hive+mssql"
+HIVE_ORACLE_SCHEME = "hive+oracle"
 
 # Monkey-patch the pyhive.hive module to use our custom connection
 import pyhive.hive  # noqa: E402
@@ -195,6 +203,58 @@ def _(connection: MysqlConnection):
     )
 
 
+@get_metastore_connection.register
+def _(connection: MssqlConnection):
+    # import required to load sqlalchemy plugin
+    # pylint: disable=import-outside-toplevel,unused-import
+    from metadata.ingestion.source.database.hive.metastore_dialects.mssql import (  # nopycln: import
+        HiveMssqlMetaStoreDialect,
+    )
+
+    class CustomMssqlScheme(Enum):
+        HIVE_MSSQL = HIVE_MSSQL_SCHEME
+
+    class CustomMssqlConnection(MssqlConnection):
+        scheme: Optional[CustomMssqlScheme]
+
+    connection_copy = deepcopy(connection.__dict__)
+    connection_copy["scheme"] = CustomMssqlScheme.HIVE_MSSQL
+
+    custom_connection = CustomMssqlConnection(**connection_copy)
+
+    return create_generic_db_connection(
+        connection=custom_connection,
+        get_connection_url_fn=get_connection_url_common,
+        get_connection_args_fn=get_connection_args_common,
+    )
+
+
+@get_metastore_connection.register
+def _(connection: OracleConnection):
+    # import required to load sqlalchemy plugin
+    # pylint: disable=import-outside-toplevel,unused-import
+    from metadata.ingestion.source.database.hive.metastore_dialects.oracle import (  # nopycln: import
+        HiveOracleMetaStoreDialect,
+    )
+
+    class CustomOracleScheme(Enum):
+        HIVE_ORACLE = HIVE_ORACLE_SCHEME
+
+    class CustomOracleConnection(OracleConnection):
+        scheme: Optional[CustomOracleScheme]
+
+    connection_copy = deepcopy(connection.__dict__)
+    connection_copy["scheme"] = CustomOracleScheme.HIVE_ORACLE
+
+    custom_connection = CustomOracleConnection(**connection_copy)
+
+    return create_generic_db_connection(
+        connection=custom_connection,
+        get_connection_url_fn=get_connection_url_common,
+        get_connection_args_fn=get_connection_args_common,
+    )
+
+
 def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
@@ -210,16 +270,27 @@ def test_connection(
     metastore_conn = service_connection.metastoreConnection
 
     if metastore_conn:
-        if isinstance(metastore_conn, (PostgresConnection, MysqlConnection)):
+        if isinstance(
+            metastore_conn,
+            (PostgresConnection, MysqlConnection, MssqlConnection, OracleConnection),
+        ):
             engine = get_metastore_connection(metastore_conn)
         elif isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
-            try:
-                service_connection.metastoreConnection = PostgresConnection.model_validate(metastore_conn)
-            except ValidationError:
+            for conn_cls in (
+                PostgresConnection,
+                MysqlConnection,
+                MssqlConnection,
+                OracleConnection,
+            ):
                 try:
-                    service_connection.metastoreConnection = MysqlConnection.model_validate(metastore_conn)
+                    service_connection.metastoreConnection = (
+                        conn_cls.model_validate(metastore_conn)
+                    )
+                    break
                 except ValidationError:
-                    raise ValueError("Invalid metastore connection")  # noqa: B904
+                    continue
+            else:
+                raise ValueError("Invalid metastore connection")
             engine = get_metastore_connection(service_connection.metastoreConnection)
 
     return test_connection_db_schema_sources(

@@ -97,6 +97,12 @@
           "$ref": "./mysqlConnection.json"
         },
         {
+          "$ref": "./mssqlConnection.json"
+        },
+        {
+          "$ref": "./oracleConnection.json"
+        },
+        {
           "title": "None",
           "type": "object",
           "additionalProperties": false
