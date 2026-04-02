@@ -107,6 +107,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }: React.PropsWithChildren<{ title?: string }>) => (
       <div title={title}>{children}</div>
     ),
+    TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
+    Typography: ({
+      children,
+      className,
+      ...props
+    }: React.PropsWithChildren<{ className?: string }>) => (
+      <span className={className} {...props}>
+        {children}
+      </span>
+    ),
     Dropdown: {
       Root: DropdownRoot,
       Popover: DropdownPopover,

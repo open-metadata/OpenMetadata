@@ -21,6 +21,8 @@ from requests.exceptions import HTTPError
 
 from metadata.generated.schema.entity.data.pipeline import PipelineState, StatusType
 from metadata.generated.schema.entity.utils.common.accessTokenConfig import AccessToken
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.airflow.api.client import AirflowApiClient
 from metadata.ingestion.source.pipeline.airflow.api.models import (
     AirflowApiDagDetails,
@@ -678,6 +680,157 @@ class TestYieldPipeline:
         assert len(results) == 1
         assert results[0].left is not None
         assert "test_dag" in results[0].left.name
+
+
+# ── Owner Resolution ─────────────────────────────────────────────────────
+
+
+def _make_entity_ref(name, ref_type="user"):
+    """Create a real EntityReference for testing."""
+    import uuid
+
+    return EntityReference(
+        id=str(uuid.uuid4()),
+        type=ref_type,
+        name=name,
+    )
+
+
+class TestGetOwners:
+    def _make_source(self):
+        source = MagicMock()
+        source.metadata = MagicMock()
+        return source
+
+    def test_returns_none_when_include_owners_disabled(self):
+        source = self._make_source()
+        source.source_config.includeOwners = False
+        result = AirflowApiSource.get_owners(source, ["admin"])
+        assert result is None
+        source.metadata.get_reference_by_name.assert_not_called()
+
+    def test_returns_none_for_none_owners(self):
+        source = self._make_source()
+        result = AirflowApiSource.get_owners(source, None)
+        assert result is None
+
+    def test_returns_none_for_empty_list(self):
+        source = self._make_source()
+        result = AirflowApiSource.get_owners(source, [])
+        assert result is None
+
+    def test_resolves_single_owner(self):
+        source = self._make_source()
+        admin_ref = _make_entity_ref("admin")
+        source.metadata.get_reference_by_name.return_value = EntityReferenceList(
+            root=[admin_ref]
+        )
+
+        result = AirflowApiSource.get_owners(source, ["admin"])
+        assert result is not None
+        assert len(result.root) == 1
+        assert result.root[0].name == "admin"
+        source.metadata.get_reference_by_name.assert_called_once_with(
+            name="admin", is_owner=True
+        )
+
+    def test_resolves_multiple_owners(self):
+        source = self._make_source()
+        admin_ref = _make_entity_ref("admin")
+        analyst_ref = _make_entity_ref("analyst")
+        source.metadata.get_reference_by_name.side_effect = [
+            EntityReferenceList(root=[admin_ref]),
+            EntityReferenceList(root=[analyst_ref]),
+        ]
+
+        result = AirflowApiSource.get_owners(source, ["admin", "analyst"])
+        assert result is not None
+        assert len(result.root) == 2
+        names = {r.name for r in result.root}
+        assert names == {"admin", "analyst"}
+
+    def test_skips_unresolved_owner(self):
+        source = self._make_source()
+        admin_ref = _make_entity_ref("admin")
+        source.metadata.get_reference_by_name.side_effect = [
+            EntityReferenceList(root=[admin_ref]),
+            None,
+        ]
+
+        result = AirflowApiSource.get_owners(source, ["admin", "unknown_user"])
+        assert result is not None
+        assert len(result.root) == 1
+        assert result.root[0].name == "admin"
+
+    def test_returns_none_when_all_lookups_fail(self):
+        source = self._make_source()
+        source.metadata.get_reference_by_name.side_effect = Exception("ES down")
+
+        result = AirflowApiSource.get_owners(source, ["admin"])
+        assert result is None
+
+    def test_partial_failure_returns_resolved_owners(self):
+        source = self._make_source()
+        admin_ref = _make_entity_ref("admin")
+
+        def side_effect(name, is_owner):
+            if name == "admin":
+                return EntityReferenceList(root=[admin_ref])
+            raise Exception(f"User {name} not found")
+
+        source.metadata.get_reference_by_name.side_effect = side_effect
+
+        result = AirflowApiSource.get_owners(source, ["admin", "bad_user"])
+        assert result is not None
+        assert len(result.root) == 1
+        assert result.root[0].name == "admin"
+
+
+# ── Yield Pipeline with Owners ───────────────────────────────────────────
+
+
+class TestYieldPipelineOwners:
+    @patch(
+        "metadata.ingestion.source.pipeline.airflow.api.source.get_tag_labels",
+        return_value=[],
+    )
+    def test_owners_propagated_to_request(self, _mock_tags):
+        source, dag = _make_source_and_dag()
+        dag.owners = ["airflow_admin"]
+        admin_ref = _make_entity_ref("airflow_admin")
+        owner_list = EntityReferenceList(root=[admin_ref])
+        source.get_owners = lambda owners: owner_list if owners else None
+
+        results = list(AirflowApiSource.yield_pipeline(source, dag))
+        assert len(results) == 1
+        assert results[0].right.owners is not None
+        assert len(results[0].right.owners.root) == 1
+
+    @patch(
+        "metadata.ingestion.source.pipeline.airflow.api.source.get_tag_labels",
+        return_value=[],
+    )
+    def test_no_owners_sets_none(self, _mock_tags):
+        source, dag = _make_source_and_dag()
+        dag.owners = None
+        source.get_owners = lambda owners: None
+
+        results = list(AirflowApiSource.yield_pipeline(source, dag))
+        assert len(results) == 1
+        assert results[0].right.owners is None
+
+    @patch(
+        "metadata.ingestion.source.pipeline.airflow.api.source.get_tag_labels",
+        return_value=[],
+    )
+    def test_empty_owners_sets_none(self, _mock_tags):
+        source, dag = _make_source_and_dag()
+        dag.owners = []
+        source.get_owners = lambda owners: None
+
+        results = list(AirflowApiSource.yield_pipeline(source, dag))
+        assert len(results) == 1
+        assert results[0].right.owners is None
 
 
 # ── Client: DAG Runs Parsing ─────────────────────────────────────────────
