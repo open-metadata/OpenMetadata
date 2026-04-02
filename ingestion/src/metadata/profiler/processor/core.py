@@ -50,7 +50,7 @@ from metadata.profiler.metrics.core import (
     TMetric,
 )
 from metadata.profiler.metrics.static.row_count import RowCount
-from metadata.profiler.orm.registry import NOT_COMPUTE
+from metadata.profiler.orm.registry import COMPLEX_TYPES, NOT_COMPUTE
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.utils.logger import profiler_logger
 
@@ -374,10 +374,23 @@ class Profiler(Generic[TMetric]):
         if self.source_config and not self.source_config.computeColumnMetrics:
             return column_metrics_for_thread_pool
 
-        columns = [
+        # All columns where at least some metric is computable
+        all_columns = [
             column
             for column in self.columns
             if column.type.__class__.__name__ not in NOT_COMPUTE
+        ]
+        # Regular columns receive the full metric suite
+        columns = [
+            column
+            for column in all_columns
+            if column.type.__class__.__name__ not in COMPLEX_TYPES
+        ]
+        # Complex types (ARRAY, JSON, MAP, STRUCT, GEO) receive null metrics only
+        complex_columns = [
+            column
+            for column in all_columns
+            if column.type.__class__.__name__ in COMPLEX_TYPES
         ]
         static_metrics = [
             ThreadPoolMetrics(
@@ -429,6 +442,30 @@ class Profiler(Generic[TMetric]):
         # we'll add the system metrics to the thread pool computation
         for metric_type in [static_metrics, query_metrics, window_metrics]:
             column_metrics_for_thread_pool.extend(metric_type)
+
+        # Compute null count for complex types (ARRAY, JSON, MAP, STRUCT, GEO).
+        # These types cannot be profiled with numeric/string metrics but null
+        # completeness is always meaningful. See issue #15627.
+        for column in complex_columns:
+            null_metrics = [
+                metric
+                for metric in self.metric_filter.get_column_metrics(
+                    StaticMetric,
+                    column,
+                    self.profiler_interface.table_entity.serviceType,
+                )
+                if not metric.is_window_metric()
+                and metric.name() in {"nullCount", "nullProportion"}
+            ]
+            if null_metrics:
+                column_metrics_for_thread_pool.append(
+                    ThreadPoolMetrics(
+                        metrics=null_metrics,
+                        metric_type=MetricTypes.Static,
+                        column=column,
+                        table=self.table,
+                    )
+                )
 
         # we'll add the custom metrics to the thread pool computation
         for column in columns:

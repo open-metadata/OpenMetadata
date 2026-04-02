@@ -116,12 +116,19 @@ class Dialects(metaclass=EnumAdapter):
     pass
 
 
-# Sometimes we want to skip certain types for computing metrics.
-# If the type is NULL, then we won't run the metric execution
-# in the profiler.
-# Note that not mapped types are set to NULL by default.
+# Types for which no metrics can be computed at all (unmapped, temporal ranges, XML).
 NOT_COMPUTE = {
     sqlalchemy.types.NullType.__name__,
+    CustomTypes.SQADATETIMERANGE.value.__name__,
+    DataType.XML.value,
+    CustomTypes.UNDETERMINED.value.__name__,
+}
+
+# Complex / semi-structured types where only null-family metrics apply.
+# These were previously excluded entirely; they now receive at least nullCount
+# and nullProportion so data quality teams can track data completeness.
+# See: https://github.com/open-metadata/OpenMetadata/issues/15627
+COMPLEX_TYPES = {
     sqlalchemy.ARRAY.__name__,
     sqlalchemy.JSON.__name__,
     sqa_types.SQAMap.__name__,
@@ -133,9 +140,6 @@ NOT_COMPUTE = {
     DataType.ARRAY.value,
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,
-    CustomTypes.SQADATETIMERANGE.value.__name__,
-    DataType.XML.value,
-    CustomTypes.UNDETERMINED.value.__name__,
 }
 FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
