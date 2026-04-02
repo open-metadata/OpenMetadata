@@ -19,6 +19,7 @@ export const REQUEST_ACCESS_URL_OPTION_KEYS = [
   'requestAccessUrl',
   'requestAccessUrlTemplate',
 ] as const;
+const REQUEST_ACCESS_ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 
 export type RequestAccessContext = {
   entityName?: string;
@@ -104,7 +105,13 @@ export const buildRequestAccessUrl = (
   );
 
   try {
-    return new URL(resolvedUrl).toString();
+    const requestAccessUrl = new URL(resolvedUrl);
+
+    if (!REQUEST_ACCESS_ALLOWED_PROTOCOLS.has(requestAccessUrl.protocol)) {
+      return undefined;
+    }
+
+    return requestAccessUrl.toString();
   } catch {
     return undefined;
   }

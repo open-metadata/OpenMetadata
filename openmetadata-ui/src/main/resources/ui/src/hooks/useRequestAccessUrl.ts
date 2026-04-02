@@ -22,7 +22,6 @@ import {
   RequestAccessContext,
 } from '../utils/RequestAccessUtils';
 
-const requestAccessTemplateCache = new Map<string, string | null>();
 const requestAccessTemplatePromiseCache = new Map<
   string,
   Promise<string | null>
@@ -70,37 +69,28 @@ export const useRequestAccessUrl = ({
       const cacheKey = `${serviceCategory}:${service.name}`;
 
       try {
-        let requestAccessTemplate = requestAccessTemplateCache.get(cacheKey);
+        let requestAccessTemplatePromise =
+          requestAccessTemplatePromiseCache.get(cacheKey);
 
-        if (requestAccessTemplate === undefined) {
-          let requestAccessTemplatePromise =
-            requestAccessTemplatePromiseCache.get(cacheKey);
+        if (!requestAccessTemplatePromise) {
+          requestAccessTemplatePromise = getServiceByFQN(
+            serviceCategory,
+            service.name
+          )
+            .then((serviceDetails) => {
+              return getRequestAccessTemplate(serviceDetails) ?? null;
+            })
+            .finally(() => {
+              requestAccessTemplatePromiseCache.delete(cacheKey);
+            });
 
-          if (!requestAccessTemplatePromise) {
-            requestAccessTemplatePromise = getServiceByFQN(
-              serviceCategory,
-              service.name
-            )
-              .then((serviceDetails) => {
-                const resolvedTemplate =
-                  getRequestAccessTemplate(serviceDetails) ?? null;
-
-                requestAccessTemplateCache.set(cacheKey, resolvedTemplate);
-
-                return resolvedTemplate;
-              })
-              .finally(() => {
-                requestAccessTemplatePromiseCache.delete(cacheKey);
-              });
-
-            requestAccessTemplatePromiseCache.set(
-              cacheKey,
-              requestAccessTemplatePromise
-            );
-          }
-
-          requestAccessTemplate = await requestAccessTemplatePromise;
+          requestAccessTemplatePromiseCache.set(
+            cacheKey,
+            requestAccessTemplatePromise
+          );
         }
+
+        const requestAccessTemplate = await requestAccessTemplatePromise;
 
         if (isActive) {
           setRequestAccessUrl(

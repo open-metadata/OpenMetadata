@@ -65,4 +65,60 @@ describe('useRequestAccessUrl', () => {
 
     expect(getServiceByFQN).toHaveBeenCalledTimes(1);
   });
+
+  it('should refetch the template after the in-flight lookup completes', async () => {
+    (getServiceByFQN as jest.Mock)
+      .mockResolvedValueOnce({
+        connection: {
+          config: {
+            connectionOptions: {
+              requestAccessUrl:
+                'https://access.example.com/new?asset={{entityFqnEncoded}}',
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        connection: {
+          config: {
+            connectionOptions: {
+              requestAccessUrl:
+                'https://access.example.com/new?name={{entityNameEncoded}}',
+            },
+          },
+        },
+      });
+
+    const props = {
+      entityName: 'Finance Dashboard',
+      entityPath: '/dashboard/sample.finance_dashboard',
+      entityType: EntityType.DASHBOARD,
+      fullyQualifiedName: 'sample.finance_dashboard',
+      service: {
+        id: 'service-id',
+        name: 'sample_dashboard',
+        type: 'dashboardService',
+      },
+    };
+
+    const firstHook = renderHook(() => useRequestAccessUrl(props));
+
+    await waitFor(() => {
+      expect(firstHook.result.current).toBe(
+        'https://access.example.com/new?asset=sample.finance_dashboard'
+      );
+    });
+
+    firstHook.unmount();
+
+    const secondHook = renderHook(() => useRequestAccessUrl(props));
+
+    await waitFor(() => {
+      expect(secondHook.result.current).toBe(
+        'https://access.example.com/new?name=Finance%20Dashboard'
+      );
+    });
+
+    expect(getServiceByFQN).toHaveBeenCalledTimes(2);
+  });
 });

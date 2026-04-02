@@ -57,4 +57,12 @@ describe('RequestAccessUtils', () => {
       })
     ).toBeUndefined();
   });
+
+  it('should reject request access urls with non-http protocols', () => {
+    expect(
+      buildRequestAccessUrl('javascript:alert(document.domain)', {
+        entityType: EntityType.DASHBOARD,
+      })
+    ).toBeUndefined();
+  });
 });
