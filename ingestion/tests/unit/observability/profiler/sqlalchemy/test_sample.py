@@ -21,7 +21,12 @@ from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    DataType,
+    ProfileSampleType,
+    Table,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -360,6 +365,34 @@ class SampleTest(TestCase):
         assert len(sample_data.columns) == 2
         names = [col.root for col in sample_data.columns]
         assert names == ["id", "name"]
+
+    def test_fetch_sample_data_randomizes_at_full_percentage(self, sampler_mock):
+        """
+        At 100% PERCENTAGE sample, fetch_sample_data must apply ORDER BY RANDOM()
+        so each LIMIT call returns a different subset instead of the same first N rows.
+
+        Before the fix, the full-table path skipped ORDER BY RANDOM() entirely.
+        """
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            full_pct_sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(
+                    profileSample=100.0,
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    randomizedSample=True,
+                ),
+            )
+
+        assert full_pct_sampler.get_dataset() is full_pct_sampler.raw_dataset
+
+        with patch(
+            "metadata.sampler.sqlalchemy.sampler.RandomNumFn"
+        ) as mock_random_fn:
+            full_pct_sampler.fetch_sample_data()
+
+        mock_random_fn.assert_called_once()
 
     @classmethod
     def tearDownClass(cls) -> None:
