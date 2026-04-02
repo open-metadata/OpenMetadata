@@ -99,34 +99,40 @@ export const deletedUserChecks = async (page: Page) => {
 export const visitUserProfilePage = async (page: Page, userName: string) => {
   await settingClick(page, GlobalSettingOptions.USERS);
 
-  await page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
-
+  const userList = page.getByTestId('user-list-v1-component');
+  const loader = userList.getByTestId('loader');
   const searchBar = page.getByTestId('searchbar');
+  const userRow = page.getByTestId(userName);
+
+  await loader.waitFor({ state: 'detached' });
 
   await expect
     .poll(
       async () => {
-        const searchRequest = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.url().includes(encodeURIComponent(userName)) &&
-            response.request().method() === 'GET'
-        );
+        const searchRequest = page.waitForResponse((response) => {
+          if (
+            !response.url().includes('/api/v1/search/query') ||
+            response.request().method() !== 'GET'
+          ) {
+            return false;
+          }
+
+          const url = new URL(response.url());
+          const q = url.searchParams.get('q') ?? '';
+
+          return (
+            url.searchParams.get('index') === 'user' &&
+            url.searchParams.get('deleted') === 'false' &&
+            q.includes(userName)
+          );
+        });
 
         await searchBar.clear();
         await searchBar.fill(userName);
         await searchRequest;
+        await loader.waitFor({ state: 'detached' });
 
-        await page
-          .getByTestId('user-list-v1-component')
-          .getByTestId('loader')
-          .waitFor({ state: 'detached' })
-          .catch(() => undefined);
-
-        return page.getByTestId(userName).count();
+        return userRow.count();
       },
       {
         timeout: 60_000,
@@ -136,7 +142,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     )
     .toBeGreaterThan(0);
 
-  await page.getByTestId(userName).click();
+  await userRow.click();
 };
 
 export const softDeleteUserProfilePage = async (
