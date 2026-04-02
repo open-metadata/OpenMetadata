@@ -30,6 +30,7 @@ import {
   OntologyEdge,
   OntologyNode,
 } from '../OntologyExplorer.interface';
+import { getEntityIconUrl } from '../utils/entityIconUrls';
 import {
   BADGE_MIN_NODE_WIDTH,
   estimateNodeWidth,
@@ -46,7 +47,6 @@ import {
   getCanvasColor,
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
-import { getEntityIconUrl } from '../utils/entityIconUrls';
 import { computeGlossaryGroupPositions } from '../utils/layoutCalculations';
 
 const INVERSE_RELATION_PAIRS: Record<string, string> = {
@@ -228,21 +228,6 @@ export function useGraphDataBuilder({
         inputNodes.filter((n) => !allAssetIds.has(n.id)).map((n) => n.id)
       );
 
-      const termsWithAssets = new Set<string>();
-      mergedEdgesList.forEach((edge) => {
-        if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-          termsWithAssets.add(edge.from);
-        }
-        if (allTermIds.has(edge.to) && allAssetIds.has(edge.from)) {
-          termsWithAssets.add(edge.to);
-        }
-      });
-      inputNodes.forEach((node) => {
-        if (allTermIds.has(node.id) && (node.assetCount ?? 0) > 0) {
-          termsWithAssets.add(node.id);
-        }
-      });
-
       const visibleTermIds = new Set(allTermIds);
 
       const visibleAssetIds = new Set<string>();
@@ -329,7 +314,6 @@ export function useGraphDataBuilder({
         ? computeGlossaryGroupPositions(nodesForGraph, layoutType)
         : {};
 
-    // Pre-compute term positions for data mode using a grid layout (no overlaps guaranteed).
     const dataModeTermPositions: Record<string, { x: number; y: number }> =
       explorationMode === 'data'
         ? computeGlossaryGroupPositions(

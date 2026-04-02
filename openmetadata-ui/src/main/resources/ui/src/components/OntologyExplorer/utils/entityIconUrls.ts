@@ -12,9 +12,9 @@
  */
 import apiCollectionIconUrl from '../../../assets/svg/ic-api-collection-default.svg';
 import apiEndpointIconUrl from '../../../assets/svg/ic-api-endpoint-default.svg';
-import databaseIconUrl from '../../../assets/svg/ic-database.svg';
-import dataProductIconUrl from '../../../assets/svg/ic-data-product.svg';
 import dashboardIconUrl from '../../../assets/svg/ic-dashboard.svg';
+import dataProductIconUrl from '../../../assets/svg/ic-data-product.svg';
+import databaseIconUrl from '../../../assets/svg/ic-database.svg';
 import directoryIconUrl from '../../../assets/svg/ic-directory.svg';
 import fileIconUrl from '../../../assets/svg/ic-file.svg';
 import mlModelIconUrl from '../../../assets/svg/ic-ml-model.svg';

@@ -50,8 +50,8 @@ import {
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
-import { getLayoutConfig } from '../utils/graphConfig';
 import { getEntityIconUrl } from '../utils/entityIconUrls';
+import { getLayoutConfig } from '../utils/graphConfig';
 import {
   buildComboStyle,
   buildDataModeAssetNodeStyle,
@@ -441,7 +441,7 @@ export function useOntologyGraph({
                             number,
                             number,
                             number,
-                            number,
+                            number
                           ],
                           backgroundOpacity: 1,
                         },

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Image as GImage, Rect as GRect, Group, Text as GText } from '@antv/g';
+import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
 import {
   Circle,
   ExtensionCategory,
@@ -465,21 +465,31 @@ const DATA_MODE_ENTITY_TYPE_CHAR_WIDTH_EST = 5.5;
 const DATA_MODE_ENTITY_BADGE_H_PAD = 4;
 const DATA_MODE_ENTITY_BADGE_V_PAD = 2;
 
+let measureTextContext: CanvasRenderingContext2D | null = null;
+
+function getMeasureTextContext2d(): CanvasRenderingContext2D | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  if (!measureTextContext) {
+    const canvas = document.createElement('canvas');
+    measureTextContext = canvas.getContext('2d');
+  }
+
+  return measureTextContext;
+}
+
 function measureCanvasTextWidthPx(
   text: string,
   font: string,
   mode: 'advance' | 'ink' = 'advance'
 ): number | undefined {
-  if (typeof document === 'undefined') {
+  const context = getMeasureTextContext2d();
+  if (!context) {
     return undefined;
   }
 
   try {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) {
-      return undefined;
-    }
     context.font = font;
     const metrics = context.measureText(text);
     let px = metrics.width;
@@ -785,7 +795,7 @@ export function buildDataModeTermNodeStyle(
     haloLineWidth: DATA_MODE_TERM_HALO_LINE_WIDTH,
     haloShadowBlur: DATA_MODE_TERM_HALO_SHADOW_BLUR,
     haloShadowColor: DATA_MODE_TERM_HALO_SHADOW_COLOR,
-    haloStroke: '#fff',
+    haloStroke: NODE_FILL_DEFAULT,
     haloStrokeOpacity: DATA_MODE_TERM_HALO_STROKE_OPACITY,
     icon: false,
     labelText: label,

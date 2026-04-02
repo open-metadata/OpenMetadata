@@ -382,7 +382,7 @@ export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 3;
 export const DEFAULT_ZOOM = 1;
 export const FIT_VIEW_ZOOM_OUT = 0.9;
-export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 1;
+export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 1.48;
 
 export const DATA_MODE_ASSET_LOAD_PAGE_SIZE = 1000;
 export const DATA_MODE_ASSET_CIRCLE_SIZE = 20;
@@ -429,14 +429,17 @@ export function toLayoutEngineType(layout: LayoutType): LayoutEngineType {
 export const COMBO_PADDING = 48;
 export const COMBO_LABEL_PADDING_TOP_BOTTOM = 10;
 export const DATA_MODE_TERM_NODE_SIZE = 30;
-/** White ring around term circle and matching label pill in data mode. */
-export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 4;
+
+export const DATA_MODE_TERM_MIN_CENTER_SPACING = 400;
+export const DATA_MODE_TERM_GROUP_LAYOUT_MIN_RADIUS = 200;
+export const DATA_MODE_GLOSSARY_MACRO_HULL_GAP = 120;
+export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 2;
 /** Outer soft ring behind the term circle (G6 halo), light gray like elevated selection. */
-export const DATA_MODE_TERM_HALO_LINE_WIDTH = 11;
+export const DATA_MODE_TERM_HALO_LINE_WIDTH = 5;
 export const DATA_MODE_TERM_HALO_STROKE = '#e8ecf0';
-export const DATA_MODE_TERM_HALO_STROKE_OPACITY = 0.9;
-export const DATA_MODE_TERM_HALO_SHADOW_COLOR = 'rgba(203, 213, 225, 0.45)';
-export const DATA_MODE_TERM_HALO_SHADOW_BLUR = 8;
+export const DATA_MODE_TERM_HALO_STROKE_OPACITY = 0.72;
+export const DATA_MODE_TERM_HALO_SHADOW_COLOR = 'rgba(203, 213, 225, 0.35)';
+export const DATA_MODE_TERM_HALO_SHADOW_BLUR = 5;
 export const DATA_MODE_TERM_NODE_SHADOW_COLOR = 'rgba(241, 245, 249, 0.92)';
 export const DATA_MODE_TERM_NODE_SHADOW_BLUR = 16;
 export const DATA_MODE_TERM_NODE_SHADOW_OFFSET_Y = 5;
@@ -450,11 +453,11 @@ export const DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING: [
   number,
   number,
   number
-] = [4, 4, 4, 4];
+] = [5, 7, 5, 7];
 export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER = 24;
 export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE = 28;
-export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR = 5;
-export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN = 10;
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR = 7;
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN = 12;
 export const HIERARCHY_BADGE_OFFSET_X = 0;
 export const HIERARCHY_BADGE_OFFSET_Y = -18;
 export const HIERARCHY_BADGE_TEXT_INSET = 16;
