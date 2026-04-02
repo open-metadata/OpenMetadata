@@ -458,11 +458,11 @@ class OpenMetadata(
         """
         for prefix, replacement in OpenMetadata._FILE_NAME_PREFIX_OVERRIDES.items():
             if class_name.startswith(prefix):
-                return replacement + class_name[len(prefix):]
+                return replacement + class_name[len(prefix) :]
         match = re.match(r"^([A-Z]+)([A-Z][a-z])", class_name)
         if match:
             acronym = match.group(1)
-            return acronym.lower() + class_name[len(acronym):]
+            return acronym.lower() + class_name[len(acronym) :]
         return class_name[0].lower() + class_name[1:]
 
     def get_entity_from_create(self, create: Type[C]) -> Type[T]:
