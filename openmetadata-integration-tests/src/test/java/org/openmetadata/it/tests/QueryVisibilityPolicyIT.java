@@ -241,7 +241,7 @@ public class QueryVisibilityPolicyIT {
    * fix, evaluating the condition itself threw NPE (500 server error).
    */
   @Test
-  void test_matchAnyCertification_noCertificationOnEntity(TestNamespace ns) {
+  void test_matchAnyCertification_nullEntityInResourceContext(TestNamespace ns) {
     OpenMetadataClient adminClient = SdkClients.adminClient();
     String p = ns.shortPrefix();
 
@@ -301,9 +301,10 @@ public class QueryVisibilityPolicyIT {
                 OpenMetadataClient testUserClient =
                     SdkClients.createClient(userEmail, userEmail, new String[] {});
 
-                // Before the fix, this threw NPE (500) in matchAnyCertification
-                // when the entity had no certification. After the fix, the condition
-                // evaluates to false, the deny rule does not fire, and the GET succeeds.
+                // Before the fix, this threw NPE (500) in matchAnyCertification because the
+                // entity in the resource context (resourceContext.getEntity()) was null.
+                // After the fix, the null entity is handled, the condition evaluates to false,
+                // the deny rule does not fire, and the GET succeeds.
                 Table fetched = testUserClient.tables().get(tableNoCert.getId().toString());
                 assertNotNull(fetched, "GET should return the table, not fail with NPE");
                 assertEquals(
