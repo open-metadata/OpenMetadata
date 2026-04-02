@@ -11,6 +11,7 @@
 """
 Pydantic models for Airflow REST API responses
 """
+
 from datetime import datetime
 from typing import Dict, List, Optional
 

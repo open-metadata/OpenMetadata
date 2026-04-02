@@ -50,6 +50,10 @@ export interface Table {
      */
     databaseSchema?: EntityReference;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * This captures information about how the table is modeled. Currently only DBT model is
      * supported.
      */
@@ -749,6 +753,8 @@ export interface CustomMetric {
  *
  * Reference to database schema that contains this table.
  *
+ * Reference to the data contract for this entity.
+ *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Reference to the Location that contains this table.
@@ -1082,6 +1088,7 @@ export enum ModelType {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",

@@ -13,17 +13,14 @@
 import { test as teardown } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { EntityDataClass } from '../support/entity/EntityDataClass';
 import { performAdminLogin } from '../utils/admin';
 
 teardown('cleanup entity data prerequisites', async ({ browser }) => {
   teardown.setTimeout(300 * 1000);
 
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { afterAction } = await performAdminLogin(browser);
 
   try {
-    await EntityDataClass.postRequisitesForTests(apiContext);
-
     const filePath = path.join(
       __dirname,
       '..',

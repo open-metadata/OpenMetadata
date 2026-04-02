@@ -60,6 +60,8 @@ import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -519,7 +521,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private OpenMetadataApplicationConfig readTestAppConfig(String path)
       throws ConfigurationException, IOException {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    objectMapper.registerSubtypes(
+        AuditExcludeFilterFactory.class,
+        AuditOnlyFilterFactory.class,
+        SwitchableEventLayoutFactory.class,
+        SwitchableAccessLayoutFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(

@@ -147,6 +147,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsDomains = true;
   protected boolean supportsPatchDomains = true; // Can domains be changed via PATCH after creation?
   protected boolean supportsDataProducts = true;
+  protected boolean supportsDataContract = false;
   protected boolean supportsSoftDelete = true;
   protected boolean supportsCustomExtension = true;
   protected boolean supportsFieldsQueryParam = true;
@@ -1838,6 +1839,45 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         Exception.class,
         () -> patchEntity(entityId, entity),
         "Setting non-existent domain should fail");
+  }
+
+  // ===================================================================
+  // DATA CONTRACT TESTS
+  // ===================================================================
+
+  @Test
+  void get_entityDataContract_200(TestNamespace ns) {
+    if (!supportsDataContract) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    org.openmetadata.schema.api.data.CreateDataContract contractRequest =
+        new org.openmetadata.schema.api.data.CreateDataContract()
+            .withName(ns.prefix("contract"))
+            .withEntity(entity.getEntityReference())
+            .withDescription("Data contract for test entity");
+    org.openmetadata.schema.entity.data.DataContract contract =
+        SdkClients.adminClient().dataContracts().create(contractRequest);
+
+    T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
+    assertNotNull(fetched.getDataContract(), "Entity should have a dataContract");
+    assertEquals(
+        contract.getId(),
+        fetched.getDataContract().getId(),
+        "DataContract reference should match created contract");
+  }
+
+  @Test
+  void get_entityWithoutDataContract_200(TestNamespace ns) {
+    if (!supportsDataContract) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
+    assertNull(
+        fetched.getDataContract(), "Entity without a contract should have null dataContract");
   }
 
   // ===================================================================

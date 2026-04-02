@@ -72,6 +72,51 @@ DELETE FROM QRTZ_FIRED_TRIGGERS;
 DELETE FROM QRTZ_LOCKS;
 DELETE FROM QRTZ_SCHEDULER_STATE;
 
+-- Create mcp_service_entity table
+CREATE TABLE IF NOT EXISTS mcp_service_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.id'))) STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.name'))) VIRTUAL NOT NULL,
+    serviceType VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.serviceType'))) VIRTUAL NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedAt'))) VIRTUAL NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedBy'))) VIRTUAL NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(`json`, '$.deleted')) VIRTUAL,
+    nameHash VARCHAR(256) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY nameHash (nameHash),
+    INDEX name_index (name),
+    INDEX service_type_index (serviceType),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='MCP Service entities';
+
+-- Create mcp_server_entity table
+CREATE TABLE IF NOT EXISTS mcp_server_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='MCP Server entities';
+
+-- Create mcp_execution_entity table
+CREATE TABLE IF NOT EXISTS mcp_execution_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    serverId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.serverId') STORED NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
+    PRIMARY KEY (id),
+    INDEX server_index (serverId),
+    INDEX timestamp_index (timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='MCP Execution logs';
+
 -- Enable allowImpersonation for McpApplicationBot so it can record impersonation in audit logs
 UPDATE user_entity
 SET json = JSON_SET(json, '$.allowImpersonation', true)

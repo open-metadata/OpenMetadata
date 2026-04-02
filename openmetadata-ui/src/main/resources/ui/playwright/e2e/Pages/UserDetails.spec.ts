@@ -85,7 +85,7 @@ test.describe('User with different Roles', () => {
     adminPage,
   }) => {
     test.slow();
-    await redirectToUserPage(adminPage);
+    await visitUserProfilePage(adminPage, user1.getUserName());
 
     // Check if the avatar is visible
     await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
@@ -110,8 +110,14 @@ test.describe('User with different Roles', () => {
     await expect(teamOption).toBeVisible();
     await teamOption.click();
 
-    await adminPage.getByTestId('teams-edit-save-btn').click();
+    const saveTeamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
 
+    await adminPage.getByTestId('teams-edit-save-btn').click();
+    await saveTeamsResponse;
     await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
       team.responseData.displayName ?? team.data.displayName
     );

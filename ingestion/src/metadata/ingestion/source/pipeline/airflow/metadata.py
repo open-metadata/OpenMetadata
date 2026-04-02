@@ -11,6 +11,7 @@
 """
 Airflow source to extract metadata from OM UI
 """
+
 import traceback
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -669,9 +670,9 @@ class AirflowSource(PipelineServiceSource):
                         f"?_flt_3_dag_id={quote(dag.dag_id)}&_flt_3_task_id={quote(task.task_id)}"
                     )
                 ),
-                downstreamTasks=list(task.downstream_task_ids)
-                if task.downstream_task_ids
-                else [],
+                downstreamTasks=(
+                    list(task.downstream_task_ids) if task.downstream_task_ids else []
+                ),
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
                 taskType=task.task_type,
@@ -716,16 +717,20 @@ class AirflowSource(PipelineServiceSource):
 
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.dag_id),
-                description=Markdown(pipeline_details.description)
-                if pipeline_details.description
-                else None,
+                description=(
+                    Markdown(pipeline_details.description)
+                    if pipeline_details.description
+                    else None
+                ),
                 sourceUrl=SourceUrl(source_url),
                 state=pipeline_state,
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
-                startDate=pipeline_details.start_date.isoformat()
-                if pipeline_details.start_date
-                else None,
+                startDate=(
+                    pipeline_details.start_date.isoformat()
+                    if pipeline_details.start_date
+                    else None
+                ),
                 tasks=self.get_tasks_from_dag(
                     pipeline_details, self.service_connection.hostPort
                 ),
@@ -904,24 +909,30 @@ class AirflowSource(PipelineServiceSource):
 
         return PipelineObservability(
             pipeline=EntityReference(
-                id=pipeline_entity.id.root
-                if hasattr(pipeline_entity.id, "root")
-                else pipeline_entity.id,
+                id=(
+                    pipeline_entity.id.root
+                    if hasattr(pipeline_entity.id, "root")
+                    else pipeline_entity.id
+                ),
                 type="pipeline",
-                fullyQualifiedName=pipeline_entity.fullyQualifiedName.root
-                if hasattr(pipeline_entity.fullyQualifiedName, "root")
-                else str(pipeline_entity.fullyQualifiedName),
+                fullyQualifiedName=(
+                    pipeline_entity.fullyQualifiedName.root
+                    if hasattr(pipeline_entity.fullyQualifiedName, "root")
+                    else str(pipeline_entity.fullyQualifiedName)
+                ),
             ),
             scheduleInterval=schedule_interval,
-            startTime=Timestamp(datetime_to_ts(dag_run.start_date))
-            if dag_run.start_date
-            else None,
-            endTime=Timestamp(datetime_to_ts(execution_date))
-            if execution_date
-            else None,
-            lastRunTime=Timestamp(datetime_to_ts(execution_date))
-            if execution_date
-            else None,
+            startTime=(
+                Timestamp(datetime_to_ts(dag_run.start_date))
+                if dag_run.start_date
+                else None
+            ),
+            endTime=(
+                Timestamp(datetime_to_ts(execution_date)) if execution_date else None
+            ),
+            lastRunTime=(
+                Timestamp(datetime_to_ts(execution_date)) if execution_date else None
+            ),
             lastRunStatus=STATUS_MAP.get(dag_run.state, StatusType.Pending.value),
         )
 

@@ -13,19 +13,15 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, isUndefined, toLower, uniqWith } from 'lodash';
-import { Bucket } from 'Models';
+import { isEqual, uniqWith } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { TIER_FQN_KEY } from '../../constants/explore.constants';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { getTags } from '../../rest/tagAPI';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
   getCombinedQueryFilterObject,
   getQuickFilterWithDeletedFlag,
@@ -54,7 +50,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
-  const [tierOptions, setTierOptions] = useState<SearchDropdownOption[]>();
   const { queryFilter } = useAdvanceSearch();
   const { isNLPEnabled } = useSearchStore();
   const getStaticOptions = useCallback(
@@ -111,46 +106,21 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     // Use field-specific searchKey if provided, otherwise use the key
     const searchKeyToUse = fieldSearchKey ?? key;
 
-    let buckets: Bucket[] = [];
-    if (aggregations?.[key] && key !== TIER_FQN_KEY) {
-      buckets = aggregations[key].buckets;
-    } else {
-      const [res, tierTags] = await Promise.all([
-        getAggregationOptions(
-          searchIndexToUse,
-          searchKeyToUse,
-          '',
-          JSON.stringify(combinedQueryFilter),
-          independent,
-          showDeleted,
-          optionPageSize,
-          isNLPEnabled,
-          searchText
-        ),
-        key === TIER_FQN_KEY
-          ? getTags({ parent: 'Tier', limit: 50 })
-          : Promise.resolve(null),
-      ]);
+    let buckets = aggregations?.[key]?.buckets;
+    if (!buckets) {
+      const res = await getAggregationOptions(
+        searchIndexToUse,
+        searchKeyToUse,
+        '',
+        JSON.stringify(combinedQueryFilter),
+        independent,
+        showDeleted,
+        optionPageSize,
+        isNLPEnabled,
+        searchText
+      );
 
       buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
-
-      if (key === TIER_FQN_KEY && tierTags) {
-        const options = tierTags.data.map((option) => {
-          const bucketItem = buckets.find(
-            (item) => toLower(item.key) === toLower(option.fullyQualifiedName)
-          );
-
-          return {
-            key: option.fullyQualifiedName ?? '',
-            label: getEntityName(option),
-            count: bucketItem?.doc_count ?? 0,
-          };
-        });
-        setTierOptions(uniqWith(options, isEqual));
-        setOptions(uniqWith(options, isEqual));
-
-        return;
-      }
     }
 
     setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
@@ -209,41 +179,26 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       const searchIndexToUse = fieldSearchIndex ?? index;
       const searchKeyToUse = fieldSearchKey ?? key;
 
-      if (key !== TIER_FQN_KEY) {
-        const res = await getAggregationOptions(
-          searchIndexToUse,
-          searchKeyToUse,
-          value,
-          JSON.stringify(combinedQueryFilter),
-          independent,
-          showDeleted,
-          undefined,
-          isNLPEnabled,
-          searchText
-        );
+      const res = await getAggregationOptions(
+        searchIndexToUse,
+        searchKeyToUse,
+        value,
+        JSON.stringify(combinedQueryFilter),
+        independent,
+        showDeleted,
+        undefined,
+        isNLPEnabled,
+        searchText
+      );
 
-        const buckets =
-          res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
-        setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
-      } else if (key === TIER_FQN_KEY) {
-        const filteredOptions = tierOptions?.filter((option) => {
-          return option.label.toLowerCase().includes(value.toLowerCase());
-        });
-        setOptions(filteredOptions);
-      }
+      const buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
+      setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsOptionsLoading(false);
     }
   };
-
-  useEffect(() => {
-    const tierField = fields.find((value) => value.key === TIER_FQN_KEY);
-    if (tierField?.value?.length && isUndefined(tierOptions)) {
-      fetchDefaultOptions(index, TIER_FQN_KEY);
-    }
-  }, [fields]);
 
   return (
     <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
@@ -252,20 +207,11 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           field.key as EntityFields
         );
         const dropdownOptions = field.options ?? options ?? [];
-        const selectedKeys =
-          field.key === TIER_FQN_KEY && options?.length
-            ? field.value?.map((value) => {
-                return (
-                  options?.find((option) => option.key === value.key) ?? value
-                );
-              })
-            : field.value;
 
         return (
           <SearchDropdown
             highlight
             dropdownClassName={field.dropdownClassName}
-            fixedOrderOptions={field.key === TIER_FQN_KEY}
             hasNullOption={hasNullOption}
             hideCounts={field.hideCounts ?? false}
             hideSearchBar={field.hideSearchBar ?? false}
@@ -276,7 +222,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
             options={dropdownOptions}
             searchKey={field.key}
-            selectedKeys={selectedKeys ?? []}
+            selectedKeys={field.value ?? []}
             showSelectedCounts={showSelectedCounts}
             singleSelect={field.singleSelect}
             triggerButtonSize="middle"

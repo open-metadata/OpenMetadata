@@ -24,9 +24,16 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeNotNull import (
     BaseColumnValuesToBeNotNullValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
@@ -35,7 +42,10 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToBeNotNullValidator(
-    BaseColumnValuesToBeNotNullValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeNotNullValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column values to be not null test case"""
 
@@ -116,3 +126,13 @@ class ColumnValuesToBeNotNullValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        return {
+            "filters": [(self.get_column(), "eq", None)],
+            "or_filter": False,
+        }
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

@@ -17,13 +17,35 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
-const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
-  tab?: DataQualityPageTabs;
+const DATA_QUALITY_TEST_PATHS = {
+  testCases: `/data-quality/${DataQualityPageTabs.TEST_CASES}`,
+  testSuites: `/data-quality/${DataQualityPageTabs.TEST_SUITES}`,
+  dashboard: `/data-quality/${DataQualityPageTabs.DASHBOARD}`,
+} as const;
+
+const mockProps = {
+  pageTitle: 'data-quality',
 };
+
+const renderDataQualityPage = (initialPath: string) =>
+  render(
+    <MemoryRouter initialEntries={[initialPath]}>
+      <Routes>
+        <Route
+          element={<DataQualityPage {...mockProps} />}
+          path="/data-quality/:tab/:subTab"
+        />
+        <Route
+          element={<DataQualityPage {...mockProps} />}
+          path="/data-quality/:tab"
+        />
+      </Routes>
+    </MemoryRouter>
+  );
 
 // Mock navigation function
 const mockNavigate = jest.fn();
@@ -97,12 +119,6 @@ jest.mock('../../hoc/withPageLayout', () => ({
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
-}));
-
-jest.mock('../../utils/useRequiredParams', () => ({
-  useRequiredParams: jest
-    .fn()
-    .mockImplementation(() => ({ tab: mockUseParam.tab })),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
@@ -180,19 +196,14 @@ jest.mock(
   }
 );
 
-const mockProps = {
-  pageTitle: 'data-quality',
-};
-
 describe('DataQualityPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
   });
 
   describe('Component Rendering', () => {
     it('should render component with basic elements', async () => {
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
       expect(await screen.findByTestId('heading')).toBeInTheDocument();
       expect(await screen.findByTestId('sub-heading')).toBeInTheDocument();
@@ -203,7 +214,7 @@ describe('DataQualityPage', () => {
     });
 
     it('should render with correct page header content', async () => {
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
       expect(await screen.findByText('label.data-quality')).toBeInTheDocument();
       expect(
@@ -212,9 +223,7 @@ describe('DataQualityPage', () => {
     });
 
     it('should show "Add Test Case" button on TEST_CASES tab with Create permission', async () => {
-      mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
-
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
       // Debug: Check if the tab content is being rendered
       expect(screen.getByTestId('data-insight-container')).toBeInTheDocument();
@@ -226,9 +235,7 @@ describe('DataQualityPage', () => {
     });
 
     it('should show "Add Test Suite" button on TEST_SUITES tab with Create permission', async () => {
-      mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
-
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testSuites);
 
       expect(
         await screen.findByTestId('add-test-suite-btn')
@@ -238,9 +245,7 @@ describe('DataQualityPage', () => {
 
   describe('Modal Functionality', () => {
     it('should open TestCaseFormV1 modal when Add Test Case button is clicked', async () => {
-      mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
-
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
       const addButton = await screen.findByTestId('add-test-case-btn');
 
@@ -256,9 +261,7 @@ describe('DataQualityPage', () => {
     });
 
     it('should close TestCaseFormV1 modal when cancel is clicked', async () => {
-      mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
-
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
       const addButton = await screen.findByTestId('add-test-case-btn');
 
@@ -284,9 +287,7 @@ describe('DataQualityPage', () => {
     });
 
     it('should open BundleSuiteForm modal when Add Test Suite button is clicked', async () => {
-      mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
-
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testSuites);
 
       const addButton = await screen.findByTestId('add-test-suite-btn');
 
@@ -302,9 +303,7 @@ describe('DataQualityPage', () => {
     });
 
     it('should close BundleSuiteForm modal when cancel is clicked', async () => {
-      mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
-
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testSuites);
 
       const addButton = await screen.findByTestId('add-test-suite-btn');
 
@@ -332,7 +331,7 @@ describe('DataQualityPage', () => {
 
   describe('Tab Integration', () => {
     it('should render tabs correctly', async () => {
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
       const tabs = await screen.findByTestId('tabs');
 
@@ -340,9 +339,7 @@ describe('DataQualityPage', () => {
     });
 
     it('should show dropdown menu on DASHBOARD tab', async () => {
-      mockUseParam.tab = DataQualityPageTabs.DASHBOARD;
-
-      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.dashboard);
 
       expect(
         await screen.findByTestId('data-quality-add-button-menu')

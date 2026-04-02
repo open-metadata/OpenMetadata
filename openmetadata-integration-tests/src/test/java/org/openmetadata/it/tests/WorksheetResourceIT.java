@@ -56,6 +56,7 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
     supportsDomains = false;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   @Override

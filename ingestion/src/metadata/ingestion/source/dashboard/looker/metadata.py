@@ -1416,6 +1416,8 @@ class LookerSource(DashboardServiceSource):
         clean_table_name = table_name.lower().split(" as ")[0].strip()
         if dialect == Dialect.BIGQUERY:
             clean_table_name = clean_table_name.strip("`")
+        elif dialect == Dialect.DATABRICKS:
+            clean_table_name = clean_table_name.replace("`", "").strip()
         return clean_table_name
 
     def _resolve_lookml_constants(

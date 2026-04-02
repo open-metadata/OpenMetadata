@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { DataTypeTopic } from '../../../src/generated/entity/data/apiEndpoint';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
@@ -20,10 +21,12 @@ import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
   redirectToHomePage,
   testTableSorting,
+  uuid,
 } from '../../utils/common';
 import { test } from '../fixtures/pages';
 
@@ -96,12 +99,38 @@ test.describe('Table Sorting', () => {
   });
 
   test.describe('API Endpoint schema', () => {
-    test('API Endpoint schema should have sorting on name column', async ({
-      page,
-    }) => {
-      const apiEndpoint = EntityDataClass.apiEndpoint1.get();
+    const apiEndpoint2 = new ApiEndpointClass();
 
-      await page.goto(`/apiEndpoint/${apiEndpoint.entity.fullyQualifiedName}`);
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const apiEndpoint1 = EntityDataClass.apiEndpoint1.get();
+
+      apiEndpoint2.service.name = apiEndpoint1.service.name;
+      apiEndpoint2.apiCollection.name = apiEndpoint1.apiCollection.name;
+      apiEndpoint2.apiCollection.service = apiEndpoint1.service.name;
+      apiEndpoint2.entity.apiCollection = `${apiEndpoint1.service.name}.${apiEndpoint1.apiCollection.name}`;
+      apiEndpoint2.entity.requestSchema = {
+        schemaType: 'JSON',
+        schemaFields: [
+          { name: 'alpha', dataType: DataTypeTopic.String, tags: [] },
+          { name: 'beta', dataType: DataTypeTopic.String, tags: [] },
+          { name: 'gamma', dataType: DataTypeTopic.String, tags: [] },
+        ],
+      };
+
+      const apiEndpoint2Response = await apiContext.post(
+        `/api/v1/${EntityTypeEndpoint.API_ENDPOINT}`,
+        { data: apiEndpoint2.entity }
+      );
+      apiEndpoint2.entityResponseData = await apiEndpoint2Response.json();
+
+      await afterAction();
+    });
+
+    test('should have sorting on name column', async ({ page }) => {
+      await page.goto(
+        `/apiEndpoint/${apiEndpoint2.entityResponseData.fullyQualifiedName}`
+      );
       await testTableSorting(page, 'Name');
     });
   });
@@ -136,11 +165,49 @@ test.describe('Table Sorting', () => {
     });
   });
 
-  test('Data Observability services page should have sorting on name column', async ({
-    page,
-  }) => {
-    await page.goto('/settings/services/dataObservability?tab=pipelines');
-    await testTableSorting(page, 'Name', 1);
+  test.describe('Data Observability services page', () => {
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      const createTestSuiteWithPipeline = async () => {
+        const testSuite = await apiContext
+          .post('/api/v1/dataQuality/testSuites', {
+            data: { name: `pw-sort-suite-${uuid()}` },
+          })
+          .then((res) => res.json());
+
+        const pipeline = await apiContext
+          .post('/api/v1/services/ingestionPipelines', {
+            data: {
+              airflowConfig: {},
+              name: `pw-sort-pipeline-${uuid()}`,
+              pipelineType: 'TestSuite',
+              service: { id: testSuite.id, type: 'testSuite' },
+              sourceConfig: {
+                config: {
+                  type: 'TestSuite',
+                  entityFullyQualifiedName: testSuite.fullyQualifiedName,
+                },
+              },
+            },
+          })
+          .then((res) => res.json());
+
+        return { testSuite, pipeline };
+      };
+
+      await Promise.all([
+        createTestSuiteWithPipeline(),
+        createTestSuiteWithPipeline(),
+      ]);
+
+      await afterAction();
+    });
+
+    test('should have sorting on name column', async ({ page }) => {
+      await page.goto('/settings/services/dataObservability?tab=pipelines');
+      await testTableSorting(page, 'Name', 1);
+    });
   });
 
   test.describe('Data Models Table', () => {

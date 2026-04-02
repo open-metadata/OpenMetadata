@@ -2,12 +2,14 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -24,6 +26,7 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.TagLabel;
@@ -522,6 +525,89 @@ class EntityRepositoryCertificationTest {
     TagLabel label = hash.toTagLabel();
 
     assertEquals(TagLabel.State.CONFIRMED, label.getState());
+  }
+
+  @Test
+  void batchFetchTagsFiltersCertificationTags() {
+    String entityFqn = "service.my-pipeline";
+
+    CollectionDAO.TagUsageDAO.TagLabelWithFQNHash certEntry =
+        new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
+    certEntry.setTagFQN("Certification.Gold");
+    certEntry.setTargetFQNHash(FullyQualifiedName.buildHash(entityFqn));
+    certEntry.setSource(TagLabel.TagSource.CLASSIFICATION.ordinal());
+    certEntry.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
+    certEntry.setState(TagLabel.State.CONFIRMED.ordinal());
+
+    CollectionDAO.TagUsageDAO.TagLabelWithFQNHash regularEntry =
+        new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
+    regularEntry.setTagFQN("PII.Sensitive");
+    regularEntry.setTargetFQNHash(FullyQualifiedName.buildHash(entityFqn));
+    regularEntry.setSource(TagLabel.TagSource.CLASSIFICATION.ordinal());
+    regularEntry.setLabelType(TagLabel.LabelType.MANUAL.ordinal());
+    regularEntry.setState(TagLabel.State.CONFIRMED.ordinal());
+
+    when(tagUsageDAO.getTagsInternalBatch(anyList())).thenReturn(List.of(certEntry, regularEntry));
+
+    Map<String, List<TagLabel>> result = repo.batchFetchTags(List.of(entityFqn));
+
+    List<TagLabel> tags = result.get(entityFqn);
+    assertNotNull(tags);
+    assertEquals(1, tags.size());
+    assertEquals("PII.Sensitive", tags.get(0).getTagFQN());
+  }
+
+  @Test
+  void applyCertificationUsesEntityUpdatedByAsAppliedBy() {
+    TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
+    Pipeline entity =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("my-pipeline")
+            .withFullyQualifiedName("service.my-pipeline")
+            .withUpdatedBy("alice")
+            .withCertification(new AssetCertification().withTagLabel(tagLabel));
+
+    when(tagUsageDAO.getCertTagsInternalBatch(anyList(), anyString())).thenReturn(List.of());
+
+    assertDoesNotThrow(() -> repo.applyCertification(entity));
+
+    verify(tagUsageDAO)
+        .applyTag(
+            anyInt(),
+            anyString(),
+            anyString(),
+            anyString(),
+            anyInt(),
+            anyInt(),
+            nullable(String.class),
+            eq("alice"),
+            nullable(TagLabelMetadata.class));
+  }
+
+  @Test
+  void applyCertificationBatchUsesEntityUpdatedByAsAppliedBy() {
+    TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
+    Pipeline entity =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("my-pipeline")
+            .withFullyQualifiedName("service.my-pipeline")
+            .withUpdatedBy("bob")
+            .withCertification(new AssetCertification().withTagLabel(tagLabel));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, List<TagLabel>>> captor = ArgumentCaptor.forClass(Map.class);
+
+    assertDoesNotThrow(() -> repo.applyCertificationBatch(List.of(entity)));
+
+    verify(tagUsageDAO).applyTagsBatchMultiTarget(captor.capture());
+    Map<String, List<TagLabel>> applied = captor.getValue();
+    assertFalse(applied.isEmpty());
+    List<TagLabel> labels = applied.get(entity.getFullyQualifiedName());
+    assertNotNull(labels);
+    assertEquals(1, labels.size());
+    assertEquals("bob", labels.get(0).getAppliedBy());
   }
 
   @Test
