@@ -22,6 +22,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.data.table import ProfileSampleType
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -360,6 +361,83 @@ class SampleTest(TestCase):
         assert len(sample_data.columns) == 2
         names = [col.root for col in sample_data.columns]
         assert names == ["id", "name"]
+
+    def test_full_percentage_randomized_sample_data_uses_sampling_query(
+        self, sampler_mock
+    ):
+        """
+        When profile sample is 100% and randomized sampling is enabled, sample data
+        extraction should still use the randomized sampling query.
+        """
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=100,
+                    randomizedSample=True,
+                ),
+                sample_data_count=5,
+            )
+
+        with patch.object(
+            sampler, "get_sample_query", wraps=sampler.get_sample_query
+        ) as mock_get_sample_query:
+            sampler.fetch_sample_data()
+            assert mock_get_sample_query.called
+
+    def test_full_percentage_non_randomized_sample_data_skips_sampling_query(
+        self, sampler_mock
+    ):
+        """
+        When randomization is disabled, sample data extraction should preserve
+        deterministic behavior and avoid randomized sampling queries.
+        """
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=100,
+                    randomizedSample=False,
+                ),
+                sample_data_count=5,
+            )
+
+        with patch.object(
+            sampler, "get_sample_query", wraps=sampler.get_sample_query
+        ) as mock_get_sample_query:
+            sampler.fetch_sample_data()
+            assert not mock_get_sample_query.called
+
+    def test_full_percentage_none_randomized_sample_data_uses_sampling_query(
+        self, sampler_mock
+    ):
+        """
+        randomizedSample=None should follow the default-enabled randomization behavior.
+        """
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=100,
+                    randomizedSample=None,
+                ),
+                sample_data_count=5,
+            )
+
+        with patch.object(
+            sampler, "get_sample_query", wraps=sampler.get_sample_query
+        ) as mock_get_sample_query:
+            sampler.fetch_sample_data()
+            assert mock_get_sample_query.called
 
     @classmethod
     def tearDownClass(cls) -> None:

@@ -155,17 +155,22 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         hash_object = hashlib.md5(encoded_name)
         return hash_object.hexdigest()
 
+    def _is_randomized_sample_enabled(self) -> bool:
+        """Treat None as default-enabled randomization for backward compatibility."""
+        return self.sample_config.randomizedSample is not False
+
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         with self.session_factory() as client:
             if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+                profile_sample = self.sample_config.profileSample or 100
                 rnd = self._base_sample_query(
                     column,
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 ).cte(f"{self.get_sampler_table_name()}_rnd")
                 session_query = client.query(rnd)
                 return session_query.where(
-                    rnd.c.random <= self.sample_config.profileSample
+                    rnd.c.random <= profile_sample
                 ).cte(f"{self.get_sampler_table_name()}_sample")
 
             table_query = client.query(self.raw_dataset)
@@ -174,12 +179,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             session_query = self._base_sample_query(
                 column,
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
-                if self.sample_config.randomizedSample
+                if self._is_randomized_sample_enabled()
                 else None,
             )
             query = (
                 session_query.order_by(RANDOM_LABEL)
-                if self.sample_config.randomizedSample
+                if self._is_randomized_sample_enabled()
                 else session_query
             )
             return query.limit(self.sample_config.profileSample).cte(
@@ -205,6 +210,24 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         return self.get_sample_query(column=column)
 
+    def _get_dataset_for_sample_data(self) -> Union[type, AliasedClass]:
+        """Get dataset used specifically for sample data extraction.
+
+        For percentage=100 (or unset percentage treated as 100), profiling metrics use
+        the raw dataset for backward compatibility. Sample-data extraction, however,
+        should still honor randomized sampling when enabled.
+        """
+        if (
+            self._is_randomized_sample_enabled()
+            and self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
+            and (
+                self.sample_config.profileSample is None
+                or self.sample_config.profileSample == 100
+            )
+        ):
+            return self.get_sample_query()
+        return self.get_dataset()
+
     def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
@@ -218,16 +241,21 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             return self._fetch_sample_data_from_user_query()
 
         # Add new RandomNumFn column
-        ds = self.get_dataset()
+        ds = self._get_dataset_for_sample_data()
+        ds_columns = inspect(ds).c
+        random_column = next(
+            (col for col in ds_columns if col.name == RANDOM_LABEL), None
+        )
+
         if not columns:
-            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL]
+            sqa_columns = [col for col in ds_columns if col.name != RANDOM_LABEL]
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
             names = [col.name for col in columns]
             sqa_columns = [
                 col
-                for col in inspect(ds).c
+                for col in ds_columns
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
@@ -250,12 +278,10 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     select_columns.append(col)
 
             # Create query with modified columns
-            sqa_sample = (
-                client.query(*select_columns)
-                .select_from(ds)
-                .limit(self.sample_limit)
-                .all()
-            )
+            query = client.query(*select_columns).select_from(ds)
+            if self._is_randomized_sample_enabled() and random_column is not None:
+                query = query.order_by(random_column)
+            sqa_sample = query.limit(self.sample_limit).all()
 
         # Process rows: handle array columns and truncate large text values
         # to prevent OOM in downstream processing.
