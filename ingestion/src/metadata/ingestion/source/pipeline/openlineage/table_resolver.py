@@ -59,11 +59,11 @@ def extract_db_scheme_from_namespace(namespace: str) -> Optional[str]:
     """
     Extract the URL scheme from an OpenLineage dataset namespace.
 
-    >>> extract_namespace_scheme("mysql://host:3306/db")
+    >>> extract_db_scheme_from_namespace("mysql://host:3306/db")
     'mysql'
-    >>> extract_namespace_scheme("redshift://cluster:5439/db")
+    >>> extract_db_scheme_from_namespace("redshift://cluster:5439/db")
     'redshift'
-    >>> extract_namespace_scheme("airflow")
+    >>> extract_db_scheme_from_namespace("airflow")
     None
     """
     try:

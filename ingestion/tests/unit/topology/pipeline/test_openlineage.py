@@ -1600,6 +1600,57 @@ class OpenLineageUnitTest(unittest.TestCase):
             )
             assert custom_result == "custom_lakehouse.lake.analytics.user_stat"
 
+    def test_unknown_scheme_matches_all_custom_services_returns_first_found(self):
+        """Edge case 5: Multiple custom/non-standard DB services configured. An unknown
+        namespace scheme (custom://) matches ALL of them since none are in the known
+        scheme map. _get_table_fqn_from_om returns whichever has the table first —
+        this is ambiguous. Users should use namespaceToServiceMapping to disambiguate.
+
+        Verifies that a warning is logged when multiple custom services match.
+        """
+        source = self.open_lineage_source
+
+        source._namespace_to_service_cache = {}
+        source.source_config.lineageInformation = LineageInformation(
+            dbServiceNames=["custom_lakehouse_a", "custom_lakehouse_b"]
+        )
+        source._db_service_type_map = {
+            "custom_lakehouse_a": "CustomDatabaseA",
+            "custom_lakehouse_b": "CustomDatabaseB",
+        }
+
+        table = TableDetails(name="user_stat", schema="analytics")
+
+        def mock_fqn_build(
+            metadata,
+            entity_type,
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            **kwargs,
+        ):
+            # Both custom services have the table
+            if service_name == "custom_lakehouse_a":
+                return "custom_lakehouse_a.lake.analytics.user_stat"
+            elif service_name == "custom_lakehouse_b":
+                return "custom_lakehouse_b.lake.analytics.user_stat"
+            return None
+
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+            import logging
+
+            with self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm:
+                result = source._get_table_fqn(
+                    table, namespace="custom://some-host:8080/lake"
+                )
+
+            # Returns the first match — ambiguous but functional
+            assert result == "custom_lakehouse_a.lake.analytics.user_stat"
+
+            # Warning should advise using namespaceToServiceMapping
+            assert any("namespaceToServiceMapping" in msg for msg in cm.output)
+
     def test_yield_pipeline_lineage_topic_not_found_skips_gracefully(self):
         """When a Kafka topic input cannot be resolved (no matching messaging service),
         no lineage edge should be produced for that topic, even though the table output
