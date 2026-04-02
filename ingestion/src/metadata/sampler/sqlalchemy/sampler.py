@@ -250,12 +250,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     select_columns.append(col)
 
             # Create query with modified columns
-            sqa_sample = (
-                client.query(*select_columns)
-                .select_from(ds)
-                .limit(self.sample_limit)
-                .all()
-            )
+            query = client.query(*select_columns).select_from(ds)
+            # When the full table is used (PERCENTAGE=100% or no sample config),
+            # apply ORDER BY RANDOM() so the LIMIT returns a random sample each time.
+            if self.sample_config.randomizedSample and ds is self.raw_dataset:
+                query = query.order_by(RandomNumFn())
+            sqa_sample = query.limit(self.sample_limit).all()
 
         # Process rows: handle array columns and truncate large text values
         # to prevent OOM in downstream processing.
