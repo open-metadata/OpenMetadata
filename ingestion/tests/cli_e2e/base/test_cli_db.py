@@ -226,7 +226,7 @@ class CliDBBase(TestCase):
             self.run_command()
             self.build_config_file(
                 E2EType.LINEAGE,
-                {"source": f"{service_type}-lineage"},
+                {"source": f"{service_type}-lineage", **self.get_lineage_config_args()},
             )
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)
@@ -422,6 +422,10 @@ class CliDBBase(TestCase):
         @abstractmethod
         def get_excludes_tables() -> List[str]:
             raise NotImplementedError()
+
+        @staticmethod
+        def get_lineage_config_args() -> dict:
+            return {}
 
         @staticmethod
         def get_profiler_time_partition() -> Optional[dict]:

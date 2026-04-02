@@ -12,6 +12,7 @@
 MWAA (Managed Workflows for Apache Airflow) REST API implementation
 Uses AWS MWAA invoke_rest_api for direct API calls without token management
 """
+
 import json
 import traceback
 from typing import Dict, List, Optional

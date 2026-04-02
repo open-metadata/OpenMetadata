@@ -415,6 +415,10 @@
       "description": "MCP tools or other tools available to this application",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "mcpServers": {
+      "description": "MCP servers this application connects to for tools, resources, and prompts",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "dataSources": {
       "description": "Data sources (tables, APIs, etc.) this application can access",
       "$ref": "../../type/entityReferenceList.json"

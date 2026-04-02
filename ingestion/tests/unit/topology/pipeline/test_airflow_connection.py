@@ -19,6 +19,7 @@ These tests verify every auth path in auth.py and the AirflowApiClient construct
                      manages expiry internally; REST client calls callback when
                      its own expires_in check triggers)
 """
+
 import base64
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
