@@ -467,6 +467,21 @@ export interface ConfigObject {
      */
     openAPISchemaConnection?: OpenAPISchemaConnection;
     /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
+     * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     *
+     * SSL Configuration details. Provide the CA certificate to validate the Informix server
+     * certificate. Paste the PEM content directly or upload the certificate file.
+     *
+     * SSL Configuration for OpenMetadata Server
+     */
+    sslConfig?: SSLConfigObject;
+    /**
      * Supports Metadata Extraction.
      */
     supportsMetadataExtraction?: boolean;
@@ -510,6 +525,19 @@ export interface ConfigObject {
      * Custom search service type
      */
     type?: ConfigType;
+    /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     *
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
+     *
+     * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
+     * default.
+     *
+     * Flag to verify SSL Certificate for OpenMetadata Server.
+     */
+    verifySSL?: boolean | VerifySSL;
     /**
      * Billing Project ID
      */
@@ -1118,21 +1146,6 @@ export interface ConfigObject {
      */
     licenseFileName?: string;
     /**
-     * SSL Configuration details for DB2 connection. Provide CA certificate for server
-     * validation, and optionally client certificate and key for mutual TLS authentication.
-     *
-     * SSL Configuration details.
-     *
-     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
-     * client certificate, and private key for mutual TLS authentication.
-     *
-     * SSL Configuration details. Provide the CA certificate to validate the Informix server
-     * certificate. Paste the PEM content directly or upload the certificate file.
-     *
-     * SSL Configuration for OpenMetadata Server
-     */
-    sslConfig?: SSLConfigObject;
-    /**
      * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
      * without certificate verification, or 'verify-ca' to validate the server certificate
      * against the provided CA certificate.
@@ -1509,17 +1522,6 @@ export interface ConfigObject {
      * Pagination limit used for Alation APIs pagination
      */
     paginationLimit?: number;
-    /**
-     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
-     *
-     * Client SSL verification.
-     *
-     * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
-     * default.
-     *
-     * Flag to verify SSL Certificate for OpenMetadata Server.
-     */
-    verifySSL?: boolean | VerifySSL;
     /**
      * Azure Application client secret for service principal authentication.
      *
@@ -3017,10 +3019,10 @@ export enum KafkaSecurityProtocol {
 }
 
 /**
+ * Client SSL configuration
+ *
  * SSL Configuration details for DB2 connection. Provide CA certificate for server
  * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * Client SSL configuration
  *
  * SSL Configuration details.
  *
@@ -4835,10 +4837,10 @@ export enum SpaceType {
 }
 
 /**
+ * Client SSL configuration
+ *
  * SSL Configuration details for DB2 connection. Provide CA certificate for server
  * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * Client SSL configuration
  *
  * SSL Configuration details.
  *
