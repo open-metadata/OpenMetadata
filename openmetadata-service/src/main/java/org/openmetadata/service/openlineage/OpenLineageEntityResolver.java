@@ -298,21 +298,32 @@ public class OpenLineageEntityResolver {
   }
 
   private String extractTableName(String datasetName, DatasetFacets facets) {
+    String effectiveName = datasetName;
     if (facets != null) {
       SymlinksFacet symlinks = facets.getSymlinks();
       if (symlinks != null && symlinks.getIdentifiers() != null) {
         List<SymlinkIdentifier> identifiers = symlinks.getIdentifiers();
         if (!identifiers.isEmpty()) {
-          return identifiers.get(0).getName();
+          effectiveName = identifiers.get(0).getName();
         }
       }
     }
-    // When normalizeDatasetNames is enabled, convert path separators in
-    // file-system / S3-style dataset names (e.g. "my_schema/my_table") to dot
-    // notation (e.g. "my_schema.my_table") so the downstream split can extract
-    // schema and table correctly.
+    return normalizeDatasetName(effectiveName);
+  }
+
+  /**
+   * Normalizes a dataset name when {@code normalizeDatasetNames} is enabled. Converts
+   * file-system / S3-style path separators ("/") to dots so the downstream split can
+   * extract schema and table correctly. Strips leading/trailing slashes first to avoid
+   * producing empty parts.
+   *
+   * <p>Package-private for testability.
+   */
+  String normalizeDatasetName(String datasetName) {
     if (normalizeDatasetNames && datasetName != null && datasetName.contains("/")) {
-      datasetName = datasetName.replace("/", ".");
+      // Strip leading/trailing slashes to avoid empty parts after split
+      String stripped = datasetName.replaceAll("^/+|/+$", "");
+      return stripped.replace("/", ".");
     }
     return datasetName;
   }
