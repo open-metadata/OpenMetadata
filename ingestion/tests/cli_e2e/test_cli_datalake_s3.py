@@ -21,6 +21,9 @@ import pytest
 from metadata.workflow.metadata import MetadataWorkflow
 
 from .base.e2e_types import E2EType
+
+# TODO: Remove skip once AWS credentials are available in CI
+pytestmark = pytest.mark.skip(reason="Skipped: AWS credentials not available")
 from .base.test_cli import PATH_TO_RESOURCES
 from .common.test_cli_db import CliCommonDB
 
