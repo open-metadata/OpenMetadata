@@ -864,11 +864,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           searchClassBase.getEntityIcon(item.type)
         )}
       </div>
-      <Typography.Text
-        className="text-left text-primary truncate w-max-full"
-        ellipsis={{ tooltip: true }}>
-        {getEntityName(item)}
-      </Typography.Text>
+      <div className="d-flex flex-col" style={{ minWidth: 0 }}>
+        <Typography.Text
+          className="text-left text-primary truncate w-max-full"
+          ellipsis={{ tooltip: true }}>
+          {getEntityName(item)}
+        </Typography.Text>
+        {item.fullyQualifiedName && (
+          <Typography.Text
+            className="text-xs text-grey-muted truncate w-max-full"
+            data-testid="entity-ref-fqn"
+            ellipsis={{ tooltip: item.fullyQualifiedName }}>
+            {item.fullyQualifiedName}
+          </Typography.Text>
+        )}
+      </div>
     </Link>
   );
 

@@ -159,11 +159,18 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
               <div className="flex-center data-asset-icon">
                 {searchClassBase.getEntityIcon(reference.type)}
               </div>
-              <div className="d-flex flex-col">
+              <div className="d-flex flex-col" style={{ minWidth: 0 }}>
                 <span className="text-grey-muted text-xs">
                   {reference.type}
                 </span>
                 <span className="font-medium truncate w-56">{displayName}</span>
+                {value && (
+                  <span
+                    className="text-xs text-grey-muted truncate w-56"
+                    title={value as string}>
+                    {value}
+                  </span>
+                )}
               </div>
             </div>
           );
