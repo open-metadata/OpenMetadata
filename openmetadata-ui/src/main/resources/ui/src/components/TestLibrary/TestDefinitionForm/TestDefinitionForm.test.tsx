@@ -418,15 +418,24 @@ describe('TestDefinitionForm Component', () => {
           />
         );
 
-        // testPlatforms defaults to [OpenMetadata] — verify it carries a required rule
-        // by checking the label has the required asterisk class
-        const testPlatformsFormItem = screen
-          .getByLabelText('label.test-platform-plural')
-          .closest('.ant-form-item');
+        // Clear the default value and submit to trigger required-field validation
+        const testPlatformsSelect = screen.getByLabelText(
+          'label.test-platform-plural'
+        );
 
-        expect(
-          testPlatformsFormItem?.querySelector('.ant-form-item-required')
-        ).toBeInTheDocument();
+        fireEvent.change(testPlatformsSelect, { target: { value: '' } });
+
+        await submitEmptyForm();
+
+        await waitFor(() => {
+          const testPlatformsFormItem = screen
+            .getByLabelText('label.test-platform-plural')
+            .closest('.ant-form-item');
+
+          expect(testPlatformsFormItem).toHaveTextContent(
+            'message.field-text-is-required'
+          );
+        });
       });
 
       it('parameter name field is required', async () => {
