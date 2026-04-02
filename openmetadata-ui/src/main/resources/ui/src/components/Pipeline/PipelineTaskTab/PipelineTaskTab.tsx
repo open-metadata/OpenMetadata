@@ -136,7 +136,11 @@ export const PipelineTaskTab = () => {
 
   useEffect(() => {
     handlePagingChange({ total: allTasksInternal.length });
-  }, [allTasksInternal.length]);
+    const maxPage = Math.max(1, Math.ceil(allTasksInternal.length / pageSize));
+    if (currentPage > maxPage) {
+      handlePageChange(maxPage, { cursorType: null, cursorValue: undefined });
+    }
+  }, [allTasksInternal.length, pageSize]);
 
   const tasksInternal = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
