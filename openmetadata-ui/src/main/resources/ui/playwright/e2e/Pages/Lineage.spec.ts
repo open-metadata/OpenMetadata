@@ -17,6 +17,9 @@ import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
+import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
@@ -28,8 +31,11 @@ import { MessagingServiceClass } from '../../support/entity/service/MessagingSer
 import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
+import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import {
   clickOutside,
   createNewPage,
@@ -76,12 +82,19 @@ test.use({
 const entities = [
   TableClass,
   DashboardClass,
+  ChartClass,
+  StoredProcedureClass,
   TopicClass,
   MlModelClass,
   ContainerClass,
   SearchIndexClass,
+  DashboardDataModelClass,
   ApiEndpointClass,
   MetricClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
 ] as const;
 
 const pipeline = new PipelineClass();
@@ -271,22 +284,25 @@ test('Verify column lineage between table and topic', async ({ page }) => {
 
   const tableServiceFqn = get(
     table,
-    'entityResponseData.service.fullyQualifiedName'
+    'entityResponseData.service.fullyQualifiedName',
+    ''
   );
 
   const topicServiceFqn = get(
     topic,
-    'entityResponseData.service.fullyQualifiedName'
+    'entityResponseData.service.fullyQualifiedName',
+    ''
   );
 
-  const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
-  const sourceCol = `${sourceTableFqn}.${get(
+  const sourceCol = get(
     table,
-    'entityResponseData.columns[0].name'
-  )}`;
+    'entityResponseData.columns[0].fullyQualifiedName',
+    ''
+  );
   const targetCol = get(
     topic,
-    'entityResponseData.messageSchema.schemaFields[0].children[0].fullyQualifiedName'
+    'entityResponseData.messageSchema.schemaFields[0].children[0].fullyQualifiedName',
+    ''
   );
 
   await addPipelineBetweenNodes(page, table, topic);
@@ -329,12 +345,14 @@ test('Verify column lineage between topic and api endpoint', async ({
 
   const sourceCol = get(
     topic,
-    'entityResponseData.messageSchema.schemaFields[0].children[0].fullyQualifiedName'
+    'entityResponseData.messageSchema.schemaFields[0].children[0].fullyQualifiedName',
+    ''
   );
 
   const targetCol = get(
     apiEndpoint,
-    'entityResponseData.responseSchema.schemaFields[0].children[1].fullyQualifiedName'
+    'entityResponseData.responseSchema.schemaFields[0].children[1].fullyQualifiedName',
+    ''
   );
 
   await addPipelineBetweenNodes(page, topic, apiEndpoint);
@@ -362,14 +380,15 @@ test('Verify column lineage between table and api endpoint', async ({
   const apiEndpoint = new ApiEndpointClass();
   await Promise.all([table.create(apiContext), apiEndpoint.create(apiContext)]);
 
-  const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
-  const sourceCol = `${sourceTableFqn}.${get(
+  const sourceCol = get(
     table,
-    'entityResponseData.columns[0].name'
-  )}`;
+    'entityResponseData.columns[0].fullyQualifiedName',
+    ''
+  );
   const targetCol = get(
     apiEndpoint,
-    'entityResponseData.responseSchema.schemaFields[0].children[0].fullyQualifiedName'
+    'entityResponseData.responseSchema.schemaFields[0].children[0].fullyQualifiedName',
+    ''
   );
 
   await addPipelineBetweenNodes(page, table, apiEndpoint);
@@ -490,7 +509,11 @@ test('Verify table search with special characters as handled', async ({
     await page.locator('.ant-select-dropdown').waitFor();
 
     const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName');
-    const dbFqn = get(table, 'entityResponseData.database.fullyQualifiedName');
+    const dbFqn = get(
+      table,
+      'entityResponseData.database.fullyQualifiedName',
+      ''
+    );
     await page
       .locator(`[data-testid="node-suggestion-${nodeFqn}"]`)
       .dispatchEvent('click');
@@ -513,12 +536,10 @@ test('Verify table search with special characters as handled', async ({
       db
     );
     await page.getByTestId(`node-suggestion-${dbFqn}`).waitFor();
-    await page
-      .locator(`[data-testid="node-suggestion-${dbFqn}"]`)
-      .dispatchEvent('click');
+    await page.getByTestId(`node-suggestion-${dbFqn}`).dispatchEvent('click');
     await page.waitForResponse('/api/v1/lineage/getLineage?*');
 
-    await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
+    await expect(page.getByTestId('lineage-details')).toBeVisible();
 
     await clickLineageNode(page, dbFqn);
 
@@ -755,12 +776,13 @@ test('Verify there is no traced nodes and columns on exiting edit mode', async (
     await table.visitEntityPage(page);
     await visitLineageTab(page);
 
-    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
-    const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
-    const firstColumnName = get(table, 'entityResponseData.columns[0].name');
-    const firstColumn = page.locator(
-      `[data-testid="column-${tableFqn}.${firstColumnName}"]`
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
+    const tableNode = page.getByTestId(`lineage-node-${tableFqn}`);
+    const firstColumnName = get(
+      table,
+      'entityResponseData.columns[0].fullyQualifiedName'
     );
+    const firstColumn = page.getByTestId(`column-${firstColumnName}`);
 
     await test.step('Verify node tracing is cleared on exiting edit mode', async () => {
       await editLineageClick(page);
@@ -811,7 +833,7 @@ test('Verify node full path is present as breadcrumb in lineage node', async ({
     await table.visitEntityPage(page);
     await visitLineageTab(page);
 
-    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
     const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
 
     await expect(tableNode).toBeVisible();
@@ -964,10 +986,10 @@ test.describe('node selection edge behavior', () => {
       table4.create(apiContext),
     ]);
 
-    table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
-    table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName');
-    table3Fqn = get(table3, 'entityResponseData.fullyQualifiedName');
-    table4Fqn = get(table4, 'entityResponseData.fullyQualifiedName');
+    table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName', '');
+    table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName', '');
+    table3Fqn = get(table3, 'entityResponseData.fullyQualifiedName', '');
+    table4Fqn = get(table4, 'entityResponseData.fullyQualifiedName', '');
 
     table1Col = `${table1Fqn}.${get(
       table1,

@@ -380,14 +380,14 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   private String getStatusWithEmoji(Object object) {
     if (object instanceof TestCaseStatus status) {
       return switch (status) {
-        case Success -> "Success \u2705"; // Green checkmark for success
-        case Failed -> "Failed \u274C"; // Red cross for failure
-        case Aborted -> "Aborted \u26A0"; // Warning sign for aborted
-        case Queued -> "Queued \u23F3"; // Hourglass for queued
-        default -> "Unknown \u2753"; // Gray question mark for unknown cases
+        case Success -> "Success ✅"; // Green checkmark for success
+        case Failed -> "Failed ❌"; // Red cross for failure
+        case Aborted -> "Aborted ⚠"; // Warning sign for aborted
+        case Queued -> "Queued ⏳"; // Hourglass for queued
+        default -> "Unknown ❓"; // Gray question mark for unknown cases
       };
     }
-    return "Unknown \u2753"; // Default to unknown if the object is not a valid TestCaseStatus
+    return "Unknown ❓"; // Default to unknown if the object is not a valid TestCaseStatus
   }
 
   private void addParameterValuesSection(
@@ -510,7 +510,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   private Header createConnectionSuccessfulHeader() {
-    return new Header("Connection Successful \u2705", "https://imgur.com/kOOPEG4.png", "IMAGE");
+    return new Header("Connection Successful ✅", "https://imgur.com/kOOPEG4.png", "IMAGE");
   }
 
   private Section createFooterSection() {

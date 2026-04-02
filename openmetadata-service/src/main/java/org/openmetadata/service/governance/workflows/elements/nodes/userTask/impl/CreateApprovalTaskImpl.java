@@ -58,7 +58,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       // Get approval threshold, default to 1 if not set
-      Integer approvalThreshold = 1;
+      int approvalThreshold = 1;
       if (approvalThresholdExpr != null) {
         String thresholdStr = (String) approvalThresholdExpr.getValue(delegateTask);
         if (thresholdStr != null && !thresholdStr.isEmpty()) {
@@ -67,7 +67,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
       }
 
       // Get rejection threshold, default to 1 if not set
-      Integer rejectionThreshold = 1;
+      int rejectionThreshold = 1;
       if (rejectionThresholdExpr != null) {
         String thresholdStr = (String) rejectionThresholdExpr.getValue(delegateTask);
         if (thresholdStr != null && !thresholdStr.isEmpty()) {
@@ -86,9 +86,8 @@ public class CreateApprovalTaskImpl implements TaskListener {
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failure: ",
-              getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
+          "[{}] Failure: ",
+          getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId()),
           exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());

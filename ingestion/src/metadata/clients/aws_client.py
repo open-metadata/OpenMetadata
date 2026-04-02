@@ -11,6 +11,7 @@
 """
 Module containing AWS Client
 """
+
 import datetime
 from enum import Enum
 from functools import partial
@@ -44,6 +45,7 @@ class AWSServices(Enum):
     REDSHIFT = "redshift"
     REDSHIFT_SERVERLESS = "redshift-serverless"
     LAKE_FORMATION = "lakeformation"
+    MWAA = "mwaa"
 
 
 def _get_valid_aws_regions() -> set:
@@ -277,3 +279,6 @@ class AWSClient:
 
     def get_redshift_serverless_client(self):
         return self.get_client(AWSServices.REDSHIFT_SERVERLESS.value)
+
+    def get_mwaa_client(self):
+        return self.get_client(AWSServices.MWAA.value)

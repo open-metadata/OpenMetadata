@@ -20,7 +20,7 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.1.5",
+    "airflow": "apache-airflow==3.1.7",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -35,15 +35,15 @@ VERSIONS = {
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.0.3",
+    "pandas": "pandas~=2.1.4",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
-    "pyodbc": "pyodbc>=4.0.35,<5",
+    "pyodbc": "pyodbc~=5.3.0",
     "numpy": "numpy<2",
-    "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
+    "scikit-learn": "scikit-learn>=1.3,<2",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
@@ -66,7 +66,6 @@ VERSIONS = {
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
     "starrocks": "pymysql~=1.0",
-    "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
@@ -296,14 +295,6 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
-    "iceberg": {
-        VERSIONS["pyiceberg"],
-        # Forcing the version of a few packages so it plays nicely with other requirements.
-        VERSIONS["pydantic"],
-        VERSIONS["adlfs"],
-        VERSIONS["gcsfs"],
-        VERSIONS["pyarrow"],
-    },
     "impala": {
         "presto-types-parser>=0.0.2",
         "impyla[kerberos]~=0.18.0",
@@ -463,7 +454,6 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
-    VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",

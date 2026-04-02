@@ -183,7 +183,7 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
-  void testHandleLogin_SAMLException() throws Exception {
+  void testHandleLogin_SAMLException() {
     when(request.getParameter("callback")).thenReturn("https://example.com/callback");
 
     try (MockedStatic<SamlSettingsHolder> samlMock = mockStatic(SamlSettingsHolder.class)) {
@@ -201,7 +201,7 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
-  void testHandleRefresh_SuccessfulRefresh() throws Exception {
+  void testHandleRefresh_SuccessfulRefresh() {
     String username = "testuser";
     String refreshTokenValue = "refresh-token-123";
 
@@ -231,7 +231,7 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
-  void testHandleRefresh_NoSession() throws Exception {
+  void testHandleRefresh_NoSession() {
     when(request.getSession(false)).thenReturn(null);
 
     handler.handleRefresh(request, response);
@@ -241,7 +241,7 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
-  void testHandleRefresh_NoRefreshToken() throws Exception {
+  void testHandleRefresh_NoRefreshToken() {
     when(session.getAttribute("refreshToken")).thenReturn(null);
 
     handler.handleRefresh(request, response);
@@ -251,7 +251,7 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
-  void testHandleLogout_WithSession() throws Exception {
+  void testHandleLogout_WithSession() {
     try (MockedStatic<SamlSettingsHolder> samlMock = mockStatic(SamlSettingsHolder.class)) {
       samlMock.when(SamlSettingsHolder::getSaml2Settings).thenReturn(null);
 
@@ -266,7 +266,7 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
-  void testHandleLogout_NoSession() throws Exception {
+  void testHandleLogout_NoSession() {
     when(request.getSession(false)).thenReturn(null);
 
     try (MockedStatic<SamlSettingsHolder> samlMock = mockStatic(SamlSettingsHolder.class)) {

@@ -15,7 +15,6 @@ package org.openmetadata.service.socket;
 
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoWebSocket;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
@@ -57,14 +56,14 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
   }
 
   @Override
-  public void write(String message) throws IOException {
+  public void write(String message) {
     if (session != null && session.isOpen()) {
       session.sendText(message, Callback.NOOP);
     }
   }
 
   @Override
-  public void write(byte[] message) throws IOException {
+  public void write(byte[] message) {
     if (session != null && session.isOpen()) {
       session.sendBinary(ByteBuffer.wrap(message), Callback.NOOP);
     }

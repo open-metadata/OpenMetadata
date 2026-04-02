@@ -1,10 +1,12 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -221,6 +223,114 @@ public class QueryVisibilityPolicyIT {
       }
     } finally {
       // Cleanup policy
+      adminClient.policies().delete(policy.getId());
+    }
+  }
+
+  /**
+   * Regression test for NPE in matchAnyCertification policy evaluation.
+   *
+   * <p>The bug: {@code matchAnyCertification} called {@code
+   * resourceContext.getEntity().getCertification()} without null-checking {@code getEntity()}.
+   * When {@code ResourceContext.getEntity()} returned null (e.g. Settings, Team, or list
+   * operations), the chained call threw a NullPointerException (500) before any certification
+   * logic could run.
+   *
+   * <p>Uses a single DENY rule with matchAnyCertification condition. For an uncertified entity the
+   * condition is false, so the deny rule does not fire and the entity remains viewable. Before the
+   * fix, evaluating the condition itself threw NPE (500 server error).
+   */
+  @Test
+  void test_matchAnyCertification_nullEntityInResourceContext(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    String p = ns.shortPrefix();
+
+    // Single DENY rule: deny viewing Gold/Silver certified entities.
+    // For an uncertified entity, matchAnyCertification returns false,
+    // so the deny rule does NOT fire and the entity is still viewable.
+    Rule denyCertifiedRule =
+        new Rule()
+            .withName("DenyCertified")
+            .withResources(List.of("All"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("matchAnyCertification('Certification.Gold', 'Certification.Silver')");
+
+    CreatePolicy createPolicy = new CreatePolicy();
+    createPolicy.setName(p + "_certPol");
+    createPolicy.setRules(List.of(denyCertifiedRule));
+
+    Policy policy = adminClient.policies().create(createPolicy);
+    assertNotNull(policy, "Policy should be created");
+    try {
+      CreateRole createRole = new CreateRole();
+      createRole.setName(p + "_certRole");
+      createRole.setPolicies(List.of(policy.getFullyQualifiedName()));
+      Role role = adminClient.roles().create(createRole);
+      assertNotNull(role, "Role should be created");
+      try {
+        CreateTeam createTeam = new CreateTeam();
+        createTeam.setName(p + "_certTeam");
+        createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+        createTeam.setDefaultRoles(List.of(role.getId()));
+        Team team = adminClient.teams().create(createTeam);
+        assertNotNull(team, "Team should be created");
+        try {
+          String userEmail = p + "_certuser@test.openmetadata.org";
+          CreateUser createUser = new CreateUser();
+          createUser.setName(p + "_certuser");
+          createUser.setEmail(userEmail);
+          createUser.setTeams(List.of(team.getId()));
+          User testUser = adminClient.users().create(createUser);
+          assertNotNull(testUser, "User should be created");
+          try {
+            DatabaseService dbService = DatabaseServiceTestFactory.createPostgres(ns);
+            assertNotNull(dbService, "Database service should be created");
+            try {
+              DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, dbService);
+              assertNotNull(schema, "Database schema should be created");
+              Column column = new Column().withName("id").withDataType(ColumnDataType.INT);
+
+              Table tableNoCert =
+                  Tables.create()
+                      .name(p + "_nocert")
+                      .inSchema(schema.getFullyQualifiedName())
+                      .withColumns(List.of(column))
+                      .execute();
+              try {
+                OpenMetadataClient testUserClient =
+                    SdkClients.createClient(userEmail, userEmail, new String[] {});
+
+                // Before the fix, this threw NPE (500) in matchAnyCertification because the
+                // entity in the resource context (resourceContext.getEntity()) was null.
+                // After the fix, the null entity is handled, the condition evaluates to false,
+                // the deny rule does not fire, and the GET succeeds.
+                Table fetched = testUserClient.tables().get(tableNoCert.getId().toString());
+                assertNotNull(fetched, "GET should return the table, not fail with NPE");
+                assertEquals(
+                    tableNoCert.getId(),
+                    fetched.getId(),
+                    "Returned table should match the requested table");
+              } finally {
+                adminClient.tables().delete(tableNoCert.getId());
+              }
+            } finally {
+              adminClient
+                  .databaseServices()
+                  .delete(
+                      dbService.getId().toString(),
+                      Map.of("recursive", "true", "hardDelete", "true"));
+            }
+          } finally {
+            adminClient.users().delete(testUser.getId());
+          }
+        } finally {
+          adminClient.teams().delete(team.getId());
+        }
+      } finally {
+        adminClient.roles().delete(role.getId());
+      }
+    } finally {
       adminClient.policies().delete(policy.getId());
     }
   }

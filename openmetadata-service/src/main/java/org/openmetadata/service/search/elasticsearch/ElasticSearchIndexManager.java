@@ -402,10 +402,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
       response
           .aliases()
-          .forEach(
-              (index, aliasDetails) -> {
-                aliases.addAll(aliasDetails.aliases().keySet());
-              });
+          .forEach((index, aliasDetails) -> aliases.addAll(aliasDetails.aliases().keySet()));
 
       LOG.info("Retrieved aliases for index {}: {}", indexName, aliases);
     } catch (Exception e) {

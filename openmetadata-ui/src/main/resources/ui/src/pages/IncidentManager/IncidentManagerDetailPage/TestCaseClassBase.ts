@@ -15,6 +15,7 @@ import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component'
 import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
 import { TestCaseFormType } from '../../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import DimensionalityTab from '../../../components/DataQuality/IncidentManager/DimensionalityTab/DimensionalityTab';
+import SqlQueryTab from '../../../components/DataQuality/IncidentManager/SqlQueryTab/SqlQueryTab.component';
 import TestCaseIncidentTab from '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
 import TestCaseResultTab from '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -45,7 +46,7 @@ class TestCaseClassBase {
     isVersionPage: boolean,
     showDimensionalityTab = false
   ): TestCaseTabType[] {
-    return [
+    const [firstTab, ...rest] = [
       {
         LabelComponent: TabsLabel,
         labelProps: {
@@ -84,6 +85,24 @@ class TestCaseClassBase {
             },
           ]),
     ];
+
+    return [
+      firstTab,
+      ...(this.showSqlQueryTab
+        ? [
+            {
+              LabelComponent: TabsLabel,
+              labelProps: {
+                id: 'sql-query',
+                name: i18n.t('label.sql-uppercase-query'),
+              },
+              Tab: SqlQueryTab,
+              key: TestCasePageTabs.SQL_QUERY,
+            },
+          ]
+        : []),
+      ...rest,
+    ];
   }
 
   setShowSqlQueryTab(showSqlQueryTab: boolean) {
@@ -98,6 +117,7 @@ class TestCaseClassBase {
       TabSpecificField.OWNERS,
       TabSpecificField.INCIDENT_ID,
       TabSpecificField.TAGS,
+      'inspectionQuery',
     ];
   }
 

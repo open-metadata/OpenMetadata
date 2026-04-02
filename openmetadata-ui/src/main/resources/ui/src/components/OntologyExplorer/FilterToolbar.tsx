@@ -13,10 +13,13 @@
 
 import {
   Autocomplete,
+  BadgeWithButton,
+  Button,
   Divider,
   Select,
   Toggle,
   Typography,
+  type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo } from 'react';
 import type { Key } from 'react-aria-components';
@@ -26,6 +29,64 @@ import {
   FilterToolbarProps,
   GraphViewMode,
 } from './OntologyExplorer.interface';
+
+type OntologyFilterListItem = {
+  id: string;
+  label?: string;
+  isDisabled?: boolean;
+};
+
+const OntologyFilterAutocompleteTag = ({
+  item,
+  onRemove,
+}: {
+  item: SelectItemType;
+  onRemove: () => void;
+}) => (
+  <BadgeWithButton
+    color="gray"
+    size="lg"
+    type="modern"
+    onButtonClick={onRemove}>
+    <div className="tw:min-w-0 tw:max-w-12.5">
+      <Typography ellipsis as="p" weight="medium">
+        {item.label ?? String(item.id)}
+      </Typography>
+    </div>
+  </BadgeWithButton>
+);
+
+const OntologyFilterAutocompleteOption = ({
+  isDisabled: listDisabled,
+  item,
+}: {
+  isDisabled: boolean;
+  item: OntologyFilterListItem;
+}) => {
+  const disabled = Boolean(item.isDisabled || listDisabled);
+
+  return (
+    <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center">
+      <span
+        className={`tw:min-w-0 tw:flex-1 tw:truncate tw:text-md tw:font-medium${
+          disabled ? ' tw:text-disabled' : ' tw:text-primary'
+        }`}>
+        {item.label}
+      </span>
+    </div>
+  );
+};
+
+const renderOntologyFilterTag = (
+  item: SelectItemType,
+  onRemove: () => void
+) => (
+  <OntologyFilterAutocompleteTag
+    item={item}
+    key={item.id}
+    onRemove={onRemove}
+  />
+);
 
 const VIEW_MODES: { label: string; value: GraphViewMode }[] = [
   { label: 'label.overview', value: 'overview' },
@@ -39,6 +100,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
   relationTypes,
   onFiltersChange,
   onViewModeChange,
+  onClearAll,
   viewModeDisabled = false,
 }) => {
   const { t } = useTranslation();
@@ -118,6 +180,9 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
     },
     [filters, onFiltersChange]
   );
+
+  const hasActiveFilters =
+    filters.glossaryIds.length > 0 || filters.relationTypes.length > 0;
 
   const glossaryAllOnlySelected = filters.glossaryIds.includes(
     ONTOLOGY_AUTOCOMPLETE_ALL_ID
@@ -227,6 +292,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
                 items={glossaryItems}
                 maxVisibleItems={1}
                 placeholder={t('label.all')}
+                renderTag={renderOntologyFilterTag}
                 selectedItems={selectedGlossaryItems}
                 onItemCleared={handleGlossaryCleared}
                 onItemInserted={handleGlossaryInserted}>
@@ -234,8 +300,14 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
                   <Autocomplete.Item
                     id={item.id}
                     isDisabled={item.isDisabled}
-                    label={item.label ?? ''}
-                  />
+                    label={item.label ?? ''}>
+                    {(state) => (
+                      <OntologyFilterAutocompleteOption
+                        isDisabled={state.isDisabled}
+                        item={item}
+                      />
+                    )}
+                  </Autocomplete.Item>
                 )}
               </Autocomplete>
             </div>
@@ -258,6 +330,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
                 items={relationTypeItems}
                 maxVisibleItems={1}
                 placeholder={t('label.all')}
+                renderTag={renderOntologyFilterTag}
                 selectedItems={selectedRelationTypeItems}
                 onItemCleared={handleRelationTypeCleared}
                 onItemInserted={handleRelationTypeInserted}>
@@ -265,8 +338,14 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
                   <Autocomplete.Item
                     id={item.id}
                     isDisabled={item.isDisabled}
-                    label={item.label ?? ''}
-                  />
+                    label={item.label ?? ''}>
+                    {(state) => (
+                      <OntologyFilterAutocompleteOption
+                        isDisabled={state.isDisabled}
+                        item={item}
+                      />
+                    )}
+                  </Autocomplete.Item>
                 )}
               </Autocomplete>
             </div>
@@ -286,6 +365,19 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           onFiltersChange({ ...filters, showIsolatedNodes: checked })
         }
       />
+
+      {onClearAll && hasActiveFilters && (
+        <>
+          <div className="tw:ml-auto" />
+          <Button
+            color="tertiary"
+            data-testid="ontology-clear-all-btn"
+            size="sm"
+            onClick={onClearAll}>
+            {t('label.clear-entity', { entity: t('label.all-lowercase') })}
+          </Button>
+        </>
+      )}
     </div>
   );
 };

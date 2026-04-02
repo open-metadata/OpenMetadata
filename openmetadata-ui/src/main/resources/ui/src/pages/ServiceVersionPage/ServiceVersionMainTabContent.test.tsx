@@ -82,6 +82,8 @@ jest.mock('../../utils/TableColumn.util', () => ({
   domainTableObject: jest.fn().mockReturnValue([]),
   dataProductTableObject: jest.fn().mockReturnValue([]),
   tagTableObject: jest.fn().mockReturnValue([]),
+  tierTableObject: jest.fn().mockReturnValue([]),
+  certificationTableObject: jest.fn().mockReturnValue([]),
   descriptionTableObject: jest.fn().mockReturnValue([
     {
       title: 'label.description',
