@@ -151,7 +151,6 @@ export const DatabaseSchemaTable = ({
           fields: [
             ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
             commonTableFields,
-            TabSpecificField.CERTIFICATION,
           ],
         });
 

@@ -47,6 +47,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================

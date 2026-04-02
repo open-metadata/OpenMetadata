@@ -63,11 +63,13 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { useGenericContext } from '../Customization/GenericProvider/GenericProvider';
 import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
+import ExportGraphPanel from './ExportGraphPanel';
 import FilterToolbar from './FilterToolbar';
 import GraphSettingsPanel from './GraphSettingsPanel';
 import NodeContextMenu from './NodeContextMenu';
 import OntologyControlButtons from './OntologyControlButtons';
 import {
+  GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY,
   LayoutType,
   RELATION_COLORS,
   toLayoutEngineType,
@@ -245,9 +247,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const dataFiltersRef = useRef<GraphFilters>({
     ...DEFAULT_FILTERS,
   });
-  // Prevents the loadAssetsForDataMode useEffect from double-fetching when
-  // handleModeChange has already pre-loaded assets before switching mode.
-  const assetLoadedByHandleModeChangeRef = useRef(false);
+  const dataModeInitialLoadUsesSpinnerRef = useRef(false);
 
   const glossaryColorMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -585,21 +585,66 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
 
   const fetchTermAssetCounts = useCallback(
-    async (termNodes: OntologyNode[]) => {
-      try {
-        const response = await getGlossaryTermsAssetCounts();
-        const counts: Record<string, number> = {};
+    async (termNodes: OntologyNode[], glossaryFilterIds: string[]) => {
+      if (termNodes.length === 0) {
+        setTermAssetCounts({});
 
+        return;
+      }
+
+      try {
+        const scopedGlossaryId =
+          scope === 'glossary'
+            ? glossaryId
+            : scope === 'term'
+            ? termGlossaryId
+            : undefined;
+        const termGlossaryIds = new Set(
+          termNodes
+            .map((termNode) => termNode.glossaryId)
+            .filter((id): id is string => Boolean(id))
+        );
+        const requestedGlossaryIds = scopedGlossaryId
+          ? [scopedGlossaryId]
+          : glossaryFilterIds.length > 0
+          ? glossaryFilterIds.filter((id) => termGlossaryIds.has(id))
+          : [];
+        const glossaryFqnsToFetch = requestedGlossaryIds
+          .map(
+            (id) =>
+              glossaries.find((glossary) => glossary.id === id)
+                ?.fullyQualifiedName
+          )
+          .filter((fqn): fqn is string => Boolean(fqn));
+
+        const mergedResponse: Record<string, number> = {};
+        if (glossaryFqnsToFetch.length > 0) {
+          const { length } = glossaryFqnsToFetch;
+          const batchSize = GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY;
+          for (let i = 0; i < length; i += batchSize) {
+            const batch = glossaryFqnsToFetch.slice(i, i + batchSize);
+            const responses = await Promise.all(
+              batch.map((fqn) => getGlossaryTermsAssetCounts(fqn))
+            );
+            responses.forEach((response) => {
+              Object.assign(mergedResponse, response);
+            });
+          }
+        } else {
+          Object.assign(mergedResponse, await getGlossaryTermsAssetCounts());
+        }
+
+        const counts: Record<string, number> = {};
         termNodes.forEach((termNode) => {
           const lookupKeys = [
             termNode.fullyQualifiedName,
             termNode.originalLabel,
             termNode.label,
           ].filter((key): key is string => Boolean(key));
-          const matchedKey = lookupKeys.find((key) => key in response);
+          const matchedKey = lookupKeys.find((key) => key in mergedResponse);
 
           if (matchedKey) {
-            counts[termNode.id] = response[matchedKey];
+            counts[termNode.id] = mergedResponse[matchedKey];
           }
         });
 
@@ -608,7 +653,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         setTermAssetCounts({});
       }
     },
-    []
+    [scope, glossaryId, termGlossaryId, glossaries]
   );
 
   const appendTermAssetsForTerm = useCallback(
@@ -1020,15 +1065,30 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return;
     }
 
-    const termNodes = getScopedTermNodes(
-      graphData.nodes,
-      withoutOntologyAutocompleteAll(filters.glossaryIds),
-      scope,
-      entityId
-    );
+    const useSpinner = dataModeInitialLoadUsesSpinnerRef.current;
+    if (useSpinner) {
+      dataModeInitialLoadUsesSpinnerRef.current = false;
+      setLoading(true);
+    }
 
-    await fetchTermAssetCounts(termNodes);
-    setAssetGraphData(null);
+    try {
+      const glossaryFilterIds = withoutOntologyAutocompleteAll(
+        filters.glossaryIds
+      );
+      const termNodes = getScopedTermNodes(
+        graphData.nodes,
+        glossaryFilterIds,
+        scope,
+        entityId
+      );
+
+      await fetchTermAssetCounts(termNodes, glossaryFilterIds);
+      setAssetGraphData(null);
+    } finally {
+      if (useSpinner) {
+        setLoading(false);
+      }
+    }
   }, [graphData, filters.glossaryIds, scope, entityId, fetchTermAssetCounts]);
 
   // Initialize settings
@@ -1071,20 +1131,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   useEffect(() => {
     if (explorationMode !== 'data') {
       setAssetGraphData(null);
-
-      return;
-    }
-
-    // Skip when handleModeChange already pre-loaded assets to avoid a
-    // redundant fetch that would cause an extra graph recreation.
-    if (assetLoadedByHandleModeChangeRef.current) {
-      assetLoadedByHandleModeChangeRef.current = false;
+      dataModeInitialLoadUsesSpinnerRef.current = false;
 
       return;
     }
 
     loadAssetsForDataMode();
-  }, [explorationMode, loadAssetsForDataMode]);
+  }, [explorationMode, filters.glossaryIds, loadAssetsForDataMode]);
 
   const handleZoomIn = useCallback(() => {
     graphRef.current?.zoomIn();
@@ -1098,8 +1151,16 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     graphRef.current?.fitView();
   }, []);
 
+  const handleExportPng = useCallback(async () => {
+    await graphRef.current?.exportAsPng();
+  }, []);
+
+  const handleExportSvg = useCallback(async () => {
+    await graphRef.current?.exportAsSvg();
+  }, []);
+
   const handleModeChange = useCallback(
-    async (mode: ExplorationMode) => {
+    (mode: ExplorationMode) => {
       if (mode === 'data') {
         modelFiltersRef.current = filters;
         const nextFilters: GraphFilters = {
@@ -1107,26 +1168,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           glossaryIds: filters.glossaryIds,
           viewMode: 'overview' satisfies GraphViewMode,
         };
-        // Pre-fetch assets before switching mode so all state updates are
-        // batched into a single re-render (React 18 automatic batching).
-        // This avoids the double graph recreation: once when explorationMode
-        // changes, and again when inputNodes.length changes after async load.
+        if (graphData) {
+          dataModeInitialLoadUsesSpinnerRef.current = true;
+        }
         setExplorationMode(mode);
         setFilters(nextFilters);
-        if (graphData) {
-          setLoading(true);
-          const termNodes = getScopedTermNodes(
-            graphData.nodes,
-            withoutOntologyAutocompleteAll(filters.glossaryIds),
-            scope,
-            entityId
-          );
-          await fetchTermAssetCounts(termNodes);
-          // Mark so the useEffect skips the redundant load after mode switch.
-          assetLoadedByHandleModeChangeRef.current = true;
-          setAssetGraphData(null);
-          setLoading(false);
-        }
       } else {
         dataFiltersRef.current = filters;
         setSelectedNode(null);
@@ -1136,7 +1182,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         setTermAssetCounts({});
       }
     },
-    [filters, graphData, scope, entityId, fetchTermAssetCounts]
+    [filters, graphData]
   );
 
   const handleContextMenuClose = useCallback(() => {
@@ -1414,6 +1460,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               onChange={(value) =>
                 setFilters((prev) => ({ ...prev, searchQuery: value }))
               }
+            />
+            <ExportGraphPanel
+              onExportPng={handleExportPng}
+              onExportSvg={handleExportSvg}
             />
             <GraphSettingsPanel
               settings={settings}

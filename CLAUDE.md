@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 OpenMetadata is a unified metadata platform for data discovery, data observability, and data governance. This is a multi-module project with Java backend services, React frontend, Python ingestion framework, and comprehensive Docker infrastructure.
 
+For architecture deep dives, entity/repository/resource patterns, and end-to-end checklists for adding new entities or connectors, see [DEVELOPER.md](DEVELOPER.md).
+
 ## Architecture Overview
 
 - **Backend**: Java 21 + Dropwizard REST API framework, multi-module Maven project
@@ -88,6 +90,18 @@ yarn playwright:run            # Run E2E tests
 yarn lint                      # ESLint check
 yarn lint:fix                  # ESLint with auto-fix
 yarn build                     # Production build
+```
+
+### Frontend CI Checkstyle (run before PR to match CI)
+```bash
+cd openmetadata-ui/src/main/resources/ui
+yarn organize-imports:cli <files>  # Sort and organize imports
+yarn lint:fix                      # ESLint auto-fix
+yarn pretty:base --write <files>   # Prettier formatting
+yarn license-header-fix <files>    # Add Apache 2.0 license headers
+yarn i18n                          # Sync all 17 locale files with en-us.json
+yarn generate:app-docs             # Regenerate application documentation
+npx tsc --noEmit                   # TypeScript type check (catches errors early)
 ```
 
 ### Backend Development
@@ -251,26 +265,179 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - If the code needs a comment to be understood, refactor the code to be clearer instead
 
 ### Java Code Requirements
-- **Always mention** running `mvn spotless:apply` when generating/modifying .java files
-- Use clear, descriptive variable and method names instead of comments
-- Follow existing project patterns and conventions
+
+**Always run `mvn spotless:apply` when generating/modifying .java files.**
+
+#### Method Size and Complexity (Kafka-Grade Standards)
+- **Methods must be 15 lines or fewer** (excluding blank lines and braces). If a method is longer, break it into smaller focused methods with descriptive names.
+- **Maximum 3 levels of nesting.** Use early returns to reduce nesting:
+  ```java
+  // BAD: deeply nested
+  if (entity != null) {
+      if (entity.isActive()) {
+          if (hasPermission(entity)) {
+              process(entity);
+          }
+      }
+  }
+
+  // GOOD: early returns, flat
+  if (entity == null) return;
+  if (!entity.isActive()) return;
+  if (!hasPermission(entity)) return;
+  process(entity);
+  ```
+- **Maximum 10 cyclomatic complexity.** Extract complex conditions into named methods:
+  ```java
+  // BAD: complex inline boolean
+  if (entity.getStatus() == ACTIVE && entity.getOwner() != null
+      && !entity.isDeleted() && entity.getVersion() > 0.1) { ... }
+
+  // GOOD: self-documenting
+  if (isEligibleForProcessing(entity)) { ... }
+  ```
+- **Maximum 5 parameters.** Introduce a parameter object or builder for more.
+- **Each method does one thing.** If you can describe what a method does using "and" or "then", it should be two methods.
+
+#### Naming and Readability
+- Names should make code read like prose — if you need a comment, the name isn't good enough
+- **Methods**: verb phrases — `calculateScore()`, `findByName()`, `isValid()`
+- **Booleans**: question-form — `isActive`, `hasPermission`, `canRetry` (never `flag`, `status`, `check`)
+- **Variables**: descriptive, no abbreviations — `entityReference` not `er`, `retryCount` not `rc`
+- **Constants**: `UPPER_SNAKE_CASE` — `MAX_RETRY_COUNT`, `DEFAULT_PAGE_SIZE`
+- **No single-letter variables** except in short lambdas or loop indices
+
+#### Immutability and Defensive Design
+- Use `final` on local variables and parameters that don't change (which is most of them)
+- Use `final` on fields set in the constructor
+- Return `Collections.unmodifiableList()` / `List.copyOf()` from public methods, never expose internal mutable collections
+- Utility classes must be `final` with a private constructor
+- Prefer `record` for immutable data carriers where appropriate
+
+#### Error Handling
+- **No empty catch blocks** — at minimum, log the exception
+- **No `catch (Exception e)`** — catch the specific type you expect
+- **No `e.printStackTrace()`** — use the logger
+- **Error messages must include context**: `"Table '%s' not found in database '%s'"` not just `"Not found"`
+- **No `throw` or `return` inside `finally` blocks** — they mask the original exception
+- **No exceptions for flow control** — use conditionals for expected cases
+
+#### No Magic Strings — Define Constants
+- **Never use raw string literals in `.equals()`, `.contains()`, or `switch` cases** — define a constant or use an existing enum
+- If an enum already exists in `openmetadata-spec/` schemas for those values, use it
+- If the same string appears in more than one place, it must be a named constant
+- **One definition, one location** — don't define the same constant in multiple classes
+- Prefer enums over string constants when the values form a closed set:
+  ```java
+  // BAD: magic strings scattered everywhere
+  if (taskStatus.equals("Open")) { ... }
+  if (config.getResources().get(0).equals("all")) { ... }
+
+  // GOOD: use existing enums or define constants
+  if (taskStatus == TaskStatus.OPEN) { ... }
+  private static final String RESOURCE_ALL = "all";
+  ```
+
+#### No Convoluted if/else Chains
+- **More than 3 `else if` branches means the structure is wrong — refactor:**
+  - `else if` chain on `instanceof` → `switch` with pattern matching (Java 21)
+  - `else if` chain on enum values → `switch` expression
+  - `else if` chain on `.equals("string")` → `Map` dispatch or enum lookup
+  - `else if` chain on `.contains("string")` → `Map` or list of predicates
+- **Repeated compound conditions** (same multi-part `&&`/`||` expression in multiple places) → extract into a named method or `Set.contains()`
+  ```java
+  // BAD: 3-part condition repeated 3 times across the file
+  if (!tenantId.equals("common") && !tenantId.equals("organizations")
+      && !tenantId.equals("consumers")) { ... }
+
+  // GOOD: define once, use everywhere
+  private static final Set<String> MULTI_TENANT_IDS =
+      Set.of("common", "organizations", "consumers");
+
+  private boolean isSingleTenant(String tenantId) {
+      return !MULTI_TENANT_IDS.contains(tenantId);
+  }
+  ```
+
+#### No Code Duplication
+- If the same logic exists in two places, extract to a shared method
+- Near-identical methods (e.g., same logic for OpenSearch and ElasticSearch) should share a common implementation with only the engine-specific parts varying
+- Copy-pasted blocks within the same file should be extracted into a parameterized method
+
+#### Class Size
+- **Classes should be under 500 lines.** Over 1000 lines is a design problem.
+- If a class is large, look for clusters of methods that operate on the same subset of fields — extract them into a new focused class
+- Resource classes should be thin orchestrators
+- Repository classes handle data access, not business logic
+
+#### Modern Java (Java 21)
+- Use try-with-resources for all `AutoCloseable` objects
+- Use diamond operator `<>` — `new ArrayList<>()` not `new ArrayList<String>()`
+- Use pattern matching: `if (obj instanceof String s)` instead of cast
+- Use `switch` expressions instead of `if/else if` chains on enums or types
+- Use `List.of()`, `Map.of()`, `Set.of()` for immutable collection literals
+- Use `Optional` correctly: never as a field type, never as a parameter, never assign `null` to it
+- Use text blocks `"""` for multi-line strings
+
+#### Common Bug Patterns to Avoid
+- `equals()` without `hashCode()` (or vice versa)
+- `equals()` on arrays — use `Arrays.equals()`
+- Ignoring return values of `String.replace()`, `File.delete()`
+- `collection.size() == 0` — use `collection.isEmpty()`
+- String concatenation inside loops — use `StringBuilder`
+- `synchronized` on non-final fields — the lock reference can change
+- `toLowerCase()` without `Locale` — always use `toLowerCase(Locale.ROOT)`
+- Double map lookups — use `computeIfAbsent()` or `getOrDefault()`
+
+#### Testing
 - Generate production-ready code, not tutorial code
-- Create integration tests in openmetadata-integration-tests
-- Do not use Fully Qualified Names in the code such as org.openmetadata.schema.type.Status instead import the class name
-- Do not import wild-card packages instead import exactly required packages
+- Create integration tests in `openmetadata-integration-tests` for new API endpoints
+- **Never use `Thread.sleep()` in tests** — use condition-based waiting or `Awaitility`
+- Bug fixes must include a test that fails without the fix
+- 90% line coverage target on changed classes
+
+#### Structure
+- Do not use Fully Qualified Names in code (e.g., `org.openmetadata.schema.type.Status`) — import the class instead
+- Do not import wildcard packages — import exactly the required classes
+- No commented-out code — version control maintains history
+- No TODOs without a ticket reference
+- One statement per line — no `if (x) return y;` on one line
 
 ### TypeScript/Frontend Code Requirements
 - **NEVER use `any` type** in TypeScript code - always use proper types
 - Use `unknown` when the type is truly unknown and add type guards
 - Import types from existing type definitions (e.g., `RJSFSchema` from `@rjsf/utils`)
-- Follow ESLint rules strictly - the project enforces no-console, proper formatting
 - Add `// eslint-disable-next-line` comments only when absolutely necessary
-- **Import Organization** (in order):
-  1. External libraries (React, Ant Design, etc.)
+- **Import Organization** — use `yarn organize-imports:cli` to auto-sort. Order:
+  1. External libraries (React, etc.)
   2. Internal absolute imports from `generated/`, `constants/`, `hooks/`, etc.
   3. Relative imports for utilities and components
   4. Asset imports (SVGs, styles)
   5. Type imports grouped separately when needed
+
+#### CI Checkstyle Rules (enforced on every PR)
+These checks run automatically in CI. Code that violates them **will not merge**.
+- **No `console.log/warn/error`** — `no-console` rule is enforced. Use the logger or remove.
+- **Use `===` not `==`** — `eqeqeq` (smart mode, except for `null` checks)
+- **Max 200 characters per line** — break long lines
+- **Self-closing components** — `<Div />` not `<Div></Div>`
+- **Sort JSX props alphabetically** — callbacks last
+- **Space after `//` in comments** — `// comment` not `//comment`
+- **Blank lines** before `function`, `class`, `export`, `return` statements
+- **Use `it()` consistently in tests** — don't mix `test()` and `it()`
+- **Blank lines around `describe`, `it`, `beforeEach`** in test files
+- **JSON keys sorted alphabetically** in locale files (`src/locale/**/*.json`)
+- **Apache 2.0 license header** on every new source file — run `yarn license-header-fix`
+- **i18n keys synced** — after adding keys to `en-us.json`, run `yarn i18n` to sync all 17 locales
+- **Prettier formatting** — 2-space indent, single quotes, strict HTML whitespace
+
+#### Playwright Test Rules (lint-playwright)
+- **No `waitForLoadState('networkidle')`** — flaky, use web-first assertions
+- **No `page.pause()`** — remove before committing
+- **No `.only` on tests** — blocks all other tests in CI
+- Prefer `expect(locator).toBeVisible()` over manual `waitForSelector` checks
+- Don't use `{ force: true }` — fix the locator instead
+- Use locators, not element handles
 
 ### Python Code Requirements
 - **Use pytest, not unittest** - write tests using pytest style with plain `assert` statements

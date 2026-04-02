@@ -1235,6 +1235,28 @@ class DbtUnitTest(TestCase):
         self.assertEqual(dbt_meta_tags, expected_tags)
 
     @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_classification_tags_quoted_table_level(self, get_tag_label):
+        """Table-level tags with quoted names containing dots are parsed correctly"""
+        expected_tag = TagLabel(
+            tagFQN='PII."22.8.5.1"',
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.return_value = expected_tag
+
+        manifest_meta = {"openmetadata": {"tags": ['PII."22.8.5.1"']}}
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
+        )
+
+        assert dbt_meta_tags == [expected_tag]
+        call_kwargs = get_tag_label.call_args
+        assert call_kwargs.kwargs["classification_name"] == "PII"
+        assert call_kwargs.kwargs["tag_name"] == '"22.8.5.1"'
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
     def test_dbt_combined_meta_tags(self, get_tag_label):
         """Test processing combined glossary, tier, and classification tags"""
         get_tag_label.side_effect = [
@@ -1278,6 +1300,46 @@ class DbtUnitTest(TestCase):
         # Should have 3 tags: 1 glossary + 1 tier + 1 classification
         self.assertEqual(len(dbt_meta_tags), 3)
 
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_glossary_and_tier_processed_when_include_tags_false(
+        self, get_tag_label
+    ):
+        """Glossary and tier must be ingested even when includeTags=False; only
+        classification tags from openmetadata.tags should be suppressed."""
+        from unittest.mock import patch as _patch
+
+        glossary_label = TagLabel(
+            tagFQN="Test_Glossary.term_one",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Glossary.value,
+        )
+        tier_label = TagLabel(
+            tagFQN="Tier.Tier1",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.side_effect = [glossary_label, tier_label]
+
+        manifest_meta = {
+            "openmetadata": {
+                "glossary": ["Test_Glossary.term_one"],
+                "tier": "Tier.Tier1",
+                "tags": ["PII.Sensitive"],
+            }
+        }
+
+        with _patch.object(self.dbt_source_obj.source_config, "includeTags", False):
+            result = self.dbt_source_obj.process_dbt_meta(
+                manifest_meta=manifest_meta,
+                table_fqn="test_service.test_db.test_schema.test_table",
+            )
+
+        assert len(result) == 2
+        assert glossary_label in result
+        assert tier_label in result
+
     def test_dbt_classification_tags_edge_cases(self):
         """Test edge cases for classification tags processing"""
 
@@ -1308,6 +1370,163 @@ class DbtUnitTest(TestCase):
             table_fqn="test_service.test_db.test_schema.test_table",
         )
         self.assertEqual(dbt_meta_tags, [])
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_column_meta_classification_tags(self, get_tag_label):
+        """Test that meta.openmetadata.tags on dbt columns are resolved and applied"""
+        expected_tag = TagLabel(
+            tagFQN="PII.Sensitive",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.return_value = expected_tag
+
+        manifest_column = SimpleNamespace(
+            name="email_address",
+            tags=[],
+            meta={"openmetadata": {"tags": ["PII.Sensitive"]}},
+            description="User email",
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"email_address": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(
+            manifest_node=manifest_node, catalog_node=None
+        )
+
+        assert len(columns) == 1
+        assert expected_tag in columns[0].tags
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_column_meta_classification_tags_invalid_format(self, get_tag_label):
+        """Tags without a classification separator are silently skipped"""
+        get_tag_label.return_value = None
+
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"tags": ["InvalidTagNoSeparator"]}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"col": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(
+            manifest_node=manifest_node, catalog_node=None
+        )
+
+        assert len(columns) == 1
+        assert columns[0].tags == []
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_column_meta_classification_tags_quoted(self, get_tag_label):
+        """Quoted tag names containing dots (e.g. PII."22.8.5.1") are parsed correctly"""
+        expected_tag = TagLabel(
+            tagFQN='PII."22.8.5.1"',
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.return_value = expected_tag
+
+        manifest_column = SimpleNamespace(
+            name="ip_col",
+            tags=[],
+            meta={"openmetadata": {"tags": ['PII."22.8.5.1"']}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"ip_col": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(
+            manifest_node=manifest_node, catalog_node=None
+        )
+
+        assert len(columns) == 1
+        assert expected_tag in columns[0].tags
+        call_kwargs = get_tag_label.call_args
+        assert call_kwargs.kwargs["classification_name"] == "PII"
+        assert call_kwargs.kwargs["tag_name"] == '"22.8.5.1"'
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
+    def test_process_dbt_meta_bad_tag_does_not_abort_meta(
+        self, mock_fqn, get_tag_label
+    ):
+        """A malformed tag FQN must not prevent glossary terms from being processed"""
+        from antlr4.error.Errors import ParseCancellationException
+
+        mock_fqn.FQN_SEPARATOR = "."
+        mock_fqn.split.side_effect = ParseCancellationException("bad fqn")
+
+        expected_glossary = TagLabel(
+            tagFQN="Glossary.Term1",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Glossary.value,
+        )
+        get_tag_label.return_value = expected_glossary
+
+        manifest_meta = {
+            "openmetadata": {
+                "glossary": ["Glossary.Term1"],
+                "tags": ['malformed."unclosed'],
+            }
+        }
+        result = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="svc.db.schema.table",
+        )
+        assert expected_glossary in result
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
+    def test_parse_data_model_columns_bad_tag_does_not_drop_column(self, mock_fqn):
+        """A malformed tag FQN must not cause the entire column to be skipped"""
+        from antlr4.error.Errors import ParseCancellationException
+
+        mock_fqn.FQN_SEPARATOR = "."
+        mock_fqn.split.side_effect = ParseCancellationException("bad fqn")
+
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"tags": ['malformed."unclosed']}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"col": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(
+            manifest_node=manifest_node, catalog_node=None
+        )
+        assert len(columns) == 1
+        assert columns[0].tags == []
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
+    def test_parse_data_model_columns_skips_split_when_include_tags_false(
+        self, mock_fqn
+    ):
+        """fqn.split must not be called for meta.openmetadata.tags when includeTags=False"""
+        from unittest.mock import patch as _patch
+
+        mock_fqn.FQN_SEPARATOR = "."
+
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"tags": ["PII.Sensitive"]}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"col": manifest_column})
+
+        with _patch.object(self.dbt_source_obj.source_config, "includeTags", False):
+            columns = self.dbt_source_obj.parse_data_model_columns(
+                manifest_node=manifest_node, catalog_node=None
+            )
+        mock_fqn.split.assert_not_called()
+        assert len(columns) == 1
 
     def test_parse_exposure_node_exposure_absent(self):
         _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_V8)

@@ -27,10 +27,17 @@ from metadata.data_quality.validations.column.base.columnValuesToMatchRegex impo
     BaseColumnValuesToMatchRegexValidator,
 )
 from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    PandasFailedRowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_pandas,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
@@ -41,7 +48,10 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToMatchRegexValidator(
-    BaseColumnValuesToMatchRegexValidator, PandasValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToMatchRegexValidator,
+    PandasValidatorMixin,
+    PandasFailedRowSamplerMixin,
 ):
     """Validator for column values to match regex test case"""
 
@@ -200,3 +210,15 @@ class ColumnValuesToMatchRegexValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        expression = self.get_test_case_param_value(
+            self.test_case.parameterValues,
+            "regex",
+            str,
+        )
+        return f"~{self.get_column().name}.astype('str').str.contains('{expression}')"
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

@@ -107,6 +107,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }: React.PropsWithChildren<{ title?: string }>) => (
       <div title={title}>{children}</div>
     ),
+    TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
+    Typography: ({
+      children,
+      className,
+      ...props
+    }: React.PropsWithChildren<{ className?: string }>) => (
+      <span className={className} {...props}>
+        {children}
+      </span>
+    ),
     Dropdown: {
       Root: DropdownRoot,
       Popover: DropdownPopover,
@@ -126,13 +136,22 @@ const mockAuthData = {
   isAdminUser: true,
   isAuthDisabled: false,
 };
-jest.mock('react-router-dom', () => ({
-  Link: jest
-    .fn()
-    .mockImplementation(({ children, ...rest }) => (
-      <span {...rest}>{children}</span>
-    )),
-}));
+const mockNavigateDataQualityTab = jest.fn();
+
+jest.mock('react-router-dom', () => {
+  const actual =
+    jest.requireActual<typeof import('react-router-dom')>('react-router-dom');
+
+  return {
+    ...actual,
+    Link: jest
+      .fn()
+      .mockImplementation(({ children, ...rest }) => (
+        <span {...rest}>{children}</span>
+      )),
+    useNavigate: () => mockNavigateDataQualityTab,
+  };
+});
 jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: () => {
     return {

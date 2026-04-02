@@ -2880,4 +2880,158 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertEquals(
         2, ourMultiStatusTerms.size(), "Both terms should be returned with multi-status filter");
   }
+
+  // ===================================================================
+  // ASSET ENDPOINT TESTS WITH PARENT FILTER
+  // ===================================================================
+
+  @Test
+  void get_assetsCountsWithParentFilter(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create two glossaries with terms
+    CreateGlossary createGlossary1 =
+        new CreateGlossary()
+            .withName(ns.prefix("asset_count_glossary1"))
+            .withDescription("Glossary 1 for asset count test");
+    Glossary glossary1 = client.glossaries().create(createGlossary1);
+
+    CreateGlossary createGlossary2 =
+        new CreateGlossary()
+            .withName(ns.prefix("asset_count_glossary2"))
+            .withDescription("Glossary 2 for asset count test");
+    Glossary glossary2 = client.glossaries().create(createGlossary2);
+
+    // Create terms in glossary1
+    CreateGlossaryTerm termReq1 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("count_term1"))
+            .withGlossary(glossary1.getFullyQualifiedName())
+            .withDescription("Term 1 in glossary 1");
+    GlossaryTerm term1 = createEntity(termReq1);
+
+    CreateGlossaryTerm termReq2 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("count_term2"))
+            .withGlossary(glossary1.getFullyQualifiedName())
+            .withDescription("Term 2 in glossary 1");
+    GlossaryTerm term2 = createEntity(termReq2);
+
+    // Create term in glossary2
+    CreateGlossaryTerm termReq3 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("count_term3"))
+            .withGlossary(glossary2.getFullyQualifiedName())
+            .withDescription("Term in glossary 2");
+    GlossaryTerm term3 = createEntity(termReq3);
+
+    // Get counts with parent=glossary1 — should only include glossary1's terms
+    String countsWithParent = getAssetCounts(client, glossary1.getFullyQualifiedName());
+    assertNotNull(countsWithParent);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode filteredCounts = mapper.readTree(countsWithParent);
+    assertTrue(
+        filteredCounts.has(term1.getFullyQualifiedName()), "Should contain term1 from glossary1");
+    assertTrue(
+        filteredCounts.has(term2.getFullyQualifiedName()), "Should contain term2 from glossary1");
+    assertFalse(
+        filteredCounts.has(term3.getFullyQualifiedName()),
+        "Should not contain terms from glossary2 when filtering by glossary1");
+
+    // Get counts without parent — should include all terms
+    String countsWithoutParent = getAssetCounts(client, null);
+    assertNotNull(countsWithoutParent);
+    JsonNode unfilteredCounts = mapper.readTree(countsWithoutParent);
+    assertTrue(
+        unfilteredCounts.has(term1.getFullyQualifiedName()), "Unfiltered should contain term1");
+    assertTrue(
+        unfilteredCounts.has(term2.getFullyQualifiedName()), "Unfiltered should contain term2");
+    assertTrue(
+        unfilteredCounts.has(term3.getFullyQualifiedName()), "Unfiltered should contain term3");
+  }
+
+  @Test
+  void get_assetsCountsWithNoParent(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Calling without parent should succeed and return a response
+    String counts = getAssetCounts(client, null);
+    assertNotNull(counts);
+  }
+
+  @Test
+  void get_termAssetsById(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("noparent_assets_glossary"))
+            .withDescription("Glossary for assets without parent test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    CreateGlossaryTerm termReq =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("noparent_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for no-parent test");
+    GlossaryTerm term = createEntity(termReq);
+
+    String result = getTermAssetsById(client, term.getId().toString());
+    assertNotNull(result);
+  }
+
+  @Test
+  void get_termAssetsByName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("noparent_name_glossary"))
+            .withDescription("Glossary for name assets without parent test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    CreateGlossaryTerm termReq =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("noparent_name_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for no-parent name test");
+    GlossaryTerm term = createEntity(termReq);
+
+    String result = getTermAssetsByName(client, term.getFullyQualifiedName());
+    assertNotNull(result);
+  }
+
+  private String getAssetCounts(OpenMetadataClient client, String parent) {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (parent != null) {
+      optionsBuilder.queryParam("parent", parent);
+    }
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET, "/v1/glossaryTerms/assets/counts", null, optionsBuilder.build());
+  }
+
+  private String getTermAssetsById(OpenMetadataClient client, String id) {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    optionsBuilder.queryParam("limit", "10");
+    optionsBuilder.queryParam("offset", "0");
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET, "/v1/glossaryTerms/" + id + "/assets", null, optionsBuilder.build());
+  }
+
+  private String getTermAssetsByName(OpenMetadataClient client, String fqn) {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    optionsBuilder.queryParam("limit", "10");
+    optionsBuilder.queryParam("offset", "0");
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/glossaryTerms/name/" + fqn + "/assets",
+            null,
+            optionsBuilder.build());
+  }
 }

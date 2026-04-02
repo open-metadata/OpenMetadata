@@ -11,6 +11,7 @@
 """
 Client to interact with the Airflow REST API
 """
+
 import traceback
 from typing import List, Optional
 from urllib.parse import quote
