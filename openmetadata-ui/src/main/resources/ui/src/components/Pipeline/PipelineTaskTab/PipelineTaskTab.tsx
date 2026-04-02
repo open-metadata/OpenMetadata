@@ -363,6 +363,8 @@ export const PipelineTaskTab = () => {
       editGlossaryTermsPermission,
       handleTableTagSelection,
       editDescriptionPermission,
+      currentPage,
+      pageSize,
     ]
   );
 
