@@ -47,3 +47,10 @@ class DbtMetaOpenmetadata(BaseModel):
 
 class DbtMeta(BaseModel):
     openmetadata: Optional[DbtMetaOpenmetadata] = None
+
+
+class SnapshotNodeLocation(BaseModel):
+    """Resolved schema and database for a dbt snapshot node after applying config overrides."""
+
+    schema_: str
+    database: Optional[str] = None
