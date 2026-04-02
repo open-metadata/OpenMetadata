@@ -73,6 +73,11 @@ class KinesisSource(MessagingServiceSource):
     ):
         super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
+        if (
+            self.generate_sample_data
+            and self._is_sample_data_storing_globally_disabled()
+        ):
+            self.generate_sample_data = False
         self.kinesis = self.connection
 
     @classmethod

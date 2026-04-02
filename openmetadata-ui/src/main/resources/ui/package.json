@@ -55,7 +55,8 @@
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",
     "@ant-design/icons": "^4.8.3",
-    "@antv/g6": "^5.0.50",
+    "@antv/g6": "^5.0.51",
+    "@antv/g6-extension-react": "^0.2.6",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",
     "@auth0/auth0-react": "^1.9.0",
     "@azure/msal-browser": "^3.25.0",
@@ -165,8 +166,6 @@
     "tinycolor2": "^1.6.0",
     "turndown": "^7.2.2",
     "use-analytics": "1.1.0",
-    "vis-data": "^7.1.4",
-    "vis-network": "^9.1.6",
     "zustand": "^4.5.0"
   },
   "browserslist": {
