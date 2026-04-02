@@ -37,8 +37,14 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveConnection,
     HiveScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -1172,3 +1178,61 @@ class HiveSourceMetastoreValidationTest(TestCase):
         self.hive.service_connection.metastoreConnection = invalid_dict
         result = self.hive._get_validated_metastore_connection()
         self.assertIsNone(result)
+
+    def test_get_validated_metastore_connection_with_mssql_object(self):
+        """
+        Test _get_validated_metastore_connection returns MssqlConnection when already validated
+        """
+        mssql_conn = MssqlConnection(
+            username="mssql_user",
+            hostPort="localhost:1433",
+            database="hive_metastore",
+        )
+        self.hive.service_connection.metastoreConnection = mssql_conn
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, MssqlConnection)
+        self.assertEqual(result, mssql_conn)
+
+    def test_get_validated_metastore_connection_with_oracle_object(self):
+        """
+        Test _get_validated_metastore_connection returns OracleConnection when already validated
+        """
+        oracle_conn = OracleConnection(
+            username="oracle_user",
+            hostPort="localhost:1521",
+            oracleConnectionType={"oracleServiceName": "XE"},
+        )
+        self.hive.service_connection.metastoreConnection = oracle_conn
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, OracleConnection)
+        self.assertEqual(result, oracle_conn)
+
+    def test_get_validated_metastore_connection_with_mssql_dict(self):
+        """
+        Test _get_validated_metastore_connection parses dict as MssqlConnection
+        """
+        mssql_dict = {
+            "type": "Mssql",
+            "username": "mssql_user",
+            "hostPort": "localhost:1433",
+            "database": "hive_metastore",
+        }
+        self.hive.service_connection.metastoreConnection = mssql_dict
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, MssqlConnection)
+        self.assertEqual(result.username, "mssql_user")
+
+    def test_get_validated_metastore_connection_with_oracle_dict(self):
+        """
+        Test _get_validated_metastore_connection parses dict as OracleConnection
+        """
+        oracle_dict = {
+            "type": "Oracle",
+            "username": "oracle_user",
+            "hostPort": "localhost:1521",
+            "oracleConnectionType": {"oracleServiceName": "XE"},
+        }
+        self.hive.service_connection.metastoreConnection = oracle_dict
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, OracleConnection)
+        self.assertEqual(result.username, "oracle_user")
