@@ -842,6 +842,82 @@ export const testPaginationNavigation = async (
   }
 };
 
+export const testClientSidePaginationNavigation = async (
+  page: Page,
+  waitForLoadSelector: string,
+  validateRowCount = true
+) => {
+  if (waitForLoadSelector) {
+    await page.locator(waitForLoadSelector).waitFor({ state: 'visible' });
+  }
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('previous')).toBeDisabled();
+  const nextButton = page.locator('[data-testid="next"]');
+
+  const isNextButtonEnabled = await nextButton.isEnabled();
+  if (!isNextButtonEnabled) {
+    return;
+  }
+
+  await nextButton.click();
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('previous')).toBeEnabled();
+
+  const currentUrl = page.url();
+  expect(new URL(currentUrl).searchParams.get('currentPage')).toBe('2');
+
+  await page.reload();
+
+  if (waitForLoadSelector) {
+    await page.locator(waitForLoadSelector).waitFor({ state: 'visible' });
+  }
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('previous')).toBeEnabled();
+  const paginationText = page.locator('[data-testid="page-indicator"]');
+  await expect(paginationText).toBeVisible();
+  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
+
+  const reloadedSearchParams = new URL(page.url()).searchParams;
+  expect(reloadedSearchParams.get('currentPage')).toBe('2');
+
+  await page.waitForLoadState('domcontentloaded');
+  const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+  if (!(await pageSizeDropdown.isVisible())) {
+    return;
+  }
+
+  await expect(pageSizeDropdown).toHaveText('15 / Page');
+
+  const initialRowCount = await page
+    .locator('tbody > tr[data-row-key]:visible')
+    .count();
+  if (validateRowCount) {
+    expect(initialRowCount).toBeLessThanOrEqual(15);
+  }
+
+  const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
+  await pageSizeDropdown.hover();
+  if (!(await menuItem.isVisible().catch(() => false))) {
+    await pageSizeDropdown.click();
+  }
+  await menuItem.waitFor({ state: 'visible' });
+  await menuItem.click();
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(pageSizeDropdown).toHaveText('25 / Page');
+
+  const newRowCount = await page
+    .locator('tbody > tr[data-row-key]:visible')
+    .count();
+  if (validateRowCount) {
+    expect(newRowCount).toBeLessThanOrEqual(25);
+    expect(newRowCount).not.toBe(initialRowCount);
+  }
+};
+
 export interface PaginationTestConfig {
   page: Page;
   baseUrl: string;
