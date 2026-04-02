@@ -410,7 +410,7 @@ describe('TestDefinitionForm Component', () => {
         });
       });
 
-      it('testPlatforms field is required', async () => {
+      it('testPlatforms field is required', () => {
         render(
           <TestDefinitionForm
             onCancel={mockOnCancel}
@@ -418,24 +418,16 @@ describe('TestDefinitionForm Component', () => {
           />
         );
 
-        // Clear the default value and submit to trigger required-field validation
-        const testPlatformsSelect = screen.getByLabelText(
-          'label.test-platform-plural'
-        );
+        // testPlatforms defaults to [OpenMetadata] so submitting never triggers
+        // an error. Verify required status via the asterisk class Ant Design adds
+        // to the label when rules contain required: true.
+        const testPlatformsFormItem = screen
+          .getByLabelText('label.test-platform-plural')
+          .closest('.ant-form-item');
 
-        fireEvent.change(testPlatformsSelect, { target: { value: '' } });
-
-        await submitEmptyForm();
-
-        await waitFor(() => {
-          const testPlatformsFormItem = screen
-            .getByLabelText('label.test-platform-plural')
-            .closest('.ant-form-item');
-
-          expect(testPlatformsFormItem).toHaveTextContent(
-            'message.field-text-is-required'
-          );
-        });
+        expect(
+          testPlatformsFormItem?.querySelector('.ant-form-item-required')
+        ).toBeInTheDocument();
       });
 
       it('parameter name field is required', async () => {
