@@ -164,9 +164,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 ).cte(f"{self.get_sampler_table_name()}_rnd")
                 session_query = client.query(rnd)
-                return session_query.where(
+                query = session_query.where(
                     rnd.c.random <= self.sample_config.profileSample
-                ).cte(f"{self.get_sampler_table_name()}_sample")
+                )
+                if self.sample_config.randomizedSample is not False:
+                    query = query.order_by(rnd.c.random)
+                return query.cte(f"{self.get_sampler_table_name()}_sample")
 
             table_query = client.query(self.raw_dataset)
             if self.partition_details:
@@ -225,20 +228,15 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             return self._fetch_sample_data_from_user_query()
 
         ds = self.get_dataset()
-        ds_columns = inspect(ds).c
-        random_column = next(
-            (col for col in ds_columns if col.name == RANDOM_LABEL), None
-        )
-
         if not columns:
-            sqa_columns = [col for col in ds_columns if col.name != RANDOM_LABEL]
+            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL]
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
             names = [col.name for col in columns]
             sqa_columns = [
                 col
-                for col in ds_columns
+                for col in inspect(ds).c
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
@@ -261,10 +259,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     select_columns.append(col)
 
             # Create query with modified columns
-            query = client.query(*select_columns).select_from(ds)
-            if random_column is not None:
-                query = query.order_by(random_column)
-            sqa_sample = query.limit(self.sample_limit).all()
+            sqa_sample = (
+                client.query(*select_columns)
+                .select_from(ds)
+                .limit(self.sample_limit)
+                .all()
+            )
 
         # Process rows: handle array columns and truncate large text values
         # to prevent OOM in downstream processing.

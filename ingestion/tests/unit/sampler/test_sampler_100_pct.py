@@ -103,8 +103,6 @@ class TestDatalakeSampler100Pct:
         result = sampler.get_dataset()
         sampler.get_sampled_dataframe.assert_called_once()
         assert result == sampler.get_sampled_dataframe.return_value
-        sampler.get_sampled_dataframe.assert_called_once()
-        assert result == sampler.get_sampled_dataframe.return_value
 
     def test_100_pct_randomized_false_returns_raw_dataset(self):
         """100% + randomizedSample=False should short-circuit to raw dataset."""
@@ -118,5 +116,4 @@ class TestDatalakeSampler100Pct:
         sampler = self._make_sampler(randomized_sample=None)
         result = sampler.get_dataset()
         sampler.get_sampled_dataframe.assert_called_once()
-        assert result == sampler.get_sampled_dataframe.return_value
         assert result == sampler.get_sampled_dataframe.return_value
