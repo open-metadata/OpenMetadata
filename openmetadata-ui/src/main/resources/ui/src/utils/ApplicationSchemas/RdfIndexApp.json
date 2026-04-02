@@ -1,0 +1,76 @@
+{
+  "$id": "RdfIndexAppSchema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RDF Knowledge Graph Indexing Application",
+  "description": "This schema defines configuration for RDF Knowledge Graph Indexing Application.",
+  "properties": {
+    "batchSize": {
+      "title": "Batch Size",
+      "description": "Maximum number of entities to process in a batch (Default 100).",
+      "type": "integer",
+      "default": 100,
+      "minimum": 1
+    },
+    "entities": {
+      "title": "Entities",
+      "description": "List of entity types to index into the RDF Knowledge Graph.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "table",
+          "databaseSchema",
+          "container",
+          "testSuite",
+          "mlmodelService",
+          "pipelineService",
+          "messagingService",
+          "ingestionPipeline",
+          "database",
+          "metadataService",
+          "searchService",
+          "tag",
+          "dashboard",
+          "storedProcedure",
+          "dataProduct",
+          "databaseService",
+          "dashboardService",
+          "driveService",
+          "query",
+          "apiService",
+          "searchIndex",
+          "apiCollection",
+          "team",
+          "mlmodel",
+          "classification",
+          "glossaryTerm",
+          "dashboardDataModel",
+          "pipeline",
+          "glossary",
+          "apiEndpoint",
+          "storageService",
+          "metric",
+          "domain",
+          "topic",
+          "chart",
+          "user",
+          "testCase",
+          "directory",
+          "file",
+          "spreadsheet",
+          "worksheet"
+        ]
+      },
+      "default": ["all"],
+      "uiFieldType": "treeSelect",
+      "uniqueItems": true
+    },
+    "recreateIndex": {
+      "title": "Clear RDF Data",
+      "description": "Clear all existing RDF triples before re-indexing. Use this to remove stale data from the RDF store.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}
