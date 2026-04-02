@@ -51,6 +51,7 @@ import {
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
 import { getLayoutConfig } from '../utils/graphConfig';
+import { getEntityIconUrl } from '../utils/entityIconUrls';
 import {
   buildComboStyle,
   buildDataModeAssetNodeStyle,
@@ -88,7 +89,7 @@ function isGraphTopologySynced(graph: Graph, graphData: GraphData): boolean {
   return sameStringSet(elementIdSet(combos), elementIdSet(modelCombos));
 }
 
-function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
+function findBadgeIndex(originalTarget: unknown): number | null {
   let current: unknown = originalTarget;
   for (
     let depth = 0;
@@ -101,13 +102,28 @@ function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
       parent?: unknown;
     };
     const key = shape.className ?? shape.name;
-    if (typeof key === 'string' && /^badge-\d+$/.test(key)) {
-      return true;
+    if (typeof key === 'string') {
+      const match = /^badge-(\d+)$/.exec(key);
+      if (match) {
+        return Number(match[1]);
+      }
     }
     current = shape.parent;
   }
 
-  return false;
+  return null;
+}
+
+function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
+  const idx = findBadgeIndex(originalTarget);
+
+  return idx === 0;
+}
+
+function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
+  const idx = findBadgeIndex(originalTarget);
+
+  return idx === 1;
 }
 
 interface GraphNodeMeta {
@@ -116,6 +132,7 @@ interface GraphNodeMeta {
   label?: string;
   hierarchyBadge?: string;
   assetCount?: number;
+  loadedAssetCount?: number;
   assetsExpanded?: boolean;
   ontologyNode?: OntologyNode;
   isDimmed?: boolean;
@@ -150,7 +167,10 @@ interface UseOntologyGraphProps {
   onNodeClick: (
     node: OntologyNode,
     position: { x: number; y: number },
-    meta?: { dataModeAssetBadgeClick?: boolean }
+    meta?: {
+      dataModeAssetBadgeClick?: boolean;
+      dataModeLoadMoreBadgeClick?: boolean;
+    }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
   onNodeContextMenu: (
@@ -327,6 +347,7 @@ export function useOntologyGraph({
                     ontNode.entityRef.type
                   )
                 : undefined;
+            const entityIconUrl = getEntityIconUrl(ontNode?.entityRef?.type);
 
             return {
               ...buildDataModeAssetNodeStyle(
@@ -334,7 +355,8 @@ export function useOntologyGraph({
                 label,
                 ac,
                 undefined,
-                entityTypeLabel
+                entityTypeLabel,
+                entityIconUrl
               ),
               zIndex: 2,
               opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
@@ -346,6 +368,9 @@ export function useOntologyGraph({
             const assetCount = d?.assetCount ?? 0;
             const hasAssetBadge = assetCount > 0;
             const assetsExpanded = d?.assetsExpanded ?? false;
+            const loadedAssetCount = d?.loadedAssetCount ?? 0;
+            const remaining = Math.max(0, assetCount - loadedAssetCount);
+            const showLoadMore = assetsExpanded && remaining > 0;
             const badgeText = assetsExpanded ? '\u2212' : `+${assetCount}`;
             const label = d?.label ?? datum.id;
             let assetCountBadgeDiameter: number;
@@ -363,34 +388,74 @@ export function useOntologyGraph({
             }
             const assetCountBadgeR = assetCountBadgeDiameter / 2;
 
+            const loadMoreText = `Load ${remaining} more`;
+            const loadMoreHPad = 4;
+            const loadMoreCharW = 7;
+            const loadMoreH = DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER;
+            const loadMoreW = Math.max(
+              60,
+              loadMoreHPad * 2 + loadMoreText.length * loadMoreCharW
+            );
+            const loadMoreOffsetX = -(loadMoreW / 2);
+
+            const badges = hasAssetBadge
+              ? [
+                  {
+                    text: badgeText,
+                    placement: 'top-right' as const,
+                    offsetX: NODE_BADGE_OFFSET_X,
+                    offsetY: NODE_BADGE_OFFSET_Y,
+                    textAlign: 'center' as const,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fill: NODE_FILL_DEFAULT,
+                    background: true,
+                    backgroundFill: NODE_LABEL_FILL,
+                    backgroundWidth: assetCountBadgeDiameter,
+                    backgroundHeight: assetCountBadgeDiameter,
+                    backgroundRadius: assetCountBadgeR,
+                    backgroundStroke: 'none',
+                    backgroundLineWidth: 0,
+                    padding: DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
+                    backgroundOpacity: 1,
+                  },
+                  ...(showLoadMore
+                    ? [
+                        {
+                          text: loadMoreText,
+                          placement: 'top-left' as const,
+                          offsetX: loadMoreOffsetX,
+                          offsetY: 0,
+                          textAlign: 'center' as const,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          fill: '#ffffff',
+                          background: true,
+                          backgroundFill: '#155EEF',
+                          backgroundWidth: loadMoreW,
+                          backgroundHeight: loadMoreH,
+                          backgroundRadius: 6,
+                          backgroundStroke: 'none',
+                          backgroundLineWidth: 0,
+                          padding: [4, loadMoreHPad, 4, loadMoreHPad] as [
+                            number,
+                            number,
+                            number,
+                            number,
+                          ],
+                          backgroundOpacity: 1,
+                        },
+                      ]
+                    : []),
+                ]
+              : [];
+
             return {
               ...buildDataModeTermNodeStyle(getCanvasColor, label, tc),
               zIndex: 2,
               opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
               badge: hasAssetBadge,
-              badges: hasAssetBadge
-                ? [
-                    {
-                      text: badgeText,
-                      placement: 'top-right',
-                      offsetX: NODE_BADGE_OFFSET_X,
-                      offsetY: NODE_BADGE_OFFSET_Y,
-                      textAlign: 'center',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      fill: NODE_FILL_DEFAULT,
-                      background: true,
-                      backgroundFill: NODE_LABEL_FILL,
-                      backgroundWidth: assetCountBadgeDiameter,
-                      backgroundHeight: assetCountBadgeDiameter,
-                      backgroundRadius: assetCountBadgeR,
-                      backgroundStroke: 'none',
-                      backgroundLineWidth: 0,
-                      padding: DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
-                      backgroundOpacity: 1,
-                    },
-                  ]
-                : [],
+              badges,
               labelFill: NODE_FILL_DEFAULT,
             };
           }
@@ -568,8 +633,12 @@ export function useOntologyGraph({
           const dataModeAssetBadgeClick =
             explorationMode === 'data' &&
             isDataModeAssetBadgeShape(e.originalTarget);
+          const dataModeLoadMoreBadgeClick =
+            explorationMode === 'data' &&
+            isDataModeLoadMoreBadgeShape(e.originalTarget);
           onNodeClick(resolveNodeForCallback(node), position, {
             dataModeAssetBadgeClick,
+            dataModeLoadMoreBadgeClick,
           });
         }
       }

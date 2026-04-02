@@ -46,6 +46,7 @@ import {
   getCanvasColor,
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
+import { getEntityIconUrl } from '../utils/entityIconUrls';
 import { computeGlossaryGroupPositions } from '../utils/layoutCalculations';
 
 const INVERSE_RELATION_PAIRS: Record<string, string> = {
@@ -242,15 +243,7 @@ export function useGraphDataBuilder({
         }
       });
 
-      const visibleTermIds = new Set(termsWithAssets);
-      mergedEdgesList.forEach((edge) => {
-        if (allTermIds.has(edge.from) && allTermIds.has(edge.to)) {
-          if (termsWithAssets.has(edge.from) || termsWithAssets.has(edge.to)) {
-            visibleTermIds.add(edge.from);
-            visibleTermIds.add(edge.to);
-          }
-        }
-      });
+      const visibleTermIds = new Set(allTermIds);
 
       const visibleAssetIds = new Set<string>();
       const idsToExpand =
@@ -279,16 +272,20 @@ export function useGraphDataBuilder({
       });
       mergedEdgesList.forEach((edge) => {
         if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-          termAssetCountMap.set(
-            edge.from,
-            (termAssetCountMap.get(edge.from) ?? 0) + 1
-          );
+          if (!termAssetCountMap.has(edge.from)) {
+            termAssetCountMap.set(
+              edge.from,
+              (termAssetCountMap.get(edge.from) ?? 0) + 1
+            );
+          }
         }
         if (allAssetIds.has(edge.from) && allTermIds.has(edge.to)) {
-          termAssetCountMap.set(
-            edge.to,
-            (termAssetCountMap.get(edge.to) ?? 0) + 1
-          );
+          if (!termAssetCountMap.has(edge.to)) {
+            termAssetCountMap.set(
+              edge.to,
+              (termAssetCountMap.get(edge.to) ?? 0) + 1
+            );
+          }
         }
       });
 
@@ -448,10 +445,11 @@ export function useGraphDataBuilder({
           node.entityRef?.type !== undefined
             ? entityUtilClassBase.getFormattedEntityType(node.entityRef.type)
             : undefined;
+        const entityIconUrl = getEntityIconUrl(node.entityRef?.type);
 
         return {
           id: node.id,
-          type: 'circle',
+          type: 'data-mode-asset',
           data: {
             ontologyNode: node,
             label,
@@ -469,7 +467,8 @@ export function useGraphDataBuilder({
             label,
             assetColor,
             pos,
-            entityTypeLabel
+            entityTypeLabel,
+            entityIconUrl
           ),
         };
       }
@@ -493,6 +492,7 @@ export function useGraphDataBuilder({
             nodeWidth,
             glossaryId: node.glossaryId ?? '',
             assetCount,
+            loadedAssetCount: node.loadedAssetCount ?? 0,
             assetsExpanded,
           },
           style: buildDataModeTermNodeStyle(getCanvasColor, label, color, pos),
