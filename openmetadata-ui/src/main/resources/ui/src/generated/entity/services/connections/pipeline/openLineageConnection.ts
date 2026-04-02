@@ -19,6 +19,12 @@ export interface OpenLineageConnection {
      */
     brokerConfig: BrokerConfiguration;
     /**
+     * Map OpenLineage dataset namespaces (or prefixes) to OpenMetadata database service names.
+     * Used when multiple services of the same type exist. Example: 'mysql://cluster-a:3306' ->
+     * 'mysql-cluster-a'.
+     */
+    namespaceToServiceMapping?: { [key: string]: string };
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?:      FilterPattern;
