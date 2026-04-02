@@ -437,7 +437,9 @@ describe('TestDefinitionForm Component', () => {
           />
         );
 
-        const addButtons = screen.getAllByText('label.add-entity');
+        const addButtons = screen.getAllByRole('button', {
+          name: /label.add-entity/i,
+        });
         await act(async () => {
           fireEvent.click(addButtons[addButtons.length - 1]);
         });
