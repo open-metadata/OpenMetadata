@@ -16,8 +16,6 @@ respects the randomizedSample flag, including None handling.
 """
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from metadata.generated.schema.entity.data.table import ProfileSampleType
 from metadata.sampler.models import SampleConfig
 
@@ -104,15 +102,18 @@ class TestDatalakeSampler100Pct:
         sampler = self._make_sampler(randomized_sample=True)
         result = sampler.get_dataset()
         sampler.get_sampled_dataframe.assert_called_once()
+        assert result == sampler.get_sampled_dataframe.return_value
 
     def test_100_pct_randomized_false_returns_raw_dataset(self):
         """100% + randomizedSample=False should short-circuit to raw dataset."""
         sampler = self._make_sampler(randomized_sample=False)
         result = sampler.get_dataset()
         sampler.get_sampled_dataframe.assert_not_called()
+        assert result == sampler._table.dataframes
 
     def test_100_pct_randomized_none_delegates_to_sampled_dataframe(self):
         """100% + randomizedSample=None should NOT short-circuit (None != False)."""
         sampler = self._make_sampler(randomized_sample=None)
         result = sampler.get_dataset()
         sampler.get_sampled_dataframe.assert_called_once()
+        assert result == sampler.get_sampled_dataframe.return_value

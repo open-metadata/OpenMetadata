@@ -224,7 +224,6 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._fetch_sample_data_from_user_query()
 
-        # Add new RandomNumFn column
         ds = self.get_dataset()
         ds_columns = inspect(ds).c
         random_column = next(
