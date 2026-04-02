@@ -126,7 +126,9 @@ class LineageConfigBuilder(BaseBuilder):
                 "type": "DatabaseLineage",
                 "queryLogDuration": 1,
                 "resultLimit": 10000,
-                "processQueryLineage": False,
+                "processQueryLineage": self.config_args.get(
+                    "processQueryLineage", False
+                ),
                 "processStoredProcedureLineage": False,
             }
         }

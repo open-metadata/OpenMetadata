@@ -17,6 +17,7 @@ import {
   Dropdown,
   Skeleton,
   Tooltip,
+  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, DotsVertical } from '@untitledui/icons';
@@ -210,16 +211,22 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.failed-slash-aborted-reason'),
         dataIndex: 'testCaseResult',
         key: 'reason',
-        width: 200,
+        width: 250,
         render: (result: TestCaseResult, record: TestCase) => {
           return result?.result &&
             result.testCaseStatus !== TestCaseStatus.Success ? (
-            <Tooltip placement="top" title={result.result}>
-              <p
-                className="tw:m-0 tw:line-clamp-2 tw:cursor-pointer tw:wrap-break-word tw:text-sm"
-                data-testid={`reason-text-${record.name}`}>
-                {result.result}
-              </p>
+            <Tooltip
+              containerClassName="tw:break-all"
+              placement="top"
+              title={result.result}>
+              <TooltipTrigger>
+                <Typography
+                  className="tw:m-0 tw:max-w-60 tw:line-clamp-2 tw:break-all"
+                  data-testid={`reason-text-${record.name}`}
+                  size="text-sm">
+                  {result.result}
+                </Typography>
+              </TooltipTrigger>
             </Tooltip>
           ) : (
             '--'
@@ -240,7 +247,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 200,
+        width: 150,
         sorter: true,
         sortDirections: ['ascend', 'descend'],
         render: (name: string, record) => {
@@ -265,7 +272,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               title: t('label.table'),
               dataIndex: 'entityLink',
               key: 'table',
-              width: 150,
+              width: 200,
               render: (entityLink: string) => {
                 const tableFqn = getEntityFQN(entityLink);
 
@@ -480,7 +487,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       },
     ];
 
-    return data;
+    return data.map((col) =>
+      col.width && !col.fixed
+        ? {
+            ...col,
+            onCell: () => ({
+              style: { maxWidth: col.width, overflow: 'hidden' },
+            }),
+          }
+        : col
+    );
   }, [
     testCases,
     testCaseStatus,
