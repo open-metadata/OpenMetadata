@@ -223,6 +223,9 @@ export function useOntologyGraph({
   const setClickedEdgeIdRef = useRef(setClickedEdgeId);
   setClickedEdgeIdRef.current = setClickedEdgeId;
 
+  const inputNodesRef = useRef(inputNodes);
+  inputNodesRef.current = inputNodes;
+
   const extractNodePositions = useCallback((): Record<
     string,
     { x: number; y: number }
@@ -633,7 +636,7 @@ export function useOntologyGraph({
     const handleNodeClick = (e: IElementEvent) => {
       const id = e.target.id;
       if (id) {
-        const node = inputNodes.find((n) => n.id === id);
+        const node = inputNodesRef.current.find((n) => n.id === id);
         if (node) {
           let position = { x: e.clientX ?? 0, y: e.clientY ?? 0 };
           try {
@@ -660,7 +663,7 @@ export function useOntologyGraph({
     const handleNodeDblClick = (e: IElementEvent) => {
       const id = e.target.id;
       if (id) {
-        const node = inputNodes.find((n) => n.id === id);
+        const node = inputNodesRef.current.find((n) => n.id === id);
         if (node) {
           onNodeDoubleClick(resolveNodeForCallback(node));
         }
@@ -671,7 +674,7 @@ export function useOntologyGraph({
       e.preventDefault();
       const id = e.target.id;
       if (id) {
-        const node = inputNodes.find((n) => n.id === id);
+        const node = inputNodesRef.current.find((n) => n.id === id);
         if (node) {
           onNodeContextMenu(resolveNodeForCallback(node), {
             x: e.clientX ?? 0,
