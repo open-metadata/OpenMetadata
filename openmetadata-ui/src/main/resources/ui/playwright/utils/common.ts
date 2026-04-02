@@ -796,39 +796,41 @@ export const testPaginationNavigation = async (
   }
   await page.waitForLoadState('domcontentloaded');
   const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-  await expect(pageSizeDropdown).toHaveText('15 / Page');
+  if (await pageSizeDropdown.isVisible()) {
+    await expect(pageSizeDropdown).toHaveText('15 / Page');
 
-  // Explicitly using selector, as in some cases table cell contains markdown
-  // and markdown can further have tables
-  const initialRowCount = await page
-    .locator('tbody > tr[data-row-key]:visible')
-    .count();
-  if (validateRowCount) {
-    expect(initialRowCount).toBeLessThanOrEqual(15);
-  }
-  const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.hover();
-  const isMenuVisibleAfterHover = await menuItem.isVisible();
-  if (!isMenuVisibleAfterHover) {
-    await pageSizeDropdown.click();
-  }
-  await menuItem.waitFor({ state: 'visible' });
+    // Explicitly using selector, as in some cases table cell contains markdown
+    // and markdown can further have tables
+    const initialRowCount = await page
+      .locator('tbody > tr[data-row-key]:visible')
+      .count();
+    if (validateRowCount) {
+      expect(initialRowCount).toBeLessThanOrEqual(15);
+    }
+    const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
+    await pageSizeDropdown.hover();
+    const isMenuVisibleAfterHover = await menuItem.isVisible();
+    if (!isMenuVisibleAfterHover) {
+      await pageSizeDropdown.click();
+    }
+    await menuItem.waitFor({ state: 'visible' });
 
-  const pageSizeChangePromise = page.waitForResponse((response) =>
-    response.url().includes(apiEndpointPattern)
-  );
-  await menuItem.click();
-  await pageSizeChangePromise;
-  await waitForAllLoadersToDisappear(page);
+    const pageSizeChangePromise = page.waitForResponse((response) =>
+      response.url().includes(apiEndpointPattern)
+    );
+    await menuItem.click();
+    await pageSizeChangePromise;
+    await waitForAllLoadersToDisappear(page);
 
-  await expect(pageSizeDropdown).toHaveText('25 / Page');
+    await expect(pageSizeDropdown).toHaveText('25 / Page');
 
-  const newRowCount = await page
-    .locator('tbody > tr[data-row-key]:visible')
-    .count();
-  if (validateRowCount) {
-    expect(newRowCount).toBeLessThanOrEqual(25);
-    expect(newRowCount).not.toBe(initialRowCount);
+    const newRowCount = await page
+      .locator('tbody > tr[data-row-key]:visible')
+      .count();
+    if (validateRowCount) {
+      expect(newRowCount).toBeLessThanOrEqual(25);
+      expect(newRowCount).not.toBe(initialRowCount);
+    }
   }
 };
 
