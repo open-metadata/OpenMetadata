@@ -106,13 +106,11 @@ class MaxLength(StaticMetric):
         """Computes one DataFrame chunk and updates the running maximum"""
         # pylint: disable=import-outside-toplevel
         import pandas as pd
-        from numpy import vectorize
 
-        length_vectorize_func = vectorize(len)
         chunk_max = None
 
         if is_concatenable(column.type) or is_complex_type(column.type):
-            max_val = length_vectorize_func(df[column.name].dropna().astype(str)).max()
+            max_val = df[column.name].dropna().astype(str).str.len().max()
             if not pd.isnull(max_val):
                 chunk_max = max_val
 

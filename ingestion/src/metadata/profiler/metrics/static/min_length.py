@@ -106,13 +106,11 @@ class MinLength(StaticMetric):
         """Computes one DataFrame chunk and updates the running minimum"""
         # pylint: disable=import-outside-toplevel
         import pandas as pd
-        from numpy import vectorize
 
-        length_vectorize_func = vectorize(len)
         chunk_min = None
 
         if is_concatenable(column.type) or is_complex_type(column.type):
-            min_val = length_vectorize_func(df[column.name].dropna().astype(str)).min()
+            min_val = df[column.name].dropna().astype(str).str.len().min()
             if not pd.isnull(min_val):
                 chunk_min = min_val
 
