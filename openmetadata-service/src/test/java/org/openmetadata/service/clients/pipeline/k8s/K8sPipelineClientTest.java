@@ -1728,6 +1728,27 @@ class K8sPipelineClientTest {
 
     return service;
   }
+  
+  @Test
+  void testBuildLabelsTruncatesLongPipelineNameToKubernetesLimit() throws Exception {
+    String longPipelineName = 
+        "this-is-a-very-long-pipeline-name-created-to-test-kubernetes-label-limit-exceeding-sixty-three-characters";
+    IngestionPipeline pipeline = new IngestionPipeline();
+    pipeline.setName(longPipelineName);
+    pipeline.setPipelineType(IngestionPipeline.PipelineType.METADATA);
+
+    Map<String, String> labels = 
+        invokePrivate(
+            client, 
+            "buildLabels", 
+            new Class<?>[] {IngestionPipeline.class, String.class}, 
+            pipeline, 
+            null);
+
+    String pipelineLabel = labels.get("pipeline");
+    assertNotNull(pipelineLabel);
+    assertTrue(pipelineLabel.length() <= 63);
+  }
 
   private static void setField(Object target, String fieldName, Object value) {
     try {
