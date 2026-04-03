@@ -844,13 +844,15 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     }
   };
 
-  const getEntityRefLinkValue = (item: EntityReference) => (
+  const getEntityRefLinkValue = (item: EntityReference) => {
+  const fqn = item.fullyQualifiedName ?? item.name ?? '';
+  const displayName = getEntityName(item);
+  const tooltipTitle = fqn !== displayName ? fqn : undefined;
+
+  return (
     <Link
       className="entity-ref-link"
-      to={entityUtilClassBase.getEntityLink(
-        item.type,
-        item.fullyQualifiedName ?? item.name ?? ''
-      )}>
+      to={entityUtilClassBase.getEntityLink(item.type, fqn)}>
       <div className="entity-icon m-r-xs">
         {['user', 'team'].includes(item.type) ? (
           <ProfilePicture
@@ -864,13 +866,17 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           searchClassBase.getEntityIcon(item.type)
         )}
       </div>
-      <Typography.Text
-        className="text-left text-primary truncate w-max-full"
-        ellipsis={{ tooltip: true }}>
-        {getEntityName(item)}
-      </Typography.Text>
+      <Tooltip placement="topLeft" title={tooltipTitle}>
+        <Typography.Text
+          className="text-left text-primary truncate w-max-full"
+          data-testid="entity-ref-fqn"
+          ellipsis={false}>
+          {fqn}
+        </Typography.Text>
+      </Tooltip>
     </Link>
   );
+};
 
   const getPropertyValue = () => {
     if (isVersionView) {
