@@ -105,29 +105,25 @@ const BasicSignUp = () => {
                 validateMessages={VALIDATION_MESSAGES}
                 onFinish={handleSubmit}>
                 <Form.Item
-                  label={t('label.entity-name', {
-                    entity: t('label.first'),
-                  })}
+                  label={t('label.first-name')}
                   name="firstName"
                   rules={[{ whitespace: true, required: true }]}>
                   <Input
                     autoFocus
                     className="input-field"
                     placeholder={t('label.enter-entity-name', {
-                      entity: t('label.first-lowercase'),
+                      entity: t('label.first-name'),
                     })}
                   />
                 </Form.Item>
                 <Form.Item
-                  label={t('label.entity-name', {
-                    entity: t('label.last'),
-                  })}
+                  label={t('label.last-name')}
                   name="lastName"
                   rules={[{ whitespace: true, required: true }]}>
                   <Input
                     className="input-field"
                     placeholder={t('label.enter-entity', {
-                      entity: t('label.last-name-lowercase'),
+                      entity: t('label.last-name'),
                     })}
                   />
                 </Form.Item>
