@@ -30,6 +30,7 @@ import {
   OntologyEdge,
   OntologyNode,
 } from '../OntologyExplorer.interface';
+import { getEntityIconUrl } from '../utils/entityIconUrls';
 import {
   BADGE_MIN_NODE_WIDTH,
   estimateNodeWidth,
@@ -227,30 +228,7 @@ export function useGraphDataBuilder({
         inputNodes.filter((n) => !allAssetIds.has(n.id)).map((n) => n.id)
       );
 
-      const termsWithAssets = new Set<string>();
-      mergedEdgesList.forEach((edge) => {
-        if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-          termsWithAssets.add(edge.from);
-        }
-        if (allTermIds.has(edge.to) && allAssetIds.has(edge.from)) {
-          termsWithAssets.add(edge.to);
-        }
-      });
-      inputNodes.forEach((node) => {
-        if (allTermIds.has(node.id) && (node.assetCount ?? 0) > 0) {
-          termsWithAssets.add(node.id);
-        }
-      });
-
-      const visibleTermIds = new Set(termsWithAssets);
-      mergedEdgesList.forEach((edge) => {
-        if (allTermIds.has(edge.from) && allTermIds.has(edge.to)) {
-          if (termsWithAssets.has(edge.from) || termsWithAssets.has(edge.to)) {
-            visibleTermIds.add(edge.from);
-            visibleTermIds.add(edge.to);
-          }
-        }
-      });
+      const visibleTermIds = new Set(allTermIds);
 
       const visibleAssetIds = new Set<string>();
       const idsToExpand =
@@ -279,16 +257,20 @@ export function useGraphDataBuilder({
       });
       mergedEdgesList.forEach((edge) => {
         if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-          termAssetCountMap.set(
-            edge.from,
-            (termAssetCountMap.get(edge.from) ?? 0) + 1
-          );
+          if (!termAssetCountMap.has(edge.from)) {
+            termAssetCountMap.set(
+              edge.from,
+              (termAssetCountMap.get(edge.from) ?? 0) + 1
+            );
+          }
         }
         if (allAssetIds.has(edge.from) && allTermIds.has(edge.to)) {
-          termAssetCountMap.set(
-            edge.to,
-            (termAssetCountMap.get(edge.to) ?? 0) + 1
-          );
+          if (!termAssetCountMap.has(edge.to)) {
+            termAssetCountMap.set(
+              edge.to,
+              (termAssetCountMap.get(edge.to) ?? 0) + 1
+            );
+          }
         }
       });
 
@@ -332,7 +314,6 @@ export function useGraphDataBuilder({
         ? computeGlossaryGroupPositions(nodesForGraph, layoutType)
         : {};
 
-    // Pre-compute term positions for data mode using a grid layout (no overlaps guaranteed).
     const dataModeTermPositions: Record<string, { x: number; y: number }> =
       explorationMode === 'data'
         ? computeGlossaryGroupPositions(
@@ -448,10 +429,11 @@ export function useGraphDataBuilder({
           node.entityRef?.type !== undefined
             ? entityUtilClassBase.getFormattedEntityType(node.entityRef.type)
             : undefined;
+        const entityIconUrl = getEntityIconUrl(node.entityRef?.type);
 
         return {
           id: node.id,
-          type: 'circle',
+          type: 'data-mode-asset',
           data: {
             ontologyNode: node,
             label,
@@ -469,7 +451,8 @@ export function useGraphDataBuilder({
             label,
             assetColor,
             pos,
-            entityTypeLabel
+            entityTypeLabel,
+            entityIconUrl
           ),
         };
       }
@@ -493,6 +476,7 @@ export function useGraphDataBuilder({
             nodeWidth,
             glossaryId: node.glossaryId ?? '',
             assetCount,
+            loadedAssetCount: node.loadedAssetCount ?? 0,
             assetsExpanded,
           },
           style: buildDataModeTermNodeStyle(getCanvasColor, label, color, pos),
