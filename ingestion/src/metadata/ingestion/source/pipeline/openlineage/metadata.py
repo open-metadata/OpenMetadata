@@ -32,7 +32,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.openLineageC
     KinesisBrokerConfig,
     OpenLineageConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -76,6 +78,7 @@ from metadata.ingestion.source.pipeline.openlineage.table_resolver import (
     find_services_by_scheme,
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
+    AmbiguousServiceException,
     FQNNotFoundException,
     message_to_open_lineage_event,
 )
@@ -240,9 +243,12 @@ class OpenlineageSource(PipelineServiceSource):
         type_map = {}
         for service_name in self.get_db_service_names():
             try:
-                svc = self.metadata.get_by_name(DatabaseService, service_name)
-                if svc and svc.serviceType:
-                    type_map[service_name] = svc.serviceType
+                resp = self.metadata.client.get(
+                    f"/services/databaseServices/name/{service_name}"
+                )
+                svc_type_str = resp.get("serviceType")
+                if svc_type_str:
+                    type_map[service_name] = DatabaseServiceType(svc_type_str)
             except Exception:
                 logger.debug(f"Could not fetch DB service: {service_name}")
         return type_map
@@ -278,12 +284,11 @@ class OpenlineageSource(PipelineServiceSource):
                 if len(matched) == 1:
                     result = matched
                 elif len(matched) > 1:
-                    logger.warning(
+                    raise AmbiguousServiceException(
                         f"Namespace '{namespace}' (scheme={db_scheme}) matches "
                         f"multiple DB services: {matched}. Configure "
                         f"'namespaceToServiceMapping' to disambiguate."
                     )
-                    result = matched
 
         self._namespace_to_service_cache[namespace] = result
         return result
@@ -301,20 +306,26 @@ class OpenlineageSource(PipelineServiceSource):
                 self._db_service_names_warned = True
             return None
 
-        resolved_services = self._resolve_db_services_for_namespace(namespace)
-
         try:
-            return self._get_table_fqn_from_om(
-                table_details, services=resolved_services
-            )
-        except FQNNotFoundException:
+            resolved_services = self._resolve_db_services_for_namespace(namespace)
+
             try:
-                schema_fqn = self._get_schema_fqn_from_om(
-                    table_details.schema, services=resolved_services
+                return self._get_table_fqn_from_om(
+                    table_details, services=resolved_services
                 )
-                return f"{schema_fqn}.{table_details.name}"
             except FQNNotFoundException:
-                return None
+                try:
+                    schema_fqn = self._get_schema_fqn_from_om(
+                        table_details.schema, services=resolved_services
+                    )
+                    return f"{schema_fqn}.{table_details.name}"
+                except FQNNotFoundException:
+                    return None
+        except Exception:
+            logger.warning(
+                f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}"
+            )
+            return None
 
     def _get_table_fqn_from_om(
         self, table_details: TableDetails, services: Optional[List[str]] = None
