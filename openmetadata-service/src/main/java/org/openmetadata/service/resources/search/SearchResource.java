@@ -259,7 +259,7 @@ public class SearchResource {
 
   @GET
   @Path("/export")
-  @Produces("text/csv")
+  @Produces("text/csv; charset=utf-8")
   @Operation(
       operationId = "exportSearchResults",
       summary = "Export search results as CSV (streaming)",
@@ -270,7 +270,7 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "CSV file stream",
-            content = @Content(mediaType = "text/csv"))
+            content = @Content(mediaType = "text/csv; charset=utf-8"))
       })
   public Response exportSearchResults(
       @Context SecurityContext securityContext,

@@ -79,9 +79,12 @@ public final class SearchResultCsvExporter {
     if (value == null || value.isEmpty()) {
       return "";
     }
-    char first = value.charAt(0);
-    if (first == '=' || first == '+' || first == '-' || first == '@') {
-      value = "'" + value;
+    String stripped = value.stripLeading();
+    if (!stripped.isEmpty()) {
+      char first = stripped.charAt(0);
+      if (first == '=' || first == '+' || first == '-' || first == '@') {
+        value = "'" + value;
+      }
     }
     if (value.contains(",")
         || value.contains("\"")

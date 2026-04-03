@@ -2539,7 +2539,7 @@ public class SearchRepository {
 
   private void enforceTimeout(long startTime, long timeoutMs) {
     if (System.currentTimeMillis() - startTime > timeoutMs) {
-      throw new IllegalStateException(
+      throw new IllegalArgumentException(
           "Export timed out after 5 minutes. Please add filters to reduce the result set.");
     }
   }

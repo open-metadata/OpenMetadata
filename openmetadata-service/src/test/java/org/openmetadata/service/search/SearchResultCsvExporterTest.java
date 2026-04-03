@@ -227,6 +227,16 @@ class SearchResultCsvExporterTest {
         SearchResultCsvExporter.escapeCsv("- description starts with dash"));
   }
 
+  @Test
+  void testEscapeCsvFormulaInjectionWithLeadingWhitespace() {
+    assertEquals("' =SUM(A1:A10)", SearchResultCsvExporter.escapeCsv(" =SUM(A1:A10)"));
+  }
+
+  @Test
+  void testEscapeCsvFormulaInjectionWithLeadingTab() {
+    assertEquals("'\t+cmd", SearchResultCsvExporter.escapeCsv("\t+cmd"));
+  }
+
   // ===================================================================
   // extractOwners TESTS
   // ===================================================================
