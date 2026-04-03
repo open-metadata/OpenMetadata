@@ -2217,7 +2217,7 @@
     "view-all-task-plural": "Voir Toutes les Tâches",
     "view-definition": "Définition de la Vue",
     "view-detail-plural": "Voir les détails",
-    "view-entity": "Voir la {{entity}}",
+    "view-entity": "Voir {{entity}}",
     "view-in-explore-page": "Voir dans la page d'exploration",
     "view-in-new-tab": "Voir dans un Nouvel Onglet",
     "view-in-service-type": "Voir dans {{serviceType}}",
