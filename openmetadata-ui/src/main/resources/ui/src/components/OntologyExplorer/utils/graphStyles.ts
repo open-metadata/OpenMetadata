@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Group, Rect as GRect, Text as GText } from '@antv/g';
+import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
 import {
+  Circle,
   ExtensionCategory,
   RectCombo,
   RectComboStyleProps,
@@ -31,7 +32,6 @@ import {
   DATA_MODE_ASSET_CARD_CLEAR_BELOW_CIRCLE,
   DATA_MODE_ASSET_CARD_INSET_H,
   DATA_MODE_ASSET_CIRCLE_SIZE,
-  DATA_MODE_ASSET_LABEL_BOX_MAX_WIDTH,
   DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH,
   DATA_MODE_ASSET_LABEL_BOX_PADDING,
   DATA_MODE_ASSET_LABEL_BOX_RADIUS,
@@ -39,14 +39,21 @@ import {
   DATA_MODE_ASSET_LABEL_FONT_WEIGHT,
   DATA_MODE_ASSET_LINE_WIDTH,
   DATA_MODE_ASSET_NAME_ENTITY_GAP,
+  DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX,
+  DATA_MODE_ASSET_ROW_MAX_WIDTH,
   DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK,
   DATA_MODE_ENTITY_BADGE_FONT_SIZE,
   DATA_MODE_ENTITY_BADGE_VERTICAL_NUDGE_UP,
+  DATA_MODE_ENTITY_PILL_ICON_GAP_AFTER,
+  DATA_MODE_ENTITY_PILL_ICON_NUDGE_UP,
+  DATA_MODE_ENTITY_PILL_ICON_PAD_LEFT,
+  DATA_MODE_ENTITY_PILL_ICON_SIZE,
+  DATA_MODE_ENTITY_PILL_TRIM_RIGHT_PX,
+  DATA_MODE_ENTITY_TYPE_PILL_MAX_TEXT_WIDTH_PX,
   DATA_MODE_LABEL_OFFSET_Y,
   DATA_MODE_TERM_HALO_LINE_WIDTH,
   DATA_MODE_TERM_HALO_SHADOW_BLUR,
   DATA_MODE_TERM_HALO_SHADOW_COLOR,
-  DATA_MODE_TERM_HALO_STROKE,
   DATA_MODE_TERM_HALO_STROKE_OPACITY,
   DATA_MODE_TERM_LABEL_BG_RADIUS,
   DATA_MODE_TERM_LABEL_FONT_WEIGHT,
@@ -303,6 +310,39 @@ export class GlossaryCombo extends RectCombo {
 }
 register(ExtensionCategory.COMBO, 'glossary-combo', GlossaryCombo);
 
+const ENTITY_ICON_SECTION_W =
+  DATA_MODE_ENTITY_PILL_ICON_PAD_LEFT +
+  DATA_MODE_ENTITY_PILL_ICON_SIZE +
+  DATA_MODE_ENTITY_PILL_ICON_GAP_AFTER;
+
+class DataModeAssetNode extends Circle {
+  override render(
+    attributes: Parameters<Circle['render']>[0],
+    container: Group
+  ): void {
+    super.render(attributes, container);
+    const attrs = attributes as Record<string, unknown>;
+    const iconSrc = attrs['entityIconSrc'];
+    const iconX = attrs['entityIconX'];
+    const iconY = attrs['entityIconY'];
+    if (typeof iconSrc === 'string' && iconSrc) {
+      this.upsert(
+        'entity-icon',
+        GImage,
+        {
+          x: typeof iconX === 'number' ? iconX : 0,
+          y: typeof iconY === 'number' ? iconY : 0,
+          width: DATA_MODE_ENTITY_PILL_ICON_SIZE,
+          height: DATA_MODE_ENTITY_PILL_ICON_SIZE,
+          src: iconSrc,
+        },
+        container
+      );
+    }
+  }
+}
+register(ExtensionCategory.NODE, 'data-mode-asset', DataModeAssetNode);
+
 export function formatRelationLabel(relationType: string): string {
   return relationType
     .replace(/([A-Z])/g, ' $1')
@@ -400,6 +440,9 @@ export function buildDefaultRectNodeStyle(
   size: [number, number],
   pos?: NodeStylePosition
 ): Record<string, unknown> {
+  const labelPadH = NODE_LABEL_PADDING[1] + NODE_LABEL_PADDING[3];
+  const labelMaxWidthPx = Math.max(16, size[0] - labelPadH);
+
   return {
     size,
     fill: NODE_FILL_DEFAULT,
@@ -413,6 +456,10 @@ export function buildDefaultRectNodeStyle(
     labelFontWeight: NODE_LABEL_FONT_WEIGHT,
     labelPlacement: LABEL_PLACEMENT_CENTER,
     labelPadding: NODE_LABEL_PADDING,
+    labelMaxLines: 1,
+    labelMaxWidth: labelMaxWidthPx,
+    labelTextOverflow: '...',
+    labelWordWrap: true,
     shadowColor: getColor(NODE_SHADOW_COLOR, NODE_SHADOW_COLOR_FALLBACK),
     shadowBlur: NODE_SHADOW_BLUR,
     shadowOffsetY: NODE_SHADOW_OFFSET_Y,
@@ -422,15 +469,65 @@ export function buildDefaultRectNodeStyle(
 
 const DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST = 6.5;
 const DATA_MODE_ENTITY_TYPE_CHAR_WIDTH_EST = 5.5;
-const DATA_MODE_ENTITY_BADGE_H_PAD = 8;
+const DATA_MODE_ENTITY_BADGE_H_PAD = 4;
 const DATA_MODE_ENTITY_BADGE_V_PAD = 2;
+
+let measureTextContext: CanvasRenderingContext2D | null = null;
+
+function getMeasureTextContext2d(): CanvasRenderingContext2D | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  if (!measureTextContext) {
+    const canvas = document.createElement('canvas');
+    measureTextContext = canvas.getContext('2d');
+  }
+
+  return measureTextContext;
+}
+
+function measureCanvasTextWidthPx(
+  text: string,
+  font: string,
+  mode: 'advance' | 'ink' = 'advance'
+): number | undefined {
+  const context = getMeasureTextContext2d();
+  if (!context) {
+    return undefined;
+  }
+
+  try {
+    context.font = font;
+    const metrics = context.measureText(text);
+    let px = metrics.width;
+    if (mode === 'ink') {
+      const { actualBoundingBoxLeft, actualBoundingBoxRight } = metrics;
+      if (
+        typeof actualBoundingBoxLeft === 'number' &&
+        typeof actualBoundingBoxRight === 'number' &&
+        Number.isFinite(actualBoundingBoxLeft) &&
+        Number.isFinite(actualBoundingBoxRight)
+      ) {
+        const ink = actualBoundingBoxLeft + actualBoundingBoxRight;
+        if (ink > 0) {
+          px = ink;
+        }
+      }
+    }
+
+    return Math.max(1, Math.ceil(px));
+  } catch {
+    return undefined;
+  }
+}
 
 export function buildDataModeAssetNodeStyle(
   getColor: (cssVar: string, fallback: string) => string,
   label: string,
   assetColor: string,
   pos?: NodeStylePosition,
-  entityTypeLabel?: string
+  entityTypeLabel?: string,
+  entityIconUrl?: string
 ): Record<string, unknown> {
   const sz = DATA_MODE_ASSET_CIRCLE_SIZE;
   const resolvedStroke = getColor(assetColor, '#e2e8f0');
@@ -454,19 +551,24 @@ export function buildDataModeAssetNodeStyle(
     ...(pos && { x: pos.x, y: pos.y }),
   };
 
-  const entityTrimmed =
-    entityTypeLabel && entityTypeLabel.length > 28
-      ? `${entityTypeLabel.slice(0, 25)}...`
-      : entityTypeLabel;
+  const entityTypeText =
+    entityTypeLabel != null && String(entityTypeLabel).trim().length > 0
+      ? String(entityTypeLabel).trim()
+      : undefined;
 
-  if (!entityTrimmed) {
-    const contentW = Math.ceil(
-      label.length * DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST
+  const nameMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ASSET_LABEL_FONT_SIZE}px system-ui, sans-serif`;
+
+  if (!entityTypeText) {
+    const rawTextW =
+      measureCanvasTextWidthPx(label, nameMeasureFont) ??
+      Math.ceil(label.length * DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST);
+    const textW = Math.min(
+      DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX,
+      Math.max(12, rawTextW)
     );
-    const padded = contentW + hPad;
-    const boxW = Math.min(
-      DATA_MODE_ASSET_LABEL_BOX_MAX_WIDTH,
-      Math.max(DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH, padded)
+    const boxW = Math.max(
+      DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH,
+      Math.min(DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX + hPad, textW + hPad)
     );
     const maxTextW = Math.max(12, boxW - hPad);
     const boxH = DATA_MODE_ASSET_LABEL_FONT_SIZE + vPad + 4;
@@ -495,13 +597,22 @@ export function buildDataModeAssetNodeStyle(
     };
   }
 
-  const entityInnerW = Math.ceil(
-    entityTrimmed.length * DATA_MODE_ENTITY_TYPE_CHAR_WIDTH_EST
+  const entityTypeMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ENTITY_BADGE_FONT_SIZE}px system-ui, sans-serif`;
+  const measuredEntityInner = measureCanvasTextWidthPx(
+    entityTypeText,
+    entityTypeMeasureFont,
+    'ink'
   );
-  const entityBoxW = Math.max(
-    36,
-    entityInnerW + DATA_MODE_ENTITY_BADGE_H_PAD * 2
+  const entityInnerUncapped =
+    measuredEntityInner ??
+    Math.ceil(entityTypeText.length * DATA_MODE_ENTITY_TYPE_CHAR_WIDTH_EST);
+  const entityInnerW = Math.min(
+    Math.max(1, entityInnerUncapped),
+    DATA_MODE_ENTITY_TYPE_PILL_MAX_TEXT_WIDTH_PX
   );
+  const entityTextBoxW = entityInnerW + DATA_MODE_ENTITY_BADGE_H_PAD * 2;
+  const iconSectionW = entityIconUrl ? ENTITY_ICON_SECTION_W : 0;
+  const entityBoxW = entityTextBoxW + iconSectionW;
   const entityBoxH =
     DATA_MODE_ENTITY_BADGE_FONT_SIZE + DATA_MODE_ENTITY_BADGE_V_PAD * 2 + 4;
 
@@ -510,22 +621,20 @@ export function buildDataModeAssetNodeStyle(
   const gap = DATA_MODE_ASSET_NAME_ENTITY_GAP;
   const cardOffsetY =
     DATA_MODE_LABEL_OFFSET_Y + DATA_MODE_ASSET_CARD_CLEAR_BELOW_CIRCLE;
-  const nameTextW = Math.ceil(
-    label.length * DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST
+
+  const nameContentWUncapped =
+    measureCanvasTextWidthPx(label, nameMeasureFont) ??
+    Math.ceil(label.length * DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST);
+  let nameMaxTextPx = Math.min(
+    DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX,
+    Math.max(12, nameContentWUncapped)
   );
-  const estimatedInner =
-    insetH * 2 + gap + entityBoxW + Math.max(40, nameTextW);
-  const totalW = Math.min(
-    DATA_MODE_ASSET_LABEL_BOX_MAX_WIDTH,
-    Math.max(DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH, estimatedInner)
-  );
-  const nameSlotW = Math.max(24, totalW - insetH * 2 - gap - entityBoxW);
-  const nameMaxContentPx = Math.max(12, nameSlotW - 4);
-  const nameDisplay = truncateHierarchyBadgeToFitWidth(
-    label,
-    nameMaxContentPx,
-    DATA_MODE_ASSET_LABEL_FONT_SIZE
-  );
+  let totalW = insetH * 2 + gap + entityBoxW + nameMaxTextPx;
+  totalW = Math.max(DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH, totalW);
+  totalW = Math.min(DATA_MODE_ASSET_ROW_MAX_WIDTH, totalW);
+  const nameAreaBudget = Math.max(12, totalW - insetH * 2 - gap - entityBoxW);
+  nameMaxTextPx = Math.min(nameMaxTextPx, nameAreaBudget);
+
   const rowH = Math.max(
     DATA_MODE_ASSET_LABEL_FONT_SIZE + cardPadV * 2 + 4,
     entityBoxH
@@ -556,7 +665,7 @@ export function buildDataModeAssetNodeStyle(
   };
 
   const nameBadge = {
-    text: nameDisplay,
+    text: label,
     placement: 'bottom' as const,
     offsetX: nameSlotLeft,
     offsetY: cardOffsetY,
@@ -565,20 +674,88 @@ export function buildDataModeAssetNodeStyle(
     fill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
     textAlign: 'left' as const,
     wordWrap: false,
-    maxWidth: nameMaxContentPx,
+    maxWidth: nameMaxTextPx,
     maxLines: 1,
     textOverflow: '...',
     background: false,
     padding: [cardPadV, 0, cardPadV, 0],
   };
 
+  if (entityIconUrl) {
+    const pillLeftEdge = entityCenterX - entityBoxW / 2;
+    const entityTextLeft =
+      pillLeftEdge + iconSectionW + DATA_MODE_ENTITY_BADGE_H_PAD;
+    const pillTrimRight = DATA_MODE_ENTITY_PILL_TRIM_RIGHT_PX;
+    const entityPillDrawW = Math.max(1, entityBoxW - pillTrimRight);
+    const entityPillCenterX = entityCenterX - pillTrimRight / 2;
+
+    const entityPillBg = {
+      text: '\u200b',
+      placement: 'bottom' as const,
+      offsetX: entityPillCenterX,
+      offsetY: entityOffsetY,
+      fontSize: DATA_MODE_ENTITY_BADGE_FONT_SIZE,
+      fill: 'transparent',
+      background: true,
+      backgroundFill: EDGE_LABEL_BG_STROKE,
+      backgroundStroke: DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK,
+      backgroundLineWidth: 1,
+      backgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
+      backgroundWidth: entityPillDrawW,
+      backgroundHeight: entityBoxH,
+      padding: [0, 0, 0, 0],
+    };
+
+    const entityTextMaxW = Math.max(1, entityInnerW - pillTrimRight);
+
+    const entityTextBadge = {
+      text: entityTypeText,
+      placement: 'bottom' as const,
+      offsetX: entityTextLeft,
+      offsetY: entityOffsetY,
+      fontSize: DATA_MODE_ENTITY_BADGE_FONT_SIZE,
+      fontWeight: DATA_MODE_ASSET_LABEL_FONT_WEIGHT,
+      fill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
+      textAlign: 'left' as const,
+      background: false,
+      maxWidth: entityTextMaxW,
+      maxLines: 1,
+      textOverflow: '...',
+      wordWrap: false,
+      padding: [
+        DATA_MODE_ENTITY_BADGE_V_PAD,
+        0,
+        DATA_MODE_ENTITY_BADGE_V_PAD,
+        0,
+      ],
+    };
+
+    const entityIconX = pillLeftEdge + DATA_MODE_ENTITY_PILL_ICON_PAD_LEFT;
+    const entityIconY =
+      sz / 2 +
+      entityOffsetY -
+      DATA_MODE_ENTITY_PILL_ICON_SIZE / 2 -
+      DATA_MODE_ENTITY_PILL_ICON_NUDGE_UP;
+
+    return {
+      ...keyShapeBase,
+      label: false,
+      badge: true,
+      badgeZIndex: DATA_MODE_ASSET_BADGE_Z_INDEX,
+      badges: [cardShellBadge, nameBadge, entityPillBg, entityTextBadge],
+      entityIconSrc: entityIconUrl,
+      entityIconX,
+      entityIconY,
+    };
+  }
+
   const entityBadge = {
-    text: entityTrimmed,
+    text: entityTypeText,
     placement: 'bottom' as const,
     offsetX: entityCenterX,
     offsetY: entityOffsetY,
     fontSize: DATA_MODE_ENTITY_BADGE_FONT_SIZE,
-    fontWeight: 500,
+    fontWeight: DATA_MODE_ASSET_LABEL_FONT_WEIGHT,
     fill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
     textAlign: 'center' as const,
     background: true,
@@ -625,7 +802,7 @@ export function buildDataModeTermNodeStyle(
     haloLineWidth: DATA_MODE_TERM_HALO_LINE_WIDTH,
     haloShadowBlur: DATA_MODE_TERM_HALO_SHADOW_BLUR,
     haloShadowColor: DATA_MODE_TERM_HALO_SHADOW_COLOR,
-    haloStroke: DATA_MODE_TERM_HALO_STROKE,
+    haloStroke: NODE_FILL_DEFAULT,
     haloStrokeOpacity: DATA_MODE_TERM_HALO_STROKE_OPACITY,
     icon: false,
     labelText: label,

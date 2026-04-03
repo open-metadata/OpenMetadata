@@ -31,6 +31,7 @@ export interface OntologyNode {
   label: string;
   originalLabel?: string;
   assetCount?: number;
+  loadedAssetCount?: number;
   type: string;
   fullyQualifiedName?: string;
   description?: string;
@@ -116,7 +117,10 @@ export interface OntologyGraphProps {
   onNodeClick: (
     node: OntologyNode,
     position?: { x: number; y: number },
-    meta?: { dataModeAssetBadgeClick?: boolean }
+    meta?: {
+      dataModeAssetBadgeClick?: boolean;
+      dataModeLoadMoreBadgeClick?: boolean;
+    }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
   onNodeContextMenu: (
