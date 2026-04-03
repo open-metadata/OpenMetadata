@@ -25,9 +25,7 @@ from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     is_concatenable,
-    is_collection,
-    is_struct,
-    is_complex,
+    is_complex_type,
 )
 from metadata.utils.logger import profiler_logger
 
@@ -64,12 +62,7 @@ class MaxLength(StaticMetric):
     @_label
     def fn(self):
         """sqlalchemy function"""
-        if (
-            self._is_concatenable()
-            or is_collection(self.col.type)
-            or is_struct(self.col.type)
-            or is_complex(self.col.type)
-        ):
+        if self._is_concatenable():
             return func.max(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
@@ -116,12 +109,7 @@ class MaxLength(StaticMetric):
         length_vectorize_func = vectorize(len)
         chunk_max = None
 
-        if (
-            is_concatenable(column.type)
-            or is_collection(column.type)
-            or is_struct(column.type)
-            or is_complex(column.type)
-        ):
+        if is_concatenable(column.type) or is_complex_type(column.type):
             max_val = length_vectorize_func(df[column.name].dropna().astype(str)).max()
             if not pd.isnull(max_val):
                 chunk_max = max_val

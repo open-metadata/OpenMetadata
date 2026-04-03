@@ -263,3 +263,8 @@ def is_complex(_type) -> bool:
     if isinstance(_type, DataType):
         return _type.value in COMPLEX_SET
     return _type.__class__.__name__ in COMPLEX_SET
+
+
+def is_complex_type(_type) -> bool:
+    """Helper method to group collections, structs, and complex types"""
+    return is_collection(_type) or is_struct(_type) or is_complex(_type)
