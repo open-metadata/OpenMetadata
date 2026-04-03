@@ -18,7 +18,7 @@ import traceback
 from collections import defaultdict
 from itertools import groupby, product
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -244,7 +244,7 @@ class OpenlineageSource(PipelineServiceSource):
         for service_name in self.get_db_service_names():
             try:
                 resp = self.metadata.client.get(
-                    f"/services/databaseServices/name/{service_name}"
+                    f"/services/databaseServices/name/{quote(service_name, safe='')}"
                 )
                 svc_type_str = resp.get("serviceType")
                 if svc_type_str:
