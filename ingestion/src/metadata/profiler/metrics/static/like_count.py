@@ -20,6 +20,7 @@ from sqlalchemy import case, column
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
+from metadata.profiler.orm.registry import is_complex_type
 
 
 class LikeCount(StaticMetric):
@@ -47,6 +48,8 @@ class LikeCount(StaticMetric):
 
     @_label
     def fn(self):
+        if is_complex_type(self.col.type):
+            return None
         if not hasattr(self, "expression"):
             raise AttributeError(
                 "Like Count requires an expression to be set: add_props(expression=...)(Metrics.likeCount)"

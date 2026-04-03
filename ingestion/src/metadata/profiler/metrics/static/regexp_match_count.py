@@ -25,7 +25,7 @@ from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.regexp import RegexpMatchFn
 from metadata.profiler.orm.functions.sum import SumFn
-from metadata.profiler.orm.registry import is_concatenable
+from metadata.profiler.orm.registry import is_complex_type, is_concatenable
 from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
@@ -65,6 +65,8 @@ class RegexCount(StaticMetric):
     @_label
     def fn(self):
         """sqlalchemy function"""
+        if is_complex_type(self.col.type):
+            return None
         if not hasattr(self, "expression"):
             raise AttributeError(
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.regexCount)"
