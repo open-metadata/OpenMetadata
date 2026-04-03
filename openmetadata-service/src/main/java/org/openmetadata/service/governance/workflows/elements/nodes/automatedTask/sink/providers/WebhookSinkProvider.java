@@ -281,8 +281,10 @@ public class WebhookSinkProvider implements SinkProvider {
   private Response sendRequest(String payload) {
     WebTarget target = client.target(config.getEndpoint());
 
-    if (config.getQueryParams() != null) {
-      for (Map.Entry<String, String> param : config.getQueryParams().entrySet()) {
+    if (config.getQueryParams() != null
+        && config.getQueryParams().getAdditionalProperties() != null) {
+      for (Map.Entry<String, String> param :
+          config.getQueryParams().getAdditionalProperties().entrySet()) {
         target = target.queryParam(param.getKey(), param.getValue());
       }
     }
