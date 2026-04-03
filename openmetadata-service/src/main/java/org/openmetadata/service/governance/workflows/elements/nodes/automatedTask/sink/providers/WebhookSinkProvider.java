@@ -307,14 +307,14 @@ public class WebhookSinkProvider implements SinkProvider {
   }
 
   private WebTarget addQueryParams(WebTarget target) {
-    if (config.getQueryParams() == null
-        || config.getQueryParams().getAdditionalProperties() == null) {
+    if (config.getQueryParams() == null || config.getQueryParams().isEmpty()) {
       return target;
     }
 
-    for (Map.Entry<String, String> queryParam :
-        config.getQueryParams().getAdditionalProperties().entrySet()) {
-      target = target.queryParam(queryParam.getKey(), queryParam.getValue());
+    for (var queryParam : config.getQueryParams()) {
+      if (queryParam.getKey() != null && queryParam.getValue() != null) {
+        target = target.queryParam(queryParam.getKey(), queryParam.getValue());
+      }
     }
 
     return target;

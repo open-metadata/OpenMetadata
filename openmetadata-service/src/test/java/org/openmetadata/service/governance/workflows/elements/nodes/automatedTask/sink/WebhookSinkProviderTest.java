@@ -21,12 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -99,9 +101,9 @@ class WebhookSinkProviderTest {
   @Test
   void testConfigWithQueryParams() {
     Map<String, Object> config = createValidConfig();
-    Map<String, String> queryParams = new LinkedHashMap<>();
-    queryParams.put("tenant", "acme");
-    queryParams.put("region", "us-east-1");
+    List<Map<String, String>> queryParams = new ArrayList<>();
+    queryParams.add(Map.of("key", "tenant", "value", "acme"));
+    queryParams.add(Map.of("key", "region", "value", "us-east-1"));
     config.put("queryParams", queryParams);
 
     WebhookSinkProvider provider = new WebhookSinkProvider(config);
@@ -212,12 +214,11 @@ class WebhookSinkProviderTest {
       Map<String, Object> config = createValidConfig();
       config.put(
           "endpoint",
-          "http://localhost:%d/webhook?existing=true"
-              .formatted(server.getAddress().getPort()));
+          "http://localhost:%d/webhook?existing=true".formatted(server.getAddress().getPort()));
 
-      Map<String, String> queryParams = new LinkedHashMap<>();
-      queryParams.put("tenant", "acme");
-      queryParams.put("region", "us-east-1");
+      List<Map<String, String>> queryParams = new ArrayList<>();
+      queryParams.add(Map.of("key", "tenant", "value", "acme"));
+      queryParams.add(Map.of("key", "region", "value", "us-east-1"));
       config.put("queryParams", queryParams);
 
       WebhookSinkProvider provider = new WebhookSinkProvider(config);
@@ -269,9 +270,13 @@ class WebhookSinkProviderTest {
   private void captureRequest(
       HttpExchange exchange,
       AtomicReference<String> requestMethod,
-      AtomicReference<String> rawQuery) {
+      AtomicReference<String> rawQuery)
+      throws IOException {
     requestMethod.set(exchange.getRequestMethod());
     rawQuery.set(exchange.getRequestURI().getRawQuery());
+    try (InputStream requestBody = exchange.getRequestBody()) {
+      requestBody.readAllBytes();
+    }
   }
 
   private static class TestEntity implements EntityInterface {
