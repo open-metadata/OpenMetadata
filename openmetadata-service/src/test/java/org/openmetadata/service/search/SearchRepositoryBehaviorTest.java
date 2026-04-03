@@ -21,6 +21,10 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doThrow;
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -82,6 +86,7 @@ import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import java.lang.reflect.Field;
 
 class SearchRepositoryBehaviorTest {
 
@@ -2583,6 +2588,38 @@ class SearchRepositoryBehaviorTest {
         .withFieldsUpdated(fieldsUpdated)
         .withFieldsDeleted(fieldsDeleted);
   }
+
+@Test
+ void testInitializeVectorSearchServiceFailureResetsState() throws Exception {
+     SearchRepository repositorySpy = spy(repository);
+ 
+     doThrow(new RuntimeException("Mock initialization failure"))
+         .when(repositorySpy)
+         .createEmbeddingClient(any());
+ 
+     repositorySpy.initializeVectorSearchService();
+ 
+     Field embeddingField =
+         SearchRepository.class.getDeclaredField("embeddingClient");
+     embeddingField.setAccessible(true);
+ 
+     Field vectorField =
+         SearchRepository.class.getDeclaredField("vectorIndexService");
+     vectorField.setAccessible(true);
+ 
+     Field handlerField =
+         SearchRepository.class.getDeclaredField("vectorEmbeddingHandler");
+     handlerField.setAccessible(true);
+ 
+     Field initField =
+         SearchRepository.class.getDeclaredField("vectorServiceInitialized");
+     initField.setAccessible(true);
+ 
+     assertNull(embeddingField.get(repositorySpy));
+     assertNull(vectorField.get(repositorySpy));
+     assertNull(handlerField.get(repositorySpy));
+     assertFalse((Boolean) initField.get(repositorySpy));
+ }
 
   @SuppressWarnings("unchecked")
   private Pair<String, Map<String, Object>> invokeGetInheritedFieldChanges(

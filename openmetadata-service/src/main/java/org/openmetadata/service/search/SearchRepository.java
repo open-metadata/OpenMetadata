@@ -432,7 +432,7 @@ public class SearchRepository {
           cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
           embeddingClient.getDimension());
     } catch (Exception e) {
-      if (isAlpineLinux()) {
+      if (shouldLogAlpineDjlWarning(cfg)) {
         LOG.warn(
           "Semantic search disabled: DJL embedding provider is incompatible " +
           "with Alpine Linux (musl libc). " +
@@ -443,6 +443,7 @@ public class SearchRepository {
       } else {
         LOG.error("Failed to initialize vector search service", e);
       }
+      this.embeddingClient = null;
       this.vectorIndexService = null;
       this.vectorEmbeddingHandler = null;
       vectorServiceInitialized = false;
@@ -456,6 +457,15 @@ public class SearchRepository {
       return false;
     }
   }
+
+  private boolean shouldLogAlpineDjlWarning(
+    ElasticSearchConfiguration cfg) {
+    return isAlpineLinux() && 
+      cfg.getNaturalLanguageSearch() != null 
+      && cfg.getNaturalLanguageSearch().getEmbeddingProvider() != null
+      && "djl".equalsIgnoreCase(
+          cfg.getNaturalLanguageSearch().getEmbeddingProvider().name());
+    }
 
   public void ensureHybridSearchPipeline() {
     if (!isVectorEmbeddingEnabled() || !vectorServiceInitialized) {
