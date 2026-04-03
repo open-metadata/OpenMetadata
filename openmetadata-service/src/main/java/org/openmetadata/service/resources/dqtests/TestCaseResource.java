@@ -865,8 +865,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(testCaseOpUpdate, testCaseRC));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
-    authorizeOptionalLogicalTestSuites(create, securityContext);
-
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
@@ -1596,6 +1594,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     if (create.getTestSuites() == null || create.getTestSuites().isEmpty()) return;
 
     for (EntityReference suiteReference : create.getTestSuites()) {
+      if (suiteReference == null || suiteReference.getId() == null) {
+        throw new IllegalArgumentException("Test suite reference must include a valid id.");
+      }
+      if (suiteReference.getType() != null && !Entity.TEST_SUITE.equals(suiteReference.getType())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid test suite reference type '%s'. Expected '%s'.",
+                suiteReference.getType(), Entity.TEST_SUITE));
+      }
       TestSuite testSuite =
           Entity.getEntity(
               Entity.TEST_SUITE, suiteReference.getId(), "domains,owners", null, false);

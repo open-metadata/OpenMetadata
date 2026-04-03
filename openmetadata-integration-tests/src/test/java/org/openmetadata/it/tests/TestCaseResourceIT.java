@@ -987,16 +987,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
-              TestCase fetched =
-                  client.testCases().get(created.getId().toString(), "testSuites");
+              TestCase fetched = client.testCases().get(created.getId().toString(), "testSuites");
               assertNotNull(fetched.getTestSuites());
               assertTrue(
                   fetched.getTestSuites().stream()
                       .anyMatch(ts -> ts.getId().equals(logicalSuite.getId())));
             });
 
-    TestSuite updatedSuite =
-        client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    TestSuite updatedSuite = client.testSuites().get(logicalSuite.getId().toString(), "tests");
     assertNotNull(updatedSuite.getTests());
     assertTrue(
         updatedSuite.getTests().stream().anyMatch(ref -> ref.getId().equals(created.getId())));

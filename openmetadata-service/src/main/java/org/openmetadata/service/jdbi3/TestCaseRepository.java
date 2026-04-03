@@ -680,7 +680,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .collect(Collectors.toSet());
 
     for (UUID suiteId : suiteIds) {
-      TestSuite testSuite = Entity.getEntity(TEST_SUITE, suiteId, "basic", ALL);
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, suiteId, "basic", NON_DELETED);
       if (Boolean.TRUE.equals(testSuite.getBasic())) {
         throw new IllegalArgumentException(
             "You are trying to add test cases to a basic test suite.");
@@ -926,9 +926,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     for (UUID suiteId : suiteIds) {
       addRelationship(suiteId, testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
     }
-
-    // Keep request-only payload from being reused after relationships are persisted.
-    testCase.setTestSuites(null);
   }
 
   @Transaction

@@ -34,10 +34,6 @@ export interface CreateTestCase {
     displayName?: string;
     entityLink:   string;
     /**
-     * Basic and Logical Test Suites this test case belongs to
-     */
-    testSuites?: EntityReference[];
-    /**
      * Name that identifies this test case.
      */
     name: string;
@@ -59,6 +55,11 @@ export interface CreateTestCase {
      * Fully qualified name of the test definition.
      */
     testDefinition: string;
+    /**
+     * Logical test suites this test case belongs to. Basic suite membership is derived
+     * automatically from entityLink/testSuite and should not be provided here.
+     */
+    testSuites?: EntityReference[];
     /**
      * Number of top dimension values to show before grouping the rest as Others. Controls the
      * cardinality of dimensional test results. Defaults to 5 when not specified.
