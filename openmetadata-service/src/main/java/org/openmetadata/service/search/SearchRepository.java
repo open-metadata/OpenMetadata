@@ -145,6 +145,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 @Slf4j
 public class SearchRepository {
@@ -449,8 +451,7 @@ public class SearchRepository {
 
   private boolean isAlpineLinux() {
     try {
-      return java.nio.file.Files.exists(
-        java.nio.file.Paths.get("/etc/alpine-release"));
+      return Files.exists(Paths.get("etc/alpine-release"));
     } catch (Exception e) {
       return false;
     }
