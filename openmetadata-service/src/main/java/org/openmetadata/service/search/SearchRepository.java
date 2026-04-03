@@ -452,7 +452,7 @@ public class SearchRepository {
 
   private boolean isAlpineLinux() {
     try {
-      return Files.exists(Paths.get("etc/alpine-release"));
+      return Files.exists(Paths.get("/etc/alpine-release"));
     } catch (Exception e) {
       return false;
     }
