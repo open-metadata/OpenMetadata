@@ -1001,6 +1001,61 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_upsertTestCaseWithLogicalTestSuites(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    CreateTestSuite logicalSuiteReq = new CreateTestSuite();
+    logicalSuiteReq.setName(ns.prefix("logical_suite_upsert_request"));
+    TestSuite logicalSuite = client.testSuites().create(logicalSuiteReq);
+
+    EntityReference logicalSuiteRef =
+        new EntityReference()
+            .withId(logicalSuite.getId())
+            .withType(Entity.TEST_SUITE)
+            .withName(logicalSuite.getName());
+
+    CreateTestCase createRequest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("upsert_suite_request_tc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .description("Initial")
+            .testSuites(List.of(logicalSuiteRef))
+            .build();
+
+    TestCase created = client.testCases().upsert(createRequest);
+    assertNotNull(created);
+
+    CreateTestCase updateRequest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("upsert_suite_request_tc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "200")
+            .description("Updated")
+            .testSuites(List.of(logicalSuiteRef))
+            .build();
+
+    TestCase updated = client.testCases().upsert(updateRequest);
+    assertEquals(created.getId(), updated.getId());
+    assertEquals("Updated", updated.getDescription());
+
+    Awaitility.await("test case upsert should preserve logical test suite membership")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched = client.testCases().get(created.getId().toString(), "testSuites");
+              assertNotNull(fetched.getTestSuites());
+              assertTrue(
+                  fetched.getTestSuites().stream()
+                      .anyMatch(ts -> ts.getId().equals(logicalSuite.getId())));
+            });
+  }
+
+  @Test
   void test_createTestCaseWithLogicalTestSuites_basicSuiteRejected(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);

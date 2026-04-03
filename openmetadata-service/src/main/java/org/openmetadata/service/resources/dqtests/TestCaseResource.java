@@ -1594,10 +1594,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     if (create.getTestSuites() == null || create.getTestSuites().isEmpty()) return;
 
     for (EntityReference suiteReference : create.getTestSuites()) {
-      if (suiteReference == null || suiteReference.getId() == null) {
+      if (nullOrEmpty(suiteReference) || nullOrEmpty(suiteReference.getId())) {
         throw new IllegalArgumentException("Test suite reference must include a valid id.");
       }
-      if (suiteReference.getType() != null && !Entity.TEST_SUITE.equals(suiteReference.getType())) {
+      if (!nullOrEmpty(suiteReference.getType())
+          && !Entity.TEST_SUITE.equals(suiteReference.getType())) {
         throw new IllegalArgumentException(
             String.format(
                 "Invalid test suite reference type '%s'. Expected '%s'.",

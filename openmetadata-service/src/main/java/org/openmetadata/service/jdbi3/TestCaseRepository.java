@@ -626,13 +626,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void prepare(TestCase test, boolean update) {
-    if (update) {
-      // `createOrUpdate` uses `prepare(..., update=true)`; ignoring `testSuites` avoids ambiguous
-      // semantics where an upsert could unintentionally rewrite logical-suite membership.
-      test.setTestSuites(null);
-    } else {
-      validateLogicalTestSuites(test);
-    }
+    validateLogicalTestSuites(test);
 
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
@@ -914,8 +908,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void addLogicalTestSuiteRelationships(TestCase testCase) {
-    if (testCase == null) return;
-    if (testCase.getTestSuites() == null || testCase.getTestSuites().isEmpty()) return;
+    if (nullOrEmpty(testCase) || nullOrEmpty(testCase.getTestSuites())) return;
 
     Set<UUID> suiteIds =
         testCase.getTestSuites().stream()
@@ -1405,6 +1398,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   TEST_DEFINITION,
                   original.getTestDefinition(),
                   updated.getTestDefinition(),
+                  Relationship.CONTAINS,
+                  TEST_CASE,
+                  updated.getId()));
+      compareAndUpdate(
+          "testSuites",
+          () ->
+              updateFromRelationships(
+                  "testSuites",
+                  TEST_SUITE,
+                  getTestSuiteReferences(original.getTestSuites()),
+                  getTestSuiteReferences(updated.getTestSuites()),
                   Relationship.CONTAINS,
                   TEST_CASE,
                   updated.getId()));
@@ -2104,5 +2108,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           .map(json -> JsonUtils.readValue(json, TestCaseParameterValue.class))
           .collect(Collectors.toList());
     }
+  }
+
+  private List<EntityReference> getTestSuiteReferences(List<TestSuite> testSuites) {
+    return nullOrEmpty(testSuites)
+        ? List.of()
+        : testSuites.stream()
+            .filter(testSuite -> testSuite != null && testSuite.getId() != null)
+            .map(TestSuite::getEntityReference)
+            .toList();
   }
 }
