@@ -106,7 +106,7 @@ const BasicSignUp = () => {
                 onFinish={handleSubmit}>
                 <Form.Item
                   label={t('label.entity-name', {
-                    entity: t('label.first'),
+                    entity: t('label.first-name'),
                   })}
                   name="firstName"
                   rules={[{ whitespace: true, required: true }]}>
@@ -114,13 +114,13 @@ const BasicSignUp = () => {
                     autoFocus
                     className="input-field"
                     placeholder={t('label.enter-entity-name', {
-                      entity: t('label.first-lowercase'),
+                      entity: t('label.first-name-lowercase'),
                     })}
                   />
                 </Form.Item>
                 <Form.Item
                   label={t('label.entity-name', {
-                    entity: t('label.last'),
+                    entity: t('label.last-name'),
                   })}
                   name="lastName"
                   rules={[{ whitespace: true, required: true }]}>
