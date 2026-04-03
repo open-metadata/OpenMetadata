@@ -11,54 +11,54 @@
  *  limitations under the License.
  */
 import {
-    CanvasEvent,
-    ComboData,
-    Graph,
-    GraphData,
-    IElementEvent,
-    NodeData,
-    NodeEvent
+  CanvasEvent,
+  ComboData,
+  Graph,
+  GraphData,
+  IElementEvent,
+  NodeData,
+  NodeEvent,
 } from '@antv/g6';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-    DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
-    DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
-    DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
-    DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR,
-    DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN,
-    DEFAULT_ZOOM,
-    DIMMED_EDGE_OPACITY,
-    DIMMED_NODE_OPACITY,
-    EDGE_LINE_APPEND_WIDTH,
-    EDGE_LINE_WIDTH_DEFAULT,
-    EDGE_LINE_WIDTH_HIGHLIGHTED,
-    EDGE_STROKE_COLOR,
-    FIT_VIEW_ZOOM_OUT,
-    FIT_VIEW_ZOOM_OUT_DATA_MODE,
-    HIERARCHY_BADGE_OFFSET_Y,
-    HIERARCHY_BADGE_TEXT_INSET,
-    LayoutEngine,
-    MAX_ZOOM,
-    MIN_ZOOM,
-    NODE_BADGE_OFFSET_X,
-    NODE_BADGE_OFFSET_Y,
-    NODE_BORDER_COLOR,
-    NODE_BORDER_RADIUS,
-    NODE_FILL_DEFAULT,
-    NODE_LABEL_FILL,
-    type LayoutEngineType
+  DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
+  DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
+  DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
+  DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR,
+  DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN,
+  DEFAULT_ZOOM,
+  DIMMED_EDGE_OPACITY,
+  DIMMED_NODE_OPACITY,
+  EDGE_LINE_APPEND_WIDTH,
+  EDGE_LINE_WIDTH_DEFAULT,
+  EDGE_LINE_WIDTH_HIGHLIGHTED,
+  EDGE_STROKE_COLOR,
+  FIT_VIEW_ZOOM_OUT,
+  FIT_VIEW_ZOOM_OUT_DATA_MODE,
+  HIERARCHY_BADGE_OFFSET_Y,
+  HIERARCHY_BADGE_TEXT_INSET,
+  LayoutEngine,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  NODE_BADGE_OFFSET_X,
+  NODE_BADGE_OFFSET_Y,
+  NODE_BORDER_COLOR,
+  NODE_BORDER_RADIUS,
+  NODE_FILL_DEFAULT,
+  NODE_LABEL_FILL,
+  type LayoutEngineType,
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
 import { getEntityIconUrl } from '../utils/entityIconUrls';
 import { getLayoutConfig } from '../utils/graphConfig';
 import {
-    buildComboStyle,
-    buildDataModeAssetNodeStyle,
-    buildDataModeTermNodeStyle,
-    buildDefaultRectNodeStyle,
-    getCanvasColor,
-    truncateHierarchyBadgeToFitWidth
+  buildComboStyle,
+  buildDataModeAssetNodeStyle,
+  buildDataModeTermNodeStyle,
+  buildDefaultRectNodeStyle,
+  getCanvasColor,
+  truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
 import { computeAssetRingPositions } from '../utils/layoutCalculations';
 
@@ -222,9 +222,6 @@ export function useOntologyGraph({
 
   const setClickedEdgeIdRef = useRef(setClickedEdgeId);
   setClickedEdgeIdRef.current = setClickedEdgeId;
-
-  const inputNodesRef = useRef(inputNodes);
-  inputNodesRef.current = inputNodes;
 
   const extractNodePositions = useCallback((): Record<
     string,
@@ -636,7 +633,7 @@ export function useOntologyGraph({
     const handleNodeClick = (e: IElementEvent) => {
       const id = e.target.id;
       if (id) {
-        const node = inputNodesRef.current.find((n) => n.id === id);
+        const node = inputNodes.find((n) => n.id === id);
         if (node) {
           let position = { x: e.clientX ?? 0, y: e.clientY ?? 0 };
           try {
@@ -663,7 +660,7 @@ export function useOntologyGraph({
     const handleNodeDblClick = (e: IElementEvent) => {
       const id = e.target.id;
       if (id) {
-        const node = inputNodesRef.current.find((n) => n.id === id);
+        const node = inputNodes.find((n) => n.id === id);
         if (node) {
           onNodeDoubleClick(resolveNodeForCallback(node));
         }
@@ -674,7 +671,7 @@ export function useOntologyGraph({
       e.preventDefault();
       const id = e.target.id;
       if (id) {
-        const node = inputNodesRef.current.find((n) => n.id === id);
+        const node = inputNodes.find((n) => n.id === id);
         if (node) {
           onNodeContextMenu(resolveNodeForCallback(node), {
             x: e.clientX ?? 0,
