@@ -28,7 +28,6 @@ import static org.mockito.Mockito.doThrow;
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -2588,7 +2587,7 @@ class SearchRepositoryBehaviorTest {
      verify(spyRepository).updateIndex(DATA_PRODUCT_MAPPING);
      verify(spyRepository).initializeVectorSearchService();
  }
- 
+
 @Test
  void testInitializeVectorSearchServiceFailureResetsState() throws Exception {
      SearchRepository repositorySpy = spy(repository);
@@ -2598,14 +2597,15 @@ class SearchRepositoryBehaviorTest {
          .createEmbeddingClient(any());
  
      repositorySpy.initializeVectorSearchService();
+     repositorySpy.initializeVectorSearchService();
+ 
+     verify(repositorySpy, times(2)).createEmbeddingClient(any());
  
      assertNull(repositorySpy.getEmbeddingClient());
      assertNull(repositorySpy.getVectorIndexService());
      assertNull(repositorySpy.getVectorEmbeddingHandler());
-     assertFalse(repositorySpy.isVectorServiceInitialized());
  }
-
-
+ 
   @SuppressWarnings("unchecked")
   private Pair<String, Map<String, Object>> invokeGetInheritedFieldChanges(
       ChangeDescription changeDescription, EntityInterface entity) throws Exception {

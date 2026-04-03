@@ -459,9 +459,9 @@ public class SearchRepository {
   }
 
   private boolean shouldLogAlpineDjlWarning(
-    ElasticSearchConfiguration cfg) {
-    return isAlpineLinux() && 
-      cfg.getNaturalLanguageSearch() != null 
+      ElasticSearchConfiguration cfg) {
+    return isAlpineLinux() 
+      && cfg.getNaturalLanguageSearch() != null 
       && cfg.getNaturalLanguageSearch().getEmbeddingProvider() != null
       && "djl".equalsIgnoreCase(
           cfg.getNaturalLanguageSearch().getEmbeddingProvider().name());
