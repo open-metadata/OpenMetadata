@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
@@ -15,12 +17,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -5367,6 +5373,313 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Override
   protected Table getVersion(UUID id, Double version) {
     return SdkClients.adminClient().tables().getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // SEARCH INDEX PROPAGATION TESTS
+  // ===================================================================
+
+  @Test
+  void test_ownerPropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    SharedEntities shared = SharedEntities.get();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("owner_prop_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("owner_prop_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("owner_prop_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
+    fetchedDb.setOwners(List.of(shared.USER1_REF));
+    client.databases().update(fetchedDb.getId().toString(), fetchedDb);
+
+    String tableId = table.getId().toString();
+    Awaitility.await("Table search index should reflect inherited owner from database")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Table should be in search index");
+
+              JsonNode source = findSourceById(hits, tableId);
+              assertNotNull(source, "Table document not found in search hits");
+
+              JsonNode owners = source.path("owners");
+              assertTrue(owners.isArray() && !owners.isEmpty(), "Owners should be propagated");
+              assertTrue(
+                  StreamSupport.stream(owners.spliterator(), false)
+                      .anyMatch(o -> shared.USER1.getId().toString().equals(o.path("id").asText())),
+                  "Owner should match the user set on the database");
+            });
+  }
+
+  @Test
+  void test_domainPropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("search_prop_domain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain for search propagation test"));
+
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
+            .withName(ns.prefix("domain_prop_svc"))
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createService);
+
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("domain_prop_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("domain_prop_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("domain_prop_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    String tableId = table.getId().toString();
+    String domainFqn = domain.getFullyQualifiedName();
+    Awaitility.await("Table search index should reflect inherited domain from service")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              JsonNode source = findSourceById(hits, tableId);
+              assertNotNull(source, "Table document not found");
+
+              Set<String> actualDomainFqns =
+                  StreamSupport.stream(source.path("domains").spliterator(), false)
+                      .map(d -> d.path("fullyQualifiedName").asText())
+                      .collect(Collectors.toSet());
+              assertTrue(
+                  actualDomainFqns.contains(domainFqn),
+                  "Table search index should contain domain '"
+                      + domainFqn
+                      + "', but got: "
+                      + actualDomainFqns);
+            });
+  }
+
+  @Test
+  void test_displayNamePropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
+            .withName(ns.prefix("dn_prop_svc"))
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withDisplayName("Original Display Name");
+    DatabaseService service = client.databaseServices().create(createService);
+
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("dn_prop_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("dn_prop_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("dn_prop_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    DatabaseService fetchedService = client.databaseServices().get(service.getId().toString(), "");
+    fetchedService.setDisplayName("Updated Display Name");
+    client.databaseServices().update(fetchedService.getId().toString(), fetchedService);
+
+    String tableId = table.getId().toString();
+    Awaitility.await(
+            "Table search index should reflect updated service displayName via nested field propagation")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              JsonNode source = findSourceById(hits, tableId);
+              assertNotNull(source, "Table document not found");
+
+              String serviceDisplayName = source.path("service").path("displayName").asText();
+              assertEquals(
+                  "Updated Display Name",
+                  serviceDisplayName,
+                  "Service displayName should be propagated to table search index");
+            });
+  }
+
+  @Test
+  void test_ownerRemovalPropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    SharedEntities shared = SharedEntities.get();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("owner_rm_db"))
+                    .withService(service.getFullyQualifiedName())
+                    .withOwners(List.of(shared.USER1_REF)));
+
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("owner_rm_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("owner_rm_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    String tableId = table.getId().toString();
+
+    Awaitility.await("Table search index should have inherited owner before removal")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode source = findSourceById(root.path("hits").path("hits"), tableId);
+              assertNotNull(source, "Table document not found");
+              assertTrue(
+                  source.path("owners").isArray() && !source.path("owners").isEmpty(),
+                  "Table should have inherited owner before removal");
+            });
+
+    Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
+    fetchedDb.setOwners(List.of());
+    client.databases().update(fetchedDb.getId().toString(), fetchedDb);
+
+    Awaitility.await("Table search index should reflect owner removal from database")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode source = findSourceById(root.path("hits").path("hits"), tableId);
+              assertNotNull(source, "Table document not found");
+              JsonNode owners = source.path("owners");
+              assertTrue(
+                  owners.isMissingNode() || owners.isEmpty(),
+                  "Owners should be removed from table search index after removal from database");
+            });
+  }
+
+  private JsonNode findSourceById(JsonNode hits, String entityId) {
+    if (hits == null || !hits.isArray()) return null;
+    for (JsonNode hit : hits) {
+      JsonNode source = hit.path("_source");
+      if (entityId.equals(hit.path("_id").asText())
+          || entityId.equals(source.path("id").asText())) {
+        return source;
+      }
+    }
+    return null;
   }
 
   // ===================================================================
