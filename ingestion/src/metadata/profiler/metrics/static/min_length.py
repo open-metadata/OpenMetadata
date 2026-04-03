@@ -104,6 +104,7 @@ class MinLength(StaticMetric):
         current_min: Optional[int], df: "pd.DataFrame", column
     ) -> Optional[int]:
         """Computes one DataFrame chunk and updates the running minimum"""
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
         from numpy import vectorize
 

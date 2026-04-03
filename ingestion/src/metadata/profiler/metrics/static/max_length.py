@@ -104,6 +104,7 @@ class MaxLength(StaticMetric):
         current_max: Optional[int], df: "pd.DataFrame", column
     ) -> Optional[int]:
         """Computes one DataFrame chunk and updates the running maximum"""
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
         from numpy import vectorize
 
