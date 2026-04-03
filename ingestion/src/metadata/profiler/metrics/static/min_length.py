@@ -12,6 +12,7 @@
 """
 MIN_LENGTH Metric definition
 """
+
 # pylint: disable=duplicate-code
 
 

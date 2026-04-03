@@ -12,6 +12,7 @@
 """
 Distinct Count Metric definition
 """
+
 # pylint: disable=duplicate-code
 
 import json

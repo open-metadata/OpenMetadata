@@ -12,6 +12,7 @@
 """
 Unique Count Metric definition
 """
+
 import json
 from collections import Counter
 from typing import TYPE_CHECKING, Optional
