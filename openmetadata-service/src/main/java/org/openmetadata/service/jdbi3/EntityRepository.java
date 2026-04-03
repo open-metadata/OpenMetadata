@@ -760,8 +760,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         new PropagationDescriptor(
             FIELD_DOMAINS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null),
         new PropagationDescriptor(
-            FIELD_FOLLOWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null),
-        new PropagationDescriptor(
             Entity.FIELD_DISABLED, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null),
         new PropagationDescriptor(
             Entity.FIELD_TEST_SUITES, PropagationDescriptor.PropagationType.RAW_REPLACE, null),
