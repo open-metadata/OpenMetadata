@@ -2504,29 +2504,6 @@ class SearchRepositoryBehaviorTest {
     assertEquals("text-embedding-3-large", repository.getModelIdentifier());
   }
 
-  @Test
-  void repositoryLifecycleHelpersDelegateToInternalOperations() {
-    SearchRepository spyRepository =
-        spy(
-            newRepository(
-                Map.ofEntries(
-                    Map.entry(Entity.TABLE, TABLE_MAPPING),
-                    Map.entry(Entity.DOMAIN, DOMAIN_MAPPING),
-                    Map.entry(Entity.DATA_PRODUCT, DATA_PRODUCT_MAPPING)),
-                "cluster"));
-
-    doNothing().when(spyRepository).updateIndex(any(IndexMapping.class));
-    doNothing().when(spyRepository).initializeVectorSearchService();
-
-    spyRepository.updateIndexes();
-    spyRepository.prepareForReindex();
-
-    verify(spyRepository).updateIndex(TABLE_MAPPING);
-    verify(spyRepository).updateIndex(DOMAIN_MAPPING);
-    verify(spyRepository).updateIndex(DATA_PRODUCT_MAPPING);
-    verify(spyRepository).initializeVectorSearchService();
-  }
-
   private SearchRepository newRepository(
       Map<String, IndexMapping> entityIndexMap, String clusterAlias) {
     return newRepository(
@@ -2589,6 +2566,29 @@ class SearchRepositoryBehaviorTest {
         .withFieldsDeleted(fieldsDeleted);
   }
 
+  @Test
+   void repositoryLifecycleHelpersDelegateToInternalOperations() {
+     SearchRepository spyRepository =
+         spy(
+             newRepository(
+                 Map.ofEntries(
+                     Map.entry(Entity.TABLE, TABLE_MAPPING),
+                     Map.entry(Entity.DOMAIN, DOMAIN_MAPPING),
+                     Map.entry(Entity.DATA_PRODUCT, DATA_PRODUCT_MAPPING)),
+                 "cluster"));
+ 
+     doNothing().when(spyRepository).updateIndex(any(IndexMapping.class));
+     doNothing().when(spyRepository).initializeVectorSearchService();
+ 
+     spyRepository.updateIndexes();
+     spyRepository.prepareForReindex();
+ 
+     verify(spyRepository).updateIndex(TABLE_MAPPING);
+     verify(spyRepository).updateIndex(DOMAIN_MAPPING);
+     verify(spyRepository).updateIndex(DATA_PRODUCT_MAPPING);
+     verify(spyRepository).initializeVectorSearchService();
+ }
+ 
 @Test
  void testInitializeVectorSearchServiceFailureResetsState() throws Exception {
      SearchRepository repositorySpy = spy(repository);
@@ -2599,27 +2599,12 @@ class SearchRepositoryBehaviorTest {
  
      repositorySpy.initializeVectorSearchService();
  
-     Field embeddingField =
-         SearchRepository.class.getDeclaredField("embeddingClient");
-     embeddingField.setAccessible(true);
- 
-     Field vectorField =
-         SearchRepository.class.getDeclaredField("vectorIndexService");
-     vectorField.setAccessible(true);
- 
-     Field handlerField =
-         SearchRepository.class.getDeclaredField("vectorEmbeddingHandler");
-     handlerField.setAccessible(true);
- 
-     Field initField =
-         SearchRepository.class.getDeclaredField("vectorServiceInitialized");
-     initField.setAccessible(true);
- 
-     assertNull(embeddingField.get(repositorySpy));
-     assertNull(vectorField.get(repositorySpy));
-     assertNull(handlerField.get(repositorySpy));
-     assertFalse((Boolean) initField.get(repositorySpy));
+     assertNull(repositorySpy.getEmbeddingClient());
+     assertNull(repositorySpy.getVectorIndexService());
+     assertNull(repositorySpy.getVectorEmbeddingHandler());
+     assertFalse(repositorySpy.isVectorServiceInitialized());
  }
+
 
   @SuppressWarnings("unchecked")
   private Pair<String, Map<String, Object>> invokeGetInheritedFieldChanges(
