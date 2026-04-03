@@ -845,46 +845,46 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   };
 
   const getEntityRefLinkValue = (item: EntityReference) => {
-  const fqn = item.fullyQualifiedName ?? item.name ?? '';
-  const displayName = getEntityName(item);
-  const showFqn = fqn && fqn !== displayName;
+    const fqn = item.fullyQualifiedName ?? item.name ?? '';
+    const displayName = getEntityName(item);
+    const showFqn = fqn && fqn !== displayName;
 
-  return (
-    <Link
-      className="entity-ref-link"
-      data-testid="entity-ref-link"
-      to={entityUtilClassBase.getEntityLink(item.type, fqn)}>
-      <div className="entity-icon m-r-xs">
-        {['user', 'team'].includes(item.type) ? (
-          <ProfilePicture
-            className="d-flex"
-            isTeam={item.type === 'team'}
-            name={item.name ?? ''}
-            type="circle"
-            width="18"
-          />
-        ) : (
-          searchClassBase.getEntityIcon(item.type)
-        )}
-      </div>
-      <div className="d-flex flex-col">
-        <Typography.Text
-          className="text-left text-primary truncate w-max-full"
-          ellipsis={{ tooltip: displayName }}>
-          {displayName}
-        </Typography.Text>
-        {showFqn && (
+    return (
+      <Link
+        className="entity-ref-link"
+        data-testid="entity-ref-link"
+        to={entityUtilClassBase.getEntityLink(item.type, fqn)}>
+        <div className="entity-icon m-r-xs">
+          {['user', 'team'].includes(item.type) ? (
+            <ProfilePicture
+              className="d-flex"
+              isTeam={item.type === 'team'}
+              name={item.name ?? ''}
+              type="circle"
+              width="18"
+            />
+          ) : (
+            searchClassBase.getEntityIcon(item.type)
+          )}
+        </div>
+        <div className="d-flex flex-col">
           <Typography.Text
-            className="text-left text-xs text-grey-muted truncate w-max-full"
-            data-testid="entity-ref-fqn"
-            ellipsis={{ tooltip: fqn }}>
-            {fqn}
+            className="text-left text-primary truncate w-max-full"
+            ellipsis={{ tooltip: displayName }}>
+            {displayName}
           </Typography.Text>
-        )}
-      </div>
-    </Link>
-  );
-};
+          {showFqn && (
+            <Typography.Text
+              className="text-left text-xs text-grey-muted truncate w-max-full"
+              data-testid="entity-ref-fqn"
+              ellipsis={{ tooltip: fqn }}>
+              {fqn}
+            </Typography.Text>
+          )}
+        </div>
+      </Link>
+    );
+  };
 
   const getPropertyValue = () => {
     if (isVersionView) {
