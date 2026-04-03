@@ -12,8 +12,10 @@
 Airbyte source to extract metadata
 """
 
+import traceback
+import re
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Any, Iterable, List, Optional
 
 from pydantic import BaseModel
 
@@ -323,23 +325,29 @@ class AirbyteSource(PipelineServiceSource):
                     created_at = datetime_to_timestamp(start_dt, milliseconds=True)
 
                     if job.duration:
-                        # Parse ISO 8601 duration (e.g., "PT54S" = 54 seconds)
-                        # For simplicity, we'll parse basic formats like PT{seconds}S
-                        if job.duration.startswith("PT") and job.duration.endswith("S"):
-                            try:
-                                duration_seconds = float(job.duration[2:-1])
-                                ended_at = created_at + (duration_seconds * 1000)  # milliseconds
-                            except ValueError:
-                                logger.warning(f"Failed to parse duration: {job.duration}")
+                        try:
+                            # Parse ISO 8601 duration (e.g., "PT1H2M54S")
+                            match = re.match(r"^PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$", job.duration)
+                            if not match:
+                                raise ValueError(f"Invalid duration format: {job.duration}")
+                            h, m, s = match.groups()
+                            duration_seconds = float(h or 0) * 3600 + float(m or 0) * 60 + float(s or 0)
+                            ended_at = created_at + (duration_seconds * 1000)  # milliseconds
+                        except ValueError as exc:
+                            logger.warning(f"Failed to parse duration '{job.duration}': {exc}")
                 except (ValueError, AttributeError) as exc:
                     logger.warning(f"Failed to parse startTime: {exc}")
 
             metrics = None
             if job.rowsSynced is not None or job.bytesSynced is not None:
                 execution_time = None
-                if job.duration and job.duration.startswith("PT") and job.duration.endswith("S"):
+                if job.duration:
                     try:
-                        execution_time = int(float(job.duration[2:-1]) * 1000)
+                        match = re.match(r"^PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$", job.duration)
+                        if match:
+                            h, m, s = match.groups()
+                            duration_seconds = float(h or 0) * 3600 + float(m or 0) * 60 + float(s or 0)
+                            execution_time = int(duration_seconds * 1000)
                     except ValueError:
                         pass
                 metrics = TaskMetrics(
