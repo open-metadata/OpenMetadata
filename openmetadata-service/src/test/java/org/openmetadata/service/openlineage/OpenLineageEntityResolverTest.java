@@ -400,8 +400,25 @@ class OpenLineageEntityResolverTest {
     OpenLineageEntityResolver resolver =
         new OpenLineageEntityResolver(true, "openlineage", null, true);
 
-    assertEquals("my_schema.my_table", resolver.normalizeDatasetName("/my_schema/my_table/"));
-    assertEquals("my_schema.my_table", resolver.normalizeDatasetName("///my_schema/my_table///"));
+    assertEquals(
+        "my_schema.my_table",
+        resolver.normalizeDatasetName("/my_schema/my_table/"));
+    assertEquals(
+        "my_schema.my_table",
+        resolver.normalizeDatasetName("///my_schema/my_table///"));
+  }
+
+  @Test
+  void normalizeDatasetName_collapsesConsecutiveSlashes() {
+    OpenLineageEntityResolver resolver =
+        new OpenLineageEntityResolver(true, "openlineage", null, true);
+
+    assertEquals(
+        "my_schema.my_table",
+        resolver.normalizeDatasetName("my_schema//my_table"));
+    assertEquals(
+        "a.b.c",
+        resolver.normalizeDatasetName("a///b//c"));
   }
 
   @Test

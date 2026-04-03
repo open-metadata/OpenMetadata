@@ -381,16 +381,14 @@ public class OpenLineageEntityResolver {
   /**
    * Normalizes a dataset name when {@code normalizeDatasetNames} is enabled. Converts
    * file-system / S3-style path separators ("/") to dots so the downstream split can
-   * extract schema and table correctly. Strips leading/trailing slashes first to avoid
-   * producing empty parts.
+   * extract schema and table correctly. Strips leading/trailing slashes and collapses
+   * consecutive slashes to avoid producing empty parts.
    *
    * <p>Package-private for testability.
    */
   String normalizeDatasetName(String datasetName) {
     if (normalizeDatasetNames && datasetName != null && datasetName.contains("/")) {
-      // Strip leading/trailing slashes to avoid empty parts after split
-      String stripped = datasetName.replaceAll("^/+|/+$", "");
-      return stripped.replace("/", ".");
+      return datasetName.replaceAll("^/+|/+$", "").replaceAll("/+", ".");
     }
     return datasetName;
   }
