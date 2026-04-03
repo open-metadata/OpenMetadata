@@ -320,7 +320,15 @@ class TestAirbyteClientPublicApi:
     def test_list_jobs(self, mock_rest):
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {
-            "data": [{"status": "succeeded", "startTime": "2022-01-01T00:00:00Z"}]
+            "data": [{
+                "jobId": 51,
+                "status": "succeeded",
+                "jobType": "sync",
+                "startTime": "2026-04-01T14:41:11Z",
+                "duration": "PT54S",
+                "bytesSynced": 775113,
+                "rowsSynced": 1230
+            }]
         }
         mock_rest.return_value = mock_rest_instance
         config = AirbyteConnection(
@@ -334,7 +342,12 @@ class TestAirbyteClientPublicApi:
             "/jobs?connectionId=connection-id&limit=100&offset=0"
         )
         assert len(result) == 1
+        assert result[0].jobId == 51
         assert result[0].status == "succeeded"
+        assert result[0].jobType == "sync"
+        assert result[0].duration == "PT54S"
+        assert result[0].bytesSynced == 775113
+        assert result[0].rowsSynced == 1230
 
     @patch(MOCK_REST)
     def test_get_source(self, mock_rest):

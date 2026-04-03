@@ -27,3 +27,4 @@ class AirbyteDestination(Enum):
     MYSQL = "MySQL"
     POSTGRES = "Postgres"
     MSSQL = "MS SQL Server"
+    SNOWFLAKE = "Snowflake"

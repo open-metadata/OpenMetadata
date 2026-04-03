@@ -37,6 +37,8 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteDestinationResponse,
     AirbytePublicCloudJobList,
     AirbytePublicConnectionList,
+    AirbytePublicJob,
+    AirbytePublicJobList,
     AirbytePublicWorkspaceList,
     AirbyteSelfHostedJob,
     AirbyteSelfHostedJobList,
@@ -141,14 +143,20 @@ class AirbyteClient:
 
     def list_jobs(
         self, connection_id: str
-    ) -> Iterable[Union[AirbyteSelfHostedJob, AirbyteCloudJob]]:
+    ) -> Iterable[Union[AirbyteSelfHostedJob, AirbyteCloudJob, AirbytePublicJob]]:
         """
         Method returns the list of all jobs of a connection.
         """
         if self._use_public_api:
+            # For Airbyte Cloud, use AirbytePublicCloudJobList
+            # For OSS public API (api/public/v1), use AirbytePublicJobList
+            if isinstance(self, AirbyteCloudClient):
+                job_list_cls = AirbytePublicCloudJobList
+            else:
+                job_list_cls = AirbytePublicJobList
             yield from self._paginate_get(
                 f"/jobs?connectionId={quote(connection_id, safe='')}",
-                AirbytePublicCloudJobList,
+                job_list_cls,
             )
             return
 

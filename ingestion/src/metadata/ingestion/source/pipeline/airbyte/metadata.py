@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     StatusType,
     Task,
     TaskStatus,
+    TaskMetrics,
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
@@ -49,7 +50,10 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteConnectionModel,
+    AirbytePublicJob,
     AirbyteWorkspace,
+    AirbyteStream,
+    AirbyteSyncCatalogEntry,
 )
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
@@ -158,6 +162,11 @@ class AirbyteSource(PipelineServiceSource):
         """
         if self.airbyte_cloud:
             yield from self._yield_pipeline_status_cloud(pipeline_details)
+            return
+
+        # Check if using public API (for OSS installations)
+        if hasattr(self.client, '_use_public_api') and self.client._use_public_api:
+            yield from self._yield_pipeline_status_public(pipeline_details)
             return
 
         log_link = (
@@ -287,6 +296,92 @@ class AirbyteSource(PipelineServiceSource):
                 )
             )
 
+    def _yield_pipeline_status_public(
+        self, pipeline_details: AirbytePipelineDetails
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """
+        Method to get task & pipeline status for Airbyte Public API (OSS).
+        Handles flat job structure with ISO 8601 timestamps and duration.
+        """
+        log_link = (
+            f"{self.source_url_prefix}/workspaces/{pipeline_details.workspace.workspaceId}"
+            f"/connections/{pipeline_details.connection.connectionId}/status"
+        )
+
+        for job in self.client.list_jobs(pipeline_details.connection.connectionId):
+            if not job:
+                continue
+
+            created_at = None
+            ended_at = None
+
+            if job.startTime:
+                try:
+                    start_dt = datetime.fromisoformat(
+                        job.startTime.replace("Z", "+00:00")
+                    )
+                    created_at = datetime_to_timestamp(start_dt, milliseconds=True)
+
+                    if job.duration:
+                        # Parse ISO 8601 duration (e.g., "PT54S" = 54 seconds)
+                        # For simplicity, we'll parse basic formats like PT{seconds}S
+                        if job.duration.startswith("PT") and job.duration.endswith("S"):
+                            try:
+                                duration_seconds = float(job.duration[2:-1])
+                                ended_at = created_at + (duration_seconds * 1000)  # milliseconds
+                            except ValueError:
+                                logger.warning(f"Failed to parse duration: {job.duration}")
+                except (ValueError, AttributeError) as exc:
+                    logger.warning(f"Failed to parse startTime: {exc}")
+
+            metrics = None
+            if job.rowsSynced is not None or job.bytesSynced is not None:
+                execution_time = None
+                if job.duration and job.duration.startswith("PT") and job.duration.endswith("S"):
+                    try:
+                        execution_time = int(float(job.duration[2:-1]) * 1000)
+                    except ValueError:
+                        pass
+                metrics = TaskMetrics(
+                    rowsWritten=job.rowsSynced,
+                    executionTimeMs=execution_time,
+                )
+
+            task_status = [
+                TaskStatus(
+                    name=str(pipeline_details.connection.connectionId),
+                    executionStatus=STATUS_MAP.get(
+                        job.status.lower(), StatusType.Pending
+                    ).value,
+                    startTime=created_at,
+                    endTime=ended_at,
+                    logLink=log_link,
+                    metrics=metrics,
+                )
+            ]
+
+            pipeline_status = PipelineStatus(
+                executionStatus=STATUS_MAP.get(
+                    job.status.lower(), StatusType.Pending
+                ).value,
+                taskStatus=task_status,
+                timestamp=Timestamp(created_at) if created_at else None,
+            )
+
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
+
+            yield Either(
+                right=OMetaPipelineStatus(
+                    pipeline_fqn=pipeline_fqn,
+                    pipeline_status=pipeline_status,
+                )
+            )
+
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
         """
         Get the FQN of the table
@@ -346,12 +441,16 @@ class AirbyteSource(PipelineServiceSource):
         source_name = source_connection.sourceName
         destination_name = destination_connection.destinationName
 
-        streams = (
-            pipeline_details.connection.syncCatalog.streams
-            if pipeline_details.connection.syncCatalog
-            and pipeline_details.connection.syncCatalog.streams
-            else []
-        )
+        streams = []
+        if pipeline_details.connection.syncCatalog and pipeline_details.connection.syncCatalog.streams:
+            streams = pipeline_details.connection.syncCatalog.streams
+        elif pipeline_details.connection.configurations and pipeline_details.connection.configurations.get("streams"):
+            for s in pipeline_details.connection.configurations["streams"]:
+                streams.append(
+                    AirbyteSyncCatalogEntry(
+                        stream=AirbyteStream(name=s.get("name"), namespace=s.get("namespace"))
+                    )
+                )
 
         for entry in streams:
             stream = entry.stream

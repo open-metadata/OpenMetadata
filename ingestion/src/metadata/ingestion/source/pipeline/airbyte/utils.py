@@ -30,30 +30,31 @@ def get_source_table_details(
     """
     Get the source table details
     """
-    source_name = source_connection.sourceName
-    source_database = (source_connection.connectionConfiguration or {}).get("database")
+    source_name = source_connection.sourceName or source_connection.sourceType or source_connection.name
+    config = source_connection.connectionConfiguration or source_connection.configuration or {}
+    source_database = config.get("database")
     source_schema = stream.namespace
 
-    if source_name not in [
-        AirbyteSource.POSTGRES.value,
-        AirbyteSource.MSSQL.value,
-        AirbyteSource.MYSQL.value,
-        AirbyteSource.MONGODB.value,
+    if not source_name or source_name.lower() not in [
+        AirbyteSource.POSTGRES.value.lower(),
+        AirbyteSource.MSSQL.value.lower(),
+        AirbyteSource.MYSQL.value.lower(),
+        AirbyteSource.MONGODB.value.lower(),
+        "postgres",
+        "mssql",
+        "mysql",
+        "mongodb",
     ]:
         logger.warning(
             f"Lineage of airbyte pipeline with source [{source_name}] is not supported yet"
         )
         return None
 
-    if source_name == AirbyteSource.MYSQL.value:
+    if source_name and source_name.lower() in [AirbyteSource.MYSQL.value.lower(), "mysql"]:
         source_schema = source_database
         source_database = None
-    elif source_name == AirbyteSource.MONGODB.value:
-        source_schema = (
-            (source_connection.connectionConfiguration or {})
-            .get("database_config", {})
-            .get("database")
-        )
+    elif source_name and source_name.lower() in [AirbyteSource.MONGODB.value.lower(), "mongodb"]:
+        source_schema = config.get("database_config", {}).get("database")
         source_database = None
 
     return TableDetails(
@@ -69,25 +70,27 @@ def get_destination_table_details(
     """
     Get the destination table details
     """
-    destination_name = destination_connection.destinationName
-    destination_database = (destination_connection.connectionConfiguration or {}).get(
-        "database"
-    )
-    destination_schema = (destination_connection.connectionConfiguration or {}).get(
-        "schema"
-    )
+    destination_name = destination_connection.destinationName or destination_connection.destinationType or destination_connection.name
+    config = destination_connection.connectionConfiguration or destination_connection.configuration or {}
+    destination_database = config.get("database")
+    destination_schema = config.get("schema")
 
-    if destination_name not in [
-        AirbyteDestination.POSTGRES.value,
-        AirbyteDestination.MSSQL.value,
-        AirbyteDestination.MYSQL.value,
+    if not destination_name or destination_name.lower() not in [
+        AirbyteDestination.POSTGRES.value.lower(),
+        AirbyteDestination.MSSQL.value.lower(),
+        AirbyteDestination.MYSQL.value.lower(),
+        AirbyteDestination.SNOWFLAKE.value.lower(),
+        "postgres",
+        "mssql",
+        "mysql",
+        "snowflake",
     ]:
         logger.warning(
             f"Lineage of airbyte pipeline with destination [{destination_name}] is not supported yet"
         )
         return None
 
-    if destination_name == AirbyteDestination.MYSQL.value:
+    if destination_name and destination_name.lower() in [AirbyteDestination.MYSQL.value.lower(), "mysql"]:
         destination_schema = destination_database
         destination_database = None
 
