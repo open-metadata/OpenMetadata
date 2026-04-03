@@ -20,6 +20,8 @@ from itertools import groupby, product
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote, urlparse
 
+from cachetools import LRUCache
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -122,8 +124,8 @@ class OpenlineageSource(PipelineServiceSource):
     def prepare(self):
         self._service_cache = {}
         self._current_pipeline_service = None
-        self._entity_cache: Dict[str, Any] = {}
-        self._namespace_to_service_cache: Dict[str, Optional[List[str]]] = {}
+        self._entity_cache: LRUCache = LRUCache(maxsize=10000)
+        self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._db_service_type_map: Dict[str, str] = self._build_db_service_type_map()
 
     def close(self) -> None:
@@ -290,7 +292,8 @@ class OpenlineageSource(PipelineServiceSource):
                         f"'namespaceToServiceMapping' to disambiguate."
                     )
 
-        self._namespace_to_service_cache[namespace] = result
+        if result is not None:
+            self._namespace_to_service_cache[namespace] = result
         return result
 
     def _get_table_fqn(
