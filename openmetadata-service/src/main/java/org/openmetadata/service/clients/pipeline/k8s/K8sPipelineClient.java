@@ -1995,7 +1995,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     labels.put(LABEL_APP, LABEL_VALUE_OPENMETADATA);
     labels.put(LABEL_COMPONENT, LABEL_VALUE_INGESTION);
     labels.put(LABEL_MANAGED_BY, LABEL_VALUE_OPENMETADATA);
-    labels.put(LABEL_PIPELINE, sanitizeName(pipeline.getName()));
+    labels.put(LABEL_PIPELINE, buildKubernetesName("", pipeline.getName()));
     labels.put(LABEL_PIPELINE_TYPE, pipeline.getPipelineType().toString().toLowerCase());
 
     if (runId != null && !SCHEDULED_RUN_ID.equals(runId)) {
