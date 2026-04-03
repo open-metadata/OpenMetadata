@@ -12,16 +12,30 @@
 Fivetran source to extract metadata
 """
 
+import json
 import traceback
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, List, Optional, cast
+
+import sqlglot
+from sqlalchemy import text
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    PipelineState,
+    PipelineStatus,
+    StatusType,
+    Task,
+    TaskStatus,
+)
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -29,6 +43,7 @@ from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
     SourceUrl,
+    Timestamp,
 )
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
@@ -42,13 +57,43 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection as get_db_connection
 from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.ingestion.source.pipeline.fivetran.models import FivetranPipelineDetails
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+MESSAGING_CONNECTOR_TYPES = {"confluent_cloud", "kafka"}
+MAX_SYNC_RUNS = 100
+# TODO: Add Databricks support once delta table query path is implemented
+UNSUPPORTED_DESTINATION_TYPES = {"databricks"}
+
+FIVETRAN_TASK_EXTRACT = "extract"
+FIVETRAN_TASK_PROCESS = "process"
+FIVETRAN_TASK_LOAD = "load"
+
+LOG_RETENTION_DAYS = 90
+
+FIVETRAN_LOG_QUERY = """\
+SELECT
+    sync_id,
+    message_event,
+    message_data,
+    time_stamp
+FROM {table}
+WHERE connection_id = :connector_id
+AND sync_id IS NOT NULL
+AND time_stamp >= :cutoff
+AND message_event IN (
+    'sync_start', 'extract_summary', 'write_to_table_start',
+    'write_to_table_end', 'sync_end', 'sync_stats'
+)
+ORDER BY time_stamp ASC
+"""
 
 
 class FivetranSource(PipelineServiceSource):
@@ -72,15 +117,27 @@ class FivetranSource(PipelineServiceSource):
     def get_connections_jobs(
         self,
         pipeline_details: FivetranPipelineDetails,
-        source_url: Optional[SourceUrl] = None,
     ) -> List[Task]:
-        """Returns the list of tasks linked to connection"""
+        """Returns the three ELT phase tasks for a Fivetran connector."""
         return [
             Task(
-                name=pipeline_details.pipeline_name,
-                displayName=pipeline_details.pipeline_display_name,
-                sourceUrl=source_url,
-            )  # type: ignore
+                name=FIVETRAN_TASK_EXTRACT,
+                displayName="Extract",
+                taskType="Extract",
+                downstreamTasks=[FIVETRAN_TASK_PROCESS],
+            ),  # type: ignore
+            Task(
+                name=FIVETRAN_TASK_PROCESS,
+                displayName="Process",
+                taskType="Process",
+                downstreamTasks=[FIVETRAN_TASK_LOAD],
+            ),  # type: ignore
+            Task(
+                name=FIVETRAN_TASK_LOAD,
+                displayName="Load",
+                taskType="Load",
+                downstreamTasks=[],
+            ),  # type: ignore
         ]
 
     def yield_pipeline(
@@ -99,19 +156,426 @@ class FivetranSource(PipelineServiceSource):
         pipeline_request = CreatePipelineRequest(
             name=EntityName(pipeline_details.pipeline_name),
             displayName=pipeline_details.pipeline_display_name,
-            tasks=self.get_connections_jobs(
-                pipeline_details=pipeline_details, source_url=source_url
-            ),
+            tasks=self.get_connections_jobs(pipeline_details=pipeline_details),
             service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             sourceUrl=source_url,
+            scheduleInterval=self._get_schedule_interval(pipeline_details),
+            state=self.get_pipeline_state(pipeline_details),
         )  # type: ignore
         yield Either(left=None, right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
+    def _get_schedule_interval(
+        self, pipeline_details: FivetranPipelineDetails
+    ) -> Optional[str]:
+        sync_freq = pipeline_details.source.get("sync_frequency")
+        if not sync_freq:
+            return None
+        minutes = int(sync_freq)
+        if minutes < 60:
+            return f"*/{minutes} * * * *"
+        if minutes % 60 != 0:
+            return f"*/{minutes} * * * *"
+        hours = minutes // 60
+        if hours >= 24:
+            return "0 0 * * *"
+        return f"0 */{hours} * * *"
+
+    def get_pipeline_state(
+        self, pipeline_details: FivetranPipelineDetails
+    ) -> Optional[PipelineState]:
+        if pipeline_details.source.get("paused"):
+            return PipelineState.Inactive
+        return PipelineState.Active
+
+    FIVETRAN_STATUS_MAP = {
+        "COMPLETED": StatusType.Successful,
+        "FAILURE_WITH_TASK": StatusType.Failed,
+        "CANCELED": StatusType.Failed,
+    }
+
+    HISTORICAL_SYNC_FIELDS = [
+        ("succeeded_at", StatusType.Successful),
+        ("failed_at", StatusType.Failed),
+    ]
+
+    def _resolve_destination_service(
+        self, dest_service_type: str = ""
+    ) -> Optional[DatabaseService]:
+        """Resolve the destination warehouse DatabaseService from the service registry."""
+        for service_name in self.get_db_service_names() or []:
+            try:
+                service = self.metadata.get_by_name(
+                    entity=DatabaseService,
+                    fqn=service_name,
+                    fields=["connection"],
+                )
+                if service and service.connection and service.connection.config:
+                    if (
+                        dest_service_type
+                        and service.serviceType.value.lower()
+                        != dest_service_type.lower()
+                    ):
+                        continue
+                    return service
+            except Exception as exc:
+                logger.debug(f"Could not resolve service [{service_name}]: {exc}")
+        return None
+
+    @staticmethod
+    def _parse_sync_events(rows) -> dict:
+        """Group LOG rows by sync_id into per-sync event dictionaries."""
+        syncs: dict = {}
+        for row in rows:
+            sync_id = row[0]
+            event = row[1]
+            data_str = row[2]
+            ts = row[3]
+
+            if sync_id not in syncs:
+                syncs[sync_id] = {}
+            sync = syncs[sync_id]
+
+            if event == "sync_start":
+                sync["sync_start_ts"] = ts
+            elif event == "extract_summary":
+                sync["extract_end_ts"] = ts
+                if data_str:
+                    try:
+                        sync["extract_data"] = json.loads(data_str)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            elif event == "write_to_table_start":
+                if "write_start_min" not in sync or ts < sync["write_start_min"]:
+                    sync["write_start_min"] = ts
+            elif event == "write_to_table_end":
+                if "write_end_max" not in sync or ts > sync["write_end_max"]:
+                    sync["write_end_max"] = ts
+            elif event == "sync_end":
+                sync["sync_end_ts"] = ts
+                if data_str:
+                    try:
+                        sync["sync_end_data"] = json.loads(data_str)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            elif event == "sync_stats":
+                if data_str:
+                    try:
+                        sync["sync_stats"] = json.loads(data_str)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+        return syncs
+
+    @staticmethod
+    def _build_task_statuses_for_sync(sync: dict) -> List[TaskStatus]:
+        """Build Extract/Process/Load TaskStatus entries from parsed sync events."""
+        sync_start = sync.get("sync_start_ts")
+        extract_end = sync.get("extract_end_ts")
+        write_start_min = sync.get("write_start_min")
+        write_end_max = sync.get("write_end_max")
+        sync_end = sync.get("sync_end_ts")
+        extract_data = sync.get("extract_data", {})
+        sync_end_data = sync.get("sync_end_data", {})
+        stats = sync.get("sync_stats")
+
+        # Apply sync_stats durations as fallback when event timestamps are missing
+        if stats and sync_start:
+            extract_time = stats.get("extract_time_s")
+            process_time = stats.get("process_time_s")
+            load_time = stats.get("load_time_s")
+
+            if not extract_end and extract_time is not None:
+                extract_end = sync_start + timedelta(seconds=extract_time)
+            if not write_start_min and extract_end and process_time is not None:
+                write_start_min = extract_end + timedelta(seconds=process_time)
+            if not write_end_max and write_start_min and load_time is not None:
+                write_end_max = write_start_min + timedelta(seconds=load_time)
+
+        # Determine per-phase status
+        extract_status_str = extract_data.get("status", "")
+        extract_status = (
+            StatusType.Successful
+            if extract_status_str == "SUCCESS"
+            else (
+                StatusType.Failed
+                if extract_status_str
+                else StatusType.Successful
+                if extract_end
+                else StatusType.Failed
+            )
+        )
+
+        if extract_status == StatusType.Failed:
+            process_status = StatusType.Failed
+            load_status = StatusType.Failed
+        else:
+            sync_end_status_str = sync_end_data.get("status", "")
+            sync_ended_successfully = sync_end_status_str == "SUCCESSFUL"
+            process_status = (
+                StatusType.Successful
+                if (write_start_min or sync_ended_successfully)
+                else StatusType.Failed
+            )
+            load_status = (
+                StatusType.Successful
+                if sync_end_status_str == "SUCCESSFUL"
+                else (
+                    StatusType.Failed
+                    if sync_end_status_str
+                    else StatusType.Successful
+                    if sync_end
+                    else StatusType.Failed
+                )
+            )
+
+        def _ts(dt) -> Optional[Timestamp]:
+            if dt is None:
+                return None
+            return Timestamp(datetime_to_ts(dt))
+
+        return [
+            TaskStatus(
+                name=FIVETRAN_TASK_LOAD,
+                executionStatus=load_status,
+                startTime=_ts(write_start_min),
+                endTime=_ts(write_end_max),
+            ),
+            TaskStatus(
+                name=FIVETRAN_TASK_PROCESS,
+                executionStatus=process_status,
+                startTime=_ts(extract_end),
+                endTime=_ts(write_start_min),
+            ),
+            TaskStatus(
+                name=FIVETRAN_TASK_EXTRACT,
+                executionStatus=extract_status,
+                startTime=_ts(sync_start),
+                endTime=_ts(extract_end),
+            ),
+        ]
+
+    def _get_pipeline_status_from_db(
+        self,
+        pipeline_details: FivetranPipelineDetails,
+        pipeline_fqn: str,
+    ) -> Optional[List[OMetaPipelineStatus]]:
+        """Query fivetran_metadata.log in the destination warehouse for sync run history."""
+        dest_database = (pipeline_details.destination.get("config") or {}).get(
+            "database"
+        )
+        if not dest_database:
+            return None
+
+        dest_service_type = pipeline_details.destination.get("service", "")
+        if dest_service_type.lower() in UNSUPPORTED_DESTINATION_TYPES:
+            logger.debug(
+                f"Destination type [{dest_service_type}] not supported for DB log query"
+            )
+            return None
+
+        service = self._resolve_destination_service(dest_service_type)
+        if not service:
+            return None
+
+        engine = None
+        try:
+            connection_config = service.connection.config
+            modified_config = connection_config.model_copy(
+                deep=True, update={"database": dest_database}
+            )
+            engine = get_db_connection(modified_config)
+
+            dialect = service.serviceType.value.lower()
+            uses_upper = dialect == "snowflake"
+            catalog = dest_database.upper() if uses_upper else dest_database
+            schema = "FIVETRAN_METADATA" if uses_upper else "fivetran_metadata"
+            table = "LOG" if uses_upper else "log"
+            table_ref = sqlglot.table(table, db=schema, catalog=catalog).sql(
+                dialect=dialect, identify=True
+            )
+
+            query = FIVETRAN_LOG_QUERY.format(table=table_ref)
+
+            cutoff = datetime.now(timezone.utc) - timedelta(days=LOG_RETENTION_DAYS)
+
+            with engine.connect() as conn:
+                result = conn.execute(
+                    text(query),
+                    {
+                        "connector_id": pipeline_details.connector_id,
+                        "cutoff": cutoff,
+                    },
+                )
+                rows = result.fetchall()
+
+            syncs = self._parse_sync_events(rows)
+
+            # Sort by sync_start descending and limit
+            sorted_syncs = sorted(
+                syncs.items(),
+                key=lambda x: x[1].get(
+                    "sync_start_ts", datetime.min.replace(tzinfo=timezone.utc)
+                ),
+                reverse=True,
+            )[:MAX_SYNC_RUNS]
+
+            statuses = []
+            for _sync_id, sync in sorted_syncs:
+                sync_start = sync.get("sync_start_ts")
+                if not sync_start:
+                    continue
+
+                start_ms = datetime_to_ts(sync_start)
+                task_statuses = self._build_task_statuses_for_sync(sync)
+
+                overall_failed = any(
+                    ts.executionStatus == StatusType.Failed for ts in task_statuses
+                )
+                overall_status = (
+                    StatusType.Failed if overall_failed else StatusType.Successful
+                )
+
+                statuses.append(
+                    OMetaPipelineStatus(
+                        pipeline_fqn=pipeline_fqn,
+                        pipeline_status=PipelineStatus(
+                            executionStatus=overall_status.value,
+                            taskStatus=task_statuses,
+                            timestamp=Timestamp(start_ms),
+                        ),
+                    )
+                )
+            return statuses
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not fetch sync logs from destination DB for pipeline"
+                f" [{self.get_pipeline_name(pipeline_details)}]: {exc}"
+                f" — falling back to REST API"
+            )
+            return None
+        finally:
+            if engine:
+                engine.dispose()
+
     def yield_pipeline_status(
         self, pipeline_details: FivetranPipelineDetails
-    ) -> Optional[Iterable[Either[OMetaPipelineStatus]]]:
-        """Method to get task & pipeline status"""
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """Method to get task & pipeline status.
+
+        Tries the destination DB fivetran_metadata.log table first.
+        Falls back to REST API sync-history + historical fields.
+        """
+        self.client = cast(FivetranClient, self.client)
+        pipeline_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Pipeline,
+            service_name=self.context.get().pipeline_service,
+            pipeline_name=self.context.get().pipeline,
+        )
+
+        db_statuses = self._get_pipeline_status_from_db(pipeline_details, pipeline_fqn)
+        if db_statuses is not None:
+            for status in db_statuses:
+                yield Either(right=status)
+            return
+
+        seen_timestamps: set = set()
+        for sync in self.client.get_connector_sync_history(
+            pipeline_details.connector_id
+        ):
+            try:
+                start_dt = datetime.fromisoformat(sync["start"].replace("Z", "+00:00"))
+                start_ms = datetime_to_ts(start_dt)
+                seen_timestamps.add(start_ms)
+                end_ms = None
+                if sync.get("end"):
+                    end_dt = datetime.fromisoformat(sync["end"].replace("Z", "+00:00"))
+                    end_ms = datetime_to_ts(end_dt)
+
+                status_type = self.FIVETRAN_STATUS_MAP.get(
+                    sync.get("status", ""), StatusType.Pending
+                )
+                task_status = self._build_fallback_task_statuses(
+                    status_type, start_ms, end_ms
+                )
+                pipeline_status = PipelineStatus(
+                    executionStatus=status_type.value,
+                    taskStatus=task_status,
+                    timestamp=Timestamp(start_ms),
+                )
+                yield Either(
+                    right=OMetaPipelineStatus(
+                        pipeline_fqn=pipeline_fqn,
+                        pipeline_status=pipeline_status,
+                    )
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error parsing sync history for pipeline"
+                    f" [{self.get_pipeline_name(pipeline_details)}]: {exc}"
+                )
+
+        for field_name, status_type in self.HISTORICAL_SYNC_FIELDS:
+            try:
+                timestamp_str = pipeline_details.source.get(field_name)
+                if not timestamp_str:
+                    continue
+                dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                ts_ms = datetime_to_ts(dt)
+                if ts_ms in seen_timestamps:
+                    continue
+                task_status = self._build_fallback_task_statuses(
+                    status_type, ts_ms, None
+                )
+                pipeline_status = PipelineStatus(
+                    executionStatus=status_type.value,
+                    taskStatus=task_status,
+                    timestamp=Timestamp(ts_ms),
+                )
+                yield Either(
+                    right=OMetaPipelineStatus(
+                        pipeline_fqn=pipeline_fqn,
+                        pipeline_status=pipeline_status,
+                    )
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error parsing historical sync field [{field_name}] for pipeline"
+                    f" [{self.get_pipeline_name(pipeline_details)}]: {exc}"
+                )
+
+    @staticmethod
+    def _build_fallback_task_statuses(
+        status_type: StatusType,
+        start_ms: int,
+        end_ms: Optional[int],
+    ) -> List[TaskStatus]:
+        """Build extract/process/load TaskStatus entries for the REST API fallback path."""
+        return [
+            TaskStatus(
+                name=FIVETRAN_TASK_LOAD,
+                executionStatus=status_type.value,
+                startTime=Timestamp(start_ms),
+                endTime=Timestamp(end_ms) if end_ms else None,
+            ),
+            TaskStatus(
+                name=FIVETRAN_TASK_PROCESS,
+                executionStatus=status_type.value,
+                startTime=Timestamp(start_ms),
+                endTime=Timestamp(end_ms) if end_ms else None,
+            ),
+            TaskStatus(
+                name=FIVETRAN_TASK_EXTRACT,
+                executionStatus=status_type.value,
+                startTime=Timestamp(start_ms),
+                endTime=Timestamp(end_ms) if end_ms else None,
+            ),
+        ]
 
     def fetch_column_lineage(
         self,
@@ -152,13 +616,29 @@ class FivetranSource(PipelineServiceSource):
                 )
                 continue
 
+            dest_column_name = column_data.get("name_in_destination")
+            if not column_name or not dest_column_name:
+                logger.debug(
+                    f"Skipping column mapping for pipeline [{pipeline_name}] lineage"
+                    f" - source column [{column_name}] or destination column"
+                    f" [{dest_column_name}] name is None"
+                )
+                continue
+
             from_col = get_column_fqn(
                 table_entity=from_table_entity, column=column_name
             )
             to_col = get_column_fqn(
                 table_entity=to_table_entity,
-                column=column_data.get("name_in_destination"),
+                column=dest_column_name,
             )
+            if not from_col or not to_col:
+                logger.debug(
+                    f"Skipping column [{column_name}] -> [{dest_column_name}] for pipeline"
+                    f" [{pipeline_name}] lineage - column FQN could not be resolved"
+                )
+                continue
+
             col_lineage_arr.append(
                 ColumnLineage(
                     fromColumns=[from_col],
@@ -180,10 +660,17 @@ class FivetranSource(PipelineServiceSource):
         self.client = cast(FivetranClient, self.client)
         pipeline_name = self.get_pipeline_name(pipeline_details)
 
-        source_database_name = pipeline_details.source.get("config", {}).get("database")
-        destination_database_name = pipeline_details.destination.get("config", {}).get(
+        source_connector_type = pipeline_details.source.get("service")
+        is_messaging_source = source_connector_type in MESSAGING_CONNECTOR_TYPES
+
+        source_database_name = (pipeline_details.source.get("config") or {}).get(
             "database"
         )
+        destination_database_name = (
+            pipeline_details.destination.get("config") or {}
+        ).get("database")
+
+        pipeline_entity = None
 
         for schema_name, schema_data in self.client.get_connector_schema_details(
             connector_id=pipeline_details.source.get("id")
@@ -211,29 +698,45 @@ class FivetranSource(PipelineServiceSource):
 
                 from_fqn = None
                 from_entity = None
-                for db_service_name in self.get_db_service_names() or "*":
-                    from_fqn = fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Table,
-                        table_name=source_table_name,
-                        database_name=source_database_name,
-                        schema_name=source_schema_name,
-                        service_name=db_service_name,
-                    )
-                    from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
-                    if from_entity:
-                        break
+                if is_messaging_source:
+                    for svc_name in self.get_messaging_service_names() or []:
+                        from_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Topic,
+                            service_name=svc_name,
+                            topic_name=source_table_name,
+                        )
+                        from_entity = self.metadata.get_by_name(
+                            entity=Topic, fqn=from_fqn
+                        )
+                        if from_entity:
+                            break
+                else:
+                    for db_service_name in self.get_db_service_names() or []:
+                        from_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Table,
+                            table_name=source_table_name,
+                            database_name=source_database_name,
+                            schema_name=source_schema_name,
+                            service_name=db_service_name,
+                        )
+                        from_entity = self.metadata.get_by_name(
+                            entity=Table, fqn=from_fqn
+                        )
+                        if from_entity:
+                            break
 
                 if not from_entity:
                     logger.debug(
                         f"Lineage skipped for pipeline [{pipeline_name}]"
-                        f" since source table [{from_fqn}] not found."
+                        f" since source entity [{from_fqn}] not found."
                     )
                     continue
 
                 to_fqn = None
                 to_entity = None
-                for db_service_name in self.get_db_service_names() or "*":
+                for db_service_name in self.get_db_service_names() or []:
                     to_fqn = fqn.build(
                         self.metadata,
                         Table,
@@ -253,33 +756,42 @@ class FivetranSource(PipelineServiceSource):
                     )
                     continue
 
-                # Prevent self-lineage loops (table -> same table)
+                # Prevent self-lineage loops (entity -> same entity)
                 if from_entity.id == to_entity.id:
                     logger.debug(
                         f"Lineage skipped for pipeline [{pipeline_name}]"
-                        f" - source and destination are the same table [{from_fqn}]."
+                        f" - source and destination are the same entity [{from_fqn}]."
                         f" Self-referencing lineage is not allowed."
                     )
                     continue
 
-                col_lineage_arr = self.fetch_column_lineage(
-                    pipeline_details=pipeline_details,
-                    schema_name=schema_name,
-                    schema_data=schema_data,
-                    table_name=table_name,
-                    from_table_entity=from_entity,
-                    to_table_entity=to_entity,
-                )
+                col_lineage_arr = []
+                if not is_messaging_source:
+                    col_lineage_arr = self.fetch_column_lineage(
+                        pipeline_details=pipeline_details,
+                        schema_name=schema_name,
+                        schema_data=schema_data,
+                        table_name=table_name,
+                        from_table_entity=from_entity,
+                        to_table_entity=to_entity,
+                    )
 
-                pipeline_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Pipeline,
-                    service_name=self.context.get().pipeline_service,
-                    pipeline_name=self.context.get().pipeline,
-                )
-                pipeline_entity = self.metadata.get_by_name(
-                    entity=Pipeline, fqn=pipeline_fqn
-                )
+                if pipeline_entity is None:
+                    pipeline_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Pipeline,
+                        service_name=self.context.get().pipeline_service,
+                        pipeline_name=self.context.get().pipeline,
+                    )
+                    pipeline_entity = self.metadata.get_by_name(
+                        entity=Pipeline, fqn=pipeline_fqn
+                    )
+                    if not pipeline_entity:
+                        logger.warning(
+                            f"Pipeline entity [{pipeline_fqn}] not found, skipping lineage."
+                        )
+                        return
+
                 lineage_details = LineageDetails(
                     pipeline=EntityReference(
                         id=pipeline_entity.id.root, type="pipeline"
@@ -290,10 +802,11 @@ class FivetranSource(PipelineServiceSource):
                     description=None,
                 )
 
+                from_entity_type = "topic" if is_messaging_source else "table"
                 yield Either(
                     right=AddLineageRequest(
                         edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=from_entity.id, type="table"),  # type: ignore
+                            fromEntity=EntityReference(id=from_entity.id, type=from_entity_type),  # type: ignore
                             toEntity=EntityReference(id=to_entity.id, type="table"),  # type: ignore
                             lineageDetails=lineage_details,
                         )
@@ -304,12 +817,13 @@ class FivetranSource(PipelineServiceSource):
         """Get List of all pipelines"""
         for group in self.client.list_groups():
             destination_id: str = group.get("id", "")
+            destination = self.client.get_destination_details(
+                destination_id=destination_id
+            )
             for connector in self.client.list_group_connectors(group_id=destination_id):
                 connector_id: str = connector.get("id", "")
                 yield FivetranPipelineDetails(
-                    destination=self.client.get_destination_details(
-                        destination_id=destination_id
-                    ),
+                    destination=destination,
                     source=self.client.get_connector_details(connector_id=connector_id),
                     group=group,
                     connector_id=connector_id,

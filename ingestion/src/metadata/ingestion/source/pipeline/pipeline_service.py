@@ -11,6 +11,7 @@
 """
 Base class for ingesting database services
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -485,6 +486,16 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return (
             self.source_config.lineageInformation.storageServiceNames or []
+            if self.source_config.lineageInformation
+            else []
+        )
+
+    def get_messaging_service_names(self) -> List[str]:
+        """
+        Get the list of messaging service names
+        """
+        return (
+            (self.source_config.lineageInformation.messagingServiceNames or [])
             if self.source_config.lineageInformation
             else []
         )
