@@ -1745,7 +1745,7 @@ class K8sPipelineClientTest {
             pipeline, 
             null);
 
-    String pipelineLabel = labels.get("pipeline");
+    String pipelineLabel = labels.get("app.kubernetes.io/pipeline");
     assertNotNull(pipelineLabel);
     assertTrue(pipelineLabel.length() <= 63);
   }
