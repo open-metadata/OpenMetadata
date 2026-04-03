@@ -127,3 +127,11 @@ class StarRocksSSLUnitTest(TestCase):
     def test_ssl_manager_initialized(self):
         """Test that SSL manager is initialized when SSL config is provided"""
         self.assertIsNotNone(self.starrocks_source.ssl_manager)
+
+
+class TestStarRocksIcebergMapping(TestCase):
+    def test_iceberg_relkind_mapping(self):
+        from metadata.generated.schema.entity.data.table import TableType
+        from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
+
+        assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg

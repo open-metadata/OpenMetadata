@@ -58,7 +58,6 @@
         "StarRocks",
         "UnityCatalog",
         "SAS",
-        "Iceberg",
         "Teradata",
         "SapErp",
         "Synapse",
@@ -201,9 +200,6 @@
         },
         {
           "name": "SAS"
-        },
-        {
-          "name": "Iceberg"
         },
         {
           "name": "Teradata"
@@ -375,9 +371,6 @@
             },
             {
               "$ref": "./connections/database/sasConnection.json"
-            },
-            {
-              "$ref": "./connections/database/icebergConnection.json"
             },
             {
               "$ref": "./connections/database/teradataConnection.json"
