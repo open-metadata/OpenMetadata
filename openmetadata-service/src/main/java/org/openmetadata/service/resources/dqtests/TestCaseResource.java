@@ -1605,7 +1605,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       }
       TestSuite testSuite =
           Entity.getEntity(
-              Entity.TEST_SUITE, suiteReference.getId(), "domains,owners", null, false);
+              Entity.TEST_SUITE,
+              suiteReference.getId(),
+              "domains,owners",
+              Include.NON_DELETED,
+              false);
       validateTestSuiteOps(testSuite, securityContext);
     }
   }
