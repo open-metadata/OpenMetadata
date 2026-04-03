@@ -122,19 +122,19 @@ class OMetaEndpointTest(TestCase):
         """
 
         entity = self.metadata.get_entity_from_create(CreateTopicRequest)
-        assert issubclass(entity, Topic)
+        assert entity is Topic
 
         entity = self.metadata.get_entity_from_create(CreateDatabaseServiceRequest)
-        assert issubclass(entity, DatabaseService)
+        assert entity is DatabaseService
 
         entity = self.metadata.get_entity_from_create(CreateUserRequest)
-        assert issubclass(entity, User)
+        assert entity is User
 
         entity = self.metadata.get_entity_from_create(CreateIngestionPipelineRequest)
-        assert issubclass(entity, IngestionPipeline)
+        assert entity is IngestionPipeline
 
         entity = self.metadata.get_entity_from_create(CreateTestCaseResult)
-        assert issubclass(entity, TestCaseResult)
+        assert entity is TestCaseResult
 
         entity = self.metadata.get_entity_from_create(CreateTableProfileRequest)
-        assert issubclass(entity, TableProfile)
+        assert entity is TableProfile
