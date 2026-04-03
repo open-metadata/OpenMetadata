@@ -18,7 +18,6 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 from pydantic import AnyUrl
-from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.entity.data.container import (
@@ -302,13 +301,38 @@ class TestAthenaService(unittest.TestCase):
         assert list(self.athena_source.get_database_names()) == EXPECTED_DATABASE_NAMES
 
     def test_query_table_names_and_types(self):
-        with patch.object(Inspector, "get_table_names", return_value=[MOCK_TABLE_NAME]):
-            assert (
-                self.athena_source.query_table_names_and_types(
-                    MOCK_DATABASE_SCHEMA.name.root
-                )
-                == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        mock_glue_client = MagicMock()
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [
+            {"TableList": [{"Name": MOCK_TABLE_NAME, "Parameters": {}}]}
+        ]
+        mock_glue_client.get_paginator.return_value = mock_paginator
+        self.athena_source.glue_client = mock_glue_client
+        assert (
+            self.athena_source.query_table_names_and_types(
+                MOCK_DATABASE_SCHEMA.name.root
             )
+            == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        )
+
+    def test_query_table_names_and_types_iceberg(self):
+        mock_glue_client = MagicMock()
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [
+            {
+                "TableList": [
+                    {
+                        "Name": MOCK_TABLE_NAME,
+                        "Parameters": {"table_type": "ICEBERG"},
+                    }
+                ]
+            }
+        ]
+        mock_glue_client.get_paginator.return_value = mock_paginator
+        self.athena_source.glue_client = mock_glue_client
+        assert self.athena_source.query_table_names_and_types(
+            MOCK_DATABASE_SCHEMA.name.root
+        ) == [TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.Iceberg)]
 
     def test_yield_database(self):
         assert (
@@ -324,6 +348,35 @@ class TestAthenaService(unittest.TestCase):
             MOCK_LOCATION_ENTITY[0].dataModel, MOCK_TABLE_ENTITY[0], columns_list
         )
         assert column_lineage == EXPECTED_COLUMN_LINEAGE
+
+    def test_get_table_extensions_returns_none_without_type_ref(self):
+        self.athena_source._string_property_type_ref = None
+        assert self.athena_source.get_table_extensions(MOCK_TABLE_NAME) is None
+
+    def test_get_table_extensions_returns_properties_from_description(self):
+        from metadata.generated.schema.type.customProperty import PropertyType
+
+        self.athena_source._string_property_type_ref = PropertyType(
+            EntityReference(
+                id=UUID("00000000-0000-0000-0000-000000000001"), type="type"
+            )
+        )
+        mock_inspector = MagicMock()
+        mock_inspector.get_table_comment.return_value = {"text": "desc"}
+        mock_inspector.get_table_options.return_value = {
+            "awsathena_location": "s3://bucket/path",
+            "awsathena_tblproperties": {"prop_key": "prop_value", "null_prop": None},
+        }
+        self.athena_source.get_table_description(
+            MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME, mock_inspector
+        )
+
+        with patch.object(self.athena_source, "metadata") as mock_metadata:
+            result = self.athena_source.get_table_extensions(MOCK_TABLE_NAME)
+
+        assert result == {"prop_key": "prop_value"}
+        assert "null_prop" not in result
+        mock_metadata.create_or_update_custom_property.assert_called_once()
 
 
 SUBMISSION_DT = datetime(2024, 1, 2, 10, 0, 0)
