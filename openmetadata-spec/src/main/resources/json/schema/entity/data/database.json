@@ -175,7 +175,7 @@
         "randomizedSample": {
           "description": "Whether to randomize the sample data or not.",
           "type": "boolean",
-          "default": true
+          "default": false
         }
       }
     },
