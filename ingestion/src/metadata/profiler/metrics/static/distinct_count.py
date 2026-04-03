@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.count import CountFn
+from metadata.profiler.orm.registry import is_complex_type
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -52,6 +53,8 @@ class DistinctCount(StaticMetric):
         """
         Distinct Count metric for Sqlalchemy connectors
         """
+        if is_complex_type(self.col.type):
+            return None
         return func.count(distinct(CountFn(column(self.col.name, self.col.type))))
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):

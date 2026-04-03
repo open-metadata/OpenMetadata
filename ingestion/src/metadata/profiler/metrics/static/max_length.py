@@ -24,8 +24,8 @@ from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
-    is_concatenable,
     is_complex_type,
+    is_concatenable,
 )
 from metadata.utils.logger import profiler_logger
 
