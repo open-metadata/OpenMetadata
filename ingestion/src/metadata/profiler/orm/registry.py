@@ -116,23 +116,8 @@ class Dialects(metaclass=EnumAdapter):
     pass
 
 
-# Sometimes we want to skip certain types for computing metrics.
-# If the type is NULL, then we won't run the metric execution
-# in the profiler.
-# Note that not mapped types are set to NULL by default.
 NOT_COMPUTE = {
     sqlalchemy.types.NullType.__name__,
-    sqlalchemy.ARRAY.__name__,
-    sqlalchemy.JSON.__name__,
-    sqa_types.SQAMap.__name__,
-    sqa_types.SQAStruct.__name__,
-    sqa_types.SQASet.__name__,
-    sqa_types.SQAUnion.__name__,
-    sqa_types.SQASGeography.__name__,
-    DataType.GEOMETRY.value,
-    DataType.ARRAY.value,
-    DataType.JSON.value,
-    CustomTypes.ARRAY.value.__name__,
     CustomTypes.SQADATETIMERANGE.value.__name__,
     DataType.XML.value,
     CustomTypes.UNDETERMINED.value.__name__,
@@ -153,6 +138,26 @@ QUANTIFIABLE_SET = {
 }
 
 CONCATENABLE_SET = {DataType.STRING.value, DataType.TEXT.value}
+
+COLLECTION_SET = {
+    sqlalchemy.ARRAY.__name__,
+    DataType.ARRAY.value,
+    CustomTypes.ARRAY.value.__name__,
+}
+
+STRUCT_SET = {
+    sqlalchemy.JSON.__name__,
+    sqa_types.SQAMap.__name__,
+    sqa_types.SQAStruct.__name__,
+    sqa_types.SQASet.__name__,
+    sqa_types.SQAUnion.__name__,
+    DataType.JSON.value,
+}
+
+COMPLEX_SET = {
+    sqa_types.SQASGeography.__name__,
+    DataType.GEOMETRY.value,
+}
 
 
 # Now, let's define some helper methods to identify
@@ -237,3 +242,24 @@ def is_blob(_type) -> bool:
             DataType.TEXT.value,
         }
     return isinstance(_type, (HexByteString, LargeBinary, Text))
+
+
+def is_collection(_type) -> bool:
+    """Check if the type is a collection, e.g. Array"""
+    if isinstance(_type, DataType):
+        return _type.value in COLLECTION_SET
+    return _type.__class__.__name__ in COLLECTION_SET
+
+
+def is_struct(_type) -> bool:
+    """Check if the type is a struct, e.g. JSON, Map, Struct"""
+    if isinstance(_type, DataType):
+        return _type.value in STRUCT_SET
+    return _type.__class__.__name__ in STRUCT_SET
+
+
+def is_complex(_type) -> bool:
+    """Check if the type is complex, e.g. Geography or Geometry"""
+    if isinstance(_type, DataType):
+        return _type.value in COMPLEX_SET
+    return _type.__class__.__name__ in COMPLEX_SET

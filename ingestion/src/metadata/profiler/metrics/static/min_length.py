@@ -23,7 +23,12 @@ from metadata.generated.schema.configuration.profilerConfiguration import Metric
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
-from metadata.profiler.orm.registry import is_concatenable
+from metadata.profiler.orm.registry import (
+    is_concatenable,
+    is_collection,
+    is_struct,
+    is_complex,
+)
 from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
@@ -59,7 +64,12 @@ class MinLength(StaticMetric):
     @_label
     def fn(self):
         """sqlalchemy function"""
-        if self._is_concatenable():
+        if (
+            self._is_concatenable()
+            or is_collection(self.col.type)
+            or is_struct(self.col.type)
+            or is_complex(self.col.type)
+        ):
             return func.min(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
@@ -106,7 +116,12 @@ class MinLength(StaticMetric):
         length_vectorize_func = vectorize(len)
         chunk_min = None
 
-        if is_concatenable(column.type):
+        if (
+            is_concatenable(column.type)
+            or is_collection(column.type)
+            or is_struct(column.type)
+            or is_complex(column.type)
+        ):
             min_val = length_vectorize_func(df[column.name].dropna().astype(str)).min()
             if not pd.isnull(min_val):
                 chunk_min = min_val
