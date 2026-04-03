@@ -12,6 +12,7 @@
 """
 Main Profile definition and queries to execute
 """
+
 from __future__ import annotations
 
 import traceback
@@ -277,12 +278,12 @@ class Profiler(Generic[TMetric]):
             # Composed metrics require the results as an argument
             logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
-            self._column_results[col.name][
-                metric.name()
-            ] = self.profiler_interface.get_composed_metrics(
-                col,
-                metric,
-                current_col_results,
+            self._column_results[col.name][metric.name()] = (
+                self.profiler_interface.get_composed_metrics(
+                    col,
+                    metric,
+                    current_col_results,
+                )
             )
 
     def run_hybrid_metrics(self, col: Column):
@@ -302,12 +303,12 @@ class Profiler(Generic[TMetric]):
             HybridMetric, col, self.profiler_interface.table_entity.serviceType
         ):
             logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")
-            self._column_results[col.name][
-                metric.name()
-            ] = self.profiler_interface.get_hybrid_metrics(
-                col,
-                metric,
-                current_col_results,
+            self._column_results[col.name][metric.name()] = (
+                self.profiler_interface.get_hybrid_metrics(
+                    col,
+                    metric,
+                    current_col_results,
+                )
             )
 
     def _prepare_table_metrics(self) -> List:

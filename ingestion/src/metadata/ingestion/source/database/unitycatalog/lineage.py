@@ -11,6 +11,7 @@
 """
 Databricks Unity Catalog Lineage Source Module
 """
+
 import traceback
 from collections import defaultdict
 from typing import Iterable, Optional
@@ -76,9 +77,9 @@ class UnitycatalogLineageSource(Source):
         self.connection_obj = get_connection(self.service_connection)
         self.engine = get_sqlalchemy_connection(self.service_connection)
         self.table_lineage_map: dict[str, set[str]] = defaultdict(set)
-        self.column_lineage_map: dict[
-            tuple[str, str], list[tuple[str, str]]
-        ] = defaultdict(list)
+        self.column_lineage_map: dict[tuple[str, str], list[tuple[str, str]]] = (
+            defaultdict(list)
+        )
         self.external_location_map: dict[str, str] = {}
         self.test_connection()
 

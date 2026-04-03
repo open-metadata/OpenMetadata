@@ -12,7 +12,6 @@
 Queries to fetch data from superset
 """
 
-
 FETCH_ALL_CHARTS = """
 select 
 	s.id,

@@ -11,6 +11,7 @@
 """
 Utils module to define overrided sqlalchamy methods
 """
+
 # pylint: disable=protected-access,unused-argument
 import re
 

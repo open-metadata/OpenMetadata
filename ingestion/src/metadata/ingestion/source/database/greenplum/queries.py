@@ -26,8 +26,7 @@ GREENPLUM_GET_TABLE_NAMES = """
         and n.nspname = :schema
 """
 
-GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
-    """
+GREENPLUM_PARTITION_DETAILS = textwrap.dedent("""
     select
         ns.nspname as schema,
         par.relname as table_name,
@@ -57,8 +56,7 @@ GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
         and col.table_name = par.relname
         and ordinal_position = pt.column_index
     where par.relname='{table_name}' and  ns.nspname='{schema_name}'
-    """
-)
+    """)
 
 GREENPLUM_TABLE_COMMENTS = """
     SELECT n.nspname as schema,

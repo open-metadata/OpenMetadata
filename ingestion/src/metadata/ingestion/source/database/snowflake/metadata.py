@@ -11,6 +11,7 @@
 """
 Snowflake source module
 """
+
 import json
 import traceback
 from datetime import datetime
@@ -295,9 +296,9 @@ class SnowflakeSource(
         with self.engine.connect() as conn:
             for row in conn.execute(text(SNOWFLAKE_GET_CLUSTER_KEY)):
                 if row.CLUSTERING_KEY:
-                    self.partition_details[
-                        f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
-                    ] = row.CLUSTERING_KEY
+                    self.partition_details[f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"] = (
+                        row.CLUSTERING_KEY
+                    )
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()

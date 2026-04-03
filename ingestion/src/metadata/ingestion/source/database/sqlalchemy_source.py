@@ -11,6 +11,7 @@
 """
 Generic source to build database connectors.
 """
+
 from abc import ABC, abstractmethod
 from typing import List, Optional, Set, Tuple
 

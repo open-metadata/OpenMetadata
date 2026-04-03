@@ -12,7 +12,6 @@
 QlikSense Constants
 """
 
-
 GET_DOCS_LIST_REQ = {
     "handle": -1,
     "method": "GetDocList",

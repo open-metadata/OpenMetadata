@@ -12,6 +12,7 @@
 """
 Redshift E2E tests
 """
+
 from typing import List, Tuple
 
 import pytest
@@ -41,8 +42,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM e2e_cli_tests.dbt_jaffle.persons;
     """
 
-    insert_data_queries: List[str] = [
-        """
+    insert_data_queries: List[str] = ["""
     INSERT INTO e2e_cli_tests.dbt_jaffle.persons (person_id, full_name, birthdate, bigint_col) VALUES
         (1,'Peter Parker', '2004-08-10', 9223372036854775807),
         (2,'Bruce Banner', '1988-12-18', 9223372036854775807),
@@ -50,8 +50,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         (4,'Natasha Romanoff', '1997-12-03', 9223372036854775807),
         (5,'Wanda Maximoff', '1998-02-10', 9223372036854775807),
         (6,'Diana Prince', '1976-03-17', 9000000000000000007);
-    """
-    ]
+    """]
 
     drop_table_query: str = """
         DROP TABLE IF EXISTS "e2e_cli_tests"."dbt_jaffle"."persons";

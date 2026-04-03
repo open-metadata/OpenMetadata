@@ -11,6 +11,7 @@
 """
 Nifi source to extract metadata
 """
+
 import math
 import traceback
 from collections import defaultdict

@@ -15,6 +15,7 @@ Test lineage workflow filter pattern functionality
 This module tests the filtering logic for both views and stored procedures
 in lineage ingestion workflows to ensure proper filtering behavior.
 """
+
 import uuid
 from unittest import TestCase
 

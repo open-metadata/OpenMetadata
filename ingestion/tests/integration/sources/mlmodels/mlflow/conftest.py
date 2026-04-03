@@ -23,6 +23,7 @@ The following steps are taken:
 5. Any specific configuration is done
 6. Needed configurations are yielded back to the test.
 """
+
 import io
 import time
 import uuid
@@ -146,13 +147,11 @@ def build_and_get_mlflow_container(
 ):
     docker_client = DockerClient()
 
-    dockerfile = io.BytesIO(
-        b"""
+    dockerfile = io.BytesIO(b"""
         FROM python:3.10-slim-buster
         RUN python -m pip install --upgrade pip
         RUN pip install cryptography "mlflow~=3.6.0" boto3 pymysql
-        """
-    )
+        """)
 
     image_tag = f"mlflow_image:{unique_id}"
     docker_client.client.images.build(fileobj=dockerfile, tag=image_tag)

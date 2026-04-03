@@ -11,6 +11,7 @@
 """
 Handle big query lineage extraction
 """
+
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_STATEMENT,

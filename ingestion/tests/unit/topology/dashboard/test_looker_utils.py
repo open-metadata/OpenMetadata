@@ -12,6 +12,7 @@
 """
 Test looker utils
 """
+
 import os
 import shutil
 from unittest import TestCase

@@ -11,6 +11,7 @@
 """
 Hosts the singledispatch to get Storage Metadata manifest file
 """
+
 import json
 import traceback
 from functools import singledispatch

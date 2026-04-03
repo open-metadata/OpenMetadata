@@ -12,6 +12,7 @@
 """
 Unit tests for the _table_constraints_handler function in patch_request.py
 """
+
 from typing import List, Optional
 from unittest import TestCase
 
@@ -211,7 +212,7 @@ class TableConstraintsHandlerTest(TestCase):
                 TableConstraint(
                     constraintType=ConstraintType.UNIQUE,
                     columns=["username"],  # New constraint
-                )
+                ),
                 # Note: FOREIGN_KEY is missing
             ]
         )

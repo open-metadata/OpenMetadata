@@ -13,7 +13,6 @@
 Validator for table column name to match set test case
 """
 
-
 from typing import List, cast
 
 from sqlalchemy import inspect

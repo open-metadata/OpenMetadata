@@ -17,6 +17,7 @@ as well as populating JOIN information.
 It picks up the information from reading the files
 produced by the stage. At the end, the path is removed.
 """
+
 import json
 import os
 import shutil

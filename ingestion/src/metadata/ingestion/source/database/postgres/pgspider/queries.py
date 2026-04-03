@@ -14,8 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-PGSPIDER_GET_MULTI_TENANT_TABLES = textwrap.dedent(
-    """
+PGSPIDER_GET_MULTI_TENANT_TABLES = textwrap.dedent("""
       SELECT
         c.relname, ns.nspname, current_database() as database
       FROM
@@ -26,11 +25,9 @@ PGSPIDER_GET_MULTI_TENANT_TABLES = textwrap.dedent(
         JOIN pg_foreign_data_wrapper fdw ON fs.srvfdw = fdw.oid
       WHERE
         fdw.fdwname = 'pgspider_core_fdw'
-    """
-)
+    """)
 
-PGSPIDER_GET_CHILD_TABLES = textwrap.dedent(
-    """
+PGSPIDER_GET_CHILD_TABLES = textwrap.dedent("""
       WITH srv AS 
         (SELECT srvname FROM pg_foreign_table ft
         JOIN pg_foreign_server fs ON ft.ftserver = fs.oid GROUP BY srvname ORDER BY srvname),
@@ -41,5 +38,4 @@ PGSPIDER_GET_CHILD_TABLES = textwrap.dedent(
             WHERE (relname ~ (SELECT string_agg(regex, '|') FROM regex_pattern))
             AND (relname NOT LIKE '%%\\_%%\\_seq')
             ORDER BY relname;
-    """
-)
+    """)

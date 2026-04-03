@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Tag and Glossary Term specific operations"""
+
 import traceback
 from typing import Dict
 

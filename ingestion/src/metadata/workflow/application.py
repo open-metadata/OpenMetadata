@@ -11,6 +11,7 @@
 """
 Generic Workflow entrypoint to execute Applications
 """
+
 from abc import ABC, abstractmethod
 from typing import List, Optional
 

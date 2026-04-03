@@ -11,6 +11,7 @@
 """
 Ssrs integration tests using a mock HTTP server
 """
+
 import pytest
 
 from metadata.generated.schema.entity.services.connections.dashboard.ssrsConnection import (

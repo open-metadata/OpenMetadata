@@ -12,6 +12,7 @@
 """
 Custom OM connection headers
 """
+
 import json
 from functools import singledispatch
 

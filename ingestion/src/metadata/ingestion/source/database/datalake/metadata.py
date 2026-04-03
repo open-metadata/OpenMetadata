@@ -12,6 +12,7 @@
 """
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
+
 import json
 import traceback
 from hashlib import md5

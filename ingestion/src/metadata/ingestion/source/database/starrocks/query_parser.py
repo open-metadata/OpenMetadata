@@ -11,6 +11,7 @@
 """
 StarRocks query parser module - base for Usage and Lineage
 """
+
 from abc import ABC
 from datetime import datetime
 from typing import Optional

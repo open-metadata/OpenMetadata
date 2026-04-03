@@ -12,6 +12,7 @@
 """
 Module to define overriden dialect methods
 """
+
 from enum import Enum
 
 from sqlalchemy import and_, join, sql

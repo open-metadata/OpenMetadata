@@ -11,6 +11,7 @@
 """
 Unit tests for Google Cloud Pub/Sub connector
 """
+
 import os
 import uuid
 from unittest.mock import MagicMock, patch
@@ -598,11 +599,14 @@ class TestPubSubTopicLineage:
             topic_metadata=topic_metadata,
         )
 
-        with patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
-        ) as mock_search, patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
-        ) as mock_fqn_build:
+        with (
+            patch(
+                "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
+            ) as mock_search,
+            patch(
+                "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
+            ) as mock_fqn_build,
+        ):
             mock_search.return_value = mock_table
             mock_fqn_build.return_value = "test-pubsub-service.test-topic"
             result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
@@ -624,8 +628,8 @@ class TestPubSubTopicLineage:
         mock_topic = MagicMock()
         mock_topic.id = topic_uuid
 
-        mock_pubsub_source.metadata.get_by_name.side_effect = (
-            lambda entity, fqn: mock_topic if entity == Topic else None
+        mock_pubsub_source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+            mock_topic if entity == Topic else None
         )
 
         subscription = PubSubSubscription(
@@ -641,11 +645,14 @@ class TestPubSubTopicLineage:
             topic_metadata=topic_metadata,
         )
 
-        with patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
-        ) as mock_search, patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
-        ) as mock_fqn_build:
+        with (
+            patch(
+                "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
+            ) as mock_search,
+            patch(
+                "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
+            ) as mock_fqn_build,
+        ):
             mock_search.return_value = mock_table
             mock_fqn_build.return_value = "test-pubsub-service.events-topic"
             result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
@@ -677,8 +684,8 @@ class TestPubSubTopicLineage:
         mock_topic = MagicMock()
         mock_topic.id = topic_uuid
 
-        mock_pubsub_source.metadata.get_by_name.side_effect = (
-            lambda entity, fqn: mock_topic if entity == Topic else None
+        mock_pubsub_source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+            mock_topic if entity == Topic else None
         )
 
         search_call_count = {"count": 0}
@@ -710,11 +717,14 @@ class TestPubSubTopicLineage:
             topic_metadata=topic_metadata,
         )
 
-        with patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
-        ) as mock_search, patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
-        ) as mock_fqn_build:
+        with (
+            patch(
+                "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
+            ) as mock_search,
+            patch(
+                "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
+            ) as mock_fqn_build,
+        ):
             mock_search.side_effect = search_side_effect
             mock_fqn_build.return_value = "test-pubsub-service.multi-topic"
             result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
@@ -735,8 +745,8 @@ class TestPubSubTopicLineage:
         mock_topic = MagicMock()
         mock_topic.id = "topic-id"
 
-        mock_pubsub_source.metadata.get_by_name.side_effect = (
-            lambda entity, fqn: mock_topic if entity == Topic else None
+        mock_pubsub_source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+            mock_topic if entity == Topic else None
         )
 
         subscription = PubSubSubscription(
@@ -754,11 +764,14 @@ class TestPubSubTopicLineage:
             topic_metadata=topic_metadata,
         )
 
-        with patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
-        ) as mock_search, patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
-        ) as mock_fqn_build:
+        with (
+            patch(
+                "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
+            ) as mock_search,
+            patch(
+                "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
+            ) as mock_fqn_build,
+        ):
             mock_search.return_value = mock_table
             mock_fqn_build.return_value = "test-pubsub-service.test-topic"
             list(mock_pubsub_source.yield_topic_lineage(topic_details))

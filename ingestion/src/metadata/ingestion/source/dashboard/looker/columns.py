@@ -11,6 +11,7 @@
 """
 Looker general utilities
 """
+
 from functools import singledispatch
 from typing import List, Sequence, Union, cast
 
@@ -90,7 +91,7 @@ LOOKER_TYPE_MAP = {
 
 
 def get_columns_from_model(
-    model: Union[LookmlModelExplore, LookMlView]
+    model: Union[LookmlModelExplore, LookMlView],
 ) -> List[Column]:
     """
     Obtain the column (measures and dimensions) from the models
@@ -116,7 +117,7 @@ def get_columns_from_model(
 
 @singledispatch
 def get_model_fields(
-    model: Union[LookmlModelExplore, LookMlView]
+    model: Union[LookmlModelExplore, LookMlView],
 ) -> List[Union[LookmlModelExploreField, LookMlField]]:
     raise NotImplementedError(f"Missing implementation for type {type(model)}")
 

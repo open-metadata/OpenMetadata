@@ -11,6 +11,7 @@
 """
 Tableau source module
 """
+
 # pylint: disable=too-many-lines
 import traceback
 from datetime import datetime

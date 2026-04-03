@@ -11,6 +11,7 @@
 """
 Dagster source to extract metadata from OM UI
 """
+
 import traceback
 from typing import Dict, Iterable, List, Optional
 
@@ -203,9 +204,9 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                timestamp=Timestamp(int(run.startTime * 1000))
-                if run.startTime
-                else None,
+                timestamp=(
+                    Timestamp(int(run.startTime * 1000)) if run.startTime else None
+                ),
             )
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,

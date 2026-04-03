@@ -11,6 +11,7 @@
 """
 Unit tests for PII classifiers
 """
+
 from unittest.mock import Mock
 
 import pytest

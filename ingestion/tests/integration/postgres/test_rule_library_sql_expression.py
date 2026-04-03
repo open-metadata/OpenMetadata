@@ -11,6 +11,7 @@
 """
 Integration tests for Rule Library SQL Expression validator
 """
+
 from dataclasses import dataclass
 from typing import List
 

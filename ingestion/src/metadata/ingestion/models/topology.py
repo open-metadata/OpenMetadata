@@ -11,6 +11,7 @@
 """
 Defines the topology for ingesting sources
 """
+
 import queue
 import threading
 from functools import cache, singledispatchmethod

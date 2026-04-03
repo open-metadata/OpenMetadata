@@ -11,6 +11,7 @@
 """
 Lineage Parser configuration
 """
+
 import hashlib
 import time
 import traceback

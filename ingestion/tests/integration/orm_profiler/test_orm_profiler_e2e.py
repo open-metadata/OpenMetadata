@@ -16,6 +16,7 @@ To run this we need OpenMetadata server up and running.
 
 No sample data is required beforehand
 """
+
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta

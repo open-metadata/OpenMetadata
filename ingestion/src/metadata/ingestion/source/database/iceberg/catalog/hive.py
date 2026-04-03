@@ -12,6 +12,7 @@
 """
 Iceberg Hive Catalog
 """
+
 from pyiceberg.catalog import Catalog, load_hive
 
 from metadata.generated.schema.entity.services.connections.database.iceberg.hiveCatalogConnection import (

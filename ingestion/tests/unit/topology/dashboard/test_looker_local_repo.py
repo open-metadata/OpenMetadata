@@ -12,6 +12,7 @@
 """
 Test looker local repository path support
 """
+
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch

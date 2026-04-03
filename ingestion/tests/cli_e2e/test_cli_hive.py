@@ -57,8 +57,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM e2e_cli_tests.persons
     """
 
-    insert_data_queries: List[str] = [
-        """
+    insert_data_queries: List[str] = ["""
     INSERT INTO e2e_cli_tests.persons (person_id, full_name, birthdate) VALUES
         (1,'Peter Parker', '2004-08-10'),
         (2,'Bruce Banner', '1988-12-18'),
@@ -66,8 +65,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         (4,'Natasha Romanoff', '1997-12-03'),
         (5,'Wanda Maximoff', '1998-02-10'),
         (6,'Diana Prince', '1976-03-17')
-    """
-    ]
+    """]
 
     drop_table_query: str = """
         DROP TABLE IF EXISTS e2e_cli_tests.persons

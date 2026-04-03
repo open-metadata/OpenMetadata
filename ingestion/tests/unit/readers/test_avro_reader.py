@@ -12,6 +12,7 @@
 """
 Tests for AvroDataFrameReader
 """
+
 import io
 import unittest
 from unittest.mock import Mock, patch

@@ -11,6 +11,7 @@
 """
 Status output utilities
 """
+
 import pprint
 import time
 from typing import Any, Dict, List, Optional

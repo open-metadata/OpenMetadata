@@ -11,6 +11,7 @@
 """
 Kinesis Models
 """
+
 # Disable pylint to conform to Kinesis API returns
 # We want to convert to the pydantic models in 1 go
 from enum import Enum

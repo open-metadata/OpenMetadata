@@ -11,6 +11,7 @@
 """
 Test DB2 using the topology
 """
+
 import types
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -233,23 +234,21 @@ class Db2UnitTest(TestCase):
         ] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.db2.context.get_current_thread_id()
         self.db2._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_columns = (
+        self.db2._inspector_map[self.thread_id].get_columns = (
             lambda table_name, schema_name, db_name, table_type=None: MOCK_COLUMN_VALUE
         )
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_pk_constraint = lambda table_name, schema_name: []
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_unique_constraints = lambda table_name, schema_name: []
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_foreign_keys = lambda table_name, schema_name: []
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_table_comment = lambda table_name, schema_name: {"text": None}
+        self.db2._inspector_map[self.thread_id].get_pk_constraint = (
+            lambda table_name, schema_name: []
+        )
+        self.db2._inspector_map[self.thread_id].get_unique_constraints = (
+            lambda table_name, schema_name: []
+        )
+        self.db2._inspector_map[self.thread_id].get_foreign_keys = (
+            lambda table_name, schema_name: []
+        )
+        self.db2._inspector_map[self.thread_id].get_table_comment = (
+            lambda table_name, schema_name: {"text": None}
+        )
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [

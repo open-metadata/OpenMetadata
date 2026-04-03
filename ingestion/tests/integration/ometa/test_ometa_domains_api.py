@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Domains & Data Products test
 """
+
 from unittest.mock import patch
 
 import pytest

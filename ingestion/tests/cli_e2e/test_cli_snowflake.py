@@ -12,6 +12,7 @@
 """
 Test Snowflake connector with CLI
 """
+
 from datetime import datetime
 from time import sleep
 from typing import List, Tuple

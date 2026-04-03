@@ -12,6 +12,7 @@
 """
 Base source for the data quality used to instantiate a data quality runner with its interface
 """
+
 from copy import deepcopy
 from typing import Optional, cast
 

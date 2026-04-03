@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """GCS object store extraction metadata"""
+
 import json
 import secrets
 import traceback
@@ -261,9 +262,11 @@ class GcsSource(StorageServiceSource):
                 return GCSContainerDetails(
                     name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
                     prefix=prefix,
-                    creation_date=bucket_response.creation_date.isoformat()
-                    if bucket_response.creation_date
-                    else None,
+                    creation_date=(
+                        bucket_response.creation_date.isoformat()
+                        if bucket_response.creation_date
+                        else None
+                    ),
                     number_of_objects=self._fetch_metric(
                         bucket=bucket_response, metric=GCSMetric.NUMBER_OF_OBJECTS
                     ),
@@ -311,12 +314,12 @@ class GcsSource(StorageServiceSource):
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
                     metadata_entry_copy.dataPath = key.strip(KEY_SEPARATOR)
-                    structured_container: Optional[
-                        GCSContainerDetails
-                    ] = self._generate_container_details(
-                        bucket_response=bucket_response,
-                        metadata_entry=metadata_entry_copy,
-                        parent=parent,
+                    structured_container: Optional[GCSContainerDetails] = (
+                        self._generate_container_details(
+                            bucket_response=bucket_response,
+                            metadata_entry=metadata_entry_copy,
+                            parent=parent,
+                        )
                     )
                     if structured_container:
                         yield structured_container
@@ -338,12 +341,12 @@ class GcsSource(StorageServiceSource):
                 f"and generating structured container"
             )
             if metadata_entry.depth == 0:
-                structured_container: Optional[
-                    GCSContainerDetails
-                ] = self._generate_container_details(
-                    bucket_response=bucket_response,
-                    metadata_entry=metadata_entry,
-                    parent=parent,
+                structured_container: Optional[GCSContainerDetails] = (
+                    self._generate_container_details(
+                        bucket_response=bucket_response,
+                        metadata_entry=metadata_entry,
+                        parent=parent,
+                    )
                 )
                 if structured_container:
                     yield structured_container
@@ -433,9 +436,11 @@ class GcsSource(StorageServiceSource):
         return GCSContainerDetails(
             name=bucket_response.name,
             prefix=KEY_SEPARATOR,
-            creation_date=bucket_response.creation_date.isoformat()
-            if bucket_response.creation_date
-            else None,
+            creation_date=(
+                bucket_response.creation_date.isoformat()
+                if bucket_response.creation_date
+                else None
+            ),
             number_of_objects=self._fetch_metric(
                 bucket=bucket_response, metric=GCSMetric.NUMBER_OF_OBJECTS
             ),
@@ -634,9 +639,11 @@ class GcsSource(StorageServiceSource):
                 size = self.get_size(bucket_name, bucket_response.project_id, key)
                 yield GCSContainerDetails(
                     name=list_of_parent[-1],
-                    prefix=KEY_SEPARATOR + parent_relative_path
-                    if parent_relative_path
-                    else KEY_SEPARATOR,
+                    prefix=(
+                        KEY_SEPARATOR + parent_relative_path
+                        if parent_relative_path
+                        else KEY_SEPARATOR
+                    ),
                     file_formats=[],
                     size=size,
                     container_fqn=container_fqn,

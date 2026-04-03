@@ -12,6 +12,7 @@
 Classes and methods to handle connection testing when
 creating a service
 """
+
 import traceback
 from datetime import datetime
 from functools import partial
@@ -28,7 +29,9 @@ from metadata.generated.schema.api.automations.createWorkflow import (
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
+from metadata.generated.schema.entity.automations.workflow import (
+    WorkflowStatus,
+)
 from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
     TestConnectionDefinition,
 )

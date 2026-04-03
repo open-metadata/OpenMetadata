@@ -16,6 +16,7 @@ Each edge contains:
 - fromDictionary -> toDictionary (table lineage)
 - condition: [{fromCol, toCol}] (column lineage)
 """
+
 import traceback
 from typing import Iterable, Optional
 

@@ -11,6 +11,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Callable, Dict, Optional
 from urllib.parse import quote_plus

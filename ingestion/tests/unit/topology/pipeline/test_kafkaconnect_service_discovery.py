@@ -12,6 +12,7 @@
 """
 Test KafkaConnect service discovery and caching functionality
 """
+
 from unittest import TestCase
 from unittest.mock import Mock, patch
 

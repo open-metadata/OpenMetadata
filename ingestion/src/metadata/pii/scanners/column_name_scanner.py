@@ -11,6 +11,7 @@
 """
 Regex scanner for column names
 """
+
 import re
 from typing import Optional
 

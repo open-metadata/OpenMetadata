@@ -13,6 +13,7 @@ Mixin class containing Data Contract specific methods
 
 To be used by OpenMetadata class
 """
+
 import traceback
 from typing import Any, Optional
 from urllib.parse import quote_plus

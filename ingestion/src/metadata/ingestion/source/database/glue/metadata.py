@@ -11,6 +11,7 @@
 """
 Glue source methods.
 """
+
 import traceback
 from typing import Any, Iterable, Optional, Tuple
 
@@ -144,9 +145,11 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         )
                         if filter_by_database(
                             self.config.sourceConfig.config.databaseFilterPattern,
-                            database_fqn
-                            if self.config.sourceConfig.config.useFqnForFiltering
-                            else schema.CatalogId,
+                            (
+                                database_fqn
+                                if self.config.sourceConfig.config.useFqnForFiltering
+                                else schema.CatalogId
+                            ),
                         ):
                             self.status.filter(
                                 database_fqn,
@@ -197,9 +200,11 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                     )
                     if filter_by_schema(
                         self.config.sourceConfig.config.schemaFilterPattern,
-                        schema_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else schema.Name,
+                        (
+                            schema_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else schema.Name
+                        ),
                     ):
                         self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
@@ -269,9 +274,11 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                     )
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
+                        (
+                            table_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else table_name
+                        ),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -317,9 +324,9 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         schema_name = self.context.get().database_schema
         if storage_descriptor.Location:
             # s3a doesn't occur as a path in containers, so it needs to be replaced for lineage to work
-            self.external_location_map[
-                (database_name, schema_name, table_name)
-            ] = storage_descriptor.Location.replace("s3a://", "s3://")
+            self.external_location_map[(database_name, schema_name, table_name)] = (
+                storage_descriptor.Location.replace("s3a://", "s3://")
+            )
         try:
             columns = self.get_columns(storage_descriptor)
             table_request = CreateTableRequest(

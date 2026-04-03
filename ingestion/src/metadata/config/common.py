@@ -11,6 +11,7 @@
 """
 Common configuration models and exceptions
 """
+
 import io
 import json
 import os

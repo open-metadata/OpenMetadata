@@ -12,6 +12,7 @@
 """
 sql lineage utils tests
 """
+
 import uuid
 from unittest import TestCase
 

@@ -11,6 +11,7 @@
 """
 REST Auth & Client for Lightdash
 """
+
 import traceback
 from typing import List
 

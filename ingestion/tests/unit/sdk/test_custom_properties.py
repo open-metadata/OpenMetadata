@@ -1,6 +1,7 @@
 """
 Unit tests for custom property operations in SDK.
 """
+
 from unittest.mock import Mock, patch
 from uuid import UUID
 

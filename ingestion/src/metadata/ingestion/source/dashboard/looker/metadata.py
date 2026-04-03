@@ -19,6 +19,7 @@ Supports:
 Notes:
 - Filtering is applied on the Dashboard title or ID, if the title is missing
 """
+
 import copy
 import os
 import re
@@ -442,9 +443,9 @@ class LookerSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             # First, pick up all the LookML Models
             try:
-                all_lookml_models: Sequence[
-                    LookmlModel
-                ] = self.client.all_lookml_models()
+                all_lookml_models: Sequence[LookmlModel] = (
+                    self.client.all_lookml_models()
+                )
 
                 # Then, gather their information and build the parser
                 self.parser = all_lookml_models
@@ -566,11 +567,13 @@ class LookerSource(DashboardServiceSource):
                     columns=get_columns_from_model(view),
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     project=first_project,
-                    sourceUrl=SourceUrl(
-                        f"{clean_uri(self.service_connection.hostPort)}/projects/{first_project}/files/{view.source_file}"
-                    )
-                    if view.source_file and first_project
-                    else None,
+                    sourceUrl=(
+                        SourceUrl(
+                            f"{clean_uri(self.service_connection.hostPort)}/projects/{first_project}/files/{view.source_file}"
+                        )
+                        if view.source_file and first_project
+                        else None
+                    ),
                 )
 
                 yield Either(right=data_model_request)
@@ -687,9 +690,9 @@ class LookerSource(DashboardServiceSource):
 
                 # Maybe use the project_name as key too?
                 # Save the explores for when we create the lineage with the dashboards and views
-                self._explores_cache[
-                    explore_datamodel.name.root
-                ] = self.context.get().dataModel  # This is the newly created explore
+                self._explores_cache[explore_datamodel.name.root] = (
+                    self.context.get().dataModel
+                )  # This is the newly created explore
 
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
@@ -826,11 +829,13 @@ class LookerSource(DashboardServiceSource):
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     # In Looker, you need to create Explores and Views within a Project
                     project=explore.project_name,
-                    sourceUrl=SourceUrl(
-                        f"{clean_uri(self.service_connection.hostPort)}/projects/{explore.project_name}/files/{view.source_file}"
-                    )
-                    if view.source_file and explore.project_name
-                    else None,
+                    sourceUrl=(
+                        SourceUrl(
+                            f"{clean_uri(self.service_connection.hostPort)}/projects/{explore.project_name}/files/{view.source_file}"
+                        )
+                        if view.source_file and explore.project_name
+                        else None
+                    ),
                 )
                 yield Either(right=data_model_request)
                 self._view_data_model = self._build_data_model(datamodel_view_name)

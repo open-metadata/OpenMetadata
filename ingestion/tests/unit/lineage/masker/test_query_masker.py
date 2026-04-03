@@ -15,6 +15,7 @@ Query masking tests — core masking logic
 Tests for masking SQL queries with different parsers (SqlGlot, SqlFluff, SqlParse).
 Covers: parser dispatch, caching, literal types, ordinal preservation edge cases.
 """
+
 from unittest import TestCase
 
 from ingestion.tests.unit.lineage.masker.helpers import assert_masked_query

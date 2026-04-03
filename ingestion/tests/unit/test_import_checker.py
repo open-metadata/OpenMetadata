@@ -12,6 +12,7 @@
 """
 Test suite for the custom import checker pylint plugin
 """
+
 import tempfile
 import textwrap
 
@@ -159,15 +160,11 @@ class TestImportChecker:
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False
         ) as temp_file:
-            temp_file.write(
-                textwrap.dedent(
-                    """
+            temp_file.write(textwrap.dedent("""
             from metadata import valid_import
             import ingestion.src.metadata.something
             from ingestion.src.metadata import another_thing
-            """
-                )
-            )
+            """))
             temp_file.flush()
 
             reporter = TestReporter()

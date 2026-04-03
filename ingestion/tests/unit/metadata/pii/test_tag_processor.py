@@ -11,6 +11,7 @@
 """
 Unit tests for Tag Processor
 """
+
 from unittest.mock import Mock
 
 import pytest

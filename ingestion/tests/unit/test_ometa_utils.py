@@ -12,6 +12,7 @@
 """
 OpenMetadata utils tests
 """
+
 import base64
 import json
 from unittest import TestCase

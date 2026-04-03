@@ -12,6 +12,7 @@
 """
 Table Count Metric definition
 """
+
 from typing import TYPE_CHECKING, Callable, Optional
 
 from sqlalchemy import func

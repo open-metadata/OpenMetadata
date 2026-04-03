@@ -11,6 +11,7 @@
 """
 Unit tests for GCS Object store source - Unstructured Formats Support
 """
+
 import datetime
 import uuid
 from collections import namedtuple

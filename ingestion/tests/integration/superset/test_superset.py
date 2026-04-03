@@ -584,16 +584,20 @@ class SupersetUnitTest(TestCase):
         """
         Test generated datasource fqn for api source
         """
-        with patch.object(
-            OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE
-        ), patch.object(
-            self.superset_api.client,
-            "fetch_datasource",
-            return_value=MOCK_DATASOURCE_RESPONSE,
-        ), patch.object(
-            self.superset_api.client,
-            "fetch_database",
-            return_value=MOCK_DATABASE_RESPONSE,
+        with (
+            patch.object(
+                OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE
+            ),
+            patch.object(
+                self.superset_api.client,
+                "fetch_datasource",
+                return_value=MOCK_DATASOURCE_RESPONSE,
+            ),
+            patch.object(
+                self.superset_api.client,
+                "fetch_database",
+                return_value=MOCK_DATABASE_RESPONSE,
+            ),
         ):
             fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
                 1, MOCK_DB_POSTGRES_SERVICE.name.root

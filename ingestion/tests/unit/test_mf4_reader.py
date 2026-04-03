@@ -12,6 +12,7 @@
 """
 MF4 reader tests
 """
+
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 

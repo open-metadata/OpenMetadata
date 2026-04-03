@@ -11,6 +11,7 @@
 """
 RedPanda source ingestion
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (

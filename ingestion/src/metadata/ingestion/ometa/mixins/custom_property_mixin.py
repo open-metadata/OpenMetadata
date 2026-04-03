@@ -13,6 +13,7 @@ Mixin class containing Custom Property specific methods
 
 To be used by OpenMetadata class
 """
+
 from typing import Dict, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel

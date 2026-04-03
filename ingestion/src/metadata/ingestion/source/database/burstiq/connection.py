@@ -11,6 +11,7 @@
 """
 Source connection handler for BurstIQ
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -93,7 +94,9 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
-        timeout_seconds=service_connection.connectionTimeout
-        if hasattr(service_connection, "connectionTimeout")
-        else timeout_seconds,
+        timeout_seconds=(
+            service_connection.connectionTimeout
+            if hasattr(service_connection, "connectionTimeout")
+            else timeout_seconds
+        ),
     )

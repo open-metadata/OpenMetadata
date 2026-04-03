@@ -226,20 +226,18 @@ class MssqlUnitTest(TestCase):
         ] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.mssql.context.get_current_thread_id()
         self.mssql._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.mssql._inspector_map[
-            self.thread_id
-        ].get_columns = (
+        self.mssql._inspector_map[self.thread_id].get_columns = (
             lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         )
-        self.mssql._inspector_map[
-            self.thread_id
-        ].get_pk_constraint = lambda table_name, schema_name: []
-        self.mssql._inspector_map[
-            self.thread_id
-        ].get_unique_constraints = lambda table_name, schema_name: []
-        self.mssql._inspector_map[
-            self.thread_id
-        ].get_foreign_keys = lambda table_name, schema_name: []
+        self.mssql._inspector_map[self.thread_id].get_pk_constraint = (
+            lambda table_name, schema_name: []
+        )
+        self.mssql._inspector_map[self.thread_id].get_unique_constraints = (
+            lambda table_name, schema_name: []
+        )
+        self.mssql._inspector_map[self.thread_id].get_foreign_keys = (
+            lambda table_name, schema_name: []
+        )
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [

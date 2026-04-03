@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from copy import deepcopy
 from typing import Optional, cast
 from urllib.parse import quote_plus
@@ -250,9 +251,9 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         return {
             "authType": "basic",
             "username": connection.username,
-            "password": auth_type.password.get_secret_value()
-            if auth_type.password
-            else None,
+            "password": (
+                auth_type.password.get_secret_value() if auth_type.password else None
+            ),
         }
 
     @staticmethod

@@ -33,6 +33,7 @@ Example:
         return db.query(f"SELECT * FROM users WHERE id = {user_id}")
     ```
 """
+
 from functools import wraps
 from threading import RLock
 from typing import (

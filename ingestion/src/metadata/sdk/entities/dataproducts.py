@@ -1,6 +1,7 @@
 """
 DataProducts entity SDK with fluent API
 """
+
 from typing import Any, Dict, List, Type, cast
 
 from metadata.generated.schema.api.domains.createDataProduct import (

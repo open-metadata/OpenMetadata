@@ -12,6 +12,7 @@
 """
 Test Exasol connector with CLI
 """
+
 import subprocess
 from typing import List
 

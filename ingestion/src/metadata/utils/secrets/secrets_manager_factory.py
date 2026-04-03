@@ -12,6 +12,7 @@
 """
 Secrets manager factory module
 """
+
 from typing import Optional
 
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (

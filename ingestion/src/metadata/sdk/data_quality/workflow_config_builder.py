@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Builder for creating OpenMetadata workflow configurations for test suite execution."""
+
 # pyright: reportOptionalMemberAccess=false
 
 from typing import Any, List, Optional, Type, TypeVar, cast

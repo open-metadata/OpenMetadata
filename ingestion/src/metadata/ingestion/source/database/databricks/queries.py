@@ -14,8 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-DATABRICKS_SQL_STATEMENT = textwrap.dedent(
-    """
+DATABRICKS_SQL_STATEMENT = textwrap.dedent("""
     SELECT
       statement_type AS query_type,
       statement_text AS query_text,
@@ -31,22 +30,19 @@ DATABRICKS_SQL_STATEMENT = textwrap.dedent(
     AND start_time between to_timestamp('{start_time}') and to_timestamp('{end_time}')
     {filters}
     LIMIT {result_limit}
-    """
-)
+    """)
 
 DATABRICKS_SQL_STATEMENT_TEST = """
  SELECT statement_text from  {query_history} LIMIT 1
 """
 
-DATABRICKS_VIEW_DEFINITIONS = textwrap.dedent(
-    """
+DATABRICKS_VIEW_DEFINITIONS = textwrap.dedent("""
     select
         TABLE_NAME as view_name,
         TABLE_SCHEMA as schema,
         VIEW_DEFINITION as view_def
     from INFORMATION_SCHEMA.VIEWS WHERE VIEW_DEFINITION IS NOT NULL
-    """
-)
+    """)
 
 DATABRICKS_GET_TABLE_COMMENTS = (
     "DESCRIBE TABLE EXTENDED `{database_name}`.`{schema_name}`.`{table_name}`"
@@ -62,28 +58,22 @@ DATABRICKS_GET_CATALOGS_TAGS = textwrap.dedent(
     """SELECT * FROM `{database_name}`.information_schema.catalog_tags;"""
 )
 
-DATABRICKS_GET_SCHEMA_TAGS = textwrap.dedent(
-    """
+DATABRICKS_GET_SCHEMA_TAGS = textwrap.dedent("""
     SELECT 
         * 
-    FROM `{database_name}`.information_schema.schema_tags"""
-)
+    FROM `{database_name}`.information_schema.schema_tags""")
 
-DATABRICKS_GET_TABLE_TAGS = textwrap.dedent(
-    """
+DATABRICKS_GET_TABLE_TAGS = textwrap.dedent("""
     SELECT 
         * 
     FROM `{database_name}`.information_schema.table_tags 
-    """
-)
+    """)
 
-DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
-    """
+DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent("""
     SELECT 
         * 
     FROM `{database_name}`.information_schema.column_tags 
-    """
-)
+    """)
 
 DATABRICKS_DDL = "SHOW CREATE TABLE `{table_name}`"
 
@@ -123,8 +113,7 @@ GROUP BY
 """
 
 # Test connection queries
-TEST_VIEW_DEFINITIONS = textwrap.dedent(
-    """
+TEST_VIEW_DEFINITIONS = textwrap.dedent("""
     SELECT
         TABLE_NAME,
         TABLE_SCHEMA,
@@ -132,53 +121,40 @@ TEST_VIEW_DEFINITIONS = textwrap.dedent(
     FROM INFORMATION_SCHEMA.VIEWS
     WHERE VIEW_DEFINITION IS NOT NULL
     LIMIT 1
-    """
-)
+    """)
 
-TEST_CATALOG_TAGS = textwrap.dedent(
-    """
+TEST_CATALOG_TAGS = textwrap.dedent("""
     SELECT COUNT(*) as count
     FROM `{database_name}`.information_schema.catalog_tags
     WHERE 1=0
-    """
-)
+    """)
 
-TEST_SCHEMA_TAGS = textwrap.dedent(
-    """
+TEST_SCHEMA_TAGS = textwrap.dedent("""
     SELECT COUNT(*) as count
     FROM `{database_name}`.information_schema.schema_tags
     WHERE 1=0
-    """
-)
+    """)
 
-TEST_TABLE_TAGS = textwrap.dedent(
-    """
+TEST_TABLE_TAGS = textwrap.dedent("""
     SELECT COUNT(*) as count
     FROM `{database_name}`.information_schema.table_tags
     WHERE 1=0
-    """
-)
+    """)
 
-TEST_COLUMN_TAGS = textwrap.dedent(
-    """
+TEST_COLUMN_TAGS = textwrap.dedent("""
     SELECT COUNT(*) as count
     FROM `{database_name}`.information_schema.column_tags
     WHERE 1=0
-    """
-)
+    """)
 
-TEST_TABLE_LINEAGE = textwrap.dedent(
-    """
+TEST_TABLE_LINEAGE = textwrap.dedent("""
     SELECT COUNT(*) as count
     FROM system.access.table_lineage
     WHERE 1=0
-    """
-)
+    """)
 
-TEST_COLUMN_LINEAGE = textwrap.dedent(
-    """
+TEST_COLUMN_LINEAGE = textwrap.dedent("""
     SELECT COUNT(*) as count
     FROM system.access.column_lineage
     WHERE 1=0
-    """
-)
+    """)

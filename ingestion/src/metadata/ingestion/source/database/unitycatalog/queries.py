@@ -30,8 +30,7 @@ UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS = """
 SELECT * FROM `{database}`.information_schema.column_tags WHERE schema_name = '{schema}';
 """
 
-UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent(
-    """
+UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent("""
     SELECT
       statement_type AS query_type,
       statement_text AS query_text,
@@ -47,8 +46,7 @@ UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent(
     AND start_time between to_timestamp('{start_time}') and to_timestamp('{end_time}')
     {filters}
     LIMIT {result_limit}
-    """
-)
+    """)
 
 UNITY_CATALOG_SQL_STATEMENT_TEST = """
  SELECT statement_text from  system.query.history LIMIT 1
@@ -56,8 +54,7 @@ UNITY_CATALOG_SQL_STATEMENT_TEST = """
 
 UNITY_CATALOG_GET_TABLE_DDL = "SHOW CREATE TABLE `{database}`.`{schema}`.`{table}`"
 
-UNITY_CATALOG_TABLE_LINEAGE = textwrap.dedent(
-    """
+UNITY_CATALOG_TABLE_LINEAGE = textwrap.dedent("""
     SELECT
         source_table_full_name,
         target_table_full_name
@@ -66,11 +63,9 @@ UNITY_CATALOG_TABLE_LINEAGE = textwrap.dedent(
         AND source_table_full_name IS NOT NULL
         AND target_table_full_name IS NOT NULL
     GROUP BY source_table_full_name, target_table_full_name
-    """
-)
+    """)
 
-UNITY_CATALOG_COLUMN_LINEAGE = textwrap.dedent(
-    """
+UNITY_CATALOG_COLUMN_LINEAGE = textwrap.dedent("""
     SELECT
         source_table_full_name,
         source_column_name,
@@ -87,11 +82,9 @@ UNITY_CATALOG_COLUMN_LINEAGE = textwrap.dedent(
         source_column_name,
         target_table_full_name,
         target_column_name
-    """
-)
+    """)
 
-UNITY_CATALOG_EXTERNAL_TABLES = textwrap.dedent(
-    """
+UNITY_CATALOG_EXTERNAL_TABLES = textwrap.dedent("""
     SELECT
         table_catalog,
         table_schema,
@@ -100,21 +93,16 @@ UNITY_CATALOG_EXTERNAL_TABLES = textwrap.dedent(
     FROM system.information_schema.tables
     WHERE table_type = 'EXTERNAL'
         AND storage_path IS NOT NULL
-    """
-)
+    """)
 
-UNITY_CATALOG_TEST_TABLE_LINEAGE = textwrap.dedent(
-    """
+UNITY_CATALOG_TEST_TABLE_LINEAGE = textwrap.dedent("""
     SELECT COUNT(*) as count
     FROM system.access.table_lineage
     WHERE 1=0
-    """
-)
+    """)
 
-UNITY_CATALOG_TEST_COLUMN_LINEAGE = textwrap.dedent(
-    """
+UNITY_CATALOG_TEST_COLUMN_LINEAGE = textwrap.dedent("""
     SELECT COUNT(*) as count
     FROM system.access.column_lineage
     WHERE 1=0
-    """
-)
+    """)

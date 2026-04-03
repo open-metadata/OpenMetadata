@@ -11,6 +11,7 @@
 """
 OpenAPI REST API Models
 """
+
 from typing import Optional
 
 from pydantic import AnyUrl, BaseModel

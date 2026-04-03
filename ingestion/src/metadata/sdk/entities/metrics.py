@@ -1,4 +1,5 @@
 """Metrics entity SDK."""
+
 from __future__ import annotations
 
 from typing import Any, Sequence, Type, cast

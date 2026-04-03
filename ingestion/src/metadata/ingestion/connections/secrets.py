@@ -12,6 +12,7 @@
 """
 Connection secrets utils
 """
+
 from functools import wraps
 
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr

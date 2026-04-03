@@ -13,6 +13,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+
 from typing import Callable, cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (

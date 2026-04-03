@@ -1,4 +1,5 @@
 """Unit tests for language support in auto-classification."""
+
 import uuid
 from unittest.mock import Mock, patch
 

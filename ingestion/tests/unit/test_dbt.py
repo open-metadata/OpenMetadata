@@ -1080,13 +1080,15 @@ class DbtUnitTest(TestCase):
         self.dbt_source_obj.remove_manifest_non_required_keys(manifest_dict=mock_data)
         dbt_files = DbtFiles(dbt_manifest=mock_data)
         dbt_objects = DbtObjects(
-            dbt_catalog=parse_catalog(dbt_files.dbt_catalog)
-            if dbt_files.dbt_catalog
-            else None,
+            dbt_catalog=(
+                parse_catalog(dbt_files.dbt_catalog) if dbt_files.dbt_catalog else None
+            ),
             dbt_manifest=parse_manifest(dbt_files.dbt_manifest),
-            dbt_run_results=[parse_run_results(dbt_files.dbt_run_results)]
-            if dbt_files.dbt_run_results
-            else None,
+            dbt_run_results=(
+                [parse_run_results(dbt_files.dbt_run_results)]
+                if dbt_files.dbt_run_results
+                else None
+            ),
         )
         return dbt_files, dbt_objects
 

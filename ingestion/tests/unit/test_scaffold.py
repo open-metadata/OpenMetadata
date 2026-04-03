@@ -11,6 +11,7 @@
 """
 Tests for the connector scaffold CLI tool.
 """
+
 import argparse
 import json
 from unittest.mock import patch

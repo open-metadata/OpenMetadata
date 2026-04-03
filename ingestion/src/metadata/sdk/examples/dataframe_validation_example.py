@@ -21,6 +21,7 @@ Installation:
     For reading from S3 datalakes:
         pip install 'openmetadata-ingestion[pandas,datalake-s3]'
 """
+
 # pyright: reportUnknownVariableType=false, reportAttributeAccessIssue=false, reportUnknownMemberType=false
 # pyright: reportUnusedCallResult=false
 # pylint: disable=W5001

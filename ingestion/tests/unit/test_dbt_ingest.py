@@ -94,13 +94,11 @@ class DbtIngestCLIUnitTest(unittest.TestCase):
 
             # Create .env file
             env_file = temp_path / ".env"
-            env_file.write_text(
-                """
+            env_file.write_text("""
 DOTENV_HOST=http://dotenv-host:8585/endpoint
 DOTENV_TOKEN=dotenv-jwt-token
 DOTENV_SERVICE=dotenv-service
-"""
-            )
+""")
 
             # Create dbt_project.yml that uses .env variables
             dbt_project_file = temp_path / "dbt_project.yml"
@@ -520,15 +518,13 @@ vars:
 
             # Create required files
             (target_dir / "manifest.json").write_text('{"metadata": {}}')
-            (temp_path / "dbt_project.yml").write_text(
-                """
+            (temp_path / "dbt_project.yml").write_text("""
 name: 'test_project'
 vars:
   openmetadata_host_port: 'http://test-server:port/endpoint'
   openmetadata_jwt_token: 'test-jwt-token'
   openmetadata_service_name: 'test_service'
-"""
-            )
+""")
 
             run_ingest_dbt(temp_path)
             mock_workflow_class.create.assert_called_once()

@@ -38,8 +38,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM e2e_cli_tests.dbo.persons;
     """
 
-    insert_data_queries: List[str] = [
-        """
+    insert_data_queries: List[str] = ["""
     INSERT INTO persons (person_id, full_name, birthdate, is_meeting_scheduled) VALUES
         (1,'Peter Parker', '2004-08-10', 1),
         (2,'Bruce Banner', '1988-12-18', 1),
@@ -47,8 +46,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         (4,'Natasha Romanoff', '1997-12-03', 1),
         (5,'Wanda Maximoff', '1998-02-10', 1),
         (6,'Diana Prince', '1976-03-17', 0);
-    """
-    ]
+    """]
 
     drop_table_query: str = """
         DROP TABLE IF EXISTS e2e_cli_tests.dbo.persons;

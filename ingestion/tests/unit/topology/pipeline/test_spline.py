@@ -11,6 +11,7 @@
 """
 Test Spline using the topology
 """
+
 # pylint: disable=line-too-long
 import json
 from pathlib import Path

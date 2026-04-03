@@ -36,9 +36,11 @@ class ColumnFactory(factory.Factory):
     name = factory.LazyAttribute(lambda obj: ColumnName(root=obj.column_name))
     dataType = factory.fuzzy.FuzzyChoice(DataType)
     arrayDataType = factory.LazyAttribute(
-        lambda a: random.choice([d for d in DataType])
-        if a.dataType is DataType.ARRAY
-        else None
+        lambda a: (
+            random.choice([d for d in DataType])
+            if a.dataType is DataType.ARRAY
+            else None
+        )
     )
     fullyQualifiedName = factory.LazyAttribute(
         lambda obj: FullyQualifiedEntityName(

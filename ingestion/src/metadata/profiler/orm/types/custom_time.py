@@ -14,6 +14,7 @@
 """
 Expand sqlalchemy types to map them to OpenMetadata DataType
 """
+
 import datetime
 
 from sqlalchemy.sql.sqltypes import TIME, TypeDecorator

@@ -12,6 +12,7 @@
 """
 Test Profiler behavior
 """
+
 import os
 from concurrent.futures import TimeoutError
 from datetime import datetime

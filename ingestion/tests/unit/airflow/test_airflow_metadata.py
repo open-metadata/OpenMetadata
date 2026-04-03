@@ -15,6 +15,7 @@ and Airflow 2.x/3.x databases.
 The Airflow SDK is always v3.x (which has DagRun.logical_date), but we may
 connect to Airflow 2.x databases (which have execution_date column).
 """
+
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4

@@ -11,6 +11,7 @@
 """
 Hex source module with direct warehouse query support for lineage
 """
+
 import traceback
 from typing import Dict, Iterable, Optional
 

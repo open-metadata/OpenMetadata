@@ -12,6 +12,7 @@
 """
 Test DBT with CLI
 """
+
 from abc import abstractmethod
 from typing import List
 from unittest import TestCase

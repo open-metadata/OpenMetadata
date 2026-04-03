@@ -13,6 +13,7 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
+
 import traceback
 from typing import Any, Dict, Optional
 
@@ -36,7 +37,9 @@ from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    SourceConfig,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin

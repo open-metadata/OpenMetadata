@@ -142,9 +142,11 @@ def _parse_union_children(
             children = cls(
                 name=field.name,
                 dataType=str(field.type).upper(),
-                children=None
-                if field == parent
-                else get_avro_fields(field, cls, already_parsed),
+                children=(
+                    None
+                    if field == parent
+                    else get_avro_fields(field, cls, already_parsed)
+                ),
                 description=field.doc,
             )
             return sub_type, children

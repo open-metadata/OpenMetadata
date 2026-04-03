@@ -11,6 +11,7 @@
 """
 Factory for creating Presidio recognizers from OpenMetadata recognizer configurations.
 """
+
 import re
 from typing import Any, Callable, Dict, List, Optional, cast
 
@@ -181,9 +182,11 @@ class PresidioRecognizerFactory:
                 PresidioPattern(
                     name=f"context_{context_word}",
                     regex=pattern,
-                    score=(config.minScore + config.maxScore) / 2
-                    if config.minScore and config.maxScore
-                    else 0.6,
+                    score=(
+                        (config.minScore + config.maxScore) / 2
+                        if config.minScore and config.maxScore
+                        else 0.6
+                    ),
                 )
             )
 
@@ -232,8 +235,10 @@ class PresidioRecognizerFactory:
         if supported_entities := config.supportedEntities:
             args["supported_entities"] = [entity.value for entity in supported_entities]
 
-        factory_or_class: Any = recognizer_factories.get(  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
-            predefined_class, predefined_class
+        factory_or_class: Any = (
+            recognizer_factories.get(  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+                predefined_class, predefined_class
+            )
         )
         factory = cast(Callable[..., EntityRecognizer], factory_or_class)
 
@@ -298,9 +303,9 @@ class RecognizerRegistry:
             logger.warning("Tag has no fullyQualifiedName, skipping tag registration")
             return
 
-        self.recognizers[
-            tag_fqn
-        ] = PresidioRecognizerFactory.create_recognizers_for_tag(tag)
+        self.recognizers[tag_fqn] = (
+            PresidioRecognizerFactory.create_recognizers_for_tag(tag)
+        )
         self.tag_priority[tag_fqn] = tag.autoClassificationPriority or 50
 
         # Calculate minimum confidence from all recognizers

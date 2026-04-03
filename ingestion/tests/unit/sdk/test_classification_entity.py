@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Classification entity.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID

@@ -22,8 +22,7 @@ from sqlalchemy.orm import Session
 
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 
-BIGQUERY_STATEMENT = textwrap.dedent(
-    """
+BIGQUERY_STATEMENT = textwrap.dedent("""
  SELECT
    project_id as database_name,
    user_email as user_name,
@@ -43,8 +42,7 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
   AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
   LIMIT {result_limit}
-"""
-)
+""")
 
 BIGQUERY_TEST_STATEMENT = textwrap.dedent(
     """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
@@ -52,24 +50,19 @@ BIGQUERY_TEST_STATEMENT = textwrap.dedent(
 )
 
 
-BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
-    """
+BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent("""
     SELECT option_value as schema_description FROM
     `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA_OPTIONS
     where schema_name = '{schema_name}' and option_name = 'description'
     and option_value is not null
-    """
-)
+    """)
 
-BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
-    """
+BIGQUERY_TABLE_AND_TYPE = textwrap.dedent("""
     select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES 
     WHERE TRUE {view_filter}
-    """
-)
+    """)
 
-BIGQUERY_CONSTRAINTS = textwrap.dedent(
-    """
+BIGQUERY_CONSTRAINTS = textwrap.dedent("""
     SELECT
         kcu.constraint_name,
         kcu.table_catalog,
@@ -91,11 +84,9 @@ BIGQUERY_CONSTRAINTS = textwrap.dedent(
         AND tc.constraint_schema = ccu.constraint_schema
         AND tc.constraint_name = ccu.constraint_name
     WHERE tc.constraint_type IN ('PRIMARY KEY', 'FOREIGN KEY')
-    """
-)
+    """)
 
-BIGQUERY_GET_STORED_PROCEDURES = textwrap.dedent(
-    """
+BIGQUERY_GET_STORED_PROCEDURES = textwrap.dedent("""
 SELECT
   routine_name as name,
   routine_definition as definition,
@@ -104,11 +95,9 @@ FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.ROUTINES
 WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
-    """
-)
+    """)
 
-BIGQUERY_GET_STORED_PROCEDURES_BY_REGION = textwrap.dedent(
-    """
+BIGQUERY_GET_STORED_PROCEDURES_BY_REGION = textwrap.dedent("""
 SELECT
   routine_name as name,
   routine_definition as definition,
@@ -117,11 +106,9 @@ FROM `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.ROUTINES
 WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
-    """
-)
+    """)
 
-BIGQUERY_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
-    """
+BIGQUERY_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent("""
 WITH SP_HISTORY AS (
   SELECT
     query AS query_text,
@@ -173,19 +160,16 @@ JOIN Q_HISTORY Q
   AND Q.end_time between SP.start_time and SP.end_time
   AND Q.user_name = SP.user_name
 ORDER BY procedure_start_time DESC
-"""
-)
+""")
 
-BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
-    """
+BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent("""
 select
 table_name as table_name,
 creation_time as created_at
 from `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
 where table_schema = '{schema_name}'
 and table_catalog = '{database_name}'
-"""
-)
+""")
 
 BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING = """
 protoPayload.metadata.@type="type.googleapis.com/google.cloud.audit.BigQueryAuditMetadata"
@@ -211,25 +195,21 @@ BIGQUERY_GET_MATERIALIZED_VIEW_NAMES = """
 SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.MATERIALIZED_VIEWS;
 """
 
-BIGQUERY_GET_TABLE_DDLS = textwrap.dedent(
-    """
+BIGQUERY_GET_TABLE_DDLS = textwrap.dedent("""
     SELECT table_name, ddl
     FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
     WHERE table_schema = '{schema_name}'
       AND table_catalog = '{database_name}'
       AND table_type IN ('BASE TABLE', 'EXTERNAL')
-    """
-)
+    """)
 
-BIGQUERY_GET_TABLE_DDLS_BY_REGION = textwrap.dedent(
-    """
+BIGQUERY_GET_TABLE_DDLS_BY_REGION = textwrap.dedent("""
     SELECT table_name, ddl
     FROM `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLES
     WHERE table_schema = '{schema_name}'
       AND table_catalog = '{database_name}'
       AND table_type IN ('BASE TABLE', 'EXTERNAL')
-    """
-)
+    """)
 
 
 class BigQueryQueryResult(BaseModel):

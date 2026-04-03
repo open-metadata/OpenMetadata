@@ -1,4 +1,5 @@
 """Extend the ProfilerSource class to add support for MSSQL is_disconnect SQA method"""
+
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
 )

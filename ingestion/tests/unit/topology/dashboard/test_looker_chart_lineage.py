@@ -11,6 +11,7 @@
 """
 Tests for Looker explore → dashboard and explore → chart lineage
 """
+
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -215,9 +216,7 @@ class TestYieldDashboardLineageDetails:
                 side_effect=lambda entity, fqn: (
                     MOCK_DASHBOARD_ENTITY
                     if entity is Dashboard
-                    else MOCK_EXPLORE
-                    if entity is DashboardDataModel
-                    else None
+                    else MOCK_EXPLORE if entity is DashboardDataModel else None
                 ),
             ),
         ):

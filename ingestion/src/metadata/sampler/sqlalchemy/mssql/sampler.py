@@ -13,7 +13,6 @@ Helper module to handle data sampling
 for the profiler
 """
 
-
 from sqlalchemy import Table, text
 from sqlalchemy.sql.selectable import CTE
 

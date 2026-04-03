@@ -1,4 +1,5 @@
 """Lightweight, typed helpers for entity CRUD operations in the SDK."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

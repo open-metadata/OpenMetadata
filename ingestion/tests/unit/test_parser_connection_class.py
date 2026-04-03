@@ -2,6 +2,7 @@
 Unit tests for parser.get_connection_class() function
 Tests the fix for Issue #22920 - SAS connection casing bug
 """
+
 import unittest
 
 from metadata.generated.schema.entity.services.databaseService import (

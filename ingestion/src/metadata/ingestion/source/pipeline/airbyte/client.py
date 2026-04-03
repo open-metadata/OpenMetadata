@@ -11,6 +11,7 @@
 """
 Client to interact with airbyte apis
 """
+
 import json
 import time
 from typing import Iterable, Optional, Tuple, Type, Union

@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Glossary and GlossaryTerm entities with full mock coverage.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -13,7 +14,9 @@ from metadata.generated.schema.entity.data.glossary import Glossary as GlossaryE
 from metadata.generated.schema.entity.data.glossaryTerm import (
     GlossaryTerm as GlossaryTermEntity,
 )
-from metadata.generated.schema.entity.data.glossaryTerm import TermReference
+from metadata.generated.schema.entity.data.glossaryTerm import (
+    TermReference,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sdk import Glossaries, GlossaryTerms
 

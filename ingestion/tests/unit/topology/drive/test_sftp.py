@@ -11,6 +11,7 @@
 """
 SFTP Source Unit Tests
 """
+
 import stat
 from collections import namedtuple
 from unittest import TestCase

@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for DatabaseSchema entity with full mock coverage.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID

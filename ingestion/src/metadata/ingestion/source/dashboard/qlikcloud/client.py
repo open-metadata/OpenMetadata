@@ -11,6 +11,7 @@
 """
 REST Auth & Client for QlikCloud
 """
+
 import json
 import re
 import traceback

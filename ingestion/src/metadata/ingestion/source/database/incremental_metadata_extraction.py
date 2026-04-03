@@ -11,6 +11,7 @@
 """
 Incremental Metadata Extraction related classes
 """
+
 import traceback
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple

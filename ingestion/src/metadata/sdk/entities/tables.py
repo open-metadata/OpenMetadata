@@ -1,4 +1,5 @@
 """Tables entity SDK with fluent helpers."""
+
 from __future__ import annotations
 
 from typing import Any, Optional, Type, cast

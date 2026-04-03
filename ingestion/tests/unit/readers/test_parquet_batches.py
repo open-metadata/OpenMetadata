@@ -12,6 +12,7 @@
 """
 Tests for ParquetDataFrameReader _read_parquet_in_batches method
 """
+
 import unittest
 from unittest.mock import Mock, patch
 

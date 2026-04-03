@@ -11,6 +11,7 @@
 """
 Kafka source ingestion
 """
+
 from typing import Optional, cast
 
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (

@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Table-level test definitions for DQ as Code API."""
+
 from typing import List, Optional
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue

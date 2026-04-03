@@ -1,4 +1,5 @@
 """Tests for the LRU cache class"""
+
 from typing import Any
 
 import pytest

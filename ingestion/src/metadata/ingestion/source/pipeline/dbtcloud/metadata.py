@@ -11,6 +11,7 @@
 """
 DBTcloud source to extract metadata from OM UI
 """
+
 import traceback
 from collections import defaultdict
 from datetime import datetime
@@ -413,20 +414,24 @@ class DbtcloudSource(PipelineServiceSource):
         """Build PipelineObservability object from run data."""
         return PipelineObservability(
             pipeline=EntityReference(
-                id=pipeline_entity.id.root
-                if hasattr(pipeline_entity.id, "root")
-                else pipeline_entity.id,
+                id=(
+                    pipeline_entity.id.root
+                    if hasattr(pipeline_entity.id, "root")
+                    else pipeline_entity.id
+                ),
                 type="pipeline",
-                fullyQualifiedName=pipeline_entity.fullyQualifiedName.root
-                if hasattr(pipeline_entity.fullyQualifiedName, "root")
-                else str(pipeline_entity.fullyQualifiedName),
+                fullyQualifiedName=(
+                    pipeline_entity.fullyQualifiedName.root
+                    if hasattr(pipeline_entity.fullyQualifiedName, "root")
+                    else str(pipeline_entity.fullyQualifiedName)
+                ),
             ),
             scheduleInterval=schedule_interval,
             startTime=self._parse_timestamp(run.started_at) if run.started_at else None,
             endTime=self._parse_timestamp(run.finished_at) if run.finished_at else None,
-            lastRunTime=self._parse_timestamp(run.finished_at)
-            if run.finished_at
-            else None,
+            lastRunTime=(
+                self._parse_timestamp(run.finished_at) if run.finished_at else None
+            ),
             lastRunStatus=self._map_run_status(run.state or run.status),
         )
 
@@ -549,20 +554,26 @@ class DbtcloudSource(PipelineServiceSource):
                 task_status = TaskStatus(
                     name=str(task.id),
                     executionStatus=STATUS_MAP.get(task.state, StatusType.Pending),
-                    startTime=self._parse_timestamp(task.started_at)
-                    if task.started_at
-                    else None,
-                    endTime=self._parse_timestamp(task.finished_at)
-                    if task.finished_at
-                    else None,
+                    startTime=(
+                        self._parse_timestamp(task.started_at)
+                        if task.started_at
+                        else None
+                    ),
+                    endTime=(
+                        self._parse_timestamp(task.finished_at)
+                        if task.finished_at
+                        else None
+                    ),
                 )
 
                 pipeline_status = PipelineStatus(
                     executionStatus=task_status.executionStatus,
                     taskStatus=[task_status],
-                    timestamp=task_status.endTime
-                    if task_status.endTime
-                    else task_status.startTime,
+                    timestamp=(
+                        task_status.endTime
+                        if task_status.endTime
+                        else task_status.startTime
+                    ),
                 )
 
                 yield Either(

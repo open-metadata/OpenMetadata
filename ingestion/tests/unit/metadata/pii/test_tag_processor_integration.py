@@ -12,6 +12,7 @@
 Integration tests for TagProcessor with multi-classification support.
 Tests scenarios from AUTO_CLASSIFICATION_REFACTOR_SOLUTION.md
 """
+
 from typing import Any, List, Sequence
 from unittest.mock import Mock, create_autospec
 

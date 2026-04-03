@@ -12,6 +12,7 @@
 Model required to ingest pipeline status data
 from the sample data
 """
+
 from typing import List
 
 from pydantic import BaseModel

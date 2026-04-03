@@ -12,6 +12,7 @@
 """
 Test databricks using the topology
 """
+
 # pylint: disable=invalid-name,import-outside-toplevel
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch

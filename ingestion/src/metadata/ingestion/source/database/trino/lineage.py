@@ -11,6 +11,7 @@
 """
 Trino lineage module
 """
+
 import traceback
 from typing import Iterable, Iterator, List
 

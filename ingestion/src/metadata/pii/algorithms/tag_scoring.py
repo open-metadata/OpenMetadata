@@ -183,9 +183,9 @@ class TagScorer:
             recognizerId=recognizer_id,
             recognizerName=recognizer_name,
             score=min(total_score, 1),
-            target=TARGET_MAP[content_analysis.target]
-            if content_analysis.target
-            else None,
+            target=(
+                TARGET_MAP[content_analysis.target] if content_analysis.target else None
+            ),
             patterns=pattern_matches if pattern_matches else None,
         )
 

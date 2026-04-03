@@ -129,26 +129,26 @@ class ColumnValuesToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.min.name
-                    ] = min_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.min.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.min.name] = (
+                        min_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.min.name],
+                            group_df,
+                        )
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.max.name
-                    ] = max_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.max.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.max.name] = (
+                        max_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.max.name],
+                            group_df,
+                        )
                     )
 
-                    dimension_aggregates[dimension_value][
-                        DIMENSION_TOTAL_COUNT_KEY
-                    ] = row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][
-                            DIMENSION_TOTAL_COUNT_KEY
-                        ],
-                        group_df,
+                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] = (
+                        row_count_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][
+                                DIMENSION_TOTAL_COUNT_KEY
+                            ],
+                            group_df,
+                        )
                     )
 
                     # Count row-level violations using checker's unified logic

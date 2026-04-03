@@ -12,6 +12,7 @@
 """
 MySQL SQLAlchemy Helper Methods
 """
+
 import textwrap
 
 from sqlalchemy import sql, text
@@ -23,12 +24,10 @@ from metadata.ingestion.source.database.doris.queries import (
 )
 from metadata.utils.sqlalchemy_utils import get_view_definition_wrapper
 
-query = textwrap.dedent(
-    """
+query = textwrap.dedent("""
     select TABLE_NAME as name, `ENGINE` as engine
     from INFORMATION_SCHEMA.tables 
-    """
-)
+    """)
 
 
 @reflection.cache

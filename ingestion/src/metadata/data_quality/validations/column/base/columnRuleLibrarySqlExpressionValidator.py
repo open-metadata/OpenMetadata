@@ -12,6 +12,7 @@
 """
 Validator for column value rule library SQL expression
 """
+
 from typing import Dict
 
 from jinja2 import StrictUndefined, Template, TemplateSyntaxError, UndefinedError

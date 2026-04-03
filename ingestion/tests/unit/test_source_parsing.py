@@ -11,6 +11,7 @@
 """
 Test that we can properly parse source configs
 """
+
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
 )

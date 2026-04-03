@@ -11,6 +11,7 @@
 """
 Helper class to handle FQN splitting logic
 """
+
 from metadata.generated.antlr.EntityLinkListener import EntityLinkListener
 from metadata.generated.antlr.EntityLinkParser import EntityLinkParser
 from metadata.generated.antlr.FqnListener import FqnListener

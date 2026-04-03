@@ -13,6 +13,7 @@ This hook allows storing the connection to
 an OpenMetadata server and use it for your
 operators.
 """
+
 from typing import Any, Dict
 
 from airflow.hooks.base import BaseHook

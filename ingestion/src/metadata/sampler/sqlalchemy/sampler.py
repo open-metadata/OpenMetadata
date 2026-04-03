@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+
 import hashlib
 from typing import List, Optional, Union, cast
 
@@ -173,9 +174,11 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 table_query = self.get_partitioned_query(table_query)
             session_query = self._base_sample_query(
                 column,
-                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
-                if self.sample_config.randomizedSample
-                else None,
+                (
+                    (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
+                    if self.sample_config.randomizedSample
+                    else None
+                ),
             )
             query = (
                 session_query.order_by(RANDOM_LABEL)

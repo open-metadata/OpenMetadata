@@ -11,6 +11,7 @@
 """
 DBT service Topology.
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from typing import Iterable, List
@@ -67,23 +68,23 @@ class DbtServiceTopology(ServiceTopology):
     dbt files -> dbt tags -> data models -> descriptions -> lineage -> tests.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_dbt_files",
-        stages=[
-            NodeStage(
-                type_=DbtFiles,
-                processor="validate_dbt_files",
-                nullable=True,
-            )
-        ],
-        children=[
-            "process_dbt_data_model",
-            "process_dbt_entities",
-            "process_dbt_tests",
-            "process_dbt_exposures",
-        ],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_dbt_files",
+            stages=[
+                NodeStage(
+                    type_=DbtFiles,
+                    processor="validate_dbt_files",
+                    nullable=True,
+                )
+            ],
+            children=[
+                "process_dbt_data_model",
+                "process_dbt_entities",
+                "process_dbt_tests",
+                "process_dbt_exposures",
+            ],
+        )
     )
     process_dbt_data_model: Annotated[
         TopologyNode, Field(description="Process dbt data models")
@@ -284,19 +285,25 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             )
 
         dbt_objects = DbtObjects(
-            dbt_catalog=parse_catalog(self.context.get().dbt_file.dbt_catalog)
-            if self.context.get().dbt_file.dbt_catalog
-            else None,
+            dbt_catalog=(
+                parse_catalog(self.context.get().dbt_file.dbt_catalog)
+                if self.context.get().dbt_file.dbt_catalog
+                else None
+            ),
             dbt_manifest=parse_manifest(self.context.get().dbt_file.dbt_manifest),
-            dbt_sources=parse_sources(self.context.get().dbt_file.dbt_sources)
-            if self.context.get().dbt_file.dbt_sources
-            else None,
-            dbt_run_results=[
-                parse_run_results(run_result_file)
-                for run_result_file in self.context.get().dbt_file.dbt_run_results
-            ]
-            if self.context.get().dbt_file.dbt_run_results
-            else None,
+            dbt_sources=(
+                parse_sources(self.context.get().dbt_file.dbt_sources)
+                if self.context.get().dbt_file.dbt_sources
+                else None
+            ),
+            dbt_run_results=(
+                [
+                    parse_run_results(run_result_file)
+                    for run_result_file in self.context.get().dbt_file.dbt_run_results
+                ]
+                if self.context.get().dbt_file.dbt_run_results
+                else None
+            ),
         )
         yield dbt_objects
 

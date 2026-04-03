@@ -11,6 +11,7 @@
 """
 Test Stored Procedures Utils
 """
+
 from unittest import TestCase
 
 from metadata.utils.stored_procedures import get_procedure_name_from_call

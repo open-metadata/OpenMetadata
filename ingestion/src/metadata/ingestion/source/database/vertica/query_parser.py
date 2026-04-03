@@ -11,6 +11,7 @@
 """
 Vertica usage module
 """
+
 from abc import ABC
 from typing import Iterable, Optional
 

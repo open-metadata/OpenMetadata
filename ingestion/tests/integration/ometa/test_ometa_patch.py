@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Table test
 """
+
 import logging
 import time
 from datetime import datetime

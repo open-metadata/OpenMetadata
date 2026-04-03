@@ -14,8 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-POSTGRES_SQL_STATEMENT = textwrap.dedent(
-    """
+POSTGRES_SQL_STATEMENT = textwrap.dedent("""
       SELECT
         u.usename,
         d.datname database_name,
@@ -30,8 +29,7 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
         s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
         {filters}
       LIMIT {result_limit}
-    """
-)
+    """)
 
 # https://www.postgresql.org/docs/current/catalog-pg-class.html
 # r = ordinary table, v = view, m = materialized view, c = composite type, f = foreign table, p = partitioned table,
@@ -43,8 +41,7 @@ POSTGRES_GET_TABLE_NAMES = """
 POSTGRES_TABLE_OWNERS = """
 select schemaname, tablename, tableowner from pg_catalog.pg_tables where schemaname <> 'pg_catalog' order by schemaname,tablename;
 """
-POSTGRES_PARTITION_DETAILS = textwrap.dedent(
-    """
+POSTGRES_PARTITION_DETAILS = textwrap.dedent("""
     select
         par.relnamespace::regnamespace::text as schema,
         par.relname as table_name,
@@ -72,8 +69,7 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
         and col.table_name = par.relname
         and ordinal_position = pt.column_index
      where par.relname=:table_name and  par.relnamespace::regnamespace::text=:schema_name
-    """
-)
+    """)
 
 POSTGRES_GET_ALL_TABLE_PG_POLICY = """
 SELECT object_id, polname, table_catalog, table_schema, table_name  

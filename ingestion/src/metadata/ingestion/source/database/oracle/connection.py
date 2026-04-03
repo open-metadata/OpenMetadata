@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import os
 import sys
 from copy import deepcopy
@@ -139,17 +140,17 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         # Add connection type specific information
         if isinstance(connection_copy.oracleConnectionType, OracleDatabaseSchema):
-            connection_dict[
-                "database"
-            ] = connection_copy.oracleConnectionType.databaseSchema
+            connection_dict["database"] = (
+                connection_copy.oracleConnectionType.databaseSchema
+            )
         elif isinstance(connection_copy.oracleConnectionType, OracleServiceName):
-            connection_dict[
-                "database"
-            ] = connection_copy.oracleConnectionType.oracleServiceName
+            connection_dict["database"] = (
+                connection_copy.oracleConnectionType.oracleServiceName
+            )
         elif isinstance(connection_copy.oracleConnectionType, OracleTNSConnection):
-            connection_dict[
-                "host"
-            ] = connection_copy.oracleConnectionType.oracleTNSConnection
+            connection_dict["host"] = (
+                connection_copy.oracleConnectionType.oracleTNSConnection
+            )
 
         # Add connection options if present
         if connection_copy.connectionOptions and connection_copy.connectionOptions.root:

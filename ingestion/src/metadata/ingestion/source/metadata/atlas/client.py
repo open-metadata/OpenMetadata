@@ -11,6 +11,7 @@
 """
 Client to interact with Atlas apis
 """
+
 import base64
 from typing import List
 

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from dataclasses import dataclass
 from functools import singledispatch
 from typing import Optional

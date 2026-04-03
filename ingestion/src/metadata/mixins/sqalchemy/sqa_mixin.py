@@ -14,7 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-
 from typing import List, Optional
 
 from sqlalchemy import Column, MetaData, inspect, text

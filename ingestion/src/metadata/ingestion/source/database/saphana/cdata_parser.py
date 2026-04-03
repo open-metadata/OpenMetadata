@@ -11,6 +11,7 @@
 """
 Parse CDATA XMLs from SAP Hana
 """
+
 import itertools
 import re
 import traceback

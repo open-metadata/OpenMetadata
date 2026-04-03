@@ -11,6 +11,7 @@
 """
 Test Column Name Scanner
 """
+
 from typing import Any
 
 import pytest

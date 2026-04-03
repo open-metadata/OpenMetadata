@@ -11,6 +11,7 @@
 """
 Test Entity Link build behavior
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard

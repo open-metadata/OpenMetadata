@@ -11,6 +11,7 @@
 """
 Unit tests for JSON schema extraction from sampled data.
 """
+
 import json
 
 from metadata.generated.schema.entity.data.table import DataType

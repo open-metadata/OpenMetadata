@@ -24,8 +24,7 @@ def prepare_data(create_test_data, trino_container):
     engine = create_engine(trino_container.get_connection_url())
     with engine.connect() as conn:
         # Create a copy of the userdata table with modified data
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE minio.my_schema.changed_userdata AS 
             SELECT 
                 registration_dttm,
@@ -43,8 +42,7 @@ def prepare_data(create_test_data, trino_container):
                 comments
             FROM minio.my_schema.userdata
             WHERE MOD(id, 13) != 0
-        """
-        ).fetchall()
+        """).fetchall()
 
 
 @pytest.mark.skip("Skipping while investigating CI failure. Test passes locally.")

@@ -11,6 +11,7 @@
 """
 Utility module to extract JSON schema from sampled JSON data.
 """
+
 import json
 import traceback
 from typing import Any, Dict, List, Optional, Tuple, Union

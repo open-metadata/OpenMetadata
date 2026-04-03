@@ -11,6 +11,7 @@
 """
 REST Auth & Client for MicroStrategy
 """
+
 import traceback
 from typing import List, Optional
 

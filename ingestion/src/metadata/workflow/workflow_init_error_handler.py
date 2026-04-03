@@ -12,6 +12,7 @@
 """
 Module handles the init error messages from different workflows
 """
+
 import logging
 import traceback
 from pathlib import Path

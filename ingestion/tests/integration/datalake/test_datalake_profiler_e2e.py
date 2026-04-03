@@ -16,6 +16,7 @@ To run this we need OpenMetadata server up and running.
 
 No sample data is required beforehand
 """
+
 import pytest
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table

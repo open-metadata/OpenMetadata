@@ -1,6 +1,7 @@
 """
 Pipelines entity SDK with fluent API
 """
+
 from typing import Any, List, Optional, Type, cast
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest

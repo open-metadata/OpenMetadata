@@ -12,6 +12,7 @@
 """
 Abstract class for third party secrets' manager implementations
 """
+
 from abc import ABC, abstractmethod
 from typing import Any
 

@@ -12,6 +12,7 @@
 """
 Query parser utils tests
 """
+
 import json
 import os.path
 from unittest import TestCase

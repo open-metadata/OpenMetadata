@@ -1,4 +1,5 @@
 """Search API with fluent interface."""
+
 from __future__ import annotations
 
 import asyncio
@@ -69,16 +70,14 @@ def _build_query_filter(filters: Mapping[str, Any]) -> Mapping[str, Any]:
 class RestClientProtocol(Protocol):
     """Structural protocol describing the REST client behaviour we use."""
 
-    def get(self, path: str, data: Mapping[str, Any] | None = None) -> RestReturn:
-        ...
+    def get(self, path: str, data: Mapping[str, Any] | None = None) -> RestReturn: ...
 
     def post(
         self,
         path: str,
         data: Mapping[str, Any] | None = None,
         json: JsonDict | None = None,  # pylint: disable=redefined-outer-name
-    ) -> RestReturn:
-        ...
+    ) -> RestReturn: ...
 
 
 def _http_get(client: OMetaClient, path: str, params: Mapping[str, Any]) -> JsonDict:

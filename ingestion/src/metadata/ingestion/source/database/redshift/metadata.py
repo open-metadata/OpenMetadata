@@ -11,6 +11,7 @@
 """
 Redshift source ingestion
 """
+
 import traceback
 from typing import Iterable, List, Optional
 

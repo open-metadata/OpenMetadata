@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """PinotDb source module"""
+
 from typing import Iterable, Optional
 
 from pinotdb import sqlalchemy as pinot_sqlalchemy

@@ -11,6 +11,7 @@
 """
 Db2 lineage module
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (

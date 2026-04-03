@@ -11,6 +11,7 @@
 """
 Test flink using the topology
 """
+
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -162,9 +163,12 @@ class FlinkUnitTest(TestCase):
 
 class TestFlinkTaskNames:
     def setup_method(self):
-        with patch(
-            "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-        ), patch("metadata.ingestion.source.pipeline.flink.connection.get_connection"):
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+            ),
+            patch("metadata.ingestion.source.pipeline.flink.connection.get_connection"),
+        ):
             config = OpenMetadataWorkflowConfig.model_validate(mock_flink_config)
             self.flink = FlinkSource.create(
                 mock_flink_config["source"],

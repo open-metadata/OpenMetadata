@@ -44,20 +44,26 @@ def create_sample_projects(count: int = 10):
             id=f"proj_{i:04d}",
             title=f"Dashboard {i}",
             description=f"Description for dashboard {i}" if i % 2 == 0 else None,
-            owner=Owner(
-                email=f"user{i % 3}@company.com",
-            )
-            if i % 3 != 2
-            else None,
+            owner=(
+                Owner(
+                    email=f"user{i % 3}@company.com",
+                )
+                if i % 3 != 2
+                else None
+            ),
             creator=Creator(
                 email=f"creator{i}@company.com",
             ),
-            categories=[Category(name=f"Category{j}") for j in range(i % 3)]
-            if i % 2 == 0
-            else [],
-            status=ProjectStatus(name="Published")
-            if i % 3 == 0
-            else ProjectStatus(name="Draft"),
+            categories=(
+                [Category(name=f"Category{j}") for j in range(i % 3)]
+                if i % 2 == 0
+                else []
+            ),
+            status=(
+                ProjectStatus(name="Published")
+                if i % 3 == 0
+                else ProjectStatus(name="Draft")
+            ),
         )
         projects.append(project)
     return projects
@@ -568,9 +574,9 @@ class TestHexIngestionFlow(TestCase):
 
         mock_client.get_projects = MagicMock(return_value=malformed_projects)
         mock_client.get_project_url = MagicMock(
-            side_effect=lambda p: f"https://app.hex.tech/app/projects/{p.id}"
-            if p.id
-            else None
+            side_effect=lambda p: (
+                f"https://app.hex.tech/app/projects/{p.id}" if p.id else None
+            )
         )
 
         metadata = MagicMock()

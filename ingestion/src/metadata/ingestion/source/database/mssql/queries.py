@@ -14,8 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-MSSQL_SQL_STATEMENT = textwrap.dedent(
-    """
+MSSQL_SQL_STATEMENT = textwrap.dedent("""
       SELECT TOP {result_limit}
         db.NAME database_name,
         t.text query_text,
@@ -38,11 +37,9 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
           AND p.objtype != 'Prepared'
           {filters}
       ORDER BY s.last_execution_time DESC
-"""
-)
+""")
 
-MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
-    """
+MSSQL_GET_TABLE_COMMENTS = textwrap.dedent("""
 SELECT obj.name AS table_name,
         ep.value AS table_comment,
         s.name AS "schema"
@@ -53,22 +50,18 @@ JOIN sys.schemas AS s
     ON obj.schema_id = s.schema_id
 WHERE
     obj.type IN ('U', 'V') /* User tables and views */
-"""
-)
+""")
 
-MSSQL_GET_DATABASE_COMMENTS = textwrap.dedent(
-    """
+MSSQL_GET_DATABASE_COMMENTS = textwrap.dedent("""
     SELECT 
     DB_NAME() AS DATABASE_NAME,
     CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT
 FROM sys.extended_properties ep
 WHERE ep.class = 0  
 AND ep.name = 'MS_Description'
-"""
-)
+""")
 
-MSSQL_GET_SCHEMA_COMMENTS = textwrap.dedent(
-    """
+MSSQL_GET_SCHEMA_COMMENTS = textwrap.dedent("""
      SELECT 
     DB_NAME() AS DATABASE_NAME, 
     s.name AS SCHEMA_NAME, 
@@ -79,11 +72,9 @@ LEFT JOIN sys.extended_properties ep
     AND ep.minor_id = 0 
     AND ep.class = 3
     AND ep.name = 'MS_Description'
-    """
-)
+    """)
 
-MSSQL_GET_STORED_PROCEDURE_COMMENTS = textwrap.dedent(
-    """
+MSSQL_GET_STORED_PROCEDURE_COMMENTS = textwrap.dedent("""
 SELECT 
     DB_NAME() AS DATABASE_NAME,
     s.name AS SCHEMA_NAME,
@@ -96,11 +87,9 @@ LEFT JOIN sys.extended_properties ep
     AND ep.minor_id = 0 
     AND ep.class = 1
     AND ep.name = 'MS_Description';
-"""
-)
+""")
 
-MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
-    """
+MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent("""
 SELECT
     definition view_def,
     views.name view_name,
@@ -110,15 +99,13 @@ INNER JOIN sys.views as views
     ON mod.object_id = views.object_id
 INNER JOIN sys.schemas as sch
     ON views.schema_id = sch.schema_id
-"""
-)
+""")
 
 MSSQL_GET_DATABASE = """
 SELECT name FROM master.sys.databases order by name
 """
 
-MSSQL_TEST_GET_QUERIES = textwrap.dedent(
-    """
+MSSQL_TEST_GET_QUERIES = textwrap.dedent("""
       SELECT TOP 1
         t.text query_text
       FROM sys.dm_exec_cached_plans AS p
@@ -127,8 +114,7 @@ MSSQL_TEST_GET_QUERIES = textwrap.dedent(
       CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
-"""
-)
+""")
 
 MSSQL_GET_FOREIGN_KEY = """\
 WITH fk_info AS (
@@ -230,8 +216,7 @@ index_info AS (
         fk_info.ordinal_position
 """
 
-MSSQL_GET_STORED_PROCEDURES = textwrap.dedent(
-    """
+MSSQL_GET_STORED_PROCEDURES = textwrap.dedent("""
 SELECT
   ROUTINE_NAME AS name,
   NULL AS owner,            
@@ -243,11 +228,9 @@ JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
    AND ROUTINE_CATALOG = '{database_name}'
    AND ROUTINE_SCHEMA = '{schema_name}'
-    """
-)
+    """)
 
-MSSQL_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
-    """
+MSSQL_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent("""
 WITH SP_HISTORY (start_time, end_time, procedure_name, query_text) AS (
   select 
     s.last_execution_time start_time,
@@ -305,7 +288,6 @@ JOIN Q_HISTORY Q
     )
 order by PROCEDURE_START_TIME desc
 ;
-    """
-)
+    """)
 
 GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")

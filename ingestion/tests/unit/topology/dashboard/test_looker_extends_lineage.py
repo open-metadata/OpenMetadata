@@ -12,6 +12,7 @@
 """
 Test looker view extends lineage functionality
 """
+
 import uuid
 from unittest import TestCase
 from unittest.mock import Mock, patch

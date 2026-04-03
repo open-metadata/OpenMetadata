@@ -11,6 +11,7 @@
 """
 Pydantic definition for storing entities for patching
 """
+
 import json
 import logging
 import traceback

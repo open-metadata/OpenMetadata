@@ -11,6 +11,7 @@
 """
 Postgres Query parser module
 """
+
 import traceback
 from abc import ABC
 from typing import Iterable, Optional

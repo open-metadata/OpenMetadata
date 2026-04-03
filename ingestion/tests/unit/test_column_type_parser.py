@@ -11,6 +11,7 @@
 """
 Test column type in column_type_parser
 """
+
 import json
 import logging
 import os

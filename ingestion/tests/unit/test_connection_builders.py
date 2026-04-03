@@ -11,6 +11,7 @@
 """
 Validate connection builder utilities
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (

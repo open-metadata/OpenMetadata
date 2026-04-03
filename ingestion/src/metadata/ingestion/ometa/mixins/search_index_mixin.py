@@ -13,6 +13,7 @@ Mixin class containing Search Index specific methods
 
 To be used by OpenMetadata class
 """
+
 import traceback
 from typing import Optional
 

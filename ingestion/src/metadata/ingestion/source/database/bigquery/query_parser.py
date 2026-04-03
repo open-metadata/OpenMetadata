@@ -11,6 +11,7 @@
 """
 Handle big query usage extraction
 """
+
 from abc import ABC
 from copy import deepcopy
 from datetime import datetime

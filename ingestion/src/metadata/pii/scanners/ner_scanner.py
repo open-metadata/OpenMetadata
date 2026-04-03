@@ -13,6 +13,7 @@ NER Scanner based on Presidio.
 
 Supported Entities https://microsoft.github.io/presidio/supported_entities/
 """
+
 import json
 import logging
 import traceback
@@ -80,7 +81,7 @@ class NERScanner(BaseScanner):
 
     @staticmethod
     def get_highest_score_label(
-        entities_score: Dict[str, StringAnalysis]
+        entities_score: Dict[str, StringAnalysis],
     ) -> Tuple[str, float]:
         top_entity = max(
             entities_score,
@@ -178,8 +179,10 @@ class NERScanner(BaseScanner):
         results = self.analyzer.analyze(value, language="en")
         for result in results:
             entities_score[result.entity_type] = StringAnalysis(
-                score=result.score
-                if result.score > entities_score[result.entity_type].score
-                else entities_score[result.entity_type].score,
+                score=(
+                    result.score
+                    if result.score > entities_score[result.entity_type].score
+                    else entities_score[result.entity_type].score
+                ),
                 appearances=entities_score[result.entity_type].appearances + 1,
             )

@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Domain and Data Product specific operations"""
+
 import traceback
 from typing import Dict, List
 

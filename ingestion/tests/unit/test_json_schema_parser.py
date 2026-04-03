@@ -12,6 +12,7 @@
 """
 Jsonschema parser tests
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.table import Column

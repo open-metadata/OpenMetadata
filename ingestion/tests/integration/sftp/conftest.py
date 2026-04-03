@@ -11,6 +11,7 @@
 """
 SFTP integration test fixtures
 """
+
 import os
 import tempfile
 import uuid

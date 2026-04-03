@@ -11,6 +11,7 @@
 """
 Spline source to extract metadata
 """
+
 import traceback
 from typing import Iterable, Optional
 

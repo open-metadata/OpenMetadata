@@ -412,9 +412,9 @@ class StreamableLogHandler(logging.Handler):
             **self.metrics,
             "circuit_state": self.circuit_breaker.state.value,
             "queue_size": self.log_queue.qsize(),
-            "worker_alive": self.worker_thread.is_alive()
-            if self.worker_thread
-            else False,
+            "worker_alive": (
+                self.worker_thread.is_alive() if self.worker_thread else False
+            ),
         }
 
     def close(self):

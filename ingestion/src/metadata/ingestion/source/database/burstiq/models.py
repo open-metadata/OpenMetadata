@@ -11,6 +11,7 @@
 """
 BurstIQ LifeGraph data models for dictionaries and attributes
 """
+
 from typing import List, Optional
 
 from pydantic import BaseModel, Field

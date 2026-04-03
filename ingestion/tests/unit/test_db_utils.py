@@ -12,6 +12,7 @@
 """
 Unit tests for db_utils module
 """
+
 import uuid
 from copy import deepcopy
 from unittest import TestCase

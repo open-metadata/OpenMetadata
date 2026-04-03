@@ -11,6 +11,7 @@
 """
 SAP Hana source module
 """
+
 import traceback
 from typing import Iterable, Optional
 

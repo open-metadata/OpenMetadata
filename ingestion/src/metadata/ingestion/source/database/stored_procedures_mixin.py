@@ -11,6 +11,7 @@
 """
 Mixin class with common Stored Procedures logic aimed at lineage.
 """
+
 import json
 import traceback
 from abc import ABC, abstractmethod

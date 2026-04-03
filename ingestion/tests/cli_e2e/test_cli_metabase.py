@@ -12,6 +12,7 @@
 """
 Test Metabase connector with CLI
 """
+
 from pathlib import Path
 from typing import List
 

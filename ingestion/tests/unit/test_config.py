@@ -11,6 +11,7 @@
 """
 Test module for loading configs
 """
+
 import json
 import os
 from pathlib import Path

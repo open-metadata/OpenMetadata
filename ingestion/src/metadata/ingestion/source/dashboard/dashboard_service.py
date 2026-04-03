@@ -11,6 +11,7 @@
 """
 Base class for ingesting dashboard services
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Tuple, Union
@@ -103,27 +104,27 @@ class DashboardServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=DashboardService,
-                context="dashboard_service",
-                processor="yield_create_request_dashboard_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            ),
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                processor="yield_bulk_tags",
-                nullable=True,
-            ),
-        ],
-        children=["bulk_data_model", "dashboard"],
-        post_process=["mark_dashboards_as_deleted", "mark_datamodels_as_deleted"],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=DashboardService,
+                    context="dashboard_service",
+                    processor="yield_create_request_dashboard_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                ),
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    processor="yield_bulk_tags",
+                    nullable=True,
+                ),
+            ],
+            children=["bulk_data_model", "dashboard"],
+            post_process=["mark_dashboards_as_deleted", "mark_datamodels_as_deleted"],
+        )
     )
     # Dashboard Services have very different approaches when
     # when dealing with data models. Tableau has the models
@@ -145,56 +146,56 @@ class DashboardServiceTopology(ServiceTopology):
             )
         ],
     )
-    dashboard: Annotated[
-        TopologyNode, Field(description="Process dashboards")
-    ] = TopologyNode(
-        producer="get_dashboard",
-        stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                processor="yield_tags",
-                nullable=True,
-            ),
-            NodeStage(
-                type_=Chart,
-                context="charts",
-                processor="yield_dashboard_chart",
-                consumer=["dashboard_service"],
-                nullable=True,
-                store_all_in_context=True,
-                clear_context=True,
-                use_cache=True,
-            ),
-            NodeStage(
-                type_=DashboardDataModel,
-                context="dataModels",
-                processor="yield_datamodel",
-                consumer=["dashboard_service"],
-                nullable=True,
-                store_all_in_context=True,
-                clear_context=True,
-                use_cache=True,
-            ),
-            NodeStage(
-                type_=Dashboard,
-                context="dashboard",
-                processor="yield_dashboard",
-                consumer=["dashboard_service"],
-                use_cache=True,
-            ),
-            NodeStage(
-                type_=AddLineageRequest,
-                processor="yield_dashboard_lineage",
-                consumer=["dashboard_service"],
-                nullable=True,
-            ),
-            NodeStage(
-                type_=UsageRequest,
-                processor="yield_dashboard_usage",
-                consumer=["dashboard_service"],
-                nullable=True,
-            ),
-        ],
+    dashboard: Annotated[TopologyNode, Field(description="Process dashboards")] = (
+        TopologyNode(
+            producer="get_dashboard",
+            stages=[
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    processor="yield_tags",
+                    nullable=True,
+                ),
+                NodeStage(
+                    type_=Chart,
+                    context="charts",
+                    processor="yield_dashboard_chart",
+                    consumer=["dashboard_service"],
+                    nullable=True,
+                    store_all_in_context=True,
+                    clear_context=True,
+                    use_cache=True,
+                ),
+                NodeStage(
+                    type_=DashboardDataModel,
+                    context="dataModels",
+                    processor="yield_datamodel",
+                    consumer=["dashboard_service"],
+                    nullable=True,
+                    store_all_in_context=True,
+                    clear_context=True,
+                    use_cache=True,
+                ),
+                NodeStage(
+                    type_=Dashboard,
+                    context="dashboard",
+                    processor="yield_dashboard",
+                    consumer=["dashboard_service"],
+                    use_cache=True,
+                ),
+                NodeStage(
+                    type_=AddLineageRequest,
+                    processor="yield_dashboard_lineage",
+                    consumer=["dashboard_service"],
+                    nullable=True,
+                ),
+                NodeStage(
+                    type_=UsageRequest,
+                    processor="yield_dashboard_usage",
+                    consumer=["dashboard_service"],
+                    nullable=True,
+                ),
+            ],
+        )
     )
 
 

@@ -13,7 +13,6 @@
 Validate the names in the registry match the ones of the test definition
 """
 
-
 import pkgutil
 from unittest import TestCase
 

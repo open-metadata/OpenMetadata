@@ -1,6 +1,7 @@
 """
 Unit tests for SDK entity operations
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID

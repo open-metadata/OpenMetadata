@@ -11,6 +11,7 @@
 """
 Handles the TableMapper for the GX Action.
 """
+
 import logging
 from enum import Enum, auto
 from typing import Dict, Optional

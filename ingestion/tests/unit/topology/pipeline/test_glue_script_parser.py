@@ -11,6 +11,7 @@
 """
 Tests for Glue PySpark/GlueContext script lineage parser
 """
+
 from unittest import TestCase
 
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (

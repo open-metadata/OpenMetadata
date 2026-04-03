@@ -13,6 +13,7 @@ Handle Entity Link building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
+
 from typing import Any, List, Optional, TypeVar
 
 from antlr4.CommonTokenStream import CommonTokenStream

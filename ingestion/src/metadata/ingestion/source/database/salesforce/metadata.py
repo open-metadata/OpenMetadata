@@ -11,6 +11,7 @@
 """
 Salesforce source ingestion
 """
+
 import traceback
 from typing import Any, Iterable, List, Optional, Tuple
 

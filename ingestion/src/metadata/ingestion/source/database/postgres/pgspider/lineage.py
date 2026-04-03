@@ -12,6 +12,7 @@
 """
 PGSpider lineage module
 """
+
 from typing import Iterable, Iterator
 
 from sqlalchemy.sql import text

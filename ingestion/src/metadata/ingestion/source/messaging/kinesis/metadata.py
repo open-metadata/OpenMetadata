@@ -11,6 +11,7 @@
 """
 Kinesis source ingestion
 """
+
 import binascii
 import traceback
 from base64 import b64decode

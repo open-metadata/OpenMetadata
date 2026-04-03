@@ -11,6 +11,7 @@
 """
 Sampling Models
 """
+
 from typing import Any, List, Optional, Union
 
 from pydantic import Field, model_validator

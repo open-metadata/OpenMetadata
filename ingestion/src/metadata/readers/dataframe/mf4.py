@@ -13,6 +13,7 @@
 MF4 DataFrame reader for processing MF4 (Measurement Data Format) files.
 Extracts header metadata (small data) with streaming where possible.
 """
+
 import tempfile
 from functools import singledispatchmethod
 from typing import Optional

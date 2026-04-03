@@ -11,6 +11,7 @@
 """
 REST Auth & Client for Mode
 """
+
 import traceback
 from base64 import b64encode
 from typing import Optional

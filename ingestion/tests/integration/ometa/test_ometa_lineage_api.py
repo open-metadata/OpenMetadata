@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Lineage test
 """
+
 import time
 
 import pytest

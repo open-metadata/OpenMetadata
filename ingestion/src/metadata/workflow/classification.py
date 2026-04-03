@@ -11,6 +11,7 @@
 """
 Workflow definition for the profiler
 """
+
 from typing import cast
 
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (

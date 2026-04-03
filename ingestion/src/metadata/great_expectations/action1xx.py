@@ -15,6 +15,7 @@ Open Metadata table quality.
 This subpackage needs to be used in Great Expectations
 checkpoints actions.
 """
+
 import logging
 import traceback
 from datetime import datetime
@@ -165,7 +166,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
     @staticmethod
     def _get_checkpoint_batch_spec(
-        meta: Union[ExpectationSuiteValidationResultMeta, dict]
+        meta: Union[ExpectationSuiteValidationResultMeta, dict],
     ):
         """Return run meta and check instance of data_asset
 
@@ -265,7 +266,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
     @staticmethod
     def _get_execution_engine_url(
-        data_asset: Union[Validator, DataAsset, Batch]
+        data_asset: Union[Validator, DataAsset, Batch],
     ) -> URL:
         """Get execution engine used to run the expectation
 
@@ -466,9 +467,11 @@ class OpenMetadataValidationAction1xx(ValidationAction):
                 test_definition_description=result["expectation_config"][
                     "type"
                 ].replace("_", " "),
-                entity_type=EntityType.COLUMN
-                if "column" in result["expectation_config"]["kwargs"]
-                else EntityType.TABLE,
+                entity_type=(
+                    EntityType.COLUMN
+                    if "column" in result["expectation_config"]["kwargs"]
+                    else EntityType.TABLE
+                ),
                 test_platforms=[TestPlatform.GreatExpectations],
                 test_case_parameter_definition=self._get_test_case_params_definition(
                     result
@@ -494,9 +497,11 @@ class OpenMetadataValidationAction1xx(ValidationAction):
             self.ometa_conn.add_test_case_results(
                 test_results=TestCaseResult(
                     timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
-                    testCaseStatus=TestCaseStatus.Success
-                    if result["success"]
-                    else TestCaseStatus.Failed,
+                    testCaseStatus=(
+                        TestCaseStatus.Success
+                        if result["success"]
+                        else TestCaseStatus.Failed
+                    ),
                     testResultValue=self._get_test_result_value(result),
                 ),  # type: ignore
                 test_case_fqn=test_case.fullyQualifiedName.root,

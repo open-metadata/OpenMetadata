@@ -11,6 +11,7 @@
 """
 Spline source processing utilities
 """
+
 import traceback
 from typing import Optional, Tuple
 

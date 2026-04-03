@@ -19,6 +19,7 @@ Validates that ``_has_compressed_chunks`` correctly distinguishes between:
 - hypertables where all chunks are compressed
 - database errors during detection
 """
+
 from collections import namedtuple
 from contextlib import contextmanager
 from datetime import datetime, timezone

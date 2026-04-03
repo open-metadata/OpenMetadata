@@ -815,7 +815,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
             for idx, lib_path in enumerate(expanded_paths, 1):
                 try:
-                    logger.info(f"\n📓 Notebook {idx}/{len(expanded_paths)}: {lib_path}")
+                    logger.info(
+                        f"\n📓 Notebook {idx}/{len(expanded_paths)}: {lib_path}"
+                    )
                     logger.info(f"⟳ Exporting notebook source code...")
 
                     source_code = self.client.export_notebook_source(lib_path)
@@ -1254,11 +1256,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                         # Check cache first, then fetch if not cached
                         if from_table_fqn not in self._table_lookup_cache:
-                            self._table_lookup_cache[
-                                from_table_fqn
-                            ] = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=from_table_fqn,
+                            self._table_lookup_cache[from_table_fqn] = (
+                                self.metadata.get_by_name(
+                                    entity=Table,
+                                    fqn=from_table_fqn,
+                                )
                             )
 
                         from_entity = self._table_lookup_cache[from_table_fqn]
@@ -1278,11 +1280,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                         # Check cache first, then fetch if not cached
                         if to_table_fqn not in self._table_lookup_cache:
-                            self._table_lookup_cache[
-                                to_table_fqn
-                            ] = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=to_table_fqn,
+                            self._table_lookup_cache[to_table_fqn] = (
+                                self.metadata.get_by_name(
+                                    entity=Table,
+                                    fqn=to_table_fqn,
+                                )
                             )
 
                         to_entity = self._table_lookup_cache[to_table_fqn]

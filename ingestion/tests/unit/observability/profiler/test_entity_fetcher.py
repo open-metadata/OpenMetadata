@@ -12,6 +12,7 @@
 """
 Validate entity fetcher filtering strategies
 """
+
 import uuid
 from unittest.mock import MagicMock, patch
 

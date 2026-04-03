@@ -12,6 +12,7 @@
 """
 Unit tests for TestCaseRunner processor
 """
+
 from unittest.mock import Mock, patch
 from uuid import UUID
 

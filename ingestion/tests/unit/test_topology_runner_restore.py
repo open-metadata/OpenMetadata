@@ -11,6 +11,7 @@
 """
 Unit tests for topology runner deleted entity restoration
 """
+
 from collections import defaultdict
 from unittest import TestCase
 from unittest.mock import Mock

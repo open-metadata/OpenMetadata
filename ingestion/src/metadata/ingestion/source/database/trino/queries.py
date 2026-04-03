@@ -14,8 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-TRINO_SQL_STATEMENT = textwrap.dedent(
-    """
+TRINO_SQL_STATEMENT = textwrap.dedent("""
     select "query" as query_text,
       "user" as user_name,
       "started" as start_time,
@@ -30,11 +29,9 @@ TRINO_SQL_STATEMENT = textwrap.dedent(
     ORDER BY "started"
     OFFSET {offset}
     LIMIT {result_limit}
-    """
-)
+    """)
 
-TRINO_TABLE_COMMENTS = textwrap.dedent(
-    """
+TRINO_TABLE_COMMENTS = textwrap.dedent("""
     SELECT "comment" table_comment,
         "schema_name" schema,
         "table_name"
@@ -42,21 +39,18 @@ TRINO_TABLE_COMMENTS = textwrap.dedent(
     WHERE "catalog_name" = '{catalog_name}'
     and "schema_name" = '{schema_name}'
     and "comment" is not null
-    """
-)
+    """)
 
 TRINO_GET_DATABASE = """
 SHOW CATALOGS
 """
 
-TRINO_VIEW_DEFINITION = textwrap.dedent(
-    """
+TRINO_VIEW_DEFINITION = textwrap.dedent("""
     SELECT "view_definition"
     FROM "information_schema"."views"
     WHERE "table_schema" = :schema
         AND "table_name" = :view
-    """
-)
+    """)
 
 TRINO_VIEW_DEFINITION_FALLBACK = """
 SHOW CREATE VIEW {view_name}

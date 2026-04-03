@@ -12,6 +12,7 @@
 """
 DBT source methods.
 """
+
 import traceback
 from copy import deepcopy
 from datetime import datetime
@@ -705,12 +706,12 @@ class DbtSource(DbtServiceSource):
         self.context.get().dbt_tests[key] = {
             DbtCommonEnum.MANIFEST_NODE.value: manifest_node
         }
-        self.context.get().dbt_tests[key][
-            DbtCommonEnum.UPSTREAM.value
-        ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-        self.context.get().dbt_tests[key][
-            DbtCommonEnum.RESULTS.value
-        ] = self._get_latest_result(dbt_objects, key)
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = (
+            self.parse_upstream_nodes(manifest_entities, manifest_node)
+        )
+        self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = (
+            self._get_latest_result(dbt_objects, key)
+        )
 
     def add_dbt_exposure(self, key: str, manifest_node, manifest_entities):
         exposure_entity = self.parse_exposure_node(manifest_node)
@@ -721,9 +722,9 @@ class DbtSource(DbtServiceSource):
                 DbtCommonEnum.MANIFEST_NODE: manifest_node,
             }
 
-            self.context.get().exposures[key][
-                DbtCommonEnum.UPSTREAM
-            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
+            self.context.get().exposures[key][DbtCommonEnum.UPSTREAM] = (
+                self.parse_upstream_nodes(manifest_entities, manifest_node)
+            )
 
     def add_dbt_sources(
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
@@ -960,16 +961,20 @@ class DbtSource(DbtServiceSource):
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=resource_type,
-                                description=manifest_node.description
-                                if manifest_node.description
-                                else None,
+                                description=(
+                                    manifest_node.description
+                                    if manifest_node.description
+                                    else None
+                                ),
                                 path=get_data_model_path(manifest_node=manifest_node),
-                                rawSql=SqlQuery(dbt_raw_query)
-                                if dbt_raw_query
-                                else None,
-                                sql=SqlQuery(dbt_compiled_query)
-                                if dbt_compiled_query
-                                else None,
+                                rawSql=(
+                                    SqlQuery(dbt_raw_query) if dbt_raw_query else None
+                                ),
+                                sql=(
+                                    SqlQuery(dbt_compiled_query)
+                                    if dbt_compiled_query
+                                    else None
+                                ),
                                 columns=self.parse_data_model_columns(
                                     manifest_node, catalog_node
                                 ),
@@ -1138,18 +1143,20 @@ class DbtSource(DbtServiceSource):
                     Column(
                         name=column_name,
                         # If the catalog description is present, use it, else use the manifest description
-                        description=column_description
-                        if column_description
-                        else manifest_column.description,
+                        description=(
+                            column_description
+                            if column_description
+                            else manifest_column.description
+                        ),
                         dataType=ColumnTypeParser.get_column_type(
                             catalog_column.type
                             if catalog_column
                             else manifest_column.data_type
                         ),
                         dataLength=1,
-                        ordinalPosition=catalog_column.index
-                        if catalog_column
-                        else None,
+                        ordinalPosition=(
+                            catalog_column.index if catalog_column else None
+                        ),
                         tags=dbt_column_tag_list or [],
                     )
                 )
@@ -1238,9 +1245,11 @@ class DbtSource(DbtServiceSource):
                             ),
                             lineageDetails=LineageDetails(
                                 source=LineageSource.DbtLineage,
-                                sqlQuery=SqlQuery(data_model_link.datamodel.sql.root)
-                                if data_model_link.datamodel.sql
-                                else None,
+                                sqlQuery=(
+                                    SqlQuery(data_model_link.datamodel.sql.root)
+                                    if data_model_link.datamodel.sql
+                                    else None
+                                ),
                             ),
                         )
                     )
@@ -1344,10 +1353,10 @@ class DbtSource(DbtServiceSource):
                     entity_type=Table,
                     fqn_search_string=upstream_node,
                 )
-                from_entity: Optional[
-                    Union[Table, List[Table]]
-                ] = get_entity_from_es_result(
-                    entity_list=from_es_result, fetch_multiple_entities=False
+                from_entity: Optional[Union[Table, List[Table]]] = (
+                    get_entity_from_es_result(
+                        entity_list=from_es_result, fetch_multiple_entities=False
+                    )
                 )
                 if from_entity and to_entity:
                     lineage_request = AddLineageRequest(
@@ -1427,9 +1436,9 @@ class DbtSource(DbtServiceSource):
                 and dbt_meta_info.openmetadata.customProperties
             ):
                 # Store custom properties mapped to table FQN
-                self.extracted_custom_properties[
-                    table_fqn
-                ] = dbt_meta_info.openmetadata.customProperties
+                self.extracted_custom_properties[table_fqn] = (
+                    dbt_meta_info.openmetadata.customProperties
+                )
 
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain

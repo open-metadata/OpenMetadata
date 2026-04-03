@@ -11,6 +11,7 @@
 """
 Wrapper module of Athena client
 """
+
 import traceback
 from typing import List, Optional
 

@@ -13,6 +13,7 @@
 """
 Module for sqlalchemy dialect utils
 """
+
 import traceback
 from typing import Dict, Optional, Tuple
 
@@ -36,9 +37,9 @@ def get_all_table_comments(self, connection, query):
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for table in result:
         table_dict = {k.lower(): v for k, v in dict(table._mapping).items()}
-        self.all_table_comments[
-            (table_dict["table_name"], table_dict["schema"])
-        ] = table_dict["table_comment"]
+        self.all_table_comments[(table_dict["table_name"], table_dict["schema"])] = (
+            table_dict["table_comment"]
+        )
 
 
 def get_table_comment_wrapper(self, connection, query, table_name, schema=None):

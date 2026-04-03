@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Workflow test
 """
+
 import pytest
 
 from metadata.generated.schema.api.automations.createWorkflow import (

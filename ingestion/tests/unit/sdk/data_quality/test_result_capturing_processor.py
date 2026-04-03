@@ -12,6 +12,7 @@
 """
 Unit tests for ResultCapturingProcessor
 """
+
 from unittest.mock import MagicMock, create_autospec
 from uuid import uuid4
 

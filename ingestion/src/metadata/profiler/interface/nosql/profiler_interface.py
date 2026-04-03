@@ -14,6 +14,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+
 import traceback
 from collections import defaultdict
 from datetime import datetime

@@ -19,25 +19,24 @@ def session(tmp_path_factory):
     """
     from testcontainers.cassandra import CassandraContainer
 
-    with CassandraContainer() as container, Cluster(
-        container.get_contact_points(),
-        load_balancing_policy=DCAwareRoundRobinPolicy(container.get_local_datacenter()),
-    ) as cluster:
+    with (
+        CassandraContainer() as container,
+        Cluster(
+            container.get_contact_points(),
+            load_balancing_policy=DCAwareRoundRobinPolicy(
+                container.get_local_datacenter()
+            ),
+        ) as cluster,
+    ):
         session = cluster.connect()
-        session.execute(
-            textwrap.dedent(
-                """CREATE KEYSPACE my_database
+        session.execute(textwrap.dedent("""CREATE KEYSPACE my_database
                 WITH replication = {
                     'class': 'SimpleStrategy',
                     'replication_factor': 1
                 };
-                """
-            )
-        )
+                """))
         session.set_keyspace("my_database")
-        session.execute(
-            textwrap.dedent(
-                """
+        session.execute(textwrap.dedent("""
                 CREATE TABLE user_profiles (
                     user_id UUID PRIMARY KEY,
                     first_name TEXT,
@@ -46,9 +45,7 @@ def session(tmp_path_factory):
                     signup_date TIMESTAMP,
                     is_active BOOLEAN
                 );
-                """
-            )
-        )
+                """))
         yield session
 
 

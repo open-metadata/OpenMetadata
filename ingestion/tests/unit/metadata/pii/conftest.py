@@ -11,6 +11,7 @@
 """
 Test fixtures for auto-classification tests.
 """
+
 from typing import Any, Sequence
 from unittest.mock import Mock
 

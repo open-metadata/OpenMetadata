@@ -12,6 +12,7 @@
 """
 Test Bigquery connector with CLI
 """
+
 from typing import List
 
 from metadata.ingestion.api.status import Status

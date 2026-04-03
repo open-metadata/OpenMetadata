@@ -11,6 +11,7 @@
 """
 Announce method deprecation
 """
+
 import logging
 from functools import wraps
 

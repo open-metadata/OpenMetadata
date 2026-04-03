@@ -13,6 +13,7 @@
 Custom types' registry for easy access
 without having an import mess
 """
+
 import math
 from enum import Enum
 

@@ -11,6 +11,7 @@
 """
 Helper functions to handle SQL lineage operations
 """
+
 import functools
 import itertools
 import traceback

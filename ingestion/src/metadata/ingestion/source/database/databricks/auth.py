@@ -12,6 +12,7 @@
 """
 This module provides authentication utilities for Databricks and Unity Catalog connections.
 """
+
 from typing import Union
 
 from databricks.sdk.core import Config, azure_service_principal, oauth_service_principal

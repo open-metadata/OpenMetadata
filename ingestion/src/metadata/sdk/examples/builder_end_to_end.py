@@ -8,6 +8,7 @@ SDK performs the actual operations.
 Run:
   python -m metadata.sdk.examples.builder_end_to_end
 """
+
 from __future__ import annotations
 
 import logging
@@ -115,9 +116,9 @@ class DatabaseServiceBuilderPy:
             raise ValueError("Service type is required")
         return CreateDatabaseServiceRequest(
             name=EntityName(self.name_val),
-            description=Markdown(self.description_val)
-            if self.description_val
-            else None,
+            description=(
+                Markdown(self.description_val) if self.description_val else None
+            ),
             serviceType=self.type_val,
             connection=self.connection_val,
             displayName=None,
@@ -159,9 +160,9 @@ class DatabaseBuilderPy:
             raise ValueError("Database service FQN is required")
         return CreateDatabaseRequest(
             name=EntityName(self.name_val),
-            description=Markdown(self.description_val)
-            if self.description_val
-            else None,
+            description=(
+                Markdown(self.description_val) if self.description_val else None
+            ),
             service=FullyQualifiedEntityName(self.service_fqn_val),
             displayName=None,
             tags=None,
@@ -207,9 +208,9 @@ class SchemaBuilderPy:
             raise ValueError("Database FQN is required")
         return CreateDatabaseSchemaRequest(
             name=EntityName(self.name_val),
-            description=Markdown(self.description_val)
-            if self.description_val
-            else None,
+            description=(
+                Markdown(self.description_val) if self.description_val else None
+            ),
             database=FullyQualifiedEntityName(self.database_fqn_val),
             displayName=None,
             owners=None,
@@ -284,9 +285,9 @@ class TableBuilderPy:
             raise ValueError("At least one column is required")
         return CreateTableRequest(
             name=EntityName(self.name_val),
-            description=Markdown(self.description_val)
-            if self.description_val
-            else None,
+            description=(
+                Markdown(self.description_val) if self.description_val else None
+            ),
             databaseSchema=FullyQualifiedEntityName(self.schema_fqn_val),
             columns=self.columns_val,
             displayName=None,

@@ -13,6 +13,7 @@ Handle FQN building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
+
 from __future__ import annotations
 
 import hashlib

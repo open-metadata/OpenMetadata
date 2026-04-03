@@ -19,6 +19,7 @@ For migration, use TagProcessor instead:
     from metadata.pii.tag_processor import TagProcessor
     processor = TagProcessor(config, metadata, classification_filter=["PII"])
 """
+
 import warnings
 from typing import Any, Sequence
 

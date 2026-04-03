@@ -11,6 +11,7 @@
 """
 SSRS source module
 """
+
 import traceback
 from typing import Any, Dict, Iterable, List, Optional
 

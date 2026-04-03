@@ -11,6 +11,7 @@
 """
 Helper module to handle data sampling for the profiler
 """
+
 from sqlalchemy import Column, event, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 
@@ -59,11 +60,9 @@ class DatabricksSamplerInterface(SQASampler):
             SQL expression string for array slicing
         """
         max_elements = self._get_max_array_elements()
-        return text(
-            f"""
+        return text(f"""
         CASE 
             WHEN `{column.name}` IS NULL THEN NULL
             ELSE slice(`{column.name}`, 1, {max_elements})
         END AS `{column._label}`
-        """
-        )
+        """)

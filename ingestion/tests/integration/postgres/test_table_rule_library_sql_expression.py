@@ -11,6 +11,7 @@
 """
 Integration tests for Table Rule Library SQL Expression validator on PostgreSQL
 """
+
 from dataclasses import dataclass
 from typing import List
 

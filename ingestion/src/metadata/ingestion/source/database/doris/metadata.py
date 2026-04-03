@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Doris source module"""
+
 import re
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple, cast

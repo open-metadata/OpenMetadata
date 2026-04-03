@@ -2,6 +2,7 @@
 Minimal conftest for SDK integration tests.
 Override the parent conftest to avoid testcontainers dependency.
 """
+
 import uuid
 
 import pytest

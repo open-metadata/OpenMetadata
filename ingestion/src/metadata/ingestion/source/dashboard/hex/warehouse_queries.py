@@ -32,19 +32,16 @@ class WarehouseType(Enum):
 
 
 # Snowflake query to fetch Hex-originated queries
-HEX_SNOWFLAKE_QUERY = textwrap.dedent(
-    """
+HEX_SNOWFLAKE_QUERY = textwrap.dedent("""
     SELECT query_text,query_id, user_name, start_time
     FROM {account_usage}.QUERY_HISTORY
     WHERE query_text ILIKE '%hex%'
     ORDER BY start_time DESC
     LIMIT {limit};
-    """
-)
+    """)
 
 # BigQuery query to fetch Hex-originated queries
-HEX_BIGQUERY_QUERY = textwrap.dedent(
-    """
+HEX_BIGQUERY_QUERY = textwrap.dedent("""
     SELECT 
         query as query_text,
         user_email as user_name,
@@ -60,12 +57,10 @@ HEX_BIGQUERY_QUERY = textwrap.dedent(
         AND creation_time <= TIMESTAMP('{end_time}')
     ORDER BY creation_time DESC
     LIMIT {limit}
-    """
-)
+    """)
 
 # Databricks query to fetch Hex-originated queries
-HEX_DATABRICKS_QUERY = textwrap.dedent(
-    """
+HEX_DATABRICKS_QUERY = textwrap.dedent("""
     SELECT
       statement_text as query_text
     FROM system.query.history
@@ -75,12 +70,10 @@ HEX_DATABRICKS_QUERY = textwrap.dedent(
       AND start_time <= '{end_time}'
     ORDER BY start_time DESC
     LIMIT {limit}
-    """
-)
+    """)
 
 # Redshift query to fetch Hex-originated queries
-HEX_REDSHIFT_QUERY = textwrap.dedent(
-    """
+HEX_REDSHIFT_QUERY = textwrap.dedent("""
     SELECT
       q.querytxt as query_text,
       u.usename as user_name,
@@ -105,8 +98,7 @@ HEX_REDSHIFT_QUERY = textwrap.dedent(
       AND q.querytxt NOT LIKE '%stl_query%'
     ORDER BY q.starttime DESC
     LIMIT {limit}
-    """
-)
+    """)
 
 
 # MySQL query to fetch Hex-originated queries
@@ -114,8 +106,7 @@ HEX_REDSHIFT_QUERY = textwrap.dedent(
 # 1. performance_schema with statement history enabled
 # 2. general_log table enabled (SET GLOBAL general_log = 'ON'; SET GLOBAL log_output = 'TABLE';)
 # 3. Custom query logging solution
-HEX_MYSQL_QUERY = textwrap.dedent(
-    """
+HEX_MYSQL_QUERY = textwrap.dedent("""
     SELECT 
        CONVERT(argument USING utf8) as query_text,
        user_host as user_name,
@@ -123,13 +114,11 @@ HEX_MYSQL_QUERY = textwrap.dedent(
 FROM mysql.general_log
 WHERE argument LIKE '%hex%'
 LIMIT {limit};
-"""
-)
+""")
 
 
 # Athena query to fetch Hex-originated queries
-HEX_ATHENA_QUERY = textwrap.dedent(
-    """
+HEX_ATHENA_QUERY = textwrap.dedent("""
     SELECT
       query_string as query_text,
       principal as user_name,
@@ -146,12 +135,10 @@ HEX_ATHENA_QUERY = textwrap.dedent(
       )
       AND event_time BETWEEN '{start_time}' AND '{end_time}'
     LIMIT {limit}
-    """
-)
+    """)
 
 # Trino/Presto query to fetch Hex-originated queries
-HEX_TRINO_QUERY = textwrap.dedent(
-    """
+HEX_TRINO_QUERY = textwrap.dedent("""
     SELECT
       query as query_text,
       user as user_name,
@@ -168,12 +155,10 @@ HEX_TRINO_QUERY = textwrap.dedent(
       )
       AND created BETWEEN timestamp '{start_time}' AND timestamp '{end_time}'
     LIMIT {limit}
-    """
-)
+    """)
 
 # ClickHouse query to fetch Hex-originated queries
-HEX_CLICKHOUSE_QUERY = textwrap.dedent(
-    """
+HEX_CLICKHOUSE_QUERY = textwrap.dedent("""
     SELECT
       query as query_text,
       user as user_name,
@@ -187,8 +172,7 @@ HEX_CLICKHOUSE_QUERY = textwrap.dedent(
       AND event_time BETWEEN '{start_time}' AND '{end_time}'
       AND type = 'QueryFinish'
     LIMIT {limit}
-    """
-)
+    """)
 
 
 # Mapping of warehouse types to their query templates

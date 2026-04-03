@@ -12,6 +12,7 @@
 """
 Abstract class for AWS based secrets manager implementations
 """
+
 import os
 import traceback
 from abc import ABC

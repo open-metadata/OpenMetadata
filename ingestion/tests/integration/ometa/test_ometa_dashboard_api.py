@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Dashboard test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest

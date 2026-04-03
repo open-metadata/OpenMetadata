@@ -12,6 +12,7 @@
 """
 Check queue operations
 """
+
 from unittest import TestCase
 
 from metadata.ingestion.models.topology import Queue

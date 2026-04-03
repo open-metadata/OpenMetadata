@@ -12,6 +12,7 @@
 """
 Deltalake PySpark Client
 """
+
 import re
 import traceback
 from enum import Enum
@@ -203,15 +204,13 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
                 parsed_string["dataTypeDisplay"] = array_data_type_display
                 # Parse Primitive Datatype string
                 # if Datatype is Array(int) -> Parse int
-                parsed_string[
-                    "arrayDataType"
-                ] = ColumnTypeParser._parse_primitive_datatype_String(
-                    array_data_type_display[
-                        ARRAY_CHILD_START_INDEX:ARRAY_CHILD_END_INDEX
-                    ]
-                )[
-                    "dataType"
-                ]
+                parsed_string["arrayDataType"] = (
+                    ColumnTypeParser._parse_primitive_datatype_String(
+                        array_data_type_display[
+                            ARRAY_CHILD_START_INDEX:ARRAY_CHILD_END_INDEX
+                        ]
+                    )["dataType"]
+                )
 
             column = Column(name=row["col_name"], **parsed_string)
         else:

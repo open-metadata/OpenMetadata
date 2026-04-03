@@ -11,6 +11,7 @@
 """
 Websocket Auth & Client for QlikSense
 """
+
 import json
 import traceback
 from pathlib import Path

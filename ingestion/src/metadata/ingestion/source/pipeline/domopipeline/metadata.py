@@ -12,6 +12,7 @@
 """
 Domo Pipeline source to extract metadata
 """
+
 import traceback
 from typing import Dict, Iterable, Optional
 
@@ -101,9 +102,11 @@ class DomopipelineSource(PipelineServiceSource):
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_name),
                 displayName=pipeline_details.get("name"),
-                description=Markdown(pipeline_details["description"])
-                if pipeline_details.get("description")
-                else None,
+                description=(
+                    Markdown(pipeline_details["description"])
+                    if pipeline_details.get("description")
+                    else None
+                ),
                 tasks=[task],
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 startDate=pipeline_details.get("created"),

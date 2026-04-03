@@ -11,6 +11,7 @@
 """
 Mixin class for sending progress updates and operation metrics to OpenMetadata server.
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.services.ingestionPipelines.operationMetrics import (

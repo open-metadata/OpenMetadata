@@ -12,6 +12,7 @@
 """
 Test Sample behavior
 """
+
 import sys
 import time
 from unittest import TestCase, mock

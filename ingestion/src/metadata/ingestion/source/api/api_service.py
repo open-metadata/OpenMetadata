@@ -11,6 +11,7 @@
 """
 Base class for ingesting api services
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, Set
 
@@ -63,22 +64,22 @@ class ApiServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=ApiService,
-                context="api_service",
-                processor="yield_create_request_api_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            ),
-        ],
-        children=["api_collection"],
-        post_process=["mark_api_collections_as_deleted"],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=ApiService,
+                    context="api_service",
+                    processor="yield_create_request_api_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                ),
+            ],
+            children=["api_collection"],
+            post_process=["mark_api_collections_as_deleted"],
+        )
     )
     api_collection: Annotated[
         TopologyNode, Field(description="API Collection Processing Node")

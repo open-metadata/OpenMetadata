@@ -12,6 +12,7 @@
 """
 Test Microstrategy using the topology
 """
+
 from datetime import datetime
 from types import SimpleNamespace
 from unittest import TestCase

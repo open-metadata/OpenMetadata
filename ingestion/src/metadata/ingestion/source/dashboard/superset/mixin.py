@@ -11,6 +11,7 @@
 """
 Superset mixin module
 """
+
 import json
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple, Union

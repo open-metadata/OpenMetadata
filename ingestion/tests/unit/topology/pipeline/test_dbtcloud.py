@@ -11,6 +11,7 @@
 """
 Test dbt cloud using the topology
 """
+
 import json
 import uuid
 from datetime import datetime, timedelta
@@ -52,8 +53,7 @@ from metadata.ingestion.source.pipeline.dbtcloud.models import (
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
 
-MOCK_JOB_RESULT = json.loads(
-    """
+MOCK_JOB_RESULT = json.loads("""
 {
     "status": {
       "code": 200,
@@ -145,12 +145,10 @@ MOCK_JOB_RESULT = json.loads(
       }
     }
   }
-"""
-)
+""")
 
 MOCK_RUN_RESULT = (
-    json.loads(
-        """
+    json.loads("""
             {
     "status": {
         "code": 200,
@@ -287,12 +285,10 @@ MOCK_RUN_RESULT = (
         }
     }
 }
-        """
-    ),
+        """),
 )
 
-MOCK_QUERY_RESULT = json.loads(
-    """
+MOCK_QUERY_RESULT = json.loads("""
 {
   "data": {
     "job": {
@@ -386,8 +382,7 @@ MOCK_QUERY_RESULT = json.loads(
     }
   }
 }
-"""
-)
+""")
 
 mock_dbtcloud_config = {
     "source": {

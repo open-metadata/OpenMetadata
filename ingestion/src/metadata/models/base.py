@@ -11,6 +11,7 @@
 """
 Base Models to be used when useful.
 """
+
 from typing import Dict, Generic, Optional, TypeVar
 
 from pydantic import RootModel

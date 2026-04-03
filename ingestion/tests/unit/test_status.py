@@ -11,6 +11,7 @@
 """
 Tests for metadata.ingestion.api.status.Status
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (

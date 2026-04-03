@@ -11,6 +11,7 @@
 """
 Gitlab client to read files with token auth
 """
+
 import base64
 import traceback
 from enum import Enum

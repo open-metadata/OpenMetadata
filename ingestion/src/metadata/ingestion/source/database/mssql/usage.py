@@ -11,6 +11,7 @@
 """
 MSSQL usage module
 """
+
 from datetime import datetime
 
 from metadata.generated.schema.metadataIngestion.workflow import (

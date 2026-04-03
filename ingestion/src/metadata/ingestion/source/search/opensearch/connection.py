@@ -12,6 +12,7 @@
 """
 Source connection handler for OpenSearch
 """
+
 from pathlib import Path
 from typing import Optional
 
@@ -134,9 +135,11 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
     ):
         basic_auth = (
             connection.authType.username,
-            connection.authType.password.get_secret_value()
-            if connection.authType.password
-            else None,
+            (
+                connection.authType.password.get_secret_value()
+                if connection.authType.password
+                else None
+            ),
         )
 
     # Check for AWS IAM Authentication

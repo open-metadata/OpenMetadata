@@ -12,6 +12,7 @@
 """
 Restore utility for the metadata CLI
 """
+
 import traceback
 
 from sqlalchemy.engine import Engine

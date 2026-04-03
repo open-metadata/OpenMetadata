@@ -13,6 +13,7 @@ Mixin class containing User specific methods
 
 To be used by OpenMetadata class
 """
+
 import json
 import traceback
 from functools import lru_cache

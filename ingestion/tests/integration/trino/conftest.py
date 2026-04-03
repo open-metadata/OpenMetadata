@@ -162,19 +162,21 @@ def mysql_container(docker_network):
 
 @pytest.fixture(scope="package")
 def hive_metastore_container(mysql_container, minio_container, docker_network):
-    with HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest").with_network(
-        docker_network
-    ).with_network_aliases("metastore").with_env(
-        "METASTORE_DB_HOSTNAME", "mariadb"
-    ).with_env(
-        "METASTORE_DB_PORT", str(mysql_container.port)
-    ).with_env(
-        "JDBC_CONNECTION_URL",
-        f"jdbc:mysql://mariadb:{mysql_container.port}/{mysql_container.dbname}",
-    ).with_env(
-        "MINIO_ENDPOINT",
-        f"http://minio:{minio_container.port}",
-    ) as hive:
+    with (
+        HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest")
+        .with_network(docker_network)
+        .with_network_aliases("metastore")
+        .with_env("METASTORE_DB_HOSTNAME", "mariadb")
+        .with_env("METASTORE_DB_PORT", str(mysql_container.port))
+        .with_env(
+            "JDBC_CONNECTION_URL",
+            f"jdbc:mysql://mariadb:{mysql_container.port}/{mysql_container.dbname}",
+        )
+        .with_env(
+            "MINIO_ENDPOINT",
+            f"http://minio:{minio_container.port}",
+        ) as hive
+    ):
         yield hive
 
 

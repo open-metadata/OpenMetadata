@@ -11,6 +11,7 @@
 """
 Run the Automation Workflow
 """
+
 from functools import singledispatch
 from typing import Any
 

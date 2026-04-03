@@ -11,6 +11,7 @@
 """
 OMeta User Mixin integration tests. The API needs to be up
 """
+
 import logging
 import time
 

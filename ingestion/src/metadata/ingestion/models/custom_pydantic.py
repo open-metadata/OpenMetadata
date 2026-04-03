@@ -15,6 +15,7 @@ This classes are used in the generated module, which should have NO
 dependencies against any other metadata package. This class should
 be self-sufficient with only pydantic at import time.
 """
+
 import json
 import logging
 from typing import Any, Callable, Dict, Literal, Optional, Union

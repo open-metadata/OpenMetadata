@@ -11,6 +11,7 @@
 """
 Delete methods
 """
+
 import traceback
 from typing import Dict, Iterable, List, Optional, Type
 

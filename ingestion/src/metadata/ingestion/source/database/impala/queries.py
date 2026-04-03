@@ -14,8 +14,6 @@ SQL Queries used during ingestion
 
 import textwrap
 
-IMPALA_GET_COMMENTS = textwrap.dedent(
-    """
+IMPALA_GET_COMMENTS = textwrap.dedent("""
     describe formatted `{schema_name}`.`{table_name}`
-    """
-)
+    """)

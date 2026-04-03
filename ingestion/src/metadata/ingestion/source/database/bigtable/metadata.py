@@ -11,6 +11,7 @@
 """
 Bigtable source methods.
 """
+
 import traceback
 from typing import Dict, Iterable, List, Optional, Union
 

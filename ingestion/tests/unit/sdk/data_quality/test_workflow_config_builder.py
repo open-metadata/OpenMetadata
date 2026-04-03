@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Unit tests for WorkflowConfigBuilder"""
+
 from unittest.mock import MagicMock
 from uuid import uuid4
 

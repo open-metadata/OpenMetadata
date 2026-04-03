@@ -412,7 +412,7 @@ def person_column_name_recognizer() -> Recognizer:
 
 @pytest.fixture(scope="session")
 def pii_classification(
-    metadata: OpenMetadata[Classification, CreateClassificationRequest]
+    metadata: OpenMetadata[Classification, CreateClassificationRequest],
 ) -> Classification:
     create_classification_request = CreateClassificationRequestFactory.create(
         fqn="PII",

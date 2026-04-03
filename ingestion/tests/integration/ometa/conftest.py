@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Automations integration tests"""
+
 import json
 import logging
 import time

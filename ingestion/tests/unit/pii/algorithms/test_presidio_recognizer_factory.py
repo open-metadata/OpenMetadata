@@ -11,6 +11,7 @@
 """
 Tests for PresidioRecognizerFactory and RecognizerRegistry
 """
+
 import re
 from unittest.mock import patch
 from uuid import uuid4
@@ -32,7 +33,9 @@ from metadata.generated.schema.type.patternRecognizer import (
 from metadata.generated.schema.type.predefinedRecognizer import (
     Name as PredefinedRecognizerName,
 )
-from metadata.generated.schema.type.predefinedRecognizer import PredefinedRecognizer
+from metadata.generated.schema.type.predefinedRecognizer import (
+    PredefinedRecognizer,
+)
 from metadata.generated.schema.type.recognizer import Recognizer, RecognizerConfig
 from metadata.generated.schema.type.recognizers.patterns import Pattern
 from metadata.generated.schema.type.recognizers.regexFlags import RegexFlags
@@ -497,11 +500,14 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        with patch(
-            "metadata.pii.algorithms.presidio_recognizer_factory.enhance_using_context"
-        ) as mock_enhance, patch(
-            "metadata.pii.algorithms.presidio_recognizer_factory.decorate_recognizer"
-        ) as mock_decorate:
+        with (
+            patch(
+                "metadata.pii.algorithms.presidio_recognizer_factory.enhance_using_context"
+            ) as mock_enhance,
+            patch(
+                "metadata.pii.algorithms.presidio_recognizer_factory.decorate_recognizer"
+            ) as mock_decorate,
+        ):
             result = PresidioRecognizerFactory.create_recognizer(
                 recognizer_config, "PII.Token"
             )

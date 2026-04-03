@@ -11,6 +11,7 @@
 """
 Enhanced NER Scanner that uses custom recognizers from OpenMetadata classifications.
 """
+
 from typing import Dict, List, Optional, Set, Tuple
 
 from presidio_analyzer import RecognizerResult
@@ -48,9 +49,9 @@ class CustomNERScanner:
         """
         self.classifications = {c.fullyQualifiedName: c for c in classifications}
         self.tags = {t.fullyQualifiedName: t for t in tags}
-        self.tag_by_classification: Dict[
-            str, List[Tag]
-        ] = self._group_tags_by_classification()
+        self.tag_by_classification: Dict[str, List[Tag]] = (
+            self._group_tags_by_classification()
+        )
 
         # Build base analyzer engine
         self.analyzer_engine = (

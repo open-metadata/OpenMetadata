@@ -11,6 +11,7 @@
 """
 REST Auth & Client for Metabase
 """
+
 import json
 import traceback
 from typing import Dict, List, Optional

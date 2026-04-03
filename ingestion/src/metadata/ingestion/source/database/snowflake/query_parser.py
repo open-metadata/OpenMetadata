@@ -11,6 +11,7 @@
 """
 Snowflake Query parser module
 """
+
 from abc import ABC
 from datetime import datetime
 from typing import Iterable, Optional

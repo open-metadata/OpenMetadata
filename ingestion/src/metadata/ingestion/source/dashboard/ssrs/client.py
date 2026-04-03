@@ -11,6 +11,7 @@
 """
 SSRS REST client
 """
+
 import traceback
 from typing import List, Optional, Union
 

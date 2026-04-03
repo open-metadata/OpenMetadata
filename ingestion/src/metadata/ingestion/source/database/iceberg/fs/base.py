@@ -12,6 +12,7 @@
 """
 Iceberg FileSystem base module.
 """
+
 from abc import ABC, abstractmethod
 from typing import Union
 

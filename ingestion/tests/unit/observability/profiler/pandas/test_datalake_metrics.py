@@ -12,6 +12,7 @@
 """
 Test Metrics behavior
 """
+
 import os
 import sys
 from unittest import TestCase, mock

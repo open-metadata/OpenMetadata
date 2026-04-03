@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+
 from sqlalchemy import inspect, or_, text
 
 from metadata.profiler.orm.registry import FLOAT_SET

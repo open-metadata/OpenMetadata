@@ -11,6 +11,7 @@
 """
 SAP ERP source module
 """
+
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
@@ -240,15 +241,19 @@ class SaperpSource(CommonDbSourceService):
                 col_data_length = 1 if col_data_length is None else col_data_length
                 om_column = Column(
                     name=ColumnName(
-                        root=column_name
-                        # Passing whitespace if column name is an empty string
-                        # since pydantic doesn't accept empty string
-                        if column_name
-                        else " "
+                        root=(
+                            column_name
+                            # Passing whitespace if column name is an empty string
+                            # since pydantic doesn't accept empty string
+                            if column_name
+                            else " "
+                        )
                     ),
-                    displayName=sap_column.scrtext_l
-                    if sap_column.scrtext_l
-                    else sap_column.fieldname,
+                    displayName=(
+                        sap_column.scrtext_l
+                        if sap_column.scrtext_l
+                        else sap_column.fieldname
+                    ),
                     description=sap_column.i_ddtext,
                     dataType=column_type,
                     dataTypeDisplay=data_type_display,

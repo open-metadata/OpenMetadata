@@ -12,6 +12,7 @@
 """
 Test dashboard connectors with CLI
 """
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 

@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Pipeline entity with full mock coverage.
 """
+
 import unittest
 from datetime import datetime
 from unittest.mock import MagicMock

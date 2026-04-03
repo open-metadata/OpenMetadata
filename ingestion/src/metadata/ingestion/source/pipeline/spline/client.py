@@ -11,6 +11,7 @@
 """
 Client to interact with Spline consumer apis
 """
+
 import traceback
 from typing import Optional
 

@@ -14,6 +14,7 @@ Test Table and Column Tests' validate implementations.
 
 Each test should validate the Success, Failure and Aborted statuses
 """
+
 from datetime import date, datetime
 from unittest.mock import patch
 
@@ -40,6 +41,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
     "columnValuesToNotMatchRegex",
     "tableCustomSQLQuery",
 }
+
 
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(

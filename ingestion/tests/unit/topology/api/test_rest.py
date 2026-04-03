@@ -1066,7 +1066,7 @@ class RESTTest(TestCase):
         param = {
             "in": "query",
             "name": "ids",
-            "type": "array"
+            "type": "array",
             # No items key at all
         }
         result = self.rest_source._convert_parameter_to_field(param)

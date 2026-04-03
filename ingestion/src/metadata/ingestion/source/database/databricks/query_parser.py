@@ -11,6 +11,7 @@
 """
 Databricks Query parser module
 """
+
 from abc import ABC
 from typing import Optional
 

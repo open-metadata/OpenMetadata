@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Model test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest

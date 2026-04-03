@@ -11,6 +11,7 @@
 """
 Sample Data source ingestion
 """
+
 # pylint: disable=too-many-lines,too-many-statements
 import json
 import random

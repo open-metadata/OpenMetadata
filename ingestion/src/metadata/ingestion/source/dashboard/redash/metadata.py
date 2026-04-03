@@ -11,6 +11,7 @@
 """
 Redash source module
 """
+
 import traceback
 from typing import Iterable, List, Optional
 

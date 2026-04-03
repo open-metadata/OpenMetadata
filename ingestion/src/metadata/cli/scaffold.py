@@ -26,6 +26,7 @@ For SQLAlchemy database connectors, also generates concrete code templates
 For all other connector types, generates skeleton files that point the AI agent
 at the reference connector and CONNECTOR_CONTEXT.md for implementation.
 """
+
 import argparse
 import json
 import re

@@ -11,6 +11,7 @@
 """
 Base class for the Auto Classification Processor.
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Sequence, Type, TypeVar, cast, final

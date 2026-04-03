@@ -76,12 +76,15 @@ MOCK_CONFIG = {
 
 @pytest.fixture
 def lineage_source():
-    with patch(
-        "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
-    ), patch("metadata.ingestion.ometa.ometa_api.OpenMetadata") as mock_metadata, patch(
-        "metadata.ingestion.source.database.unitycatalog.lineage.get_sqlalchemy_connection"
-    ) as mock_engine, patch(
-        "metadata.ingestion.source.database.unitycatalog.lineage.get_connection"
+    with (
+        patch(
+            "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
+        ),
+        patch("metadata.ingestion.ometa.ometa_api.OpenMetadata") as mock_metadata,
+        patch(
+            "metadata.ingestion.source.database.unitycatalog.lineage.get_sqlalchemy_connection"
+        ) as mock_engine,
+        patch("metadata.ingestion.source.database.unitycatalog.lineage.get_connection"),
     ):
         config = WorkflowSource.model_validate(MOCK_CONFIG["source"])
         source = UnitycatalogLineageSource(config, mock_metadata)

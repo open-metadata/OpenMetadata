@@ -12,6 +12,7 @@
 """
 Processor wrapper that captures test case results without modifying the processor.
 """
+
 # pylint: disable=W0212
 from typing import Any, List, Optional, cast
 

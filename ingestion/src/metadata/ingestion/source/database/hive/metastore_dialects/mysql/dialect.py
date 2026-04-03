@@ -11,6 +11,7 @@
 """
 Hive Metastore Mysql Dialect
 """
+
 from sqlalchemy import text
 from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
 from sqlalchemy.engine import reflection

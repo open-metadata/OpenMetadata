@@ -11,6 +11,7 @@
 """
 Generic source to build SQL connectors.
 """
+
 import copy
 import traceback
 from abc import ABC

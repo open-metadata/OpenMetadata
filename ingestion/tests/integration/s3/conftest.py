@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """S3 environment setup for integration tests"""
+
 import os
 import uuid
 from pathlib import Path

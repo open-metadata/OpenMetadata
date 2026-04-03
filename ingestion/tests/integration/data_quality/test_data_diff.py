@@ -698,7 +698,10 @@ def copy_table(source_engine, destination_engine, table_name):
             column_copy = SQAColumn(column.name, column.type)
         destination_table.append_column(column_copy)
     destination_metadata.create_all(destination_engine)
-    with source_engine.connect() as source_connection, destination_engine.connect() as destination_connection:
+    with (
+        source_engine.connect() as source_connection,
+        destination_engine.connect() as destination_connection,
+    ):
         data = source_connection.execute(source_table.select()).fetchall()
         batch_size = 1000
         for i in range(0, len(data), batch_size):

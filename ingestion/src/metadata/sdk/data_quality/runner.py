@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Class that allows running data quality checks by code"""
+
 # pyright: reportCallIssue=false, reportRedeclaration=false
 
 from typing import Any, List, Optional, cast

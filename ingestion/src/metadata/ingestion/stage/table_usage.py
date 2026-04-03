@@ -13,6 +13,7 @@ Given query data about tables, store the results
 in a temporary file (i.e., the stage)
 to be further processed by the BulkSink.
 """
+
 import json
 import os
 import shutil

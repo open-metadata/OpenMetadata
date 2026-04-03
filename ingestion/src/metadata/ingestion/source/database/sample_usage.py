@@ -11,6 +11,7 @@
 """
 Sample Usage source ingestion
 """
+
 import csv
 import json
 from datetime import datetime

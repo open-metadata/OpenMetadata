@@ -12,6 +12,7 @@
 """
 Datalake Azure Blob Client
 """
+
 from functools import partial
 from typing import Callable, Iterable, Optional, Set
 

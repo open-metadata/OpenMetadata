@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
@@ -118,9 +119,9 @@ def get_connection(connection: HiveConnection) -> Engine:
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.root[
-            "kerberos_service_name"
-        ] = connection.kerberosServiceName
+        connection.connectionArguments.root["kerberos_service_name"] = (
+            connection.kerberosServiceName
+        )
 
     # Handle SSL using SSL manager (following established patterns)
     ssl_manager = check_ssl_and_init(connection)
@@ -138,17 +139,17 @@ def get_connection(connection: HiveConnection) -> Engine:
         # Add SSL certificate configuration if available
         if hasattr(connection, "sslConfig") and connection.sslConfig:
             if connection.sslConfig.root.sslCertificate:
-                connection.connectionArguments.root[
-                    "ssl_certfile"
-                ] = connection.sslConfig.root.sslCertificate
+                connection.connectionArguments.root["ssl_certfile"] = (
+                    connection.sslConfig.root.sslCertificate
+                )
             if connection.sslConfig.root.sslKey:
-                connection.connectionArguments.root[
-                    "ssl_keyfile"
-                ] = connection.sslConfig.root.sslKey
+                connection.connectionArguments.root["ssl_keyfile"] = (
+                    connection.sslConfig.root.sslKey
+                )
             if connection.sslConfig.root.caCertificate:
-                connection.connectionArguments.root[
-                    "ssl_ca_certs"
-                ] = connection.sslConfig.root.caCertificate
+                connection.connectionArguments.root["ssl_ca_certs"] = (
+                    connection.sslConfig.root.caCertificate
+                )
 
     return create_generic_db_connection(
         connection=connection,

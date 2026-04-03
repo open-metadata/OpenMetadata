@@ -11,6 +11,7 @@
 """
 OpenMetadata base class for tests
 """
+
 import uuid
 from datetime import datetime
 from textwrap import dedent
@@ -165,8 +166,7 @@ COLUMNS = [
     ),
 ]
 
-METADATA_INGESTION_CONFIG_TEMPLATE = dedent(
-    """{{
+METADATA_INGESTION_CONFIG_TEMPLATE = dedent("""{{
         "source": {{
             "type": "{type}",
             "serviceName": "{service_name}",
@@ -186,11 +186,9 @@ METADATA_INGESTION_CONFIG_TEMPLATE = dedent(
                 }}
             }}
         }}
-    }}"""
-)
+    }}""")
 
-PROFILER_INGESTION_CONFIG_TEMPLATE = dedent(
-    """{{
+PROFILER_INGESTION_CONFIG_TEMPLATE = dedent("""{{
         "source": {{
             "type": "{type}",
             "serviceName": "{service_name}",
@@ -211,8 +209,7 @@ PROFILER_INGESTION_CONFIG_TEMPLATE = dedent(
                 }}
             }}
         }}
-    }}"""
-)
+    }}""")
 
 
 def generate_name() -> EntityName:

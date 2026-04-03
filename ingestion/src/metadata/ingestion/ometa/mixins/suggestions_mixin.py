@@ -13,6 +13,7 @@ Mixin class containing Suggestions specific methods
 
 To be used by OpenMetadata class
 """
+
 from typing import Union
 
 from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType

@@ -12,6 +12,7 @@
 """
 Test Metrics behavior
 """
+
 import datetime
 import math
 import os
@@ -584,6 +585,7 @@ class MetricsTest(TestCase):
         """
         Check cardinality distribution with empty table
         """
+
         # Create a new table with no data
         class EmptyUser(Base):
             __tablename__ = "empty_users"

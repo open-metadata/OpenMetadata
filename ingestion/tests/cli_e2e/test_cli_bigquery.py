@@ -12,6 +12,7 @@
 """
 Test Bigquery connector with CLI
 """
+
 import random
 from datetime import datetime
 from typing import List, Tuple

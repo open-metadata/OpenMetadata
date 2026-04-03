@@ -11,6 +11,7 @@
 """
 Helper to parse workflow configurations
 """
+
 from typing import Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError

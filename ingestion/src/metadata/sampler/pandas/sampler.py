@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+
 from typing import Callable, List, Optional, cast
 
 from metadata.generated.schema.entity.data.table import (

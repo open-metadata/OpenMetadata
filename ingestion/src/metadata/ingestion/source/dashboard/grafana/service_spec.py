@@ -11,6 +11,7 @@
 """
 Grafana Service Specification
 """
+
 from metadata.ingestion.source.dashboard.grafana.metadata import GrafanaSource
 from metadata.utils.service_spec import BaseSpec
 

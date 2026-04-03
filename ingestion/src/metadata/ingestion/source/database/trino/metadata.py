@@ -11,6 +11,7 @@
 """
 Trino source implementation.
 """
+
 import re
 import traceback
 from copy import deepcopy

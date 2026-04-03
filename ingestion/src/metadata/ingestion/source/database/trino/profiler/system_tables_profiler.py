@@ -11,6 +11,7 @@
 """
 System table profiler
 """
+
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Set, Type, Union

@@ -11,6 +11,7 @@
 """
 Grafana API client
 """
+
 from typing import List, Optional, Union
 
 import requests

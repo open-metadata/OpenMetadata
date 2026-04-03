@@ -11,6 +11,7 @@
 """
 Singlestore source ingestion
 """
+
 from typing import Optional
 
 from sqlalchemy.dialects.mysql.base import ischema_names

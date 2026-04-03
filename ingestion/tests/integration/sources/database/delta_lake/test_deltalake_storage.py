@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """deltalake storage integration tests"""
+
 import deltalake
 import pandas as pd
 import pytest

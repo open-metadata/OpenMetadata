@@ -12,6 +12,7 @@
 """
 Incremental Processor for Redshift
 """
+
 import re
 from datetime import datetime
 from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple

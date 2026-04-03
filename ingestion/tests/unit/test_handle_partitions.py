@@ -198,9 +198,9 @@ class BigqueryUnitTest(TestCase):
         self.bigquery_source.context.get().__dict__[
             "database"
         ] = MOCK_DATABASE.fullyQualifiedName.root
-        self.bigquery_source.context.get().__dict__[
-            "database_schema"
-        ] = TEST_PARTITION.get("schema_name")
+        self.bigquery_source.context.get().__dict__["database_schema"] = (
+            TEST_PARTITION.get("schema_name")
+        )
         self.bigquery_source.client = client
         self.bigquery_source.inspector.get_columns = (
             lambda table_name, schema, db_name: MOCK_COLUMN_DATA

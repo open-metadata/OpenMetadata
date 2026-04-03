@@ -11,6 +11,7 @@
 """
 Elasticsearch source to extract metadata
 """
+
 import shutil
 import traceback
 from pathlib import Path

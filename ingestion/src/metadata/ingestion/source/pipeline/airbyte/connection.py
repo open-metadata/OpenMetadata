@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional, Union
 
 from metadata.generated.schema.entity.automations.workflow import (

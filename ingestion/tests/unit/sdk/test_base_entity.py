@@ -1,6 +1,7 @@
 """
 Unit tests for BaseEntity class with comprehensive mocking.
 """
+
 import asyncio
 import unittest
 from unittest.mock import MagicMock

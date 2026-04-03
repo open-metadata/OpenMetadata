@@ -1,7 +1,6 @@
 import textwrap
 
-EXASOL_SQL_STATEMENT = textwrap.dedent(
-    """
+EXASOL_SQL_STATEMENT = textwrap.dedent("""
     SELECT
       s.sql_text "query_text",
       s.command_name "query_type",
@@ -17,8 +16,7 @@ EXASOL_SQL_STATEMENT = textwrap.dedent(
     AND start_time between TO_TIMESTAMP('{start_time}') and TO_TIMESTAMP('{end_time}')
     {filters}
     LIMIT {result_limit}
-    """
-)
+    """)
 
 EXASOL_TEST_GET_QUERIES = """
     SELECT

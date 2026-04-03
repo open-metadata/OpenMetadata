@@ -12,6 +12,7 @@
 """
 Test database connectors with CLI
 """
+
 from abc import abstractmethod
 from datetime import datetime
 from typing import List, Optional, Tuple

@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API endpoint test
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest

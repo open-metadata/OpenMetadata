@@ -1,4 +1,5 @@
 """High-level entry points for the OpenMetadata Python SDK."""
+
 from __future__ import annotations
 
 import os

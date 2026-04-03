@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Server test
 """
+
 import pytest
 
 from metadata.generated.schema.configuration.profilerConfiguration import (

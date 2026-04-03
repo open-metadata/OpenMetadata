@@ -11,6 +11,7 @@
 """
 Postgres source module
 """
+
 import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
@@ -329,9 +330,11 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=Markdown(stored_procedure.description)
-                if stored_procedure.description
-                else None,
+                description=(
+                    Markdown(stored_procedure.description)
+                    if stored_procedure.description
+                    else None
+                ),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
                     code=stored_procedure.definition,

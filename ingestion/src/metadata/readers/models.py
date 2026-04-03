@@ -12,6 +12,7 @@
 """
 Generic types to use for readers
 """
+
 from typing import Union
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (

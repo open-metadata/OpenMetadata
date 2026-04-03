@@ -11,6 +11,7 @@
 """
 Redshift usage module
 """
+
 import re
 from abc import ABC
 from datetime import datetime

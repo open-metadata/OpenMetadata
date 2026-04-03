@@ -12,6 +12,7 @@
 """
 Test import utilities
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType

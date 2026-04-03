@@ -56,20 +56,14 @@ class CustomKafkaContainer(KafkaContainer):
                 "BROKER://$(hostname -i | cut -d' ' -f1):9092",
             ]
         )
-        data = (
-            dedent(
-                f"""
+        data = dedent(f"""
                 #!/bin/bash
                 {self.boot_command}
                 export KAFKA_ADVERTISED_LISTENERS={listeners}
                 . /etc/confluent/docker/bash-config
                 /etc/confluent/docker/configure
                 /etc/confluent/docker/launch
-                """
-            )
-            .strip()
-            .encode("utf-8")
-        )
+                """).strip().encode("utf-8")
         self.create_file(data, KafkaContainer.TC_START_SCRIPT)
 
 
@@ -81,10 +75,14 @@ def docker_network():
 
 @pytest.fixture(scope="module")
 def schema_registry_container(docker_network, kafka_container):
-    with SchemaRegistryContainer(
-        schema_registry_kafkastore_bootstrap_servers="PLAINTEXT://kafka:9092",
-        schema_registry_host_name="schema-registry",
-    ).with_network(docker_network).with_network_aliases("schema-registry") as container:
+    with (
+        SchemaRegistryContainer(
+            schema_registry_kafkastore_bootstrap_servers="PLAINTEXT://kafka:9092",
+            schema_registry_host_name="schema-registry",
+        )
+        .with_network(docker_network)
+        .with_network_aliases("schema-registry") as container
+    ):
         load_csv_data.main(
             kafka_broker=kafka_container.get_bootstrap_server(),
             schema_registry_url=container.get_connection_url(),

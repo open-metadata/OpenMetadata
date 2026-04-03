@@ -12,6 +12,7 @@
 """
 Read files as string from S3
 """
+
 import traceback
 from typing import Dict, List
 

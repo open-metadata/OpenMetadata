@@ -12,6 +12,7 @@
 """
 Avro DataFrame reader - streams records in batches to avoid OOM
 """
+
 import traceback
 from functools import singledispatchmethod
 from typing import Iterator, List, Optional

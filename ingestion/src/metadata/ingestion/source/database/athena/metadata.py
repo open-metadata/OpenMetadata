@@ -134,9 +134,9 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                 database_page = DatabasePage(**page)
                 for database in database_page.DatabaseList or []:
                     if database.Description:
-                        self.schema_description_map[
-                            database.Name
-                        ] = database.Description
+                        self.schema_description_map[database.Name] = (
+                            database.Description
+                        )
         except Exception as exc:
             logger.warning(f"Error preparing Athena source: {exc}")
             logger.debug(traceback.format_exc())

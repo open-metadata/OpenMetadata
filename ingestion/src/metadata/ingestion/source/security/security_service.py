@@ -11,6 +11,7 @@
 """
 Base class for ingesting security services
 """
+
 from abc import ABC
 from typing import Set
 
@@ -51,22 +52,22 @@ class SecurityServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=SecurityService,
-                context="security_service",
-                processor="yield_create_request_security_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            ),
-        ],
-        children=[],  # Security services typically don't have child entities like policies, roles, etc.
-        post_process=["mark_security_entities_as_deleted"],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=SecurityService,
+                    context="security_service",
+                    processor="yield_create_request_security_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                ),
+            ],
+            children=[],  # Security services typically don't have child entities like policies, roles, etc.
+            post_process=["mark_security_entities_as_deleted"],
+        )
     )
 
 

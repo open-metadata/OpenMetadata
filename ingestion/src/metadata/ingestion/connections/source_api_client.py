@@ -23,6 +23,7 @@ Usage:
     client = TrackedREST(client_config)
     response = client.get("/dashboards")  # Automatically tracked
 """
+
 from time import perf_counter
 from typing import Optional
 

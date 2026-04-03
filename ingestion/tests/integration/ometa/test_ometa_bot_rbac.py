@@ -11,6 +11,7 @@
 """
 OMeta Bot RBAC tests
 """
+
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.configuration.searchSettings import (
     GlobalSettings,

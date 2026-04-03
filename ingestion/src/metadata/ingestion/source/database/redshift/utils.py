@@ -11,6 +11,7 @@
 """
 Redshift SQLAlchemy util methods
 """
+
 import re
 from collections import defaultdict
 

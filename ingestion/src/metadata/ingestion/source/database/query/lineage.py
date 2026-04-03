@@ -11,6 +11,7 @@
 """
 Common Query Log Connector
 """
+
 from typing import Optional
 
 from metadata.generated.schema.metadataIngestion.workflow import (

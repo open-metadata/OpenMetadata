@@ -114,14 +114,14 @@ class TestSuiteInterface(ABC):
         runtime_params_setter_fact: RuntimeParameterSetterFactory = (
             self._get_runtime_params_setter_fact()
         )  # type: ignore
-        runtime_params_setters: Set[
-            RuntimeParameterSetter
-        ] = runtime_params_setter_fact.get_runtime_param_setters(
-            test_case.testDefinition.fullyQualifiedName,  # type: ignore
-            self.ometa_client,
-            self.service_connection_config,
-            self.table_entity,
-            self.sampler,
+        runtime_params_setters: Set[RuntimeParameterSetter] = (
+            runtime_params_setter_fact.get_runtime_param_setters(
+                test_case.testDefinition.fullyQualifiedName,  # type: ignore
+                self.ometa_client,
+                self.service_connection_config,
+                self.table_entity,
+                self.sampler,
+            )
         )
 
         # get `column` or `table` type for validator import

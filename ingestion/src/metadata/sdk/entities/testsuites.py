@@ -1,6 +1,7 @@
 """
 TestSuites entity SDK with fluent API
 """
+
 from typing import Type
 
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest

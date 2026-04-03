@@ -11,6 +11,7 @@
 """
 DBT utils methods.
 """
+
 import re
 import traceback
 from datetime import datetime
@@ -487,21 +488,31 @@ def _validate_entity_reference_list_type(
 # Dictionary mapping of validators for each custom property type
 CUSTOM_PROPERTY_TYPE_VALIDATORS = {
     # Basic types - simple type checking with conversion
-    "string": lambda v, c, m=None: (True, None, str(v))
-    if isinstance(v, str)
-    else (False, f"Expected string, got {type(v).__name__}", None),
-    "integer": lambda v, c, m=None: (True, None, int(v))
-    if isinstance(v, int) and not isinstance(v, bool)
-    else (False, f"Expected integer, got {type(v).__name__}", None),
-    "number": lambda v, c, m=None: (True, None, float(v))
-    if isinstance(v, (int, float)) and not isinstance(v, bool)
-    else (False, f"Expected number, got {type(v).__name__}", None),
-    "markdown": lambda v, c, m=None: (True, None, str(v))
-    if isinstance(v, str)
-    else (False, f"Expected markdown string, got {type(v).__name__}", None),
-    "sqlQuery": lambda v, c, m=None: (True, None, str(v))
-    if isinstance(v, str)
-    else (False, f"Expected SQL query string, got {type(v).__name__}", None),
+    "string": lambda v, c, m=None: (
+        (True, None, str(v))
+        if isinstance(v, str)
+        else (False, f"Expected string, got {type(v).__name__}", None)
+    ),
+    "integer": lambda v, c, m=None: (
+        (True, None, int(v))
+        if isinstance(v, int) and not isinstance(v, bool)
+        else (False, f"Expected integer, got {type(v).__name__}", None)
+    ),
+    "number": lambda v, c, m=None: (
+        (True, None, float(v))
+        if isinstance(v, (int, float)) and not isinstance(v, bool)
+        else (False, f"Expected number, got {type(v).__name__}", None)
+    ),
+    "markdown": lambda v, c, m=None: (
+        (True, None, str(v))
+        if isinstance(v, str)
+        else (False, f"Expected markdown string, got {type(v).__name__}", None)
+    ),
+    "sqlQuery": lambda v, c, m=None: (
+        (True, None, str(v))
+        if isinstance(v, str)
+        else (False, f"Expected SQL query string, got {type(v).__name__}", None)
+    ),
     # Types with format validation
     "email": _validate_email_type,
     "date-cp": _validate_date_time_type,

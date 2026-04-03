@@ -11,6 +11,7 @@
 """
 Deltalake source methods.
 """
+
 import traceback
 from typing import Any, Iterable, Optional, Tuple
 
@@ -136,9 +137,11 @@ class DeltalakeSource(DatabaseServiceSource):
             )
             if filter_by_schema(
                 self.config.sourceConfig.config.schemaFilterPattern,
-                schema_fqn
-                if self.config.sourceConfig.config.useFqnForFiltering
-                else schema,
+                (
+                    schema_fqn
+                    if self.config.sourceConfig.config.useFqnForFiltering
+                    else schema
+                ),
             ):
                 self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
@@ -190,9 +193,11 @@ class DeltalakeSource(DatabaseServiceSource):
                 )
                 if filter_by_table(
                     self.source_config.tableFilterPattern,
-                    table_fqn
-                    if self.source_config.useFqnForFiltering
-                    else table_info.name,
+                    (
+                        table_fqn
+                        if self.source_config.useFqnForFiltering
+                        else table_info.name
+                    ),
                 ):
                     self.status.filter(
                         table_fqn,

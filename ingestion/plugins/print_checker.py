@@ -12,6 +12,7 @@
 """
 Custom pylint plugin to catch `print` calls
 """
+
 from typing import TYPE_CHECKING
 
 from astroid import nodes

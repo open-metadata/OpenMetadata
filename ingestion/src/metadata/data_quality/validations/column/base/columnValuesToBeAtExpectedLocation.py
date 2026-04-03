@@ -594,9 +594,9 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
 
         return self.get_dimension_result_object(
             dimension_values={dimension_col_name: dim_value},
-            test_case_status=TestCaseStatus.Success
-            if test_passed
-            else TestCaseStatus.Failed,
+            test_case_status=(
+                TestCaseStatus.Success if test_passed else TestCaseStatus.Failed
+            ),
             result=result_message,
             test_result_value=test_result_values,
             total_rows=counts.valid_count + counts.invalid_count,

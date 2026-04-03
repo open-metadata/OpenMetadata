@@ -12,6 +12,7 @@
 """
 Validator for column value median to be between test case
 """
+
 from collections import defaultdict
 from itertools import chain
 from typing import List, Optional, cast
@@ -107,11 +108,11 @@ class ColumnValueMedianToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.median.name
-                    ] = median_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.median.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.median.name] = (
+                        median_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.median.name],
+                            group_df,
+                        )
                     )
 
                     dimension_aggregates[dimension_value][

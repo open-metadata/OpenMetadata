@@ -11,6 +11,7 @@
 """
 Test status callback
 """
+
 from datetime import datetime, timezone
 from unittest import TestCase
 

@@ -12,6 +12,7 @@
 """
 Unique Ratio Composed Metric definition
 """
+
 # pylint: disable=duplicate-code
 
 from typing import Any, Dict, Optional, Tuple

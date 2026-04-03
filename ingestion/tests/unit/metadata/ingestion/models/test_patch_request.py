@@ -12,6 +12,7 @@
 """
 Check the JSONPatch operations work as expected
 """
+
 from unittest import TestCase
 from unittest.mock import Mock, patch
 

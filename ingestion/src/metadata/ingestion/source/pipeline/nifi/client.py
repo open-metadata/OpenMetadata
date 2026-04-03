@@ -11,6 +11,7 @@
 """
 Client to interact with Nifi apis
 """
+
 import traceback
 from typing import Dict, Iterable, List
 
@@ -62,9 +63,11 @@ class NifiClient:
             self.verify = self.connection.nifiConfig.verifySSL
             self.data = {
                 "username": self.connection.nifiConfig.username,
-                "password": self.connection.nifiConfig.password.get_secret_value()
-                if self.connection.nifiConfig.password
-                else None,
+                "password": (
+                    self.connection.nifiConfig.password.get_secret_value()
+                    if self.connection.nifiConfig.password
+                    else None
+                ),
             }
             client_config.verify = self.connection.nifiConfig.verifySSL
             client_config.auth_header = AUTHORIZATION_HEADER

@@ -11,6 +11,7 @@
 """
 Unit tests for SSRS source
 """
+
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -147,9 +148,12 @@ EXPECTED_DASHBOARDS = [
 
 @pytest.fixture(scope="function")
 def ssrs_source():
-    with patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    ), patch("metadata.ingestion.source.dashboard.ssrs.connection.get_connection"):
+    with (
+        patch(
+            "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
+        ),
+        patch("metadata.ingestion.source.dashboard.ssrs.connection.get_connection"),
+    ):
         config = OpenMetadataWorkflowConfig.model_validate(mock_config)
         source = SsrsSource.create(
             mock_config["source"],
@@ -191,9 +195,9 @@ class TestSsrsSource:
 
     def test_yield_dashboard(self, ssrs_source):
         for report, expected in zip(MOCK_REPORTS[:2], EXPECTED_DASHBOARDS):
-            ssrs_source.context.get().__dict__[
-                "project_name"
-            ] = ssrs_source.get_project_name(report)
+            ssrs_source.context.get().__dict__["project_name"] = (
+                ssrs_source.get_project_name(report)
+            )
             results = list(ssrs_source.yield_dashboard(report))
             assert len(results) == 1
             assert isinstance(results[0], Either)

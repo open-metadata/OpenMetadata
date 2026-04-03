@@ -12,6 +12,7 @@
 """
 Handle column logic when reading data from DataLake
 """
+
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 
 

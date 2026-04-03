@@ -16,6 +16,7 @@ ConfigSource Reader Factory: Helps us choose the reader from
 - S3
 - GCS
 """
+
 from typing import Any
 
 from metadata.generated.schema.entity.services.connections.dashboard.powerbi.azureConfig import (

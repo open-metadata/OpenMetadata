@@ -11,6 +11,7 @@
 """
 Test source hash stability and normalization
 """
+
 import uuid
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -265,13 +266,11 @@ class TestNormalizeForHash:
         assert result["owners"][1]["fullyQualifiedName"] == "team.user_b"
 
     def test_normalize_schema_definition(self):
-        data = {
-            "schemaDefinition": """
+        data = {"schemaDefinition": """
                 CREATE TABLE foo (
                     id INT
                 )
-            """
-        }
+            """}
         result = _normalize_for_hash(data)
         assert result["schemaDefinition"] == "CREATE TABLE foo ( id INT )"
 

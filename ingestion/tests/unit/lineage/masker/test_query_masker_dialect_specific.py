@@ -15,6 +15,7 @@ Dialect-specific SQL syntax masking tests
 Tests for masking queries that use dialect-specific syntax features
 (typed literals, VARIANT paths, STRUCTs, DECLARE, etc.).
 """
+
 from unittest import TestCase
 
 import pytest

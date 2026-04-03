@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Custom Properties Test
 """
+
 from typing import Dict
 
 import pytest

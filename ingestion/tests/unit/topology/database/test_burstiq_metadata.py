@@ -306,11 +306,14 @@ class TestBurstIQMetadataIngestion(TestCase):
         )
 
         # Mock fqn.build to return table FQN and fqn._build to return column FQN
-        with patch(
-            "metadata.ingestion.source.database.burstiq.metadata.fqn.build"
-        ) as mock_fqn_build, patch(
-            "metadata.ingestion.source.database.burstiq.metadata.fqn._build"
-        ) as mock_fqn_private_build:
+        with (
+            patch(
+                "metadata.ingestion.source.database.burstiq.metadata.fqn.build"
+            ) as mock_fqn_build,
+            patch(
+                "metadata.ingestion.source.database.burstiq.metadata.fqn._build"
+            ) as mock_fqn_private_build,
+        ):
             mock_fqn_build.return_value = "test_service.test_db.test_schema.patient"
             mock_fqn_private_build.return_value = (
                 "test_service.test_db.test_schema.patient.patient_id"

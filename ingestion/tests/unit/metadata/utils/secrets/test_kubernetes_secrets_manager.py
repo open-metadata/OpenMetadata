@@ -12,6 +12,7 @@
 """
 Test Kubernetes Secrets Manager
 """
+
 import base64
 import os
 from unittest import TestCase

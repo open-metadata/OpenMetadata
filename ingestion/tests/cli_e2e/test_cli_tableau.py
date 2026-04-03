@@ -12,6 +12,7 @@
 """
 Test Tableau connector with CLI - Enhanced with comprehensive lineage and metadata testing
 """
+
 from pathlib import Path
 from typing import List
 

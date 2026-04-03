@@ -11,6 +11,7 @@
 """
 Client to interact with Alation apis
 """
+
 import json
 import traceback
 from typing import Any, Dict, List, Optional

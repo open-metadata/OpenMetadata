@@ -11,6 +11,7 @@
 """
 Workflow definition for the Data Quality
 """
+
 from typing import Optional, Tuple
 
 from metadata.data_quality.processor.test_case_runner import TestCaseRunner

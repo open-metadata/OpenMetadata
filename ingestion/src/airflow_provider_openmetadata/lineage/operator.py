@@ -12,6 +12,7 @@
 """
 OpenMetadata Airflow Lineage Operator
 """
+
 import logging
 import traceback
 from typing import List

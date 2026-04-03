@@ -11,6 +11,7 @@
 """
 MariaDB source module
 """
+
 import traceback
 from typing import Iterable, Optional
 

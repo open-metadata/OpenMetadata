@@ -387,9 +387,9 @@ class PowerbiSource(DashboardServiceSource):
         ):
             reports_prefix = RDL_REPORTS_PREFIX
         try:
-            pages: Optional[
-                List[ReportPage]
-            ] = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)
+            pages: Optional[List[ReportPage]] = (
+                self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)
+            )
             if len(pages) >= 1:
                 # get first page out of multiple pages otherwise
                 # get page if of single page
@@ -1600,7 +1600,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         Method to create lineage between table and datamodels using pbit files
         """
-        (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
+        prefix_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
 
         try:
             # check if the datamodel_file_mappings is populated or not
@@ -2201,7 +2201,7 @@ class PowerbiSource(DashboardServiceSource):
         We will build the logic to build the logic as below
         tables - datamodel - report - dashboard
         """
-        (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
+        prefix_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
 
         for dashboard in self.filtered_dashboards or []:
             dashboard_details = self.get_dashboard_details(dashboard)

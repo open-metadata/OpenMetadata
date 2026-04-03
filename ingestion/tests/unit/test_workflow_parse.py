@@ -12,6 +12,7 @@
 """
 Test Workflow pydantic parsing
 """
+
 from unittest import TestCase
 
 from pydantic import ValidationError

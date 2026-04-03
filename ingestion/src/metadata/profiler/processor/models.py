@@ -13,6 +13,7 @@
 Models to map profiler definitions
 JSON workflows to the profiler
 """
+
 from typing import List, Optional, Type
 
 from pydantic import BaseModel, BeforeValidator
@@ -54,7 +55,7 @@ class ProfilerDef(BaseModel):
     """
 
     name: str  # Profiler name
-    timeout_seconds: Optional[
-        int
-    ] = None  # Stop running a query after X seconds and continue
+    timeout_seconds: Optional[int] = (
+        None  # Stop running a query after X seconds and continue
+    )
     metrics: Optional[List[ValidMetric]] = None

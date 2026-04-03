@@ -11,6 +11,7 @@
 """
 Hive Metastore Postgres Dialect Mixin
 """
+
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection

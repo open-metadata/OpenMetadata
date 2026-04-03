@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -94,9 +95,11 @@ class DatalakeConnection(BaseConnection[DatalakeConnectionConfig, DatalakeBaseCl
         return test_connection_steps(
             metadata=metadata,
             test_fn=test_fn,
-            service_type=self.service_connection.type.value
-            if self.service_connection.type
-            else "Datalake",
+            service_type=(
+                self.service_connection.type.value
+                if self.service_connection.type
+                else "Datalake"
+            ),
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )

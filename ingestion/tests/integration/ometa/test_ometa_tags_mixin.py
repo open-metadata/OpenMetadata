@@ -1,6 +1,7 @@
 """
 Tests for the OMeta tag MixIn
 """
+
 import uuid
 
 import pytest

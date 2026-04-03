@@ -11,6 +11,7 @@
 """
 Classification run manager for auto-classification workflows.
 """
+
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Protocol
 
@@ -27,11 +28,9 @@ logger = profiler_logger()
 class ClassificationManagerInterface(Protocol):
     def get_enabled_classifications(
         self, filter_names: Optional[List[str]] = None
-    ) -> List[Classification]:
-        ...
+    ) -> List[Classification]: ...
 
-    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]:
-        ...
+    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]: ...
 
 
 class ClassificationManager:

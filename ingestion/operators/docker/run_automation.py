@@ -11,6 +11,7 @@
 """
 Entrypoint to run an automation workflow
 """
+
 import logging
 import os
 

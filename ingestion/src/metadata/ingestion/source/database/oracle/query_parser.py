@@ -11,6 +11,7 @@
 """
 Oracle query parsing module
 """
+
 from abc import ABC
 from typing import Optional
 

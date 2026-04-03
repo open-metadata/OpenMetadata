@@ -11,6 +11,7 @@
 """
 Postgres usage module
 """
+
 import traceback
 from datetime import datetime
 from typing import Iterable

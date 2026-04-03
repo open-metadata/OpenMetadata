@@ -12,6 +12,7 @@
 """
 Get and test connection utilities
 """
+
 from functools import partial
 from typing import Any, Callable, Dict, Optional
 from urllib.parse import quote_plus

@@ -12,6 +12,7 @@
 """
 OpenMetadata Airflow Lineage Backend
 """
+
 import logging
 import traceback
 from typing import TYPE_CHECKING, Dict

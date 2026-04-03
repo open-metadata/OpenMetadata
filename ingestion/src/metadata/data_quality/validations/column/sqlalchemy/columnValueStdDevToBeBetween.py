@@ -12,6 +12,7 @@
 """
 Validator for column value stddev to be between test case
 """
+
 from typing import List, Optional
 
 from sqlalchemy import Column

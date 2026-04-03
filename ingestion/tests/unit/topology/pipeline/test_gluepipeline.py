@@ -11,6 +11,7 @@
 """
 Test dbt cloud using the topology
 """
+
 import json
 from unittest import TestCase
 from unittest.mock import patch
@@ -63,8 +64,7 @@ mock_glue_config = {
     },
 }
 
-EXPECTED_JOB_DETAILS = json.loads(
-    """
+EXPECTED_JOB_DETAILS = json.loads("""
 {
     "Name": "redshift workflow",
     "Description": "redshift workflow description",
@@ -184,8 +184,7 @@ EXPECTED_JOB_DETAILS = json.loads(
         ]
     }
 }
-"""
-)
+""")
 
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name=EntityName(root="redshift workflow"),

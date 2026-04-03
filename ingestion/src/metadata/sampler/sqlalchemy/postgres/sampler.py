@@ -11,6 +11,7 @@
 """
 Helper module to handle data sampling for the profiler
 """
+
 from typing import Dict, Optional, Union
 
 from sqlalchemy import Table as SqaTable

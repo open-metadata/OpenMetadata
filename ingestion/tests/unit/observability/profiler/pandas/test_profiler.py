@@ -12,6 +12,7 @@
 """
 Test Profiler behavior
 """
+
 import os
 import sys
 from datetime import datetime

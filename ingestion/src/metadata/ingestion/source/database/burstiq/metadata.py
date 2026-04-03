@@ -11,6 +11,7 @@
 """
 BurstIQ LifeGraph source module for OpenMetadata
 """
+
 import traceback
 from typing import Any, Iterable, List, Optional, Tuple
 

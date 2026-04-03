@@ -12,6 +12,7 @@
 """
 Test cross database lineage functionality in SQL lineage module
 """
+
 import uuid
 from datetime import datetime
 from unittest import TestCase

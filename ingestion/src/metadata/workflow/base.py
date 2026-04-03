@@ -134,9 +134,11 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         # Set run context for operation metrics tracking
         OperationMetricsState().set_run_context(
-            run_id=str(self.config.pipelineRunId.root)
-            if self.config.pipelineRunId
-            else None,
+            run_id=(
+                str(self.config.pipelineRunId.root)
+                if self.config.pipelineRunId
+                else None
+            ),
             pipeline_fqn=self.config.ingestionPipelineFQN,
         )
         self.set_ingestion_pipeline_status(state=PipelineState.running)

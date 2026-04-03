@@ -12,6 +12,7 @@
 """
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
+
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path

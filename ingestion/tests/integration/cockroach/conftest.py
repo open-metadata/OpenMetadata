@@ -37,10 +37,7 @@ def cockroach_container():
         testcontainers_config.max_tries = old_max_tries
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:
-            conn.execute(
-                text(
-                    textwrap.dedent(
-                        """
+            conn.execute(text(textwrap.dedent("""
                     CREATE TABLE user_profiles (
                         user_id UUID PRIMARY KEY,
                         first_name TEXT,
@@ -49,10 +46,7 @@ def cockroach_container():
                         signup_date TIMESTAMP,
                         is_active BOOLEAN
                     );
-                    """
-                    )
-                )
-            )
+                    """)))
             conn.commit()
 
         yield container

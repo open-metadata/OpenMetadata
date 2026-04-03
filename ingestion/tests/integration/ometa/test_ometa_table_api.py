@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Table test
 """
+
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import List

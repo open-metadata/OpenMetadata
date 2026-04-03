@@ -1,6 +1,7 @@
 """
 Unit tests for CSV mixin functionality.
 """
+
 from unittest.mock import Mock, patch
 
 import pytest

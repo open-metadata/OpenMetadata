@@ -11,6 +11,7 @@
 """
 Query Parser Source module. Parent class for Lineage & Usage workflows
 """
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Iterator, Optional

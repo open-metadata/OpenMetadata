@@ -25,6 +25,7 @@ from metadata.utils.sqlalchemy_utils import is_complex_type
 
 logger = utils_logger()
 
+
 # pylint: disable=protected-access
 @reflection.cache
 def _get_column_type(self, type_):

@@ -17,6 +17,7 @@ This test is coupled with the example DAG `lineage_tutorial_operator`.
 With the `docker compose up` setup, you can debug the progress
 by setting breakpoints in this file.
 """
+
 import time
 from typing import Optional
 from unittest import TestCase

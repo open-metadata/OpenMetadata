@@ -12,6 +12,7 @@
 """
 Test GitHub Reader
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.security.credentials.gitlabCredentials import (

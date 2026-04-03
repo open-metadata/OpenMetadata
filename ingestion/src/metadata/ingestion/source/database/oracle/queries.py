@@ -14,19 +14,16 @@ SQL Queries used during ingestion
 
 import textwrap
 
-ORACLE_TABLE_COMMENTS = textwrap.dedent(
-    """
+ORACLE_TABLE_COMMENTS = textwrap.dedent("""
 SELECT
     comments table_comment,
     LOWER(table_name) "table_name",
     LOWER(owner) "schema"
 FROM {prefix}_TAB_COMMENTS
 where comments is not null and owner not in ('SYSTEM', 'SYS')
-"""
-)
+""")
 
-ORACLE_VIEW_DEFINITIONS = textwrap.dedent(
-    """
+ORACLE_VIEW_DEFINITIONS = textwrap.dedent("""
 SELECT
     LOWER(v.view_name) AS "view_name",
     LOWER(v.owner) AS "schema",
@@ -52,23 +49,19 @@ FROM {prefix}_MVIEWS m
 JOIN {prefix}_USERS u
     ON m.owner = u.username
 WHERE u.oracle_maintained = 'N'
-"""
-)
+""")
 
-ORACLE_TABLE_COMMENTS_PRESERVE_CASE = textwrap.dedent(
-    """
+ORACLE_TABLE_COMMENTS_PRESERVE_CASE = textwrap.dedent("""
 SELECT
     comments "table_comment",
     table_name "table_name",
     owner "schema"
 FROM {prefix}_TAB_COMMENTS
 where comments is not null and owner not in ('SYSTEM', 'SYS')
-"""
-)
+""")
 
 
-ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE = textwrap.dedent(
-    """
+ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE = textwrap.dedent("""
 SELECT
     v.view_name AS "view_name",
     v.owner AS "schema",
@@ -94,24 +87,18 @@ FROM {prefix}_MVIEWS m
 JOIN {prefix}_USERS u
     ON m.owner = u.username
 WHERE u.oracle_maintained = 'N'
-"""
-)
+""")
 
 
-GET_VIEW_NAMES = textwrap.dedent(
-    """
+GET_VIEW_NAMES = textwrap.dedent("""
 SELECT view_name FROM {prefix}_VIEWS WHERE owner = :owner
-"""
-)
+""")
 
-GET_MATERIALIZED_VIEW_NAMES = textwrap.dedent(
-    """
+GET_MATERIALIZED_VIEW_NAMES = textwrap.dedent("""
 SELECT mview_name FROM {prefix}_MVIEWS WHERE owner = :owner
-"""
-)
+""")
 
-ORACLE_GET_TABLE_NAMES = textwrap.dedent(
-    """
+ORACLE_GET_TABLE_NAMES = textwrap.dedent("""
 SELECT table_name FROM {prefix}_TABLES WHERE
 {tablespace}
 OWNER = :owner
@@ -119,11 +106,9 @@ AND IOT_NAME IS NULL
 AND DURATION IS NULL
 AND TABLE_NAME NOT IN
 (SELECT mview_name FROM {prefix}_MVIEWS WHERE owner = :owner)
-"""
-)
+""")
 
-ORACLE_IDENTITY_TYPE = textwrap.dedent(
-    """\
+ORACLE_IDENTITY_TYPE = textwrap.dedent("""\
 col.default_on_null,
 (
     SELECT id.generation_type || ',' || id.IDENTITY_OPTIONS
@@ -132,11 +117,9 @@ col.default_on_null,
     AND col.column_name = id.column_name
     AND col.owner = id.owner
 ) AS identity_options
-"""
-)
+""")
 
-ORACLE_GET_STORED_PROCEDURES = textwrap.dedent(
-    """
+ORACLE_GET_STORED_PROCEDURES = textwrap.dedent("""
 SELECT
     OWNER,
     NAME,
@@ -148,11 +131,9 @@ FROM
 WHERE
     type = 'PROCEDURE' and owner = '{schema}'
 ORDER BY OWNER, NAME, LINE
-"""
-)
+""")
 
-ORACLE_GET_STORED_PACKAGES = textwrap.dedent(
-    """
+ORACLE_GET_STORED_PACKAGES = textwrap.dedent("""
 SELECT
     OWNER,
     NAME,
@@ -168,11 +149,9 @@ ORDER BY OWNER, NAME, CASE type
         WHEN 'PACKAGE BODY' THEN 2
         ELSE 3
     END, LINE
-"""
-)
+""")
 
-TEST_ORACLE_GET_STORED_PACKAGES = textwrap.dedent(
-    """
+TEST_ORACLE_GET_STORED_PACKAGES = textwrap.dedent("""
 SELECT
     OWNER,
     NAME,
@@ -196,30 +175,24 @@ ORDER BY OWNER, NAME, CASE type
         WHEN 'PACKAGE BODY' THEN 2
         ELSE 3
     END, LINE
-"""
-)
+""")
 
 CHECK_ACCESS_TO_ALL = "SELECT table_name FROM {prefix}_TABLES where ROWNUM < 2"
 
 
-TEST_MATERIALIZED_VIEWS = textwrap.dedent(
-    """
+TEST_MATERIALIZED_VIEWS = textwrap.dedent("""
 SELECT COUNT(*) as count
 FROM {prefix}_MVIEWS
 WHERE ROWNUM = 1
-"""
-)
+""")
 
-TEST_QUERY_HISTORY = textwrap.dedent(
-    """
+TEST_QUERY_HISTORY = textwrap.dedent("""
 SELECT COUNT(*) as count
 FROM gv$sql
 WHERE ROWNUM = 1
-"""
-)
+""")
 
-ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
-    """
+ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent("""
 WITH SP_HISTORY AS (
   SELECT
     sql_text AS query_text,
@@ -274,11 +247,9 @@ JOIN Q_HISTORY Q
   AND Q.user_name = SP.user_name
   AND Q.QUERY_TYPE <> 'SELECT'
 ORDER BY PROCEDURE_START_TIME DESC
-"""
-)
+""")
 
-ORACLE_GET_COLUMNS = textwrap.dedent(
-    """
+ORACLE_GET_COLUMNS = textwrap.dedent("""
         SELECT
             col.column_name,
             col.data_type,
@@ -297,11 +268,9 @@ ORACLE_GET_COLUMNS = textwrap.dedent(
         AND col.owner = com.owner
         WHERE col.table_name = CAST(:table_name AS VARCHAR2(128))
         AND col.hidden_column = 'NO'
-    """
-)
+    """)
 
-ORACLE_CONSTRAINTS = textwrap.dedent(
-    """
+ORACLE_CONSTRAINTS = textwrap.dedent("""
         SELECT
             ac.constraint_name,
             ac.constraint_type,
@@ -325,11 +294,9 @@ ORACLE_CONSTRAINTS = textwrap.dedent(
             AND ac.r_constraint_name = rem.constraint_name(+)
             AND (rem.position IS NULL or loc.position=rem.position)
         ORDER BY ac.constraint_name, loc.position
-    """
-)
+    """)
 
-ORACLE_QUERY_HISTORY_STATEMENT = textwrap.dedent(
-    """
+ORACLE_QUERY_HISTORY_STATEMENT = textwrap.dedent("""
 SELECT
     NULL AS user_name,
     NULL AS database_name,
@@ -349,5 +316,4 @@ WHERE OBJECT_STATUS = 'VALID'
     < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
 ORDER BY FIRST_LOAD_TIME DESC
 OFFSET 0 ROWS FETCH NEXT {result_limit} ROWS ONLY
-"""
-)
+""")

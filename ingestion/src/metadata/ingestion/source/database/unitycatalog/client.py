@@ -11,6 +11,7 @@
 """
 Client to interact with databricks apis
 """
+
 import json
 import traceback
 

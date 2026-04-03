@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API EventSubscription test
 """
+
 from copy import deepcopy
 from unittest.mock import patch
 

@@ -11,6 +11,7 @@
 """
 Client to interact with BurstIQ LifeGraph APIs
 """
+
 import traceback
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional

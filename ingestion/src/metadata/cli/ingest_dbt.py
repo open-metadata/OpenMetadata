@@ -292,9 +292,9 @@ def create_dbt_workflow_config(
 
     # Add optional classification name if provided
     if om_config.openmetadata_dbt_classification_name:
-        source_config[
-            "dbtClassificationName"
-        ] = om_config.openmetadata_dbt_classification_name
+        source_config["dbtClassificationName"] = (
+            om_config.openmetadata_dbt_classification_name
+        )
 
     # Create workflow configuration
     config = {

@@ -12,6 +12,7 @@
 """
 Abstract class for AWS based secrets manager implementations
 """
+
 import os
 from abc import ABC, abstractmethod
 from typing import Optional

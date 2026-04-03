@@ -11,6 +11,7 @@
 """
 Unit tests for auto-classification models.
 """
+
 import pytest
 
 from _openmetadata_testutils.factories.metadata.pii.models import ScoredTagFactory

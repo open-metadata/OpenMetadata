@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Pipeline test
 """
+
 from datetime import datetime
 
 import pytest

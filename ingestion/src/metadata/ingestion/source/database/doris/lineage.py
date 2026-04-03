@@ -11,6 +11,7 @@
 """
 Doris lineage module
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (

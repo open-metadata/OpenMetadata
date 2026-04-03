@@ -11,6 +11,7 @@
 """
 Snowflake usage module
 """
+
 import traceback
 from datetime import timedelta
 from typing import Iterable

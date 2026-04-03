@@ -11,6 +11,7 @@
 """
 Hive source methods.
 """
+
 import re
 
 from pyhive.sqlalchemy_hive import _type_map

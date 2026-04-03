@@ -11,6 +11,7 @@
 """
 Test that DatalakeSampler truncates oversized cell values during fetch_sample_data.
 """
+
 import sys
 from unittest.mock import Mock, patch
 from uuid import uuid4

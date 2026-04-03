@@ -11,6 +11,7 @@
 """
 Source connection handler for Google Cloud Pub/Sub
 """
+
 import os
 from dataclasses import dataclass
 from typing import Optional

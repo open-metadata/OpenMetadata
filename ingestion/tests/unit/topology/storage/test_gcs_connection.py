@@ -11,6 +11,7 @@
 """
 Unit tests for GCS test connection - Tester.list_buckets() bucket filtering
 """
+
 from collections import namedtuple
 from unittest.mock import MagicMock
 

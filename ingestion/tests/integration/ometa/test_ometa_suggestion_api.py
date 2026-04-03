@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Suggestion test
 """
+
 import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa

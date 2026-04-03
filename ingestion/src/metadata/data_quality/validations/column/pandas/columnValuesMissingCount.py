@@ -12,6 +12,7 @@
 """
 Validator for column value missing count to be equal test case
 """
+
 from collections import defaultdict
 from typing import List, Optional, cast
 
@@ -125,10 +126,11 @@ class ColumnValuesMissingCountValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
                     for metric_name, metric in metric_expressions.items():
-                        dimension_aggregates[dimension_value][
-                            metric_name
-                        ] = metric.update_accumulator(
-                            dimension_aggregates[dimension_value][metric_name], group_df
+                        dimension_aggregates[dimension_value][metric_name] = (
+                            metric.update_accumulator(
+                                dimension_aggregates[dimension_value][metric_name],
+                                group_df,
+                            )
                         )
 
             results_data = []

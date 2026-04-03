@@ -11,6 +11,7 @@
 """
 SFTP source implementation
 """
+
 import io
 import mimetypes
 import stat

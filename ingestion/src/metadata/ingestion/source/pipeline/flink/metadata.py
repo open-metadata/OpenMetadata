@@ -11,6 +11,7 @@
 """
 Airbyte source to extract metadata
 """
+
 import traceback
 from typing import Any, Iterable, List, Optional
 

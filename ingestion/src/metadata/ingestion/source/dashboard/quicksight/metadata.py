@@ -539,9 +539,11 @@ class QuicksightSource(DashboardServiceSource):
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(
-                    datamodel_id=datamodel.dataset_id
-                    if datamodel.dataset_id is not None
-                    else datamodel.DataSource.DataSourceId
+                    datamodel_id=(
+                        datamodel.dataset_id
+                        if datamodel.dataset_id is not None
+                        else datamodel.DataSource.DataSourceId
+                    )
                 )
                 if isinstance(
                     datamodel.DataSource.data_source_resp, DataSourceRespQuery
@@ -684,9 +686,9 @@ class QuicksightSource(DashboardServiceSource):
         Each QuickSight dataset produces a separate DataModel entity,
         identified by dataset_id rather than datasource_id.
         """
-        self.data_models: List[
-            DescribeDataSourceResponse
-        ] = self._get_dashboard_datamodels(dashboard_details)
+        self.data_models: List[DescribeDataSourceResponse] = (
+            self._get_dashboard_datamodels(dashboard_details)
+        )
         dataset_groups: dict[str, List[DescribeDataSourceResponse]] = defaultdict(list)
         for data_model in self.data_models:
             key = (

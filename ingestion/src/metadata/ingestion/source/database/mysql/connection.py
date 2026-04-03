@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -82,9 +83,11 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         of a metadata workflow or during an Automation Workflow
         """
         queries = {
-            "GetQueries": MYSQL_TEST_GET_QUERIES
-            if not self.service_connection.useSlowLogs
-            else MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
+            "GetQueries": (
+                MYSQL_TEST_GET_QUERIES
+                if not self.service_connection.useSlowLogs
+                else MYSQL_TEST_GET_QUERIES_SLOW_LOGS
+            ),
         }
         return test_connection_db_schema_sources(
             metadata=metadata,

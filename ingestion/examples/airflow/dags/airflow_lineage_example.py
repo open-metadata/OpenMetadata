@@ -29,7 +29,6 @@ with Airflow Scheduler
 This is an example to demonstrate on how to configure a Airflow DAG's inlets and outlets.
 """
 
-
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task

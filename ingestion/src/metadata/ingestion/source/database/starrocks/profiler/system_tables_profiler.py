@@ -15,6 +15,7 @@ Uses StarRocks system tables for efficient statistics gathering:
 - information_schema.tables: row count, data size, create/update time
 - _statistics_.column_statistics: column-level statistics (requires ANALYZE)
 """
+
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Type
 

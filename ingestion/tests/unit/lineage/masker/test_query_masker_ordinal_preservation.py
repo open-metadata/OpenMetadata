@@ -15,6 +15,7 @@ Dialect-specific GROUP BY / ORDER BY ordinal preservation tests
 Tests that verify integer ordinals in GROUP BY and ORDER BY clauses
 are preserved (not replaced with '?') across all supported SQL dialects.
 """
+
 from unittest import TestCase
 
 from ingestion.tests.unit.lineage.masker.helpers import assert_masked_query

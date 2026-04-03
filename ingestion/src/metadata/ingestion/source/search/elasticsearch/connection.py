@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import ssl
 from pathlib import Path
 from typing import Optional
@@ -154,9 +155,11 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
     ):
         basic_auth = (
             connection.authType.username,
-            connection.authType.password.get_secret_value()
-            if connection.authType.password
-            else None,
+            (
+                connection.authType.password.get_secret_value()
+                if connection.authType.password
+                else None
+            ),
         )
 
     if isinstance(connection.authType, ApiKeyAuthentication):

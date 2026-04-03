@@ -12,6 +12,7 @@
 """
 OpenAPI schema parser for both JSON and YAML formats
 """
+
 import json
 import re
 from pathlib import Path

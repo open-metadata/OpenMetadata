@@ -11,6 +11,7 @@
 """
 Patch the Presidio recognizer results to make adapt them to specific use cases.
 """
+
 from typing import List, Protocol, Sequence
 
 from dateutil.parser import parse
@@ -30,8 +31,7 @@ class PresidioRecognizerResultPatcher(Protocol):
 
     def __call__(
         self, recognizer_results: Sequence[RecognizerResult], text: str
-    ) -> Sequence[RecognizerResult]:
-        ...
+    ) -> Sequence[RecognizerResult]: ...
 
 
 def combine_patchers(

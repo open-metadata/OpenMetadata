@@ -19,6 +19,7 @@ To be extended by any other workflow:
 - test suite
 - data insights
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Type, cast

@@ -12,6 +12,7 @@
 """
 Secrets manager implementation using AWS SSM Parameter Store
 """
+
 import traceback
 from typing import Optional
 

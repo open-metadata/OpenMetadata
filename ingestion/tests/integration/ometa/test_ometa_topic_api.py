@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Topic test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest

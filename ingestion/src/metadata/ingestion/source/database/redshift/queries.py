@@ -17,8 +17,7 @@ import textwrap
 from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
 
 # Not able to use SYS_QUERY_HISTORY here. Few users not getting any results
-REDSHIFT_SQL_STATEMENT = textwrap.dedent(
-    """
+REDSHIFT_SQL_STATEMENT = textwrap.dedent("""
   WITH
   queries AS (
     SELECT *
@@ -83,12 +82,10 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
         INNER JOIN pg_catalog.pg_user AS u
           ON q.userid = u.usesysid
     ORDER BY q.endtime DESC
-"""
-)
+""")
 
 
-REDSHIFT_SERVERLESS_SQL_STATEMENT = textwrap.dedent(
-    """
+REDSHIFT_SERVERLESS_SQL_STATEMENT = textwrap.dedent("""
 WITH queries AS (
     -- Limit applied here (not outer query) to prevent LISTAGG exceeding 65KB limit in full_queries CTE
     -- Order by start_time DESC to prioritize recent queries for lineage
@@ -155,12 +152,10 @@ FROM queries AS q
     INNER JOIN pg_catalog.pg_user AS u
         ON q.user_id = u.usesysid
 ORDER BY q.start_time DESC
-"""
-)
+""")
 
 
-REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
-    """
+REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent("""
     SELECT
       c.relname as name,
       c.relkind
@@ -174,12 +169,10 @@ REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
         'e' as relkind
     FROM svv_external_tables
     WHERE schemaname = :schema;
-    """
-)
+    """)
 
 
-REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
-    """
+REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent("""
             SELECT
               n.nspname as "schema",
               c.relname as "table_name",
@@ -266,8 +259,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
                null AS "table_oid"
             FROM svv_external_columns
             ORDER BY "schema", "table_name", "attnum";
-            """
-)
+            """)
 
 REDSHIFT_EXTERNAL_TABLE_LOCATION = """
   SELECT schemaname, tablename, location
@@ -389,8 +381,7 @@ REDSHIFT_GET_ALL_RELATIONS = """
     """
 
 
-REDSHIFT_GET_STORED_PROCEDURES = textwrap.dedent(
-    """
+REDSHIFT_GET_STORED_PROCEDURES = textwrap.dedent("""
 SELECT
     p.proname as name,
     b.usename as owner,
@@ -403,12 +394,10 @@ join pg_catalog.pg_user b on
     b.usesysid = p.proowner
 where nspname = '{schema_name}'
     and p.proowner <> 1;
-    """
-)
+    """)
 
 
-REDSHIFT_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
-    """
+REDSHIFT_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent("""
 with SP_HISTORY as (
     select
         querytxt as procedure_text,
@@ -459,11 +448,9 @@ from SP_HISTORY sp
    and q.query_start_time between sp.procedure_start_time and sp.procedure_end_time
    and q.query_end_time between sp.procedure_start_time and sp.procedure_end_time
 order by procedure_start_time DESC
-    """
-)
+    """)
 
-REDSHIFT_SERVERLESS_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
-    """
+REDSHIFT_SERVERLESS_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent("""
 WITH SP_HISTORY AS (
     SELECT
         spcall.query_text AS procedure_text,
@@ -518,19 +505,16 @@ FROM SP_HISTORY sp
    AND q.query_start_time BETWEEN sp.procedure_start_time AND sp.procedure_end_time
    AND q.query_end_time BETWEEN sp.procedure_start_time AND sp.procedure_end_time
 ORDER BY procedure_start_time DESC
-    """
-)
+    """)
 
 
-REDSHIFT_LIFE_CYCLE_QUERY = textwrap.dedent(
-    """
+REDSHIFT_LIFE_CYCLE_QUERY = textwrap.dedent("""
 select "table" as table_name,
 create_time as created_at
 from pg_catalog.svv_table_info o
 where o.schema = '{schema_name}'
 and o.database = '{database_name}'
-"""
-)
+""")
 
 REDSHIFT_TABLE_CHANGES_QUERY = """
 SELECT

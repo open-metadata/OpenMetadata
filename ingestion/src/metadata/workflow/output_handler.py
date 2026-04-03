@@ -12,6 +12,7 @@
 """
 Module that handles the legacy WorkflowType until deprecation
 """
+
 from enum import Enum
 from typing import Optional
 

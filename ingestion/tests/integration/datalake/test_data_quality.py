@@ -11,6 +11,7 @@
 """
 test data quality
 """
+
 import pytest
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (

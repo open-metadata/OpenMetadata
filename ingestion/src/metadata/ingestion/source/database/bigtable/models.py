@@ -11,6 +11,7 @@
 """
 Bigtable source models.
 """
+
 from typing import Dict, List
 
 from google.cloud.bigtable.row import PartialRowData

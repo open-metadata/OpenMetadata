@@ -11,6 +11,7 @@
 """
 Bigquery Incremental Table processing logic
 """
+
 from datetime import datetime
 from typing import List
 

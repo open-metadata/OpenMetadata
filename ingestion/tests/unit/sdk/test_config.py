@@ -1,6 +1,7 @@
 """
 Unit tests for SDK configuration functionality
 """
+
 import os
 import unittest
 from unittest.mock import patch

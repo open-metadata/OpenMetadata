@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from copy import deepcopy
 from functools import partial
 from typing import Optional
@@ -77,14 +78,14 @@ def get_connection(connection: UnityCatalogConnection) -> WorkspaceClient:
         client_params["token"] = connection.authType.token.get_secret_value()
     elif isinstance(connection.authType, DatabricksOauth):
         client_params["client_id"] = connection.authType.clientId
-        client_params[
-            "client_secret"
-        ] = connection.authType.clientSecret.get_secret_value()
+        client_params["client_secret"] = (
+            connection.authType.clientSecret.get_secret_value()
+        )
     elif isinstance(connection.authType, AzureAdSetup):
         client_params["azure_client_id"] = connection.authType.azureClientId
-        client_params[
-            "azure_client_secret"
-        ] = connection.authType.azureClientSecret.get_secret_value()
+        client_params["azure_client_secret"] = (
+            connection.authType.azureClientSecret.get_secret_value()
+        )
         client_params["azure_tenant_id"] = connection.authType.azureTenantId
 
     return WorkspaceClient(

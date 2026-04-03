@@ -11,6 +11,7 @@
 """
 Each of the ingestion steps: Source, Sink, Stage,...
 """
+
 import inspect
 import traceback
 from abc import ABC, abstractmethod
@@ -94,9 +95,11 @@ class Summary(StepSummary):
 
         return Summary(
             name=step.name,
-            records=step.status.record_count
-            if step.status.record_count > 0
-            else len(step.status.records),
+            records=(
+                step.status.record_count
+                if step.status.record_count > 0
+                else len(step.status.records)
+            ),
             updated_records=len(step.status.updated_records),
             warnings=len(step.status.warnings),
             errors=len(step.status.failures),

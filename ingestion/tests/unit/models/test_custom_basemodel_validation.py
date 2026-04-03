@@ -414,6 +414,7 @@ class TestCustomBasemodelValidation(TestCase):
 
     def test_transform_entity_names_with_root_attributes(self):
         """Test transformation of entities with root attributes (like FullyQualifiedEntityName)."""
+
         # Create a mock entity with root attribute
         class MockEntityWithRoot:
             def __init__(self, root_value):
@@ -502,6 +503,7 @@ class TestCustomBasemodelValidation(TestCase):
 
     def test_error_handling_and_logging(self):
         """Test error handling and logging in transformation functions."""
+
         # Test with mock entity that might cause errors
         class ProblematicEntity:
             def __init__(self):

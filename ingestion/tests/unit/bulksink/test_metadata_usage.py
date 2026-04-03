@@ -11,6 +11,7 @@
 """
 Unit tests for MetadataUsageBulkSink error handling
 """
+
 import json
 import os
 import tempfile

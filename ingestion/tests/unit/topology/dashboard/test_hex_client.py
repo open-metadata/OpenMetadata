@@ -395,27 +395,31 @@ class TestHexApiClientIntegration(TestCase):
                     {
                         "id": f"proj_{i:04d}",
                         "title": f"Dashboard {i}",
-                        "description": f"Description for dashboard {i}"
-                        if i % 2 == 0
-                        else None,
-                        "owner": {
-                            "email": f"user{i % 10}@company.com",
-                        }
-                        if i % 3 != 0
-                        else None,
+                        "description": (
+                            f"Description for dashboard {i}" if i % 2 == 0 else None
+                        ),
+                        "owner": (
+                            {
+                                "email": f"user{i % 10}@company.com",
+                            }
+                            if i % 3 != 0
+                            else None
+                        ),
                         "categories": [{"name": f"Category{j}"} for j in range(i % 4)],
-                        "status": {"name": "Published"}
-                        if i % 5 == 0
-                        else {"name": "Draft"},
+                        "status": (
+                            {"name": "Published"} if i % 5 == 0 else {"name": "Draft"}
+                        ),
                     }
                     for i in range(start_idx, end_idx)
                 ]
 
                 response = {
                     "values": values,
-                    "pagination": {"after": f"cursor_page{page + 2}"}
-                    if end_idx < total_projects
-                    else None,
+                    "pagination": (
+                        {"after": f"cursor_page{page + 2}"}
+                        if end_idx < total_projects
+                        else None
+                    ),
                 }
                 responses.append(response)
 

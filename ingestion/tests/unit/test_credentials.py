@@ -11,6 +11,7 @@
 """
 Test Credentials helper module
 """
+
 from unittest import TestCase
 
 from pydantic import AnyUrl, SecretStr

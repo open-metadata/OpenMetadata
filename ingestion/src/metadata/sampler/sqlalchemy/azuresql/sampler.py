@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+
 from typing import List, Optional
 
 from sqlalchemy import Column, Table, text

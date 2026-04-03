@@ -62,8 +62,7 @@ def mssql_container(tmp_path_factory, db_name):
         str(data_dir),
     )
     with open(data_dir / "install.sql", "w") as f:
-        f.write(
-            f"""
+        f.write(f"""
 USE [master]
 RESTORE FILELISTONLY
     FROM DISK = '/data/{db_name}.bak';
@@ -74,8 +73,7 @@ RESTORE DATABASE [{db_name}]
     WITH MOVE '{db_name}_Data' TO '/var/opt/mssql/data/{db_name}.mdf',
          MOVE '{db_name}_Log' TO '/var/opt/mssql/data/{db_name}.ldf';
 GO
-        """
-        )
+        """)
 
     with try_bind(container, 1433, 1433) as container:
         docker_container = container.get_wrapped_container()

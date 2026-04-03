@@ -119,9 +119,9 @@ def _handle_bigquery_partition(
 ) -> Optional[PartitionProfilerConfig]:
     """Bigquery specific logic for partitions"""
     if table_partition:
-        column_partitions: Optional[
-            List[PartitionColumnDetails]
-        ] = entity.tablePartition.columns
+        column_partitions: Optional[List[PartitionColumnDetails]] = (
+            entity.tablePartition.columns
+        )
         if not column_partitions:
             raise TypeError("table partition missing. Skipping table")
 
@@ -131,9 +131,11 @@ def _handle_bigquery_partition(
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName=partition.columnName,
-                partitionIntervalUnit=PartitionIntervalUnit.DAY
-                if partition.interval != "HOUR"
-                else partition.interval,
+                partitionIntervalUnit=(
+                    PartitionIntervalUnit.DAY
+                    if partition.interval != "HOUR"
+                    else partition.interval
+                ),
                 partitionInterval=1,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
@@ -143,12 +145,16 @@ def _handle_bigquery_partition(
         if partition.intervalType == PartitionIntervalTypes.INGESTION_TIME:
             return PartitionProfilerConfig(
                 enablePartitioning=True,
-                partitionColumnName="_PARTITIONDATE"
-                if partition.interval == "DAY"
-                else "_PARTITIONTIME",
-                partitionIntervalUnit=PartitionIntervalUnit.DAY
-                if partition.interval != "HOUR"
-                else partition.interval,
+                partitionColumnName=(
+                    "_PARTITIONDATE"
+                    if partition.interval == "DAY"
+                    else "_PARTITIONTIME"
+                ),
+                partitionIntervalUnit=(
+                    PartitionIntervalUnit.DAY
+                    if partition.interval != "HOUR"
+                    else partition.interval
+                ),
                 partitionInterval=1,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,

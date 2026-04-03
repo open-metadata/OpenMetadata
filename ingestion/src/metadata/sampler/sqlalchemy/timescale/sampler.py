@@ -13,6 +13,7 @@ TimescaleDB-aware sampler that restricts profiling to uncompressed chunks
 instead of scanning the entire hypertable (including compressed data that
 requires expensive decompression).
 """
+
 from datetime import datetime
 from typing import Dict, Optional, Union
 

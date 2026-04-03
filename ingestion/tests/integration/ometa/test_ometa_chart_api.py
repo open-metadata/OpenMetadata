@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Chart test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest

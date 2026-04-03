@@ -12,6 +12,7 @@
 """
 Iceberg Catalog Factory.
 """
+
 from typing import Dict, Type
 
 from pyiceberg.catalog import Catalog

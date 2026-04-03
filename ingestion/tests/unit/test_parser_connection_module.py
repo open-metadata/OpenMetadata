@@ -52,6 +52,7 @@ Performance Impact:
 - Exceptional services (3): First import fails + fallback, ~12-20ms
 - Negligible impact: Only 3 out of 47 services use fallback
 """
+
 import pytest
 
 from metadata.generated.schema.entity.services.databaseService import (

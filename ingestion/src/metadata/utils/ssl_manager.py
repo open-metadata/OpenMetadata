@@ -13,6 +13,7 @@
 """
 Module to manage SSL certificates
 """
+
 import os
 import tempfile
 import traceback
@@ -324,19 +325,19 @@ class SSLManager:
             connection.connectionOptions.root["SECURITY"] = "SSL"
 
             if self.ca_file_path:
-                connection.connectionOptions.root[
-                    "SSLServerCertificate"
-                ] = self.ca_file_path
+                connection.connectionOptions.root["SSLServerCertificate"] = (
+                    self.ca_file_path
+                )
 
             if self.cert_file_path:
-                connection.connectionOptions.root[
-                    "SSLClientKeystoredb"
-                ] = self.cert_file_path
+                connection.connectionOptions.root["SSLClientKeystoredb"] = (
+                    self.cert_file_path
+                )
 
             if self.key_file_path:
-                connection.connectionOptions.root[
-                    "SSLClientKeystash"
-                ] = self.key_file_path
+                connection.connectionOptions.root["SSLClientKeystash"] = (
+                    self.key_file_path
+                )
 
         return connection
 
@@ -352,9 +353,9 @@ def check_ssl_and_init(
 def _(connection) -> Union[SSLManager, None]:
     service_connection = cast(MatillionConnection, connection)
     if service_connection.connection:
-        ssl: Optional[
-            verifySSLConfig.SslConfig
-        ] = service_connection.connection.sslConfig
+        ssl: Optional[verifySSLConfig.SslConfig] = (
+            service_connection.connection.sslConfig
+        )
         if ssl and ssl.root.caCertificate:
             ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
                 "ca": ssl.root.caCertificate
@@ -398,10 +399,9 @@ def _(connection):
 @check_ssl_and_init.register(MssqlConnection)
 def _(connection):
     service_connection = cast(MssqlConnection, connection)
-    ssl: Optional[
-        verifySSLConfig.SslConfig
-    ] = service_connection.sslConfig or verifySSLConfig.SslConfig(
-        **{"caCertificate": None}
+    ssl: Optional[verifySSLConfig.SslConfig] = (
+        service_connection.sslConfig
+        or verifySSLConfig.SslConfig(**{"caCertificate": None})
     )
     return SSLManager(
         ca=ssl.root.caCertificate,
@@ -432,12 +432,12 @@ def _(connection):
 def _(connection, *args, **kwargs):
 
     service_connection: KafkaConnection = cast(KafkaConnection, connection)
-    ssl_consumer_config: Optional[
-        verifySSLConfig.SslConfig
-    ] = service_connection.consumerConfigSSL
-    ssl_schema_registry: Optional[
-        verifySSLConfig.SslConfig
-    ] = service_connection.schemaRegistrySSL
+    ssl_consumer_config: Optional[verifySSLConfig.SslConfig] = (
+        service_connection.consumerConfigSSL
+    )
+    ssl_schema_registry: Optional[verifySSLConfig.SslConfig] = (
+        service_connection.schemaRegistrySSL
+    )
 
     ssl_consumer_config_dict = {}
 

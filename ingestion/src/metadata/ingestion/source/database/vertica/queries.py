@@ -26,8 +26,7 @@ import textwrap
 # comments from any one projection available for table
 # Note: This might not suit for all column scenarios, but currently we did not find a better way to join
 # v_catalog.comments with v_catalog.columns.
-VERTICA_GET_COLUMNS = textwrap.dedent(
-    """
+VERTICA_GET_COLUMNS = textwrap.dedent("""
         select
           column_name,
           data_type,
@@ -54,54 +53,44 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
         FROM v_catalog.view_columns
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
-    """
-)
+    """)
 
-VERTICA_GET_PRIMARY_KEYS = textwrap.dedent(
-    """
+VERTICA_GET_PRIMARY_KEYS = textwrap.dedent("""
         SELECT column_name
         FROM v_catalog.primary_keys
         WHERE lower(table_name) = '{table}'
         AND constraint_type = 'p'
         AND {schema_condition}
-    """
-)
+    """)
 
-VERTICA_VIEW_DEFINITION = textwrap.dedent(
-    """
+VERTICA_VIEW_DEFINITION = textwrap.dedent("""
       SELECT VIEW_DEFINITION
       FROM V_CATALOG.VIEWS
       WHERE table_name='{view_name}'
       AND {schema_condition}
-    """
-)
+    """)
 
 VERTICA_LIST_DATABASES = "SELECT database_name from v_catalog.databases"
 
-VERTICA_TABLE_COMMENTS = textwrap.dedent(
-    """
+VERTICA_TABLE_COMMENTS = textwrap.dedent("""
     SELECT
       object_schema as schema,
       object_name as table_name,
       comment as table_comment
     FROM v_catalog.comments
     WHERE object_type = 'TABLE';
-    """
-)
+    """)
 
-VERTICA_SCHEMA_COMMENTS = textwrap.dedent(
-    """
+VERTICA_SCHEMA_COMMENTS = textwrap.dedent("""
     SELECT
       object_name as schema_name,
       comment
     FROM v_catalog.comments
     WHERE object_type = 'SCHEMA';
-    """
-)
+    """)
 
 
-VERTICA_SQL_STATEMENT = textwrap.dedent(
-    """
+VERTICA_SQL_STATEMENT = textwrap.dedent("""
     SELECT
     DBNAME() AS database_name,
     p.query AS query_text,
@@ -123,8 +112,7 @@ VERTICA_SQL_STATEMENT = textwrap.dedent(
       {filters}
     ORDER BY query_start DESC
     LIMIT {result_limit}
-    """
-)
+    """)
 
 VERTICA_TEST_GET_QUERIES = """
 SELECT 

@@ -11,6 +11,7 @@
 """
 Utility functions for PII algorithms
 """
+
 from typing import Mapping, Sequence, TypeVar
 
 T = TypeVar("T")

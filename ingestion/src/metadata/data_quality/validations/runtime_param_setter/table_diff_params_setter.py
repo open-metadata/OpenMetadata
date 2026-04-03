@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Module that defines the TableDiffParamsSetter class."""
+
 from ast import literal_eval
 from typing import (
     Any,
@@ -51,11 +52,9 @@ class TableParameterSetter(Protocol):
         extra_columns,
         case_sensitive_columns,
         service_url: Optional[Union[str, dict]],
-    ) -> TableParameter:
-        ...
+    ) -> TableParameter: ...
 
-    def get_service_connection_config(self, service: DatabaseService):
-        ...
+    def get_service_connection_config(self, service: DatabaseService): ...
 
 
 def get_service_url(

@@ -12,6 +12,7 @@
 """
 Iceberg S3 File System.
 """
+
 from __future__ import annotations
 
 from metadata.generated.schema.security.credentials.azureCredentials import (

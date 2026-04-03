@@ -13,6 +13,7 @@ Mixin class containing Query specific methods
 
 To be used by OpenMetadata class
 """
+
 import hashlib
 import json
 from functools import lru_cache

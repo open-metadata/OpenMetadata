@@ -10,9 +10,10 @@
 #  limitations under the License.
 """
 Module that defines the RuntimeParameterFactory class.
-This class is responsible for creating instances of the RuntimeParameterSetter 
+This class is responsible for creating instances of the RuntimeParameterSetter
 based on the test case.
 """
+
 import sys
 from typing import Dict, Set, Type
 

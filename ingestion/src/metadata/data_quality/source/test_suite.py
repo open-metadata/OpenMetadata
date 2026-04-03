@@ -14,6 +14,7 @@ Test Suite Workflow Source
 
 The main goal is to get the configured table from the API.
 """
+
 import itertools
 import traceback
 from typing import Dict, Iterable, List, Optional, cast
@@ -74,9 +75,9 @@ class TestSuiteSource(Source):
         self.source_config: TestSuitePipeline = self.config.source.sourceConfig.config
 
         # Build at runtime - if not informed in the yaml - the service connection map
-        self.service_connection_map: Dict[
-            str, DatabaseConnection
-        ] = self._load_yaml_service_connections()
+        self.service_connection_map: Dict[str, DatabaseConnection] = (
+            self._load_yaml_service_connections()
+        )
 
         self.test_connection()
 

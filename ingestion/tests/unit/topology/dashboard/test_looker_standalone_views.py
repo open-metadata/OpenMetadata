@@ -11,6 +11,7 @@
 """
 Test Looker standalone views functionality
 """
+
 from unittest import TestCase
 from unittest.mock import Mock
 

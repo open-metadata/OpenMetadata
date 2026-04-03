@@ -11,6 +11,7 @@
 """
 Iceberg source helpers.
 """
+
 from __future__ import annotations
 
 from itertools import takewhile

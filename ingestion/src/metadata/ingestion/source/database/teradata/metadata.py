@@ -12,6 +12,7 @@
 """
 Teradata source implementation.
 """
+
 import traceback
 from typing import Iterable, Optional
 

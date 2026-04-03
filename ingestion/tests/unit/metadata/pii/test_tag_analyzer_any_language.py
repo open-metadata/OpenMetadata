@@ -11,6 +11,7 @@
 """
 Unit tests for TagAnalyzer "any language" mode.
 """
+
 from unittest.mock import MagicMock
 
 import pytest

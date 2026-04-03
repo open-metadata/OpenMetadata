@@ -11,6 +11,7 @@
 """
 KafkaConnect source to extract metadata from OM UI
 """
+
 import traceback
 from datetime import datetime
 from typing import Iterable, List, Optional
@@ -611,9 +612,11 @@ class KafkaconnectSource(PipelineServiceSource):
                                 entity_type=dataset_details.dataset_type,
                                 container_name=dataset_details.container_name,
                                 service_name=storageservicename,
-                                parent_container=dataset_details.parent_container
-                                if dataset_details.parent_container
-                                else None,
+                                parent_container=(
+                                    dataset_details.parent_container
+                                    if dataset_details.parent_container
+                                    else None
+                                ),
                             ),
                         )
 

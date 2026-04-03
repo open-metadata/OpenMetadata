@@ -11,11 +11,10 @@
 """
 MyDb SQL Queries
 """
+
 import textwrap
 
 # TODO: Add SQL queries for extracting metadata, usage logs, etc.
-MY_DB_TEST_GET_QUERIES = textwrap.dedent(
-    """
+MY_DB_TEST_GET_QUERIES = textwrap.dedent("""
     SELECT 1
-    """
-)
+    """)

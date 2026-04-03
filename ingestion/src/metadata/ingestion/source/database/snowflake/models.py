@@ -11,6 +11,7 @@
 """
 Snowflake models
 """
+
 import urllib
 from datetime import datetime
 from typing import List, Optional

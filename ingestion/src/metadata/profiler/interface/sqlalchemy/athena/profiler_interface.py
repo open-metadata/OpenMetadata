@@ -19,6 +19,7 @@ This interface flattens STRUCT columns into their leaf fields
 so they can be profiled individually, and patches the Athena compiler
 to quote each dot-separated segment individually.
 """
+
 from typing import List, Optional
 
 from pyathena.sqlalchemy.compiler import AthenaStatementCompiler

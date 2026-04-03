@@ -11,6 +11,7 @@
 """
 Integration tests for Rule Library Pandas Expression validator on Datalake (S3/MinIO)
 """
+
 from copy import deepcopy
 
 import pytest

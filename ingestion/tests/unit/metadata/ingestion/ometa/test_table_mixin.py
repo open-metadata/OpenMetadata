@@ -22,6 +22,7 @@ into safe primitives before model_dump_json() is called, including:
   - nested list / dict                   (ARRAY, STRUCT, MAP, HSTORE columns)
   - arbitrary opaque objects             (catch-all for unknown driver types)
 """
+
 import datetime
 import decimal
 import ipaddress

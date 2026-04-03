@@ -12,6 +12,7 @@
 Sink that will store metadata in a file.
 Useful for local testing without having OM up.
 """
+
 import pathlib
 from typing import Optional
 

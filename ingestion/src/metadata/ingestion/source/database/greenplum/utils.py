@@ -13,6 +13,7 @@
 """
 Greenplum SQLAlchemy util methods
 """
+
 import re
 from typing import Dict, Tuple
 

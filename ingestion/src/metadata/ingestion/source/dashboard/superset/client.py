@@ -11,6 +11,7 @@
 """
 REST Auth & Client for Apache Superset
 """
+
 import json
 import traceback
 

@@ -12,6 +12,7 @@
 """
 Validate filter patterns
 """
+
 import pytest
 
 from metadata.generated.schema.type.filterPattern import FilterPattern

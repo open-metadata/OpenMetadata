@@ -1,4 +1,5 @@
 """Configuration helpers for the OpenMetadata SDK."""
+
 from __future__ import annotations
 
 import os

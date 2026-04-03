@@ -12,6 +12,7 @@
 """
 Module to define overridden dialect methods
 """
+
 import operator
 from functools import reduce
 from typing import Dict, Optional

@@ -11,6 +11,7 @@
 """
 Nox sessions for testing and formatting checks.
 """
+
 import os
 
 import nox

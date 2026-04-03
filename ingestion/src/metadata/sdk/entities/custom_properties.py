@@ -1,4 +1,5 @@
 """Typed helpers for custom property updates."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

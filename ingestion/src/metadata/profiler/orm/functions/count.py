@@ -12,6 +12,7 @@
 """
 Define Count function
 """
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.sqltypes import NVARCHAR, TEXT

@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+
 from copy import deepcopy
 from typing import Dict, Optional, Union
 

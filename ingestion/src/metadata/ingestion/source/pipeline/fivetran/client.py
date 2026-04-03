@@ -11,6 +11,7 @@
 """
 Client to interact with fivetran apis
 """
+
 import base64
 from typing import List, Optional
 

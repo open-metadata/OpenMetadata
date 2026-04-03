@@ -1,6 +1,7 @@
 """
 CSV import/export mixin for OpenMetadata client.
 """
+
 import logging
 from typing import Dict, Type, TypeVar
 

@@ -12,6 +12,7 @@
 """
 Deltalake S3 Client
 """
+
 import traceback
 from functools import partial
 from typing import Callable, Iterable, List, Optional

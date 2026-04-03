@@ -13,6 +13,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+
 from typing import List, Type, cast
 
 from metadata.generated.schema.entity.data.table import SystemProfile

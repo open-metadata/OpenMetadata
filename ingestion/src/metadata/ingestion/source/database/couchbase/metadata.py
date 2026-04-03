@@ -11,6 +11,7 @@
 """
 Couchbase source methods.
 """
+
 import re
 import traceback
 from typing import Dict, Iterable, List, Optional
@@ -149,9 +150,9 @@ class CouchbaseSource(CommonNoSQLSource):
                             condition = f"AND {index_obj.indexes.condition}"
                         index_condition.add(f"({key} is not missing {condition})")
         if index_condition:
-            self.index_condition_map[
-                (bucket_name, schema_name)
-            ] = "WHERE " + " OR ".join(index_condition)
+            self.index_condition_map[(bucket_name, schema_name)] = (
+                "WHERE " + " OR ".join(index_condition)
+            )
             return self.index_condition_map[(bucket_name, schema_name)]
 
         self.index_condition_map[(bucket_name, schema_name)] = ""

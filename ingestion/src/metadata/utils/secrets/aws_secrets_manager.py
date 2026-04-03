@@ -12,6 +12,7 @@
 """
 Secrets manager implementation using AWS Secrets Manager
 """
+
 import traceback
 from typing import Optional
 

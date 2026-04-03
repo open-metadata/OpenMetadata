@@ -1505,17 +1505,20 @@ class PowerBIUnitTest(TestCase):
             "service.database.schema.my_powerbi_table"
         )
 
-        with patch.object(
-            self.powerbi, "_parse_table_info_from_source_exp", return_value=None
-        ), patch.object(
-            self.powerbi.metadata,
-            "search_in_any_service",
-            return_value=mock_table_entity,
-        ) as mock_search, patch.object(
-            self.powerbi, "_get_column_lineage", return_value=[]
-        ), patch.object(
-            self.powerbi, "_get_add_lineage_request"
-        ) as mock_lineage_request:
+        with (
+            patch.object(
+                self.powerbi, "_parse_table_info_from_source_exp", return_value=None
+            ),
+            patch.object(
+                self.powerbi.metadata,
+                "search_in_any_service",
+                return_value=mock_table_entity,
+            ) as mock_search,
+            patch.object(self.powerbi, "_get_column_lineage", return_value=[]),
+            patch.object(
+                self.powerbi, "_get_add_lineage_request"
+            ) as mock_lineage_request,
+        ):
             mock_lineage_request.return_value = MagicMock()
 
             list(
@@ -1553,15 +1556,17 @@ class PowerBIUnitTest(TestCase):
             "service.dev.demo_dbt_jaffle.customers_clean"
         )
 
-        with patch.object(
-            self.powerbi.metadata,
-            "search_in_any_service",
-            return_value=mock_table_entity,
-        ) as mock_search, patch.object(
-            self.powerbi, "_get_column_lineage", return_value=[]
-        ), patch.object(
-            self.powerbi, "_get_add_lineage_request"
-        ) as mock_lineage_request:
+        with (
+            patch.object(
+                self.powerbi.metadata,
+                "search_in_any_service",
+                return_value=mock_table_entity,
+            ) as mock_search,
+            patch.object(self.powerbi, "_get_column_lineage", return_value=[]),
+            patch.object(
+                self.powerbi, "_get_add_lineage_request"
+            ) as mock_lineage_request,
+        ):
             mock_lineage_request.return_value = MagicMock()
 
             list(
@@ -1986,13 +1991,16 @@ class PowerBIUnitTest(TestCase):
             objectId="test_dataflow_id",
         )
 
-        with patch.object(
-            self.powerbi.metadata,
-            "search_in_any_service",
-            return_value=mock_table_entity,
-        ) as mock_search, patch.object(
-            self.powerbi, "_get_add_lineage_request"
-        ) as mock_lineage_request:
+        with (
+            patch.object(
+                self.powerbi.metadata,
+                "search_in_any_service",
+                return_value=mock_table_entity,
+            ) as mock_search,
+            patch.object(
+                self.powerbi, "_get_add_lineage_request"
+            ) as mock_lineage_request,
+        ):
             mock_lineage_request.return_value = MagicMock()
 
             results = list(

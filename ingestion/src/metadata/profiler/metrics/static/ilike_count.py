@@ -12,6 +12,7 @@
 """
 ILIKE Count Metric definition
 """
+
 # pylint: disable=duplicate-code
 
 from sqlalchemy import case, column

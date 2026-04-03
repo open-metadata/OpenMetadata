@@ -11,6 +11,7 @@
 """
 Grafana source module
 """
+
 import traceback
 from typing import Dict, Iterable, List, Optional, Set
 

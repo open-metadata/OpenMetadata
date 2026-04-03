@@ -13,7 +13,6 @@
 Validator for column value length to be between test case
 """
 
-
 from collections import defaultdict
 from typing import List, Optional, cast
 
@@ -126,26 +125,30 @@ class ColumnValueLengthsToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.minLength.name
-                    ] = min_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.minLength.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.minLength.name] = (
+                        min_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][
+                                Metrics.minLength.name
+                            ],
+                            group_df,
+                        )
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.maxLength.name
-                    ] = max_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.maxLength.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.maxLength.name] = (
+                        max_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][
+                                Metrics.maxLength.name
+                            ],
+                            group_df,
+                        )
                     )
 
-                    dimension_aggregates[dimension_value][
-                        DIMENSION_TOTAL_COUNT_KEY
-                    ] = row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][
-                            DIMENSION_TOTAL_COUNT_KEY
-                        ],
-                        group_df,
+                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] = (
+                        row_count_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][
+                                DIMENSION_TOTAL_COUNT_KEY
+                            ],
+                            group_df,
+                        )
                     )
 
                     # Count row-level violations by checking lengths against bounds

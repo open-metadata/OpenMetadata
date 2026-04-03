@@ -12,6 +12,7 @@
 """
 OpenLineage source to extract metadata from Kafka or Kinesis events
 """
+
 import json
 import time
 import traceback

@@ -14,32 +14,22 @@ SQL Queries used during ingestion
 
 import textwrap
 
-CASSANDRA_GET_RELEASE_VERSION = textwrap.dedent(
-    """
+CASSANDRA_GET_RELEASE_VERSION = textwrap.dedent("""
     SELECT release_version FROM system.local;
-    """
-)
+    """)
 
-CASSANDRA_GET_KEYSPACES = textwrap.dedent(
-    """
+CASSANDRA_GET_KEYSPACES = textwrap.dedent("""
     SELECT * FROM system_schema.keyspaces
-    """
-)
+    """)
 
-CASSANDRA_GET_KEYSPACE_TABLES = textwrap.dedent(
-    """
+CASSANDRA_GET_KEYSPACE_TABLES = textwrap.dedent("""
     SELECT * FROM system_schema.tables WHERE keyspace_name = %s
-    """
-)
+    """)
 
-CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS = textwrap.dedent(
-    """
+CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS = textwrap.dedent("""
     SELECT * FROM system_schema.views WHERE keyspace_name = %s
-    """
-)
+    """)
 
-CASSANDRA_GET_TABLE_COLUMNS = textwrap.dedent(
-    """
+CASSANDRA_GET_TABLE_COLUMNS = textwrap.dedent("""
     SELECT * FROM system_schema.columns WHERE keyspace_name = %s AND table_name = %s
-    """
-)
+    """)

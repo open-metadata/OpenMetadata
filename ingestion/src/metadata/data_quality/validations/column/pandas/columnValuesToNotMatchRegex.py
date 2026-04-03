@@ -130,11 +130,13 @@ class ColumnValuesToNotMatchRegexValidator(
                         ],
                         group_df,
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.rowCount.name
-                    ] = row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.rowCount.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.rowCount.name] = (
+                        row_count_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][
+                                Metrics.rowCount.name
+                            ],
+                            group_df,
+                        )
                     )
 
             results_data = []

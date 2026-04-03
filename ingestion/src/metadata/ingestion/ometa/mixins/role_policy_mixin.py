@@ -13,6 +13,7 @@ Mixin class containing Role and Policy specific methods
 
 To be used by OpenMetadata class
 """
+
 import json
 import traceback
 from typing import Dict, List, Optional, Union
@@ -79,9 +80,11 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         for item in current:
             data.append(
                 {
-                    PatchField.OPERATION: PatchOperation.REPLACE
-                    if index < len(previous)
-                    else PatchOperation.ADD,
+                    PatchField.OPERATION: (
+                        PatchOperation.REPLACE
+                        if index < len(previous)
+                        else PatchOperation.ADD
+                    ),
                     PatchField.PATH: path.format(
                         rule_index=rule_index - 1, index=index
                     ),
@@ -121,9 +124,11 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         else:
             data = [
                 {
-                    PatchField.OPERATION: PatchOperation.ADD
-                    if previous is None
-                    else PatchOperation.REPLACE,
+                    PatchField.OPERATION: (
+                        PatchOperation.ADD
+                        if previous is None
+                        else PatchOperation.REPLACE
+                    ),
                     PatchField.PATH: path.format(rule_index=rule_index),
                     PatchField.VALUE: str(current.root),
                 }
@@ -192,9 +197,11 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
                 )
                 data.append(
                     {
-                        PatchField.OPERATION: PatchOperation.REPLACE
-                        if policy.displayName
-                        else PatchOperation.ADD,
+                        PatchField.OPERATION: (
+                            PatchOperation.REPLACE
+                            if policy.displayName
+                            else PatchOperation.ADD
+                        ),
                         PatchField.PATH: PatchPath.POLICIES_DISPLAY_NAME.format(
                             index=index
                         ),

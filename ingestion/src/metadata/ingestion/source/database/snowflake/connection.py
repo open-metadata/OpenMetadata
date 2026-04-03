@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Any, Optional
 from urllib.parse import quote_plus
@@ -216,9 +217,9 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             connection.connectionArguments.root["private_key"] = private_key
 
         if keep_alive := self._get_client_session_keep_alive():
-            connection.connectionArguments.root[
-                "client_session_keep_alive"
-            ] = keep_alive
+            connection.connectionArguments.root["client_session_keep_alive"] = (
+                keep_alive
+            )
 
         engine = create_generic_db_connection(
             connection=connection,

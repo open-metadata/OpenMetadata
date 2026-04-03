@@ -11,6 +11,7 @@
 """
 Google Cloud Pub/Sub source ingestion
 """
+
 import traceback
 from typing import Iterable, List, Optional, Union
 

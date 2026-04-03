@@ -12,6 +12,7 @@
 """
 Validate workflow configs and filters
 """
+
 import uuid
 from copy import deepcopy
 from unittest.mock import patch

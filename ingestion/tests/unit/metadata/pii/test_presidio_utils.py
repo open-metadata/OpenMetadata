@@ -11,6 +11,7 @@
 """
 Unit tests for Presidio utilities
 """
+
 from unittest.mock import Mock, patch
 
 from presidio_analyzer import AnalyzerEngine, RecognizerRegistry

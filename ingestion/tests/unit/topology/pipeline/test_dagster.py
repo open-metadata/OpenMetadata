@@ -11,6 +11,7 @@
 """
 Test Dagster using the topology
 """
+
 import json
 from pathlib import Path
 from unittest import TestCase

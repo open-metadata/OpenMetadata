@@ -12,6 +12,7 @@
 """
 Tests for JSONDataFrameReader
 """
+
 import gzip
 import json
 import tempfile

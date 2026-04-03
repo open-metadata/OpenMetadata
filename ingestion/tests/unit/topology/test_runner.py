@@ -12,6 +12,7 @@
 """
 Check that we are properly running nodes and stages
 """
+
 from typing import List, Optional
 from unittest import TestCase
 from unittest.mock import patch
@@ -49,19 +50,19 @@ class MockTable(BaseModel):
 
 
 class MockTopology(ServiceTopology):
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_schemas",
-        stages=[
-            NodeStage(
-                type_=MockSchema,
-                processor="yield_schemas",
-                context="schemas",
-            )
-        ],
-        children=["tables"],
-        post_process=["yield_hello"],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_schemas",
+            stages=[
+                NodeStage(
+                    type_=MockSchema,
+                    processor="yield_schemas",
+                    context="schemas",
+                )
+            ],
+            children=["tables"],
+            post_process=["yield_hello"],
+        )
     )
     tables: Annotated[TopologyNode, Field(description="Ingest tables")] = TopologyNode(
         producer="get_tables",

@@ -55,8 +55,7 @@ from (
 where ROW_NUMBER = 1
 """
 
-SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
-    """
+SNOWFLAKE_SQL_STATEMENT = textwrap.dedent("""
     SELECT
       query_type "query_type",
       query_text "query_text",
@@ -75,23 +74,19 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     ORDER BY start_time
     LIMIT {result_limit}
     OFFSET {offset}
-    """
-)
+    """)
 
 SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
-SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
-    """
+SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent("""
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
     from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
       and OBJECT_DELETED IS NULL
-"""
-)
+""")
 
-SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
-    """
+SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent("""
     select TAG_NAME, TAG_VALUE, OBJECT_NAME as SCHEMA_NAME
     from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
@@ -100,11 +95,9 @@ SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
       and COLUMN_NAME IS NULL
       and DOMAIN = 'SCHEMA'
       and OBJECT_DELETED IS NULL
-"""
-)
+""")
 
-SNOWFLAKE_FETCH_DATABASE_TAGS = textwrap.dedent(
-    """
+SNOWFLAKE_FETCH_DATABASE_TAGS = textwrap.dedent("""
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE as DATABASE_NAME
     from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
@@ -113,8 +106,7 @@ SNOWFLAKE_FETCH_DATABASE_TAGS = textwrap.dedent(
       and COLUMN_NAME IS NULL
       and DOMAIN = 'DATABASE'
       and OBJECT_DELETED IS NULL
-"""
-)
+""")
 
 SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
@@ -281,8 +273,7 @@ from (
 where ROW_NUMBER = 1
 """
 
-SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
-    """
+SNOWFLAKE_GET_COMMENTS = textwrap.dedent("""
   select
     TABLE_SCHEMA "schema",
     TABLE_NAME "table_name",
@@ -290,8 +281,7 @@ SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
 from information_schema.TABLES
 where TABLE_SCHEMA <> 'INFORMATION_SCHEMA'
 and comment is not null
-"""
-)
+""")
 
 SNOWFLAKE_GET_CLUSTER_KEY = """
   select CLUSTERING_KEY,
@@ -367,19 +357,16 @@ SNOWFLAKE_GET_ORGANIZATION_NAME = "SELECT CURRENT_ORGANIZATION_NAME() AS NAME"
 
 SNOWFLAKE_GET_CURRENT_ACCOUNT = "SELECT CURRENT_ACCOUNT_NAME() AS ACCOUNT"
 
-SNOWFLAKE_LIFE_CYCLE_QUERY = textwrap.dedent(
-    """
+SNOWFLAKE_LIFE_CYCLE_QUERY = textwrap.dedent("""
 select
 table_name as table_name,
 created as created_at
 from {account_usage}.tables
 where table_schema = '{schema_name}'
 and table_catalog = '{database_name}'
-"""
-)
+""")
 
-SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS = textwrap.dedent(
-    """
+SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS = textwrap.dedent("""
 SELECT
   PROCEDURE_NAME AS name,
   PROCEDURE_OWNER AS owner,
@@ -407,8 +394,7 @@ FROM {account_usage}.FUNCTIONS
 WHERE FUNCTION_CATALOG = '{database_name}'
   AND FUNCTION_SCHEMA = '{schema_name}'
   AND DELETED IS NULL
-    """
-)
+    """)
 
 SNOWFLAKE_DESC_STORED_PROCEDURE = (
     "DESC PROCEDURE {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
@@ -418,8 +404,7 @@ SNOWFLAKE_DESC_FUNCTION = (
     "DESC FUNCTION {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
 )
 
-SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
-    """
+SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent("""
 WITH SP_HISTORY AS (
     SELECT
       QUERY_TEXT,
@@ -472,8 +457,7 @@ JOIN Q_HISTORY Q
    OR Q.END_TIME BETWEEN SP.START_TIME AND SP.END_TIME
    )
 ORDER BY PROCEDURE_START_TIME DESC
-    """
-)
+    """)
 
 SNOWFLAKE_GET_TABLE_DDL = """
 SELECT GET_DDL('TABLE','{table_name}') AS \"text\"

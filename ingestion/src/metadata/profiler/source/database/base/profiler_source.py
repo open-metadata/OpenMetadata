@@ -13,6 +13,7 @@
 Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
+
 from copy import deepcopy
 from typing import Optional, Type, cast
 

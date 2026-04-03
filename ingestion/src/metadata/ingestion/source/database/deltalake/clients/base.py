@@ -12,6 +12,7 @@
 """
 Deltalake Base Client
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, Iterable, List, Optional

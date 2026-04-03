@@ -12,6 +12,7 @@
 """
 Test Sample behavior
 """
+
 import os
 from unittest import TestCase
 from unittest.mock import patch
@@ -387,9 +388,7 @@ class SampleTest(TestCase):
 
         assert full_pct_sampler.get_dataset() is full_pct_sampler.raw_dataset
 
-        with patch(
-            "metadata.sampler.sqlalchemy.sampler.RandomNumFn"
-        ) as mock_random_fn:
+        with patch("metadata.sampler.sqlalchemy.sampler.RandomNumFn") as mock_random_fn:
             full_pct_sampler.fetch_sample_data()
 
         mock_random_fn.assert_called_once()

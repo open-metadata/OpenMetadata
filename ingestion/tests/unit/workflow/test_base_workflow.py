@@ -11,6 +11,7 @@
 """
 Validate the logic and status handling of the base workflow
 """
+
 from typing import Iterable, Tuple
 from unittest import TestCase
 

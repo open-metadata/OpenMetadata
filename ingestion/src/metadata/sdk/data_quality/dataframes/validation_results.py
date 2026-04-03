@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """DataFrame validation result models."""
+
 import logging
 from enum import Enum
 from typing import List, Optional, Tuple, cast
@@ -26,7 +27,9 @@ from metadata.sdk.data_quality.dataframes.models import MockTestCase
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
-from metadata.utils.entity_link import get_column_name_or_none
+from metadata.utils.entity_link import (
+    get_column_name_or_none,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -139,9 +142,9 @@ class ValidationResult(BaseModel):
 
         from collections import defaultdict
 
-        aggregated_results: dict[
-            str, List[Tuple[TestCase, TestCaseResult]]
-        ] = defaultdict(list)
+        aggregated_results: dict[str, List[Tuple[TestCase, TestCaseResult]]] = (
+            defaultdict(list)
+        )
         total_execution_time = 0.0
 
         for result in results:

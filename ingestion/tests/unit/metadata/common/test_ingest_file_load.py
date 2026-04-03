@@ -12,6 +12,7 @@
 """
 Validate how we are reading ingestion configs
 """
+
 import os
 from pathlib import Path
 from unittest import TestCase, mock

@@ -14,8 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent(
-    """
+NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent("""
         MATCH (db:Database)<-[:CLUSTER_OF]-(cluster:Cluster)
         <-[:SCHEMA_OF]-(schema:Schema)<-[:TABLE_OF]-(table:Table)
         OPTIONAL MATCH (table)-[:DESCRIPTION]->(table_description:Description)
@@ -53,11 +52,9 @@ NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent(
         badges,
         programmatic_descriptions
         ORDER BY table.name;
-        """
-)
+        """)
 
-NEO4J_AMUNDSEN_USER_QUERY = textwrap.dedent(
-    """
+NEO4J_AMUNDSEN_USER_QUERY = textwrap.dedent("""
         MATCH (user:User)
         OPTIONAL MATCH (user)-[read:READ]->(a)
         OPTIONAL MATCH (user)-[own:OWNER_OF]->(b)
@@ -74,11 +71,9 @@ NEO4J_AMUNDSEN_USER_QUERY = textwrap.dedent(
         count(distinct b) as total_own,
         count(distinct c) AS total_follow
         order by user.email
-        """
-)
+        """)
 
-NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent(
-    """
+NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent("""
          MATCH (dashboard:Dashboard)
          MATCH (dashboard)-[:DASHBOARD_OF]->(dbg:Dashboardgroup)
          MATCH (dbg)-[:DASHBOARD_GROUP_OF]->(cluster:Cluster)
@@ -111,5 +106,4 @@ NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent(
          split(dashboard.key, '_')[0] as product, toInteger(last_exec.timestamp) as last_successful_run_timestamp,
          query_names, chart_names, chart_ids, chart_urls, chart_types, total_usage, tags, badges
          order by dbg.name
-        """
-)
+        """)

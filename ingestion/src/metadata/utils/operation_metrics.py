@@ -185,9 +185,9 @@ class OperationMetricsState(metaclass=Singleton):
 
     def __init__(self):
         # Global metrics: category -> operation -> entity_type -> RunningStatistics
-        self._global_metrics: Dict[
-            str, Dict[str, Dict[str, RunningStatistics]]
-        ] = _create_category_dict()
+        self._global_metrics: Dict[str, Dict[str, Dict[str, RunningStatistics]]] = (
+            _create_category_dict()
+        )
         # Per-thread metrics for lock-free recording
         self._thread_metrics: Dict[
             int, Dict[str, Dict[str, Dict[str, RunningStatistics]]]

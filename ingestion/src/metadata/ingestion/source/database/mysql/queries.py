@@ -11,10 +11,10 @@
 """
 SQL Queries used during ingestion
 """
+
 import textwrap
 
-MYSQL_SQL_STATEMENT = textwrap.dedent(
-    """
+MYSQL_SQL_STATEMENT = textwrap.dedent("""
 SELECT 
 	NULL `database_name`,
 	argument `query_text`,
@@ -33,12 +33,10 @@ WHERE command_type = 'Query'
     {filters}
 ORDER BY event_time desc
 LIMIT {result_limit};
-"""
-)
+""")
 
 
-MYSQL_SQL_STATEMENT_SLOW_LOGS = textwrap.dedent(
-    """
+MYSQL_SQL_STATEMENT_SLOW_LOGS = textwrap.dedent("""
 SELECT 
 	NULL `database_name`,
 	sql_text `query_text`,
@@ -56,20 +54,15 @@ WHERE start_time between '{start_time}' and '{end_time}'
     {filters}
 ORDER BY start_time desc
 LIMIT {result_limit};
-"""
-)
+""")
 
-MYSQL_TEST_GET_QUERIES = textwrap.dedent(
-    """
+MYSQL_TEST_GET_QUERIES = textwrap.dedent("""
 SELECT `argument` from mysql.general_log limit 1;
-"""
-)
+""")
 
-MYSQL_TEST_GET_QUERIES_SLOW_LOGS = textwrap.dedent(
-    """
+MYSQL_TEST_GET_QUERIES_SLOW_LOGS = textwrap.dedent("""
 SELECT `sql_text` from mysql.slow_log limit 1;
-"""
-)
+""")
 
 MYSQL_GET_ROUTINES = """
     SELECT 

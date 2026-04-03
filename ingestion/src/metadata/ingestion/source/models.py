@@ -11,6 +11,7 @@
 """
 Auxiliary pydantic models used during metadata ingestion
 """
+
 from typing import Optional
 
 from pydantic import BaseModel, Field

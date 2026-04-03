@@ -11,6 +11,7 @@
 """
 OpenMetadata package initialization.
 """
+
 from typing import Type
 
 from metadata.profiler.api.models import ProfilerProcessorConfig

@@ -11,6 +11,7 @@
 """
 Cassandra source helpers.
 """
+
 from __future__ import annotations
 
 from metadata.generated.schema.entity.data.table import Column, DataType

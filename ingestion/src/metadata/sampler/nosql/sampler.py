@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """NoSQL Sampler"""
+
 from typing import Dict, List, Optional, Tuple
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData

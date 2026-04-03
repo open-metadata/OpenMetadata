@@ -11,6 +11,7 @@
 """
 Common definitions for configuration management
 """
+
 from typing import Any, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict

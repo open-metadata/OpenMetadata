@@ -11,6 +11,7 @@
 """
 MSSQL lineage module
 """
+
 from datetime import datetime
 
 from metadata.ingestion.source.database.lineage_source import LineageSource

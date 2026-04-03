@@ -12,6 +12,7 @@
 Mixin to be used by service sources to dynamically
 generate the _run based on their topology.
 """
+
 import math
 import time
 import traceback

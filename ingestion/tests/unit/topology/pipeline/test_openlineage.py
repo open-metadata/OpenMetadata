@@ -1434,16 +1434,18 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_pipeline = Mock()
         mock_pipeline.id.root = pipeline_id
 
-        with patch.object(
-            self.open_lineage_source, "metadata"
-        ) as mock_metadata, patch.object(
-            self.open_lineage_source,
-            "_get_table_fqn",
-            return_value="db-service.public.some_table",
-        ), patch.object(
-            self.open_lineage_source,
-            "get_create_table_request",
-            return_value=None,
+        with (
+            patch.object(self.open_lineage_source, "metadata") as mock_metadata,
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn",
+                return_value="db-service.public.some_table",
+            ),
+            patch.object(
+                self.open_lineage_source,
+                "get_create_table_request",
+                return_value=None,
+            ),
         ):
             # Empty messaging services list — no broker match for unknown-broker
             mock_metadata.list_all_entities.return_value = iter([])

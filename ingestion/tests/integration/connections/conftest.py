@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Connections integration tests"""
+
 import uuid
 
 import pytest

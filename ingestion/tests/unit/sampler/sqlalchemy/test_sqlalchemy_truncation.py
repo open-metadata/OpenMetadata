@@ -11,6 +11,7 @@
 """
 Test that SQASampler truncates oversized cell values during fetch_sample_data.
 """
+
 import os
 from unittest.mock import patch
 from uuid import uuid4

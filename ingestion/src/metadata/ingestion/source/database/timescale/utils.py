@@ -13,6 +13,7 @@
 """
 Postgres SQLAlchemy util methods
 """
+
 import re
 import traceback
 from typing import Dict, Optional, Tuple
@@ -43,6 +44,7 @@ from metadata.utils.sqlalchemy_utils import (
 logger = utils_logger()
 
 OLD_POSTGRES_VERSION = "130000"
+
 
 # pylint: disable=unused-argument,too-many-arguments,invalid-name,too-many-locals
 def get_etable_owner(self, connection, table_name=None, schema=None):

@@ -12,6 +12,7 @@
 """
 Define constants useful for the metadata ingestion
 """
+
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart

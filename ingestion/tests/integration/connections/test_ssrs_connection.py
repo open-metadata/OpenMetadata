@@ -11,6 +11,7 @@
 """
 Ssrs connection integration tests
 """
+
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer

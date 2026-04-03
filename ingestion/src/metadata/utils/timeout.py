@@ -12,6 +12,7 @@
 """
 Timeout utilities
 """
+
 import errno
 import functools
 import inspect

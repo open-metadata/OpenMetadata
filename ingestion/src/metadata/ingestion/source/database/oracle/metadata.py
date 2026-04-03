@@ -11,6 +11,7 @@
 
 # pylint: disable=protected-access
 """Oracle source module"""
+
 import traceback
 import types
 from typing import Iterable, Optional

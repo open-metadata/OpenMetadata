@@ -11,6 +11,7 @@
 """
 Superset source module
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (

@@ -13,6 +13,7 @@ Mixin class containing Pipeline specific methods
 
 To be used by OpenMetadata class
 """
+
 from typing import List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest

@@ -11,6 +11,7 @@
 """
 Unit tests for Object store source
 """
+
 import datetime
 import io
 import json

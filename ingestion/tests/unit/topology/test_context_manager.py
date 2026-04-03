@@ -12,6 +12,7 @@
 """
 Check context manager operations
 """
+
 from unittest import TestCase
 from unittest.mock import patch
 

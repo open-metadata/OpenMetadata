@@ -12,6 +12,7 @@
 """
 Custom pylint plugin to catch `ingest.src` imports
 """
+
 from typing import TYPE_CHECKING
 
 from astroid import nodes

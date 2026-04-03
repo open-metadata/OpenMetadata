@@ -103,11 +103,11 @@ class ColumnValueMinToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.min.name
-                    ] = min_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.min.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.min.name] = (
+                        min_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.min.name],
+                            group_df,
+                        )
                     )
 
                     dimension_aggregates[dimension_value][

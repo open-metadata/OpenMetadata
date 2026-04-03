@@ -12,6 +12,7 @@
 """
 Iceberg Rest Catalog
 """
+
 from pyiceberg.catalog import Catalog, load_rest
 
 from metadata.generated.schema.entity.services.connections.database.iceberg.icebergCatalog import (
@@ -51,9 +52,11 @@ class IcebergRestCatalog(IcebergCatalogBase):
             "warehouse": catalog.warehouseLocation,
             "uri": str(catalog.connection.uri),
             "credential": credential,
-            "token": catalog.connection.token.get_secret_value()
-            if catalog.connection.token
-            else None,
+            "token": (
+                catalog.connection.token.get_secret_value()
+                if catalog.connection.token
+                else None
+            ),
         }
 
         if catalog.connection.fileSystem:

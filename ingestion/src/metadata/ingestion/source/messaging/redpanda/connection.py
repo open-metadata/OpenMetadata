@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -24,7 +25,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.messaging.kafka.connection import KafkaClient
+from metadata.ingestion.source.messaging.kafka.connection import (
+    KafkaClient,
+)
 from metadata.ingestion.source.messaging.kafka.connection import (
     get_connection as get_kafka_connection,
 )

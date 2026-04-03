@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """mlflow integration tests"""
+
 import logging
 import os
 import time
@@ -117,7 +118,7 @@ def create_data(mlflow_environment):
 
         predicted_qualities = lr.predict(test_x)
 
-        (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities)
+        rmse, mae, r2 = eval_metrics(test_y, predicted_qualities)
 
         mlflow.log_param("alpha", alpha)
         mlflow.log_param("l1_ratio", l1_ratio)

@@ -12,6 +12,7 @@
 """
 Generic Delimiter-Separated-Values implementation
 """
+
 from __future__ import annotations
 
 import os
@@ -230,19 +231,17 @@ class ParquetDataFrameReader(DataFrameReader):
             )
 
             if self.config_source.securityConfig.awsAccessKeyId:
-                os.environ[
-                    "AWS_ACCESS_KEY_ID"
-                ] = self.config_source.securityConfig.awsAccessKeyId
-                os.environ[
-                    "AWS_SECRET_ACCESS_KEY"
-                ] = (
+                os.environ["AWS_ACCESS_KEY_ID"] = (
+                    self.config_source.securityConfig.awsAccessKeyId
+                )
+                os.environ["AWS_SECRET_ACCESS_KEY"] = (
                     self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
                 )
 
                 if self.config_source.securityConfig.awsSessionToken:
-                    os.environ[
-                        "AWS_SESSION_TOKEN"
-                    ] = self.config_source.securityConfig.awsSessionToken
+                    os.environ["AWS_SESSION_TOKEN"] = (
+                        self.config_source.securityConfig.awsSessionToken
+                    )
 
         elif self.config_source.securityConfig.awsAccessKeyId:
             client_kwargs.update(

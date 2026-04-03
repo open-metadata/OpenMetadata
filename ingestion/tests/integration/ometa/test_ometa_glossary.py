@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Glossary test
 """
+
 from copy import deepcopy
 
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest

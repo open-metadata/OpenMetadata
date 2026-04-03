@@ -12,6 +12,7 @@
 """
 Validate conversion between OpenMetadata and SQLAlchemy ORM
 """
+
 from unittest import TestCase
 
 import sqlalchemy

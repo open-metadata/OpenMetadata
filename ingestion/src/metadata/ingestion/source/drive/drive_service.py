@@ -11,6 +11,7 @@
 """
 Base class for ingesting drive services
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
@@ -76,89 +77,89 @@ class DriveServiceTopology(ServiceTopology):
     - Multiple drive service types: Google Drive, SharePoint, OneDrive, etc.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=DriveService,
-                context="drive_service",
-                processor="yield_create_request_drive_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            ),
-        ],
-        children=["directory", "spreadsheet"],
-        post_process=[
-            "mark_directories_as_deleted",
-            "mark_files_as_deleted",
-            "mark_spreadsheets_as_deleted",
-        ],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=DriveService,
+                    context="drive_service",
+                    processor="yield_create_request_drive_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                ),
+            ],
+            children=["directory", "spreadsheet"],
+            post_process=[
+                "mark_directories_as_deleted",
+                "mark_files_as_deleted",
+                "mark_spreadsheets_as_deleted",
+            ],
+        )
     )
 
-    directory: Annotated[
-        TopologyNode, Field(description="Directory Node")
-    ] = TopologyNode(
-        producer="get_directory_names",
-        stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_directory_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
-            NodeStage(
-                type_=Directory,
-                context="directory",
-                processor="yield_directory",
-                consumer=["drive_service"],
-                cache_entities=True,
-                use_cache=True,
-            ),
-            NodeStage(
-                type_=File,
-                context="file",
-                processor="yield_file",
-                consumer=["drive_service", "directory"],
-                use_cache=True,
-            ),
-        ],
-        children=[],
+    directory: Annotated[TopologyNode, Field(description="Directory Node")] = (
+        TopologyNode(
+            producer="get_directory_names",
+            stages=[
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    context="tags",
+                    processor="yield_directory_tag_details",
+                    nullable=True,
+                    store_all_in_context=True,
+                ),
+                NodeStage(
+                    type_=Directory,
+                    context="directory",
+                    processor="yield_directory",
+                    consumer=["drive_service"],
+                    cache_entities=True,
+                    use_cache=True,
+                ),
+                NodeStage(
+                    type_=File,
+                    context="file",
+                    processor="yield_file",
+                    consumer=["drive_service", "directory"],
+                    use_cache=True,
+                ),
+            ],
+            children=[],
+        )
     )
 
-    spreadsheet: Annotated[
-        TopologyNode, Field(description="Spreadsheet Node")
-    ] = TopologyNode(
-        producer="get_spreadsheet",
-        stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_spreadsheet_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
-            NodeStage(
-                type_=Spreadsheet,
-                context="spreadsheet",
-                processor="yield_spreadsheet",
-                consumer=["drive_service"],
-                cache_entities=True,
-                use_cache=True,
-            ),
-            NodeStage(
-                type_=Worksheet,
-                context="worksheet",
-                processor="yield_worksheet",
-                consumer=["drive_service", "spreadsheet"],
-                use_cache=True,
-            ),
-        ],
-        children=[],
-        post_process=["mark_worksheets_as_deleted"],
+    spreadsheet: Annotated[TopologyNode, Field(description="Spreadsheet Node")] = (
+        TopologyNode(
+            producer="get_spreadsheet",
+            stages=[
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    context="tags",
+                    processor="yield_spreadsheet_tag_details",
+                    nullable=True,
+                    store_all_in_context=True,
+                ),
+                NodeStage(
+                    type_=Spreadsheet,
+                    context="spreadsheet",
+                    processor="yield_spreadsheet",
+                    consumer=["drive_service"],
+                    cache_entities=True,
+                    use_cache=True,
+                ),
+                NodeStage(
+                    type_=Worksheet,
+                    context="worksheet",
+                    processor="yield_worksheet",
+                    consumer=["drive_service", "spreadsheet"],
+                    use_cache=True,
+                ),
+            ],
+            children=[],
+            post_process=["mark_worksheets_as_deleted"],
+        )
     )
 
 
@@ -529,9 +530,11 @@ class DriveServiceSource(
             )
             if filter_by_directory(
                 self.source_config.directoryFilterPattern,
-                directory_fqn
-                if self.source_config.useFqnForFiltering
-                else directory_name,
+                (
+                    directory_fqn
+                    if self.source_config.useFqnForFiltering
+                    else directory_name
+                ),
             ):
                 if add_to_status:
                     self.status.filter(directory_fqn, "Directory Filtered Out")

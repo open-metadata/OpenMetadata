@@ -111,12 +111,16 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             test_result_values,
             row_count=row_count,
             failed_rows=failed_rows,
-            min_bound=test_params[self.MIN_BOUND]
-            if not isinstance(test_params[self.MIN_BOUND], (datetime, date))
-            else None,
-            max_bound=test_params[self.MAX_BOUND]
-            if not isinstance(test_params[self.MAX_BOUND], (datetime, date))
-            else None,
+            min_bound=(
+                test_params[self.MIN_BOUND]
+                if not isinstance(test_params[self.MIN_BOUND], (datetime, date))
+                else None
+            ),
+            max_bound=(
+                test_params[self.MAX_BOUND]
+                if not isinstance(test_params[self.MAX_BOUND], (datetime, date))
+                else None
+            ),
         )
 
     def _get_test_parameters(self) -> dict:

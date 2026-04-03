@@ -62,6 +62,7 @@ we'll join the keys and get [
 ]
 and we'll treat this as independent sets of lineage
 """
+
 import json
 import logging
 import textwrap
@@ -202,12 +203,10 @@ def _parse_xlets(xlet: Any) -> None:
 
 @_parse_xlets.register
 @deprecated(
-    message=textwrap.dedent(
-        """
+    message=textwrap.dedent("""
     Please update your inlets/outlets to follow 
     https://docs.open-metadata.org/connectors/pipeline/airflow/configuring-lineage
-    """
-    ),
+    """),
     release="1.4.0",
 )
 def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:

@@ -11,6 +11,7 @@
 """
 Redshift models
 """
+
 import re
 from enum import Enum
 from typing import Dict, FrozenSet, List, Optional, Tuple

@@ -11,6 +11,7 @@
 """
 Base class for ingesting search index services
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
@@ -67,22 +68,22 @@ class SearchServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=SearchService,
-                context="search_service",
-                processor="yield_create_request_search_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            ),
-        ],
-        children=["search_index", "search_index_template"],
-        post_process=["mark_search_indexes_as_deleted"],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=SearchService,
+                    context="search_service",
+                    processor="yield_create_request_search_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                ),
+            ],
+            children=["search_index", "search_index_template"],
+            post_process=["mark_search_indexes_as_deleted"],
+        )
     )
     search_index: Annotated[
         TopologyNode, Field(description="Search Index Processing Node")

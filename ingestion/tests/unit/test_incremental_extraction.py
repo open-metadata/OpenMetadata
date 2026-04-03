@@ -12,6 +12,7 @@
 """
 Check incremental extraction
 """
+
 from datetime import datetime
 from unittest import TestCase
 from unittest.mock import create_autospec, patch

@@ -11,6 +11,7 @@
 """
 Helper mixin to handle services
 """
+
 from typing import Type, TypeVar
 
 from pydantic import BaseModel
@@ -56,9 +57,11 @@ class OMetaServiceMixin:
         return create_entity_class(
             name=config.serviceName,
             serviceType=config.serviceConnection.root.config.type.value,
-            connection=config.serviceConnection.root
-            if self.config.storeServiceConnection
-            else None,
+            connection=(
+                config.serviceConnection.root
+                if self.config.storeServiceConnection
+                else None
+            ),
         )
 
     def create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> T:

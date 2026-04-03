@@ -13,6 +13,7 @@ NER Scanner based on Presidio.
 
 Supported Entities https://microsoft.github.io/presidio/supported_entities/
 """
+
 from enum import Enum
 
 from metadata.pii.models import TagType

@@ -11,6 +11,7 @@
 """
 Topology Restore Integration Test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest

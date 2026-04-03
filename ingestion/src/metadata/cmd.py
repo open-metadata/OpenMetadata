@@ -11,6 +11,7 @@
 """
 This module defines the CLI commands for OpenMetadata
 """
+
 import argparse
 import logging
 import sys

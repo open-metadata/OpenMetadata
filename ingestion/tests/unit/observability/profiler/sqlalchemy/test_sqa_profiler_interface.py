@@ -444,7 +444,8 @@ def test_compute_metrics_in_thread_other_exception(sqa_profiler_interface):
 def test_compute_query_metrics_mixed_case_column(sqa_profiler_interface):
     """When ORM columns have a lowercase .key differing from their original-case
     .name (as produced by build_orm_col for Snowflake/BigQuery), _compute_query_metrics
-    must look up columns via .key — since SQLAlchemy's .c[] is keyed by .key, not .name."""
+    must look up columns via .key — since SQLAlchemy's .c[] is keyed by .key, not .name.
+    """
     column = list(MixedCaseTable.__table__.c)[0]
     assert column.name != column.key  # precondition: mixed case
 

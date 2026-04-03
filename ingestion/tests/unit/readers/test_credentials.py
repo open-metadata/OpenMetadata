@@ -12,6 +12,7 @@
 """
 Test Credentials helpers
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.security.credentials.bitbucketCredentials import (

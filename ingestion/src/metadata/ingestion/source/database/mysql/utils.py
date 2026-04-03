@@ -13,7 +13,6 @@
 MySQL SQLAlchemy Helper Methods
 """
 
-
 # pylint: disable=protected-access,too-many-branches,too-many-statements,too-many-locals
 from sqlalchemy import util
 from sqlalchemy.dialects.mysql.enumerated import ENUM, SET

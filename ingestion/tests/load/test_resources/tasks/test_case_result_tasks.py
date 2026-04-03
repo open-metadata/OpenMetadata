@@ -1,4 +1,5 @@
 """Load test for the test case result resources"""
+
 from datetime import datetime, timedelta
 
 from locust import TaskSet, task

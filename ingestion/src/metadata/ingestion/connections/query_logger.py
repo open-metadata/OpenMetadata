@@ -13,6 +13,7 @@
 """
 Query tracking implementation using SQLAlchemy event listeners
 """
+
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple, Union
 

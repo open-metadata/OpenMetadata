@@ -12,6 +12,7 @@
 """
 Protocols used byt he Mixins
 """
+
 from typing import TYPE_CHECKING, List, Protocol, Union, runtime_checkable
 
 if TYPE_CHECKING:

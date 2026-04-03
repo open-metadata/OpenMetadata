@@ -12,6 +12,7 @@
 """
 snowflake unit tests
 """
+
 # pylint: disable=line-too-long
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch

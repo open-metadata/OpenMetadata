@@ -12,6 +12,7 @@
 """
 Test database connectors with CLI
 """
+
 import os
 import re
 import subprocess

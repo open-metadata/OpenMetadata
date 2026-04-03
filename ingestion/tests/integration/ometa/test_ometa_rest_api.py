@@ -13,6 +13,7 @@
 OpenMetadata high-level API REST API test
 Tests for ApiService, APICollection, and APIEndpoint entities
 """
+
 from copy import deepcopy
 
 import pytest
