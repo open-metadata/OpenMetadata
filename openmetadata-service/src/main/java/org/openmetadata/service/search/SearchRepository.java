@@ -430,7 +430,29 @@ public class SearchRepository {
           cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
           embeddingClient.getDimension());
     } catch (Exception e) {
-      LOG.error("Failed to initialize vector search service: {}", e.getMessage(), e);
+      if (isAlpineLinux()) {
+        LOG.warn(
+          "Semantic search disabled: DJL embedding provider is incompatible " +
+          "with Alpine Linux (musl libc). " +
+          "DJL native PyTorch libraries require glibc. " +
+          "Please use a glibc-based image such as Debian or Ubuntu.",
+          e
+        );
+      } else {
+        LOG.error("Failed to initialize vector search service", e);
+      }
+      this.vectorIndexService = null;
+      this.vectorEmbeddingHandler = null;
+      vectorServiceInitialized = false;
+    }
+  }
+
+  private boolean isAlpineLinux() {
+    try {
+      return java.nio.file.Files.exists(
+        java.nio.file.Paths.get("/etc/alpine-release"));
+    } catch (Exception e) {
+      return false;
     }
   }
 
