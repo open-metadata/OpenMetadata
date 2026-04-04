@@ -18,7 +18,7 @@ Distinct Count Metric definition
 import json
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import column, distinct, func
+from sqlalchemy import Text, column, distinct, func
 
 if TYPE_CHECKING:
     from metadata.profiler.processor.runner import PandasRunner
@@ -55,7 +55,7 @@ class DistinctCount(StaticMetric):
         Distinct Count metric for Sqlalchemy connectors
         """
         if is_complex_type(self.col.type):
-            return None
+            return func.count(distinct(func.cast(column(self.col.name), Text)))
         return func.count(distinct(CountFn(column(self.col.name, self.col.type))))
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):

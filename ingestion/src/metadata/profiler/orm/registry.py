@@ -268,3 +268,8 @@ def is_complex(_type) -> bool:
 def is_complex_type(_type) -> bool:
     """Helper method to group collections, structs, and complex types"""
     return is_collection(_type) or is_struct(_type) or is_complex(_type)
+
+
+def is_length_computable(_type) -> bool:
+    """Check if length metrics can be computed for this type"""
+    return is_concatenable(_type) or is_complex_type(_type)
