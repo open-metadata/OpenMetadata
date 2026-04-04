@@ -77,6 +77,7 @@ class EntityLinkGrammarTest {
           Entity.AUDIT_LOG,
           Entity.QUERY_COST_RECORD,
           Entity.AGENT_EXECUTION,
+          Entity.MCP_EXECUTION,
           Entity.DATA_CONTRACT_RESULT,
           // Internal entities - used for feeds/suggestions, not linkable targets
           Entity.THREAD,

@@ -3001,6 +3001,119 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(result);
   }
 
+  @Test
+  void test_glossaryTermSearchIndexUpdatedWhenGlossaryOwnerChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreateGlossary glossaryRequest =
+        new CreateGlossary()
+            .withName(ns.prefix("owner_prop_glossary"))
+            .withDescription("Glossary for owner propagation test");
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("owner_prop_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for owner propagation test");
+    GlossaryTerm term = createEntity(termRequest);
+
+    Glossary fetchedGlossary = client.glossaries().get(glossary.getId().toString(), "owners");
+    fetchedGlossary.setOwners(List.of(testUser1().getEntityReference()));
+    client.glossaries().update(fetchedGlossary.getId().toString(), fetchedGlossary);
+
+    String termId = term.getId().toString();
+    Awaitility.await("GlossaryTerm search index should reflect inherited owner from glossary")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollDelay(java.time.Duration.ofMillis(500))
+        .pollInterval(java.time.Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + termId)
+                      .index("glossary_term_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(), "GlossaryTerm should be in search index");
+
+              JsonNode source = hits.get(0).path("_source");
+              JsonNode owners = source.path("owners");
+              assertTrue(
+                  owners.isArray() && !owners.isEmpty(),
+                  "Owners should be propagated to glossary term search index");
+              boolean ownerFound = false;
+              for (JsonNode owner : owners) {
+                if (testUser1().getId().toString().equals(owner.path("id").asText())) {
+                  ownerFound = true;
+                  break;
+                }
+              }
+              assertTrue(ownerFound, "Owner should match user set on glossary");
+            });
+  }
+
+  @Test
+  void test_glossaryTermSearchIndexUpdatedWhenGlossaryReviewerChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreateGlossary glossaryRequest =
+        new CreateGlossary()
+            .withName(ns.prefix("reviewer_prop_glossary"))
+            .withDescription("Glossary for reviewer propagation test")
+            .withReviewers(List.of(testUser1().getEntityReference()));
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("reviewer_prop_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for reviewer propagation test");
+    GlossaryTerm term = createEntity(termRequest);
+
+    String termId = term.getId().toString();
+    Awaitility.await("GlossaryTerm search index should reflect inherited reviewers from glossary")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollDelay(java.time.Duration.ofMillis(500))
+        .pollInterval(java.time.Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + termId)
+                      .index("glossary_term_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(), "GlossaryTerm should be in search index");
+
+              JsonNode source = hits.get(0).path("_source");
+              JsonNode reviewers = source.path("reviewers");
+              assertTrue(
+                  reviewers.isArray() && !reviewers.isEmpty(),
+                  "Reviewers should be propagated to glossary term search index");
+              boolean reviewerFound = false;
+              for (JsonNode reviewer : reviewers) {
+                if (testUser1().getId().toString().equals(reviewer.path("id").asText())) {
+                  reviewerFound = true;
+                  break;
+                }
+              }
+              assertTrue(reviewerFound, "Reviewer should match user set on glossary");
+            });
+  }
+
   private String getAssetCounts(OpenMetadataClient client, String parent) {
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     if (parent != null) {
