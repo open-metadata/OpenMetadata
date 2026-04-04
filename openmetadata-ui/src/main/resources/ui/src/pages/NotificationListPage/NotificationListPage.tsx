@@ -150,15 +150,17 @@ const NotificationListPage = () => {
     async (params?: Partial<Paging>) => {
       setLoadingCount((count) => count + 1);
       try {
+        const isFirstPage =
+          isUndefined(params?.after) && isUndefined(params?.before);
         const { data, paging } = await getAllAlerts({
           after: params?.after,
           before: params?.before,
-          limit: pageSize,
+          limit: isFirstPage ? pageSize - 1 : pageSize,
           alertType: AlertType.Notification,
         });
 
-        if (isUndefined(params?.after)) {
-          // Fetch and show the system created activity feed alert when fetching results fro page 1
+        if (isFirstPage) {
+          // Fetch and show the system created activity feed alert on page 1
           const activityFeedAlert = await getAlertsFromName(
             'ActivityFeedAlert'
           );

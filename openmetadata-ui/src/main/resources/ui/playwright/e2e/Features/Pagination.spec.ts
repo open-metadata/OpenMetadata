@@ -375,13 +375,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       page,
     }) => {
       await page.goto('/settings/notifications/alerts');
-      // Skip row count validation because ActivityFeedAlert system alert is added on page 1
       await testPaginationNavigation(
         page,
         '/api/v1/events/subscriptions',
-        'table',
-        true,
-        false
+        'table'
       );
     });
   });
