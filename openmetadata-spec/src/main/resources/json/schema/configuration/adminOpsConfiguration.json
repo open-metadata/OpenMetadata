@@ -11,6 +11,37 @@
       "description": "Whether the Admin Ops API is enabled.",
       "type": "boolean",
       "default": false
+    },
+    "mtls": {
+      "title": "mTLS Configuration",
+      "description": "Mutual TLS authentication configuration for the Admin Ops API.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.AdminOpsMtlsConfiguration",
+      "properties": {
+        "enabled": {
+          "description": "Enable mTLS client certificate authentication.",
+          "type": "boolean",
+          "default": false
+        },
+        "requireClientCert": {
+          "description": "Require client certificate when mTLS is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "allowedCNs": {
+          "description": "Comma-separated list of allowed certificate Common Names.",
+          "type": "string"
+        },
+        "allowedSANs": {
+          "description": "Comma-separated list of allowed Subject Alternative Names.",
+          "type": "string"
+        },
+        "allowedIssuers": {
+          "description": "Comma-separated list of allowed certificate issuer DNs.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
