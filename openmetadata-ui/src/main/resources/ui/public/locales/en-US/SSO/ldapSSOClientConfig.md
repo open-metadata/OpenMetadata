@@ -174,6 +174,13 @@ LDAP authentication enables users to log in with their LDAP directory credential
   4. Example: `member: cn=john,ou=users,dc=company,dc=com` → use `member`
 - **Validation:** OpenMetadata checks this attribute exists on actual group objects
 
+## <span data-id="recursiveGroupMembership">Recursive Group Membership</span>
+
+- **Definition:** Enables nested group resolution for Active Directory.
+- **Why it matters:** If an AD group contains another group, users in the nested group will still match the mapped parent group.
+- **How it works:** Uses Active Directory's transitive membership matching rule instead of a direct member equality filter.
+- **When to enable:** Turn this on only when your LDAP directory is Active Directory and you rely on nested groups for access control.
+
 ## <span data-id="authRolesMapping">Auth Roles Mapping</span>
 
 - **Definition:** Mapping between LDAP groups and OpenMetadata roles.
