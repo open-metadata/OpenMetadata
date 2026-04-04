@@ -1290,3 +1290,4 @@ class TableauSource(DashboardServiceSource):
         if self.config.serviceConnection.root.config.proxyURL:
             return str(self.config.serviceConnection.root.config.proxyURL)
         return str(self.config.serviceConnection.root.config.hostPort)
+
