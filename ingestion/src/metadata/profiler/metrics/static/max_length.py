@@ -25,7 +25,11 @@ from metadata.generated.schema.configuration.profilerConfiguration import Metric
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
-from metadata.profiler.orm.registry import is_complex_type, is_concatenable, is_length_computable
+from metadata.profiler.orm.registry import (
+    is_complex_type,
+    is_concatenable,
+    is_length_computable,
+)
 from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
