@@ -371,7 +371,7 @@ public class TagLabelUtil {
 
   public static List<TagLabel> mergeTagsWithIncomingPrecedence(
       List<TagLabel> existingTags, List<TagLabel> incomingTags) {
-    if (nullOrEmpty(incomingTags)) {
+    if (incomingTags == null) {
       return new ArrayList<>(listOrEmpty(existingTags));
     }
     Set<String> incomingFQNs =
