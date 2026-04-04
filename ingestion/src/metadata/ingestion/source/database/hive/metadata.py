@@ -165,3 +165,4 @@ class HiveSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
+
