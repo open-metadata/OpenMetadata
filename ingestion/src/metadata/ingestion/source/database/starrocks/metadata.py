@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """StarRocks source module"""
+
 import re
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple, cast
@@ -41,6 +42,7 @@ from metadata.ingestion.source.database.starrocks.queries import (
     STARROCKS_GET_TABLE_NAMES,
     STARROCKS_PARTITION_DETAILS,
     STARROCKS_SHOW_FULL_COLUMNS,
+    STARROCKS_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
@@ -279,26 +281,25 @@ class StarRocksSource(CommonDbSourceService):
 
         return tables
 
-    @staticmethod
     def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
+        self, schema_name: str, table_name: str, inspector: Inspector
     ) -> Optional[str]:
         description = None
         try:
-            table_info: dict = inspector.get_table_comment(table_name, schema_name)
+            with self.engine.connect() as conn:
+                rows = conn.execute(
+                    sql.text(STARROCKS_TABLE_COMMENTS),
+                    {"table_name": table_name, "schema": schema_name},
+                )
+                for row in rows:
+                    description = row[0]
+                    break
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
-        else:
-            description = table_info.get("text")
-
-        if description is None:
-            return None
-        if isinstance(description, (list, tuple)) and len(description) > 0:
-            return description[0]
-        return description
+        return description or None
 
     def _get_columns(self, table_name, schema=None):
         """Get column information and primary key columns of the specified table"""
@@ -536,4 +537,3 @@ class StarRocksSource(CommonDbSourceService):
             self.engine.dispose()
             logger.debug("StarRocks SQLAlchemy engine closed successfully")
         super().close()
-
