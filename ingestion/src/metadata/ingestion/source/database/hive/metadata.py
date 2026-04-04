@@ -195,7 +195,9 @@ class HiveSource(CommonDbSourceService):
                         in_partition_section = True
                         continue
                     if in_partition_section:
-                        if col_name.startswith("#") or not col_name:
+                        if not col_name or col_name.startswith("# Detailed"):
+                            break
+                        if col_name.startswith("#"):
                             continue
                         partition_keys.append(col_name)
         except Exception as exc:
