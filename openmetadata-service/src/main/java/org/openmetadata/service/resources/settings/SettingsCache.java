@@ -524,8 +524,8 @@ public class SettingsCache {
 
   public static <T> T getSetting(SettingsType settingName, Class<T> clazz) {
     try {
-      String json = JsonUtils.pojoToJson(CACHE.get(settingName.toString()).getConfigValue());
-      return JsonUtils.readValue(json, clazz);
+      Object configValue = CACHE.get(settingName.toString()).getConfigValue();
+      return JsonUtils.convertValue(configValue, clazz);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
       throw new EntityNotFoundException("Setting not found");
@@ -535,8 +535,8 @@ public class SettingsCache {
   public static <T> T getSettingOrDefault(
       SettingsType settingName, T defaultValue, Class<T> clazz) {
     try {
-      String json = JsonUtils.pojoToJson(CACHE.get(settingName.toString()).getConfigValue());
-      return JsonUtils.readValue(json, clazz);
+      Object configValue = CACHE.get(settingName.toString()).getConfigValue();
+      return JsonUtils.convertValue(configValue, clazz);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
       return defaultValue;
