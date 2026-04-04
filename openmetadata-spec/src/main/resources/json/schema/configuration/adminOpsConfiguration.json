@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/adminOpsConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Admin Ops Configuration",
+  "description": "Configuration for the Admin Operations API that allows SaaS Hypervisor to trigger administrative operations.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.AdminOpsConfiguration",
+  "properties": {
+    "enabled": {
+      "title": "Enabled",
+      "description": "Whether the Admin Ops API is enabled.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}
