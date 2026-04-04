@@ -11,27 +11,56 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { Download01 } from '@untitledui/icons';
-import React from 'react';
+import React, { useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 
 export interface ExportGraphPanelProps {
   onExportPng: () => Promise<void>;
+  onExportSvg: () => Promise<void>;
 }
 
-const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({ onExportPng }) => {
+const EXPORT_PNG = 'png';
+const EXPORT_SVG = 'svg';
+
+const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
+  onExportPng,
+  onExportSvg,
+}) => {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+
+  const items = [
+    { id: EXPORT_PNG, label: t('label.png-uppercase') },
+    { id: EXPORT_SVG, label: t('label.svg-uppercase') },
+  ];
+
+  const handleAction = async (key: Key) => {
+    setOpen(false);
+    if (key === EXPORT_PNG) {
+      await onExportPng();
+    } else if (key === EXPORT_SVG) {
+      await onExportSvg();
+    }
+  };
 
   return (
-    <Button
-      color="secondary"
-      data-testid="ontology-export-graph"
-      iconLeading={<Download01 height={20} width={20} />}
-      size="sm"
-      onPress={onExportPng}>
-      {t('label.export-entity', { entity: t('label.png-uppercase') })}
-    </Button>
+    <Dropdown.Root isOpen={open} onOpenChange={setOpen}>
+      <Button
+        color="secondary"
+        data-testid="ontology-export-graph"
+        iconLeading={<Download01 height={20} width={20} />}
+        size="sm">
+        {t('label.export-graph')}
+      </Button>
+      <Dropdown.Popover aria-label={t('label.export-graph')}>
+        <Dropdown.Menu items={items} onAction={handleAction}>
+          {(item) => <Dropdown.Item id={item.id} label={item.label} />}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
   );
 };
 

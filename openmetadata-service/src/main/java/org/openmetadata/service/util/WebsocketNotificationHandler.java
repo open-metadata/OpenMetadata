@@ -67,13 +67,9 @@ public class WebsocketNotificationHandler {
 
   public static void sendCsvExportCompleteNotification(
       String jobId, SecurityContext securityContext, String csvData) {
-    sendCsvExportCompleteNotification(
-        jobId, getUserIdFromSecurityContext(securityContext), csvData);
-  }
-
-  public static void sendCsvExportCompleteNotification(String jobId, UUID userId, String csvData) {
     CSVExportMessage message = new CSVExportMessage(jobId, "COMPLETED", csvData, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
     if (userId != null) {
       WebSocketManager.getInstance()
           .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
@@ -238,14 +234,9 @@ public class WebsocketNotificationHandler {
 
   public static void sendCsvExportFailedNotification(
       String jobId, SecurityContext securityContext, String errorMessage) {
-    sendCsvExportFailedNotification(
-        jobId, getUserIdFromSecurityContext(securityContext), errorMessage);
-  }
-
-  public static void sendCsvExportFailedNotification(
-      String jobId, UUID userId, String errorMessage) {
     CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
     String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
     if (userId != null) {
       WebSocketManager.getInstance()
           .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
@@ -254,15 +245,10 @@ public class WebsocketNotificationHandler {
 
   public static void sendCsvExportProgressNotification(
       String jobId, SecurityContext securityContext, int progress, int total, String message) {
-    sendCsvExportProgressNotification(
-        jobId, getUserIdFromSecurityContext(securityContext), progress, total, message);
-  }
-
-  public static void sendCsvExportProgressNotification(
-      String jobId, UUID userId, int progress, int total, String message) {
     CSVExportMessage exportMessage =
         new CSVExportMessage(jobId, "IN_PROGRESS", null, null, progress, total, message);
     String jsonMessage = JsonUtils.pojoToJson(exportMessage);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
     if (userId != null) {
       WebSocketManager.getInstance()
           .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);

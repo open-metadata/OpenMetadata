@@ -90,6 +90,7 @@ export interface OntologyGraphHandle {
   focusNode: (nodeId: string) => void;
   getNodePositions: () => Record<string, { x: number; y: number }>;
   exportAsPng: () => Promise<void>;
+  exportAsSvg: () => Promise<void>;
 }
 
 export interface HierarchyComboInfo {

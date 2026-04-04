@@ -153,8 +153,29 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           a.download = 'ontology-graph.png';
           a.click();
         },
+        exportAsSvg: async () => {
+          const graph = graphRef.current;
+          if (!graph) {
+            return;
+          }
+          const dataUrl = await graph.toDataURL({
+            mode: 'overall',
+            type: 'image/png',
+          });
+          const [width, height] = graph.getCanvas().getSize();
+          const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <image href="${dataUrl}" width="${width}" height="${height}"/>
+</svg>`;
+          const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'ontology-graph.svg';
+          a.click();
+          URL.revokeObjectURL(url);
+        },
       }),
-      [extractNodePositions, graphRef, explorationMode]
+      [extractNodePositions, graphRef]
     );
 
     return (
