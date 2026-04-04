@@ -1159,11 +1159,9 @@ public class TableRepository extends EntityRepository<Table> {
     String fqn = table.getFullyQualifiedName();
     daoCollection.profilerDataTimeSeriesDao().delete(fqn, TABLE_PROFILE_EXTENSION);
     daoCollection.profilerDataTimeSeriesDao().delete(fqn, SYSTEM_PROFILE_EXTENSION);
-    List<String> columnFqns = new ArrayList<>();
-    collectColumnFqns(table.getColumns(), columnFqns);
-    for (String columnFqn : columnFqns) {
-      daoCollection.profilerDataTimeSeriesDao().delete(columnFqn, TABLE_COLUMN_PROFILE_EXTENSION);
-    }
+    daoCollection
+        .profilerDataTimeSeriesDao()
+        .deleteByFQNPrefix(fqn, TABLE_COLUMN_PROFILE_EXTENSION);
   }
 
   public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) {
