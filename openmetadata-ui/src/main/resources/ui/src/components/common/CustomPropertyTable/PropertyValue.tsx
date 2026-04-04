@@ -872,7 +872,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         </Typography.Text>
         {item.fullyQualifiedName && (
           <Typography.Text
-            className="text-xs text-grey-muted truncate"
+            className="text-xs text-grey-muted truncate tw:w-full"
             ellipsis={{ tooltip: item.fullyQualifiedName }}>
             {item.fullyQualifiedName}
           </Typography.Text>
