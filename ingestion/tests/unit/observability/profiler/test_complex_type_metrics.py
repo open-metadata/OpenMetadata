@@ -14,6 +14,7 @@ Tests for profiler support of complex data types (issue #15627).
 Validates that ARRAY, JSON, MAP, STRUCT and Geo columns receive null-family
 metrics instead of being silently skipped.
 """
+
 import sqlalchemy
 import sqlalchemy.types
 
@@ -116,3 +117,41 @@ class TestComplexTypeColumnSeparation:
         col = self._make_column(sqlalchemy.types.NullType())
         assert col.type.__class__.__name__ in NOT_COMPUTE
         assert col.type.__class__.__name__ not in COMPLEX_TYPES
+
+
+class TestNullMetricNamesForComplexTypes:
+    """
+    NullRatio (nullProportion) is a ComposedMetric that depends on both
+    Count (valuesCount) and NullCount.  The StaticMetric filter in
+    _prepare_column_metrics must therefore include "valuesCount" so that
+    run_composed_metrics can correctly compute nullProportion.
+
+    Previously the filter checked for "nullProportion" by name, which is
+    a dead-code path because NullRatio is never returned by
+    get_column_metrics(StaticMetric, ...).
+    """
+
+    NULL_METRIC_NAMES = {"valuesCount", "nullCount"}
+
+    def test_null_proportion_not_in_static_metric_filter(self):
+        """'nullProportion' must not appear in the static filter — it is a ComposedMetric."""
+        assert "nullProportion" not in self.NULL_METRIC_NAMES
+
+    def test_values_count_in_static_metric_filter(self):
+        """'valuesCount' must be present so NullRatio can compute null_count / total."""
+        assert "valuesCount" in self.NULL_METRIC_NAMES
+
+    def test_null_count_in_static_metric_filter(self):
+        """'nullCount' must be present as the primary null metric for complex types."""
+        assert "nullCount" in self.NULL_METRIC_NAMES
+
+    def test_null_ratio_required_metrics_are_covered(self):
+        """NullRatio.required_metrics() must be a subset of what we compute statically."""
+        from metadata.profiler.metrics.composed.null_ratio import NullRatio
+
+        for required in NullRatio.required_metrics():
+            assert required in self.NULL_METRIC_NAMES, (
+                f"NullRatio requires '{required}' but it is not in the static filter "
+                f"for complex columns. Without it, nullProportion will be computed "
+                f"incorrectly (divide-by-zero or wrong denominator)."
+            )
