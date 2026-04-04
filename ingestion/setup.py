@@ -387,7 +387,7 @@ plugins: Dict[str, Set[str]] = {
 
 dev = {
     "black==22.3.0",
-    "uvloop==0.21.0",
+    "uvloop==0.21.0; platform_system != 'Windows'",
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",

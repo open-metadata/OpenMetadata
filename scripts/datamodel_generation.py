@@ -26,8 +26,11 @@ datamodel_code_generator.model.pydantic.types.IMPORT_SECRET_STR = Import.from_fu
 from datamodel_code_generator.__main__ import main
 
 current_directory = os.getcwd()
-ingestion_path = "./" if current_directory.endswith("/ingestion") else "ingestion/"
-directory_root = "../" if current_directory.endswith("/ingestion") else "./"
+ingestion_path = "./" if os.path.basename(current_directory).lower() == "ingestion" else "ingestion/"
+directory_root = "../" if os.path.basename(current_directory).lower() == "ingestion" else "./"
+print(f"Current Directory: {current_directory}")
+print(f"Ingestion Path: {ingestion_path}")
+print(f"Directory Root: {directory_root}")
 
 UTF_8 = "UTF-8"
 UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
@@ -43,7 +46,7 @@ args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schem
 main(args)
 
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
+    with open(file_path, "r", encoding=UTF_8, errors="ignore") as file_:
         content = file_.read()
         # Python now requires to move the global flags at the very start of the expression
         content = content.replace("(?U)", "(?u)")
@@ -56,7 +59,7 @@ MISSING_IMPORTS = [f"{ingestion_path}src/metadata/generated/schema/entity/applic
 WRITE_AFTER = "from __future__ import annotations"
 
 for file_path in MISSING_IMPORTS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
+    with open(file_path, "r", encoding=UTF_8, errors="ignore") as file_:
         lines = file_.readlines()
     with open(file_path, "w", encoding=UTF_8) as file_:
         for line in lines:
@@ -75,7 +78,7 @@ UNSUPPORTED_REGEX_PATTERN_FILE_PATHS = [
 ]
 
 for file_path in UNSUPPORTED_REGEX_PATTERN_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
+    with open(file_path, "r", encoding=UTF_8, errors="ignore") as file_:
         content = file_.read()
         content = content.replace("pattern='^((?!::).)*$',", "")
     with open(file_path, "w", encoding=UTF_8) as file_:
@@ -88,7 +91,7 @@ DATETIME_AWARE_FILE_PATHS = [
 ]
 
 for file_path in DATETIME_AWARE_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
+    with open(file_path, "r", encoding=UTF_8, errors="ignore") as file_:
         content = file_.read()
         content = content.replace(
             "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
@@ -98,3 +101,15 @@ for file_path in DATETIME_AWARE_FILE_PATHS:
         content = content.replace("AwareDatetime", "datetime")
     with open(file_path, "w", encoding=UTF_8) as file_:
         file_.write(content)
+
+
+import glob
+
+# Final sanitization pass for Windows encoding issues
+print("Sanitizing all generated files to UTF-8...")
+for file_path in glob.iglob(f"{ingestion_path}src/metadata/generated/schema/**/*.py", recursive=True):
+    with open(file_path, "r", encoding=UTF_8, errors="ignore") as f:
+        content = f.read()
+    with open(file_path, "w", encoding=UTF_8) as f:
+        f.write(content)
+print("Sanitization complete.")
