@@ -33,8 +33,8 @@ class OpenMetadataMetricsTest {
 
     new OpenMetadataMetrics(registry);
 
-    Gauge total = registry.find("db.connections.total").gauge();
-    assertNotNull(total, "db.connections.total gauge should be registered");
+    Gauge total = registry.find("db.pool.connections").gauge();
+    assertNotNull(total, "db.pool.connections gauge should be registered");
     assertEquals(20.0, total.value(), 0.01, "Should equal active + idle");
 
     activeConnections.set(10);
@@ -50,8 +50,8 @@ class OpenMetadataMetricsTest {
   void dbConnectionsTotalReturnsZeroWithoutHikariCP() {
     new OpenMetadataMetrics(registry);
 
-    Gauge total = registry.find("db.connections.total").gauge();
-    assertNotNull(total, "db.connections.total gauge should be registered");
+    Gauge total = registry.find("db.pool.connections").gauge();
+    assertNotNull(total, "db.pool.connections gauge should be registered");
     assertEquals(0.0, total.value(), 0.01, "Should be zero when HikariCP metrics are absent");
   }
 
@@ -71,10 +71,10 @@ class OpenMetadataMetricsTest {
 
     String scrape = promRegistry.scrape();
     assertTrue(
-        scrape.contains("db_connections_total"),
-        "Prometheus scrape should contain db_connections_total metric");
+        scrape.contains("db_pool_connections"),
+        "Prometheus scrape should contain db_pool_connections metric");
     assertTrue(
-        scrape.contains("# TYPE db_connections_total gauge"),
-        "db_connections_total should be exposed as a gauge type");
+        scrape.contains("# TYPE db_pool_connections gauge"),
+        "db_pool_connections should be exposed as a gauge type");
   }
 }
