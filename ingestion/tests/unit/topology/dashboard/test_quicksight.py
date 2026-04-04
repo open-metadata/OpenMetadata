@@ -448,7 +448,9 @@ class QuickSightUnitTest(TestCase):
         fallback_lineage = [MagicMock()]
         mock_from_entity = MagicMock()
         mock_data_model = MagicMock()
-        mock_data_model.columns = [MagicMock(name=MagicMock(root="col_a"))]
+        mock_col = MagicMock()
+        mock_col.name = MagicMock(root="col_a")
+        mock_data_model.columns = [mock_col]
 
         with patch.object(
             self.quicksight,
