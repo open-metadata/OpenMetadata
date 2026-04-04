@@ -374,6 +374,10 @@ public class TagLabelUtil {
     if (nullOrEmpty(incomingTags)) {
       return new ArrayList<>(listOrEmpty(existingTags));
     }
+    Set<String> incomingFQNs =
+        listOrEmpty(incomingTags).stream()
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toSet());
     Set<String> incomingParents =
         listOrEmpty(incomingTags).stream()
             .map(t -> FullyQualifiedName.getParentFQN(t.getTagFQN()))
@@ -381,6 +385,10 @@ public class TagLabelUtil {
 
     List<TagLabel> result = new ArrayList<>();
     for (TagLabel existing : listOrEmpty(existingTags)) {
+      if (TagLabel.LabelType.AUTOMATED.equals(existing.getLabelType())
+          && !incomingFQNs.contains(existing.getTagFQN())) {
+        continue;
+      }
       String existingParent = FullyQualifiedName.getParentFQN(existing.getTagFQN());
       boolean isMutuallyExclusive = false;
       try {
