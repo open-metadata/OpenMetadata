@@ -129,17 +129,23 @@ NOT_COMPUTE = {
 # and nullProportion so data quality teams can track data completeness.
 # See: https://github.com/open-metadata/OpenMetadata/issues/15627
 COMPLEX_TYPES = {
+    # SQLAlchemy standard types
     sqlalchemy.ARRAY.__name__,
     sqlalchemy.JSON.__name__,
+    # SQA custom wrapper types
     sqa_types.SQAMap.__name__,
     sqa_types.SQAStruct.__name__,
     sqa_types.SQASet.__name__,
     sqa_types.SQAUnion.__name__,
     sqa_types.SQASGeography.__name__,
+    # OM schema DataType values
     DataType.GEOMETRY.value,
     DataType.ARRAY.value,
     DataType.JSON.value,
+    # Dialect-specific class names (Snowflake, etc.)
     CustomTypes.ARRAY.value.__name__,
+    "MAP",
+    "GEOGRAPHY",
 }
 FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
