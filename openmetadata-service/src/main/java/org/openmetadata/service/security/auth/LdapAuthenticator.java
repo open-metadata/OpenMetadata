@@ -81,6 +81,7 @@ import org.springframework.util.CollectionUtils;
 
 @Slf4j
 public class LdapAuthenticator implements AuthenticatorHandler {
+  static final String AD_RECURSIVE_GROUP_MATCHING_RULE = "1.2.840.113556.1.4.1941";
   static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection ";
   private static final int MAX_RETRIES = 3;
   private static final int BASE_DELAY_MS = 500;
@@ -397,8 +398,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           Filter.createEqualityFilter(
               ldapConfiguration.getGroupAttributeName(),
               ldapConfiguration.getGroupAttributeValue());
-      Filter groupMemberAttr =
-          Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
+      Filter groupMemberAttr = buildGroupMemberFilter(ldapConfiguration, userDn);
       Filter groupAndMemberFilter = Filter.createANDFilter(groupFilter, groupMemberAttr);
       SearchRequest searchRequest =
           new SearchRequest(
@@ -472,6 +472,18 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           user.getName(),
           ex.getMessage());
     }
+  }
+
+  static Filter buildGroupMemberFilter(LdapConfiguration ldapConfiguration, String userDn) {
+    if (Boolean.TRUE.equals(ldapConfiguration.getRecursiveGroupMembership())) {
+      return Filter.createExtensibleMatchFilter(
+          ldapConfiguration.getGroupMemberAttributeName(),
+          AD_RECURSIVE_GROUP_MATCHING_RULE,
+          false,
+          userDn);
+    }
+
+    return Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
   }
 
   /**
