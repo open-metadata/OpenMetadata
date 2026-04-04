@@ -278,7 +278,13 @@ class OpenlineageSource(PipelineServiceSource):
         mapped_service = find_service_by_namespace_mapping(namespace, mapping)
         if mapped_service and mapped_service in configured:
             result = [mapped_service]
-        else:
+        elif mapped_service:
+            logger.warning(
+                f"Namespace mapping resolved '{namespace}' to service "
+                f"'{mapped_service}', but it is not in the configured "
+                f"dbServiceNames. Falling back to scheme-based resolution."
+            )
+        if not result:
             # Auto-discover by extracting the DB scheme from the namespace URL
             db_scheme = extract_db_scheme_from_namespace(namespace)
             if db_scheme:
@@ -734,13 +740,15 @@ class OpenlineageSource(PipelineServiceSource):
                     )
 
                     if table_fqn:
-                        entity_list.append(
-                            LineageNode(
-                                fqn=TableFQN(value=table_fqn),
-                                uuid=self._get_by_name_cached(Table, table_fqn).id.root,
-                                node_type="table",
+                        table_entity = self._get_by_name_cached(Table, table_fqn)
+                        if table_entity:
+                            entity_list.append(
+                                LineageNode(
+                                    fqn=TableFQN(value=table_fqn),
+                                    uuid=table_entity.id.root,
+                                    node_type="table",
+                                )
                             )
-                        )
 
                 elif entity_details.entity_type == "topic":
                     topic_entity = self._get_topic_entity(entity_details.topic_details)
