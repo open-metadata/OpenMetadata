@@ -1601,10 +1601,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     }
     for (String testSuiteName : testSuiteNames) {
       TestSuite testSuite =
-          Entity.getEntityByName(Entity.TEST_SUITE, testSuiteName, "domains,owners", ALL);
+          Entity.getEntityByName(
+              Entity.TEST_SUITE, testSuiteName, "domains,owners", Include.NON_DELETED);
       if (Boolean.TRUE.equals(testSuite.getBasic())) {
         throw new IllegalArgumentException(
-            String.format("Test suite '%s' is a basic test suite and cannot be used here.", testSuiteName));
+            String.format(
+                "Test suite '%s' is a basic test suite and cannot be used here.",
+                testSuiteName));
       }
       repository.addTestCasesToLogicalTestSuite(testSuite, List.of(testCase.getId()));
     }
