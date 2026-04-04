@@ -16,6 +16,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -1510,7 +1512,15 @@ public class SearchResourceIT {
     createTestTable(ns, "export_size_test_2");
     createTestTable(ns, "export_size_test_3");
 
-    Thread.sleep(2000);
+    Awaitility.await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              HttpResponse<String> r =
+                  httpGetExport("/v1/search/export?q=export_size_test&index=table_search_index");
+              return r.statusCode() == 200 && r.body().split("\n").length >= 4;
+            });
 
     HttpResponse<String> allResponse =
         httpGetExport("/v1/search/export?q=export_size_test&index=table_search_index");
@@ -1564,7 +1574,15 @@ public class SearchResourceIT {
     createTestTable(ns, "export_page_test_b");
     createTestTable(ns, "export_page_test_c");
 
-    Thread.sleep(2000);
+    Awaitility.await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              HttpResponse<String> r =
+                  httpGetExport("/v1/search/export?q=export_page_test&index=table_search_index");
+              return r.statusCode() == 200 && r.body().split("\n").length >= 4;
+            });
 
     HttpResponse<String> page1 =
         httpGetExport(

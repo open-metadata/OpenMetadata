@@ -1234,15 +1234,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         requestBuilder.sort(sortField, sortOrder, null);
       }
 
-      // Add tiebreaker sort for stable search_after pagination.
-      // For _score sorts, name.keyword is the tiebreaker.
-      // For any other sort field, fullyQualifiedName is used as it is a unique
-      // field that guarantees deterministic ordering and prevents skipped/duplicated
-      // rows when paginating (e.g., during CSV export).
+      // Add tiebreaker sort for stable pagination when sorting by score
       if (sortField.equalsIgnoreCase("_score")) {
         requestBuilder.sort("name.keyword", SortOrder.Asc, "keyword");
-      } else if (!sortField.equalsIgnoreCase("fullyQualifiedName")) {
-        requestBuilder.sort("fullyQualifiedName", SortOrder.Asc, "keyword");
       }
     }
 
