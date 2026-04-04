@@ -536,3 +536,4 @@ class StarRocksSource(CommonDbSourceService):
             self.engine.dispose()
             logger.debug("StarRocks SQLAlchemy engine closed successfully")
         super().close()
+
