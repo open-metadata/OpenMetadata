@@ -444,7 +444,7 @@ class Profiler(Generic[TMetric]):
         for metric_type in [static_metrics, query_metrics, window_metrics]:
             column_metrics_for_thread_pool.extend(metric_type)
 
-        # Compute null count for complex types (ARRAY, JSON, MAP, STRUCT, GEO).
+        # Compute null count and values count for complex types (ARRAY, JSON, MAP, STRUCT, GEO).
         # These types cannot be profiled with numeric/string metrics but null
         # completeness is always meaningful. See issue #15627.
         for column in complex_columns:

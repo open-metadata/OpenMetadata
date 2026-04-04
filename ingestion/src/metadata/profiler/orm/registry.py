@@ -13,6 +13,7 @@
 Custom types' registry for easy access
 without having an import mess
 """
+
 import math
 from enum import Enum
 
@@ -144,8 +145,8 @@ COMPLEX_TYPES = {
     DataType.JSON.value,
     # Dialect-specific class names (Snowflake, etc.)
     CustomTypes.ARRAY.value.__name__,
-    "MAP",
-    "GEOGRAPHY",
+    DataType.MAP.value,
+    DataType.GEOGRAPHY.value,
 }
 FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
