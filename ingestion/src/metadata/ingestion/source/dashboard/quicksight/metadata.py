@@ -45,13 +45,18 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     Uuid,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import (
     LINEAGE_MAP,
@@ -350,11 +355,8 @@ class QuicksightSource(DashboardServiceSource):
                     )
                     for from_entity in from_entities or []:
                         if from_entity is not None and data_model_entity is not None:
-                            columns = [
-                                col.name.root for col in data_model_entity.columns
-                            ]
-                            column_lineage = self._get_column_lineage(
-                                from_entity, data_model_entity, columns
+                            column_lineage = self._build_column_lineage_from_parser(
+                                lineage_parser, from_entity, data_model_entity
                             )
                             lineage_details.columnsLineage = column_lineage
                             yield Either(
@@ -539,9 +541,11 @@ class QuicksightSource(DashboardServiceSource):
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(
-                    datamodel_id=datamodel.dataset_id
-                    if datamodel.dataset_id is not None
-                    else datamodel.DataSource.DataSourceId
+                    datamodel_id=(
+                        datamodel.dataset_id
+                        if datamodel.dataset_id is not None
+                        else datamodel.DataSource.DataSourceId
+                    )
                 )
                 if isinstance(
                     datamodel.DataSource.data_source_resp, DataSourceRespQuery
@@ -573,6 +577,49 @@ class QuicksightSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def _build_column_lineage_from_parser(
+        self,
+        lineage_parser: LineageParser,
+        from_entity: Table,
+        data_model_entity: DashboardDataModel,
+    ) -> List[ColumnLineage]:
+        """
+        Build column lineage using SQL-parsed source→target column mappings.
+
+        When the CustomSql query uses column aliases (e.g. SELECT a AS b), the
+        lineage parser resolves the original column name and alias. This allows
+        correct lineage when the data model columns carry alias names that do not
+        exist in the source table.
+
+        Falls back to name-based matching when no parser mappings are available.
+        """
+        column_lineage = []
+        for col_pair in lineage_parser.column_lineage or []:
+            try:
+                src_col = col_pair[0]
+                tgt_col = col_pair[-1]
+                from_col = get_column_fqn(
+                    table_entity=from_entity, column=src_col.raw_name
+                )
+                to_col = self._get_data_model_column_fqn(
+                    data_model_entity=data_model_entity,
+                    column=tgt_col.raw_name,
+                )
+                if from_col and to_col:
+                    column_lineage.append(
+                        ColumnLineage(fromColumns=[from_col], toColumn=to_col)
+                    )
+            except Exception as exc:
+                logger.debug(
+                    f"Failed to resolve column lineage for pair {col_pair}: {exc}"
+                )
+        if not column_lineage:
+            columns = [col.name.root for col in data_model_entity.columns]
+            column_lineage = (
+                self._get_column_lineage(from_entity, data_model_entity, columns) or []
+            )
+        return column_lineage
 
     def _get_column_info(self, data_model: DescribeDataSourceResponse):
         """Get column info"""
@@ -684,9 +731,9 @@ class QuicksightSource(DashboardServiceSource):
         Each QuickSight dataset produces a separate DataModel entity,
         identified by dataset_id rather than datasource_id.
         """
-        self.data_models: List[
-            DescribeDataSourceResponse
-        ] = self._get_dashboard_datamodels(dashboard_details)
+        self.data_models: List[DescribeDataSourceResponse] = (
+            self._get_dashboard_datamodels(dashboard_details)
+        )
         dataset_groups: dict[str, List[DescribeDataSourceResponse]] = defaultdict(list)
         for data_model in self.data_models:
             key = (
@@ -726,4 +773,3 @@ class QuicksightSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
-

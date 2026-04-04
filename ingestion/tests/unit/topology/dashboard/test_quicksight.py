@@ -388,3 +388,76 @@ class QuickSightUnitTest(TestCase):
 
         col_names_b = {col.name.root for col in dm_b.columns}
         assert col_names_b == {"email", "created_at"}
+
+    @pytest.mark.order(9)
+    def test_build_column_lineage_from_parser_uses_aliases(self):
+        """
+        When a CustomSql query uses column aliases (SELECT src_col AS alias_col),
+        _build_column_lineage_from_parser must resolve the source column name and
+        map it to the aliased data model column, not drop the lineage pair.
+        """
+        from unittest.mock import MagicMock
+
+        src_col = MagicMock()
+        src_col.raw_name = "original_col"
+
+        tgt_col = MagicMock()
+        tgt_col.raw_name = "alias_col"
+
+        mock_parser = MagicMock()
+        mock_parser.column_lineage = [(src_col, tgt_col)]
+
+        src_fqn = "db.schema.my_table.original_col"
+        alias_fqn = "qs_service.dataset.alias_col"
+
+        mock_from_entity = MagicMock()
+        mock_data_model = MagicMock()
+
+        with patch(
+            "metadata.ingestion.source.dashboard.quicksight.metadata.get_column_fqn",
+            return_value=src_fqn,
+        ) as mock_get_col_fqn:
+            with patch.object(
+                self.quicksight,
+                "_get_data_model_column_fqn",
+                return_value=alias_fqn,
+            ) as mock_get_dm_col_fqn:
+                result = self.quicksight._build_column_lineage_from_parser(
+                    mock_parser, mock_from_entity, mock_data_model
+                )
+
+        mock_get_col_fqn.assert_called_once_with(
+            table_entity=mock_from_entity, column="original_col"
+        )
+        mock_get_dm_col_fqn.assert_called_once_with(
+            data_model_entity=mock_data_model, column="alias_col"
+        )
+        assert len(result) == 1
+        assert result[0].fromColumns == [src_fqn]
+        assert result[0].toColumn == alias_fqn
+
+    @pytest.mark.order(10)
+    def test_build_column_lineage_from_parser_falls_back_when_no_parser_results(self):
+        """
+        When lineage_parser.column_lineage is empty, _build_column_lineage_from_parser
+        must fall back to name-based matching via _get_column_lineage.
+        """
+        mock_parser = MagicMock()
+        mock_parser.column_lineage = []
+
+        fallback_lineage = [MagicMock()]
+        mock_from_entity = MagicMock()
+        mock_data_model = MagicMock()
+        mock_data_model.columns = [MagicMock(name=MagicMock(root="col_a"))]
+
+        with patch.object(
+            self.quicksight,
+            "_get_column_lineage",
+            return_value=fallback_lineage,
+        ) as mock_get_col_lineage:
+            result = self.quicksight._build_column_lineage_from_parser(
+                mock_parser, mock_from_entity, mock_data_model
+            )
+
+        mock_get_col_lineage.assert_called_once()
+        assert result is fallback_lineage
