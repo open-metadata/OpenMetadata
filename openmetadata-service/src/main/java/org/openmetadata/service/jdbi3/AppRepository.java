@@ -248,12 +248,14 @@ public class AppRepository extends EntityRepository<App> {
   @Override
   protected void postDelete(App entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    // Delete the status stored in the app extension
-    // Note that we don't want to delete the LIMITS, since we want to keep them
-    // between different app installations
-    daoCollection
-        .appExtensionTimeSeriesDao()
-        .delete(entity.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
+    if (hardDelete) {
+      // Delete the status stored in the app extension
+      // Note that we don't want to delete the LIMITS, since we want to keep them
+      // between different app installations
+      daoCollection
+          .appExtensionTimeSeriesDao()
+          .delete(entity.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
+    }
   }
 
   public final List<App> listAll() {
