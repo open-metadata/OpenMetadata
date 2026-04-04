@@ -235,6 +235,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -749,6 +750,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields to load on parent entities for inheritance. Override for repos that inherit more than domains. */
   protected String getInheritableFields() {
     return "domains";
+  }
+
+  /** Get the list of propagatable fields to child entities in the search index **/
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    return List.of(
+        new PropagationDescriptor(
+            FIELD_OWNERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null),
+        new PropagationDescriptor(
+            FIELD_DOMAINS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null),
+        new PropagationDescriptor(
+            Entity.FIELD_DISABLED, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null),
+        new PropagationDescriptor(
+            Entity.FIELD_TEST_SUITES, PropagationDescriptor.PropagationType.RAW_REPLACE, null),
+        new PropagationDescriptor(
+            FIELD_DISPLAY_NAME,
+            PropagationDescriptor.PropagationType.NESTED_FIELD,
+            entityType + "." + FIELD_DISPLAY_NAME));
   }
 
   /**
@@ -5463,6 +5481,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void inheritDomains(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_DOMAINS) && nullOrEmpty(entity.getDomains()) && parent != null) {
       entity.setDomains(inheritedEntityReferences(parent.getDomains()));
+    }
+  }
+
+  public final void inheritDataProducts(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_DATA_PRODUCTS)
+        && nullOrEmpty(entity.getDataProducts())
+        && parent != null) {
+      entity.setDataProducts(inheritedEntityReferences(parent.getDataProducts()));
     }
   }
 

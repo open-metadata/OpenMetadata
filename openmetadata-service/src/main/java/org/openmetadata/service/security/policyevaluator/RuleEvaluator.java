@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
@@ -269,8 +270,12 @@ public class RuleEvaluator {
       return false;
     }
 
-    Optional<AssetCertification> oCertification =
-        Optional.ofNullable(resourceContext.getEntity().getCertification());
+    EntityInterface entity = resourceContext.getEntity();
+    if (entity == null) {
+      return false;
+    }
+
+    Optional<AssetCertification> oCertification = Optional.ofNullable(entity.getCertification());
 
     if (oCertification.isEmpty()) {
       LOG.debug(

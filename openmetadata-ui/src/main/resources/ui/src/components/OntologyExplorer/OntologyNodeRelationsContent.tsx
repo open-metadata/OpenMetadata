@@ -136,21 +136,23 @@ export const OntologyNodeRelationsContent: React.FC<
                 <li
                   className="tw:flex tw:flex-col tw:gap-2 tw:py-1"
                   key={`${rel.from}-${rel.to}-${rel.relationType}`}>
-                  <div className="tw:grid tw:w-full tw:items-center tw:gap-3 tw:grid-cols-2">
+                  <div className="tw:grid tw:w-full tw:grid-cols-2 tw:items-center tw:gap-3">
                     <Badge color="gray" type="modern">
                       {getDisplayName(rel.relationType)}
                     </Badge>
-                    <Tooltip placement="top" title={labelText}>
-                      <TooltipTrigger className="tw:min-w-0">
-                        <Typography
-                          as="span"
-                          className="tw:block tw:truncate tw:text-primary"
-                          size="text-sm"
-                          weight="regular">
-                          {labelText}
-                        </Typography>
-                      </TooltipTrigger>
-                    </Tooltip>
+                    <div className="tw:min-w-0">
+                      <Tooltip placement="top" title={labelText}>
+                        <TooltipTrigger className="tw:block tw:w-full">
+                          <Typography
+                            as="span"
+                            className="tw:block tw:truncate tw:text-primary"
+                            size="text-sm"
+                            weight="regular">
+                            {labelText}
+                          </Typography>
+                        </TooltipTrigger>
+                      </Tooltip>
+                    </div>
                   </div>
                   {hasRowBelow ? <Divider orientation="horizontal" /> : null}
                 </li>
