@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
+import { Domain } from '../../support/domain/Domain';
+import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
-import { Domain } from '../../support/domain/Domain';
 import { UserClass } from '../../support/user/UserClass';
-import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
-import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import { performAdminLogin } from '../../utils/admin';
-import { getEntityFqn } from '../../utils/entityPanel';
 import { uuid } from '../../utils/common';
+import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToGlossaryTermAssetsAndOpenPanel } from '../../utils/rightPanelNavigation';
+import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
+import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 
 const tableEntity = new TableClass();
 const testGlossary = new Glossary();

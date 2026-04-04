@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
@@ -152,21 +153,9 @@ public class RuleEvaluator {
       return false;
     }
 
-    for (EntityReference userDomain : userDomains) {
-      for (EntityReference resourceDomain : resourceDomains) {
-        if (userDomain.getId() != null && userDomain.getId().equals(resourceDomain.getId())) {
-          LOG.info(
-              "hasDomain() - Domain match found by ID: {}, returning true", userDomain.getId());
-          return true;
-        }
-        if (userDomain.getFullyQualifiedName() != null
-            && userDomain.getFullyQualifiedName().equals(resourceDomain.getFullyQualifiedName())) {
-          LOG.info(
-              "hasDomain() - Domain match found by FQN: {}, returning true",
-              userDomain.getFullyQualifiedName());
-          return true;
-        }
-      }
+    if (subjectContext.hasDomains(resourceDomains)) {
+      LOG.info("hasDomain() - Domain hierarchy match found, returning true");
+      return true;
     }
 
     LOG.info("hasDomain() - No matching domains found, returning false");
@@ -281,8 +270,12 @@ public class RuleEvaluator {
       return false;
     }
 
-    Optional<AssetCertification> oCertification =
-        Optional.ofNullable(resourceContext.getEntity().getCertification());
+    EntityInterface entity = resourceContext.getEntity();
+    if (entity == null) {
+      return false;
+    }
+
+    Optional<AssetCertification> oCertification = Optional.ofNullable(entity.getCertification());
 
     if (oCertification.isEmpty()) {
       LOG.debug(

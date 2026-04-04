@@ -12,12 +12,12 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
+import { EntityClass } from '../../../support/entity/EntityClass';
+import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
+import { DataQualityPageObject } from './DataQualityPageObject';
+import { LineagePageObject } from './LineagePageObject';
 import { OverviewPageObject } from './OverviewPageObject';
 import { SchemaPageObject } from './SchemaPageObject';
-import { LineagePageObject } from './LineagePageObject';
-import { DataQualityPageObject } from './DataQualityPageObject';
-import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
-import { EntityClass } from '../../../support/entity/EntityClass';
 
 /** Tab names for data-driven visibility and content assertions. Must match UI labels (e.g. "Custom Property"). */
 export const RIGHT_PANEL_TAB = {

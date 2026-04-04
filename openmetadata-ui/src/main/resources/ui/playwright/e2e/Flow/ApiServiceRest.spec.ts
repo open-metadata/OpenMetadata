@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
@@ -20,7 +21,6 @@ import {
   uuid,
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const apiServiceConfig = {
   name: `pw-api-service-${uuid()}`,

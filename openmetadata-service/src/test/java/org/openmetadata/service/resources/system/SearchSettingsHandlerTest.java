@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.system;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,8 +50,8 @@ class SearchSettingsHandlerTest {
     AssetTypeConfiguration metricConfig = findAssetConfig(defaultSearchSettings, "metric");
     assertNotNull(metricConfig, "searchSettings.json must contain metric assetTypeConfiguration");
     assertNotNull(metricConfig.getSearchFields());
-    assertTrue(
-        metricConfig.getSearchFields().size() > 0,
+    assertFalse(
+        metricConfig.getSearchFields().isEmpty(),
         "Metric config must have at least one search field");
 
     Set<String> fieldNames =
@@ -74,8 +75,8 @@ class SearchSettingsHandlerTest {
             .findFirst()
             .orElse(null);
     assertNotNull(metricAllowed, "searchSettings.json must contain metric in allowedFields");
-    assertTrue(
-        metricAllowed.getFields().size() > 0, "Metric allowedFields must have at least one field");
+    assertFalse(
+        metricAllowed.getFields().isEmpty(), "Metric allowedFields must have at least one field");
   }
 
   @Test

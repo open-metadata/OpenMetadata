@@ -13,13 +13,13 @@
 import {
   COMBO_HEADER_HEIGHT,
   DATA_MODE_ASSET_CIRCLE_SIZE,
-  DATA_MODE_ASSET_LABEL_FONT_SIZE,
+  DATA_MODE_ASSET_LABEL_LAYOUT_STACK,
+  DATA_MODE_TERM_TO_FIRST_RING_GAP,
   LayoutEngine,
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
 import {
   HierarchyGraphResult,
-  MergedEdge,
   OntologyNode,
 } from '../OntologyExplorer.interface';
 import {
@@ -353,88 +353,53 @@ export function computeHierarchyComboPositions(
   return positions;
 }
 
-export function computeDataModePositions(
-  termNodes: OntologyNode[],
-  edges: MergedEdge[],
-  assetNodeIds: Set<string>
+export function computeAssetRingPositions(
+  termX: number,
+  termY: number,
+  assetIds: string[]
 ): Record<string, { x: number; y: number }> {
   const positions: Record<string, { x: number; y: number }> = {};
-  const N = termNodes.length;
-  if (N === 0) {
+  const M = assetIds.length;
+  if (M === 0) {
     return positions;
   }
 
   const ASSET_NODE_DIAMETER = DATA_MODE_ASSET_CIRCLE_SIZE;
-  const LABEL_HEIGHT = DATA_MODE_ASSET_LABEL_FONT_SIZE + 10;
+  const LABEL_HEIGHT = DATA_MODE_ASSET_LABEL_LAYOUT_STACK;
   const SAFETY_PAD = DATA_MODE_RING_SAFETY_PAD;
   const RING_GAP = ASSET_NODE_DIAMETER + LABEL_HEIGHT + SAFETY_PAD;
 
-  const assetsPerArc = (radius: number, arcFraction: number): number => {
-    const arcLen = radius * arcFraction * 2 * Math.PI;
+  const assetsPerArc = (radius: number): number => {
+    const arcLen = radius * 2 * Math.PI;
 
     return Math.max(1, Math.floor(arcLen / DATA_MODE_ASSET_SPACING_ALONG_ARC));
   };
 
-  const termIdSet = new Set(termNodes.map((t) => t.id));
+  let placed = 0;
+  let ringIdx = 0;
 
-  const termAssets = new Map<string, string[]>();
-  termNodes.forEach((t) => termAssets.set(t.id, []));
-  edges.forEach((edge) => {
-    const fromIsTerm = termIdSet.has(edge.from);
-    const toIsTerm = termIdSet.has(edge.to);
-    if (fromIsTerm && assetNodeIds.has(edge.to)) {
-      termAssets.get(edge.from)?.push(edge.to);
-    } else if (toIsTerm && assetNodeIds.has(edge.from)) {
-      termAssets.get(edge.to)?.push(edge.from);
-    }
-  });
+  while (placed < M) {
+    const firstAssetRingRadius =
+      DATA_MODE_TERM_TO_FIRST_RING_GAP + ASSET_NODE_DIAMETER;
+    const ringRadius = firstAssetRingRadius + ringIdx * RING_GAP;
+    const capacity = assetsPerArc(ringRadius);
+    const toPlace = Math.min(capacity, M - placed);
 
-  const MIN_TERM_SPACING = 200;
-  const termRadius =
-    N === 1 ? 0 : Math.max(280, (N * MIN_TERM_SPACING) / (2 * Math.PI));
-  const TERM_TO_FIRST_RING_GAP = 100;
-
-  termNodes.forEach((term, i) => {
-    const termAngle =
-      N === 1 ? -Math.PI / 2 : (i / N) * 2 * Math.PI - Math.PI / 2;
-    const tx = termRadius * Math.cos(termAngle);
-    const ty = termRadius * Math.sin(termAngle);
-    positions[term.id] = { x: tx, y: ty };
-
-    const assets = termAssets.get(term.id) ?? [];
-    const M = assets.length;
-    if (M === 0) {
-      return;
+    for (let k = 0; k < toPlace; k++) {
+      const assetId = assetIds[placed + k];
+      const assetAngle =
+        toPlace === 1
+          ? -Math.PI / 2
+          : -Math.PI / 2 + (2 * Math.PI * k) / toPlace;
+      positions[assetId] = {
+        x: termX + ringRadius * Math.cos(assetAngle),
+        y: termY + ringRadius * Math.sin(assetAngle),
+      };
     }
 
-    const sectorFraction = N === 1 ? 1 : Math.min(0.9 / N, 0.25);
-    const halfSector = sectorFraction * Math.PI;
-
-    let placed = 0;
-    let ringIdx = 0;
-
-    while (placed < M) {
-      const firstAssetRingRadius =
-        termRadius + TERM_TO_FIRST_RING_GAP + ASSET_NODE_DIAMETER;
-      const ringRadius = firstAssetRingRadius + ringIdx * RING_GAP;
-
-      const capacity = assetsPerArc(ringRadius, sectorFraction);
-      const toPlace = Math.min(capacity, M - placed);
-
-      for (let k = 0; k < toPlace; k++) {
-        const assetId = assets[placed + k];
-        const frac = toPlace === 1 ? 0.5 : k / (toPlace - 1);
-        const assetAngle = termAngle - halfSector + frac * 2 * halfSector;
-        positions[assetId] = {
-          x: ringRadius * Math.cos(assetAngle),
-          y: ringRadius * Math.sin(assetAngle),
-        };
-      }
-
-      placed += toPlace;
-      ringIdx += 1;
-    }
-  });
+    placed += toPlace;
+    ringIdx += 1;
+  }
 
   return positions;
 }

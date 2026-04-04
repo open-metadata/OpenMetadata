@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SmartToyOutlined } from '@mui/icons-material';
 import { Button, Popover, Tooltip } from 'antd';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
+  TEXT_GREY_MUTED,
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
@@ -25,13 +27,19 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
-import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../../utils/EntityUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getTermQuery } from '../../../utils/SearchUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
+import { UserTag } from '../UserTag/UserTag.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
+
+type UserReferenceWithBotFlag = EntityReference & { isBot?: boolean };
 
 export const UserSelectableList = ({
   hasPermission,
@@ -41,26 +49,64 @@ export const UserSelectableList = ({
   popoverProps,
   multiSelect = true,
   filterCurrentUser = false,
+  includeBot = false,
 }: UserSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const botUserIds = useRef<Set<string>>(new Set());
+
+  const seedBotsFromSelected = useCallback(() => {
+    (selectedUsers as UserReferenceWithBotFlag[]).forEach((user) => {
+      if (user.isBot && user.id) {
+        botUserIds.current.add(user.id);
+      }
+    });
+  }, [selectedUsers]);
+
+  useEffect(() => {
+    if (includeBot) {
+      seedBotsFromSelected();
+    }
+  }, [includeBot, seedBotsFromSelected]);
+
+  const trackBots = useCallback(
+    (users: Array<{ id: string; isBot?: boolean }>) => {
+      users.forEach((user) => {
+        if (user.isBot && user.id) {
+          botUserIds.current.add(user.id);
+        }
+      });
+    },
+    []
+  );
 
   const fetchOptions = async (searchText: string, after?: string) => {
+    if (!after) {
+      botUserIds.current.clear();
+      if (includeBot) {
+        seedBotsFromSelected();
+      }
+    }
     if (searchText) {
       try {
         const res = await searchQuery({
           query: searchText,
           pageNumber: 1,
           pageSize: PAGE_SIZE_MEDIUM,
-          queryFilter: getTermQuery({ isBot: 'false' }),
+          queryFilter: includeBot
+            ? undefined
+            : getTermQuery({ isBot: 'false' }),
           searchIndex: SearchIndex.USER,
         });
 
-        const data = getEntityReferenceListFromEntities(
-          formatUsersResponse(res.hits.hits),
-          EntityType.USER
-        );
+        const users = formatUsersResponse(res.hits.hits);
+
+        if (includeBot) {
+          trackBots(users);
+        }
+
+        const data = getEntityReferenceListFromEntities(users, EntityType.USER);
 
         if (filterCurrentUser) {
           const user = data.find((user) => user.id === currentUser?.id);
@@ -78,8 +124,13 @@ export const UserSelectableList = ({
         const { data, paging } = await getUsers({
           limit: PAGE_SIZE_MEDIUM,
           after: after ?? undefined,
-          isBot: false,
+          ...(includeBot ? {} : { isBot: false }),
         });
+
+        if (includeBot) {
+          trackBots(data);
+        }
+
         const filterData = getEntityReferenceListFromEntities(
           data,
           EntityType.USER
@@ -110,11 +161,35 @@ export const UserSelectableList = ({
     [onUpdate]
   );
 
+  const botTagRenderer = useCallback(
+    (item: EntityReference) => (
+      <div className="d-flex items-center gap-2">
+        {botUserIds.current.has(item.id) && (
+          <Tooltip title={t('label.bot')}>
+            <SmartToyOutlined
+              aria-label={t('label.bot')}
+              data-testid="bot-indicator"
+              style={{ fontSize: 16, color: TEXT_GREY_MUTED }}
+              titleAccess={t('label.bot')}
+            />
+          </Tooltip>
+        )}
+        <UserTag
+          avatarType="outlined"
+          id={item.name ?? ''}
+          name={getEntityName(item)}
+        />
+      </div>
+    ),
+    [t]
+  );
+
   return (
     <Popover
       destroyTooltipOnHide
       content={
         <SelectableList
+          customTagRenderer={includeBot ? botTagRenderer : undefined}
           fetchOptions={fetchOptions}
           multiSelect={multiSelect}
           searchPlaceholder={t('label.search-for-type', {

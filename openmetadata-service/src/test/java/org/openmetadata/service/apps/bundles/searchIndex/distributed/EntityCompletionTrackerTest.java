@@ -19,10 +19,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -196,5 +198,88 @@ class EntityCompletionTrackerTest {
       // Expected - set is immutable
     }
     assertEquals(1, tracker.getPromotedEntities().size());
+  }
+
+  @Test
+  void testReconcileFromDatabasePromotesOnlyCompletedEntities() {
+    UUID jobId = UUID.randomUUID();
+    EntityCompletionTracker tracker = new EntityCompletionTracker(jobId);
+    AtomicReference<String> promotedEntity = new AtomicReference<>();
+    AtomicBoolean success = new AtomicBoolean(true);
+
+    tracker.initializeEntity("table", 1);
+    tracker.initializeEntity("topic", 2);
+    tracker.initializeEntity("dashboard", 2);
+    tracker.setOnEntityComplete(
+        (entityType, promotedSuccessfully) -> {
+          promotedEntity.set(entityType);
+          success.set(promotedSuccessfully);
+        });
+
+    tracker.recordPartitionComplete("table", false);
+
+    tracker.reconcileFromDatabase(
+        List.of(
+            partition(jobId, "table", PartitionStatus.COMPLETED),
+            partition(jobId, "topic", PartitionStatus.COMPLETED),
+            partition(jobId, "topic", PartitionStatus.FAILED),
+            partition(jobId, "dashboard", PartitionStatus.COMPLETED),
+            partition(jobId, "dashboard", PartitionStatus.PENDING)));
+
+    assertTrue(tracker.isPromoted("table"));
+    assertTrue(tracker.isPromoted("topic"));
+    assertFalse(tracker.isPromoted("dashboard"));
+    assertEquals("topic", promotedEntity.get());
+    assertFalse(success.get());
+  }
+
+  @Test
+  void testPromotionCallbackFailureStillMarksEntityPromoted() {
+    UUID jobId = UUID.randomUUID();
+    EntityCompletionTracker tracker = new EntityCompletionTracker(jobId);
+
+    tracker.initializeEntity("table", 1);
+    tracker.setOnEntityComplete(
+        (entityType, success) -> {
+          throw new IllegalStateException("callback failed");
+        });
+
+    tracker.recordPartitionComplete("table", false);
+
+    assertTrue(tracker.isPromoted("table"));
+    EntityCompletionTracker.EntityCompletionStatus status = tracker.getStatus("table");
+    assertNotNull(status);
+    assertTrue(status.promoted());
+  }
+
+  @Test
+  void testReconcileFromDatabaseDoesNotRepromoteCompletedEntity() {
+    UUID jobId = UUID.randomUUID();
+    EntityCompletionTracker tracker = new EntityCompletionTracker(jobId);
+    AtomicInteger callbackCount = new AtomicInteger();
+
+    tracker.initializeEntity("topic", 2);
+    tracker.setOnEntityComplete((entityType, success) -> callbackCount.incrementAndGet());
+
+    tracker.reconcileFromDatabase(
+        List.of(
+            partition(jobId, "topic", PartitionStatus.COMPLETED),
+            partition(jobId, "topic", PartitionStatus.COMPLETED)));
+    tracker.reconcileFromDatabase(
+        List.of(
+            partition(jobId, "topic", PartitionStatus.COMPLETED),
+            partition(jobId, "topic", PartitionStatus.COMPLETED)));
+
+    assertEquals(1, callbackCount.get());
+    assertTrue(tracker.isPromoted("topic"));
+  }
+
+  private SearchIndexPartition partition(UUID jobId, String entityType, PartitionStatus status) {
+    return SearchIndexPartition.builder()
+        .id(UUID.randomUUID())
+        .jobId(jobId)
+        .entityType(entityType)
+        .status(status)
+        .build();
   }
 }

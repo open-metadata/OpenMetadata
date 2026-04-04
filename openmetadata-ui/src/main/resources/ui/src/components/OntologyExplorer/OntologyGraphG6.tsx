@@ -20,7 +20,8 @@ import {
 import { useGraphDataBuilder } from './hooks/useGraphData';
 import { useOntologyGraph } from './hooks/useOntologyGraph';
 import {
-  LayoutEngine,
+  FIT_VIEW_ZOOM_OUT,
+  FIT_VIEW_ZOOM_OUT_DATA_MODE,
   toLayoutEngineType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
@@ -37,10 +38,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       settings,
       nodePositions,
       selectedNodeId,
+      expandedTermIds,
       glossaryColorMap,
       dataSignature = '',
       explorationMode = 'model',
       hierarchyCombos,
+      graphSearchHighlight = null,
       focusNodeId,
       onNodeClick,
       onNodeDoubleClick,
@@ -54,28 +57,31 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     const [clickedEdgeId, setClickedEdgeId] = useState<string | null>(null);
 
     const getLayoutType = useCallback((): LayoutEngineType => {
-      if (explorationMode === 'data') {
-        return LayoutEngine.Radial;
-      }
-
       return toLayoutEngineType(settings.layout);
-    }, [settings.layout, explorationMode]);
+    }, [settings.layout]);
 
     const layoutType = getLayoutType();
 
-    const { graphData, mergedEdgesList, neighborSet, computeNodeColor } =
-      useGraphDataBuilder({
-        inputNodes,
-        inputEdges,
-        explorationMode,
-        settings,
-        selectedNodeId: selectedNodeId ?? null,
-        clickedEdgeId,
-        nodePositions,
-        glossaryColorMap,
-        layoutType,
-        hierarchyCombos: hierarchyCombos ?? [],
-      });
+    const {
+      graphData,
+      mergedEdgesList,
+      neighborSet,
+      computeNodeColor,
+      assetToTermMap,
+    } = useGraphDataBuilder({
+      inputNodes,
+      inputEdges,
+      explorationMode,
+      settings,
+      selectedNodeId: selectedNodeId ?? null,
+      expandedTermIds,
+      clickedEdgeId,
+      nodePositions,
+      glossaryColorMap,
+      layoutType,
+      hierarchyCombos: hierarchyCombos ?? [],
+      graphSearchHighlight,
+    });
 
     const { graphRef, extractNodePositions } = useOntologyGraph({
       containerRef,
@@ -87,6 +93,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       layoutType,
       focusNodeId,
       selectedNodeId,
+      expandedTermIds,
       dataSignature,
       onNodeClick,
       onNodeDoubleClick,
@@ -96,6 +103,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       neighborSet,
       glossaryColorMap,
       computeNodeColor,
+      assetToTermMap,
     });
 
     useImperativeHandle(
@@ -107,8 +115,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
             return;
           }
           const duration = 300;
+          const zoomAfterFit =
+            explorationMode === 'data'
+              ? FIT_VIEW_ZOOM_OUT_DATA_MODE
+              : FIT_VIEW_ZOOM_OUT;
           graph.fitView(undefined, { duration });
-          graph.zoomBy(0.6, { duration });
+          graph.zoomBy(zoomAfterFit, { duration });
         },
         zoomIn: () => {
           graphRef.current?.zoomBy(1.2);
@@ -127,13 +139,48 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           graphRef.current?.focusElement(nodeId, { duration: 0 });
         },
         getNodePositions: () => extractNodePositions(),
+        exportAsPng: async () => {
+          const graph = graphRef.current;
+          if (!graph) {
+            return;
+          }
+          const dataUrl = await graph.toDataURL({
+            mode: 'overall',
+            type: 'image/png',
+          });
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = 'ontology-graph.png';
+          a.click();
+        },
+        exportAsSvg: async () => {
+          const graph = graphRef.current;
+          if (!graph) {
+            return;
+          }
+          const dataUrl = await graph.toDataURL({
+            mode: 'overall',
+            type: 'image/png',
+          });
+          const [width, height] = graph.getCanvas().getSize();
+          const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <image href="${dataUrl}" width="${width}" height="${height}"/>
+</svg>`;
+          const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'ontology-graph.svg';
+          a.click();
+          URL.revokeObjectURL(url);
+        },
       }),
       [extractNodePositions, graphRef]
     );
 
     return (
       <div
-        className="w-full h-full relative ontology-g6-container"
+        className="tw:w-full tw:h-full tw:relative ontology-g6-container"
         ref={containerRef}
       />
     );

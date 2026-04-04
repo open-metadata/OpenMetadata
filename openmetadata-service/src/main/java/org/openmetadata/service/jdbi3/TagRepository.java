@@ -18,6 +18,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
+import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
+import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
@@ -83,6 +85,7 @@ import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -110,6 +113,19 @@ public class TagRepository extends EntityRepository<Tag> {
     if (searchRepository != null) {
       inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
     }
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_NAME, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null));
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_CERTIFICATION, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null));
+    return descriptors;
   }
 
   public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
@@ -722,7 +738,7 @@ public class TagRepository extends EntityRepository<Tag> {
     var queryBuilder = new StringBuilder();
     tagFQNs.forEach(
         tagFQN -> {
-          if (queryBuilder.length() > 0) {
+          if (!queryBuilder.isEmpty()) {
             queryBuilder.append(" UNION ALL ");
           }
           var escapedFQN = tagFQN.replace("'", "''");
@@ -882,40 +898,29 @@ public class TagRepository extends EntityRepository<Tag> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "mutuallyExclusive",
-          () -> {
-            recordChange(
-                "mutuallyExclusive",
-                original.getMutuallyExclusive(),
-                updated.getMutuallyExclusive());
-          });
+      compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
           "disabled",
-          () -> {
-            recordChange("disabled", original.getDisabled(), updated.getDisabled());
-          });
+          () -> recordChange("disabled", original.getDisabled(), updated.getDisabled()));
       compareAndUpdate(
           "recognizers",
-          () -> {
-            recordChange("recognizers", original.getRecognizers(), updated.getRecognizers(), true);
-          });
+          () ->
+              recordChange(
+                  "recognizers", original.getRecognizers(), updated.getRecognizers(), true));
       compareAndUpdate(
           "autoClassificationEnabled",
-          () -> {
-            recordChange(
-                "autoClassificationEnabled",
-                original.getAutoClassificationEnabled(),
-                updated.getAutoClassificationEnabled());
-          });
+          () ->
+              recordChange(
+                  "autoClassificationEnabled",
+                  original.getAutoClassificationEnabled(),
+                  updated.getAutoClassificationEnabled()));
       compareAndUpdate(
           "autoClassificationPriority",
-          () -> {
-            recordChange(
-                "autoClassificationPriority",
-                original.getAutoClassificationPriority(),
-                updated.getAutoClassificationPriority());
-          });
+          () ->
+              recordChange(
+                  "autoClassificationPriority",
+                  original.getAutoClassificationPriority(),
+                  updated.getAutoClassificationPriority()));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "classification");
     }
 
@@ -1036,6 +1041,11 @@ public class TagRepository extends EntityRepository<Tag> {
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }
+    }
+
+    private void run() {
+      recordChange(
+          "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
     }
   }
 

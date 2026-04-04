@@ -29,7 +29,7 @@ import {
   deployIngestionPipelineById,
 } from '../../../rest/ingestionPipelineAPI';
 import {
-  addTestCaseToLogicalTestSuite,
+  addTestCasesToLogicalTestSuiteBulk,
   createTestSuites,
 } from '../../../rest/testAPI';
 import BundleSuiteForm from './BundleSuiteForm';
@@ -125,7 +125,7 @@ jest.mock('../../../rest/testAPI', () => ({
   createTestSuites: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockTestSuite)),
-  addTestCaseToLogicalTestSuite: jest
+  addTestCasesToLogicalTestSuiteBulk: jest
     .fn()
     .mockImplementation(() => Promise.resolve({})),
   TestCaseType: {
@@ -178,7 +178,14 @@ jest.mock('../AddTestCaseList/AddTestCaseList.component', () => ({
         <div>Selected tests: {selectedTest?.length || 0}</div>
         <button
           data-testid="add-test-case-btn"
-          onClick={() => onChange?.(mockTestCases)}>
+          onClick={() =>
+            onChange?.({
+              selectAll: false,
+              includeIds: ['test-case-1', 'test-case-2'],
+              excludeIds: [],
+              testCases: mockTestCases,
+            })
+          }>
           Add Test Cases
         </button>
       </div>
@@ -604,11 +611,11 @@ describe('BundleSuiteForm Component', () => {
 
     it('should handle form submission errors gracefully', async () => {
       const mockCreateTestSuites = createTestSuites as jest.Mock;
-      const mockAddTestCaseToLogicalTestSuite =
-        addTestCaseToLogicalTestSuite as jest.Mock;
+      const mockAddTestCasesToLogicalTestSuiteBulk =
+        addTestCasesToLogicalTestSuiteBulk as jest.Mock;
 
       mockCreateTestSuites.mockRejectedValueOnce(new Error('API Error'));
-      mockAddTestCaseToLogicalTestSuite.mockRejectedValueOnce(
+      mockAddTestCasesToLogicalTestSuiteBulk.mockRejectedValueOnce(
         new Error('API Error')
       );
 
@@ -740,6 +747,44 @@ describe('BundleSuiteForm Component', () => {
       expect(descriptionInput).toHaveValue('Initial description');
 
       expect(await screen.findByText('Selected tests: 2')).toBeInTheDocument();
+    });
+
+    it('should pre-fill test cases from bulk selection', async () => {
+      const initialValues = {
+        testCases: mockTestCases,
+      };
+
+      render(<BundleSuiteForm {...mockProps} initialValues={initialValues} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Selected tests: 2')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('add-test-case-list')).toBeInTheDocument();
+    });
+
+    it('should initialize testCaseSelectionPayload with initial test cases', async () => {
+      const initialValues = {
+        testCases: mockTestCases,
+      };
+
+      render(<BundleSuiteForm {...mockProps} initialValues={initialValues} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Selected tests: 2')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle empty initial test cases', async () => {
+      const initialValues = {
+        testCases: [],
+      };
+
+      render(<BundleSuiteForm {...mockProps} initialValues={initialValues} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Selected tests: 0')).toBeInTheDocument();
+      });
     });
 
     it('should set default form values', async () => {

@@ -98,7 +98,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String FORMULA_FUNC_REGEX =
       "\\b(count|sum|min|max|avg|unique)+\\((k='([^']*)')?,?\\s*(q='([^']*)')?\\)?";
 
-  public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\)\s]+";
+  public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\) ]+";
 
   public DataInsightSystemChartRepository() {
     super(
@@ -171,19 +171,14 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         return combinedStatus;
       }
 
-      // Get current timestamp for recent pipeline status
-      long currentTime = System.currentTimeMillis();
-      long startTime = currentTime - (24 * 60 * 60 * 1000); // Last 24 hours
-      long endTime = currentTime;
-
       // Search for ingestion pipelines by service name using search
       SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
       if (searchClient != null) {
         try {
           // Search for ingestion pipelines with the service name
-          String searchIndex = INGESTION_PIPELINE;
           var response =
-              searchClient.searchByField("service.name.keyword", serviceName, searchIndex, false);
+              searchClient.searchByField(
+                  "service.name.keyword", serviceName, INGESTION_PIPELINE, false);
 
           if (response != null && response.getStatus() == 200) {
             // Parse the response to extract pipeline information
@@ -1263,7 +1258,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       this.serviceName = serviceName;
       this.filter = filter;
       this.entityLink = entityLink;
-      this.userIds = new ConcurrentHashMap().newKeySet(); // Thread-safe set
+      this.userIds = ConcurrentHashMap.newKeySet(); // Thread-safe set
       this.userIds.add(userId);
       this.startTime = System.currentTimeMillis(); // Session start time
       this.dataStartTime = dataStartTime; // Data range start time

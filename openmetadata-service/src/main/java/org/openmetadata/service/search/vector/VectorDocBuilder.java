@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -126,7 +127,7 @@ public class VectorDocBuilder {
                   }
                   return name;
                 })
-            .filter(n -> n != null)
+            .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
     List<EntityReference> domainsPojo =
@@ -134,7 +135,7 @@ public class VectorDocBuilder {
     List<String> domainFqns =
         domainsPojo.stream()
             .map(EntityReference::getFullyQualifiedName)
-            .filter(fqn -> fqn != null)
+            .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
     List<String> parts = new ArrayList<>();
@@ -154,7 +155,7 @@ public class VectorDocBuilder {
       List<String> relatedTermFqns =
           relatedTerms.stream()
               .map(tr -> tr.getTerm().getFullyQualifiedName())
-              .filter(fqn -> fqn != null)
+              .filter(Objects::nonNull)
               .collect(Collectors.toList());
       parts.add("relatedTerms: " + joinOrEmpty(relatedTermFqns));
     }
@@ -187,7 +188,7 @@ public class VectorDocBuilder {
         List<String> relatedMetricFqns =
             relatedMetrics.stream()
                 .map(EntityReference::getFullyQualifiedName)
-                .filter(fqn -> fqn != null)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
         parts.add("relatedMetrics: " + joinOrEmpty(relatedMetricFqns));
       }

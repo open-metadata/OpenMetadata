@@ -11,13 +11,17 @@
 
 """Athena source module"""
 
+import threading
 import traceback
-from typing import Iterable, Optional, Tuple
+from typing import Dict, Iterable, Optional, Set, Tuple
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.clients.aws_client import AWSClient
+from metadata.generated.schema.api.data.createCustomProperty import (
+    CreateCustomPropertyRequest,
+)
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -38,6 +42,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.custom_properties import (
+    CustomPropertyDataTypes,
+    OMetaCustomProperties,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.athena.client import AthenaLakeFormationClient
@@ -72,6 +80,8 @@ logger = ingestion_logger()
 
 ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
+
+ATHENA_TABLE_PROPS_CONTEXT_KEY = "_athena_current_tbl_props"
 
 ATHENA_INTERVAL_TYPE_MAP = {
     **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
@@ -115,7 +125,11 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         )
         self.external_location_map = {}
         self.schema_description_map = {}
+        self._thread_local = threading.local()
         self.glue_client = None
+        self._processed_prop: Set[str] = set()
+        self._processed_prop_lock = threading.Lock()
+        self._string_property_type_ref = None
 
     def prepare(self):
         """
@@ -140,6 +154,13 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         except Exception as exc:
             logger.warning(f"Error preparing Athena source: {exc}")
             logger.debug(traceback.format_exc())
+        try:
+            self._string_property_type_ref = self.metadata.get_property_type_ref(
+                CustomPropertyDataTypes.STRING
+            )
+        except Exception as exc:
+            logger.warning(f"Failed to fetch string property type ref: {exc}")
+            logger.debug(traceback.format_exc())
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         return self.schema_description_map.get(schema_name)
@@ -147,11 +168,31 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
     def query_table_names_and_types(
         self, schema_name: str
     ) -> Iterable[TableNameAndType]:
-        """Return tables as external"""
-
+        """Return tables with proper type detection using a single Glue API pass."""
+        if self.glue_client:
+            try:
+                results = []
+                paginator = self.glue_client.get_paginator("get_tables")
+                for page in paginator.paginate(DatabaseName=schema_name):
+                    for table in page.get("TableList", []):
+                        params = table.get("Parameters", {})
+                        table_type = (
+                            TableType.Iceberg
+                            if params.get("table_type") == "ICEBERG"
+                            else TableType.External
+                        )
+                        results.append(
+                            TableNameAndType(name=table["Name"], type_=table_type)
+                        )
+                return results
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to fetch Glue table metadata for schema [{schema_name}]: {exc}"
+                )
         return [
             TableNameAndType(name=name, type_=TableType.External)
-            for name in self.inspector.get_table_names(schema_name)
+            for name in self.inspector.get_table_names(schema_name) or []
         ]
 
     def get_table_partition_details(
@@ -299,12 +340,24 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         self, schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
         description = None
+        setattr(self._thread_local, ATHENA_TABLE_PROPS_CONTEXT_KEY, {})
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
             table_option = inspector.get_table_options(table_name, schema_name)
             self.external_location_map[
                 (self.context.get().database, schema_name, table_name)
             ] = table_option.get("awsathena_location")
+            setattr(
+                self._thread_local,
+                ATHENA_TABLE_PROPS_CONTEXT_KEY,
+                {
+                    prop_name: str(prop_value)
+                    for prop_name, prop_value in (
+                        table_option.get("awsathena_tblproperties") or {}
+                    ).items()
+                    if prop_value is not None
+                },
+            )
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -335,3 +388,36 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             glue_client=self.glue_client,
             catalog_id=self.service_connection.catalogId,
         )
+
+    def get_table_extensions(self, table_name: str) -> Optional[Dict[str, str]]:
+        if not self._string_property_type_ref:
+            return None
+        tbl_properties = getattr(self._thread_local, ATHENA_TABLE_PROPS_CONTEXT_KEY, {})
+        if not tbl_properties:
+            return None
+        registered_properties = {}
+        for prop_name, prop_value in tbl_properties.items():
+            with self._processed_prop_lock:
+                prop_already_registered = prop_name in self._processed_prop
+            if not prop_already_registered:
+                try:
+                    self.metadata.create_or_update_custom_property(
+                        OMetaCustomProperties(
+                            entity_type=Table,
+                            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                                name=prop_name,
+                                description=prop_name,
+                                propertyType=self._string_property_type_ref,
+                            ),
+                        )
+                    )
+                    with self._processed_prop_lock:
+                        self._processed_prop.add(prop_name)
+                except Exception as exc:
+                    logger.warning(
+                        f"Failed to register custom property [{prop_name}] for Athena table properties: {exc}"
+                    )
+                    logger.debug(traceback.format_exc())
+                    continue
+            registered_properties[prop_name] = prop_value
+        return registered_properties or None

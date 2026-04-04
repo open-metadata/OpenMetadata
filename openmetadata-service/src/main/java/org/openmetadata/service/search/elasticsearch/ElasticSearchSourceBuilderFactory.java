@@ -268,9 +268,7 @@ public class ElasticSearchSourceBuilderFactory
 
   private ElasticSearchRequestBuilder addAggregationV2(
       ElasticSearchRequestBuilder searchRequestBuilder) {
-    searchSettings
-        .getGlobalSettings()
-        .getAggregations()
+    listOrEmpty(searchSettings.getGlobalSettings().getAggregations())
         .forEach(
             agg -> {
               es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation termsAgg;

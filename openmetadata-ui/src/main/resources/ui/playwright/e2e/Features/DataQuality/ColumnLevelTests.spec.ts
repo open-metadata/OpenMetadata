@@ -18,13 +18,13 @@ import {
   descriptionBox,
   redirectToHomePage,
 } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   clickCreateTestCaseButton,
   clickEditTestCaseButton,
   clickUpdateButton,
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { deleteTestCase } from '../../../utils/testCases';
 
 // use the admin user to login

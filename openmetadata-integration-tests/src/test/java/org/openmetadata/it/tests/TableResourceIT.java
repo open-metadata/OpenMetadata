@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
@@ -14,12 +16,17 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -83,6 +90,8 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.DatabaseSchemas;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -114,6 +123,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   private DatabaseSchema lastCreatedSchema;
@@ -4768,6 +4778,312 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
   }
 
+  @Test
+  void testRegexListTable(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("custom_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("custom_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    DatabaseSchema schema2 =
+        DatabaseSchemas.create().name("new_schema").in(database.getFullyQualifiedName()).execute();
+    CreateTable createTable =
+        new CreateTable()
+            .withName("regex_listing")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(ColumnBuilder.of("code", "VARCHAR").dataLength(50).build()));
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("regex_listing_2")
+            .withDatabaseSchema(schema2.getFullyQualifiedName())
+            .withColumns(List.of(ColumnBuilder.of("code", "VARCHAR").dataLength(50).build()));
+    SdkClients.adminClient().tables().createOrUpdate(createTable);
+    SdkClients.adminClient().tables().createOrUpdate(createTable2);
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            "custom.*")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "List response should not be empty");
+    assertTrue(
+        tables.stream().allMatch(t -> t.getDatabaseSchema().getName().startsWith("custom")),
+        "All returned tables should have a schema name starting with 'custom'");
+  }
+
+  @Test
+  void testRegexListTable_tableRegex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("tbl_regex_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("tbl_regex_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("orders_us")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("orders_eu")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("customers")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "tableRegex",
+                            ".*orders.*")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "Should find tables matching orders regex");
+    assertTrue(
+        tables.stream().allMatch(t -> t.getName().contains("orders")),
+        "All returned tables should contain 'orders' in name");
+  }
+
+  @Test
+  void testRegexListTable_noMatch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("nomatch_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("nomatch_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("my_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            ".*nonexistent.*")));
+    assertTrue(response.getData().isEmpty(), "No tables should match a nonexistent schema regex");
+  }
+
+  @Test
+  void testRegexListTable_combinedSchemaAndTableRegex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("combo_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema prodSchema =
+        DatabaseSchemas.create().name("prod_schema").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchema devSchema =
+        DatabaseSchemas.create().name("dev_schema").in(database.getFullyQualifiedName()).execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("users_active")
+                .withDatabaseSchema(prodSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("users_inactive")
+                .withDatabaseSchema(prodSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("users_active")
+                .withDatabaseSchema(devSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            ".*prod.*",
+                            "tableRegex",
+                            ".*active$")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "Should find tables matching both schema and table regex");
+    assertTrue(
+        tables.stream().allMatch(t -> t.getDatabaseSchema().getName().contains("prod")),
+        "All returned tables should be in a prod schema");
+    assertTrue(
+        tables.stream().allMatch(t -> t.getName().endsWith("active")),
+        "All returned tables should end with 'active'");
+  }
+
+  @Test
+  void testRegexListTable_regexOnlyNoExactFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("regexonly_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("regexonly_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("target_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(Map.of("databaseSchemaRegex", ".*regexonly_schema")));
+    assertFalse(
+        response.getData().isEmpty(), "Should find tables using regex without exact filter");
+    assertTrue(
+        response.getData().stream()
+            .allMatch(t -> t.getDatabaseSchema().getName().equals("regexonly_schema")),
+        "All returned tables should be in regexonly_schema");
+  }
+
+  @Test
+  void testRegexListTable_excludeMode(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("exclude_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("exclude_schema")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("keep_this")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("remove_this")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "tableRegex",
+                            "remove.*",
+                            "regexMode",
+                            "exclude")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "Should return tables not matching the exclude regex");
+    assertTrue(
+        tables.stream().noneMatch(t -> t.getName().startsWith("remove")),
+        "Excluded tables should not appear in results");
+  }
+
+  @Test
+  void testRegexListTable_excludeSchemaRegex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("excl_schema_db").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema keepSchema =
+        DatabaseSchemas.create().name("prod_schema").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchema excludeSchema =
+        DatabaseSchemas.create().name("temp_schema").in(database.getFullyQualifiedName()).execute();
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("prod_table")
+                .withDatabaseSchema(keepSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    client
+        .tables()
+        .createOrUpdate(
+            new CreateTable()
+                .withName("temp_table")
+                .withDatabaseSchema(excludeSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setQueryParams(
+                        Map.of(
+                            "database",
+                            database.getFullyQualifiedName(),
+                            "databaseSchemaRegex",
+                            "temp.*",
+                            "regexMode",
+                            "exclude")));
+    List<Table> tables = response.getData();
+    assertFalse(tables.isEmpty(), "Should return tables not in excluded schemas");
+    assertTrue(
+        tables.stream().noneMatch(t -> t.getDatabaseSchema().getName().startsWith("temp")),
+        "Tables in temp_schema should not appear in results");
+  }
+
   // ===================================================================
   // CSV IMPORT/EXPORT SUPPORT
   // ===================================================================
@@ -4920,6 +5236,53 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
   }
 
+  /**
+   * Issue #18246: When a table is recreated with a new column in the middle, the PUT (ingestion
+   * re-run) should preserve the actual column order from the source database.
+   */
+  @Test
+  void put_columnOrderPreservedWhenNewColumnAddedInMiddle(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Step 1: Create table with [id, name, created_at] (simulates first ingestion)
+    CreateTable createRequest = createRequest(ns.prefix("column_order_table"), ns);
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "INT").ordinalPosition(1).build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(100).ordinalPosition(2).build(),
+            ColumnBuilder.of("created_at", "TIMESTAMP").ordinalPosition(3).build()));
+    Table table = createEntity(createRequest);
+
+    assertEquals(3, table.getColumns().size());
+    assertEquals("id", table.getColumns().get(0).getName());
+    assertEquals("name", table.getColumns().get(1).getName());
+    assertEquals("created_at", table.getColumns().get(2).getName());
+
+    // Step 2: Simulate table recreation with new column in the middle:
+    // [id, name, name_2, created_at]
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "INT").ordinalPosition(1).build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(100).ordinalPosition(2).build(),
+            ColumnBuilder.of("name_2", "VARCHAR").dataLength(10).ordinalPosition(3).build(),
+            ColumnBuilder.of("created_at", "TIMESTAMP").ordinalPosition(4).build()));
+    Table updatedTable = client.tables().createOrUpdate(createRequest);
+
+    // Verify column order matches the source database order
+    assertEquals(4, updatedTable.getColumns().size());
+    assertEquals("id", updatedTable.getColumns().get(0).getName(), "id should be at position 0");
+    assertEquals(
+        "name", updatedTable.getColumns().get(1).getName(), "name should be at position 1");
+    assertEquals(
+        "name_2",
+        updatedTable.getColumns().get(2).getName(),
+        "name_2 should be at position 2 (not appended at end)");
+    assertEquals(
+        "created_at",
+        updatedTable.getColumns().get(3).getName(),
+        "created_at should be at position 3");
+  }
+
   private void validateTableFieldsAfterImport(Table original, Table imported) {
     if (original.getDescription() != null) {
       assertEquals(
@@ -5010,6 +5373,313 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Override
   protected Table getVersion(UUID id, Double version) {
     return SdkClients.adminClient().tables().getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // SEARCH INDEX PROPAGATION TESTS
+  // ===================================================================
+
+  @Test
+  void test_ownerPropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    SharedEntities shared = SharedEntities.get();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("owner_prop_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("owner_prop_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("owner_prop_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
+    fetchedDb.setOwners(List.of(shared.USER1_REF));
+    client.databases().update(fetchedDb.getId().toString(), fetchedDb);
+
+    String tableId = table.getId().toString();
+    Awaitility.await("Table search index should reflect inherited owner from database")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Table should be in search index");
+
+              JsonNode source = findSourceById(hits, tableId);
+              assertNotNull(source, "Table document not found in search hits");
+
+              JsonNode owners = source.path("owners");
+              assertTrue(owners.isArray() && !owners.isEmpty(), "Owners should be propagated");
+              assertTrue(
+                  StreamSupport.stream(owners.spliterator(), false)
+                      .anyMatch(o -> shared.USER1.getId().toString().equals(o.path("id").asText())),
+                  "Owner should match the user set on the database");
+            });
+  }
+
+  @Test
+  void test_domainPropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("search_prop_domain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain for search propagation test"));
+
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
+            .withName(ns.prefix("domain_prop_svc"))
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createService);
+
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("domain_prop_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("domain_prop_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("domain_prop_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    String tableId = table.getId().toString();
+    String domainFqn = domain.getFullyQualifiedName();
+    Awaitility.await("Table search index should reflect inherited domain from service")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              JsonNode source = findSourceById(hits, tableId);
+              assertNotNull(source, "Table document not found");
+
+              Set<String> actualDomainFqns =
+                  StreamSupport.stream(source.path("domains").spliterator(), false)
+                      .map(d -> d.path("fullyQualifiedName").asText())
+                      .collect(Collectors.toSet());
+              assertTrue(
+                  actualDomainFqns.contains(domainFqn),
+                  "Table search index should contain domain '"
+                      + domainFqn
+                      + "', but got: "
+                      + actualDomainFqns);
+            });
+  }
+
+  @Test
+  void test_displayNamePropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
+            .withName(ns.prefix("dn_prop_svc"))
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withDisplayName("Original Display Name");
+    DatabaseService service = client.databaseServices().create(createService);
+
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("dn_prop_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("dn_prop_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("dn_prop_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    DatabaseService fetchedService = client.databaseServices().get(service.getId().toString(), "");
+    fetchedService.setDisplayName("Updated Display Name");
+    client.databaseServices().update(fetchedService.getId().toString(), fetchedService);
+
+    String tableId = table.getId().toString();
+    Awaitility.await(
+            "Table search index should reflect updated service displayName via nested field propagation")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              JsonNode source = findSourceById(hits, tableId);
+              assertNotNull(source, "Table document not found");
+
+              String serviceDisplayName = source.path("service").path("displayName").asText();
+              assertEquals(
+                  "Updated Display Name",
+                  serviceDisplayName,
+                  "Service displayName should be propagated to table search index");
+            });
+  }
+
+  @Test
+  void test_ownerRemovalPropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    SharedEntities shared = SharedEntities.get();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("owner_rm_db"))
+                    .withService(service.getFullyQualifiedName())
+                    .withOwners(List.of(shared.USER1_REF)));
+
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("owner_rm_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("owner_rm_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    String tableId = table.getId().toString();
+
+    Awaitility.await("Table search index should have inherited owner before removal")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode source = findSourceById(root.path("hits").path("hits"), tableId);
+              assertNotNull(source, "Table document not found");
+              assertTrue(
+                  source.path("owners").isArray() && !source.path("owners").isEmpty(),
+                  "Table should have inherited owner before removal");
+            });
+
+    Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
+    fetchedDb.setOwners(List.of());
+    client.databases().update(fetchedDb.getId().toString(), fetchedDb);
+
+    Awaitility.await("Table search index should reflect owner removal from database")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode source = findSourceById(root.path("hits").path("hits"), tableId);
+              assertNotNull(source, "Table document not found");
+              JsonNode owners = source.path("owners");
+              assertTrue(
+                  owners.isMissingNode() || owners.isEmpty(),
+                  "Owners should be removed from table search index after removal from database");
+            });
+  }
+
+  private JsonNode findSourceById(JsonNode hits, String entityId) {
+    if (hits == null || !hits.isArray()) return null;
+    for (JsonNode hit : hits) {
+      JsonNode source = hit.path("_source");
+      if (entityId.equals(hit.path("_id").asText())
+          || entityId.equals(source.path("id").asText())) {
+        return source;
+      }
+    }
+    return null;
   }
 
   // ===================================================================

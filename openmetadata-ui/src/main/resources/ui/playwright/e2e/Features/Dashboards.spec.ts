@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import {
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-} from '../../constant/config';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -200,7 +197,7 @@ test.describe(
   }
 );
 
-test.describe('Data Model', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Data Model', () => {
   test('expand / collapse should not appear after updating nested fields for dashboardDataModels', async ({
     page,
   }) => {

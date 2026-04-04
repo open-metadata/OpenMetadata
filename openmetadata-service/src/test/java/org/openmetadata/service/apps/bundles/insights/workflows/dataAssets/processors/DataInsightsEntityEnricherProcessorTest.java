@@ -26,7 +26,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -332,11 +331,6 @@ class DataInsightsEntityEnricherProcessorTest {
     }
 
     @Override
-    public List<TagLabel> getTags() {
-      return null;
-    }
-
-    @Override
     public void setId(UUID id) {}
 
     @Override
@@ -437,11 +431,6 @@ class DataInsightsEntityEnricherProcessorTest {
     @Override
     public String getFullyQualifiedName() {
       return fqn;
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
     }
 
     @Override

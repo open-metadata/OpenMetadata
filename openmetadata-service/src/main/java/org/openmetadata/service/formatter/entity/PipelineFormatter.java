@@ -20,6 +20,7 @@ import java.util.Date;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -48,8 +49,12 @@ public class PipelineFormatter implements EntityFormatter {
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     String pipelineName = entity.getName();
-    PipelineStatus status =
-        JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
+    PipelineStatus status = null;
+    try {
+      status = JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
+    } catch (JsonParsingException ignored) {
+      // Malformed historical payloads should still emit a generic update message.
+    }
     if (status != null) {
       String date =
           new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getTimestamp()));

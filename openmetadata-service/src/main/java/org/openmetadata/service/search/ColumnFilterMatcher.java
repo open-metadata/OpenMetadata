@@ -138,6 +138,9 @@ public class ColumnFilterMatcher {
       if (parts.length == 2) {
         String filterType = parts[0].trim().toLowerCase();
         String filterValue = parts[1].trim();
+        if (nullOrEmpty(filterType) || nullOrEmpty(filterValue)) {
+          return null;
+        }
 
         return new FilterCriteria(filterType, filterValue);
       }
@@ -253,7 +256,7 @@ public class ColumnFilterMatcher {
     }
 
     for (String fromCol : colLineage.getFromColumns()) {
-      if (fromCol != null && matchesColumnName(fromCol, filterValue)) {
+      if (matchesColumnName(fromCol, filterValue)) {
         return true;
       }
     }
@@ -266,7 +269,7 @@ public class ColumnFilterMatcher {
    */
   private static boolean matchesToColumn(ColumnLineage colLineage, String filterValue) {
     String toCol = colLineage.getToColumn();
-    return toCol != null && matchesColumnName(toCol, filterValue);
+    return matchesColumnName(toCol, filterValue);
   }
 
   /**

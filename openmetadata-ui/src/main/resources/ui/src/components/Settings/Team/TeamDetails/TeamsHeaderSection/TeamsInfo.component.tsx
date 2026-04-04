@@ -15,8 +15,8 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { useTheme } from '@mui/material';
-import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Divider, Form, Input, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -61,7 +61,6 @@ const TeamsInfo = ({
   isTeamDeleted,
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -176,9 +175,9 @@ const TeamsInfo = ({
     () => (
       <Space align="start" className="d-flex flex-col gap-2">
         <div className="d-flex gap-1">
-          <Typography.Text className="text-sm font-medium teams-info-heading">{`${t(
+          <Typography className="tw:text-brand-700" weight="medium">{`${t(
             'label.email'
-          )}`}</Typography.Text>
+          )}`}</Typography>
           {hasEditPermission && (
             <Tooltip
               title={t('label.edit-entity', {
@@ -257,11 +256,12 @@ const TeamsInfo = ({
           </Form>
         ) : (
           <Space align="center">
-            <Typography.Text
-              className="font-medium text-sm teams-info-value"
-              data-testid="email-value">
+            <Typography
+              className="tw:text-gray-700"
+              data-testid="email-value"
+              weight="medium">
               {email ?? NO_DATA_PLACEHOLDER}
-            </Typography.Text>
+            </Typography>
           </Space>
         )}
       </Space>
@@ -279,9 +279,9 @@ const TeamsInfo = ({
         <Divider className="vertical-divider" type="vertical" />
         <Space align="start" className="d-flex flex-col gap-2">
           <div className="d-flex  gap-2">
-            <Typography.Text className="text-sm font-medium teams-info-heading ">
+            <Typography className="tw:text-brand-700" weight="medium">
               {`${t('label.type')}`}
-            </Typography.Text>
+            </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
               <Tooltip
                 title={t('label.edit-entity', {
@@ -320,9 +320,12 @@ const TeamsInfo = ({
               updateTeamType={hasEditPermission ? updateTeamType : undefined}
             />
           ) : (
-            <Typography.Text className="font-medium" data-testid="team-type">
+            <Typography
+              className="tw:text-gray-700"
+              data-testid="team-type"
+              weight="medium">
               {teamType}
-            </Typography.Text>
+            </Typography>
           )}
         </Space>
       </>
@@ -348,9 +351,9 @@ const TeamsInfo = ({
         <Divider className="vertical-divider" type="vertical" />
         <Space align="start" className="d-flex flex-col gap-2">
           <div className="d-flex gap-2">
-            <Typography.Text className="text-sm font-medium teams-info-heading">
+            <Typography className="tw:text-brand-700" weight="medium">
               {t('label.persona')}
-            </Typography.Text>
+            </Typography>
             <PersonaSelectableList
               isDefaultPersona
               hasPermission={hasEditPermission}
@@ -372,11 +375,9 @@ const TeamsInfo = ({
                 {getEntityName(currentTeam.defaultPersona)}
               </Link>
             ) : (
-              <Typography.Text
-                className="text-sm font-medium"
-                color={theme.palette.grey['700']}>
+              <Typography className="tw:text-gray-700" weight="medium">
                 {t('message.no-persona-assigned')}
-              </Typography.Text>
+              </Typography>
             )}
           </div>
         </Space>
@@ -431,7 +432,9 @@ const TeamsInfo = ({
       <Divider className="vertical-divider" type="vertical" />
 
       <Space align="start" className="d-flex flex-col gap-2">
-        <Typography.Text className="teams-info-heading text-sm font-medium d-flex items-center">
+        <Typography
+          className="tw:text-brand-700 tw:flex tw:items-center"
+          weight="medium">
           {t('label.total-user-plural')}
           <Tooltip
             destroyTooltipOnHide
@@ -442,13 +445,14 @@ const TeamsInfo = ({
               style={{ color: GRAYED_OUT_COLOR }}
             />
           </Tooltip>
-        </Typography.Text>
+        </Typography>
 
-        <Typography.Text
-          className="teams-info-value text-sm font-medium text-secondary-new"
-          data-testid="team-user-count">
+        <Typography
+          className="tw:text-gray-700"
+          data-testid="team-user-count"
+          weight="medium">
           {currentTeam.userCount}
-        </Typography.Text>
+        </Typography>
       </Space>
     </Space>
   );

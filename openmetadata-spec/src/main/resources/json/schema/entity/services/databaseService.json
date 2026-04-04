@@ -23,6 +23,7 @@
         "Postgres",
         "Timescale",
         "Mssql",
+        "MicrosoftAccess",
         "Oracle",
         "Athena",
         "Hive",
@@ -57,7 +58,6 @@
         "StarRocks",
         "UnityCatalog",
         "SAS",
-        "Iceberg",
         "Teradata",
         "SapErp",
         "Synapse",
@@ -95,6 +95,9 @@
         },
         {
           "name": "Mssql"
+        },
+        {
+          "name": "MicrosoftAccess"
         },
         {
           "name": "Oracle"
@@ -199,9 +202,6 @@
           "name": "SAS"
         },
         {
-          "name": "Iceberg"
-        },
-        {
           "name": "Teradata"
         },
         {
@@ -295,6 +295,9 @@
               "$ref": "./connections/database/mssqlConnection.json"
             },
             {
+              "$ref": "./connections/database/microsoftAccessConnection.json"
+            },
+            {
               "$ref": "./connections/database/mysqlConnection.json"
             },
             {
@@ -368,9 +371,6 @@
             },
             {
               "$ref": "./connections/database/sasConnection.json"
-            },
-            {
-              "$ref": "./connections/database/icebergConnection.json"
             },
             {
               "$ref": "./connections/database/teradataConnection.json"
@@ -506,6 +506,10 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "domains" : {
       "description": "Domains the Database service belongs to.",

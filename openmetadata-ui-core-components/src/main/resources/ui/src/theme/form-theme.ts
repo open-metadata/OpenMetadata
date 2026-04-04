@@ -254,7 +254,7 @@ export const formTheme = (colors: ThemeColors) => ({
         '&.Mui-disabled': {
           cursor: 'not-allowed',
           color: colors.gray[300],
-          
+
           '&.Mui-checked': {
             color: colors.gray[200],
           },

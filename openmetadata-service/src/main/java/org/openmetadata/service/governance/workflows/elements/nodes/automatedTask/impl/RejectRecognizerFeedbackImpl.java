@@ -38,7 +38,7 @@ public class RejectRecognizerFeedbackImpl implements JavaDelegate {
                   inputNamespaceMap.get(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
 
-      String updatedByNamespace = (String) inputNamespaceMap.get(UPDATED_BY_VARIABLE);
+      String updatedByNamespace = inputNamespaceMap.get(UPDATED_BY_VARIABLE);
       String reviewedBy = "governance-bot";
       if (updatedByNamespace != null) {
         String actualUser =

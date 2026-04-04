@@ -210,9 +210,7 @@ public class SuggestionRepository {
     for (TagLabel tag : existingTags) {
       if (TagLabelUtil.mutuallyExclusive(tag)
           && incomingClassification.contains(FullyQualifiedName.getParentFQN(tag.getTagFQN()))) {
-        LOG.debug(
-            String.format(
-                "Incoming tags are mutually exclusive with existing tag [%s]", tag.getTagFQN()));
+        LOG.debug("Incoming tags are mutually exclusive with existing tag [{}]", tag.getTagFQN());
       } else {
         tags.add(tag);
       }

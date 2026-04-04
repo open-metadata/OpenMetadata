@@ -20,6 +20,7 @@ import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -27,6 +28,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
+  testClientSidePaginationNavigation,
   testCompletePaginationWithSearch,
   testPaginationNavigation,
   uuid,
@@ -117,7 +119,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       page,
     }) => {
       await page.goto(`/databaseSchema/${schemaFqn}?pageSize=15`);
-      await testPaginationNavigation(page, '/api/v1/tables', 'table');
+      await testPaginationNavigation(
+        page,
+        '/api/v1/tables',
+        '[data-testid="databaseSchema-tables"]'
+      );
     });
 
     test('should test Database Schema Tables complete flow with search', async ({
@@ -132,7 +138,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         searchApiPattern: '/api/v1/search/query',
         searchTestTerm: 'pw',
         searchParamName: 'schema',
-        waitForLoadSelector: 'table',
+        waitForLoadSelector: '[data-testid="databaseSchema-tables"]',
       });
     });
   });
@@ -231,7 +237,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       page,
     }) => {
       await page.goto(`/service/databaseServices/${databaseFqn}/databases`);
-      await testPaginationNavigation(page, '/api/v1/databases', 'table');
+      await testPaginationNavigation(
+        page,
+        '/api/v1/databases',
+        '[data-testid="service-children-table"]'
+      );
 
       const responsePromise = page.waitForResponse((response) =>
         response
@@ -276,7 +286,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         searchApiPattern: '/api/v1/search/query',
         searchTestTerm: 'pw',
         searchParamName: 'schema',
-        waitForLoadSelector: 'table',
+        waitForLoadSelector: '[data-testid="service-children-table"]',
       });
     });
   });
@@ -449,7 +459,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     test('should test API Collection normal pagination', async ({ page }) => {
       await page.goto(`/apiCollection/${apiCollectionFqn}?pageSize=15`);
-      await testPaginationNavigation(page, '/api/v1/apiEndpoints', 'table');
+      await testPaginationNavigation(
+        page,
+        '/api/v1/apiEndpoints',
+        '[data-testid="databaseSchema-tables"]'
+      );
     });
 
     test('should test API Collection complete flow with search', async ({
@@ -463,7 +477,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         normalApiPattern: '/api/v1/apiEndpoints',
         searchApiPattern: '/api/v1/search/query',
         searchTestTerm: 'pw',
-        waitForLoadSelector: 'table',
+        waitForLoadSelector: '[data-testid="databaseSchema-tables"]',
       });
     });
   });
@@ -506,7 +520,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.goto(
         `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`
       );
-      await testPaginationNavigation(page, '/api/v1/storedProcedures', 'table');
+      await testPaginationNavigation(
+        page,
+        '/api/v1/storedProcedures',
+        '[data-testid="stored-procedure-table"]'
+      );
       const responsePromise = page.waitForResponse((response) =>
         response.url().includes('/api/v1/tables')
       );
@@ -535,7 +553,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         searchApiPattern: '/api/v1/search/query',
         searchTestTerm: 'pw',
         searchParamName: 'schema',
-        waitForLoadSelector: 'table',
+        waitForLoadSelector: '[data-testid="stored-procedure-table"]',
         deleteBtnTestId: 'show-deleted-stored-procedure',
       });
     });
@@ -572,7 +590,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     test('should test Database Schemas normal pagination', async ({ page }) => {
       await page.goto(`/database/${databaseFqn}?pageSize=15`);
-      await testPaginationNavigation(page, '/api/v1/databaseSchemas', 'table');
+      await testPaginationNavigation(
+        page,
+        '/api/v1/databaseSchemas',
+        '[data-testid="database-databaseSchemas"]'
+      );
     });
 
     test('should test Database Schemas complete flow with search', async ({
@@ -587,7 +609,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         searchApiPattern: '/api/v1/search/query',
         searchTestTerm: 'pw',
         searchParamName: 'schema',
-        waitForLoadSelector: 'table',
+        waitForLoadSelector: '[data-testid="database-databaseSchemas"]',
       });
     });
   });
@@ -638,7 +660,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await testPaginationNavigation(
         page,
         '/api/v1/dashboard/datamodels',
-        'table'
+        '[data-testid="data-models-table"]'
       );
       const responsePromise = page.waitForResponse((response) =>
         response.url().includes('/api/v1/dashboard/datamodels')
@@ -668,7 +690,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         searchApiPattern: '/api/v1/search/query',
         searchTestTerm: 'pw',
         searchParamName: 'dataModel',
-        waitForLoadSelector: 'table',
+        waitForLoadSelector: '[data-testid="data-models-table"]',
       });
     });
   });
@@ -709,7 +731,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await testPaginationNavigation(
         page,
         '/api/v1/drives/directories',
-        'table'
+        '[data-testid="service-children-table"]'
       );
     });
 
@@ -725,7 +747,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         searchApiPattern: '/api/v1/search/query',
         searchTestTerm: 'pw',
         searchParamName: 'schema',
-        waitForLoadSelector: 'table',
+        waitForLoadSelector: '[data-testid="service-children-table"]',
       });
     });
   });
@@ -1020,6 +1042,61 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test pagination on Bots page', async ({ page }) => {
       await page.goto('/settings/bots?pageSize=15');
       await testPaginationNavigation(page, '/api/v1/bots', 'table');
+    });
+  });
+
+  test.describe('Pipeline Tasks page pagination', () => {
+    const pipeline = new PipelineClass();
+    let pipelineFqn: string;
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      const tasks = [];
+      for (let i = 1; i <= 20; i++) {
+        tasks.push({
+          name: `pw_task_${uuid()}_${i}`,
+          displayName: `PW Task ${i}`,
+        });
+      }
+
+      pipeline.entity.tasks = tasks;
+      await pipeline.create(apiContext);
+      pipelineFqn = pipeline.entityResponseData.fullyQualifiedName;
+
+      await afterAction();
+    });
+
+    test('should test Pipeline Tasks normal pagination', async ({ page }) => {
+      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
+      await testClientSidePaginationNavigation(
+        page,
+        '[data-testid="task-table"]'
+      );
+    });
+
+    test('should display at most pageSize rows on each page and total matches task count', async ({
+      page,
+    }) => {
+      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
+      await page.locator('[data-testid="task-table"]').waitFor({
+        state: 'visible',
+      });
+      await waitForAllLoadersToDisappear(page);
+
+      const page1RowCount = await page
+        .locator('tbody > tr[data-row-key]:visible')
+        .count();
+      expect(page1RowCount).toBeLessThanOrEqual(15);
+
+      await page.getByTestId('next').click();
+      await waitForAllLoadersToDisappear(page);
+
+      const page2RowCount = await page
+        .locator('tbody > tr[data-row-key]:visible')
+        .count();
+      expect(page2RowCount).toBeLessThanOrEqual(15);
+      expect(page1RowCount + page2RowCount).toBe(20);
     });
   });
 

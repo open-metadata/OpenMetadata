@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@mui/material';
 import { Button, Col, Form, FormProps, Row, Space } from 'antd';
 import { omit } from 'lodash';
 import { useMemo } from 'react';
@@ -194,6 +193,7 @@ const AddDomainForm = ({
         id: 'root/glossaryTerms',
         type: FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI,
         props: {
+          'data-testid': 'glossary-terms',
           placeholder: t('label.select-field', {
             field: t('label.glossary-term-plural'),
           }),
@@ -375,13 +375,15 @@ const AddDomainForm = ({
       layout="vertical"
       onFinish={handleFormSubmit}>
       {/* Cover Image */}
-      {coverImageField && <Box sx={{ mb: 2 }}>{getField(coverImageField)}</Box>}
+      {coverImageField && (
+        <div className="tw:mb-2">{getField(coverImageField)}</div>
+      )}
 
       {/* Icon and Color row */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-        <Box>{getField(iconField)}</Box>
-        <Box sx={{ ml: 'auto' }}>{getField(colorField)}</Box>
-      </Box>
+      <div className="tw:flex tw:items-start tw:gap-2">
+        <div>{getField(iconField)}</div>
+        <div className="tw:ml-auto">{getField(colorField)}</div>
+      </div>
 
       {/* Name and Display Name row */}
       <Row gutter={16}>

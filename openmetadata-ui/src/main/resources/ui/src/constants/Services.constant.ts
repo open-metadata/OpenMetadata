@@ -45,7 +45,6 @@ import grafana from '../assets/img/service-icon-grafana.png';
 import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
-import iceberge from '../assets/img/service-icon-iceberg.png';
 import impala from '../assets/img/service-icon-impala.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import kinesis from '../assets/img/service-icon-kinesis.png';
@@ -108,6 +107,7 @@ import securitySafe from '../assets/svg/security-safe.svg';
 import googleDrive from '../assets/svg/service-icon-google-drive.svg';
 import hex from '../assets/svg/service-icon-hex.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
+import pubsub from '../assets/svg/service-icon-pubsub.svg';
 import sftp from '../assets/svg/service-icon-sftp.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
@@ -151,6 +151,7 @@ export const GLUE = glue;
 export const MARIADB = mariadb;
 export const VERTICA = vertica;
 export const KAFKA = kafka;
+export const PUBSUB = pubsub;
 export const REDPANDA = redpanda;
 export const SUPERSET = superset;
 export const SYNAPSE = synapse;
@@ -219,7 +220,6 @@ export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
 export const CUSTOM_SEARCH_DEFAULT = searchDefault;
-export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
 export const FLINK = flink;
 export const REST_SERVICE = restService;
@@ -464,6 +464,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.StarRocks,
   DriveServiceType.SFTP,
   DatabaseServiceType.Informix,
+  DatabaseServiceType.MicrosoftAccess,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

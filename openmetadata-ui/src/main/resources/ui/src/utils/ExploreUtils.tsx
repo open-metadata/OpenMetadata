@@ -363,7 +363,8 @@ export const getAggregationOptions = async (
   isIndependent: boolean,
   deleted = false,
   size = 10,
-  isNLPEnabled = false
+  isNLPEnabled = false,
+  queryText?: string
 ) => {
   return isIndependent
     ? postAggregateFieldOptions({
@@ -380,7 +381,8 @@ export const getAggregationOptions = async (
         filter,
         undefined,
         deleted,
-        isNLPEnabled
+        isNLPEnabled,
+        queryText
       );
 };
 

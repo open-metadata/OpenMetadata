@@ -186,63 +186,60 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "baseModel",
-          () -> {
-            recordChange("baseModel", original.getBaseModel(), updated.getBaseModel());
-          });
+          () -> recordChange("baseModel", original.getBaseModel(), updated.getBaseModel()));
       compareAndUpdate(
           "modelVersion",
-          () -> {
-            recordChange("modelVersion", original.getModelVersion(), updated.getModelVersion());
-          });
+          () ->
+              recordChange("modelVersion", original.getModelVersion(), updated.getModelVersion()));
       compareAndUpdate(
           "modelProvider",
-          () -> {
-            recordChange("modelProvider", original.getModelProvider(), updated.getModelProvider());
-          });
+          () ->
+              recordChange(
+                  "modelProvider", original.getModelProvider(), updated.getModelProvider()));
       compareAndUpdate(
           "modelSpecifications",
-          () -> {
-            recordChange(
-                "modelSpecifications",
-                original.getModelSpecifications(),
-                updated.getModelSpecifications(),
-                true);
-          });
+          () ->
+              recordChange(
+                  "modelSpecifications",
+                  original.getModelSpecifications(),
+                  updated.getModelSpecifications(),
+                  true));
       compareAndUpdate(
           "trainingMetadata",
-          () -> {
-            recordChange(
-                "trainingMetadata",
-                original.getTrainingMetadata(),
-                updated.getTrainingMetadata(),
-                true);
-          });
+          () ->
+              recordChange(
+                  "trainingMetadata",
+                  original.getTrainingMetadata(),
+                  updated.getTrainingMetadata(),
+                  true));
       compareAndUpdate(
           "modelEvaluation",
-          () -> {
-            recordChange(
-                "modelEvaluation",
-                original.getModelEvaluation(),
-                updated.getModelEvaluation(),
-                true);
-          });
+          () ->
+              recordChange(
+                  "modelEvaluation",
+                  original.getModelEvaluation(),
+                  updated.getModelEvaluation(),
+                  true));
       compareAndUpdate(
           "costMetrics",
-          () -> {
-            recordChange("costMetrics", original.getCostMetrics(), updated.getCostMetrics(), true);
-          });
+          () ->
+              recordChange(
+                  "costMetrics", original.getCostMetrics(), updated.getCostMetrics(), true));
       compareAndUpdate(
           "deploymentInfo",
-          () -> {
-            recordChange(
-                "deploymentInfo", original.getDeploymentInfo(), updated.getDeploymentInfo(), true);
-          });
+          () ->
+              recordChange(
+                  "deploymentInfo",
+                  original.getDeploymentInfo(),
+                  updated.getDeploymentInfo(),
+                  true));
       compareAndUpdate(
           "governanceStatus",
-          () -> {
-            recordChange(
-                "governanceStatus", original.getGovernanceStatus(), updated.getGovernanceStatus());
-          });
+          () ->
+              recordChange(
+                  "governanceStatus",
+                  original.getGovernanceStatus(),
+                  updated.getGovernanceStatus()));
     }
   }
 }

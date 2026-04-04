@@ -45,6 +45,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================

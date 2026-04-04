@@ -322,6 +322,17 @@ export const getGlossaryTermAssets = async (
   return response.data;
 };
 
+export const getGlossaryTermsAssetCounts = async (
+  parent?: string
+): Promise<Record<string, number>> => {
+  const response = await APIClient.get<Record<string, number>>(
+    '/glossaryTerms/assets/counts',
+    { params: parent ? { parent } : undefined }
+  );
+
+  return response.data;
+};
+
 export const searchGlossaryTerms = async (search: string, page = 1) => {
   const apiUrl = `/search/query?q=${search ?? ''}`;
 
