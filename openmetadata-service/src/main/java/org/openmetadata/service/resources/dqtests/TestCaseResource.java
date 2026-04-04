@@ -1591,7 +1591,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   private void authorizeOptionalLogicalTestSuites(
       CreateTestCase create, SecurityContext securityContext) {
-    if (nullOrEmpty(create.getTestSuites())) return;
+    if (create.getTestSuites() == null || create.getTestSuites().isEmpty()) return;
 
     for (EntityReference suiteReference : create.getTestSuites()) {
       if (nullOrEmpty(suiteReference) || nullOrEmpty(suiteReference.getId())) {

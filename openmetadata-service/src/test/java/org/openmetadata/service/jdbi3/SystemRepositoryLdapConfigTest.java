@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.auth.LdapConfiguration;
@@ -69,8 +68,6 @@ public class SystemRepositoryLdapConfigTest {
 
     assertNotNull(ldapConfig.getAuthRolesMapping());
     assertEquals("", ldapConfig.getAuthRolesMapping());
-
-    assertFalse(Boolean.TRUE.equals(ldapConfig.getRecursiveGroupMembership()));
   }
 
   @Test
@@ -89,7 +86,6 @@ public class SystemRepositoryLdapConfigTest {
     assertEquals("", ldapConfig.getGroupBaseDN());
     assertEquals("", ldapConfig.getAllAttributeName());
     assertEquals("", ldapConfig.getAuthRolesMapping());
-    assertFalse(Boolean.TRUE.equals(ldapConfig.getRecursiveGroupMembership()));
   }
 
   @Test
@@ -147,6 +143,5 @@ public class SystemRepositoryLdapConfigTest {
     assertEquals("", ldapConfig.getRoleAdminName());
     assertEquals("", ldapConfig.getAllAttributeName());
     assertEquals("", ldapConfig.getAuthRolesMapping());
-    assertFalse(Boolean.TRUE.equals(ldapConfig.getRecursiveGroupMembership()));
   }
 }

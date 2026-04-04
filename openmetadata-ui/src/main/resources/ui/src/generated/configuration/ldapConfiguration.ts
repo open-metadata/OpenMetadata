@@ -71,11 +71,6 @@ export interface LDAPConfiguration {
      */
     port: number;
     /**
-     * Enable transitive group membership resolution for Active Directory nested groups using
-     * LDAP_MATCHING_RULE_IN_CHAIN.
-     */
-    recursiveGroupMembership?: boolean;
-    /**
      * Admin role name
      */
     roleAdminName?: string;
