@@ -61,6 +61,13 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     // No relationships to store beyond what is stored in the super class
   }
 
+  @Override
+  protected void entitySpecificCleanup(WebAnalyticEvent entity) {
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .delete(entity.getFullyQualifiedName(), WEB_ANALYTICS_EVENT_DATA_EXTENSION);
+  }
+
   public Response addWebAnalyticEventData(WebAnalyticEventData webAnalyticEventData) {
     webAnalyticEventData.setEventId(UUID.randomUUID());
     storeTimeSeries(
