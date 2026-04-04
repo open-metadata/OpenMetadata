@@ -56,7 +56,7 @@ class OpenMetadataMetricsTest {
   }
 
   @Test
-  void prometheusScrapExposesDbConnectionsTotal() {
+  void prometheusScrapeExposesDbConnectionsTotal() {
     PrometheusMeterRegistry promRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
 
     AtomicInteger activeConnections = new AtomicInteger(3);
