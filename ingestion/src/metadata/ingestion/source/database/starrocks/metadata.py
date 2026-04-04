@@ -41,6 +41,7 @@ from metadata.ingestion.source.database.starrocks.queries import (
     STARROCKS_GET_TABLE_NAMES,
     STARROCKS_PARTITION_DETAILS,
     STARROCKS_SHOW_FULL_COLUMNS,
+    STARROCKS_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
@@ -269,26 +270,24 @@ class StarRocksSource(CommonDbSourceService):
 
         return tables
 
-    @staticmethod
+    # pylint: disable=arguments-differ
     def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
+        self, schema_name: str, table_name: str, inspector: Inspector
     ) -> Optional[str]:
-        description = None
         try:
-            table_info: dict = inspector.get_table_comment(table_name, schema_name)
+            result = self.connection.execute(
+                sql.text(STARROCKS_TABLE_COMMENTS),
+                {"schema": schema_name, "table_name": table_name},
+            )
+            row = result.first()
+            if row:
+                return row[0] or None
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
-        else:
-            description = table_info.get("text")
-
-        if description is None:
-            return None
-        if isinstance(description, (list, tuple)) and len(description) > 0:
-            return description[0]
-        return description
+        return None
 
     def _get_columns(self, table_name, schema=None):
         """Get column information and primary key columns of the specified table"""

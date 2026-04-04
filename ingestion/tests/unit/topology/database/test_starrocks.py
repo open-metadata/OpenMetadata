@@ -14,7 +14,7 @@ Test StarRocks using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -135,3 +135,80 @@ class TestStarRocksIcebergMapping(TestCase):
         from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
 
         assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
+
+
+class TestStarRocksGetTableDescription(TestCase):
+    """Tests for get_table_description querying INFORMATION_SCHEMA directly (fixes #26692)"""
+
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+    )
+    def setUp(self, test_connection):
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_starrocks_config)
+        self.source = StarRocksSource.create(
+            mock_starrocks_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_returns_table_comment(self, mock_connection):
+        mock_result = MagicMock()
+        mock_result.first.return_value = ("审计日志表",)
+        mock_connection.execute.return_value = mock_result
+        self.source.connection = mock_connection
+
+        description = self.source.get_table_description(
+            schema_name="test_db",
+            table_name="audit_tbl",
+            inspector=MagicMock(),
+        )
+        assert description == "审计日志表"
+
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_returns_none_for_empty_comment(self, mock_connection):
+        mock_result = MagicMock()
+        mock_result.first.return_value = ("",)
+        mock_connection.execute.return_value = mock_result
+        self.source.connection = mock_connection
+
+        description = self.source.get_table_description(
+            schema_name="test_db",
+            table_name="no_comment_tbl",
+            inspector=MagicMock(),
+        )
+        assert description is None
+
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_returns_none_when_no_row(self, mock_connection):
+        mock_result = MagicMock()
+        mock_result.first.return_value = None
+        mock_connection.execute.return_value = mock_result
+        self.source.connection = mock_connection
+
+        description = self.source.get_table_description(
+            schema_name="test_db",
+            table_name="missing_tbl",
+            inspector=MagicMock(),
+        )
+        assert description is None
+
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_returns_none_on_exception(self, mock_connection):
+        mock_connection.execute.side_effect = Exception("connection error")
+        self.source.connection = mock_connection
+
+        description = self.source.get_table_description(
+            schema_name="test_db",
+            table_name="error_tbl",
+            inspector=MagicMock(),
+        )
+        assert description is None
