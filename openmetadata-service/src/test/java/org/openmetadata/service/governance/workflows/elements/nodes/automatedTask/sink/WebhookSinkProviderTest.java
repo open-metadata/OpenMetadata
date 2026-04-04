@@ -147,6 +147,30 @@ class WebhookSinkProviderTest {
   }
 
   @Test
+  void testConfigWithQueryParams() {
+    Map<String, Object> config = createValidConfig();
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("key1", "value1");
+    queryParams.put("key2", "value2");
+    config.put("queryParams", queryParams);
+
+    WebhookSinkProvider provider = new WebhookSinkProvider(config);
+    provider.validate(config);
+    provider.close();
+  }
+
+  @Test
+  void testConfigWithNullQueryParams() {
+    Map<String, Object> config = createValidConfig();
+    config.put("queryParams", null);
+
+    WebhookSinkProvider provider = new WebhookSinkProvider(config);
+    // Should not throw when queryParams is null
+    provider.validate(config);
+    provider.close();
+  }
+
+  @Test
   void testClose() {
     Map<String, Object> config = createValidConfig();
     WebhookSinkProvider provider = new WebhookSinkProvider(config);

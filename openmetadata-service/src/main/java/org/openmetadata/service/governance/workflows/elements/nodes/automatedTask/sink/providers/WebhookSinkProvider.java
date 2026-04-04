@@ -38,6 +38,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkContext;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProvider;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkResult;
+import org.openmetadata.service.util.URLValidator;
 
 /**
  * Sink provider that sends entity data to HTTP webhook endpoints.
@@ -175,6 +176,9 @@ public class WebhookSinkProvider implements SinkProvider {
     if (webhookConfig.getEndpoint() == null || webhookConfig.getEndpoint().toString().isEmpty()) {
       throw new IllegalArgumentException("Webhook endpoint is required");
     }
+
+    // Validate URL to prevent SSRF attacks
+    URLValidator.validateURL(webhookConfig.getEndpoint().toString());
 
     // Validate authentication configuration
     Authentication auth = webhookConfig.getAuthentication();
