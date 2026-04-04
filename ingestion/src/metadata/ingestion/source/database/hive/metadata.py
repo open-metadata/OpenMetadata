@@ -98,19 +98,19 @@ class HiveSource(CommonDbSourceService):
         if not metastore_conn:
             return None
 
-        if isinstance(
-            metastore_conn,
-            (PostgresConnection, MysqlConnection, MssqlConnection, OracleConnection),
-        ):
+        # Supported metastore connection types
+        METASTORE_CONNECTION_TYPES = (
+            PostgresConnection,
+            MysqlConnection,
+            MssqlConnection,
+            OracleConnection,
+        )
+
+        if isinstance(metastore_conn, METASTORE_CONNECTION_TYPES):
             return metastore_conn
 
         if isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
-            for conn_cls in (
-                PostgresConnection,
-                MysqlConnection,
-                MssqlConnection,
-                OracleConnection,
-            ):
+            for conn_cls in METASTORE_CONNECTION_TYPES:
                 try:
                     return conn_cls.model_validate(metastore_conn)
                 except ValidationError:

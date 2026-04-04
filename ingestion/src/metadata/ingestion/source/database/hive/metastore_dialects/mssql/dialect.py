@@ -11,6 +11,7 @@
 """
 Hive Metastore MSSQL Dialect Mixin
 """
+
 from sqlalchemy import text
 from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
 from sqlalchemy.engine import reflection
@@ -41,7 +42,7 @@ class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect_pyodbc):
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
         schema_names = [
-            row[0] for row in connection.execute(text("SELECT NAME FROM DBS;"))
+            row[0] for row in connection.execute(text("SELECT NAME FROM DBS"))
         ]
         logger.debug(f"Fetched schema names: {schema_names}")
         return schema_names
