@@ -65,7 +65,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   protected void entitySpecificCleanup(WebAnalyticEvent entity) {
     daoCollection
         .entityExtensionTimeSeriesDao()
-        .delete(entity.getFullyQualifiedName(), WEB_ANALYTICS_EVENT_DATA_EXTENSION);
+        .delete(entity.getEventType().value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION);
   }
 
   public Response addWebAnalyticEventData(WebAnalyticEventData webAnalyticEventData) {
