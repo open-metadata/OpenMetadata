@@ -19,7 +19,7 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE
-from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.orm.registry import Dialects, is_complex_type
 
 
 class LenFn(FunctionElement):
@@ -28,6 +28,9 @@ class LenFn(FunctionElement):
 
 @compiles(LenFn)
 def _(element, compiler, **kw):
+    type_ = element.clauses.clauses[0].type
+    if is_complex_type(type_):
+        return "LEN(CAST(%s AS STRING))" % compiler.process(element.clauses, **kw)
     return "LEN(%s)" % compiler.process(element.clauses, **kw)
 
 
@@ -53,6 +56,9 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.Teradata)
 @compiles(LenFn, Dialects.Informix)
 def _(element, compiler, **kw):
+    type_ = element.clauses.clauses[0].type
+    if is_complex_type(type_):
+        return "LENGTH(CAST(%s AS STRING))" % compiler.process(element.clauses, **kw)
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 
 

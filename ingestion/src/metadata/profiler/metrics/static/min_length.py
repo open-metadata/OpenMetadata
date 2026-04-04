@@ -109,15 +109,19 @@ class MinLength(StaticMetric):
         # pylint: disable=import-outside-toplevel
         import pandas as pd
 
+        series = df[column.name].dropna()
+        if series.empty:
+            return current_min
+
         length_vectorize_func = vectorize(len)
         chunk_min = None
 
         if is_concatenable(column.type):
-            min_val = length_vectorize_func(df[column.name].dropna().astype(str)).min()
+            min_val = length_vectorize_func(series.astype(str)).min()
             if not pd.isnull(min_val):
-                chunk_min = min_val
+                chunk_min = int(min_val)
         elif is_complex_type(column.type):
-            min_val = df[column.name].dropna().astype(str).str.len().min()
+            min_val = length_vectorize_func(series.astype(str)).min()
             if not pd.isnull(min_val):
                 chunk_min = int(min_val)
 

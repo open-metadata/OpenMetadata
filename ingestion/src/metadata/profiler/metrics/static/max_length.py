@@ -109,15 +109,19 @@ class MaxLength(StaticMetric):
         # pylint: disable=import-outside-toplevel
         import pandas as pd
 
+        series = df[column.name].dropna()
+        if series.empty:
+            return current_max
+
         length_vectorize_func = vectorize(len)
         chunk_max = None
 
         if is_concatenable(column.type):
-            max_val = length_vectorize_func(df[column.name].dropna().astype(str)).max()
+            max_val = length_vectorize_func(series.astype(str)).max()
             if not pd.isnull(max_val):
-                chunk_max = max_val
+                chunk_max = int(max_val)
         elif is_complex_type(column.type):
-            max_val = df[column.name].dropna().astype(str).str.len().max()
+            max_val = length_vectorize_func(series.astype(str)).max()
             if not pd.isnull(max_val):
                 chunk_max = int(max_val)
 
