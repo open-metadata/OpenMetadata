@@ -17,6 +17,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -708,7 +709,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(testCaseOpContext, testCaseResourceContext));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     test = addHref(uriInfo, repository.create(uriInfo, test));
-    addTestCaseToNamedTestSuites(test, create.getTestSuiteNames());
+    addTestCaseToNamedTestSuites(test, create.getTestSuiteNames(), securityContext);
     return Response.created(test.getHref()).entity(test).build();
   }
 
@@ -865,7 +866,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
-    addTestCaseToNamedTestSuites(response.getEntity(), create.getTestSuiteNames());
+    addTestCaseToNamedTestSuites(response.getEntity(), create.getTestSuiteNames(), securityContext);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -1595,20 +1596,34 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return filter.getExcludeIds();
   }
 
-  private void addTestCaseToNamedTestSuites(TestCase testCase, List<String> testSuiteNames) {
+  private void addTestCaseToNamedTestSuites(
+      TestCase testCase, List<String> testSuiteNames, SecurityContext securityContext) {
     if (nullOrEmpty(testSuiteNames)) {
       return;
     }
+    // Validate all suites first before attaching any (atomicity)
+    List<TestSuite> validatedSuites = new ArrayList<>();
     for (String testSuiteName : testSuiteNames) {
-      TestSuite testSuite =
-          Entity.getEntityByName(
-              Entity.TEST_SUITE, testSuiteName, "domains,owners", Include.NON_DELETED);
+      TestSuite testSuite;
+      try {
+        testSuite =
+            Entity.getEntityByName(
+                Entity.TEST_SUITE, testSuiteName, "domains,owners", Include.NON_DELETED);
+      } catch (EntityNotFoundException e) {
+        throw new BadRequestException(
+            String.format("Test suite '%s' not found", testSuiteName));
+      }
       if (Boolean.TRUE.equals(testSuite.getBasic())) {
-        throw new IllegalArgumentException(
+        throw new BadRequestException(
             String.format(
                 "Test suite '%s' is a basic test suite and cannot be used here.",
                 testSuiteName));
       }
+      validateTestSuiteOps(testSuite, securityContext);
+      validatedSuites.add(testSuite);
+    }
+    // Attach all validated suites
+    for (TestSuite testSuite : validatedSuites) {
       repository.addTestCasesToLogicalTestSuite(testSuite, List.of(testCase.getId()));
     }
   }
