@@ -19,3 +19,4 @@ export interface NotificationBoxProp {
   onMarkTaskNotificationRead: () => void;
   onTabChange: (key: string) => void;
 }
+
