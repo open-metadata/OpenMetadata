@@ -50,7 +50,7 @@ public class OpenMetadataMetrics {
             .sla(LATENCY_SLA_BUCKETS)
             .register(meterRegistry);
 
-    Gauge.builder("db.connections", () -> poolTotalConnections())
+    Gauge.builder("db.connections.total", () -> poolTotalConnections())
         .description("Total connections in the database connection pool")
         .register(meterRegistry);
 
