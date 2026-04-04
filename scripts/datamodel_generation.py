@@ -46,7 +46,7 @@ args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schem
 main(args)
 
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8, errors="ignore") as file_:
+    with open(file_path, "r", encoding=UTF_8, errors="replace") as file_:
         content = file_.read()
         # Python now requires to move the global flags at the very start of the expression
         content = content.replace("(?U)", "(?u)")
@@ -59,7 +59,7 @@ MISSING_IMPORTS = [f"{ingestion_path}src/metadata/generated/schema/entity/applic
 WRITE_AFTER = "from __future__ import annotations"
 
 for file_path in MISSING_IMPORTS:
-    with open(file_path, "r", encoding=UTF_8, errors="ignore") as file_:
+    with open(file_path, "r", encoding=UTF_8, errors="replace") as file_:
         lines = file_.readlines()
     with open(file_path, "w", encoding=UTF_8) as file_:
         for line in lines:
@@ -78,7 +78,7 @@ UNSUPPORTED_REGEX_PATTERN_FILE_PATHS = [
 ]
 
 for file_path in UNSUPPORTED_REGEX_PATTERN_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8, errors="ignore") as file_:
+    with open(file_path, "r", encoding=UTF_8, errors="replace") as file_:
         content = file_.read()
         content = content.replace("pattern='^((?!::).)*$',", "")
     with open(file_path, "w", encoding=UTF_8) as file_:
@@ -91,7 +91,7 @@ DATETIME_AWARE_FILE_PATHS = [
 ]
 
 for file_path in DATETIME_AWARE_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8, errors="ignore") as file_:
+    with open(file_path, "r", encoding=UTF_8, errors="replace") as file_:
         content = file_.read()
         content = content.replace(
             "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
@@ -108,7 +108,7 @@ import glob
 # Final sanitization pass for Windows encoding issues
 print("Sanitizing all generated files to UTF-8...")
 for file_path in glob.iglob(f"{ingestion_path}src/metadata/generated/schema/**/*.py", recursive=True):
-    with open(file_path, "r", encoding=UTF_8, errors="ignore") as f:
+    with open(file_path, "r", encoding=UTF_8, errors="replace") as f:
         content = f.read()
     with open(file_path, "w", encoding=UTF_8) as f:
         f.write(content)

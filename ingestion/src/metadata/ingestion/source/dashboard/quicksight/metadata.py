@@ -604,7 +604,8 @@ class QuicksightSource(DashboardServiceSource):
                 if (
                     hasattr(src_col, "parent")
                     and src_col.parent
-                    and str(src_col.parent).lower() not in from_entity.name.root.lower()
+                    and str(src_col.parent).split(".")[-1].lower()
+                    != from_entity.name.root.lower()
                 ):
                     continue
 
