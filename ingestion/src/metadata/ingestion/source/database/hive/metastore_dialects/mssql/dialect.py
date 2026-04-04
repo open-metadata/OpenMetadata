@@ -31,7 +31,7 @@ logger = ingestion_logger()
 class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect_pyodbc):
     """
     MSSQL metastore dialect class for Hive metastore backed by SQL Server.
-    Uses square-bracket quoting compatible with MSSQL and supports CTEs.
+    Uses unquoted identifiers and supports CTEs.
     """
 
     name = "hive"
@@ -115,7 +115,7 @@ class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect_pyodbc):
                 tbls.VIEW_ORIGINAL_TEXT AS view_def
             FROM TBLS tbls
             JOIN DBS dbs ON tbls.DB_ID = dbs.DB_ID
-            WHERE tbls.VIEW_ORIGINAL_TEXT IS NOT NULL;
+            WHERE tbls.VIEW_ORIGINAL_TEXT IS NOT NULL
         """
         return get_view_definition_wrapper(
             self,

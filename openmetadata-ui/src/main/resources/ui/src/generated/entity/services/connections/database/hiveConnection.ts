@@ -13,7 +13,7 @@
 /**
  * Hive SQL Connection Config
  */
-export interface HiveConnection {
+export interface HiveConnectionNew {
     /**
      * Authentication mode to connect to hive.
      */
@@ -135,6 +135,10 @@ export interface FilterPattern {
  * Postgres Database Connection Config
  *
  * Mysql Database Connection Config
+ *
+ * Mssql Database Connection Config
+ *
+ * Oracle Database Connection Config
  */
 export interface HiveMetastoreConnectionDetails {
     /**
@@ -160,13 +164,18 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Host and port of the source service.
      *
-     * Host and port of the MySQL service. For GCP CloudSQL, use the instance connection name in
-     * the format 'project_id:region:instance_name'.
+     * Host and port of the MySQL service.
+     *
+     * Host and port of the MSSQL service.
+     *
+     * Host and port of the Oracle service.
      */
     hostPort?: string;
     /**
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
+     *
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -187,6 +196,9 @@ export interface HiveMetastoreConnectionDetails {
     scheme?: Scheme;
     /**
      * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
      */
     sslConfig?: Config;
     sslMode?:   SSLMode;
@@ -216,6 +228,12 @@ export interface HiveMetastoreConnectionDetails {
      *
      * Username to connect to MySQL. This user should have privileges to read all the metadata
      * in Mysql.
+     *
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     *
+     * Username to connect to Oracle. This user should have privileges to read all the metadata
+     * in Oracle.
      */
     username?: string;
     /**
@@ -233,6 +251,55 @@ export interface HiveMetastoreConnectionDetails {
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
+    /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
+     * Password to connect to MSSQL.
+     *
+     * Password to connect to Oracle.
+     */
+    password?: string;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
+    /**
+     * This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if
+     * you need to enable thick connection mode. By default, we bring instant client 19 and
+     * point to /instantclient.
+     */
+    instantClientDirectory?: string;
+    /**
+     * Connect with oracle by either passing service name or database schema name.
+     */
+    oracleConnectionType?: OracleConnectionType;
+    /**
+     * Controls how Oracle identifier names (tables, columns, schemas) are stored in
+     * OpenMetadata. When disabled (default), Oracle's UPPERCASE unquoted identifiers (e.g.
+     * EMPLOYEES) are not guaranteed to be stored as-is — identifiers with the same letters but
+     * different case (e.g. unquoted EMPLOYEES and quoted 'employees') will collide into the
+     * same name. When enabled, names are stored exactly as Oracle persists them, which solves
+     * same-name collisions between quoted and unquoted identifiers. WARNING: enabling this
+     * after data has already been ingested with the default setting will change the stored
+     * names of all existing tables, columns, schemas, and constraints — breaking attached tags,
+     * descriptions, lineage, data quality tests, and any other metadata associated with those
+     * entities. If you must switch, soft-delete all previously ingested entities before
+     * re-ingesting.
+     */
+    preserveIdentifierCase?: boolean;
+    /**
+     * Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA
+     * privileges.
+     */
+    useDBATable?: boolean;
 }
 
 /**
@@ -243,26 +310,14 @@ export interface HiveMetastoreConnectionDetails {
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
- *
- * GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.
  */
 export interface AuthConfigurationType {
     /**
      * Password to connect to source.
-     *
-     * Database user password. Leave empty if using IAM database authentication.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
-    /**
-     * Use GCP IAM for database authentication instead of a password.
-     */
-    enableIamAuth?: boolean;
-    /**
-     * GCP credentials to use. If not provided, Application Default Credentials will be used.
-     */
-    gcpConfig?: GCPCredentials;
 }
 
 /**
@@ -348,121 +403,25 @@ export interface AzureCredentials {
 }
 
 /**
- * GCP credentials to use. If not provided, Application Default Credentials will be used.
- *
- * GCP credentials configs.
+ * Connect with oracle by either passing service name or database schema name.
  */
-export interface GCPCredentials {
+export interface OracleConnectionType {
     /**
-     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
-     * Credentials Path
+     * databaseSchema of the data source. This is optional parameter, if you would like to
+     * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
+     * Ingestion attempts to scan all the databaseSchema.
      */
-    gcpConfig: GCPCredentialsConfiguration;
+    databaseSchema?: string;
     /**
-     * we enable the authenticated service account to impersonate another service account
+     * The Oracle Service name is the TNS alias that you give when you remotely connect to your
+     * database.
      */
-    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
-}
-
-/**
- * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
- * Credentials Path
- *
- * Pass the raw credential values provided by GCP
- *
- * Pass the path of file containing the GCP credentials info
- *
- * Use the application default credentials
- */
-export interface GCPCredentialsConfiguration {
+    oracleServiceName?: string;
     /**
-     * Google Cloud auth provider certificate.
+     * Pass the full constructed TNS string, e.g.,
+     * (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).
      */
-    authProviderX509CertUrl?: string;
-    /**
-     * Google Cloud auth uri.
-     */
-    authUri?: string;
-    /**
-     * Google Cloud email.
-     */
-    clientEmail?: string;
-    /**
-     * Google Cloud Client ID.
-     */
-    clientId?: string;
-    /**
-     * Google Cloud client certificate uri.
-     */
-    clientX509CertUrl?: string;
-    /**
-     * Google Cloud private key.
-     */
-    privateKey?: string;
-    /**
-     * Google Cloud private key id.
-     */
-    privateKeyId?: string;
-    /**
-     * Project ID
-     *
-     * GCP Project ID to parse metadata from
-     */
-    projectId?: string[] | string;
-    /**
-     * Google Cloud token uri.
-     */
-    tokenUri?: string;
-    /**
-     * Google Cloud Platform account type.
-     *
-     * Google Cloud Platform ADC ( Application Default Credentials )
-     */
-    type?: string;
-    /**
-     * Path of the file containing the GCP credentials info
-     */
-    path?: string;
-    /**
-     * Google Security Token Service audience which contains the resource name for the workload
-     * identity pool and the provider identifier in that pool.
-     */
-    audience?: string;
-    /**
-     * This object defines the mechanism used to retrieve the external credential from the local
-     * environment so that it can be exchanged for a GCP access token via the STS endpoint
-     */
-    credentialSource?: { [key: string]: string };
-    /**
-     * Google Cloud Platform account type.
-     */
-    externalType?: string;
-    /**
-     * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
-     * spec.
-     */
-    subjectTokenType?: string;
-    /**
-     * Google Security Token Service token exchange endpoint.
-     */
-    tokenURL?: string;
-    [property: string]: any;
-}
-
-/**
- * we enable the authenticated service account to impersonate another service account
- *
- * Pass the values to impersonate a service account of Google Cloud
- */
-export interface GCPImpersonateServiceAccountValues {
-    /**
-     * The impersonated service account email
-     */
-    impersonateServiceAccount?: string;
-    /**
-     * Number of seconds the delegated credential should be valid
-     */
-    lifetime?: number;
+    oracleTNSConnection?: string;
     [property: string]: any;
 }
 
@@ -554,7 +513,11 @@ export interface AwsCredentials {
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
+    OracleCxOracle = "oracle+cx_oracle",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     PostgresqlPsycopg2 = "postgresql+psycopg2",
 }
@@ -563,6 +526,9 @@ export enum Scheme {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -599,7 +565,9 @@ export enum SSLMode {
  * Service type.
  */
 export enum Type {
+    Mssql = "Mssql",
     Mysql = "Mysql",
+    Oracle = "Oracle",
     Postgres = "Postgres",
 }
 

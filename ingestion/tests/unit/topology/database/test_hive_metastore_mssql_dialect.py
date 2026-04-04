@@ -87,7 +87,7 @@ class TestHiveMssqlMetastoreDialectGetTableColumns:
         assert "PKEY_NAME" in executed_query
         assert "PKEY_TYPE" in executed_query
         assert "PKEY_COMMENT" in executed_query
-        assert executed_query.upper().count("SELECT") == 2
+        assert executed_query.upper().count("SELECT") == 4
 
     def test_get_table_columns_uses_unquoted_identifiers(self):
         """MSSQL dialect uses unquoted identifiers, not double-quoted like Postgres."""
