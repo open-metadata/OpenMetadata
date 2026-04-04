@@ -18,6 +18,7 @@ MIN_LENGTH Metric definition
 
 from typing import TYPE_CHECKING, Optional
 
+from numpy import vectorize
 from sqlalchemy import column, func
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
@@ -103,8 +104,6 @@ class MinLength(StaticMetric):
         """Computes one DataFrame chunk and updates the running minimum"""
         # pylint: disable=import-outside-toplevel
         import pandas as pd
-
-        from numpy import vectorize
 
         length_vectorize_func = vectorize(len)
         chunk_min = None
