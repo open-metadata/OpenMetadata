@@ -2,7 +2,7 @@ package org.openmetadata.service.security.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.unboundid.ldap.sdk.Filter;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ class LdapAuthenticatorTest {
     assertEquals("member", filter.getAttributeName());
     assertEquals("cn=john,ou=users,dc=example,dc=com", filter.getAssertionValue());
     assertFalse(filter.getDNAttributes());
-    assertTrue(filter.getMatchingRuleID() == null);
+    assertNull(filter.getMatchingRuleID());
   }
 
   @Test
