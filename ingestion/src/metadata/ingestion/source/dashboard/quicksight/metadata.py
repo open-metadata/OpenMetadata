@@ -726,3 +726,4 @@ class QuicksightSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
