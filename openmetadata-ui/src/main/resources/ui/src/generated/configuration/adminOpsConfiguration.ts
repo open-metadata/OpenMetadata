@@ -19,4 +19,34 @@ export interface AdminOpsConfiguration {
      * Whether the Admin Ops API is enabled.
      */
     enabled?: boolean;
+    /**
+     * Mutual TLS authentication configuration for the Admin Ops API.
+     */
+    mtls?: MTLSConfiguration;
+}
+
+/**
+ * Mutual TLS authentication configuration for the Admin Ops API.
+ */
+export interface MTLSConfiguration {
+    /**
+     * Comma-separated list of allowed certificate Common Names.
+     */
+    allowedCNs?: string;
+    /**
+     * Comma-separated list of allowed certificate issuer DNs.
+     */
+    allowedIssuers?: string;
+    /**
+     * Comma-separated list of allowed Subject Alternative Names.
+     */
+    allowedSANs?: string;
+    /**
+     * Enable mTLS client certificate authentication.
+     */
+    enabled?: boolean;
+    /**
+     * Require client certificate when mTLS is enabled.
+     */
+    requireClientCert?: boolean;
 }
