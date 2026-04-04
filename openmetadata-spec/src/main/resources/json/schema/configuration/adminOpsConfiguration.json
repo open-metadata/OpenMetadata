@@ -5,15 +5,9 @@
   "description": "Configuration for the Admin Operations API that allows SaaS Hypervisor to trigger administrative operations.",
   "type": "object",
   "javaType": "org.openmetadata.schema.configuration.AdminOpsConfiguration",
-  "properties": {
-    "enabled": {
-      "title": "Enabled",
-      "description": "Whether the Admin Ops API is enabled.",
-      "type": "boolean",
-      "default": false
-    },
-    "mtls": {
-      "title": "mTLS Configuration",
+  "definitions": {
+    "adminOpsMtlsConfiguration": {
+      "title": "Admin Ops mTLS Configuration",
       "description": "Mutual TLS authentication configuration for the Admin Ops API.",
       "type": "object",
       "javaType": "org.openmetadata.schema.configuration.AdminOpsMtlsConfiguration",
@@ -29,19 +23,33 @@
           "default": true
         },
         "allowedCNs": {
-          "description": "Comma-separated list of allowed certificate Common Names.",
-          "type": "string"
+          "description": "List of allowed certificate Common Names.",
+          "type": "array",
+          "items": { "type": "string" }
         },
         "allowedSANs": {
-          "description": "Comma-separated list of allowed Subject Alternative Names.",
-          "type": "string"
+          "description": "List of allowed Subject Alternative Names.",
+          "type": "array",
+          "items": { "type": "string" }
         },
         "allowedIssuers": {
-          "description": "Comma-separated list of allowed certificate issuer DNs.",
-          "type": "string"
+          "description": "List of allowed certificate issuer DNs.",
+          "type": "array",
+          "items": { "type": "string" }
         }
       },
       "additionalProperties": false
+    }
+  },
+  "properties": {
+    "enabled": {
+      "title": "Enabled",
+      "description": "Whether the Admin Ops API is enabled.",
+      "type": "boolean",
+      "default": false
+    },
+    "mtls": {
+      "$ref": "#/definitions/adminOpsMtlsConfiguration"
     }
   },
   "additionalProperties": false
