@@ -192,4 +192,8 @@ ingestion/.claude/agents
 # AI scaffold working documents — stay local, never committed
 **/CONNECTOR_CONTEXT.md
 
+# Connector audit working files — per-session, never committed
+.claude/audit-results/
+.claude/connector-audit.json
+
 test-results/
