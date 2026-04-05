@@ -313,9 +313,10 @@ public class SearchResource {
           int from)
       throws IOException {
 
+    SubjectContext subjectContext = getSubjectContext(securityContext);
     SearchRequest request =
         buildExportSearchRequest(
-            securityContext,
+            subjectContext,
             query,
             index,
             deleted,
@@ -323,7 +324,6 @@ public class SearchResource {
             postFilter,
             sortFieldParam,
             sortOrder);
-    SubjectContext subjectContext = getSubjectContext(securityContext);
 
     int totalHits = searchRepository.countSearchResults(request, subjectContext);
     final int effectiveTotal =
@@ -351,7 +351,7 @@ public class SearchResource {
   }
 
   private SearchRequest buildExportSearchRequest(
-      SecurityContext securityContext,
+      SubjectContext subjectContext,
       String query,
       String index,
       Boolean deleted,
@@ -362,7 +362,6 @@ public class SearchResource {
     String resolvedQuery = nullOrEmpty(query) ? "*" : query;
 
     List<EntityReference> domains = new ArrayList<>();
-    SubjectContext subjectContext = getSubjectContext(securityContext);
     if (!subjectContext.isAdmin()) {
       domains = subjectContext.getUserDomains();
     }

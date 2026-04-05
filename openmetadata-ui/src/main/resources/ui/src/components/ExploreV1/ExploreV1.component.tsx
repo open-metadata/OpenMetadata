@@ -175,7 +175,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [isExporting, setIsExporting] = useState(false);
 
   const visibleResultCount = searchResults?.hits?.hits?.length ?? 0;
-  const totalResultCount = searchResults?.hits?.total?.value ?? 0;
 
   const handleOpenExportScopeModal = useCallback(() => {
     setExportScope('all');
@@ -692,13 +691,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   className="tw:text-primary d-flex items-center tw:gap-0.5"
                   size="text-sm"
                   weight="semibold">
-                  {`${t('label.all-matching-asset-plural')} `}
-                  <CoreTypography
-                    className="tw:text-tertiary"
-                    size="text-sm"
-                    weight="regular">
-                    ({totalResultCount} {t('label.result-plural')})
-                  </CoreTypography>
+                  {t('label.all-matching-asset-plural')}
                 </CoreTypography>
                 <CoreTypography
                   className="tw:text-tertiary"
