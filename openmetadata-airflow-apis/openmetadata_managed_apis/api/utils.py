@@ -13,6 +13,7 @@ import importlib
 import os
 import re
 import sys
+import threading
 import traceback
 from multiprocessing import Process
 from typing import Optional
@@ -208,10 +209,30 @@ class ScanDagsTask(Process):
         return scheduler_job
 
 
+_scan_lock = threading.Lock()
+_current_scan: Optional[ScanDagsTask] = None
+
+
 def scan_dags_job_background():
     """
-    Runs the scheduler scan in another thread
-    to not block the API call
+    Runs the scheduler scan in a separate process
+    to not block the API call.
+
+    Uses a singleton pattern to prevent spawning multiple concurrent
+    processes. Each ScanDagsTask process imports the full Airflow scheduler
+    stack, so spawning one per deploy leaks ~120Mi per call and creates
+    orphaned SchedulerJob entries in the Airflow DB.
     """
-    process = ScanDagsTask()
-    process.start()
+    global _current_scan  # noqa: PLW0603
+
+    with _scan_lock:
+        if _current_scan is not None:
+            if _current_scan.is_alive():
+                logger.info("DAG scan already in progress, skipping")
+                return
+            _current_scan.join(timeout=5)
+            _current_scan = None
+
+        process = ScanDagsTask(daemon=True)
+        process.start()
+        _current_scan = process
