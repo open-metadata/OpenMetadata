@@ -3745,9 +3745,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
               UUID id = entityInterface.getId();
               String fqn = entityInterface.getFullyQualifiedName();
 
-              // Delete all timeseries data associated with this entity
-              daoCollection.entityExtensionTimeSeriesDao().deleteAllByEntityFQN(fqn);
-              daoCollection.profilerDataTimeSeriesDao().deleteAllByEntityFQN(fqn);
+              // Delete all timeseries data for this entity and its children (e.g. column profiles)
+              daoCollection.entityExtensionTimeSeriesDao().deleteAllByEntityFQNPrefix(fqn);
+              daoCollection.profilerDataTimeSeriesDao().deleteAllByEntityFQNPrefix(fqn);
 
               // Delete all the relationships to other entities
               daoCollection.relationshipDAO().deleteAll(id, entityType);

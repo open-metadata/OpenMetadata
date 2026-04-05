@@ -20,8 +20,10 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.jdbi.BindFQN;
 
@@ -536,6 +538,19 @@ public interface EntityTimeSeriesDAO {
 
   default void deleteAllByEntityFQN(String entityFQNHash) {
     deleteAllByEntityFQN(getTimeSeriesTableName(), entityFQNHash);
+  }
+
+  @SqlUpdate(
+      "DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash OR entityFQNHash LIKE :prefix")
+  void deleteAllByEntityFQNPrefixInternal(
+      @Define("table") String table,
+      @Bind("entityFQNHash") String entityFQNHash,
+      @Bind("prefix") String prefix);
+
+  default void deleteAllByEntityFQNPrefix(String entityFQN) {
+    String hash = FullyQualifiedName.buildHash(entityFQN);
+    String prefix = hash + Entity.SEPARATOR + "%";
+    deleteAllByEntityFQNPrefixInternal(getTimeSeriesTableName(), hash, prefix);
   }
 
   @SqlUpdate(
