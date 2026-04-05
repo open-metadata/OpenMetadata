@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +47,13 @@ class IndexMappingVersionTrackerTest {
     }
   }
 
+  @AfterAll
+  static void resetLoader() throws Exception {
+    Field instanceField = IndexMappingLoader.class.getDeclaredField("instance");
+    instanceField.setAccessible(true);
+    instanceField.set(null, null);
+  }
+
   @Mock private CollectionDAO collectionDAO;
   @Mock private IndexMappingVersionDAO indexMappingVersionDAO;
   @Mock private IndexMappingLoader indexMappingLoader;
@@ -53,50 +62,17 @@ class IndexMappingVersionTrackerTest {
   @Captor private ArgumentCaptor<String> hashCaptor;
   @Captor private ArgumentCaptor<String> jsonCaptor;
 
-  /**
-   * All camelCase entity types that previously failed with the toLowerCase() bug. If a new
-   * camelCase entity is added to indexMapping.json it should be included here so this test
-   * guarantees coverage.
-   */
-  private static final List<String> CAMEL_CASE_ENTITIES =
-      List.of(
-          "glossaryTerm",
-          "databaseSchema",
-          "storedProcedure",
-          "dashboardDataModel",
-          "testCase",
-          "testSuite",
-          "testCaseResult",
-          "testCaseResolutionStatus",
-          "dataProduct",
-          "apiEndpoint",
-          "apiCollection",
-          "apiService",
-          "searchIndex",
-          "ingestionPipeline",
-          "databaseService",
-          "messagingService",
-          "pipelineService",
-          "dashboardService",
-          "searchService",
-          "storageService",
-          "mlmodelService",
-          "metadataService",
-          "driveService",
-          "securityService",
-          "tableColumn",
-          "queryCostRecord",
-          "pipelineStatus",
-          "llmService",
-          "llmModel",
-          "promptTemplate",
-          "aiGovernancePolicy",
-          "aiAgent",
-          "entityReportData",
-          "webAnalyticEntityViewReportData",
-          "webAnalyticUserActivityReportData",
-          "rawCostAnalysisReportData",
-          "aggregatedCostAnalysisReportData");
+  private static List<String> camelCaseEntities;
+
+  private static List<String> getCamelCaseEntities() {
+    if (camelCaseEntities == null) {
+      camelCaseEntities =
+          IndexMappingLoader.getInstance().getIndexMapping().keySet().stream()
+              .filter(key -> key.chars().anyMatch(Character::isUpperCase))
+              .toList();
+    }
+    return camelCaseEntities;
+  }
 
   @BeforeEach
   void setUp() {
@@ -377,7 +353,7 @@ class IndexMappingVersionTrackerTest {
       Set<String> changedSet = new TreeSet<>(changed);
 
       List<String> missedCamelCase = new ArrayList<>();
-      for (String entity : CAMEL_CASE_ENTITIES) {
+      for (String entity : getCamelCaseEntities()) {
         if (realMappings.containsKey(entity) && !changedSet.contains(entity)) {
           missedCamelCase.add(entity);
         }
