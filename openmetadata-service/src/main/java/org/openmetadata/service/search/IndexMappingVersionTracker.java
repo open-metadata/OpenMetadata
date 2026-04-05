@@ -35,11 +35,11 @@ public class IndexMappingVersionTracker {
   public List<String> getChangedMappings() throws IOException {
     List<String> changedMappings = new ArrayList<>();
     Map<String, String> storedHashes = getStoredMappingHashes();
-    Map<String, String> currentHashes = computeCurrentMappingHashes();
+    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
 
-    for (Map.Entry<String, String> entry : currentHashes.entrySet()) {
+    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
       String entityType = entry.getKey();
-      String currentHash = entry.getValue();
+      String currentHash = entry.getValue().hash();
       String storedHash = storedHashes.get(entityType);
 
       if (storedHash == null || !storedHash.equals(currentHash)) {
@@ -58,26 +58,22 @@ public class IndexMappingVersionTracker {
   }
 
   public void updateMappingVersions() throws IOException {
-    Map<String, String> currentHashes = computeCurrentMappingHashes();
-    Map<String, IndexMapping> indexMappings = IndexMappingLoader.getInstance().getIndexMapping();
+    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
     long updatedAt = System.currentTimeMillis();
 
-    for (Map.Entry<String, String> entry : currentHashes.entrySet()) {
+    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
       String entityType = entry.getKey();
-      String mappingHash = entry.getValue();
-      IndexMapping indexMapping = indexMappings.get(entityType);
-      JsonNode mappingJson =
-          indexMapping != null ? loadMappingForEntity(entityType, indexMapping) : null;
+      MappingEntry mappingEntry = entry.getValue();
 
       indexMappingVersionDAO.upsertIndexMappingVersion(
           entityType,
-          mappingHash,
-          JsonUtils.pojoToJson(mappingJson),
+          mappingEntry.hash(),
+          JsonUtils.pojoToJson(mappingEntry.json()),
           version,
           updatedAt,
           updatedBy);
     }
-    LOG.info("Updated index mapping versions for {} entities", currentHashes.size());
+    LOG.info("Updated index mapping versions for {} entities", currentMappings.size());
   }
 
   private Map<String, String> getStoredMappingHashes() {
@@ -90,8 +86,10 @@ public class IndexMappingVersionTracker {
     return hashes;
   }
 
-  private Map<String, String> computeCurrentMappingHashes() throws IOException {
-    Map<String, String> hashes = new HashMap<>();
+  private record MappingEntry(String hash, JsonNode json) {}
+
+  private Map<String, MappingEntry> computeCurrentMappings() throws IOException {
+    Map<String, MappingEntry> mappings = new HashMap<>();
 
     // Use IndexMappingLoader as the source of truth for entity types and their mapping file paths.
     // This avoids constructing file paths manually and ensures all entity types are covered,
@@ -104,7 +102,7 @@ public class IndexMappingVersionTracker {
       if (mapping != null) {
         try {
           String hash = computeHash(mapping);
-          hashes.put(entityType, hash);
+          mappings.put(entityType, new MappingEntry(hash, mapping));
         } catch (IndexMappingHashException e) {
           LOG.error("Failed to compute hash for entity type: {}", entityType, e);
           throw new IOException("Failed to compute mapping hash for " + entityType, e);
@@ -112,7 +110,7 @@ public class IndexMappingVersionTracker {
       }
     }
 
-    return hashes;
+    return mappings;
   }
 
   private JsonNode loadMappingForEntity(String entityType, IndexMapping indexMapping) {
