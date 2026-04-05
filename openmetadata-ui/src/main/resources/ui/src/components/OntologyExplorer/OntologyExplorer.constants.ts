@@ -19,6 +19,9 @@ import {
 /** Synthetic id for the glossary/relation "All" option in ontology filter autocompletes */
 export const ONTOLOGY_AUTOCOMPLETE_ALL_ID = '__all__';
 
+/** Max parallel `getGlossaryTermsAssetCounts` calls when multiple glossaries are selected */
+export const GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY = 4;
+
 export const withoutOntologyAutocompleteAll = (ids: string[]): string[] =>
   ids.filter((id) => id !== ONTOLOGY_AUTOCOMPLETE_ALL_ID);
 
@@ -372,17 +375,22 @@ export const EDGE_LABEL_BG_PADDING: [number, number, number, number] = [
   2, 8, 2, 8,
 ];
 export const TERM_LABEL_BG_PADDING: [number, number, number, number] = [
-  4, 6, 4, 6,
+  8, 8, 8, 8,
 ];
 
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 3;
 export const DEFAULT_ZOOM = 1;
+export const FIT_VIEW_ZOOM_OUT = 0.9;
+export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.7;
 
+export const DATA_MODE_ASSET_LOAD_PAGE_SIZE = 1000;
 export const DATA_MODE_ASSET_CIRCLE_SIZE = 20;
 export const DATA_MODE_ASSET_LABEL_FONT_SIZE = 12;
-export const DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH = 100;
-export const DATA_MODE_ASSET_LABEL_BOX_MAX_WIDTH = 220;
+export const DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH = 0;
+export const DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX = 300;
+export const DATA_MODE_ASSET_ROW_MAX_WIDTH = 720;
+export const DATA_MODE_ENTITY_TYPE_PILL_MAX_TEXT_WIDTH_PX = 120;
 export const DATA_MODE_ASSET_LABEL_BOX_RADIUS = 4;
 export const DATA_MODE_ASSET_LABEL_BOX_PADDING: [
   number,
@@ -390,8 +398,7 @@ export const DATA_MODE_ASSET_LABEL_BOX_PADDING: [
   number,
   number
 ] = [6, 10, 6, 10];
-/** Vertical stack allowance for layout (circle + gap + label pill). */
-export const DATA_MODE_ASSET_LABEL_LAYOUT_STACK = 42;
+export const DATA_MODE_ASSET_LABEL_LAYOUT_STACK = 62;
 /** Extra radial gap from term node center to the first asset ring (longer connector feel in data mode). */
 export const DATA_MODE_TERM_TO_FIRST_RING_GAP = 168;
 export const COMBO_HEADER_HEIGHT = 34;
@@ -422,18 +429,21 @@ export function toLayoutEngineType(layout: LayoutType): LayoutEngineType {
 export const COMBO_PADDING = 48;
 export const COMBO_LABEL_PADDING_TOP_BOTTOM = 10;
 export const DATA_MODE_TERM_NODE_SIZE = 30;
-export const DATA_MODE_TERM_RADIUS = 15;
-/** White ring around term circle and matching label pill in data mode. */
-export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 4;
+
+export const DATA_MODE_TERM_MIN_CENTER_SPACING = 400;
+export const DATA_MODE_TERM_GROUP_LAYOUT_MIN_RADIUS = 200;
+export const DATA_MODE_GLOSSARY_MACRO_HULL_GAP = 120;
+export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 2;
 /** Outer soft ring behind the term circle (G6 halo), light gray like elevated selection. */
-export const DATA_MODE_TERM_HALO_LINE_WIDTH = 11;
-export const DATA_MODE_TERM_HALO_STROKE = '#E8EBF3';
-export const DATA_MODE_TERM_HALO_STROKE_OPACITY = 0.92;
-export const DATA_MODE_TERM_NODE_SHADOW_COLOR = 'rgba(15, 23, 42, 0.14)';
+export const DATA_MODE_TERM_HALO_LINE_WIDTH = 5;
+export const DATA_MODE_TERM_HALO_STROKE = '#e8ecf0';
+export const DATA_MODE_TERM_HALO_STROKE_OPACITY = 0.72;
+export const DATA_MODE_TERM_HALO_SHADOW_COLOR = 'rgba(203, 213, 225, 0.35)';
+export const DATA_MODE_TERM_HALO_SHADOW_BLUR = 5;
+export const DATA_MODE_TERM_NODE_SHADOW_COLOR = 'rgba(241, 245, 249, 0.92)';
 export const DATA_MODE_TERM_NODE_SHADOW_BLUR = 16;
 export const DATA_MODE_TERM_NODE_SHADOW_OFFSET_Y = 5;
-/** Lift under the term name pill so it matches the reference “card” look. */
-export const DATA_MODE_TERM_LABEL_SHADOW_COLOR = 'rgba(15, 23, 42, 0.12)';
+export const DATA_MODE_TERM_LABEL_SHADOW_COLOR = 'rgba(226, 232, 240, 0.65)';
 export const DATA_MODE_TERM_LABEL_SHADOW_BLUR = 14;
 export const DATA_MODE_TERM_LABEL_SHADOW_OFFSET_Y = 4;
 export const NODE_BADGE_OFFSET_X = 8;
@@ -443,19 +453,33 @@ export const DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING: [
   number,
   number,
   number
-] = [3, 3, 3, 3];
-export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER = 22;
-export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE = 26;
+] = [5, 7, 5, 7];
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER = 24;
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE = 28;
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR = 7;
+export const DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN = 12;
 export const HIERARCHY_BADGE_OFFSET_X = 0;
 export const HIERARCHY_BADGE_OFFSET_Y = -18;
 export const HIERARCHY_BADGE_TEXT_INSET = 16;
 
 export const NODE_LINE_WIDTH = 1;
 export const DATA_MODE_ASSET_LINE_WIDTH = 1.5;
-export const DATA_MODE_LABEL_OFFSET_Y = 10;
+export const DATA_MODE_LABEL_OFFSET_Y = 20;
 export const DATA_MODE_TERM_LABEL_BG_RADIUS = 6;
 export const DATA_MODE_TERM_LABEL_FONT_WEIGHT = 600;
 export const DATA_MODE_ASSET_LABEL_FONT_WEIGHT = 500;
+export const DATA_MODE_ASSET_NAME_ENTITY_GAP = 12;
+export const DATA_MODE_ENTITY_PILL_ICON_SIZE = 14;
+export const DATA_MODE_ENTITY_PILL_ICON_PAD_LEFT = 6;
+export const DATA_MODE_ENTITY_PILL_ICON_GAP_AFTER = 1;
+export const DATA_MODE_ASSET_CARD_INSET_H = 4;
+export const DATA_MODE_ASSET_CARD_CLEAR_BELOW_CIRCLE = 20;
+export const DATA_MODE_ASSET_BADGE_Z_INDEX = -1;
+export const DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK = '#D5D7DA';
+export const DATA_MODE_ENTITY_BADGE_FONT_SIZE = 10;
+export const DATA_MODE_ENTITY_BADGE_VERTICAL_NUDGE_UP = 6;
+export const DATA_MODE_ENTITY_PILL_ICON_NUDGE_UP = 7;
+export const DATA_MODE_ENTITY_PILL_TRIM_RIGHT_PX = 0;
 export const COMBO_LINE_WIDTH = 0.8;
 export const COMBO_RADIUS = 10;
 export const COMBO_LABEL_FONT_SIZE = 12;

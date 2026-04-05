@@ -269,6 +269,8 @@ export interface SourceConfig {
  * ApiService Metadata Pipeline Configuration.
  *
  * Apply a set of operations on a service
+ *
+ * McpService Metadata Pipeline Configuration.
  */
 export interface Pipeline {
     /**
@@ -357,6 +359,9 @@ export interface Pipeline {
      * the OpenMetadata server. If the toggle is set to false, the metadata fetched from the
      * source will not override the existing metadata in the OpenMetadata server. This is
      * applicable for fields like description, tags, owner and displayName
+     *
+     * Set the 'Override Metadata' toggle to control whether to override the existing metadata
+     * in the OpenMetadata server with the metadata fetched from the source.
      */
     overrideMetadata?: boolean;
     /**
@@ -853,6 +858,10 @@ export interface Pipeline {
      * Service to be modified
      */
     service?: EntityReference;
+    /**
+     * Regex to only fetch MCP servers with names matching the pattern.
+     */
+    serverFilterPattern?: FilterPattern;
 }
 
 /**
@@ -938,7 +947,11 @@ export interface Pipeline {
  *
  * Regex to only include/exclude files that match the pattern.
  *
+ * Regex to only fetch servers with names matching the pattern
+ *
  * Regex to only fetch tags that matches the pattern.
+ *
+ * Regex to only fetch MCP servers with names matching the pattern.
  */
 export interface FilterPattern {
     /**
@@ -2205,7 +2218,7 @@ export interface DBTConfigurationSource {
      * Details of the bucket where the dbt files are stored
      */
     dbtPrefixConfig?:   DBTPrefixConfig;
-    dbtSecurityConfig?: Credentials;
+    dbtSecurityConfig?: DbtSecurityConfigClass;
 }
 
 /**
@@ -2259,7 +2272,7 @@ export interface DBTPrefixConfig {
  *
  * GCP Credentials for Google Drive API
  */
-export interface Credentials {
+export interface DbtSecurityConfigClass {
     /**
      * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
      * Role
@@ -2765,6 +2778,8 @@ export interface ServiceConnections {
  * Security Connection.
  *
  * Drive Connection.
+ *
+ * MCP Service Connection.
  */
 export interface ServiceConnection {
     config?: ConfigObject;
@@ -2897,8 +2912,6 @@ export interface ServiceConnection {
  * UnityCatalog Connection Config
  *
  * SAS Connection Config
- *
- * Iceberg Catalog Connection Config
  *
  * Teradata Database Connection Config
  *
@@ -3033,6 +3046,9 @@ export interface ServiceConnection {
  * SFTP Connection Config for secure file transfer protocol servers.
  *
  * Custom Drive Connection to build a source that is not supported.
+ *
+ * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
+ * servers, their tools, resources, and prompts.
  */
 export interface ConfigObject {
     /**
@@ -3051,6 +3067,21 @@ export interface ConfigObject {
      * OpenAPI Schema source config. Either a URL or a file path must be provided.
      */
     openAPISchemaConnection?: OpenAPISchemaConnection;
+    /**
+     * SSL Configuration details.
+     *
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     *
+     * SSL Configuration details. Provide the CA certificate to validate the Informix server
+     * certificate. Paste the PEM content directly or upload the certificate file.
+     *
+     * SSL Configuration for OpenMetadata Server
+     */
+    sslConfig?: SSLConfigObject;
     /**
      * Supports Metadata Extraction.
      */
@@ -3095,6 +3126,19 @@ export interface ConfigObject {
      * Custom search service type
      */
     type?: PurpleType;
+    /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     *
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
+     *
+     * Flag to verify SSL Certificate for OpenMetadata Server.
+     *
+     * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
+     * default.
+     */
+    verifySSL?: boolean | VerifySSL;
     /**
      * Regex exclude or include charts that matches the pattern.
      *
@@ -3143,7 +3187,7 @@ export interface ConfigObject {
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
-    gitCredentials?: NoGitCredentialsClass | string;
+    gitCredentials?: Credentials | string;
     /**
      * URL to the Looker instance.
      *
@@ -3613,32 +3657,6 @@ export interface ConfigObject {
      */
     siteName?: string;
     /**
-     * SSL Configuration details.
-     *
-     * SSL Configuration details for DB2 connection. Provide CA certificate for server
-     * validation, and optionally client certificate and key for mutual TLS authentication.
-     *
-     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
-     * client certificate, and private key for mutual TLS authentication.
-     *
-     * SSL Configuration details. Provide the CA certificate to validate the Informix server
-     * certificate. Paste the PEM content directly or upload the certificate file.
-     *
-     * SSL Configuration for OpenMetadata Server
-     */
-    sslConfig?: SSLConfigObject;
-    /**
-     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
-     *
-     * Client SSL verification.
-     *
-     * Flag to verify SSL Certificate for OpenMetadata Server.
-     *
-     * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
-     * default.
-     */
-    verifySSL?: boolean | VerifySSL;
-    /**
      * Access Token for Mode Dashboard
      *
      * Access token to connect to DOMO
@@ -3986,13 +4004,15 @@ export interface ConfigObject {
      *
      * Catalog of the data source.
      */
-    catalog?: IcebergCatalog | string;
+    catalog?: string;
     /**
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
      * returned.
      *
      * Connection timeout in seconds.
+     *
+     * Timeout in seconds for connecting to MCP servers
      */
     connectionTimeout?: number | number;
     /**
@@ -4289,10 +4309,6 @@ export interface ConfigObject {
      * Hostname of SAS Viya deployment.
      */
     serverHost?: string;
-    /**
-     * Table property to look for the Owner.
-     */
-    ownershipProperty?: string;
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
@@ -4871,6 +4887,43 @@ export interface ConfigObject {
      * extracted. Non-structured files like images, PDFs, videos, etc. will be skipped.
      */
     structuredDataFilesOnly?: boolean;
+    /**
+     * Paths to MCP configuration files to scan for server definitions. Supports Claude Desktop
+     * config, VS Code settings, etc.
+     */
+    configFilePaths?: string[];
+    /**
+     * How to discover MCP servers
+     */
+    discoveryMethod?: DiscoveryMethod;
+    /**
+     * Whether to fetch and catalog prompts from MCP servers
+     */
+    fetchPrompts?: boolean;
+    /**
+     * Whether to fetch and catalog resources from MCP servers
+     */
+    fetchResources?: boolean;
+    /**
+     * Whether to fetch and catalog tools from MCP servers
+     */
+    fetchTools?: boolean;
+    /**
+     * Timeout in seconds for MCP server initialization handshake
+     */
+    initializationTimeout?: number;
+    /**
+     * URL of MCP registry to query for server discovery (when discoveryMethod is Registry)
+     */
+    registryUrl?: string;
+    /**
+     * Regex to only fetch servers with names matching the pattern
+     */
+    serverFilterPattern?: FilterPattern;
+    /**
+     * List of MCP servers to connect to directly (when discoveryMethod is DirectConnection)
+     */
+    servers?: MCPServerConfig[];
     [property: string]: any;
 }
 
@@ -5007,7 +5060,7 @@ export enum AuthProvider {
  *
  * Basic Auth Configuration for ElasticSearch
  *
- * SSL Certificates By Path
+ * API Key Authentication for ElasticSearch
  *
  * AWS credentials configs.
  *
@@ -5125,17 +5178,13 @@ export interface AuthenticationTypeForTableau {
      */
     accessToken?: string;
     /**
-     * CA Certificate Path
+     * Elastic Search API Key for API Authentication
      */
-    caCertPath?: string;
+    apiKey?: string;
     /**
-     * Client Certificate Path
+     * Elastic Search API Key ID for API Authentication
      */
-    clientCertPath?: string;
-    /**
-     * Private Key Path
-     */
-    privateKeyPath?: string;
+    apiKeyId?: string;
     /**
      * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
      * Role
@@ -5558,214 +5607,6 @@ export interface ConsumerConfigSSLClass {
 }
 
 /**
- * Iceberg Catalog configuration.
- */
-export interface IcebergCatalog {
-    /**
-     * Catalog connection configuration, depending on your catalog type.
-     */
-    connection: Connection;
-    /**
-     * Custom Database Name for your Iceberg Service. If not set it will be 'default'.
-     */
-    databaseName?: string;
-    /**
-     * Catalog Name.
-     */
-    name: string;
-    /**
-     * Warehouse Location. Used to specify a custom warehouse location if needed.
-     */
-    warehouseLocation?: string;
-}
-
-/**
- * Catalog connection configuration, depending on your catalog type.
- *
- * Iceberg Hive Catalog configuration.
- *
- * Iceberg REST Catalog configuration.
- *
- * Iceberg Glue Catalog configuration.
- *
- * Iceberg DynamoDB Catalog configuration.
- */
-export interface Connection {
-    fileSystem?: IcebergFileSystem;
-    /**
-     * Uri to the Hive Metastore. Example: 'thrift://localhost:9083'
-     *
-     * Uri to the REST catalog. Example: 'http://rest-catalog/ws/'
-     */
-    uri?: string;
-    /**
-     * OAuth2 credential to use when initializing the catalog.
-     */
-    credential?: OAuth2Credential;
-    /**
-     * Sign requests to the REST Server using AWS SigV4 protocol.
-     */
-    sigv4?: Sigv4;
-    /**
-     * SSL Configuration details.
-     */
-    ssl?: SSLCertificatesByPath;
-    /**
-     * Berarer token to use for the 'Authorization' header.
-     */
-    token?:     string;
-    awsConfig?: AWSCredentials;
-    /**
-     * DynamoDB table name.
-     */
-    tableName?: string;
-}
-
-/**
- * OAuth2 credential to use when initializing the catalog.
- */
-export interface OAuth2Credential {
-    /**
-     * OAuth2 Client ID.
-     */
-    clientId?: string;
-    /**
-     * OAuth2 Client Secret
-     */
-    clientSecret?: string;
-}
-
-/**
- * Iceberg File System configuration, based on where the Iceberg Warehouse is located.
- */
-export interface IcebergFileSystem {
-    type?: AWSCredentialsClass | null;
-}
-
-/**
- * AWS credentials configs.
- *
- * AWS credentials required to access the S3 file.
- *
- * AWS credentials for generating MWAA CLI token.
- *
- * AWS credentials configuration.
- *
- * Azure Cloud Credentials
- *
- * Available sources to fetch metadata.
- *
- * Azure Credentials
- */
-export interface AWSCredentialsClass {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
-    /**
-     * Account Name of your storage account
-     */
-    accountName?: string;
-    /**
-     * Your Service Principal App ID (Client ID)
-     */
-    clientId?: string;
-    /**
-     * Your Service Principal Password (Client Secret)
-     */
-    clientSecret?: string;
-    /**
-     * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
-     */
-    scopes?: string;
-    /**
-     * Tenant ID of your Azure Subscription
-     */
-    tenantId?: string;
-    /**
-     * Key Vault Name
-     */
-    vaultName?: string;
-}
-
-/**
- * Sign requests to the REST Server using AWS SigV4 protocol.
- */
-export interface Sigv4 {
-    /**
-     * The service signing name to use when SigV4 signs a request.
-     */
-    signingName?: string;
-    /**
-     * AWS Region to use when SigV4 signs a request.
-     */
-    signingRegion?: string;
-    [property: string]: any;
-}
-
-/**
- * SSL Configuration details.
- *
- * SSL Certificates By Path
- */
-export interface SSLCertificatesByPath {
-    /**
-     * CA Certificate Path
-     */
-    caCertPath?: string;
-    /**
-     * Client Certificate Path
-     */
-    clientCertPath?: string;
-    /**
-     * Private Key Path
-     */
-    privateKeyPath?: string;
-}
-
-/**
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
@@ -5829,7 +5670,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: ConfigSourceConnection;
+    connection?: Connection;
     /**
      * Bucket Name of the data source.
      */
@@ -5838,7 +5679,7 @@ export interface DeltaLakeConfigurationSource {
      * Prefix of the data source.
      */
     prefix?:         string;
-    securityConfig?: Credentials;
+    securityConfig?: DbtSecurityConfigClass;
     /**
      * Account Name of your storage account
      */
@@ -5872,7 +5713,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface ConfigSourceConnection {
+export interface Connection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -6621,6 +6462,17 @@ export enum SnowplowDeployment {
 }
 
 /**
+ * How to discover MCP servers
+ *
+ * Method to discover MCP servers
+ */
+export enum DiscoveryMethod {
+    ConfigFile = "ConfigFile",
+    DirectConnection = "DirectConnection",
+    Registry = "Registry",
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ElasticsSearch {
@@ -6650,7 +6502,7 @@ export enum FHIRVersion {
  *
  * Credentials for a Gitlab repository
  */
-export interface NoGitCredentialsClass {
+export interface Credentials {
     /**
      * GitHub instance URL. For GitHub.com, use https://github.com
      *
@@ -6980,7 +6832,7 @@ export interface PowerBIPbitFilesSource {
      */
     pbitFilesExtractDir?: string;
     prefixConfig?:        BucketDetails;
-    securityConfig?:      Credentials;
+    securityConfig?:      DbtSecurityConfigClass;
 }
 
 /**
@@ -7106,6 +6958,47 @@ export interface OpenMetadataJWTClientConfig {
     jwtToken: string;
 }
 
+/**
+ * Configuration for a single MCP server to connect to directly
+ */
+export interface MCPServerConfig {
+    /**
+     * API key for authenticated MCP servers
+     */
+    apiKey?: string;
+    /**
+     * Arguments to pass to the command
+     */
+    args?: string[];
+    /**
+     * Command to execute for Stdio transport (e.g., 'npx', 'uvx', 'python')
+     */
+    command?: string;
+    /**
+     * Environment variables for the server process
+     */
+    env?: { [key: string]: string };
+    /**
+     * Name to assign to this MCP server
+     */
+    name:       string;
+    transport?: TransportType;
+    /**
+     * URL for SSE or StreamableHTTP transport
+     */
+    url?: string;
+    [property: string]: any;
+}
+
+/**
+ * MCP transport protocol type
+ */
+export enum TransportType {
+    SSE = "SSE",
+    Stdio = "Stdio",
+    StreamableHTTP = "StreamableHTTP",
+}
+
 export enum SpaceType {
     Data = "Data",
     Managed = "Managed",
@@ -7161,8 +7054,6 @@ export interface SSLConfigObject {
 
 /**
  * SSL Certificates
- *
- * SSL Configuration details.
  *
  * SSL Certificates By Path
  *
@@ -7317,6 +7208,8 @@ export enum TokenType {
  * SFTP service type
  *
  * Custom Drive service type
+ *
+ * Service type
  */
 export enum PurpleType {
     Adls = "ADLS",
@@ -7372,7 +7265,6 @@ export enum PurpleType {
     Greenplum = "Greenplum",
     Hex = "Hex",
     Hive = "Hive",
-    Iceberg = "Iceberg",
     Impala = "Impala",
     Informix = "Informix",
     Kafka = "Kafka",
@@ -7381,6 +7273,7 @@ export enum PurpleType {
     KinesisFirehose = "KinesisFirehose",
     Lightdash = "Lightdash",
     Looker = "Looker",
+    MCP = "Mcp",
     MariaDB = "MariaDB",
     Matillion = "Matillion",
     Metabase = "Metabase",
@@ -7472,7 +7365,7 @@ export interface StorageMetadataConfigurationSource {
      */
     manifestHttpPath?: string;
     prefixConfig?:     StorageMetadataBucketDetails;
-    securityConfig?:   Credentials;
+    securityConfig?:   DbtSecurityConfigClass;
 }
 
 /**
@@ -7520,6 +7413,8 @@ export interface StorageMetadataBucketDetails {
  * Api Source Config Metadata Pipeline type
  *
  * Reverse Ingestion Config Pipeline type
+ *
+ * MCP Source Config Metadata Pipeline type
  */
 export enum FluffyType {
     APIMetadata = "ApiMetadata",
@@ -7532,6 +7427,7 @@ export enum FluffyType {
     DatabaseUsage = "DatabaseUsage",
     Dbt = "DBT",
     DriveMetadata = "DriveMetadata",
+    MCPMetadata = "McpMetadata",
     MessagingMetadata = "MessagingMetadata",
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",

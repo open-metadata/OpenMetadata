@@ -119,6 +119,7 @@ _bigquery_table_types = {
     "EXTERNAL": TableType.External,
     "MATERIALIZED_VIEW": TableType.MaterializedView,
     "VIEW": TableType.View,
+    "ICEBERG": TableType.Iceberg,
 }
 
 

@@ -11,6 +11,7 @@
 """
 Tests for MWAA (Managed Workflows for Apache Airflow) client
 """
+
 import json
 from unittest.mock import MagicMock, patch
 

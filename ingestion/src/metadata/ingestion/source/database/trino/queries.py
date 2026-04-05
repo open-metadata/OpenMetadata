@@ -61,3 +61,11 @@ TRINO_VIEW_DEFINITION = textwrap.dedent(
 TRINO_VIEW_DEFINITION_FALLBACK = """
 SHOW CREATE VIEW {view_name}
 """
+
+TRINO_GET_CATALOG_CONNECTOR = textwrap.dedent(
+    """
+    SELECT "connector_name"
+    FROM "system"."metadata"."catalogs"
+    WHERE "catalog_name" = :catalog_name
+    """
+)

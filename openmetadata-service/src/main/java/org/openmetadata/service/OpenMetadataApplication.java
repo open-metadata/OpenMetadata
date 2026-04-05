@@ -116,6 +116,8 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
@@ -739,7 +741,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .getObjectMapper()
         .registerSubtypes(
             org.openmetadata.service.events.AuditOnlyFilterFactory.class,
-            org.openmetadata.service.events.AuditExcludeFilterFactory.class);
+            org.openmetadata.service.events.AuditExcludeFilterFactory.class,
+            SwitchableEventLayoutFactory.class,
+            SwitchableAccessLayoutFactory.class);
 
     bootstrap.addBundle(
         new SwaggerBundle<>() {

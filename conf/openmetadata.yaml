@@ -82,10 +82,15 @@ server:
   # Note: maxQueuedRequests removed in Dropwizard 5.0/Jetty 12
 
   # Request/Response logging (disable in production for performance)
+  # Set LOG_FORMAT=json for structured logs. The default text format preserves legacy output.
   requestLog:
     appenders:
       - type: console
         threshold: ${REQUEST_LOG_LEVEL:-ERROR}  # Only log errors by default
+        layout:
+          type: om-access-layout
+          format: ${LOG_FORMAT:-text}
+          appendLineSeparator: true
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
@@ -159,6 +164,7 @@ qos:
 
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
+# Set LOG_FORMAT=json for structured logs. The default text format preserves legacy output.
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
@@ -168,10 +174,11 @@ logging:
       appenders:
         - type: file
           layout:
-            type: json
+            type: om-event-layout
+            format: ${LOG_FORMAT:-text}
+            pattern: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
             appendLineSeparator: true
           threshold: DEBUG
-          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
           currentLogFilename: ./logs/queries.log
           archivedLogFilenamePattern: ./logs/queries-%d{yyyy-MM-dd}-%i.log.gz
           archivedFileCount: 7
@@ -183,10 +190,11 @@ logging:
       appenders:
         - type: file
           layout:
-            type: json
+            type: om-event-layout
+            format: ${LOG_FORMAT:-text}
+            pattern: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
             appendLineSeparator: true
           threshold: WARN
-          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
           currentLogFilename: ./logs/slow-requests.log
           archivedLogFilenamePattern: ./logs/slow-requests-%d{yyyy-MM-dd}-%i.log.gz
           archivedFileCount: 7
@@ -196,12 +204,17 @@ logging:
       level: INFO
       appenders:
         - type: console
-          logFormat: "%msg%n"
           timeZone: UTC
-        - type: file
-          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
           layout:
-            type: json
+            type: om-event-layout
+            format: ${LOG_FORMAT:-text}
+            pattern: "%msg%n"
+            appendLineSeparator: true
+        - type: file
+          layout:
+            type: om-event-layout
+            format: ${LOG_FORMAT:-text}
+            pattern: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
           currentLogFilename: ./logs/openmetadata-operations.log
           archivedLogFilenamePattern: ./logs/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
           archivedFileCount: 7
@@ -210,16 +223,21 @@ logging:
   appenders:
     - type: console
       threshold: TRACE
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       timeZone: UTC
+      layout:
+        type: om-event-layout
+        format: ${LOG_FORMAT:-text}
+        pattern: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+        appendLineSeparator: true
     - type: file
       layout:
-        type: json
+        type: om-event-layout
+        format: ${LOG_FORMAT:-text}
+        pattern: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
         appendLineSeparator: true
       filterFactories:
         - type: audit-exclude-filter-factory
       threshold: TRACE
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       currentLogFilename: ./logs/openmetadata.log
       archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 7
@@ -227,12 +245,13 @@ logging:
       maxFileSize: 50MB
     - type: file
       layout:
-        type: json
+        type: om-event-layout
+        format: ${LOG_FORMAT:-text}
+        pattern: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
         appendLineSeparator: true
       filterFactories:
         - type: audit-only-filter-factory
       threshold: TRACE
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       currentLogFilename: ./logs/audit.log
       archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 25
