@@ -69,7 +69,6 @@ class FilterEntityImplTest {
 
   @Test
   void testNewCommonFieldsAreRecognizedAsTriggerFields() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("entityStatus")), null, null));
     assertTrue(invokeFilter(List.of(fieldChange("style")), null, null));
     assertTrue(invokeFilter(List.of(fieldChange("lifeCycle")), null, null));
   }
@@ -99,34 +98,35 @@ class FilterEntityImplTest {
     assertFalse(invokeFilter(List.of(fieldChange("updatedAt")), null, null));
     assertFalse(invokeFilter(List.of(fieldChange("version")), null, null));
     assertFalse(invokeFilter(List.of(fieldChange("href")), null, null));
+    assertFalse(invokeFilter(List.of(fieldChange("entityStatus")), null, null));
   }
 
   @Test
   void testIncludeFilterAllowsOnlySpecifiedFields() throws Exception {
-    List<String> includeFields = List.of("entityStatus", "schema");
+    List<String> includeFields = List.of("sla", "schema");
 
-    assertTrue(invokeFilter(List.of(fieldChange("entityStatus")), includeFields, null));
+    assertTrue(invokeFilter(List.of(fieldChange("sla")), includeFields, null));
     assertTrue(invokeFilter(List.of(fieldChange("schema")), includeFields, null));
-    assertFalse(invokeFilter(List.of(fieldChange("sla")), includeFields, null));
+    assertFalse(invokeFilter(List.of(fieldChange("semantics")), includeFields, null));
     assertFalse(invokeFilter(List.of(fieldChange("tags")), includeFields, null));
   }
 
   @Test
   void testExcludeFilterBlocksSpecifiedFields() throws Exception {
-    List<String> excludeFields = List.of("entityStatus", "latestResult");
+    List<String> excludeFields = List.of("sla", "latestResult");
 
-    assertFalse(invokeFilter(List.of(fieldChange("entityStatus")), null, excludeFields));
+    assertFalse(invokeFilter(List.of(fieldChange("sla")), null, excludeFields));
     assertFalse(invokeFilter(List.of(fieldChange("latestResult")), null, excludeFields));
-    assertTrue(invokeFilter(List.of(fieldChange("sla")), null, excludeFields));
     assertTrue(invokeFilter(List.of(fieldChange("schema")), null, excludeFields));
+    assertTrue(invokeFilter(List.of(fieldChange("semantics")), null, excludeFields));
   }
 
   @Test
   void testIncludeFilterTakesPriorityOverExcludeFilter() throws Exception {
-    List<String> includeFields = List.of("entityStatus");
-    List<String> excludeFields = List.of("entityStatus");
+    List<String> includeFields = List.of("sla");
+    List<String> excludeFields = List.of("sla");
 
-    assertTrue(invokeFilter(List.of(fieldChange("entityStatus")), includeFields, excludeFields));
+    assertTrue(invokeFilter(List.of(fieldChange("sla")), includeFields, excludeFields));
   }
 
   @Test
