@@ -55,6 +55,9 @@ jest.mock('../../rest/searchAPI', () => ({
   exportSearchResultsCsvStream: jest
     .fn()
     .mockResolvedValue(new Blob([''], { type: 'text/csv' })),
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: { total: { value: 100 }, hits: [] },
+  }),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({

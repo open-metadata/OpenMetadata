@@ -55,7 +55,10 @@ import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { exportSearchResultsCsvStream } from '../../rest/searchAPI';
+import {
+  exportSearchResultsCsvStream,
+  searchQuery,
+} from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
@@ -173,13 +176,33 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [showExportScopeModal, setShowExportScopeModal] = useState(false);
   const [exportScope, setExportScope] = useState<'visible' | 'all'>('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [allAssetsCount, setAllAssetsCount] = useState<number>();
 
   const visibleResultCount = searchResults?.hits?.hits?.length ?? 0;
 
-  const handleOpenExportScopeModal = useCallback(() => {
+  const handleOpenExportScopeModal = useCallback(async () => {
     setExportScope('all');
+    setAllAssetsCount(undefined);
     setShowExportScopeModal(true);
-  }, []);
+
+    try {
+      const combinedQueryFilter = getCombinedQueryFilterObject(
+        quickFilters,
+        queryFilter as QueryFilterInterface | undefined
+      );
+      const response = await searchQuery({
+        query: searchQueryParam || '*',
+        searchIndex: SearchIndex.DATA_ASSET,
+        pageSize: 0,
+        trackTotalHits: true,
+        includeDeleted: showDeleted,
+        queryFilter: combinedQueryFilter ?? undefined,
+      });
+      setAllAssetsCount(response.hits.total.value);
+    } catch {
+      // Count fetch failed — modal still usable without count
+    }
+  }, [searchQueryParam, showDeleted, quickFilters, queryFilter]);
 
   const handleExportScopeConfirm = useCallback(async () => {
     const isVisibleScope = exportScope === 'visible';
@@ -691,7 +714,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   className="tw:text-primary d-flex items-center tw:gap-0.5"
                   size="text-sm"
                   weight="semibold">
-                  {t('label.all-matching-asset-plural')}
+                  {`${t('label.all-matching-asset-plural')} `}
+                  {allAssetsCount !== undefined && (
+                    <CoreTypography
+                      className="tw:text-tertiary"
+                      size="text-sm"
+                      weight="regular">
+                      ({allAssetsCount} {t('label.result-plural')})
+                    </CoreTypography>
+                  )}
                 </CoreTypography>
                 <CoreTypography
                   className="tw:text-tertiary"
