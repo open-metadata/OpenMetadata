@@ -12,6 +12,7 @@
 Test singleton guard for scan_dags_job_background.
 Verifies fix for https://github.com/open-metadata/OpenMetadata/issues/23646
 """
+
 from unittest.mock import MagicMock, patch
 
 import openmetadata_managed_apis.api.utils as utils_module
@@ -108,7 +109,9 @@ def test_no_daemon_flag_on_process():
     _reset_module_state()
 
     mock_process = MagicMock()
-    with patch.object(utils_module, "ScanDagsTask", return_value=mock_process) as mock_cls:
+    with patch.object(
+        utils_module, "ScanDagsTask", return_value=mock_process
+    ) as mock_cls:
         utils_module.scan_dags_job_background()
 
     mock_cls.assert_called_once_with()
