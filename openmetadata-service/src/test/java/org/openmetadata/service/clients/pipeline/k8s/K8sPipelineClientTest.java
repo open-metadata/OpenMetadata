@@ -1705,6 +1705,44 @@ class K8sPipelineClientTest {
         .spec(new V1PodSpec().containers(containers));
   }
 
+  @Test
+  void testBuildLabelsTruncatesLongPipelineNameToKubernetesLimit() {
+    // Tests P0: Label values must be <= 63 characters
+    String longName = "a".repeat(95);
+    IngestionPipeline pipeline = createTestPipeline(longName, null);
+
+    Map<String, String> labels =
+        assertDoesNotThrow(() -> invokePrivate(client, "buildLabels",
+            new Class<?>[] {IngestionPipeline.class, String.class}, pipeline, "run-123"));
+
+    String pipelineLabel = labels.get("app.kubernetes.io/pipeline");
+    assertNotNull(pipelineLabel);
+    assertTrue(
+        pipelineLabel.length() <= 63,
+        String.format("Label length %d exceeds Kubernetes limit of 63", pipelineLabel.length()));
+    assertTrue(pipelineLabel.startsWith("aaaaaaaa"));
+  }
+
+  @Test
+  void testJobNameTruncationWithLongPipelineName() {
+    // Tests P0: Job names (prefix + name + suffix) must be <= 63 characters
+    String longName = "very-long-pipeline-name-that-exceeds-the-normal-limits-of-kubernetes-resource-naming";
+    IngestionPipeline pipeline = createTestPipeline(longName, null);
+    String runId = "12345678-1234-1234-1234-1234567890ab";
+
+    // JOB_PREFIX (7) + name + suffix (9)
+    String jobName =
+        assertDoesNotThrow(() -> invokePrivate(client, "buildKubernetesName",
+            new Class<?>[] {String.class, String.class, String.class}, "om-job-", pipeline.getName(), "-" + runId.substring(0, 8)));
+
+    assertNotNull(jobName);
+    assertTrue(
+        jobName.length() <= 63,
+        String.format("Job name length %d exceeds Kubernetes limit of 63: %s", jobName.length(), jobName));
+    assertTrue(jobName.startsWith("om-job-"));
+    assertTrue(jobName.endsWith("-12345678"));
+  }
+
   private static Workflow createTestWorkflow(String name) {
     Workflow workflow = new Workflow();
     workflow.setId(UUID.randomUUID());

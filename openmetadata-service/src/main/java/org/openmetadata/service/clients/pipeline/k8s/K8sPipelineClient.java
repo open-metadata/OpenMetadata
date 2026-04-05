@@ -564,7 +564,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
     String pipelineName = sanitizeName(ingestionPipeline.getName());
     String runId = UUID.randomUUID().toString();
     String correlationId = runId.substring(0, 8);
-    String jobName = JOB_PREFIX + pipelineName + "-" + correlationId;
+    String jobSuffix = "-" + correlationId;
+    String jobName = buildKubernetesName(JOB_PREFIX, ingestionPipeline.getName(), jobSuffix);
 
     MDC.put(MDC_CORRELATION_ID, correlationId);
     MDC.put(MDC_PIPELINE_NAME, pipelineName);
@@ -1318,8 +1319,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1JobSpec buildJobSpecForCronJob(IngestionPipeline pipeline) {
-    String pipelineName = sanitizeName(pipeline.getName());
-    String configMapName = CONFIG_MAP_PREFIX + pipelineName;
+    String configMapName = buildKubernetesName(CONFIG_MAP_PREFIX, pipeline.getName());
 
     return new V1JobSpec()
         .backoffLimit(k8sConfig.getBackoffLimit())
@@ -1995,7 +1995,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     labels.put(LABEL_APP, LABEL_VALUE_OPENMETADATA);
     labels.put(LABEL_COMPONENT, LABEL_VALUE_INGESTION);
     labels.put(LABEL_MANAGED_BY, LABEL_VALUE_OPENMETADATA);
-    labels.put(LABEL_PIPELINE, sanitizeName(pipeline.getName()));
+    labels.put(LABEL_PIPELINE, buildKubernetesName("", pipeline.getName()));
     labels.put(LABEL_PIPELINE_TYPE, pipeline.getPipelineType().toString().toLowerCase());
 
     if (runId != null && !SCHEDULED_RUN_ID.equals(runId)) {
@@ -2214,16 +2214,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   String sanitizeName(String name) {
     // K8s names must be lowercase, alphanumeric, or '-'
-    // Must start with alphanumeric, max 63 chars
+    // Must start with alphanumeric. Truncation is handled by buildKubernetesName.
     String sanitized =
         name.toLowerCase()
             .replaceAll("[^a-z0-9-]", "-")
             .replaceAll("-+", "-")
             .replaceAll("^-+|-+$", "");
-
-    if (sanitized.length() > 53) { // Leave room for prefixes
-      sanitized = sanitized.substring(0, 53).replaceAll("-+$", "");
-    }
 
     if (!sanitized.matches("^[a-z0-9].*")) {
       sanitized = "p-" + sanitized;
@@ -2238,12 +2234,17 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private String buildKubernetesName(String prefix, String name, String suffix) {
     String sanitized = sanitizeName(name);
+    // Kubernetes names and label values have a 63-character limit.
     int maxBaseLength = KUBERNETES_NAME_MAX_LENGTH - prefix.length() - suffix.length();
     if (maxBaseLength < 1) {
-      throw new IllegalArgumentException("Kubernetes name prefix/suffix leaves no room for base");
+      throw new IllegalArgumentException(
+          String.format(
+              "Kubernetes name prefix '%s' and suffix '%s' leave no room for base name",
+              prefix, suffix));
     }
 
     if (sanitized.length() > maxBaseLength) {
+      // Truncate and remove trailing dashes to keep it a valid K8s name
       sanitized = sanitized.substring(0, maxBaseLength).replaceAll("-+$", "");
     }
 
