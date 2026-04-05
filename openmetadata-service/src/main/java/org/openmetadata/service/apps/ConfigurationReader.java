@@ -27,11 +27,13 @@ public class ConfigurationReader {
     // envMap is for custom environment variables (e.g., for testing), defaulting to the system
     // environment.
     substitutor =
-        envMap == null ? new EnvironmentVariableSubstitutor(false) : new StringSubstitutor(envMap);
+        envMap == null
+            ? new org.openmetadata.service.util.YamlSafeSubstitutor(false)
+            : new StringSubstitutor(envMap);
   }
 
   public ConfigurationReader() {
-    this(System.getenv());
+    this(null);
   }
 
   public AppPrivateConfig readConfigFromResource(String appName)

@@ -734,7 +734,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   public void initialize(Bootstrap<OpenMetadataApplicationConfig> bootstrap) {
     bootstrap.setConfigurationSourceProvider(
         new SubstitutingSourceProvider(
-            bootstrap.getConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)));
+            bootstrap.getConfigurationSourceProvider(),
+            new org.openmetadata.service.util.YamlSafeSubstitutor(false)));
 
     // Register custom filter factories
     bootstrap

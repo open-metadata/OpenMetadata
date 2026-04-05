@@ -66,7 +66,8 @@ public class DefaultOperationalConfigProvider {
             OperationalConfiguration.class, validator, objectMapper, "dw");
     return factory.build(
         new SubstitutingSourceProvider(
-            new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+            new FileConfigurationSourceProvider(),
+            new org.openmetadata.service.util.YamlSafeSubstitutor(false)),
         configFilePath);
   }
 }
