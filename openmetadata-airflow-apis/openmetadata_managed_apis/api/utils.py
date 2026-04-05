@@ -215,7 +215,10 @@ _rescan_requested: bool = False
 
 
 def _start_scan():
-    """Start a new ScanDagsTask and spawn a reaper thread to join it."""
+    """Start a new ScanDagsTask and spawn a reaper thread to join it.
+
+    Must be called while holding _scan_lock.
+    """
     global _current_scan, _rescan_requested  # pylint: disable=global-statement
     _rescan_requested = False
     process = ScanDagsTask()
