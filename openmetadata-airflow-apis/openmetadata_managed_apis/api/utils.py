@@ -214,6 +214,29 @@ _current_scan: Optional[ScanDagsTask] = None
 _rescan_requested: bool = False
 
 
+def _start_scan():
+    """Start a new ScanDagsTask and spawn a reaper thread to join it."""
+    global _current_scan, _rescan_requested  # pylint: disable=global-statement
+    _rescan_requested = False
+    process = ScanDagsTask()
+    process.start()
+    _current_scan = process
+    reaper = threading.Thread(target=_reap_scan, args=(process,), daemon=True)
+    reaper.start()
+
+
+def _reap_scan(process: ScanDagsTask):
+    """Wait for the scan process to finish; start a follow-up if requested."""
+    process.join()
+    with _scan_lock:
+        global _current_scan  # pylint: disable=global-statement
+        if _current_scan is process:
+            _current_scan = None
+        if _rescan_requested:
+            logger.info("Running queued rescan after previous scan finished")
+            _start_scan()
+
+
 def scan_dags_job_background():
     """
     Runs the scheduler scan in a separate process
@@ -226,24 +249,14 @@ def scan_dags_job_background():
     in the Airflow DB. This guard does not coordinate across multiple
     Gunicorn workers or other processes.
 
-    If a scan is already running when a new deploy arrives, the request
-    is deferred via a _rescan_requested flag so newly deployed DAGs are
-    picked up once the current scan finishes.
+    If a scan is already running when a new deploy arrives, a reaper
+    thread automatically starts a follow-up scan once the current one
+    finishes, ensuring newly deployed DAGs are always picked up.
     """
-    global _current_scan, _rescan_requested  # pylint: disable=global-statement
-
     with _scan_lock:
-        if _current_scan is not None:
-            if _current_scan.is_alive():
-                _rescan_requested = True
-                logger.info("DAG scan already in progress, queued rescan")
-                return
-            _current_scan.join(timeout=5)
-            _current_scan = None
-            if not _rescan_requested:
-                return
-
-        _rescan_requested = False
-        process = ScanDagsTask()
-        process.start()
-        _current_scan = process
+        if _current_scan is not None and _current_scan.is_alive():
+            global _rescan_requested  # pylint: disable=global-statement
+            _rescan_requested = True
+            logger.info("DAG scan already in progress, queued rescan")
+            return
+        _start_scan()

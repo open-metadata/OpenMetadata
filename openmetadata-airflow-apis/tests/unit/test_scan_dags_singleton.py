@@ -13,7 +13,7 @@ Test singleton guard for scan_dags_job_background.
 Verifies fix for https://github.com/open-metadata/OpenMetadata/issues/23646
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import openmetadata_managed_apis.api.utils as utils_module
 
@@ -30,7 +30,8 @@ def test_first_call_starts_process():
 
     mock_process = MagicMock()
     with patch.object(utils_module, "ScanDagsTask", return_value=mock_process):
-        utils_module.scan_dags_job_background()
+        with patch.object(utils_module.threading, "Thread"):
+            utils_module.scan_dags_job_background()
 
     mock_process.start.assert_called_once()
     assert utils_module._current_scan is mock_process
@@ -52,10 +53,9 @@ def test_skips_when_scan_alive_and_sets_rescan_flag():
     assert utils_module._rescan_requested is True
 
 
-def test_joins_finished_process_and_starts_new_when_rescan_requested():
-    """Completed scan with rescan flag should be join()ed and replaced."""
+def test_replaces_finished_scan_with_new_one():
+    """When previous scan finished, a new call should start a fresh scan."""
     _reset_module_state()
-    utils_module._rescan_requested = True
 
     finished_process = MagicMock()
     finished_process.is_alive.return_value = False
@@ -63,45 +63,45 @@ def test_joins_finished_process_and_starts_new_when_rescan_requested():
 
     new_process = MagicMock()
     with patch.object(utils_module, "ScanDagsTask", return_value=new_process):
-        utils_module.scan_dags_job_background()
+        with patch.object(utils_module.threading, "Thread"):
+            utils_module.scan_dags_job_background()
 
-    finished_process.join.assert_called_once_with(timeout=5)
     new_process.start.assert_called_once()
     assert utils_module._current_scan is new_process
 
 
-def test_no_new_scan_when_finished_without_rescan_flag():
-    """Completed scan without rescan flag should not start a new scan."""
-    _reset_module_state()
-    utils_module._rescan_requested = False
-
-    finished_process = MagicMock()
-    finished_process.is_alive.return_value = False
-    utils_module._current_scan = finished_process
-
-    with patch.object(utils_module, "ScanDagsTask") as mock_cls:
-        utils_module.scan_dags_job_background()
-
-    finished_process.join.assert_called_once_with(timeout=5)
-    mock_cls.assert_not_called()
-    assert utils_module._current_scan is None
-
-
-def test_rescan_flag_cleared_on_new_scan():
-    """_rescan_requested should be reset to False when a new scan starts."""
+def test_reaper_starts_follow_up_when_rescan_requested():
+    """Reaper thread should start a new scan if _rescan_requested is True."""
     _reset_module_state()
     utils_module._rescan_requested = True
 
     finished_process = MagicMock()
-    finished_process.is_alive.return_value = False
     utils_module._current_scan = finished_process
 
     new_process = MagicMock()
     with patch.object(utils_module, "ScanDagsTask", return_value=new_process):
-        utils_module.scan_dags_job_background()
+        with patch.object(utils_module.threading, "Thread"):
+            utils_module._reap_scan(finished_process)
 
-    assert utils_module._rescan_requested is False
+    finished_process.join.assert_called_once()
     new_process.start.assert_called_once()
+    assert utils_module._rescan_requested is False
+
+
+def test_reaper_clears_current_scan_without_follow_up():
+    """Reaper thread should clear _current_scan when no rescan is needed."""
+    _reset_module_state()
+    utils_module._rescan_requested = False
+
+    finished_process = MagicMock()
+    utils_module._current_scan = finished_process
+
+    with patch.object(utils_module, "ScanDagsTask") as mock_cls:
+        utils_module._reap_scan(finished_process)
+
+    finished_process.join.assert_called_once()
+    mock_cls.assert_not_called()
+    assert utils_module._current_scan is None
 
 
 def test_no_daemon_flag_on_process():
@@ -109,9 +109,12 @@ def test_no_daemon_flag_on_process():
     _reset_module_state()
 
     mock_process = MagicMock()
+    mock_process.daemon = False
     with patch.object(
         utils_module, "ScanDagsTask", return_value=mock_process
     ) as mock_cls:
-        utils_module.scan_dags_job_background()
+        with patch.object(utils_module.threading, "Thread"):
+            utils_module.scan_dags_job_background()
 
     mock_cls.assert_called_once_with()
+    assert mock_process.daemon is False
