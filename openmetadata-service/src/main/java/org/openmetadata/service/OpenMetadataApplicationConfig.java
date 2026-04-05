@@ -165,6 +165,13 @@ public class OpenMetadataApplicationConfig extends Configuration {
     }
     return adminOpsConfiguration;
   }
+  public AdminOpsConfiguration getAdminOpsConfiguration() {
+    if (adminOpsConfiguration == null) {
+      adminOpsConfiguration = new AdminOpsConfiguration();
+      adminOpsConfiguration.setEnabled(false);
+    }
+    return adminOpsConfiguration;
+  }
 
   @JsonProperty("mcpConfiguration")
   private org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfiguration;
