@@ -2,7 +2,6 @@ package org.openmetadata;
 
 import com.cronutils.utils.StringUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
@@ -17,6 +16,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.operations.OperationalConfiguration;
+import org.openmetadata.service.util.YamlSafeSubstitutor;
 
 @Getter
 @Setter
@@ -65,9 +65,7 @@ public class DefaultOperationalConfigProvider {
         new YamlConfigurationFactory<>(
             OperationalConfiguration.class, validator, objectMapper, "dw");
     return factory.build(
-        new SubstitutingSourceProvider(
-            new FileConfigurationSourceProvider(),
-            new org.openmetadata.service.util.YamlSafeSubstitutor(false)),
+        new SubstitutingSourceProvider(new FileConfigurationSourceProvider(), new YamlSafeSubstitutor(false)),
         configFilePath);
   }
 }

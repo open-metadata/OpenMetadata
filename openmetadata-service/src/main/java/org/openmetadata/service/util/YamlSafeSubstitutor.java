@@ -148,6 +148,21 @@ public class YamlSafeSubstitutor extends EnvironmentVariableSubstitutor {
         break;
     }
 
+    // Check for YAML reserved words that would be parsed as non-strings
+    String lower = value.trim().toLowerCase();
+    switch (lower) {
+      case "true":
+      case "false":
+      case "null":
+      case "yes":
+      case "no":
+      case "on":
+      case "off":
+        return true;
+      default:
+        break;
+    }
+
     // "- " at start is a block sequence entry indicator
     if (first == '-' && value.length() > 1 && value.charAt(1) == ' ') {
       return true;

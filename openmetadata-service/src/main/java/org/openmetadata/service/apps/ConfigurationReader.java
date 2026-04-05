@@ -3,7 +3,6 @@ package org.openmetadata.service.apps;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.dropwizard.configuration.ConfigurationException;
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.ResourceConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
@@ -13,6 +12,7 @@ import java.util.Map;
 import org.apache.commons.text.StringSubstitutor;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.YamlSafeSubstitutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +28,7 @@ public class ConfigurationReader {
     // environment.
     substitutor =
         envMap == null
-            ? new org.openmetadata.service.util.YamlSafeSubstitutor(false)
+            ? new YamlSafeSubstitutor(false)
             : new StringSubstitutor(envMap);
   }
 

@@ -48,7 +48,16 @@ class YamlSafeSubstitutorTest {
         "'[flow, sequence]', false",
         "'{flow: mapping}', false",
         "' \"already_quoted\"', false",
-        "\"'already_quoted'\", false"
+        "\"'already_quoted'\", false",
+        "true, true",
+        "FALSE, true",
+        "null, true",
+        "Null, true",
+        "yes, true",
+        "no, true",
+        "on, true",
+        "off, true",
+        "maybe, false"
       },
       nullValues = {"NULL"})
   void testNeedsYamlQuoting(String value, boolean expected) {
@@ -57,7 +66,7 @@ class YamlSafeSubstitutorTest {
 
   @ParameterizedTest
   @CsvSource({
-    "'>value', \">                value\"",
+    "'>value', \">value\"",
     "'|value', \"|value\"",
     "'#value', \"#value\"",
     "'key: value', \"key: value\"",
