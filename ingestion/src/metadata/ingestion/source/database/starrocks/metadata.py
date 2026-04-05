@@ -53,7 +53,7 @@ RELKIND_MAP = {
     "ELASTICSEARCH": TableType.External,
     "HIVE": TableType.External,
     "JDBC": TableType.External,
-    "ICEBERG": TableType.External,
+    "ICEBERG": TableType.Iceberg,
     "HUDI": TableType.External,
 }
 
