@@ -13,7 +13,7 @@ Test singleton guard for scan_dags_job_background.
 Verifies fix for https://github.com/open-metadata/OpenMetadata/issues/23646
 """
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import openmetadata_managed_apis.api.utils as utils_module
 
