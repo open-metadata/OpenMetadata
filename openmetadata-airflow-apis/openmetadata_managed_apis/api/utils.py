@@ -240,6 +240,8 @@ def scan_dags_job_background():
                 return
             _current_scan.join(timeout=5)
             _current_scan = None
+            if not _rescan_requested:
+                return
 
         _rescan_requested = False
         process = ScanDagsTask()

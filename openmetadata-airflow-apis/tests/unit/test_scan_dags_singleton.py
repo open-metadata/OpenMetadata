@@ -51,9 +51,10 @@ def test_skips_when_scan_alive_and_sets_rescan_flag():
     assert utils_module._rescan_requested is True
 
 
-def test_joins_finished_process_and_starts_new():
-    """Completed scan should be join()ed and replaced on next call."""
+def test_joins_finished_process_and_starts_new_when_rescan_requested():
+    """Completed scan with rescan flag should be join()ed and replaced."""
     _reset_module_state()
+    utils_module._rescan_requested = True
 
     finished_process = MagicMock()
     finished_process.is_alive.return_value = False
@@ -66,6 +67,23 @@ def test_joins_finished_process_and_starts_new():
     finished_process.join.assert_called_once_with(timeout=5)
     new_process.start.assert_called_once()
     assert utils_module._current_scan is new_process
+
+
+def test_no_new_scan_when_finished_without_rescan_flag():
+    """Completed scan without rescan flag should not start a new scan."""
+    _reset_module_state()
+    utils_module._rescan_requested = False
+
+    finished_process = MagicMock()
+    finished_process.is_alive.return_value = False
+    utils_module._current_scan = finished_process
+
+    with patch.object(utils_module, "ScanDagsTask") as mock_cls:
+        utils_module.scan_dags_job_background()
+
+    finished_process.join.assert_called_once_with(timeout=5)
+    mock_cls.assert_not_called()
+    assert utils_module._current_scan is None
 
 
 def test_rescan_flag_cleared_on_new_scan():
