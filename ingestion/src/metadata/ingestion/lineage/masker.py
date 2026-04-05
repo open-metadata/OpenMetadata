@@ -166,14 +166,15 @@ def mask_literals_with_sqlfluff(
 
         def _is_inside_sequence_function_sqlfluff(segment) -> bool:
             """Check if a segment is inside a sequence function like NEXTVAL, CURRVAL, etc."""
-            parent = segment.get_parent()
-            while parent:
+            result = segment.get_parent()
+            while result:
+                parent, _ = result
                 if parent.is_type("function"):
                     name_seg = parent.get_child("function_name")
                     if name_seg and name_seg.raw.upper() in SEQUENCE_FUNCTIONS:
                         return True
                     return False
-                parent = parent.get_parent()
+                result = parent.get_parent()
             return False
 
         def replace_literals(segment, in_groupby_orderby=False):

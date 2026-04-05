@@ -215,21 +215,27 @@ class TestQueryMaskerDialectSpecific(TestCase):
             {
                 "query": "INSERT INTO target_table SELECT NEXTVAL('reporting', 'my_sequence'), col1 FROM source_table WHERE status = 'active';",  # noqa: E501
                 "expected": "INSERT INTO target_table SELECT NEXTVAL('reporting', 'my_sequence'), col1 FROM source_table WHERE status = ?;",  # noqa: E501
-                "dialect": Dialect.ANSI.value,
+                "dialect": Dialect.VERTICA.value,
             },
             {
                 "query": "SELECT CURRVAL('public', 'id_seq') FROM dual;",
                 "expected": "SELECT CURRVAL('public', 'id_seq') FROM dual;",
-                "dialect": Dialect.ANSI.value,
+                "dialect": Dialect.VERTICA.value,
             },
             {
                 "query": "SELECT SETVAL('myschema', 'myseq', 100) FROM dual;",
                 "expected": "SELECT SETVAL('myschema', 'myseq', ?) FROM dual;",
-                "dialect": Dialect.ANSI.value,
+                "dialect": Dialect.VERTICA.value,
             },
         ]
 
         for test_case in query_test_cases:
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlFluff",
+            )
             assert_masked_query(
                 test_case["query"],
                 test_case["expected"],
