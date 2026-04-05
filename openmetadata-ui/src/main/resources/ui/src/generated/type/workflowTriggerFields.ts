@@ -22,7 +22,6 @@ export enum WorkflowTriggerFields {
     Description = "description",
     DisplayName = "displayName",
     Domains = "domains",
-    EntityStatus = "entityStatus",
     Experts = "experts",
     Extension = "extension",
     FullyQualifiedName = "fullyQualifiedName",
