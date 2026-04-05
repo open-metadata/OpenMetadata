@@ -97,6 +97,8 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Table entity operations.
@@ -5845,5 +5847,163 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       assertNotNull(table.getTags(), "Table tags should be populated");
       assertFalse(table.getTags().isEmpty(), "Table tags should not be empty");
     }
+  }
+
+  // ===================================================================
+  // TIMESERIES CLEANUP ON HARD DELETE TESTS (fixes #27041, #27042)
+  // ===================================================================
+
+  /**
+   * Verify that hard-deleting a table cleans up its profiler timeseries data so that re-creating a
+   * table with the same FQN does not resurface stale profile rows.
+   */
+  @Test
+  void hardDelete_cleansUpProfilerTimeSeriesData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("ts_cleanup_table"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
+
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+
+    Long timestamp = System.currentTimeMillis();
+    TableProfile tableProfile =
+        new TableProfile()
+            .withTimestamp(timestamp)
+            .withRowCount(5000.0)
+            .withColumnCount(2.0)
+            .withSizeInByte(250000.0);
+
+    ColumnProfile colProfile =
+        new ColumnProfile()
+            .withName("id")
+            .withTimestamp(timestamp)
+            .withValuesCount(5000.0)
+            .withUniqueCount(5000.0)
+            .withNullCount(0.0);
+
+    CreateTableProfile profileRequest =
+        new CreateTableProfile()
+            .withTableProfile(tableProfile)
+            .withColumnProfile(List.of(colProfile));
+
+    client.tables().updateTableProfile(table.getId(), profileRequest);
+
+    String latestPath = "/v1/tables/" + tableFqn + "/tableProfile/latest";
+    Table tableWithProfile =
+        client.getHttpClient().execute(HttpMethod.GET, latestPath, null, Table.class);
+    assertNotNull(tableWithProfile.getProfile(), "Profile should exist before hard delete");
+    assertEquals(5000.0, tableWithProfile.getProfile().getRowCount());
+
+    hardDeleteEntity(table.getId().toString());
+
+    Table recreated = createEntity(createRequest);
+    assertEquals(tableFqn, recreated.getFullyQualifiedName());
+
+    String recreatedLatestPath =
+        "/v1/tables/" + recreated.getFullyQualifiedName() + "/tableProfile/latest";
+    Table recreatedWithProfile =
+        client.getHttpClient().execute(HttpMethod.GET, recreatedLatestPath, null, Table.class);
+    assertNull(
+        recreatedWithProfile.getProfile(),
+        "Recreated table should have no stale profile data after hard delete cleanup");
+  }
+
+  /**
+   * Verify that hard-deleting a table also cleans up child entity timeseries data (column profiles)
+   * via prefix-based deletion, preventing orphaned column profile rows from resurfacing.
+   */
+  @Test
+  void hardDelete_cleansUpColumnProfileTimeSeriesData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("col_ts_cleanup"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("email", "VARCHAR").dataLength(255).build(),
+            ColumnBuilder.of("age", "INT").build()));
+
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+
+    Long timestamp = System.currentTimeMillis();
+    TableProfile tableProfile =
+        new TableProfile().withTimestamp(timestamp).withRowCount(3000.0).withColumnCount(3.0);
+
+    ColumnProfile idProfile =
+        new ColumnProfile()
+            .withName("id")
+            .withTimestamp(timestamp)
+            .withValuesCount(3000.0)
+            .withUniqueCount(3000.0)
+            .withNullCount(0.0);
+
+    ColumnProfile emailProfile =
+        new ColumnProfile()
+            .withName("email")
+            .withTimestamp(timestamp)
+            .withValuesCount(3000.0)
+            .withUniqueCount(2900.0)
+            .withNullCount(100.0);
+
+    ColumnProfile ageProfile =
+        new ColumnProfile()
+            .withName("age")
+            .withTimestamp(timestamp)
+            .withValuesCount(3000.0)
+            .withUniqueCount(80.0)
+            .withNullCount(50.0);
+
+    CreateTableProfile profileRequest =
+        new CreateTableProfile()
+            .withTableProfile(tableProfile)
+            .withColumnProfile(List.of(idProfile, emailProfile, ageProfile));
+
+    client.tables().updateTableProfile(table.getId(), profileRequest);
+
+    String latestPath = "/v1/tables/" + tableFqn + "/tableProfile/latest";
+    RequestOptions options =
+        RequestOptions.builder().queryParam("includeColumnProfile", "true").build();
+    Table tableWithProfile =
+        client.getHttpClient().execute(HttpMethod.GET, latestPath, null, Table.class, options);
+    assertNotNull(tableWithProfile.getProfile());
+
+    boolean hasColumnProfiles =
+        tableWithProfile.getColumns().stream().anyMatch(c -> c.getProfile() != null);
+    assertTrue(hasColumnProfiles, "Column profiles should exist before hard delete");
+
+    hardDeleteEntity(table.getId().toString());
+
+    Table recreated = createEntity(createRequest);
+    assertEquals(tableFqn, recreated.getFullyQualifiedName());
+
+    String recreatedLatestPath =
+        "/v1/tables/" + recreated.getFullyQualifiedName() + "/tableProfile/latest";
+    Table recreatedWithProfile =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, recreatedLatestPath, null, Table.class, options);
+    assertNull(
+        recreatedWithProfile.getProfile(),
+        "Recreated table should have no stale table profile after hard delete");
+
+    boolean hasStaleColumnProfiles =
+        recreatedWithProfile.getColumns().stream().anyMatch(c -> c.getProfile() != null);
+    assertFalse(
+        hasStaleColumnProfiles,
+        "Recreated table should have no stale column profiles after hard delete cleanup");
   }
 }
