@@ -300,6 +300,12 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchResultListMapper searchForExport(
+      SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchManager.searchForExport(request, subjectContext);
+  }
+
+  @Override
   public Response previewSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
