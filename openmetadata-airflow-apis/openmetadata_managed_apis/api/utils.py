@@ -232,9 +232,9 @@ def _reap_scan(process: ScanDagsTask):
         global _current_scan  # pylint: disable=global-statement
         if _current_scan is process:
             _current_scan = None
-        if _rescan_requested:
-            logger.info("Running queued rescan after previous scan finished")
-            _start_scan()
+            if _rescan_requested:
+                logger.info("Running queued rescan after previous scan finished")
+                _start_scan()
 
 
 def scan_dags_job_background():

@@ -118,3 +118,20 @@ def test_no_daemon_flag_on_process():
 
     mock_cls.assert_called_once_with()
     assert mock_process.daemon is False
+
+
+def test_stale_reaper_does_not_spawn_duplicate():
+    """Stale reaper must not start a rescan if another scan already replaced it."""
+    _reset_module_state()
+
+    old_process = MagicMock()
+    new_process = MagicMock()
+    utils_module._current_scan = new_process
+    utils_module._rescan_requested = True
+
+    with patch.object(utils_module, "ScanDagsTask") as mock_cls:
+        utils_module._reap_scan(old_process)
+
+    old_process.join.assert_called_once()
+    mock_cls.assert_not_called()
+    assert utils_module._current_scan is new_process
