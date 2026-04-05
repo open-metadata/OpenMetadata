@@ -338,8 +338,8 @@ class IndexMappingVersionTrackerTest {
       List<String> changed =
           new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester").getChangedMappings();
 
-      // Every entity in indexMapping.json that has mapping files should be detected
-      // Filter to only entities that have language-specific mapping files (not time series)
+      // Every entity in indexMapping.json that exposes a resolvable "en" mapping file should be
+      // detected
       Map<String, IndexMapping> entitiesWithLangMappings = new HashMap<>();
       for (Map.Entry<String, IndexMapping> entry : realMappings.entrySet()) {
         String path = "/" + entry.getValue().getIndexMappingFile("en");
