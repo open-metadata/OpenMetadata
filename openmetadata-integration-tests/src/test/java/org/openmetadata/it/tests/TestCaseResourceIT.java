@@ -3852,6 +3852,219 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         "Test case should inherit non-conflicting tag (Sensitive) from table");
   }
 
+  @Test
+  void test_testCaseSearchIndexUpdatedWhenTableTagChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    // 1. Create a table without tags and a test case linked to it
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_tag_propagation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // 2. Update the table to add a tag via PUT
+    Table fetchedTable = client.tables().get(table.getId().toString(), "tags");
+    fetchedTable.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    // 3. Verify the test case search index document is updated with the inherited tag
+    String testCaseId = testCase.getId().toString();
+    Awaitility.await(
+            "Test case search index should contain inherited tag from table after table tag update")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + testCaseId)
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+
+              assertTrue(
+                  searchResponse.contains(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+                  "Test case search index should contain the inherited tag '"
+                      + shared.PII_SENSITIVE_TAG_LABEL.getTagFQN()
+                      + "' from the table, but got: "
+                      + searchResponse);
+            });
+  }
+
+  @Test
+  void test_testCaseSearchIndexUpdatedWhenTableOwnerChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_owner_propagation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    Table fetchedTable = client.tables().get(table.getId().toString(), "owners");
+    fetchedTable.setOwners(List.of(shared.USER1_REF));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    String testCaseId = testCase.getId().toString();
+    Awaitility.await(
+            "Test case search index should contain inherited owner from table after owner update")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + testCaseId)
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+              com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(searchResponse);
+              com.fasterxml.jackson.databind.JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Test case should be in search index");
+
+              com.fasterxml.jackson.databind.JsonNode source = hits.get(0).path("_source");
+              com.fasterxml.jackson.databind.JsonNode owners = source.path("owners");
+              assertTrue(
+                  owners.isArray() && !owners.isEmpty(),
+                  "Owners should be propagated to test case search index");
+              assertTrue(
+                  java.util.stream.StreamSupport.stream(owners.spliterator(), false)
+                      .anyMatch(o -> shared.USER1.getId().toString().equals(o.path("id").asText())),
+                  "Owner in test case search index should match the user set on the table");
+            });
+  }
+
+  @Test
+  void test_testCaseSearchIndexUpdatedWhenTableDomainChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_domain_propagation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    Table fetchedTable = client.tables().get(table.getId().toString(), "domains");
+    fetchedTable.setDomains(List.of(shared.DOMAIN.getEntityReference()));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    String testCaseId = testCase.getId().toString();
+    String domainFqn = shared.DOMAIN.getFullyQualifiedName();
+    Awaitility.await(
+            "Test case search index should contain inherited domain from table after domain update")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + testCaseId)
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+              assertTrue(
+                  searchResponse.contains(domainFqn),
+                  "Test case search index should contain inherited domain '"
+                      + domainFqn
+                      + "' from the table, but got: "
+                      + searchResponse);
+            });
+  }
+
+  @Test
+  @org.junit.jupiter.api.Disabled("Requires correct change event to be sent")
+  void test_testCaseSearchIndexUpdatedWhenTableDataProductChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("dp_prop"))
+                    .withDescription("DataProduct for propagation test")
+                    .withDomains(List.of(shared.DOMAIN.getFullyQualifiedName())));
+
+    Table table = createTable(ns);
+
+    // Table must share the DataProduct's domain for the validation rule to pass
+    Table fetchedTable = client.tables().get(table.getId().toString(), "dataProducts,domains");
+    fetchedTable.setDomains(List.of(shared.DOMAIN.getEntityReference()));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    fetchedTable = client.tables().get(table.getId().toString(), "dataProducts,domains");
+    fetchedTable.setDataProducts(List.of(dataProduct.getEntityReference()));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_dp_propagation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    String testCaseId = testCase.getId().toString();
+    String dpFqn = dataProduct.getFullyQualifiedName();
+    Awaitility.await("Test case search index should contain inherited dataProduct from table")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + testCaseId)
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+              com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(searchResponse);
+              com.fasterxml.jackson.databind.JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Test case should be in search index");
+
+              com.fasterxml.jackson.databind.JsonNode source = hits.get(0).path("_source");
+              com.fasterxml.jackson.databind.JsonNode dataProducts = source.path("dataProducts");
+              assertTrue(
+                  dataProducts.isArray() && !dataProducts.isEmpty(),
+                  "dataProducts should be propagated to test case search index");
+              assertTrue(
+                  java.util.stream.StreamSupport.stream(dataProducts.spliterator(), false)
+                      .anyMatch(dp -> dpFqn.equals(dp.path("fullyQualifiedName").asText())),
+                  "dataProduct FQN should match '" + dpFqn + "' in test case search index");
+            });
+  }
+
   private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
     if (tags == null || tags.isEmpty()) {
       return "";
