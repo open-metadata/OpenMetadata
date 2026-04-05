@@ -211,6 +211,7 @@ class ScanDagsTask(Process):
 
 _scan_lock = threading.Lock()
 _current_scan: Optional[ScanDagsTask] = None
+_rescan_requested: bool = False
 
 
 def scan_dags_job_background():
@@ -218,21 +219,29 @@ def scan_dags_job_background():
     Runs the scheduler scan in a separate process
     to not block the API call.
 
-    Uses a singleton pattern to prevent spawning multiple concurrent
-    processes. Each ScanDagsTask process imports the full Airflow scheduler
-    stack, so spawning one per deploy leaks ~120Mi per call and creates
-    orphaned SchedulerJob entries in the Airflow DB.
+    Uses a per-worker guard to prevent spawning multiple concurrent
+    ScanDagsTask processes from the same Python worker. Each process
+    imports the full Airflow scheduler stack, so spawning duplicates
+    increases memory usage and can create orphaned SchedulerJob entries
+    in the Airflow DB. This guard does not coordinate across multiple
+    Gunicorn workers or other processes.
+
+    If a scan is already running when a new deploy arrives, the request
+    is deferred via a _rescan_requested flag so newly deployed DAGs are
+    picked up once the current scan finishes.
     """
-    global _current_scan  # noqa: PLW0603
+    global _current_scan, _rescan_requested  # pylint: disable=global-statement
 
     with _scan_lock:
         if _current_scan is not None:
             if _current_scan.is_alive():
-                logger.info("DAG scan already in progress, skipping")
+                _rescan_requested = True
+                logger.info("DAG scan already in progress, queued rescan")
                 return
             _current_scan.join(timeout=5)
             _current_scan = None
 
-        process = ScanDagsTask(daemon=True)
+        _rescan_requested = False
+        process = ScanDagsTask()
         process.start()
         _current_scan = process
