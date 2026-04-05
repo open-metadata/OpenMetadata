@@ -23,6 +23,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TEAM;
@@ -124,6 +125,7 @@ import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -385,6 +387,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected String getInheritableFields() {
     return "owners,domains,reviewers";
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    return descriptors;
   }
 
   @Override
