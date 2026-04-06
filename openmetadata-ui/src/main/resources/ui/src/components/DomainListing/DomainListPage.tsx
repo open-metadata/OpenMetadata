@@ -230,7 +230,7 @@ const DomainListPage = () => {
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.domain?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={openDrawer}
         />
       );

@@ -11,6 +11,7 @@
 """
 Delete the DAG in Airflow's db, as well as the python file
 """
+
 import traceback
 from typing import Callable
 
@@ -43,11 +44,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     if not is_airflow_3_or_higher():
         from airflow.www.app import csrf
     else:
-        # Airflow 3.x doesn't have csrf in the same location, use a no-op
-        class csrf:
-            @staticmethod
-            def exempt(f):
-                return f
+        from airflow.providers.fab.www.app import csrf
 
     @blueprint.route("/delete", methods=["DELETE"])
     @csrf.exempt
