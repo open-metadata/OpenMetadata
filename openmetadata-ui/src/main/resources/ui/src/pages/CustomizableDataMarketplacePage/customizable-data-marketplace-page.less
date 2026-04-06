@@ -1,0 +1,80 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../styles/variables.less';
+
+.customize-details-page {
+  box-shadow: @box-shadow-surface-default;
+  border: 1px solid @grey-15;
+  background-color: @blue-22;
+  padding: 20px;
+  border-radius: 12px;
+
+  .customize-page-header {
+    border: 0.5px solid @primary-3;
+  }
+}
+
+.customize-marketplace-content {
+  background-color: @white;
+  border-radius: 12px;
+}
+
+.customize-marketplace-bg {
+  position: relative;
+  padding: 30px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--marketplace-bg);
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+    z-index: 0;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.marketplace-drag-handle {
+  cursor: move;
+  width: 41px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid @border-color-1;
+  color: @black;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background-color: @grey-100;
+  }
+}
+
+.marketplace-customize-widgets {
+  margin-top: 24px;
+  user-select: none;
+
+  .react-grid-item.react-grid-placeholder {
+    background-color: @announcement-background-dark;
+    border-radius: 12px;
+  }
+}

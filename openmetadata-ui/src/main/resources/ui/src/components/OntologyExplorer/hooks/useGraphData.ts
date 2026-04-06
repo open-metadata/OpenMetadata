@@ -16,6 +16,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
   DATA_MODE_ASSET_EDGE_STROKE_COLOR,
+  DATA_MODE_TERM_MIN_CENTER_SPACING,
   DATA_MODE_TERM_NODE_SIZE,
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
@@ -320,7 +321,8 @@ export function useGraphDataBuilder({
             nodesForGraph.filter(
               (n) => n.type !== 'dataAsset' && n.type !== 'metric'
             ),
-            LayoutEngine.Dagre
+            LayoutEngine.Dagre,
+            DATA_MODE_TERM_MIN_CENTER_SPACING
           )
         : {};
 
@@ -590,6 +592,8 @@ export function useGraphDataBuilder({
           getEdgeRelationLabelStyle(labelText, edge.relationType)),
       };
 
+      const edgeType = isTermTermInDataMode ? 'polyline' : 'cubic-vertical';
+
       return {
         id: edgeId,
         source: edge.from,
@@ -601,11 +605,18 @@ export function useGraphDataBuilder({
           isClickedEdge,
           isCrossTeam,
           isEdgeDimmed,
-          edgeShapeType: 'cubic-vertical',
+          edgeShapeType: edgeType,
         },
-        type: 'cubic-vertical',
+        type: edgeType,
         style: {
           ...baseEdgeStyle,
+          ...(isTermTermInDataMode && {
+            router: {
+              type: 'shortest-path',
+              offset: 20,
+              enableObstacleAvoidance: true,
+            },
+          }),
         },
       };
     });

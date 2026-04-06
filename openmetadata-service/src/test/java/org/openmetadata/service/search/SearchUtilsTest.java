@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import javax.net.ssl.SSLContext;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.Credentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
@@ -252,5 +255,85 @@ class SearchUtilsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> SearchUtils.buildHttpHostsForHc5(invalidConfig, "Test"));
+  }
+
+  @Test
+  void buildScopedCredentialsProviderScopesCredentialsToTargetHostsOnly() {
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setHost("es-node-1:9201,es-node-2:9202");
+    config.setPort(9200);
+    config.setScheme("https");
+    config.setUsername("admin");
+    config.setPassword("s3cret");
+
+    org.apache.hc.core5.http.HttpHost[] httpHosts =
+        SearchUtils.buildHttpHostsForHc5(config, "Test");
+
+    BasicCredentialsProvider provider =
+        SearchUtils.buildScopedCredentialsProvider(config, httpHosts);
+
+    assertNotNull(provider);
+
+    Credentials node1Creds = provider.getCredentials(new AuthScope("es-node-1", 9201), null);
+    assertNotNull(node1Creds);
+
+    Credentials node2Creds = provider.getCredentials(new AuthScope("es-node-2", 9202), null);
+    assertNotNull(node2Creds);
+
+    Credentials proxyCreds =
+        provider.getCredentials(new AuthScope("corporate-proxy.internal", 8080), null);
+    assertNull(proxyCreds);
+  }
+
+  @Test
+  void buildScopedCredentialsProviderReturnsNullWhenNoCredentials() {
+    ElasticSearchConfiguration noCredsConfig = new ElasticSearchConfiguration();
+    noCredsConfig.setHost("es-node-1");
+    noCredsConfig.setPort(9200);
+    noCredsConfig.setScheme("http");
+
+    org.apache.hc.core5.http.HttpHost[] hosts =
+        SearchUtils.buildHttpHostsForHc5(noCredsConfig, "Test");
+    assertNull(SearchUtils.buildScopedCredentialsProvider(noCredsConfig, hosts));
+
+    ElasticSearchConfiguration usernameOnlyConfig = new ElasticSearchConfiguration();
+    usernameOnlyConfig.setHost("es-node-1");
+    usernameOnlyConfig.setPort(9200);
+    usernameOnlyConfig.setScheme("http");
+    usernameOnlyConfig.setUsername("admin");
+
+    assertNull(
+        SearchUtils.buildScopedCredentialsProvider(
+            usernameOnlyConfig, SearchUtils.buildHttpHostsForHc5(usernameOnlyConfig, "Test")));
+
+    ElasticSearchConfiguration passwordOnlyConfig = new ElasticSearchConfiguration();
+    passwordOnlyConfig.setHost("es-node-1");
+    passwordOnlyConfig.setPort(9200);
+    passwordOnlyConfig.setScheme("http");
+    passwordOnlyConfig.setPassword("secret");
+
+    assertNull(
+        SearchUtils.buildScopedCredentialsProvider(
+            passwordOnlyConfig, SearchUtils.buildHttpHostsForHc5(passwordOnlyConfig, "Test")));
+  }
+
+  @Test
+  void buildScopedCredentialsProviderWorksWithSingleHost() {
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setHost("localhost");
+    config.setPort(9200);
+    config.setScheme("http");
+    config.setUsername("elastic");
+    config.setPassword("changeme");
+
+    org.apache.hc.core5.http.HttpHost[] httpHosts =
+        SearchUtils.buildHttpHostsForHc5(config, "Test");
+
+    BasicCredentialsProvider provider =
+        SearchUtils.buildScopedCredentialsProvider(config, httpHosts);
+
+    assertNotNull(provider);
+    assertNotNull(provider.getCredentials(new AuthScope("localhost", 9200), null));
+    assertNull(provider.getCredentials(new AuthScope("other-host", 9200), null));
   }
 }
