@@ -197,14 +197,14 @@ class FivetranSource(PipelineServiceSource):
         source_database_name = self._get_database_name(pipeline_details.source)
         if not source_database_name:
             logger.debug(
-                f"Unable to determine source database name for pipeline [{pipeline_name}] lineage. Where source config is [{pipeline_details.source.get('config', {})}]."
+                f"Unable to determine source database name for pipeline [{pipeline_name}] lineage. Config keys: {list(pipeline_details.source.get('config', {}).keys())}."
             )
         destination_database_name = self._get_database_name(
             pipeline_details.destination
         )
         if not destination_database_name:
             logger.debug(
-                f"Unable to determine destination database name for pipeline [{pipeline_name}] lineage. Where destination config is [{pipeline_details.destination.get('config', {})}]."
+                f"Unable to determine destination database name for pipeline [{pipeline_name}] lineage. Config keys: {list(pipeline_details.destination.get('config', {}).keys())}"
             )
 
         for schema_name, schema_data in self.client.get_connector_schema_details(
