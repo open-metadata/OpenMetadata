@@ -29,8 +29,12 @@ export interface WebhookSinkConfig {
     /**
      * Additional HTTP headers to include in requests.
      */
-    headers?:     { [key: string]: string };
-    httpMethod?:  HTTPMethod;
+    headers?:    { [key: string]: string };
+    httpMethod?: HTTPMethod;
+    /**
+     * Query parameters to append to the webhook URL.
+     */
+    queryParams?: QueryParameter[];
     retryConfig?: RetryConfiguration;
     /**
      * Timeout in seconds for HTTP requests.
@@ -96,6 +100,11 @@ export enum HTTPMethod {
     Patch = "PATCH",
     Post = "POST",
     Put = "PUT",
+}
+
+export interface QueryParameter {
+    key:   string;
+    value: string;
 }
 
 export interface RetryConfiguration {
