@@ -295,7 +295,7 @@ def get_table_names(self, connection, schema=None, **kw):
         tablespace=tablespace, prefix=_get_table_prefix(self)
     )
     cursor = connection.execute(sql.text(sql_str), {"owner": schema})
-    return [row[0] for row in cursor]
+    return [self.normalize_name(row[0]) for row in cursor]
 
 
 def get_view_names(self, schema=None):
