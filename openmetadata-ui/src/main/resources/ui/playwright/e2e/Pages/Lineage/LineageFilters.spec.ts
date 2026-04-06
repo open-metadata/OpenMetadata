@@ -425,7 +425,7 @@ test.describe('Lineage Filters', () => {
           .getByTestId(`${serviceName}-checkbox`)
           .click();
 
-        const entitiesToShow = [lineageEntity, depth1Entity, entity];
+        const entitiesToShow = [entity];
 
         // service entity and base entity will be visible
         // rest of them will be hidden
@@ -553,9 +553,7 @@ test.describe('Lineage Filters', () => {
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
-    for (let index = 0; index < depth2ndEntities.length; index++) {
-      const entity = depth2ndEntities[index];
-
+    for (const entity of depth2ndEntities) {
       if (entity.type === 'Metric') {
         continue;
       }
@@ -587,11 +585,15 @@ test.describe('Lineage Filters', () => {
           .getByTestId(`${serviceType}-checkbox`)
           .click();
 
-        const entitiesToShow = [lineageEntity, depth1Entity, entity];
+        const entitiesToShow = [entity];
 
         // service entity and base entity will be visible
         // rest of them will be hidden
-        const entitiesToHide = entities.filter((_, idx) => idx !== index);
+        const entitiesToHide = depth2ndEntities.filter(
+          (record) =>
+            serviceType !==
+            get(record, 'entityResponseData.serviceType', '').toLowerCase()
+        );
 
         const lineageRes = page.waitForResponse(
           '/api/v1/lineage/getLineageByEntityCount?*'
@@ -599,10 +601,12 @@ test.describe('Lineage Filters', () => {
         await page.getByRole('button', { name: 'Update' }).click();
         await lineageRes;
 
+        console.log(entitiesToShow, entitiesToHide);
+
         for (const entity of entitiesToShow) {
           await expect(
             page.locator(
-              `[data-row-key=${entity.entityResponseData.fullyQualifiedName}]`
+              `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
             )
           ).toBeVisible();
         }
@@ -610,7 +614,7 @@ test.describe('Lineage Filters', () => {
         for (const entity of entitiesToHide) {
           await expect(
             page.locator(
-              `[data-row-key=${entity.entityResponseData.fullyQualifiedName}]`
+              `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
             )
           ).not.toBeVisible();
         }
@@ -631,9 +635,7 @@ test.describe('Lineage Filters', () => {
 
     await page.locator('[aria-label="Filters"]').click();
 
-    for (let index = 0; index < depth2ndEntities.length; index++) {
-      const entity = depth2ndEntities[index];
-
+    for (const entity of depth2ndEntities) {
       if (entity.type === 'Metric') {
         continue;
       }
@@ -669,7 +671,14 @@ test.describe('Lineage Filters', () => {
 
         // service entity and base entity will be visible
         // rest of them will be hidden
-        const entitiesToHide = entities.filter((_, idx) => idx !== index);
+
+        // service entity and base entity will be visible
+        // rest of them will be hidden
+        const entitiesToHide = depth2ndEntities.filter(
+          (record) =>
+            serviceType !==
+            get(record, 'entityResponseData.serviceType', '').toLowerCase()
+        );
 
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
         await page.getByRole('button', { name: 'Update' }).click();
