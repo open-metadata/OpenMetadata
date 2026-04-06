@@ -16,8 +16,8 @@ import { ReactNode, useMemo, useState } from 'react';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { EntityReference } from '../../../generated/entity/type';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
-import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';
+import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import { OwnerReveal } from '../RemainingOwner/OwnerReveal';
 
 interface OwnerUserListProps {

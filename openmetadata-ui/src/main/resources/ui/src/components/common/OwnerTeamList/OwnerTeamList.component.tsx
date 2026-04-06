@@ -19,8 +19,8 @@ import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
-import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';
+import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 
 export interface OwnerTeamListProps {
   owners: EntityReference[];
