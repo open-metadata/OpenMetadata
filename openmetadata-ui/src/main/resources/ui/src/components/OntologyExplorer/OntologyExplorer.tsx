@@ -69,6 +69,7 @@ import GraphSettingsPanel from './GraphSettingsPanel';
 import NodeContextMenu from './NodeContextMenu';
 import OntologyControlButtons from './OntologyControlButtons';
 import {
+  DATA_MODE_ASSET_LOAD_PAGE_SIZE,
   GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY,
   LayoutType,
   RELATION_COLORS,
@@ -118,10 +119,10 @@ const ASSET_NODE_TYPE = 'dataAsset';
 const ASSET_RELATION_TYPE = 'hasGlossaryTerm';
 
 const ONTOLOGY_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:bg-primary tw:[background-image:radial-gradient(circle,rgba(148,163,184,0.22)_1px,transparent_1px)] tw:[background-size:14px_14px]';
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,rgba(148,163,184,0.22)_1px,transparent_1px)] tw:[background-size:14px_14px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
-  'tw:z-50 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
+  'tw:z-1 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
 
 const DEFAULT_SETTINGS: GraphSettings = {
   layout: LayoutType.Hierarchical,
@@ -258,6 +259,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return map;
   }, [glossaries]);
 
+  const loadedAssetCountPerTerm = useMemo(() => {
+    const counts: Record<string, number> = {};
+    assetGraphData?.edges.forEach((e) => {
+      if (e.relationType === ASSET_RELATION_TYPE) {
+        counts[e.to] = (counts[e.to] ?? 0) + 1;
+      }
+    });
+
+    return counts;
+  }, [assetGraphData]);
+
   const combinedGraphData = useMemo(() => {
     if (!graphData) {
       return null;
@@ -274,6 +286,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         return {
           ...node,
           assetCount: termAssetCounts[node.id] ?? 0,
+          loadedAssetCount: loadedAssetCountPerTerm[node.id] ?? 0,
         };
       });
 
@@ -306,7 +319,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
 
     return graphData;
-  }, [graphData, assetGraphData, explorationMode, termAssetCounts]);
+  }, [
+    graphData,
+    assetGraphData,
+    explorationMode,
+    termAssetCounts,
+    loadedAssetCountPerTerm,
+  ]);
 
   const filteredGraphData = useMemo(() => {
     if (!combinedGraphData) {
@@ -337,41 +356,35 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           .map((n) => n.id)
       );
 
-      const metricIds = new Set<string>();
-      const assetIds = new Set<string>();
-      filteredEdges.forEach((edge) => {
-        if (edge.relationType === METRIC_RELATION_TYPE) {
-          if (glossaryTermIds.has(edge.to) || glossaryTermIds.has(edge.from)) {
-            metricIds.add(edge.from);
-            metricIds.add(edge.to);
-          }
+      const edgeKey = (e: OntologyEdge) =>
+        `${e.from}-${e.to}-${e.relationType}`;
 
+      // Keep glossary terms plus their directly related nodes/edges
+      const glossaryNeighborIds = new Set<string>(glossaryTermIds);
+      const glossaryEdgeKeys = new Set<string>();
+
+      filteredEdges.forEach((edge) => {
+        const isIncidentToGlossary =
+          glossaryTermIds.has(edge.from) || glossaryTermIds.has(edge.to);
+        if (!isIncidentToGlossary) {
           return;
         }
-        if (edge.relationType === ASSET_RELATION_TYPE) {
-          if (glossaryTermIds.has(edge.to) || glossaryTermIds.has(edge.from)) {
-            assetIds.add(edge.from);
-            assetIds.add(edge.to);
-          }
-        }
+
+        glossaryNeighborIds.add(edge.from);
+        glossaryNeighborIds.add(edge.to);
+        glossaryEdgeKeys.add(edgeKey(edge));
       });
 
       filteredNodes = filteredNodes.filter((n) => {
         if (n.type === 'glossary') {
           return glossaryFilterIds.includes(n.id);
         }
-        if (n.type === METRIC_NODE_TYPE) {
-          return metricIds.has(n.id);
-        }
-        if (n.type === ASSET_NODE_TYPE) {
-          return assetIds.has(n.id);
-        }
 
-        return n.glossaryId && glossaryFilterIds.includes(n.glossaryId);
+        return glossaryNeighborIds.has(n.id);
       });
-      const nodeIds = new Set(filteredNodes.map((n) => n.id));
-      filteredEdges = filteredEdges.filter(
-        (e) => nodeIds.has(e.from) && nodeIds.has(e.to)
+
+      filteredEdges = filteredEdges.filter((e) =>
+        glossaryEdgeKeys.has(edgeKey(e))
       );
     }
 
@@ -657,17 +670,18 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
 
   const appendTermAssetsForTerm = useCallback(
-    async (termNode: OntologyNode, pageSize: number) => {
+    async (termNode: OntologyNode, pageSize: number, fromOffset = 0) => {
       if (!isTermNode(termNode) || !termNode.fullyQualifiedName) {
         return;
       }
 
       const size = Math.max(1, pageSize);
+      const pageNumber = Math.floor(fromOffset / size) + 1;
 
       try {
         const res = await searchQuery({
           query: '**',
-          pageNumber: 1,
+          pageNumber,
           pageSize: size,
           searchIndex: SearchIndex.ALL,
           queryFilter: getTermQuery({
@@ -978,21 +992,27 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         : glossariesToUse;
 
       for (const glossary of glossariesToFetch) {
-        try {
-          const termsResponse = await getGlossaryTerms({
-            glossary: glossary.id,
-            fields: [
-              TabSpecificField.RELATED_TERMS,
-              TabSpecificField.CHILDREN,
-              TabSpecificField.PARENT,
-              TabSpecificField.OWNERS,
-            ],
-            limit: 1000,
-          });
-          allTerms.push(...termsResponse.data);
-        } catch {
-          // Continue with other glossaries if one fails
-        }
+        let after: string | undefined;
+        do {
+          try {
+            const termsResponse = await getGlossaryTerms({
+              glossary: glossary.id,
+              fields: [
+                TabSpecificField.RELATED_TERMS,
+                TabSpecificField.CHILDREN,
+                TabSpecificField.PARENT,
+                TabSpecificField.OWNERS,
+              ],
+              limit: 1000,
+              after,
+            });
+            allTerms.push(...termsResponse.data);
+            after = termsResponse.paging?.after;
+          } catch {
+            // Continue with other glossaries if one fails
+            break;
+          }
+        } while (after);
       }
 
       return buildGraphFromAllTerms(allTerms, glossariesToFetch);
@@ -1007,7 +1027,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     async (glossaryIdParam?: string) => {
       setLoading(true);
       try {
-        // Always fetch glossaries list for export functionality
         const [glossariesResponse, metricsResponse] = await Promise.all([
           getGlossariesList({
             fields: 'owners,tags',
@@ -1036,10 +1055,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         }
 
         const mergedData = mergeMetricsIntoGraph(data, metricsResponse);
-        setGraphData(mergedData);
         setAssetGraphData(null);
         setTermAssetCounts({});
         setSavedPositions(null);
+        setGraphData(mergedData);
       } catch (error) {
         showErrorToast(
           isAxiosError(error) ? error : String(error),
@@ -1265,10 +1284,24 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     (
       node: OntologyNode,
       _position?: { x: number; y: number },
-      meta?: { dataModeAssetBadgeClick?: boolean }
+      meta?: {
+        dataModeAssetBadgeClick?: boolean;
+        dataModeLoadMoreBadgeClick?: boolean;
+      }
     ) => {
       setContextMenu(null);
       if (explorationMode === 'data' && isTermNode(node)) {
+        if (meta?.dataModeLoadMoreBadgeClick) {
+          const loaded = node.loadedAssetCount ?? 0;
+          void appendTermAssetsForTerm(
+            node,
+            DATA_MODE_ASSET_LOAD_PAGE_SIZE,
+            loaded
+          );
+          setSelectedNode(null);
+
+          return;
+        }
         if (meta?.dataModeAssetBadgeClick) {
           setExpandedTermIds((prev) => {
             const wasExpanded = prev.has(node.id);
@@ -1279,7 +1312,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               next.add(node.id);
               const count = termAssetCounts[node.id] ?? node.assetCount ?? 0;
               if (count > 0) {
-                void appendTermAssetsForTerm(node, count);
+                void appendTermAssetsForTerm(
+                  node,
+                  DATA_MODE_ASSET_LOAD_PAGE_SIZE,
+                  0
+                );
               }
             }
 
@@ -1319,10 +1356,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const handleGraphPaneClick = useCallback(() => {
     setContextMenu(null);
     setSelectedNode(null);
-    if (explorationMode === 'data') {
-      setExpandedTermIds(new Set());
-    }
-  }, [explorationMode]);
+  }, []);
 
   const statsItems = useMemo(() => {
     if (!graphDataToShow) {
@@ -1368,6 +1402,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     <div
       className={classNames(
         'tw:flex tw:flex-col tw:overflow-hidden',
+        { 'ontology-slideout-open': Boolean(selectedNode) },
         className
       )}
       data-testid="ontology-explorer"
@@ -1410,7 +1445,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         <div className="tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
           {/* Top filter bar — only on the standalone global page */}
           {scope === 'global' && (
-            <div className="tw:absolute tw:left-0 tw:right-0 tw:top-0 tw:z-50 tw:px-4 tw:pt-5">
+            <div className="tw:absolute tw:left-0 tw:right-0 tw:top-0 tw:z-1 tw:px-4 tw:pt-5">
               <Card className="tw:rounded-md tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-sm">
                 <FilterToolbar
                   filters={filters}
@@ -1493,7 +1528,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             )}>
             {loading ? (
               <div
-                className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
+                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
                 data-testid="ontology-graph-loading">
                 <div
                   aria-label={t('label.loading')}
@@ -1508,7 +1543,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               hierarchyGraphData !== null &&
               hierarchyGraphData.edges.length === 0 ? (
               <div
-                className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
+                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
                 data-testid="ontology-graph-hierarchy-empty">
                 <Typography as="p" className="tw:text-center tw:text-tertiary">
                   {t('message.no-hierarchical-relations-found')}
@@ -1516,7 +1551,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               </div>
             ) : !graphDataToShow || graphDataToShow.nodes.length === 0 ? (
               <div
-                className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
+                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
                 data-testid="ontology-graph-empty">
                 <Typography as="p" className="tw:text-center tw:text-tertiary">
                   {withoutOntologyAutocompleteAll(filters.glossaryIds).length >
@@ -1532,10 +1567,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 {filters.searchQuery.trim() ? (
                   <div
                     aria-hidden
-                    className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-10 tw:bg-gray-950/6"
+                    className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
                   />
                 ) : null}
-                <div className="tw:relative tw:z-20 tw:h-full tw:w-full tw:min-h-0">
+                <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
                   <OntologyGraph
                     edges={graphDataToShow.edges}
                     expandedTermIds={
@@ -1587,7 +1622,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             <SlideoutMenu
               isDismissable
               isOpen
-              className="tw:z-1100"
+              className="tw:z-2"
               dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0"
               width={ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH}
               onOpenChange={(isOpen) => {

@@ -163,7 +163,7 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
         className
       )}>
       {isReactComponent(Icon) && <Icon data-icon className="tw:z-1" />}
-      {isValidElement(Icon) && <div className="tw:z-1">{Icon}</div>}
+      {isValidElement(Icon) && <div className="tw:z-1 tw:flex">{Icon}</div>}
 
       {children}
     </div>

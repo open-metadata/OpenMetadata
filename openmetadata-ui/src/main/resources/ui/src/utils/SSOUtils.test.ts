@@ -35,6 +35,7 @@ import {
   hasFieldValidationErrors,
   isValidNonBasicProvider,
   isValidUrl,
+  parseSamlMetadataXml,
   parseValidationErrors,
   populateSamlIdpAuthority,
   populateSamlSpCallback,
@@ -2966,5 +2967,377 @@ describe('SSOUtils', () => {
         expect(mockEvent.stopPropagation).toHaveBeenCalled();
       });
     });
+  });
+});
+
+describe('parseSamlMetadataXml', () => {
+  const AZURE_AD_METADATA = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://sts.windows.net/12345678-abcd-abcd-abcd-123456789012/">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data>
+          <X509Certificate>MIIDGzCCAgOgAwIBAgIJAKoFLkqLEfB0</X509Certificate>
+        </X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://login.microsoftonline.com/12345678-abcd-abcd-abcd-123456789012/saml2"/>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://login.microsoftonline.com/12345678-abcd-abcd-abcd-123456789012/saml2"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+  const OKTA_METADATA = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="http://www.okta.com/exk123456">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data>
+          <X509Certificate>MIIDpDCCAoygAwIBAgIGAXyz4567</X509Certificate>
+        </X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://dev-123456.okta.com/app/openmetadata/exk123456/sso/saml"/>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://dev-123456.okta.com/app/openmetadata/exk123456/sso/saml"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+  const AUTH0_METADATA = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="urn:dev-xyz12345.us.auth0.com">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data>
+          <X509Certificate>MIIDHTCCAgWgAwIBAgIJQY4RiNPU</X509Certificate>
+        </X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://dev-xyz12345.us.auth0.com/samlp/abcdefgh12345"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+  it('should parse Azure AD metadata correctly', () => {
+    const result = parseSamlMetadataXml(AZURE_AD_METADATA);
+
+    expect(result.entityId).toBe(
+      'https://sts.windows.net/12345678-abcd-abcd-abcd-123456789012/'
+    );
+    expect(result.ssoLoginUrl).toBe(
+      'https://login.microsoftonline.com/12345678-abcd-abcd-abcd-123456789012/saml2'
+    );
+    expect(result.idpX509Certificate).toContain('BEGIN CERTIFICATE');
+    expect(result.idpX509Certificate).toContain(
+      'MIIDGzCCAgOgAwIBAgIJAKoFLkqLEfB0'
+    );
+  });
+
+  it('should parse Okta metadata correctly', () => {
+    const result = parseSamlMetadataXml(OKTA_METADATA);
+
+    expect(result.entityId).toBe('http://www.okta.com/exk123456');
+    expect(result.ssoLoginUrl).toBe(
+      'https://dev-123456.okta.com/app/openmetadata/exk123456/sso/saml'
+    );
+    expect(result.idpX509Certificate).toBeDefined();
+  });
+
+  it('should prefer HTTP-Redirect binding over HTTP-POST', () => {
+    const result = parseSamlMetadataXml(OKTA_METADATA);
+
+    // Okta lists HTTP-POST first, but parser should still pick HTTP-Redirect
+    expect(result.ssoLoginUrl).toBe(
+      'https://dev-123456.okta.com/app/openmetadata/exk123456/sso/saml'
+    );
+  });
+
+  it('should fall back to HTTP-POST when HTTP-Redirect is missing', () => {
+    const postOnlyMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data><X509Certificate>MIIDpostOnlyCert</X509Certificate></X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://example.com/sso/post"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    const result = parseSamlMetadataXml(postOnlyMetadata);
+
+    expect(result.ssoLoginUrl).toBe('https://example.com/sso/post');
+  });
+
+  it('should parse Auth0 metadata correctly', () => {
+    const result = parseSamlMetadataXml(AUTH0_METADATA);
+
+    expect(result.entityId).toBe('urn:dev-xyz12345.us.auth0.com');
+    expect(result.ssoLoginUrl).toBe(
+      'https://dev-xyz12345.us.auth0.com/samlp/abcdefgh12345'
+    );
+  });
+
+  it('should format certificate with PEM headers', () => {
+    const result = parseSamlMetadataXml(AZURE_AD_METADATA);
+
+    expect(result.idpX509Certificate).toMatch(
+      /^-----BEGIN CERTIFICATE-----\n.+\n-----END CERTIFICATE-----$/
+    );
+  });
+
+  it('should throw when metadata has no certificate', () => {
+    const noCertMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://example.com/sso"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    expect(() => parseSamlMetadataXml(noCertMetadata)).toThrow(
+      'no X509Certificate found'
+    );
+  });
+
+  it('should throw on malformed XML', () => {
+    expect(() => parseSamlMetadataXml('<broken')).toThrow('Invalid XML');
+  });
+
+  it('should throw when entityID is missing', () => {
+    const noEntityId = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://example.com/sso"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    expect(() => parseSamlMetadataXml(noEntityId)).toThrow('missing entityID');
+  });
+
+  it('should throw when SingleSignOnService is missing', () => {
+    const noSso = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    expect(() => parseSamlMetadataXml(noSso)).toThrow('no SingleSignOnService');
+  });
+
+  it('should pick KeyDescriptor with use="signing" over others', () => {
+    const multiKeyMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="encryption">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data><X509Certificate>ENCRYPTION_CERT</X509Certificate></X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data><X509Certificate>SIGNING_CERT</X509Certificate></X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://example.com/sso"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    const result = parseSamlMetadataXml(multiKeyMetadata);
+
+    expect(result.idpX509Certificate).toContain('SIGNING_CERT');
+    expect(result.idpX509Certificate).not.toContain('ENCRYPTION_CERT');
+  });
+
+  it('should use KeyDescriptor without use attribute (Google Workspace pattern)', () => {
+    const noUseAttrMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://accounts.google.com/o/saml2?idpid=C01xyz">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor>
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data><X509Certificate>GOOGLE_CERT_NO_USE_ATTR</X509Certificate></X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://accounts.google.com/o/saml2/idp?idpid=C01xyz"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    const result = parseSamlMetadataXml(noUseAttrMetadata);
+
+    expect(result.idpX509Certificate).toContain('GOOGLE_CERT_NO_USE_ATTR');
+  });
+
+  it('should throw when only encryption KeyDescriptor is present (no signing cert)', () => {
+    const encryptionOnlyMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="encryption">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data><X509Certificate>ENCRYPTION_ONLY_CERT</X509Certificate></X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://example.com/sso"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    expect(() => parseSamlMetadataXml(encryptionOnlyMetadata)).toThrow(
+      'no X509Certificate found'
+    );
+  });
+
+  it('should handle certificate with whitespace and newlines', () => {
+    const multiLineCertMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data>
+          <X509Certificate>
+            MIIDGzCCAgOg
+            AwIBAgIJAKoF
+            LkqLEfB0MA0G
+          </X509Certificate>
+        </X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://example.com/sso"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    const result = parseSamlMetadataXml(multiLineCertMetadata);
+
+    expect(result.idpX509Certificate).toBe(
+      '-----BEGIN CERTIFICATE-----\nMIIDGzCCAgOgAwIBAgIJAKoFLkqLEfB0MA0G\n-----END CERTIFICATE-----'
+    );
+  });
+
+  it('should throw on empty string input', () => {
+    expect(() => parseSamlMetadataXml('')).toThrow('Invalid XML');
+  });
+
+  it('should throw on non-XML content (JSON)', () => {
+    expect(() => parseSamlMetadataXml('{"type": "not-xml"}')).toThrow();
+  });
+
+  it('should throw on plain text content', () => {
+    expect(() =>
+      parseSamlMetadataXml('This is just plain text, not XML at all')
+    ).toThrow();
+  });
+
+  it('should throw on valid XML that is not SAML metadata (RSS feed)', () => {
+    const rssFeed = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Not SAML</title>
+    <link>https://example.com</link>
+  </channel>
+</rss>`;
+
+    expect(() => parseSamlMetadataXml(rssFeed)).toThrow('missing entityID');
+  });
+
+  it('should throw on HTML file renamed to XML', () => {
+    const html = `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head><title>Not SAML</title></head>
+  <body><p>This is HTML</p></body>
+</html>`;
+
+    expect(() => parseSamlMetadataXml(html)).toThrow('missing entityID');
+  });
+
+  it('should throw when IDPSSODescriptor is missing entirely', () => {
+    const noIdpDescriptor = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+</EntityDescriptor>`;
+
+    expect(() => parseSamlMetadataXml(noIdpDescriptor)).toThrow(
+      'no SingleSignOnService'
+    );
+  });
+
+  it('should throw when SingleSignOnService has empty Location', () => {
+    const emptyLocationMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data><X509Certificate>SOME_CERT</X509Certificate></X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location=""/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    expect(() => parseSamlMetadataXml(emptyLocationMetadata)).toThrow(
+      'no SingleSignOnService'
+    );
+  });
+
+  it('should handle EntitiesDescriptor wrapper and pick first EntityDescriptor', () => {
+    const entitiesDescriptorMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntitiesDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" Name="urn:example">
+  <EntityDescriptor entityID="https://first-idp.example.com">
+    <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+      <KeyDescriptor use="signing">
+        <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+          <X509Data><X509Certificate>FIRST_CERT</X509Certificate></X509Data>
+        </KeyInfo>
+      </KeyDescriptor>
+      <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://first-idp.example.com/sso"/>
+    </IDPSSODescriptor>
+  </EntityDescriptor>
+  <EntityDescriptor entityID="https://second-idp.example.com">
+    <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+      <KeyDescriptor use="signing">
+        <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+          <X509Data><X509Certificate>SECOND_CERT</X509Certificate></X509Data>
+        </KeyInfo>
+      </KeyDescriptor>
+      <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://second-idp.example.com/sso"/>
+    </IDPSSODescriptor>
+  </EntityDescriptor>
+</EntitiesDescriptor>`;
+
+    const result = parseSamlMetadataXml(entitiesDescriptorMetadata);
+
+    expect(result.entityId).toBe('https://first-idp.example.com');
+    expect(result.ssoLoginUrl).toBe('https://first-idp.example.com/sso');
+    expect(result.idpX509Certificate).toContain('FIRST_CERT');
+  });
+
+  it('should throw when SingleSignOnService has no Location attribute', () => {
+    const noLocationAttr = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data><X509Certificate>SOME_CERT</X509Certificate></X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    expect(() => parseSamlMetadataXml(noLocationAttr)).toThrow(
+      'no SingleSignOnService'
+    );
+  });
+
+  it('should ignore unsupported bindings (SOAP, Artifact)', () => {
+    const unsupportedBindingsMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data><X509Certificate>SOME_CERT</X509Certificate></X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:SOAP" Location="https://example.com/sso/soap"/>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Artifact" Location="https://example.com/sso/artifact"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    expect(() => parseSamlMetadataXml(unsupportedBindingsMetadata)).toThrow(
+      'no SingleSignOnService'
+    );
   });
 });

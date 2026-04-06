@@ -244,6 +244,7 @@ export enum PageType {
     Container = "Container",
     Dashboard = "Dashboard",
     DashboardDataModel = "DashboardDataModel",
+    DataMarketplace = "DataMarketplace",
     DataProduct = "DataProduct",
     Database = "Database",
     DatabaseSchema = "DatabaseSchema",

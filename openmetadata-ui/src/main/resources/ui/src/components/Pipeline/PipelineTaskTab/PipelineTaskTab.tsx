@@ -15,7 +15,7 @@ import { Card, Segmented, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
@@ -36,6 +36,7 @@ import {
   Task,
 } from '../../../generated/entity/data/pipeline';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
@@ -49,6 +50,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -83,6 +85,16 @@ export const PipelineTaskTab = () => {
   const { deleted } = pipelineDetails ?? {};
   const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
+  const {
+    currentPage,
+    pageSize,
+    showPagination,
+    paging,
+    handlePagingChange,
+    handlePageChange,
+    handlePageSizeChange,
+  } = usePaging();
+
   useFqnDeepLink({
     data: pipelineDetails.tasks ?? [],
     columnPart,
@@ -114,7 +126,7 @@ export const PipelineTaskTab = () => {
     [permissions]
   );
 
-  const tasksInternal = useMemo(
+  const allTasksInternal = useMemo(
     () =>
       pipelineDetails.tasks
         ? pipelineDetails.tasks.map((t) => ({ ...t, tags: t.tags ?? [] }))
@@ -122,14 +134,35 @@ export const PipelineTaskTab = () => {
     [pipelineDetails.tasks]
   );
 
+  useEffect(() => {
+    handlePagingChange({ total: allTasksInternal.length });
+    const maxPage = Math.max(1, Math.ceil(allTasksInternal.length / pageSize));
+    if (currentPage > maxPage) {
+      handlePageChange(maxPage, { cursorType: null, cursorValue: undefined });
+    }
+  }, [allTasksInternal.length, pageSize]);
+
+  const tasksInternal = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+
+    return allTasksInternal.slice(start, start + pageSize);
+  }, [allTasksInternal, currentPage, pageSize]);
+
+  const handleTasksPageChange = useCallback(
+    ({ currentPage: page }: PagingHandlerParams) => {
+      handlePageChange(page, { cursorType: null, cursorValue: undefined });
+    },
+    [handlePageChange]
+  );
+
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(tasksInternal);
+    const tags = getAllTags(allTasksInternal);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [tasksInternal]);
+  }, [allTasksInternal]);
 
   const tasksDAGView = useMemo(
     () =>
@@ -270,7 +303,12 @@ export const PipelineTaskTab = () => {
             hasEditPermission={editDescriptionPermission}
             index={index}
             isReadOnly={deleted}
-            onClick={() => setEditTask({ task: record, index })}
+            onClick={() =>
+              setEditTask({
+                task: record,
+                index: (currentPage - 1) * pageSize + index,
+              })
+            }
           />
         ),
       },
@@ -329,6 +367,8 @@ export const PipelineTaskTab = () => {
       editGlossaryTermsPermission,
       handleTableTagSelection,
       editDescriptionPermission,
+      currentPage,
+      pageSize,
     ]
   );
 
@@ -346,6 +386,15 @@ export const PipelineTaskTab = () => {
         <Table
           className="align-table-filter-left"
           columns={taskColumns}
+          customPaginationProps={{
+            currentPage,
+            showPagination,
+            isNumberBased: true,
+            pageSize,
+            paging,
+            pagingHandler: handleTasksPageChange,
+            onShowSizeChange: handlePageSizeChange,
+          }}
           data-testid="task-table"
           dataSource={tasksInternal}
           defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}

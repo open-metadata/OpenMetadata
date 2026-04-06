@@ -108,6 +108,9 @@ ENTITY_TYPE
     | 'workflow'
     | 'document'
     | 'learningResource'
+    | 'mcpService'
+    | 'mcpServer'
+    | 'mcpExecution'
     ;
 
 ENTITY_FIELD
