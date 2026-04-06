@@ -25,7 +25,11 @@ from metadata.profiler.metrics.core import StaticMetric, T, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.sum import SumFn
-from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
+from metadata.profiler.orm.registry import (
+    is_complex_type,
+    is_concatenable,
+    is_quantifiable,
+)
 from metadata.utils.logger import profiler_logger
 
 # pylint: disable=duplicate-code
@@ -59,7 +63,7 @@ class Sum(StaticMetric):
         if is_quantifiable(self.col.type):
             return SumFn(column(self.col.name, self.col.type))
 
-        if is_concatenable(self.col.type):
+        if is_concatenable(self.col.type) or is_complex_type(self.col.type):
             return SumFn(LenFn(column(self.col.name, self.col.type)))
 
         return None
@@ -107,21 +111,30 @@ class Sum(StaticMetric):
             try:
                 series = df[column.name].dropna()
                 if not series.empty:
-                    chunk_sum = df[column.name].sum()
+                    chunk_sum = series.sum()
             except (TypeError, ValueError):
                 try:
-                    chunk_sum = df[column.name].astype(float).sum()
+                    chunk_sum = series.astype(float).sum()
                 except Exception:
                     return None
+        elif is_concatenable(column.type):
+            import numpy as np
 
-            if chunk_sum is None or pd.isnull(chunk_sum):
-                return current_sum
+            series = df[column.name].dropna()
+            chunk_sum = np.vectorize(len)(series.astype(str)).sum()
+        elif is_complex_type(column.type):
+            series = df[column.name].dropna()
+            chunk_sum = series.apply(
+                lambda x: len(x) if hasattr(x, "__len__") else len(str(x))
+            ).sum()
 
-            if current_sum is None:
-                return chunk_sum
+        if chunk_sum is None or pd.isnull(chunk_sum):
+            return current_sum
 
-            return current_sum + chunk_sum
-        return None
+        if current_sum is None:
+            return chunk_sum
+
+        return current_sum + chunk_sum
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
         """nosql function"""

@@ -117,7 +117,12 @@ class MinLength(StaticMetric):
             if not pd.isnull(min_val):
                 chunk_min = min_val
         elif is_complex_type(column.type):
-            min_val = df[column.name].dropna().astype(str).str.len().min()
+            min_val = (
+                df[column.name]
+                .dropna()
+                .apply(lambda x: len(x) if hasattr(x, "__len__") else len(str(x)))
+                .min()
+            )
             if not pd.isnull(min_val):
                 chunk_min = int(min_val)
 

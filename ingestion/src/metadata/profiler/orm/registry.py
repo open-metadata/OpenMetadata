@@ -152,10 +152,13 @@ STRUCT_SET = {
     sqa_types.SQASet.__name__,
     sqa_types.SQAUnion.__name__,
     DataType.JSON.value,
+    DataType.VARIANT.value,
+    DataType.SUPER.value,
 }
 
 COMPLEX_SET = {
     sqa_types.SQASGeography.__name__,
+    DataType.GEOGRAPHY.value,
     DataType.GEOMETRY.value,
 }
 

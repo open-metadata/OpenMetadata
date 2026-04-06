@@ -117,7 +117,12 @@ class MaxLength(StaticMetric):
             if not pd.isnull(max_val):
                 chunk_max = max_val
         elif is_complex_type(column.type):
-            max_val = df[column.name].dropna().astype(str).str.len().max()
+            max_val = (
+                df[column.name]
+                .dropna()
+                .apply(lambda x: len(x) if hasattr(x, "__len__") else len(str(x)))
+                .max()
+            )
             if not pd.isnull(max_val):
                 chunk_max = int(max_val)
 

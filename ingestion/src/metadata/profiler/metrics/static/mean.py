@@ -32,6 +32,7 @@ from metadata.profiler.orm.registry import (
     is_concatenable,
     is_date_time,
     is_quantifiable,
+    is_complex_type,
 )
 from metadata.utils.logger import profiler_logger
 
@@ -125,7 +126,7 @@ class Mean(StaticMetric):
         if is_quantifiable(self.col.type):
             return AvgFn(column(self.col.name, self.col.type))
 
-        if is_concatenable(self.col.type):
+        if is_concatenable(self.col.type) or is_complex_type(self.col.type):
             return AvgFn(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
@@ -191,6 +192,10 @@ class Mean(StaticMetric):
             chunk_sum = clean_df.sum()
         elif is_concatenable(column.type):
             chunk_sum = length_vectorize_func(clean_df.astype(str)).sum()
+        elif is_complex_type(column.type):
+            chunk_sum = clean_df.apply(
+                lambda x: len(x) if hasattr(x, "__len__") else len(str(x))
+            ).sum()
 
         if chunk_sum is None or pd.isnull(chunk_sum):
             return sum_and_count
