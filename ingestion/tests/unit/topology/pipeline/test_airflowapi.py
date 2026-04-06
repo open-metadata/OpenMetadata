@@ -352,6 +352,20 @@ class TestPaginateGetAllDags:
         assert mock_rest.get.call_count == 3
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_multiple_pages_without_total_entries(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+
+        page1 = {"dags": [{"dag_id": f"dag_{i}"} for i in range(100)]}
+        page2 = {"dags": [{"dag_id": f"dag_{i}"} for i in range(100, 120)]}
+        mock_rest.get.side_effect = [page1, page2]
+
+        result = client.get_all_dags()
+
+        assert len(result) == 120
+        assert result[-1]["dag_id"] == "dag_119"
+        assert mock_rest.get.call_count == 2
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
     def test_empty_response(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
         mock_rest.get.return_value = {"dags": [], "total_entries": 0}
