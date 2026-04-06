@@ -255,6 +255,9 @@
       "mimeType": {
         "type": "keyword"
       },
+      "fileExtension": {
+        "type": "keyword"
+      },
       "extension": {
         "type": "flattened"
       },
