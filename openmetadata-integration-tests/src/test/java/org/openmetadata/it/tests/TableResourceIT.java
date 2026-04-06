@@ -5804,9 +5804,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       Column nameCol = table.getColumns().get(1);
       Column emailCol = table.getColumns().get(2);
 
+      assertNotNull(idCol.getTags(), "id column tags should not be null");
       assertTrue(
           idCol.getTags().stream().anyMatch(t -> tag.getFullyQualifiedName().equals(t.getTagFQN())),
           "id column should have the expected tag");
+      assertNotNull(emailCol.getTags(), "email column tags should not be null");
       assertTrue(
           emailCol.getTags().stream()
               .anyMatch(t -> tag.getFullyQualifiedName().equals(t.getTagFQN())),

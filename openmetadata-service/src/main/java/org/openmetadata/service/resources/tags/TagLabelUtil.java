@@ -270,7 +270,7 @@ public class TagLabelUtil {
     return Collections.emptyList();
   }
 
-  /** Batch fetch derived tags for all glossary terms in the list. Returns map of termFQN → derived tags. */
+  /** Batch fetch derived tags for all glossary terms in the list. Returns map of termFQNHash → derived tags. */
   public static Map<String, List<TagLabel>> batchFetchDerivedTags(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return Collections.emptyMap();
