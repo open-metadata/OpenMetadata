@@ -125,6 +125,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -9532,51 +9533,63 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return resultMap;
   }
 
-  /**
-   * Bulk populate entity field tags for multiple entities efficiently.
-   * This replaces individual calls to populateEntityFieldTags() to avoid N+1 queries.
-   */
+  /** Bulk populate field tags for multiple entities using chunked exact-match IN on field FQN hashes. */
   protected <F extends FieldInterface> void bulkPopulateEntityFieldTags(
-      List<T> entities,
-      String entityType,
-      java.util.function.Function<T, List<F>> fieldExtractor,
-      java.util.function.Function<T, String> fqnExtractor) {
+      List<T> entities, java.util.function.Function<T, List<F>> fieldExtractor) {
 
     if (entities == null || entities.isEmpty()) {
       return;
     }
 
-    // Collect all FQN prefixes for batch tag fetching
-    Set<String> allPrefixes = new HashSet<>();
-    for (T entity : entities) {
-      String fqnPrefix = fqnExtractor.apply(entity);
-      if (fqnPrefix != null) {
-        allPrefixes.add(fqnPrefix);
-      }
-    }
-
-    // Batch fetch all tags for all prefixes in one call
-    Map<String, List<TagLabel>> allTags = new HashMap<>();
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    for (String prefix : allPrefixes) {
-      Map<String, List<TagLabel>> prefixTags = repository.getTagsByPrefix(prefix, ".%");
-      if (prefixTags != null) {
-        allTags.putAll(prefixTags);
-      }
-    }
-
-    // Apply tags to all fields of all entities
+    Set<String> fieldFQNs = new LinkedHashSet<>();
+    Map<T, List<F>> flatFieldsByEntity = new HashMap<>();
     for (T entity : entities) {
       List<F> fields = fieldExtractor.apply(entity);
       if (fields != null) {
         List<F> flattenedFields = EntityUtil.getFlattenedEntityField(fields);
+        flatFieldsByEntity.put(entity, flattenedFields);
         for (F field : listOrEmpty(flattenedFields)) {
-          List<TagLabel> fieldTags =
-              allTags.get(FullyQualifiedName.buildHash(field.getFullyQualifiedName()));
+          if (field.getFullyQualifiedName() != null) {
+            fieldFQNs.add(field.getFullyQualifiedName());
+          }
+        }
+      }
+    }
+
+    if (fieldFQNs.isEmpty()) {
+      return;
+    }
+
+    // Fetch tags in chunked IN queries, then enrich once
+    List<String> fieldFQNList = new ArrayList<>(fieldFQNs);
+    int batchSize = 5000;
+    List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tagUsages = new ArrayList<>();
+    for (int i = 0; i < fieldFQNList.size(); i += batchSize) {
+      List<String> chunk = fieldFQNList.subList(i, Math.min(i + batchSize, fieldFQNList.size()));
+      tagUsages.addAll(listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(chunk)));
+    }
+    Map<String, List<TagLabel>> tagsByFieldHash = populateTagLabel(tagUsages);
+
+    Map<String, List<TagLabel>> derivedTagsMap;
+    try {
+      List<TagLabel> tagLabels =
+          tagsByFieldHash.values().stream().flatMap(List::stream).collect(Collectors.toList());
+      derivedTagsMap = TagLabelUtil.batchFetchDerivedTags(tagLabels);
+    } catch (Exception ex) {
+      LOG.warn("Failed to batch fetch derived tags for fields. Skipping derived tags.", ex);
+      derivedTagsMap = Collections.emptyMap();
+    }
+
+    for (T entity : entities) {
+      List<F> flattenedFields = flatFieldsByEntity.get(entity);
+      if (flattenedFields != null) {
+        for (F field : listOrEmpty(flattenedFields)) {
+          String fieldHash = FullyQualifiedName.buildHash(field.getFullyQualifiedName());
+          List<TagLabel> fieldTags = tagsByFieldHash.get(fieldHash);
           if (fieldTags == null) {
             field.setTags(new ArrayList<>());
           } else {
-            field.setTags(addDerivedTagsGracefully(fieldTags));
+            field.setTags(TagLabelUtil.addDerivedTagsWithPreFetched(fieldTags, derivedTagsMap));
           }
         }
       }

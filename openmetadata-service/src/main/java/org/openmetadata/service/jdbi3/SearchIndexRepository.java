@@ -260,8 +260,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     // Then, if fields are requested, also fetch field-level tags
     if (fields.contains("fields")) {
       // Use bulk tag fetching to avoid N+1 queries
-      bulkPopulateEntityFieldTags(
-          searchIndexes, entityType, SearchIndex::getFields, SearchIndex::getFullyQualifiedName);
+      bulkPopulateEntityFieldTags(searchIndexes, SearchIndex::getFields);
     }
   }
 

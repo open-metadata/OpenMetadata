@@ -239,11 +239,7 @@ public class TopicRepository extends EntityRepository<Topic> {
           topics.stream().filter(t -> t.getMessageSchema() != null).toList();
 
       if (!topicsWithSchemas.isEmpty()) {
-        bulkPopulateEntityFieldTags(
-            topicsWithSchemas,
-            entityType,
-            t -> t.getMessageSchema().getSchemaFields(),
-            Topic::getFullyQualifiedName);
+        bulkPopulateEntityFieldTags(topicsWithSchemas, t -> t.getMessageSchema().getSchemaFields());
       }
     }
   }
