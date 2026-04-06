@@ -733,6 +733,30 @@ public class DatabaseServiceResource
   }
 
   @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteDatabaseServicePrefixHard",
+      summary = "Hard-delete a database service and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete a database service and all its databases, schemas, and tables using "
+              + "FQN prefix matching. This is significantly faster than recursive delete for large "
+              + "hierarchies and eliminates race conditions with concurrent ingestion.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DatabaseService for instance {id} is not found")
+      })
+  public Response deletePrefixHard(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDatabaseServiceByName",

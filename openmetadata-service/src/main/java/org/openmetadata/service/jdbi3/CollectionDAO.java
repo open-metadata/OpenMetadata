@@ -1556,15 +1556,21 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json) "
-                + "ON DUPLICATE KEY UPDATE json = :json",
+            "INSERT INTO entity_relationship"
+                + "(fromId, toId, fromEntity, toEntity, relation, json, fromFQNHash, toFQNHash) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json, :fromFQNHash, :toFQNHash) "
+                + "ON DUPLICATE KEY UPDATE json = :json, "
+                + "fromFQNHash = COALESCE(:fromFQNHash, fromFQNHash), "
+                + "toFQNHash = COALESCE(:toFQNHash, toFQNHash)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) VALUES "
-                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb)) "
-                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET json = EXCLUDED.json",
+            "INSERT INTO entity_relationship"
+                + "(fromId, toId, fromEntity, toEntity, relation, json, fromFQNHash, toFQNHash) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb), :fromFQNHash, :toFQNHash) "
+                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET json = EXCLUDED.json, "
+                + "fromFQNHash = COALESCE(EXCLUDED.fromFQNHash, entity_relationship.fromFQNHash), "
+                + "toFQNHash = COALESCE(EXCLUDED.toFQNHash, entity_relationship.toFQNHash)",
         connectionType = POSTGRES)
     void insert(
         @BindUUID("fromId") UUID fromId,
@@ -1572,7 +1578,14 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
-        @Bind("json") String json);
+        @Bind("json") String json,
+        @Bind("fromFQNHash") String fromFQNHash,
+        @Bind("toFQNHash") String toFQNHash);
+
+    default void insert(
+        UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
+      insert(fromId, toId, fromEntity, toEntity, relation, json, null, null);
+    }
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -2421,6 +2434,32 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE from entity_relationship WHERE fromId = :id or toId = :id")
     void deleteAllWithId(@BindUUID("id") UUID id);
 
+    @SqlUpdate(
+        "UPDATE entity_relationship SET fromFQNHash = :fqnHash "
+            + "WHERE fromId = :id AND fromFQNHash IS NULL")
+    void backfillFromFqnHash(@Bind("id") String id, @Bind("fqnHash") String fqnHash);
+
+    @SqlUpdate(
+        "UPDATE entity_relationship SET toFQNHash = :fqnHash "
+            + "WHERE toId = :id AND toFQNHash IS NULL")
+    void backfillToFqnHash(@Bind("id") String id, @Bind("fqnHash") String fqnHash);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromFQNHash = :exact OR fromFQNHash LIKE :prefix")
+    void deleteByFromFqnHashPrefix(
+        @Bind("exact") String exactHash, @Bind("prefix") String prefixPattern);
+
+    @SqlUpdate("DELETE FROM entity_relationship WHERE toFQNHash = :exact OR toFQNHash LIKE :prefix")
+    void deleteByToFqnHashPrefix(
+        @Bind("exact") String exactHash, @Bind("prefix") String prefixPattern);
+
+    @Transaction
+    default void deleteAllByFqnHashPrefix(String fqnHashPrefix) {
+      String prefixPattern = fqnHashPrefix + ".%";
+      deleteByFromFqnHashPrefix(fqnHashPrefix, prefixPattern);
+      deleteByToFqnHashPrefix(fqnHashPrefix, prefixPattern);
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
@@ -3194,6 +3233,9 @@ public interface CollectionDAO {
 
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
+
+    @SqlQuery("SELECT id FROM thread_entity WHERE entityId IN (<entityIds>)")
+    List<String> findByEntityIds(@BindList("entityIds") List<String> entityIds);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -6167,6 +6209,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM entity_usage WHERE id IN (<ids>)")
+    void deleteBatch(@BindList("ids") List<String> ids);
 
     /**
      * TODO: Not sure I get what the next comment means, but tests now use mysql 8 so maybe tests can be improved here

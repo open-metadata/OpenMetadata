@@ -73,6 +73,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.PrefixDeletionService;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.monitoring.LatencyPhase;
@@ -702,6 +703,43 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             .build();
 
     return response;
+  }
+
+  public Response deletePrefixHardById(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    String jobId = UUID.randomUUID().toString();
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.DELETE));
+    T entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        RequestLatencyContext.wrapWithContext(
+            () -> {
+              try {
+                PrefixDeletionService.getInstance().deletePrefixHard(entity, userName);
+                limits.invalidateCache(entityType);
+                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                    jobId, securityContext, entity);
+              } catch (Exception e) {
+                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                    jobId,
+                    securityContext,
+                    entity,
+                    e.getMessage() == null ? e.toString() : e.getMessage());
+              }
+            }));
+    return Response.accepted()
+        .entity(
+            new DeleteEntityResponse(
+                jobId,
+                "Fast prefix deletion initiated for " + entity.getName(),
+                entity.getName(),
+                true,
+                true))
+        .build();
   }
 
   public Response deleteByName(

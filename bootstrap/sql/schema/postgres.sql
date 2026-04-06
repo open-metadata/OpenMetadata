@@ -325,7 +325,9 @@ CREATE TABLE public.entity_relationship (
     relation smallint NOT NULL,
     jsonschema character varying(256),
     json jsonb,
-    deleted boolean DEFAULT false NOT NULL
+    deleted boolean DEFAULT false NOT NULL,
+    fromfqnhash character varying(768),
+    tofqnhash character varying(768)
 );
 
 
@@ -1919,6 +1921,20 @@ CREATE INDEX entity_relationship_from_index ON public.entity_relationship USING 
 --
 
 CREATE INDEX entity_relationship_to_index ON public.entity_relationship USING btree (toid, relation);
+
+
+--
+-- Name: idx_er_from_fqn_hash; Type: INDEX; Schema: public; Owner: openmetadata_user
+--
+
+CREATE INDEX idx_er_from_fqn_hash ON public.entity_relationship USING btree (fromfqnhash);
+
+
+--
+-- Name: idx_er_to_fqn_hash; Type: INDEX; Schema: public; Owner: openmetadata_user
+--
+
+CREATE INDEX idx_er_to_fqn_hash ON public.entity_relationship USING btree (tofqnhash);
 
 
 --

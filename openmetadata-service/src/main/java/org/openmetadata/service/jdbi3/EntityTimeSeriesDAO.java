@@ -531,6 +531,17 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlUpdate(
+      "DELETE FROM <table> WHERE entityFQNHash = :exactHash OR entityFQNHash LIKE :prefixHash")
+  void deleteByFqnHashPrefixInternal(
+      @Define("table") String table,
+      @Bind("exactHash") String exactHash,
+      @Bind("prefixHash") String prefixHash);
+
+  default void deleteByFqnHashPrefix(String fqnHashPrefix) {
+    deleteByFqnHashPrefixInternal(getTimeSeriesTableName(), fqnHashPrefix, fqnHashPrefix + ".%");
+  }
+
+  @SqlUpdate(
       "DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp")
   void deleteAtTimestamp(
       @Define("table") String table,
