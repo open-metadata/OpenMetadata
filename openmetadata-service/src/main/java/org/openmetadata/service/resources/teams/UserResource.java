@@ -812,6 +812,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid GenerateTokenRequest generateTokenRequest) {
     authorizer.authorizeAdmin(securityContext);
     User user = repository.get(uriInfo, id, repository.getFieldsWithUserAuth("*"));
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
+    }
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
     AuthenticationMechanism authenticationMechanism =

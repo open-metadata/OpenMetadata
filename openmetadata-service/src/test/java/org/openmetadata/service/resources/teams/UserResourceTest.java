@@ -1506,6 +1506,21 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void put_generateToken_non_bot_user_400(TestInfo test) throws HttpResponseException {
+    CreateUser create = createRequest(test).withEmail("non-bot-token-test@email.com");
+    User user = createEntity(create, USER_WITH_CREATE_HEADERS);
+    assertResponseContains(
+        () ->
+            TestUtils.put(
+                getResource(String.format("users/generateToken/%s", user.getId())),
+                new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
+                OK,
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Generating JWT token is only supported for bot users");
+  }
+
+  @Test
   void post_createUser_BasicAuth_AdminCreate_login_200_ok(TestInfo test)
       throws HttpResponseException {
     // Create a user with Auth and Try Logging in
