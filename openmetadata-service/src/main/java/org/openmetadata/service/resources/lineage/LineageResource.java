@@ -232,12 +232,12 @@ public class LineageResource {
       @Parameter(
               description =
                   "Column-level lineage filter. Supports filtering by column names, tags, or glossary terms (e.g., 'columnName:customer_id', 'tag:PII', 'glossary:BusinessTerm')")
-          @QueryParam("columnFilter")
+          @QueryParam("column_filter")
           String columnFilter,
       @Parameter(
               description =
                   "When true, preserves all nodes in the path to filtered results. When false, only returns nodes matching the filter. Default is true.")
-          @QueryParam("preservePaths")
+          @QueryParam("preserve_paths")
           @DefaultValue("true")
           Boolean preservePaths)
       throws IOException {
@@ -340,12 +340,12 @@ public class LineageResource {
       @Parameter(
               description =
                   "Column-level lineage filter. Supports filtering by column names, tags, or glossary terms (e.g., 'columnName:customer_id', 'tag:PII', 'glossary:BusinessTerm')")
-          @QueryParam("columnFilter")
+          @QueryParam("column_filter")
           String columnFilter,
       @Parameter(
               description =
                   "When true, preserves all nodes in the path to filtered results. When false, only returns nodes matching the filter. Default is true.")
-          @QueryParam("preservePaths")
+          @QueryParam("preserve_paths")
           @DefaultValue("true")
           Boolean preservePaths)
       throws IOException {
@@ -566,6 +566,12 @@ public class LineageResource {
           @QueryParam("maxDepth")
           @DefaultValue("10000")
           int maxDepth,
+      @Parameter(description = "Maximum upstream depth to compute pagination info for")
+          @QueryParam("upstreamDepth")
+          Integer upstreamDepth,
+      @Parameter(description = "Maximum downstream depth to compute pagination info for")
+          @QueryParam("downstreamDepth")
+          Integer downstreamDepth,
       @Parameter(
               description =
                   "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
@@ -650,6 +656,14 @@ public class LineageResource {
           @QueryParam("maxDepth")
           @DefaultValue("10000")
           int maxDepth,
+      @Parameter(description = "Maximum upstream depth to use when calculating pagination info")
+          @QueryParam("upstreamDepth")
+          @DefaultValue("10000")
+          int upstreamDepth,
+      @Parameter(description = "Maximum downstream depth to use when calculating pagination info")
+          @QueryParam("downstreamDepth")
+          @DefaultValue("10000")
+          int downstreamDepth,
       @Parameter(
               description =
                   "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
@@ -663,7 +677,24 @@ public class LineageResource {
       @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
           @QueryParam("fields")
           @DefaultValue("*")
-          String includeSourceFields)
+          String includeSourceFields,
+      @Parameter(
+              description =
+                  "Column-level lineage filter. Supports filtering by column names, tags, or glossary terms (e.g., 'columnName:customer_id', 'tag:PII', 'glossary:BusinessTerm')")
+          @QueryParam("column_filter")
+          String columnFilter,
+      @Parameter(
+              description =
+                  "When true, preserves all nodes in the path to filtered results. When false, only returns nodes matching the filter. Default is false.")
+          @QueryParam("preserve_paths")
+          @DefaultValue("false")
+          Boolean preservePaths,
+      @Parameter(
+              description =
+                  "When true, includes pagination totals and depth counts in the entity-count response.")
+          @QueryParam("include_pagination_info")
+          @DefaultValue("false")
+          Boolean includePaginationInfo)
       throws IOException {
     if (nullOrEmpty(direction)) {
       throw new IllegalArgumentException("Lineage Direction is required.");
@@ -677,10 +708,15 @@ public class LineageResource {
                 .withSize(size)
                 .withNodeDepth(nodeDepth)
                 .withMaxDepth(maxDepth)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
                 .withQueryFilter(queryFilter)
                 .withIncludeDeleted(deleted)
                 .withIsConnectedVia(isConnectedVia(entityType))
-                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
+                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
+                .withColumnFilter(columnFilter)
+                .withPreservePaths(preservePaths)
+                .withIncludePaginationInfo(includePaginationInfo));
   }
 
   @PUT

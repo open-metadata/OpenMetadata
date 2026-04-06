@@ -190,6 +190,67 @@ public class TagLabelUtil {
     }
   }
 
+  public static void applyTagCommonFieldsBatch(List<TagLabel> labels) {
+    if (nullOrEmpty(labels)) {
+      return;
+    }
+
+    Set<String> classificationFqns = new HashSet<>();
+    Set<String> glossaryFqns = new HashSet<>();
+    for (TagLabel label : labels) {
+      if (label.getTagFQN() == null) {
+        continue;
+      }
+      if (label.getSource() == TagSource.CLASSIFICATION) {
+        classificationFqns.add(label.getTagFQN());
+      } else if (label.getSource() == TagSource.GLOSSARY) {
+        glossaryFqns.add(label.getTagFQN());
+      }
+    }
+
+    Map<String, TagLabel> enrichedByFqn = new HashMap<>();
+
+    if (!classificationFqns.isEmpty()) {
+      try {
+        getTags(new ArrayList<>(classificationFqns))
+            .forEach(
+                tag -> {
+                  TagLabel enriched = EntityUtil.toTagLabel(tag);
+                  if (enriched != null) {
+                    enrichedByFqn.put(tag.getFullyQualifiedName(), enriched);
+                  }
+                });
+      } catch (Exception ex) {
+        LOG.warn("Failed to batch fetch classification tags: {}", ex.getMessage());
+      }
+    }
+
+    if (!glossaryFqns.isEmpty()) {
+      try {
+        getGlossaryTerms(new ArrayList<>(glossaryFqns))
+            .forEach(
+                term -> {
+                  TagLabel enriched = EntityUtil.toTagLabel(term);
+                  if (enriched != null) {
+                    enrichedByFqn.put(term.getFullyQualifiedName(), enriched);
+                  }
+                });
+      } catch (Exception ex) {
+        LOG.warn("Failed to batch fetch glossary terms: {}", ex.getMessage());
+      }
+    }
+
+    for (TagLabel label : labels) {
+      TagLabel enriched = enrichedByFqn.get(label.getTagFQN());
+      if (enriched != null) {
+        label.setName(enriched.getName());
+        label.setDisplayName(enriched.getDisplayName());
+        label.setDescription(enriched.getDescription());
+        label.setStyle(enriched.getStyle());
+      }
+    }
+  }
+
   /** Returns true if the parent of the tag label is mutually exclusive */
   public static boolean mutuallyExclusive(TagLabel label) {
     String[] fqnParts = FullyQualifiedName.split(label.getTagFQN());

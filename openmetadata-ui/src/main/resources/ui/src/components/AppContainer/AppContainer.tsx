@@ -18,6 +18,7 @@ import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
@@ -41,6 +42,7 @@ const AppContainer = () => {
   const { isAuthenticated } = useApplicationStore();
 
   const { setConfig, bannerDetails } = useLimitStore();
+  const { setLineageConfig } = useLineageStore();
 
   const fetchAppConfigurations = useCallback(async () => {
     try {
@@ -49,13 +51,23 @@ const AppContainer = () => {
         getSettingsByType(SettingType.LineageSettings),
       ]);
 
+      const defaultLineageConfig = lineageConfig as LineageSettings;
+
+      setLineageConfig({
+        upstreamDepth: defaultLineageConfig.upstreamDepth,
+        downstreamDepth: defaultLineageConfig.downstreamDepth,
+        pipelineViewMode: defaultLineageConfig.pipelineViewMode,
+        nodesPerLayer: 50,
+      });
+
       setConfig(response);
       setAppPreferences({
         ...appPreferences,
-        lineageConfig: lineageConfig as LineageSettings,
+        lineageConfig: defaultLineageConfig,
       });
     } catch (error) {
-      // silent fail
+      // eslint-disable-next-line no-console
+      console.error('Error fetching app configurations:', error);
     }
   }, []);
 
