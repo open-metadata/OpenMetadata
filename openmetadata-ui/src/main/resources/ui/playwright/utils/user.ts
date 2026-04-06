@@ -659,10 +659,11 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check Add domain permission
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
-  await page
-    .getByRole('cell', { name: /user_id/i })
-    .getByTestId('edit-displayName-button')
-    .waitFor({ state: 'attached' });
+  await expect(
+    page
+      .getByRole('cell', { name: /user_id/i })
+      .getByTestId('edit-displayName-button')
+  ).toBeAttached();
 
   // Check edit owner permission
   await expect(page.locator('[data-testid="edit-owner"]')).toBeVisible();

@@ -63,14 +63,16 @@ export const visitEntityPage = async (data: {
 
   await waitForAllLoadersToDisappear(page);
 
-  // Dismiss welcome screen if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
+  // Dismiss welcome screen if visible — use toPass for reliable dismissal
+  const welcomeScreen = page.getByTestId('welcome-screen');
+  const closeBtn = page.getByTestId('welcome-screen-close-btn');
 
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
+  await expect(async () => {
+    if (await welcomeScreen.isVisible().catch(() => false)) {
+      await closeBtn.click();
+    }
+    await expect(welcomeScreen).not.toBeVisible();
+  }).toPass({ timeout: 10_000, intervals: [1_000, 2_000] });
 
   await page.getByTestId('searchBox').fill(searchTerm);
   await page.waitForResponse(
@@ -158,7 +160,8 @@ export const addOwner = async ({
           const searchRetry = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('user_search_index')
+              response.url().includes('index=user') &&
+              response.request().method() === 'GET'
           );
           await ownerSearchInput.fill('');
           await ownerSearchInput.fill(owner);

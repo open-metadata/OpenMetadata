@@ -399,9 +399,12 @@ test.describe('Glossary Permissions', () => {
       'EditDescription',
       'EditOwners',
     ]);
+    await assignRoleToUser(page, testUser);
 
     // Login as test user and verify permissions inherited from team
     await expect(async () => {
+      await redirectToHomePage(testUserPage);
+      await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
       await glossary.visitEntityPage(testUserPage);
       await waitForAllLoadersToDisappear(testUserPage);
 

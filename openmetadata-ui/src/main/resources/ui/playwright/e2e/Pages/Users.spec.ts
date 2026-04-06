@@ -563,19 +563,23 @@ test.describe('User with Data Steward Roles', () => {
     dataStewardPage,
   }) => {
     test.slow();
-    await redirectToHomePage(adminPage);
 
-    await checkStewardServicesPermissions(dataStewardPage);
-
-    await tableEntity2.visitEntityPage(adminPage);
-
-    await addOwner({
-      page: adminPage,
-      owner: user.responseData.displayName ?? user.responseData.name,
-      type: 'Users',
-      endpoint: EntityTypeEndpoint.Table,
-      dataTestId: 'data-assets-header',
-    });
+    // Run steward service checks and admin owner setup in parallel — they use
+    // separate pages and don't depend on each other.
+    await Promise.all([
+      checkStewardServicesPermissions(dataStewardPage),
+      (async () => {
+        await redirectToHomePage(adminPage);
+        await tableEntity2.visitEntityPage(adminPage);
+        await addOwner({
+          page: adminPage,
+          owner: user.responseData.displayName ?? user.responseData.name,
+          type: 'Users',
+          endpoint: EntityTypeEndpoint.Table,
+          dataTestId: 'data-assets-header',
+        });
+      })(),
+    ]);
 
     await tableEntity2.visitEntityPage(dataStewardPage);
 
@@ -616,7 +620,7 @@ test.describe('User Profile Feed Interactions', () => {
     await visitOwnProfilePage(page);
     await feedResponse;
 
-    await page.getByTestId('message-container').first().waitFor();
+    await expect(page.getByTestId('message-container').first()).toBeVisible();
 
     const avatar = page
       .locator('#feedData [data-testid="message-container"]')
@@ -626,10 +630,11 @@ test.describe('User Profile Feed Interactions', () => {
 
     await avatar.hover();
     const popover = page.locator('.ant-popover-card');
-    await popover.waitFor({ state: 'visible' });
+    await expect(popover).toBeVisible();
 
     // Get the expected username from the popover BEFORE clicking
     const userNameElement = popover.getByTestId('user-name');
+    await expect(userNameElement).not.toBeEmpty();
     const expectedUserName = await userNameElement.textContent();
 
     // Set up response listener AFTER getting expected name and BEFORE clicking
