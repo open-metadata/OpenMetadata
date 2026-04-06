@@ -1474,44 +1474,65 @@ public class WorkflowHandler {
         return;
       }
 
+      // Terminate Flowable process instances OUTSIDE any JDBI transaction.
+      // Calling runtimeService.deleteProcessInstance() inside a JDBI transaction causes a race
+      // condition: the uncommitted DELETE on ACT_RU_EXECUTION holds an X-lock, Flowable's async
+      // job executor concurrently tries to INSERT a timer job referencing that execution (FK
+      // S-lock wait), and when the JDBI tx commits the execution is gone, so the timer INSERT
+      // fails with SQLIntegrityConstraintViolationException.
+      for (WorkflowInstance instance : conflictingInstances) {
+        ProcessInstance mainInstance =
+            runningProcessInstances.stream()
+                .filter(
+                    pi ->
+                        pi.getBusinessKey() != null
+                            && pi.getBusinessKey().equals(instance.getId().toString()))
+                .findFirst()
+                .orElse(null);
+
+        if (mainInstance != null) {
+          String processId = mainInstance.getId();
+          long activeUserTasks =
+              processEngine
+                  .getTaskService()
+                  .createTaskQuery()
+                  .processInstanceId(processId)
+                  .active()
+                  .count();
+          if (activeUserTasks == 0) {
+            LOG.debug(
+                "Process instance {} has no active user tasks — it is auto-completing; skipping external deletion",
+                processId);
+            continue;
+          }
+          LOG.info(
+              "Terminating main workflow instance {} for conflicting instance {}",
+              mainInstance.getId(),
+              instance.getId());
+          try {
+            runtimeService.deleteProcessInstance(
+                processId, "Terminated due to conflicting workflow instance");
+          } catch (FlowableObjectNotFoundException e) {
+            LOG.debug(
+                "Process instance {} already completed before termination, skipping", processId);
+          }
+        }
+      }
+
       Entity.getJdbi()
           .inTransaction(
               TransactionIsolationLevel.READ_COMMITTED,
               handle -> {
                 try {
-                  // Terminate both trigger and main workflow instances
-
-                  // Now terminate the main workflow instances that contain the user tasks
                   for (WorkflowInstance instance : conflictingInstances) {
-                    ProcessInstance mainInstance =
-                        runningProcessInstances.stream()
-                            .filter(
-                                pi ->
-                                    pi.getBusinessKey() != null
-                                        && pi.getBusinessKey().equals(instance.getId().toString()))
-                            .findFirst()
-                            .orElse(null);
-
-                    if (mainInstance != null) {
-                      LOG.info(
-                          "Terminating main workflow instance {} for conflicting instance {}",
-                          mainInstance.getId(),
-                          instance.getId());
-                      runtimeService.deleteProcessInstance(
-                          mainInstance.getId(), "Terminated due to conflicting workflow instance");
-                    }
-
                     workflowInstanceStateRepository.markInstanceStatesAsFailed(
                         instance.getId(), "Terminated due to conflicting workflow instance");
                     workflowInstanceRepository.markInstanceAsFailed(
                         instance.getId(), "Terminated due to conflicting workflow instance");
                   }
-
                   return null;
                 } catch (Exception e) {
-                  LOG.error(
-                      "Failed to terminate conflicting instances in transaction: {}",
-                      e.getMessage());
+                  LOG.error("Failed to update instance states in transaction: {}", e.getMessage());
                   throw e;
                 }
               });

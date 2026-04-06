@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -79,9 +80,29 @@ public class FilterEntityImpl implements JavaDelegate {
       String mainWorkflowDefinitionName =
           TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(triggerWorkflowDefinitionKey);
       String currentProcessInstanceId = execution.getProcessInstanceId();
-      WorkflowHandler.getInstance()
-          .terminateDuplicateInstances(
-              mainWorkflowDefinitionName, entityLinkStr, currentProcessInstanceId);
+      // Terminate duplicate instances asynchronously to prevent a MySQL FK violation.
+      // This JavaDelegate runs inside Flowable's signalEventReceived command context (TX_A).
+      // Calling deleteProcessInstance() from within TX_A reuses the same DB transaction; the
+      // uncommitted execution DELETE holds an X-lock, and Flowable's job executor may try to
+      // INSERT a timer job referencing that execution (FK wait), causing a constraint violation
+      // when TX_A commits. Running in a separate thread gives terminateDuplicateInstances its
+      // own Flowable command context and independent DB transaction, avoiding that FK issue.
+      // The deadlock (PostgreSQL lock-order reversal between deleteProcessInstance and a
+      // concurrently auto-completing process) is prevented inside terminateDuplicateInstances
+      // by skipping deletion for processes that have no active user tasks.
+      final String workflowName = mainWorkflowDefinitionName;
+      final String entityLinkStrFinal = entityLinkStr;
+      final String processInstanceId = currentProcessInstanceId;
+      CompletableFuture.runAsync(
+              () ->
+                  WorkflowHandler.getInstance()
+                      .terminateDuplicateInstances(
+                          workflowName, entityLinkStrFinal, processInstanceId))
+          .exceptionally(
+              ex -> {
+                log.error("Async termination of duplicate instances failed", ex);
+                return null;
+              });
     }
 
     String workflowKey =
