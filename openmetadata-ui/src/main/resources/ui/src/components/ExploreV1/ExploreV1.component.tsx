@@ -257,7 +257,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
       const responseData = axiosError.response?.data;
       if (responseData instanceof Blob) {
         const text = await responseData.text();
-        setExportError(text || t('server.unexpected-error'));
+        try {
+          const json = JSON.parse(text) as { message?: string };
+          setExportError(
+            json?.message ?? (text || t('server.unexpected-error'))
+          );
+        } catch {
+          setExportError(text || t('server.unexpected-error'));
+        }
       } else {
         setExportError(responseData?.message ?? t('server.unexpected-error'));
       }
