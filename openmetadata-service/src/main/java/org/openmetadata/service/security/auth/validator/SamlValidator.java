@@ -294,46 +294,50 @@ public class SamlValidator {
 
       URL url = new URL(urlWithParams);
       HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-      conn.setRequestMethod("GET");
-      conn.setConnectTimeout(5000);
-      conn.setReadTimeout(5000);
-      conn.setInstanceFollowRedirects(false);
-      int responseCode = conn.getResponseCode();
-      LOG.debug("IdP response code to SAML request: {}", responseCode);
+      try {
+        conn.setRequestMethod("GET");
+        conn.setConnectTimeout(5000);
+        conn.setReadTimeout(5000);
+        conn.setInstanceFollowRedirects(false);
+        int responseCode = conn.getResponseCode();
+        LOG.debug("IdP response code to SAML request: {}", responseCode);
 
-      // Analyze response
-      if (responseCode == 404) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
-            "SSO Login URL not found (HTTP 404). The URL '" + ssoUrl + "' does not exist.");
-      } else if (responseCode == 405) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
-            "SSO URL doesn't accept GET requests (HTTP 405). Please check the SSO URL configuration.");
-      } else if (responseCode >= 200 && responseCode < 400) {
-        // 200 or 302 means the IdP accepted our SAML request
-        return null; // Success - SSO Login URL validated
-      } else if (responseCode >= 400 && responseCode < 500) {
-        // 400-499 could mean wrong URL or IdP rejecting the request
-        // Read a bit of the response to check for specific errors
-        String responseSnippet = readResponseSnippet(conn);
-        if (responseSnippet.toLowerCase().contains("saml")
-            || responseSnippet.toLowerCase().contains("invalid")) {
-          // Warning case - treat as success
-          LOG.warn(
-              "SSO URL responded with client error (HTTP {}). This might be due to the test SAML request format.",
-              responseCode);
-          return null;
+        // Analyze response
+        if (responseCode == 404) {
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
+              "SSO Login URL not found (HTTP 404). The URL '" + ssoUrl + "' does not exist.");
+        } else if (responseCode == 405) {
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
+              "SSO URL doesn't accept GET requests (HTTP 405). Please check the SSO URL configuration.");
+        } else if (responseCode >= 200 && responseCode < 400) {
+          // 200 or 302 means the IdP accepted our SAML request
+          return null; // Success - SSO Login URL validated
+        } else if (responseCode >= 400 && responseCode < 500) {
+          // 400-499 could mean wrong URL or IdP rejecting the request
+          // Read a bit of the response to check for specific errors
+          String responseSnippet = readResponseSnippet(conn);
+          if (responseSnippet.toLowerCase().contains("saml")
+              || responseSnippet.toLowerCase().contains("invalid")) {
+            // Warning case - treat as success
+            LOG.warn(
+                "SSO URL responded with client error (HTTP {}). This might be due to the test SAML request format.",
+                responseCode);
+            return null;
+          }
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
+              "SSO URL returned error (HTTP "
+                  + responseCode
+                  + "). Please verify the URL is correct.");
+        } else {
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
+              "SSO URL is not accessible (HTTP " + responseCode + ")");
         }
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
-            "SSO URL returned error (HTTP "
-                + responseCode
-                + "). Please verify the URL is correct.");
-      } else {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
-            "SSO URL is not accessible (HTTP " + responseCode + ")");
+      } finally {
+        conn.disconnect();
       }
     } catch (Exception e) {
       LOG.warn("SSO URL validation failed", e);
@@ -376,10 +380,13 @@ public class SamlValidator {
       java.io.ByteArrayOutputStream bytesOut = new java.io.ByteArrayOutputStream();
       java.util.zip.Deflater deflater =
           new java.util.zip.Deflater(java.util.zip.Deflater.DEFLATED, true);
-      java.util.zip.DeflaterOutputStream deflaterStream =
-          new java.util.zip.DeflaterOutputStream(bytesOut, deflater);
-      deflaterStream.write(samlRequestXml.getBytes(StandardCharsets.UTF_8));
-      deflaterStream.finish();
+      try (java.util.zip.DeflaterOutputStream deflaterStream =
+          new java.util.zip.DeflaterOutputStream(bytesOut, deflater)) {
+        deflaterStream.write(samlRequestXml.getBytes(StandardCharsets.UTF_8));
+        deflaterStream.finish();
+      } finally {
+        deflater.end();
+      }
 
       // Base64 encode
       String base64Request = Base64.getEncoder().encodeToString(bytesOut.toByteArray());
@@ -395,15 +402,15 @@ public class SamlValidator {
 
   private String readResponseSnippet(HttpURLConnection conn) {
     try {
-      java.io.InputStream inputStream = conn.getErrorStream();
-      if (inputStream == null) {
-        inputStream = conn.getInputStream();
-      }
+      java.io.InputStream errorStream = conn.getErrorStream();
+      java.io.InputStream inputStream = (errorStream != null) ? errorStream : conn.getInputStream();
       if (inputStream != null) {
-        byte[] buffer = new byte[500];
-        int bytesRead = inputStream.read(buffer);
-        if (bytesRead > 0) {
-          return new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+        try (inputStream) {
+          byte[] buffer = new byte[500];
+          int bytesRead = inputStream.read(buffer);
+          if (bytesRead > 0) {
+            return new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+          }
         }
       }
     } catch (Exception e) {
