@@ -251,7 +251,7 @@
             }
           },
           "extension": {
-            "type": "object"
+            "type": "flattened"
           },
           "state": {
             "type": "keyword"

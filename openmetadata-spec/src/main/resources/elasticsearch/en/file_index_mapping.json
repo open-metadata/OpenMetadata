@@ -314,7 +314,7 @@
         "type": "keyword"
       },
       "extension": {
-        "type": "keyword"
+        "type": "flattened"
       },
       "path": {
         "type": "text",
