@@ -14,7 +14,7 @@ import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { X } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
-import { EnqueueSnackbar } from 'notistack';
+import type { EnqueueSnackbar } from 'notistack';
 import React from 'react';
 import NotificationMessage from '../components/common/atoms/notifications/NotificationMessage';
 import { ClientErrors } from '../enums/Axios.enum';
