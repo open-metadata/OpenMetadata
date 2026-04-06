@@ -41,19 +41,19 @@ export const EntitySelectableList = <T,>({
       destroyTooltipOnHide
       content={
         <div data-react-aria-top-layer>
-        <FocusTrapWithContainer active={popoverProps?.open || popupVisible}>
-          <SelectableList
-            customTagRenderer={config.customTagRenderer}
-            fetchOptions={config.fetchOptions}
-            height={listHeight}
-            multiSelect={multiSelect}
-            searchBarDataTestId={config.searchBarDataTestId}
-            searchPlaceholder={config.searchPlaceholder}
-            selectedItems={config.toEntityReference(selectedItems)}
-            onCancel={onCancel}
-            onUpdate={handleUpdate}
-          />
-        </FocusTrapWithContainer>
+          <FocusTrapWithContainer active={popoverProps?.open || popupVisible}>
+            <SelectableList
+              customTagRenderer={config.customTagRenderer}
+              fetchOptions={config.fetchOptions}
+              height={listHeight}
+              multiSelect={multiSelect}
+              searchBarDataTestId={config.searchBarDataTestId}
+              searchPlaceholder={config.searchPlaceholder}
+              selectedItems={config.toEntityReference(selectedItems)}
+              onCancel={onCancel}
+              onUpdate={handleUpdate}
+            />
+          </FocusTrapWithContainer>
         </div>
       }
       open={popupVisible}
