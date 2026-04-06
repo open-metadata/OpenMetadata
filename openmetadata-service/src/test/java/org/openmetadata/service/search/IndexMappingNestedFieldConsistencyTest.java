@@ -98,10 +98,12 @@ class IndexMappingNestedFieldConsistencyTest {
       String name = fieldNames.next();
       JsonNode fieldNode = properties.get(name);
       String path = currentPath.isEmpty() ? name : currentPath + "." + name;
-      if (name.equals("extension") && fieldNode.has("type")) {
-        String type = fieldNode.path("type").asText();
+      if (name.equals("extension")) {
+        String type = fieldNode.path("type").asText("");
         if (!"flattened".equals(type)) {
-          violations.add(entity + " (" + path + "): found \"" + type + "\"");
+          String detail =
+              type.isEmpty() ? "missing \"type\" (implicit object)" : "\"" + type + "\"";
+          violations.add(entity + " (" + path + "): " + detail);
         }
       }
       JsonNode childProps = fieldNode.path("properties");
