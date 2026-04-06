@@ -250,13 +250,13 @@
               }
             }
           },
-          "extension": {
-            "type": "flattened"
-          },
           "state": {
             "type": "keyword"
           }
         }
+      },
+      "extension": {
+        "type": "flattened"
       },
       "entityType": {
         "type": "keyword",
