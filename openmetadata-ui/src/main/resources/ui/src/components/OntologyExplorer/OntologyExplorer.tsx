@@ -1032,9 +1032,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const fetchAllGlossaryData = useCallback(
     async (glossaryIdParam?: string) => {
       setLoading(true);
-      setAssetGraphData(null);
-      setTermAssetCounts({});
-      setSavedPositions(null);
       try {
         const [glossariesResponse, metricsResponse] = await Promise.all([
           getGlossariesList({
@@ -1064,6 +1061,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         }
 
         const mergedData = mergeMetricsIntoGraph(data, metricsResponse);
+        setAssetGraphData(null);
+        setTermAssetCounts({});
+        setSavedPositions(null);
         setGraphData(mergedData);
       } catch (error) {
         showErrorToast(

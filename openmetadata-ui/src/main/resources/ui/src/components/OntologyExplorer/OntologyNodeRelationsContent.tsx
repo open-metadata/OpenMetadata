@@ -159,7 +159,6 @@ export const OntologyNodeRelationsContent: React.FC<
                       {getDisplayName(rel.relationType)}
                     </Badge>
                     <div className="tw:min-w-0">
-                      t
                       <Tooltip placement="top" title={labelText}>
                         <TooltipTrigger className="tw:block tw:w-full">
                           <Typography
