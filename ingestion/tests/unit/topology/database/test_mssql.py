@@ -45,6 +45,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
+from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_CURRENT_DATABASE,
+    MSSQL_GET_DATABASE,
+    MSSQL_TEST_GET_QUERIES,
+)
 
 mock_mssql_config = {
     "source": {
@@ -327,3 +332,47 @@ class MssqlUnitTest(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
+
+    @patch(
+        "metadata.ingestion.source.database.mssql.connection.test_connection_db_common"
+    )
+    def test_test_connection_uses_current_db_query_when_not_ingest_all(
+        self, mock_test_connection_db_common
+    ):
+        from metadata.ingestion.source.database.mssql.connection import test_connection
+
+        mock_service_connection = MagicMock()
+        mock_service_connection.ingestAllDatabases = False
+
+        test_connection(
+            metadata=MagicMock(),
+            engine=MagicMock(),
+            service_connection=mock_service_connection,
+        )
+
+        call_kwargs = mock_test_connection_db_common.call_args
+        queries = call_kwargs.kwargs["queries"]
+        assert queries["GetDatabases"] == MSSQL_GET_CURRENT_DATABASE
+        assert queries["GetQueries"] == MSSQL_TEST_GET_QUERIES
+
+    @patch(
+        "metadata.ingestion.source.database.mssql.connection.test_connection_db_common"
+    )
+    def test_test_connection_uses_all_dbs_query_when_ingest_all(
+        self, mock_test_connection_db_common
+    ):
+        from metadata.ingestion.source.database.mssql.connection import test_connection
+
+        mock_service_connection = MagicMock()
+        mock_service_connection.ingestAllDatabases = True
+
+        test_connection(
+            metadata=MagicMock(),
+            engine=MagicMock(),
+            service_connection=mock_service_connection,
+        )
+
+        call_kwargs = mock_test_connection_db_common.call_args
+        queries = call_kwargs.kwargs["queries"]
+        assert queries["GetDatabases"] == MSSQL_GET_DATABASE
+        assert queries["GetQueries"] == MSSQL_TEST_GET_QUERIES
