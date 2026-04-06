@@ -757,6 +757,8 @@ public class ElasticSearchClient implements SearchClient {
                         org.apache.hc.core5.util.TimeValue.ofSeconds(
                             esConfig.getKeepAliveTimeoutSecs()));
               }
+
+              httpAsyncClientBuilder.useSystemProperties();
             });
 
         restClientBuilder.setRequestConfigCallback(

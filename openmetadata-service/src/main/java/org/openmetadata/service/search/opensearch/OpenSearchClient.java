@@ -828,6 +828,8 @@ public class OpenSearchClient implements SearchClient {
                           esConfig.getKeepAliveTimeoutSecs()));
             }
 
+            httpClientBuilder.useSystemProperties();
+
             return httpClientBuilder;
           });
 
