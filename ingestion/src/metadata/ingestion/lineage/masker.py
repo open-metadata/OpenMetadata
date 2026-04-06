@@ -23,7 +23,7 @@ from cachetools import LRUCache
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
 from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 from collate_sqllineage.runner import LineageRunner
-from sqlparse.sql import Comparison
+from sqlparse.sql import Comparison, Function, Identifier
 from sqlparse.tokens import Keyword, Literal, Number, String
 
 from metadata.ingestion.lineage.models import Dialect
@@ -36,6 +36,8 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 MASK_TOKEN = "?"
+
+SEQUENCE_FUNCTIONS = frozenset({"NEXTVAL", "CURRVAL", "SETVAL", "LASTVAL"})
 
 # Cache size is 128 to avoid memory issues
 masked_query_cache = LRUCache(maxsize=128)
@@ -55,6 +57,20 @@ def mask_literals_with_sqlparse(
             """Check if a token is an integer literal (positional reference candidate)."""
             return token.ttype is Number.Integer
 
+        def _is_inside_sequence_function(token) -> bool:
+            """Check if a token is inside a sequence function like NEXTVAL, CURRVAL, etc."""
+            parent = getattr(token, "parent", None)
+            while parent:
+                if isinstance(parent, Function):
+                    for child in parent.tokens:
+                        if isinstance(child, Identifier):
+                            name = child.get_name()
+                            if name and name.upper() in SEQUENCE_FUNCTIONS:
+                                return True
+                    return False
+                parent = getattr(parent, "parent", None)
+            return False
+
         def mask_token(token, in_groupby_orderby=False):
             """Mask literal tokens, preserving integer ordinal references in
             GROUP BY and ORDER BY clauses."""
@@ -69,6 +85,9 @@ def mask_literals_with_sqlparse(
                 Literal.Number.Integer,
                 Literal.Number.Float,
             ):
+                is_string = token.ttype in (String, Literal.String.Single)
+                if is_string and _is_inside_sequence_function(token):
+                    return
                 token.value = MASK_TOKEN
             elif token.is_group:
                 # Recursively process grouped tokens with clause context
@@ -145,6 +164,19 @@ def mask_literals_with_sqlfluff(
             Only pure integers (no decimal point) are valid positional references."""
             return segment.is_type("numeric_literal") and segment.raw.isdigit()
 
+        def _is_inside_sequence_function_sqlfluff(segment) -> bool:
+            """Check if a segment is inside a sequence function like NEXTVAL, CURRVAL, etc."""
+            result = segment.get_parent()
+            while result:
+                parent, _ = result
+                if parent.is_type("function"):
+                    name_seg = parent.get_child("function_name")
+                    if name_seg and name_seg.raw.upper() in SEQUENCE_FUNCTIONS:
+                        return True
+                    return False
+                result = parent.get_parent()
+            return False
+
         def replace_literals(segment, in_groupby_orderby=False):
             """Recursively replace literals with placeholders,
             preserving integer ordinal references in GROUP BY / ORDER BY."""
@@ -157,6 +189,9 @@ def mask_literals_with_sqlfluff(
                 return segment.raw
 
             if segment.is_type("literal", "quoted_literal", "numeric_literal"):
+                is_string = segment.is_type("quoted_literal")
+                if is_string and _is_inside_sequence_function_sqlfluff(segment):
+                    return segment.raw
                 return MASK_TOKEN
             if segment.segments:
                 # Recursively process sub-segments
