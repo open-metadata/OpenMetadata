@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.service.search.SearchUtils.buildHttpHostsForHc5;
+import static org.openmetadata.service.search.SearchUtils.buildScopedCredentialsProvider;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.util.AwsCredentialsUtil.buildCredentialsProvider;
@@ -21,8 +22,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hc.client5.http.auth.AuthScope;
-import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder;
@@ -810,15 +809,9 @@ public class OpenSearchClient implements SearchClient {
 
             httpClientBuilder.setConnectionManager(connectionManagerBuilder.build());
 
-            if (StringUtils.isNotEmpty(esConfig.getUsername())
-                && StringUtils.isNotEmpty(esConfig.getPassword())) {
-              BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-              for (HttpHost host : httpHosts) {
-                credentialsProvider.setCredentials(
-                    new AuthScope(host.getHostName(), host.getPort()),
-                    new UsernamePasswordCredentials(
-                        esConfig.getUsername(), esConfig.getPassword().toCharArray()));
-              }
+            BasicCredentialsProvider credentialsProvider =
+                buildScopedCredentialsProvider(esConfig, httpHosts);
+            if (credentialsProvider != null) {
               httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
             }
 
