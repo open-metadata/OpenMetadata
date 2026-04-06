@@ -813,10 +813,12 @@ public class OpenSearchClient implements SearchClient {
             if (StringUtils.isNotEmpty(esConfig.getUsername())
                 && StringUtils.isNotEmpty(esConfig.getPassword())) {
               BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-              credentialsProvider.setCredentials(
-                  new AuthScope(null, -1),
-                  new UsernamePasswordCredentials(
-                      esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+              for (HttpHost host : httpHosts) {
+                credentialsProvider.setCredentials(
+                    new AuthScope(host.getHostName(), host.getPort()),
+                    new UsernamePasswordCredentials(
+                        esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+              }
               httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
             }
 
