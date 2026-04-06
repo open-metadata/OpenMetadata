@@ -23,8 +23,9 @@ import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import i18n from '../../utils/i18next/LocalUtil';
+import { isNewLayoutRoute } from '../../utils/LayoutUtils';
+import AppSidebar from '../AppSidebar/AppSidebar.component';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
-import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import NavBar from '../NavBar/NavBar';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import './app-container.less';
@@ -43,6 +44,14 @@ const AppContainer = () => {
 
   const { setConfig, bannerDetails } = useLimitStore();
   const { setLineageConfig } = useLineageStore();
+
+  const renderNavBar = () => {
+    if (isNewLayoutRoute(location.pathname)) {
+      return null;
+    }
+
+    return <NavBar />;
+  };
 
   const fetchAppConfigurations = useCallback(async () => {
     try {
@@ -87,19 +96,20 @@ const AppContainer = () => {
     <Layout>
       <LimitBanner />
       <Layout
+        hasSider
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
         })}>
         {/* Render left side navigation */}
-        <LeftSidebar />
+        <AppSidebar />
 
         {/* Render main content */}
         <Layout>
           {/* Render Appbar */}
           {applicationRoutesClass.isProtectedRoute(location.pathname) &&
-          isAuthenticated ? (
-            <NavBar />
-          ) : null}
+          isAuthenticated
+            ? renderNavBar()
+            : null}
 
           {/* Render main content */}
           <Content>

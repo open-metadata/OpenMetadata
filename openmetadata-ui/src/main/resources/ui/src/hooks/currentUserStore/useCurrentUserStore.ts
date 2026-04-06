@@ -19,6 +19,11 @@ import { detectBrowserLanguage } from '../../utils/i18next/LocalUtil';
 import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { useApplicationStore } from '../useApplicationStore';
 
+export interface MarketplaceRecentSearchEntry {
+  term: string;
+  timestamp: number;
+}
+
 export interface UserPreferences {
   isSidebarCollapsed: boolean;
   language: SupportedLocales;
@@ -27,6 +32,7 @@ export interface UserPreferences {
   recentlyViewed: RecentlyViewedData[];
   recentlySearched: RecentlySearchedData[];
   recentlyViewedQuickLinks: RecentlyViewedData[];
+  marketplaceRecentSearches: MarketplaceRecentSearchEntry[];
 }
 
 interface Store {
@@ -47,7 +53,7 @@ const defaultPreferences: UserPreferences = {
   recentlyViewed: [],
   recentlySearched: [],
   recentlyViewedQuickLinks: [],
-  // Add default values for other preferences
+  marketplaceRecentSearches: [],
 };
 
 export const usePersistentStorage = create<Store>()(
