@@ -58,7 +58,6 @@
         "StarRocks",
         "UnityCatalog",
         "SAS",
-        "Iceberg",
         "Teradata",
         "SapErp",
         "Synapse",
@@ -201,9 +200,6 @@
         },
         {
           "name": "SAS"
-        },
-        {
-          "name": "Iceberg"
         },
         {
           "name": "Teradata"
@@ -377,9 +373,6 @@
               "$ref": "./connections/database/sasConnection.json"
             },
             {
-              "$ref": "./connections/database/icebergConnection.json"
-            },
-            {
               "$ref": "./connections/database/teradataConnection.json"
             },
             {
@@ -513,6 +506,10 @@
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "domains" : {
       "description": "Domains the Database service belongs to.",

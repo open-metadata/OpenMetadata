@@ -44,7 +44,6 @@ import exasolConnection from '../jsons/connectionSchemas/connections/database/ex
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
 import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
-import icebergConnection from '../jsons/connectionSchemas/connections/database/icebergConnection.json';
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
 import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
@@ -290,11 +289,6 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.SAS: {
       schema = sasConnection;
-
-      break;
-    }
-    case DatabaseServiceType.Iceberg: {
-      schema = icebergConnection;
 
       break;
     }

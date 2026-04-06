@@ -20,10 +20,13 @@ import {
   NodeEvent,
 } from '@antv/g6';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
+  DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR,
+  DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN,
   DEFAULT_ZOOM,
   DIMMED_EDGE_OPACITY,
   DIMMED_NODE_OPACITY,
@@ -31,6 +34,8 @@ import {
   EDGE_LINE_WIDTH_DEFAULT,
   EDGE_LINE_WIDTH_HIGHLIGHTED,
   EDGE_STROKE_COLOR,
+  FIT_VIEW_ZOOM_OUT,
+  FIT_VIEW_ZOOM_OUT_DATA_MODE,
   HIERARCHY_BADGE_OFFSET_Y,
   HIERARCHY_BADGE_TEXT_INSET,
   LayoutEngine,
@@ -45,6 +50,7 @@ import {
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
+import { getEntityIconUrl } from '../utils/entityIconUrls';
 import { getLayoutConfig } from '../utils/graphConfig';
 import {
   buildComboStyle,
@@ -54,11 +60,36 @@ import {
   getCanvasColor,
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
+import { computeAssetRingPositions } from '../utils/layoutCalculations';
 
-/** Zoom-out factor applied after fitView so the graph always shows a zoomed-out view in every mode/layout. */
-const FIT_VIEW_ZOOM_OUT = 0.6;
+const elementIdSet = <T extends { id?: string }>(elements: readonly T[]) =>
+  new Set(
+    elements.map(({ id }) => id).filter((id): id is string => Boolean(id))
+  );
 
-function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
+const sameStringSet = (a: Set<string>, b: Set<string>) =>
+  a.size === b.size && [...a].every((id) => b.has(id));
+
+function isGraphTopologySynced(graph: Graph, graphData: GraphData): boolean {
+  const { nodes = [], edges = [], combos = [] } = graphData;
+
+  if (!sameStringSet(elementIdSet(nodes), elementIdSet(graph.getNodeData()))) {
+    return false;
+  }
+
+  if (!sameStringSet(elementIdSet(edges), elementIdSet(graph.getEdgeData()))) {
+    return false;
+  }
+
+  const modelCombos = graph.getComboData();
+  if (combos.length === 0) {
+    return modelCombos.length === 0;
+  }
+
+  return sameStringSet(elementIdSet(combos), elementIdSet(modelCombos));
+}
+
+function findBadgeIndex(originalTarget: unknown): number | null {
   let current: unknown = originalTarget;
   for (
     let depth = 0;
@@ -71,13 +102,28 @@ function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
       parent?: unknown;
     };
     const key = shape.className ?? shape.name;
-    if (typeof key === 'string' && /^badge-\d+$/.test(key)) {
-      return true;
+    if (typeof key === 'string') {
+      const match = /^badge-(\d+)$/.exec(key);
+      if (match) {
+        return Number(match[1]);
+      }
     }
     current = shape.parent;
   }
 
-  return false;
+  return null;
+}
+
+function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
+  const idx = findBadgeIndex(originalTarget);
+
+  return idx === 0;
+}
+
+function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
+  const idx = findBadgeIndex(originalTarget);
+
+  return idx === 1;
 }
 
 interface GraphNodeMeta {
@@ -86,6 +132,7 @@ interface GraphNodeMeta {
   label?: string;
   hierarchyBadge?: string;
   assetCount?: number;
+  loadedAssetCount?: number;
   assetsExpanded?: boolean;
   ontologyNode?: OntologyNode;
   isDimmed?: boolean;
@@ -120,7 +167,10 @@ interface UseOntologyGraphProps {
   onNodeClick: (
     node: OntologyNode,
     position: { x: number; y: number },
-    meta?: { dataModeAssetBadgeClick?: boolean }
+    meta?: {
+      dataModeAssetBadgeClick?: boolean;
+      dataModeLoadMoreBadgeClick?: boolean;
+    }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
   onNodeContextMenu: (
@@ -132,6 +182,7 @@ interface UseOntologyGraphProps {
   neighborSet: Set<string>;
   glossaryColorMap: Record<string, string>;
   computeNodeColor: (node: OntologyNode) => string;
+  assetToTermMap: Record<string, string>;
 }
 
 export function useOntologyGraph({
@@ -154,6 +205,7 @@ export function useOntologyGraph({
   neighborSet,
   glossaryColorMap,
   computeNodeColor,
+  assetToTermMap,
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
@@ -161,12 +213,18 @@ export function useOntologyGraph({
   settingsRef.current = settings;
 
   const prevDataSignatureRef = useRef<string>('');
-  const structuralFingerprintRef = useRef<string>('');
+  const termFingerprintRef = useRef<string>('');
+  const assetFingerprintRef = useRef<string>('');
   const justInitializedRef = useRef<boolean>(false);
   const cancelPendingUpdateRef = useRef<(() => void) | null>(null);
+  const assetToTermMapRef = useRef(assetToTermMap);
+  assetToTermMapRef.current = assetToTermMap;
 
   const setClickedEdgeIdRef = useRef(setClickedEdgeId);
   setClickedEdgeIdRef.current = setClickedEdgeId;
+
+  const inputNodesRef = useRef(inputNodes);
+  inputNodesRef.current = inputNodes;
 
   const extractNodePositions = useCallback((): Record<
     string,
@@ -193,6 +251,57 @@ export function useOntologyGraph({
     return positions;
   }, []);
 
+  /** Places asset nodes in concentric rings around their parent term's current drawn position. */
+  const positionAssetNodes = useCallback((graph: Graph) => {
+    const map = assetToTermMapRef.current;
+    const assetsByTerm = new Map<string, string[]>();
+    Object.entries(map).forEach(([assetId, termId]) => {
+      const list = assetsByTerm.get(termId) ?? [];
+      list.push(assetId);
+      assetsByTerm.set(termId, list);
+    });
+
+    const updates: NodeData[] = [];
+    assetsByTerm.forEach((assetIds, termId) => {
+      try {
+        const termPos = graph.getElementPosition(termId);
+        if (!termPos) {
+          return;
+        }
+        const [termX, termY] = termPos;
+        const ringPositions = computeAssetRingPositions(termX, termY, assetIds);
+        Object.entries(ringPositions).forEach(([assetId, pos]) => {
+          const nodeData = graph.getNodeData(assetId);
+          if (nodeData) {
+            updates.push({
+              id: assetId,
+              style: { ...(nodeData.style ?? {}), x: pos.x, y: pos.y },
+            });
+          }
+        });
+      } catch {
+        // term not yet in graph
+      }
+    });
+
+    if (updates.length > 0) {
+      graph.updateNodeData(updates);
+    }
+  }, []);
+
+  // Asset nodes are added/removed dynamically when badges are clicked. The graph
+  // init effect must NOT re-run for those changes — only when the term topology
+  // or exploration mode actually changes. Exclude asset-type nodes from the count
+  // used as the init-effect dependency.
+  const DATA_MODE_ASSET_TYPES = new Set(['dataAsset', 'metric']);
+  const termNodeCount = useMemo(
+    () =>
+      explorationMode === 'data'
+        ? inputNodes.filter((n) => !DATA_MODE_ASSET_TYPES.has(n.type)).length
+        : inputNodes.length,
+    [explorationMode, inputNodes]
+  );
+
   const hasBakedPositions = useMemo(() => {
     const hierarchyWithBakedLayout =
       explorationMode === 'hierarchy' &&
@@ -214,7 +323,7 @@ export function useOntologyGraph({
   }, [inputNodes, explorationMode, layoutType]);
 
   useEffect(() => {
-    if (!containerRef.current || inputNodes.length === 0) {
+    if (!containerRef.current || termNodeCount === 0) {
       return;
     }
 
@@ -248,9 +357,23 @@ export function useOntologyGraph({
           if (isDataMd && isAsset) {
             const ac = assetColor ?? NODE_BORDER_COLOR;
             const label = d?.label ?? datum.id;
+            const entityTypeLabel =
+              ontNode?.entityRef?.type !== undefined
+                ? entityUtilClassBase.getFormattedEntityType(
+                    ontNode.entityRef.type
+                  )
+                : undefined;
+            const entityIconUrl = getEntityIconUrl(ontNode?.entityRef?.type);
 
             return {
-              ...buildDataModeAssetNodeStyle(getCanvasColor, label, ac),
+              ...buildDataModeAssetNodeStyle(
+                getCanvasColor,
+                label,
+                ac,
+                undefined,
+                entityTypeLabel,
+                entityIconUrl
+              ),
               zIndex: 2,
               opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
             };
@@ -261,42 +384,94 @@ export function useOntologyGraph({
             const assetCount = d?.assetCount ?? 0;
             const hasAssetBadge = assetCount > 0;
             const assetsExpanded = d?.assetsExpanded ?? false;
-            const badgeText = assetsExpanded ? '\u2212' : String(assetCount);
+            const loadedAssetCount = d?.loadedAssetCount ?? 0;
+            const remaining = Math.max(0, assetCount - loadedAssetCount);
+            const showLoadMore = assetsExpanded && remaining > 0;
+            const badgeText = assetsExpanded ? '\u2212' : `+${assetCount}`;
             const label = d?.label ?? datum.id;
-            const assetCountBadgeDiameter =
-              badgeText.length > 2
-                ? DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE
-                : DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER;
+            let assetCountBadgeDiameter: number;
+            if (assetsExpanded) {
+              assetCountBadgeDiameter =
+                badgeText.length > 2
+                  ? DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE
+                  : DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER;
+            } else {
+              assetCountBadgeDiameter = Math.max(
+                DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
+                DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN +
+                  badgeText.length * DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR
+              );
+            }
             const assetCountBadgeR = assetCountBadgeDiameter / 2;
+
+            const loadMoreText = `Load ${remaining} more`;
+            const loadMoreHPad = 4;
+            const loadMoreCharW = 7;
+            const loadMoreH = DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER;
+            const loadMoreW = Math.max(
+              60,
+              loadMoreHPad * 2 + loadMoreText.length * loadMoreCharW
+            );
+            const loadMoreOffsetX = -(loadMoreW / 2);
+
+            const badges = hasAssetBadge
+              ? [
+                  {
+                    text: badgeText,
+                    placement: 'top-right' as const,
+                    offsetX: NODE_BADGE_OFFSET_X,
+                    offsetY: NODE_BADGE_OFFSET_Y,
+                    textAlign: 'center' as const,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fill: NODE_FILL_DEFAULT,
+                    background: true,
+                    backgroundFill: NODE_LABEL_FILL,
+                    backgroundWidth: assetCountBadgeDiameter,
+                    backgroundHeight: assetCountBadgeDiameter,
+                    backgroundRadius: assetCountBadgeR,
+                    backgroundStroke: 'none',
+                    backgroundLineWidth: 0,
+                    padding: DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
+                    backgroundOpacity: 1,
+                  },
+                  ...(showLoadMore
+                    ? [
+                        {
+                          text: loadMoreText,
+                          placement: 'top-left' as const,
+                          offsetX: loadMoreOffsetX,
+                          offsetY: 0,
+                          textAlign: 'center' as const,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          fill: '#ffffff',
+                          background: true,
+                          backgroundFill: '#155EEF',
+                          backgroundWidth: loadMoreW,
+                          backgroundHeight: loadMoreH,
+                          backgroundRadius: 6,
+                          backgroundStroke: 'none',
+                          backgroundLineWidth: 0,
+                          padding: [4, loadMoreHPad, 4, loadMoreHPad] as [
+                            number,
+                            number,
+                            number,
+                            number
+                          ],
+                          backgroundOpacity: 1,
+                        },
+                      ]
+                    : []),
+                ]
+              : [];
 
             return {
               ...buildDataModeTermNodeStyle(getCanvasColor, label, tc),
               zIndex: 2,
               opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
               badge: hasAssetBadge,
-              badges: hasAssetBadge
-                ? [
-                    {
-                      text: badgeText,
-                      placement: 'top-right',
-                      offsetX: NODE_BADGE_OFFSET_X,
-                      offsetY: NODE_BADGE_OFFSET_Y,
-                      textAlign: 'center',
-                      fontSize: 10,
-                      fontWeight: 600,
-                      fill: NODE_FILL_DEFAULT,
-                      background: true,
-                      backgroundFill: NODE_LABEL_FILL,
-                      backgroundWidth: assetCountBadgeDiameter,
-                      backgroundHeight: assetCountBadgeDiameter,
-                      backgroundRadius: assetCountBadgeR,
-                      backgroundStroke: 'none',
-                      backgroundLineWidth: 0,
-                      padding: DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
-                      backgroundOpacity: 1,
-                    },
-                  ]
-                : [],
+              badges,
               labelFill: NODE_FILL_DEFAULT,
             };
           }
@@ -452,7 +627,8 @@ export function useOntologyGraph({
 
     graphRef.current = graph;
     justInitializedRef.current = true;
-    structuralFingerprintRef.current = '';
+    termFingerprintRef.current = '';
+    assetFingerprintRef.current = '';
 
     const resolveNodeForCallback = (node: OntologyNode): OntologyNode =>
       node.originalNode ?? node;
@@ -460,7 +636,7 @@ export function useOntologyGraph({
     const handleNodeClick = (e: IElementEvent) => {
       const id = e.target.id;
       if (id) {
-        const node = inputNodes.find((n) => n.id === id);
+        const node = inputNodesRef.current.find((n) => n.id === id);
         if (node) {
           let position = { x: e.clientX ?? 0, y: e.clientY ?? 0 };
           try {
@@ -473,8 +649,12 @@ export function useOntologyGraph({
           const dataModeAssetBadgeClick =
             explorationMode === 'data' &&
             isDataModeAssetBadgeShape(e.originalTarget);
+          const dataModeLoadMoreBadgeClick =
+            explorationMode === 'data' &&
+            isDataModeLoadMoreBadgeShape(e.originalTarget);
           onNodeClick(resolveNodeForCallback(node), position, {
             dataModeAssetBadgeClick,
+            dataModeLoadMoreBadgeClick,
           });
         }
       }
@@ -483,7 +663,7 @@ export function useOntologyGraph({
     const handleNodeDblClick = (e: IElementEvent) => {
       const id = e.target.id;
       if (id) {
-        const node = inputNodes.find((n) => n.id === id);
+        const node = inputNodesRef.current.find((n) => n.id === id);
         if (node) {
           onNodeDoubleClick(resolveNodeForCallback(node));
         }
@@ -494,7 +674,7 @@ export function useOntologyGraph({
       e.preventDefault();
       const id = e.target.id;
       if (id) {
-        const node = inputNodes.find((n) => n.id === id);
+        const node = inputNodesRef.current.find((n) => n.id === id);
         if (node) {
           onNodeContextMenu(resolveNodeForCallback(node), {
             x: e.clientX ?? 0,
@@ -520,17 +700,20 @@ export function useOntologyGraph({
     const runRender = async () => {
       if (hasBakedPositions) {
         await graph.draw();
+        if (explorationMode === 'data') {
+          positionAssetNodes(graph);
+          graph.draw();
+        }
       } else {
         await graph.render();
       }
       const duration = 0;
-      if (inputNodes.length === 1) {
-        await graph.fitCenter({ duration });
-        await graph.zoomBy(FIT_VIEW_ZOOM_OUT, { duration });
-      } else {
-        await graph.fitView(undefined, { duration });
-        await graph.zoomBy(FIT_VIEW_ZOOM_OUT, { duration });
-      }
+      const zoomAfterFit =
+        explorationMode === 'data'
+          ? FIT_VIEW_ZOOM_OUT_DATA_MODE
+          : FIT_VIEW_ZOOM_OUT;
+      await graph.fitView(undefined, { duration });
+      await graph.zoomBy(zoomAfterFit, { duration });
     };
 
     runRender();
@@ -559,7 +742,7 @@ export function useOntologyGraph({
       graph.destroy();
       graphRef.current = null;
     };
-  }, [inputNodes.length, explorationMode]);
+  }, [termNodeCount, explorationMode]);
 
   useEffect(() => {
     const graph = graphRef.current;
@@ -567,47 +750,80 @@ export function useOntologyGraph({
       return;
     }
 
-    if (justInitializedRef.current) {
-      justInitializedRef.current = false;
-
-      return;
-    }
-
     const dataSignatureChanged = prevDataSignatureRef.current !== dataSignature;
-    if (dataSignatureChanged) {
-      prevDataSignatureRef.current = dataSignature ?? '';
-    }
 
-    const newFingerprint = [
-      inputNodes.map((n) => n.id).join(','),
-      mergedEdgesList.length.toString(),
-      mergedEdgesList
-        .map((e) => `${e.from}>${e.to}:${e.relationType}`)
-        .join(','),
+    const isDataMode = explorationMode === 'data';
+    const assetTypeSet = new Set(['dataAsset', 'metric']);
+    const nodeTypeById = new Map(inputNodes.map((n) => [n.id, n.type]));
+
+    const termNodes = isDataMode
+      ? inputNodes.filter((n) => !assetTypeSet.has(n.type))
+      : inputNodes;
+    const termEdges = isDataMode
+      ? mergedEdgesList.filter(
+          (e) =>
+            !assetTypeSet.has(nodeTypeById.get(e.from) ?? '') &&
+            !assetTypeSet.has(nodeTypeById.get(e.to) ?? '')
+        )
+      : mergedEdgesList;
+
+    const newTermFingerprint = [
+      termNodes.map((n) => n.id).join(','),
+      termEdges.length.toString(),
+      termEdges.map((e) => `${e.from}>${e.to}:${e.relationType}`).join(','),
       layoutType,
       layoutType === LayoutEngine.Radial
         ? focusNodeId ?? selectedNodeId ?? ''
         : '',
       explorationMode,
-      explorationMode === 'data'
-        ? [...(expandedTermIds ?? new Set<string>())].sort().join('|')
-        : '',
     ].join('||');
 
-    const structuralChanged =
-      dataSignatureChanged ||
-      newFingerprint !== structuralFingerprintRef.current;
+    const newAssetFingerprint = isDataMode
+      ? [...(expandedTermIds ?? new Set<string>())].sort().join('|')
+      : '';
 
-    if (!structuralChanged) {
-      // In-place UI update for node states without re-layout
-      graph.updateNodeData(graphData.nodes ?? []);
-      graph.updateEdgeData(graphData.edges ?? []);
-      graph.draw();
+    const termFingerprintChanged =
+      dataSignatureChanged || newTermFingerprint !== termFingerprintRef.current;
+    const assetFingerprintChanged =
+      newAssetFingerprint !== assetFingerprintRef.current;
+
+    // Seed fingerprint refs on the first post-init render so subsequent updates
+    // correctly detect what actually changed (avoids false termFingerprintChanged
+    // on the very first badge click after initialization).
+    if (justInitializedRef.current) {
+      justInitializedRef.current = false;
+      prevDataSignatureRef.current = dataSignature ?? '';
+      termFingerprintRef.current = newTermFingerprint;
+      assetFingerprintRef.current = newAssetFingerprint;
 
       return;
     }
 
-    structuralFingerprintRef.current = newFingerprint;
+    if (dataSignatureChanged) {
+      prevDataSignatureRef.current = dataSignature ?? '';
+    }
+    const structuralChanged = termFingerprintChanged || assetFingerprintChanged;
+    const topologySynced = isGraphTopologySynced(graph, graphData);
+    const canPatchInPlace = !structuralChanged && topologySynced;
+
+    if (canPatchInPlace) {
+      try {
+        graph.updateNodeData(graphData.nodes ?? []);
+        graph.updateEdgeData(graphData.edges ?? []);
+        graph.draw();
+
+        return;
+      } catch {
+        // Fall through to setData(graphData).
+      }
+    }
+
+    if (termFingerprintChanged) {
+      termFingerprintRef.current = newTermFingerprint;
+    }
+    if (assetFingerprintChanged) {
+      assetFingerprintRef.current = newAssetFingerprint;
+    }
 
     const layoutOptions = getLayoutConfig(
       layoutType,
@@ -633,28 +849,71 @@ export function useOntologyGraph({
           return;
         }
 
+        // For asset-only updates (badge click without term structure change),
+        // save current canvas positions of term nodes before setData resets them
+        // so that user-dragged positions survive the re-render.
+        const savedTermPositions: Record<string, { x: number; y: number }> = {};
+        if (isDataMode && !termFingerprintChanged) {
+          graph.getNodeData().forEach((node) => {
+            const pos = graph.getElementPosition(node.id as string);
+            if (pos) {
+              savedTermPositions[node.id as string] = {
+                x: pos[0],
+                y: pos[1],
+              };
+            }
+          });
+        }
+
+        setClickedEdgeIdRef.current(null);
         graph.setData(graphData);
-        if (!hasBakedPositions) {
-          graph.setLayout(layoutOptions);
-          await graph.layout();
+
+        if (isDataMode) {
+          graph.draw();
+          // Restore term node positions that the user may have dragged before
+          // setData reset them to their baked layout coordinates.
+          if (Object.keys(savedTermPositions).length > 0) {
+            const posUpdates = graph
+              .getNodeData()
+              .filter((node) => savedTermPositions[node.id as string])
+              .map((node) => ({
+                id: node.id,
+                style: {
+                  ...(node.style ?? {}),
+                  x: savedTermPositions[node.id as string].x,
+                  y: savedTermPositions[node.id as string].y,
+                },
+              }));
+            if (posUpdates.length > 0) {
+              graph.updateNodeData(posUpdates);
+            }
+          }
+          positionAssetNodes(graph);
+          graph.draw();
+          if (termFingerprintChanged) {
+            await graph.fitView(undefined, { duration: 0 });
+            await graph.zoomBy(FIT_VIEW_ZOOM_OUT_DATA_MODE, { duration: 0 });
+          }
+        } else {
+          if (!hasBakedPositions) {
+            graph.setLayout(layoutOptions);
+            await graph.layout();
+            if (cancelled) {
+              return;
+            }
+          }
+          graph.draw();
+
           if (cancelled) {
             return;
           }
-        }
-        graph.draw();
 
-        if (cancelled) {
-          return;
-        }
-
-        if (explorationMode !== 'data') {
-          const duration = 0;
           if (inputNodes.length === 1) {
-            await graph.fitCenter({ duration });
-            await graph.zoomBy(FIT_VIEW_ZOOM_OUT, { duration });
+            await graph.fitCenter({ duration: 0 });
+            await graph.zoomBy(FIT_VIEW_ZOOM_OUT, { duration: 0 });
           } else {
-            await graph.fitView(undefined, { duration });
-            await graph.zoomBy(FIT_VIEW_ZOOM_OUT, { duration });
+            await graph.fitView(undefined, { duration: 0 });
+            await graph.zoomBy(FIT_VIEW_ZOOM_OUT, { duration: 0 });
           }
         }
       } finally {

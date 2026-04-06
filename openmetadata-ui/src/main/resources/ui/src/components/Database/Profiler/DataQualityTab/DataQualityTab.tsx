@@ -17,6 +17,7 @@ import {
   Dropdown,
   Skeleton,
   Tooltip,
+  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, DotsVertical } from '@untitledui/icons';
@@ -30,7 +31,6 @@ import { useEffect, useMemo, useRef, useState, type Key } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -211,16 +211,22 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.failed-slash-aborted-reason'),
         dataIndex: 'testCaseResult',
         key: 'reason',
-        width: 200,
+        width: 250,
         render: (result: TestCaseResult, record: TestCase) => {
           return result?.result &&
             result.testCaseStatus !== TestCaseStatus.Success ? (
-            <Tooltip placement="top" title={result.result}>
-              <p
-                className="tw:m-0 tw:line-clamp-2 tw:cursor-pointer tw:wrap-break-word tw:text-sm"
-                data-testid={`reason-text-${record.name}`}>
-                {result.result}
-              </p>
+            <Tooltip
+              containerClassName="tw:break-all"
+              placement="top"
+              title={result.result}>
+              <TooltipTrigger>
+                <Typography
+                  className="tw:m-0 tw:max-w-60 tw:line-clamp-2 tw:break-all"
+                  data-testid={`reason-text-${record.name}`}
+                  size="text-sm">
+                  {result.result}
+                </Typography>
+              </TooltipTrigger>
             </Tooltip>
           ) : (
             '--'
@@ -241,7 +247,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 200,
+        width: 150,
         sorter: true,
         sortDirections: ['ascend', 'descend'],
         render: (name: string, record) => {
@@ -266,7 +272,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               title: t('label.table'),
               dataIndex: 'entityLink',
               key: 'table',
-              width: 150,
+              width: 200,
               render: (entityLink: string) => {
                 const tableFqn = getEntityFQN(entityLink);
 
@@ -481,7 +487,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       },
     ];
 
-    return data;
+    return data.map((col) =>
+      col.width && !col.fixed
+        ? {
+            ...col,
+            onCell: () => ({
+              style: { maxWidth: col.width, overflow: 'hidden' },
+            }),
+          }
+        : col
+    );
   }, [
     testCases,
     testCaseStatus,
@@ -627,11 +642,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           className="tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2"
           gap={3}
           wrap="wrap">
-          <Typography size="text-sm">
-            {t('label.bundle-test-case-selected-count', {
-              count: selectedRowKeys.length,
-            })}
-          </Typography>
+          <Box>
+            <Typography size="text-sm">
+              {t('label.bundle-test-case-selected-count', {
+                count: selectedRowKeys.length,
+              })}
+            </Typography>
+            <Typography
+              as="a"
+              className="tw:ml-2"
+              data-testid="bulk-clear-test-case-selection"
+              size="text-sm"
+              onClick={() => setSelectedRowKeys([])}>
+              {t('label.clear-selection')}
+            </Typography>
+          </Box>
           <Box align="center" className="tw:ml-auto" gap={3}>
             <Dropdown.Root>
               <Button
@@ -669,14 +694,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.Root>
-            <Button
-              className="tw:h-6 tw:w-6 tw:*:data-icon:text-gray-600"
-              color="tertiary"
-              data-testid="bulk-clear-test-case-selection"
-              iconLeading={DeleteIcon}
-              size="sm"
-              onClick={() => setSelectedRowKeys([])}
-            />
           </Box>
         </Box>
       )}

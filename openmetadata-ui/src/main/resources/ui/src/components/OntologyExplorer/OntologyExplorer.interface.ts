@@ -31,6 +31,7 @@ export interface OntologyNode {
   label: string;
   originalLabel?: string;
   assetCount?: number;
+  loadedAssetCount?: number;
   type: string;
   fullyQualifiedName?: string;
   description?: string;
@@ -88,6 +89,8 @@ export interface OntologyGraphHandle {
   runLayout: () => void;
   focusNode: (nodeId: string) => void;
   getNodePositions: () => Record<string, { x: number; y: number }>;
+  exportAsPng: () => Promise<void>;
+  exportAsSvg: () => Promise<void>;
 }
 
 export interface HierarchyComboInfo {
@@ -114,7 +117,10 @@ export interface OntologyGraphProps {
   onNodeClick: (
     node: OntologyNode,
     position?: { x: number; y: number },
-    meta?: { dataModeAssetBadgeClick?: boolean }
+    meta?: {
+      dataModeAssetBadgeClick?: boolean;
+      dataModeLoadMoreBadgeClick?: boolean;
+    }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
   onNodeContextMenu: (

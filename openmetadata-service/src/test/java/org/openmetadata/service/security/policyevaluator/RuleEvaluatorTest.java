@@ -483,6 +483,35 @@ class RuleEvaluatorTest {
   }
 
   @Test
+  void test_matchAnyCertification_nullEntity() {
+    ResourceContextInterface nullEntityContext = mock(ResourceContextInterface.class);
+    Mockito.when(nullEntityContext.getEntity()).thenReturn(null);
+
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, nullEntityContext);
+    EvaluationContext ctx = new StandardEvaluationContext(ruleEvaluator);
+
+    assertFalse(
+        parseExpression("matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_matchAnyCertification_nullResourceContext() {
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, null);
+    EvaluationContext ctx = new StandardEvaluationContext(ruleEvaluator);
+
+    assertFalse(
+        parseExpression("matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+  }
+
+  @Test
   void test_matchTeam() {
     // Create a team hierarchy
     Team team1 = createTeam("team1", null);
