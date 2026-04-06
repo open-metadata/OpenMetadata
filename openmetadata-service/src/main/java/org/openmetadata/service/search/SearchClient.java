@@ -420,15 +420,15 @@ public interface SearchClient
   // Script for removing followers from TestCases when removed from their parent tables.
   // TestCases can only have inherited followers, so when the parent loses followers,
   // we need to update the TestCase's follower list accordingly.
-  // Note: deletedFollowers contains the REMAINING followers after deletion, not the deleted ones.
+  // Note: removedFollowers contains the REMAINING followers after deletion, not the deleted ones.
   // This script only applies to TestCases - does nothing for other entity types.
   String REMOVE_FOLLOWERS_SCRIPT =
       """
       if (ctx._source.containsKey('entityType') && ctx._source.entityType == 'testCase') {
         // For TestCases, replace with the updated follower list (already has removed followers filtered out)
-        if (params.containsKey('deletedFollowers') && params.deletedFollowers != null) {
+        if (params.containsKey('removedFollowers') && params.removedFollowers != null) {
           List followerIds = new ArrayList();
-          for (def follower : params.deletedFollowers) {
+          for (def follower : params.removedFollowers) {
             if (follower != null && follower.containsKey('id')) {
               followerIds.add(follower.id.toString());
             }
