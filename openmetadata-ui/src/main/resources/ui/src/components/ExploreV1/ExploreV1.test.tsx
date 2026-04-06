@@ -29,10 +29,6 @@ jest.mock('../../rest/searchAPI', () => ({
   }),
 }));
 
-jest.mock('../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
-
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ search: '' }));
 });
