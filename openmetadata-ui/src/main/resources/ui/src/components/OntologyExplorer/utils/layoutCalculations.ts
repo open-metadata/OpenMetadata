@@ -53,7 +53,8 @@ const CIRCLE_NODE_SPACING = 80;
 
 export function computeGlossaryGroupPositions(
   inputNodes: OntologyNode[],
-  layoutType: LayoutEngineType
+  layoutType: LayoutEngineType,
+  nodeSpacing?: number
 ): Record<string, { x: number; y: number }> {
   const groupMap = new Map<string, OntologyNode[]>();
   const ungrouped: OntologyNode[] = [];
@@ -79,12 +80,12 @@ export function computeGlossaryGroupPositions(
   const isDagre = layoutType === LayoutEngine.Dagre;
   const isCircular = layoutType === LayoutEngine.Circular;
   const isRadial = layoutType === LayoutEngine.Radial;
-  const H_STEP = isDagre
-    ? NODE_WIDTH + DAGRE_NODE_SEP
-    : NODE_WIDTH + MIN_NODE_SPACING;
-  const V_STEP = isDagre
-    ? NODE_HEIGHT + DAGRE_RANK_SEP
-    : NODE_HEIGHT + MIN_NODE_SPACING;
+  const H_STEP =
+    nodeSpacing ??
+    (isDagre ? NODE_WIDTH + DAGRE_NODE_SEP : NODE_WIDTH + MIN_NODE_SPACING);
+  const V_STEP =
+    nodeSpacing ??
+    (isDagre ? NODE_HEIGHT + DAGRE_RANK_SEP : NODE_HEIGHT + MIN_NODE_SPACING);
 
   interface GroupBox {
     nodes: OntologyNode[];

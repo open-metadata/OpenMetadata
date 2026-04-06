@@ -322,6 +322,15 @@ class DataModeAssetNode extends Circle {
   ): void {
     super.render(attributes, container);
     const attrs = attributes as Record<string, unknown>;
+    const testId = attrs['testId'];
+    const nodeId = attrs['nodeId'];
+    const keyShape = this.getShape('key');
+    if (typeof testId === 'string' && testId.length > 0) {
+      keyShape?.setAttribute('data-testid', testId);
+    }
+    if (typeof nodeId === 'string' && nodeId.length > 0) {
+      keyShape?.setAttribute('data-node-id', nodeId);
+    }
     const iconSrc = attrs['entityIconSrc'];
     const iconX = attrs['entityIconX'];
     const iconY = attrs['entityIconY'];
