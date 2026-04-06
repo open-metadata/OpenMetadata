@@ -254,10 +254,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
       if (!endpointsWithRequestSchema.isEmpty()) {
         bulkPopulateEntityFieldTags(
-            endpointsWithRequestSchema,
-            entityType,
-            e -> e.getRequestSchema().getSchemaFields(),
-            e -> e.getFullyQualifiedName() + ".requestSchema");
+            endpointsWithRequestSchema, e -> e.getRequestSchema().getSchemaFields());
       }
 
       // Bulk fetch tags for response schemas
@@ -268,10 +265,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
       if (!endpointsWithResponseSchema.isEmpty()) {
         bulkPopulateEntityFieldTags(
-            endpointsWithResponseSchema,
-            entityType,
-            e -> e.getResponseSchema().getSchemaFields(),
-            e -> e.getFullyQualifiedName() + ".responseSchema");
+            endpointsWithResponseSchema, e -> e.getResponseSchema().getSchemaFields());
       }
     }
   }

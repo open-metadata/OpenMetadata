@@ -19,7 +19,6 @@ from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
     SampleDataIngestionConfig,

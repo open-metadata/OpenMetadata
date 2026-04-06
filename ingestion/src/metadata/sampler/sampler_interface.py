@@ -266,13 +266,8 @@ class SamplerInterface(ABC):
                     f"Fetching sample data for {self.entity.fullyQualifiedName.root}..."
                 )
                 table_data = self.fetch_sample_data(self.columns)
-                # Truncate large cell values to prevent OOM in downstream
-                # processing (NLP, serialization, etc.)
-                table_data.rows = [
-                    [self._truncate_cell(cell) for cell in row]
-                    for row in table_data.rows[
-                        : min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)
-                    ]
+                table_data.rows = table_data.rows[
+                    : min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)
                 ]
                 # Only store the data if configured to do so
                 if self.storage_config and sample_data_config.storeSampleData:
