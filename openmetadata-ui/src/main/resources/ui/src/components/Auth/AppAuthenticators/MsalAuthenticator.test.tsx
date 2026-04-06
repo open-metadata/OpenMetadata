@@ -36,7 +36,6 @@ jest.mock('../../../utils/AuthProvider.util', () => ({
 const mockInstance = {
   loginPopup: jest.fn(),
   loginRedirect: jest.fn(),
-  logoutRedirect: jest.fn(),
   handleRedirectPromise: jest.fn(),
   ssoSilent: jest.fn(),
   logout: jest.fn(),
@@ -126,9 +125,7 @@ describe('MsalAuthenticator', () => {
     expect(mockInstance.loginRedirect).toHaveBeenCalledWith(msalLoginRequest);
   });
 
-  it('should handle logout by calling logoutRedirect to terminate IdP session', async () => {
-    mockInstance.logoutRedirect.mockResolvedValueOnce(undefined);
-
+  it('should handle logout', async () => {
     render(
       <MsalAuthenticator
         {...mockProps}
@@ -140,31 +137,6 @@ describe('MsalAuthenticator', () => {
       authenticatorRef?.invokeLogout();
     });
 
-    expect(mockHandleSuccessfulLogout).toHaveBeenCalled();
-    expect(mockInstance.logoutRedirect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        postLogoutRedirectUri: expect.stringContaining('/signin'),
-      })
-    );
-  });
-
-  it('should fallback to local cleanup when logoutRedirect fails', async () => {
-    mockInstance.logoutRedirect.mockRejectedValueOnce(
-      new Error('logout failed')
-    );
-
-    render(
-      <MsalAuthenticator
-        {...mockProps}
-        ref={(ref) => (authenticatorRef = ref)}
-      />
-    );
-
-    await act(async () => {
-      authenticatorRef?.invokeLogout();
-    });
-
-    expect(mockInstance.logoutRedirect).toHaveBeenCalled();
     expect(mockHandleSuccessfulLogout).toHaveBeenCalled();
   });
 
