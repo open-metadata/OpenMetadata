@@ -23,14 +23,14 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../../generated/entity/type';
 import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
+    getEntityName,
+    getEntityReferenceFromEntity,
 } from '../../../../utils/EntityUtils';
 import {
-  TermItem,
-  TermSelectItem,
-  TermsRowEditorProps,
-  TermsRowProps,
+    TermItem,
+    TermSelectItem,
+    TermsRowEditorProps,
+    TermsRowProps,
 } from './RelatedTerms.interface';
 
 const TermsRow: React.FC<TermsRowProps> = ({
@@ -165,6 +165,7 @@ const TermsRow: React.FC<TermsRowProps> = ({
       <div className="tw:w-67.5 tw:shrink-0">
         <Select
           className="w-full"
+          fontSize="sm"
           items={relationTypeOptions}
           size="sm"
           value={relationType}
