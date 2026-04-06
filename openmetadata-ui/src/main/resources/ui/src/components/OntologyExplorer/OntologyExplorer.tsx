@@ -356,41 +356,35 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           .map((n) => n.id)
       );
 
-      const metricIds = new Set<string>();
-      const assetIds = new Set<string>();
-      filteredEdges.forEach((edge) => {
-        if (edge.relationType === METRIC_RELATION_TYPE) {
-          if (glossaryTermIds.has(edge.to) || glossaryTermIds.has(edge.from)) {
-            metricIds.add(edge.from);
-            metricIds.add(edge.to);
-          }
+      const edgeKey = (e: OntologyEdge) =>
+        `${e.from}-${e.to}-${e.relationType}`;
 
+      // Keep glossary terms plus their directly related nodes/edges
+      const glossaryNeighborIds = new Set<string>(glossaryTermIds);
+      const glossaryEdgeKeys = new Set<string>();
+
+      filteredEdges.forEach((edge) => {
+        const isIncidentToGlossary =
+          glossaryTermIds.has(edge.from) || glossaryTermIds.has(edge.to);
+        if (!isIncidentToGlossary) {
           return;
         }
-        if (edge.relationType === ASSET_RELATION_TYPE) {
-          if (glossaryTermIds.has(edge.to) || glossaryTermIds.has(edge.from)) {
-            assetIds.add(edge.from);
-            assetIds.add(edge.to);
-          }
-        }
+
+        glossaryNeighborIds.add(edge.from);
+        glossaryNeighborIds.add(edge.to);
+        glossaryEdgeKeys.add(edgeKey(edge));
       });
 
       filteredNodes = filteredNodes.filter((n) => {
         if (n.type === 'glossary') {
           return glossaryFilterIds.includes(n.id);
         }
-        if (n.type === METRIC_NODE_TYPE) {
-          return metricIds.has(n.id);
-        }
-        if (n.type === ASSET_NODE_TYPE) {
-          return assetIds.has(n.id);
-        }
 
-        return n.glossaryId && glossaryFilterIds.includes(n.glossaryId);
+        return glossaryNeighborIds.has(n.id);
       });
-      const nodeIds = new Set(filteredNodes.map((n) => n.id));
-      filteredEdges = filteredEdges.filter(
-        (e) => nodeIds.has(e.from) && nodeIds.has(e.to)
+
+      filteredEdges = filteredEdges.filter((e) =>
+        glossaryEdgeKeys.has(edgeKey(e))
       );
     }
 
