@@ -17,7 +17,24 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, Col, Menu, Row, Switch, Typography } from 'antd';
+import {
+  Button,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
+import { Download01 } from '@untitledui/icons';
+import {
+  Alert,
+  Button as AntdButton,
+  Card,
+  Col,
+  Menu,
+  Modal,
+  Radio,
+  Row,
+  Switch,
+  Typography,
+} from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -35,16 +52,24 @@ import {
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import {
+  exportSearchResultsCsvStream,
+  searchQuery,
+} from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   getExploreQueryFilterMust,
   getSelectedValuesFromQuickFilter,
 } from '../../utils/ExploreUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { showErrorToast } from '../../utils/ToastUtils';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
@@ -145,7 +170,102 @@ const ExploreV1: React.FC<ExploreProps> = ({
     [location.search]
   );
 
-  const { toggleModal, sqlQuery, onResetAllFilters } = useAdvanceSearch();
+  const { toggleModal, sqlQuery, queryFilter, onResetAllFilters } =
+    useAdvanceSearch();
+
+  const [showExportScopeModal, setShowExportScopeModal] = useState(false);
+  const [exportScope, setExportScope] = useState<'visible' | 'all'>('all');
+  const [isExporting, setIsExporting] = useState(false);
+  const [allAssetsCount, setAllAssetsCount] = useState<number>();
+
+  const visibleResultCount = searchResults?.hits?.hits?.length ?? 0;
+
+  const handleOpenExportScopeModal = useCallback(async () => {
+    setExportScope('all');
+    setAllAssetsCount(undefined);
+    setShowExportScopeModal(true);
+
+    try {
+      const combinedQueryFilter = getCombinedQueryFilterObject(
+        quickFilters,
+        queryFilter as QueryFilterInterface | undefined
+      );
+      const response = await searchQuery({
+        query: searchQueryParam || '*',
+        searchIndex: SearchIndex.DATA_ASSET,
+        pageSize: 0,
+        trackTotalHits: true,
+        includeDeleted: showDeleted,
+        queryFilter: combinedQueryFilter ?? undefined,
+      });
+      setAllAssetsCount(response.hits.total.value);
+    } catch {
+      // Count fetch failed — modal still usable without count
+    }
+  }, [searchQueryParam, showDeleted, quickFilters, queryFilter]);
+
+  const handleExportScopeConfirm = useCallback(async () => {
+    const isVisibleScope = exportScope === 'visible';
+    const combinedQueryFilter = getCombinedQueryFilterObject(
+      quickFilters,
+      queryFilter as QueryFilterInterface | undefined
+    );
+
+    const params: Parameters<typeof exportSearchResultsCsvStream>[0] = {
+      q: searchQueryParam || '*',
+      index: isVisibleScope ? searchIndex : SearchIndex.DATA_ASSET,
+      sort_field: sortValue,
+      sort_order: sortOrder,
+    };
+
+    if (showDeleted !== undefined) {
+      params.deleted = showDeleted;
+    }
+
+    if (combinedQueryFilter) {
+      params.query_filter = JSON.stringify(combinedQueryFilter);
+    }
+
+    if (isVisibleScope) {
+      const currentPage = isString(parsedSearch.page)
+        ? Number.parseInt(parsedSearch.page, 10) || 1
+        : 1;
+      const pageSize = isString(parsedSearch.size)
+        ? Number.parseInt(parsedSearch.size, 10) || visibleResultCount
+        : visibleResultCount;
+
+      params.size = visibleResultCount;
+      params.from = (currentPage - 1) * pageSize;
+    }
+
+    setIsExporting(true);
+
+    try {
+      const blob = await exportSearchResultsCsvStream(params);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Search_Results_${new Date().toISOString()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowExportScopeModal(false);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [
+    exportScope,
+    searchIndex,
+    visibleResultCount,
+    parsedSearch,
+    searchQueryParam,
+    sortValue,
+    sortOrder,
+    showDeleted,
+    quickFilters,
+    queryFilter,
+  ]);
 
   const translatedSortingFields = useMemo(() => {
     const sortingFields =
@@ -303,6 +423,23 @@ const ExploreV1: React.FC<ExploreProps> = ({
     return <Loader />;
   }
 
+  const exportModalTitle = () => {
+    return (
+      <div className="d-flex flex-col gap-1">
+        <CoreTypography className="tw:text-primary" size="text-md">
+          {t('label.export')}
+        </CoreTypography>
+        <CoreTypography
+          className="tw:text-secondary"
+          size="text-xs"
+          weight="regular"
+        >
+          {t('label.export-search-results-description')}
+        </CoreTypography>
+      </div>
+    );
+  };
+
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
       <ResizableLeftPanels
@@ -324,7 +461,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
               <Row
                 className="quick-filters-container"
                 gutter={[20, 0]}
-                wrap={false}>
+                wrap={false}
+              >
                 <Col span={24}>
                   <Card className="p-md card-padding-0 m-b-box">
                     <Row>
@@ -346,7 +484,25 @@ const ExploreV1: React.FC<ExploreProps> = ({
                           </Col>
                           <Col
                             className="d-flex items-center justify-end gap-3"
-                            flex={410}>
+                            flex={410}
+                          >
+                            <Button
+                              color="secondary"
+                              data-testid="export-search-results-button"
+                              iconLeading={
+                                <Download01 height={16} width={16} />
+                              }
+                              size="sm"
+                              onClick={handleOpenExportScopeModal}
+                            >
+                              <CoreTypography
+                                className="tw:text-secondary"
+                                size="text-sm"
+                                weight="medium"
+                              >
+                                {t('label.export')}
+                              </CoreTypography>
+                            </Button>
                             <span className="flex-center">
                               <Switch
                                 checked={showDeleted}
@@ -361,14 +517,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
                               <Typography.Text
                                 className="text-primary self-center cursor-pointer font-medium"
                                 data-testid="clear-filters"
-                                onClick={() => clearFilters()}>
+                                onClick={() => clearFilters()}
+                              >
                                 {t('label.clear-entity', {
                                   entity: '',
                                 })}
                               </Typography.Text>
                             )}
 
-                            <Button
+                            <AntdButton
                               className="cursor-pointer"
                               data-testid="advance-search-button"
                               icon={<FilterOutlined />}
@@ -381,7 +538,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                                 handleFieldDropDown={onChangeSortValue}
                                 sortField={sortValue}
                               />
-                              <Button
+                              <AntdButton
                                 className="p-0"
                                 data-testid="sort-order-button"
                                 size="small"
@@ -392,7 +549,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                                       ? SORT_ORDER.DESC
                                       : SORT_ORDER.ASC
                                   )
-                                }>
+                                }
+                              >
                                 {isAscSortOrder ? (
                                   <SortAscendingOutlined
                                     style={{ fontSize: '14px' }}
@@ -404,7 +562,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                                     {...sortProps}
                                   />
                                 )}
-                              </Button>
+                              </AntdButton>
                             </span>
                           </Col>
                           {isElasticSearchIssue ? (
@@ -432,7 +590,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
               <Row
                 className="explore-data-container"
                 gutter={[20, 0]}
-                wrap={false}>
+                wrap={false}
+              >
                 <Col flex="auto">
                   <Card className="h-full explore-main-card">
                     <div className="h-full">
@@ -487,6 +646,116 @@ const ExploreV1: React.FC<ExploreProps> = ({
       />
 
       {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
+
+      <Modal
+        centered
+        cancelText={t('label.cancel')}
+        className="search-export-modal tw:overflow-hidden"
+        data-testid="export-scope-modal"
+        okButtonProps={{ disabled: isExporting, loading: isExporting }}
+        okText={t('label.export')}
+        open={showExportScopeModal}
+        title={exportModalTitle()}
+        width={610}
+        onCancel={() => setShowExportScopeModal(false)}
+        onOk={handleExportScopeConfirm}
+      >
+        <CoreTypography
+          className="tw:text-secondary"
+          size="text-sm"
+          weight="medium"
+        >
+          {t('label.export-scope')}
+        </CoreTypography>
+        <Radio.Group
+          className="d-flex gap-3 m-t-sm w-full"
+          value={exportScope}
+          onChange={(e) => setExportScope(e.target.value)}
+        >
+          <div
+            className={`export-scope-option-card${
+              exportScope === 'visible' ? ' selected' : ''
+            }`}
+            onClick={() => setExportScope('visible')}
+          >
+            <div
+              className={`d-flex items-start gap-2 border-radius-sm tw:p-4 border ${
+                exportScope === 'visible'
+                  ? 'tw:border-brand'
+                  : 'tw:border-secondary'
+              }`}
+            >
+              <Radio value="visible" />
+              <div>
+                <div className="d-flex items-center gap-2">
+                  <CoreTypography
+                    className="tw:text-primary d-flex items-center tw:gap-0.5"
+                    size="text-sm"
+                    weight="semibold"
+                  >
+                    {`${t('label.visible-result-plural')} `}
+                    <CoreTypography
+                      className="tw:text-tertiary"
+                      size="text-sm"
+                      weight="regular"
+                    >
+                      ({visibleResultCount} {t('label.result-plural')})
+                    </CoreTypography>
+                  </CoreTypography>
+                </div>
+                <CoreTypography
+                  className="tw:text-tertiary"
+                  size="text-sm"
+                  weight="regular"
+                >
+                  {t('message.export-visible-results-description')}
+                </CoreTypography>
+              </div>
+            </div>
+          </div>
+          <div
+            className={`export-scope-option-card${
+              exportScope === 'all' ? ' selected' : ''
+            }`}
+            onClick={() => setExportScope('all')}
+          >
+            <div
+              className={`d-flex items-start border-radius-sm tw:gap-1 tw:p-4 border ${
+                exportScope === 'all'
+                  ? 'tw:border-brand'
+                  : 'tw:border-secondary'
+              }`}
+            >
+              <Radio value="all" />
+              <div>
+                <CoreTypography
+                  className="tw:text-primary d-flex items-center tw:gap-0.5"
+                  size="text-sm"
+                  weight="semibold"
+                >
+                  {`${t('label.all-matching-asset-plural')} `}
+                  {allAssetsCount !== undefined && (
+                    <CoreTypography
+                      className="tw:text-tertiary"
+                      size="text-sm"
+                      weight="regular"
+                    >
+                      ({allAssetsCount} {t('label.result-plural')})
+                    </CoreTypography>
+                  )}
+                </CoreTypography>
+                <CoreTypography
+                  className="tw:text-tertiary"
+                  size="text-sm"
+                  weight="regular"
+                >
+                  {t('message.export-all-matching-assets-description')}
+                </CoreTypography>
+              </div>
+            </div>
+          </div>
+        </Radio.Group>
+      </Modal>
     </div>
   );
 };

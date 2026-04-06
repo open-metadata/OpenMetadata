@@ -23,6 +23,7 @@
         "Postgres",
         "Timescale",
         "Mssql",
+        "MicrosoftAccess",
         "Oracle",
         "Athena",
         "Hive",
@@ -68,7 +69,8 @@
         "ServiceNow",
         "Dremio",
         "MicrosoftFabric",
-        "BurstIQ"
+        "BurstIQ",
+        "Informix"
       ],
       "javaEnums": [
         {
@@ -94,6 +96,9 @@
         },
         {
           "name": "Mssql"
+        },
+        {
+          "name": "MicrosoftAccess"
         },
         {
           "name": "Oracle"
@@ -232,6 +237,9 @@
         },
         {
           "name": "BurstIQ"
+        },
+        {
+          "name": "Informix"
         }
       ]
     },
@@ -289,6 +297,9 @@
             },
             {
               "$ref": "./connections/database/mssqlConnection.json"
+            },
+            {
+              "$ref": "./connections/database/microsoftAccessConnection.json"
             },
             {
               "$ref": "./connections/database/mysqlConnection.json"
@@ -400,6 +411,9 @@
             },
             {
               "$ref": "./connections/database/burstIQConnection.json"
+            },
+            {
+              "$ref": "./connections/database/informixConnection.json"
             }
           ]
         }

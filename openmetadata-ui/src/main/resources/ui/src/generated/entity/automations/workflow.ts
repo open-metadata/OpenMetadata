@@ -397,6 +397,8 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude stored procedures that matches the pattern.
  *
+ * Regex to only fetch containers that matches the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -427,8 +429,6 @@ export enum AuthProvider {
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex exclude pipelines.
- *
- * Regex to only fetch containers that matches the pattern.
  *
  * Regex to filter MuleSoft applications by name.
  *
@@ -533,6 +533,9 @@ export interface OpenMetadataJWTClientConfig {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -745,6 +748,8 @@ export interface RequestConnection {
  *
  * Mssql Database Connection Config
  *
+ * Microsoft Access Database Connection Config
+ *
  * Mysql Database Connection Config
  *
  * SQLite Database Connection Config
@@ -820,6 +825,8 @@ export interface RequestConnection {
  * Microsoft Fabric Warehouse and Lakehouse Connection Config
  *
  * BurstIQ LifeGraph Database Connection Config
+ *
+ * IBM Informix Database Connection Config
  *
  * Looker Connection Config
  *
@@ -988,6 +995,21 @@ export interface ConfigObject {
      */
     openAPISchemaConnection?: OpenAPISchemaConnection;
     /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
+     * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     *
+     * SSL Configuration details. Provide the CA certificate to validate the Informix server
+     * certificate. Paste the PEM content directly or upload the certificate file.
+     *
+     * SSL Configuration for OpenMetadata Server
+     */
+    sslConfig?: SSLConfigObject;
+    /**
      * Supports Metadata Extraction.
      */
     supportsMetadataExtraction?: boolean;
@@ -1031,6 +1053,19 @@ export interface ConfigObject {
      * Custom search service type
      */
     type?: ConfigType;
+    /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     *
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
+     *
+     * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
+     * default.
+     *
+     * Flag to verify SSL Certificate for OpenMetadata Server.
+     */
+    verifySSL?: boolean | VerifySSL;
     /**
      * Billing Project ID
      */
@@ -1124,6 +1159,8 @@ export interface ConfigObject {
      *
      * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
+     *
+     * Host and port of the Informix service.
      *
      * URL to the Looker instance.
      *
@@ -1341,6 +1378,9 @@ export interface ConfigObject {
      *
      * Ingest data from all databases (Warehouses and Lakehouses) in Microsoft Fabric. You can
      * use databaseFilterPattern on top of this.
+     *
+     * Ingest data from all databases in Informix. You can use databaseFilterPattern on top of
+     * this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -1397,6 +1437,8 @@ export interface ConfigObject {
      * Password to connect to ServiceNow.
      *
      * Password to connect to BurstIQ.
+     *
+     * Password to connect to Informix.
      *
      * Password to connect to Metabase. Required for basic authentication.
      *
@@ -1515,6 +1557,9 @@ export interface ConfigObject {
      * Username to connect to BurstIQ. This user should have privileges to read all the metadata
      * in BurstIQ LifeGraph.
      *
+     * Username to connect to Informix. This user should have privileges to read all the
+     * metadata in Informix.
+     *
      * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
@@ -1621,17 +1666,10 @@ export interface ConfigObject {
      */
     licenseFileName?: string;
     /**
-     * SSL Configuration details for DB2 connection. Provide CA certificate for server
-     * validation, and optionally client certificate and key for mutual TLS authentication.
-     *
-     * SSL Configuration details.
-     *
-     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
-     * client certificate, and private key for mutual TLS authentication.
-     *
-     * SSL Configuration for OpenMetadata Server
+     * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
+     * without certificate verification, or 'verify-ca' to validate the server certificate
+     * against the provided CA certificate.
      */
-    sslConfig?:                     SSLConfigObject;
     sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
@@ -1684,6 +1722,23 @@ export interface ConfigObject {
      * server certificates against the certificate authority.
      */
     trustServerCertificate?: boolean;
+    /**
+     * Choose between local file system path (object) or S3 bucket location (object) for Access
+     * database files.
+     *
+     * Choose between Database connection or HDB User Store connection.
+     *
+     * Choose between API or database connection fetch metadata from superset.
+     *
+     * Underlying database connection. See
+     * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
+     * supported backends.
+     *
+     * Matillion Auth Configuration
+     *
+     * Choose between mysql and postgres connection for alation database
+     */
+    connection?: ConfigConnection;
     /**
      * Use slow logs to extract lineage.
      */
@@ -1983,17 +2038,6 @@ export interface ConfigObject {
      */
     paginationLimit?: number;
     /**
-     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
-     *
-     * Client SSL verification.
-     *
-     * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
-     * default.
-     *
-     * Flag to verify SSL Certificate for OpenMetadata Server.
-     */
-    verifySSL?: boolean | VerifySSL;
-    /**
      * Azure Application client secret for service principal authentication.
      *
      * Azure Application client secret for Service Principal authentication.
@@ -2055,6 +2099,11 @@ export interface ConfigObject {
      * BurstIQ Keycloak realm name (e.g., 'ems' from https://auth.burstiq.com/realms/ems).
      */
     realmName?: string;
+    /**
+     * Informix server name as defined in the sqlhosts file or INFORMIXSERVER environment
+     * variable.
+     */
+    serverName?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
      *
@@ -3912,6 +3961,14 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 /**
+ * Choose between local file system path (object) or S3 bucket location (object) for Access
+ * database files.
+ *
+ * Local filesystem path to a single Access database file or a directory containing Access
+ * files.
+ *
+ * S3 Connection.
+ *
  * Choose between Database connection or HDB User Store connection.
  *
  * Sap Hana Database SQL Connection Config
@@ -3942,6 +3999,32 @@ export interface GCPImpersonateServiceAccountValues {
  * Choose between mysql and postgres connection for alation database
  */
 export interface ConfigConnection {
+    /**
+     * Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g.
+     * ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be
+     * ingested.
+     */
+    localFilePath?: string;
+    awsConfig?:     AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: ConnectionType;
     /**
      * Database of the data source.
      *
@@ -4025,9 +4108,7 @@ export interface ConfigConnection {
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
-    classificationName?:  string;
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    classificationName?: string;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
@@ -4062,7 +4143,6 @@ export interface ConfigConnection {
     supportsDataDiff?:             boolean;
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
-    supportsMetadataExtraction?:   boolean;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
@@ -4070,10 +4150,6 @@ export interface ConfigConnection {
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
-    /**
-     * Service Type
-     */
-    type?: ConnectionType;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -4330,6 +4406,9 @@ export enum ConnectionScheme {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -4353,6 +4432,10 @@ export interface ConnectionSSLConfig {
 
 /**
  * SSL Mode to connect to database.
+ *
+ * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
+ * without certificate verification, or 'verify-ca' to validate the server certificate
+ * against the provided CA certificate.
  */
 export enum SSLMode {
     Allow = "allow",
@@ -4365,6 +4448,8 @@ export enum SSLMode {
 
 /**
  * Service Type
+ *
+ * S3 service type
  *
  * Service type.
  */
@@ -4863,7 +4948,7 @@ export interface S3Connection {
     /**
      * Service Type
      */
-    type?: S3Type;
+    type?: S3ConnectionType;
 }
 
 /**
@@ -4871,7 +4956,7 @@ export interface S3Connection {
  *
  * S3 service type
  */
-export enum S3Type {
+export enum S3ConnectionType {
     S3 = "S3",
 }
 
@@ -4962,6 +5047,7 @@ export enum ConfigScheme {
     Ibmi = "ibmi",
     Impala = "impala",
     Impala4 = "impala4",
+    Informix = "informix",
     Mongodb = "mongodb",
     MongodbSrv = "mongodb+srv",
     MssqlPymssql = "mssql+pymssql",
@@ -5014,6 +5100,9 @@ export enum SpaceType {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -5260,6 +5349,7 @@ export enum ConfigType {
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
+    Informix = "Informix",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
@@ -5271,6 +5361,7 @@ export enum ConfigType {
     Metabase = "Metabase",
     MetadataES = "MetadataES",
     MicroStrategy = "MicroStrategy",
+    MicrosoftAccess = "MicrosoftAccess",
     MicrosoftFabric = "MicrosoftFabric",
     MicrosoftFabricPipeline = "MicrosoftFabricPipeline",
     Mlflow = "Mlflow",

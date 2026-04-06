@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
-import { ThemeColors } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import {
@@ -20,6 +19,50 @@ import {
 } from '../Explore/Explore.mock';
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreV1 from './ExploreV1.component';
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Button = ({
+    children,
+    iconLeading,
+    onClick,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+    iconLeading?: import('react').ReactNode;
+    onClick?: () => void;
+  } & Record<string, unknown>) => (
+    <button type="button" onClick={onClick} {...rest}>
+      {iconLeading}
+      {children}
+    </button>
+  );
+
+  const Typography = ({
+    children,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+  } & Record<string, unknown>) => <span {...rest}>{children}</span>;
+
+  return { Button, Typography };
+});
+
+jest.mock('@untitledui/icons', () => ({
+  Download01: () => <span data-testid="download-01-icon" />,
+}));
+
+jest.mock('../../rest/searchAPI', () => ({
+  exportSearchResultsCsvStream: jest
+    .fn()
+    .mockResolvedValue(new Blob([''], { type: 'text/csv' })),
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: { total: { value: 100 }, hits: [] },
+  }),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ search: '' }));
@@ -88,6 +131,7 @@ jest.mock(
     useAdvanceSearch: jest.fn().mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: '',
+      queryFilter: undefined,
       onResetAllFilters: jest.fn(),
     })),
   })
@@ -210,7 +254,7 @@ const props = {
   },
 };
 
-const mockThemeColors: ThemeColors = {
+const mockThemeColors = {
   white: '#FFFFFF',
   blue: {
     50: '#E6F4FF',
@@ -226,7 +270,7 @@ const mockThemeColors: ThemeColors = {
     700: '#374151',
     900: '#111827',
   },
-} as ThemeColors;
+};
 
 const theme: Theme = createTheme({
   palette: {
@@ -235,7 +279,7 @@ const theme: Theme = createTheme({
       paper: '#FFFFFF',
     },
   },
-});
+} as Parameters<typeof createTheme>[0]);
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider theme={theme}>{children}</ThemeProvider>

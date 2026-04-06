@@ -1,0 +1,16 @@
+{
+    "name": "MicrosoftAccess",
+    "fullyQualifiedName": "MicrosoftAccess",
+    "displayName": "Microsoft Access Test Connection",
+    "description": "This Test Connection validates the access to Microsoft Access database files (.accdb/.mdb) in local filesystem or S3 bucket.",
+    "steps": [
+      {
+        "name": "GetAccessFiles",
+        "description": "Validate that at least one Microsoft Access database file (.accdb or .mdb) exists in the configured location (local path or S3 bucket).",
+        "errorMessage": "Failed to find Access database files. Please validate the file path or S3 bucket configuration and ensure at least one .accdb or .mdb file exists.",
+        "shortCircuit": true,
+        "mandatory": true
+      }
+    ]
+  }
+  

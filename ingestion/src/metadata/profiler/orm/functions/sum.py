@@ -103,6 +103,13 @@ def _(element, compiler, **kw):
     return f"SUM(CAST({proc} AS BIGINT))"
 
 
+@compiles(SumFn, Dialects.Informix)
+def _(element, compiler, **kw):
+    """Informix"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(CAST({proc} AS DECIMAL(32,4)))"
+
+
 @compiles(SumFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
     """Handle case where column type is INTEGER but SUM returns a NUMBER"""

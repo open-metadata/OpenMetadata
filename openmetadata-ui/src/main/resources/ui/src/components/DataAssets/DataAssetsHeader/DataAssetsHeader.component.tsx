@@ -61,7 +61,6 @@ import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
-import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -177,12 +176,13 @@ export const DataAssetsHeader = ({
       <img
         alt={get(dataAsset, 'service.displayName', '')}
         className="header-icon"
-        src={serviceUtilClassBase.getServiceTypeLogo(
-          dataAsset as SearchSourceAlias
-        )}
+        src={serviceUtilClassBase.getServiceTypeLogo({
+          ...dataAsset,
+          entityType,
+        })}
       />
     ) : null;
-  }, [dataAsset]);
+  }, [dataAsset, entityType]);
 
   const excludeEntityService = useMemo(() => {
     const filteredServiceTypes = SERVICE_TYPES.filter(
@@ -281,7 +281,8 @@ export const DataAssetsHeader = ({
               search: QueryString.stringify({
                 layers: [LineageLayer.DataObservability],
               }),
-            }}>
+            }}
+          >
             <RedAlertIcon className="text-red-3" height={24} width={24} />
           </Link>
         </Tooltip>
@@ -514,7 +515,8 @@ export const DataAssetsHeader = ({
                 EntityTabs.CONTRACT
               )
             );
-          }}>
+          }}
+        >
           {t(`label.entity-${toLower(dataContract?.latestResult?.status)}`, {
             entity: t('label.contract'),
           })}
@@ -564,7 +566,8 @@ export const DataAssetsHeader = ({
         title={
           disableRunAgentsButtonMessage ??
           t('message.trigger-auto-pilot-application')
-        }>
+        }
+      >
         <Button
           className="font-semibold"
           data-testid="trigger-auto-pilot-application-button"
@@ -572,7 +575,8 @@ export const DataAssetsHeader = ({
           icon={<Icon className="flex-center" component={TriggerIcon} />}
           loading={isLoading}
           type="primary"
-          onClick={triggerTheAutoPilotApplication}>
+          onClick={triggerTheAutoPilotApplication}
+        >
           {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
         </Button>
       </Tooltip>
@@ -597,12 +601,14 @@ export const DataAssetsHeader = ({
       <Row
         className="data-assets-header-container"
         data-testid="data-assets-header"
-        gutter={[0, 20]}>
+        gutter={[0, 20]}
+      >
         <Col
           className={classNames('d-flex flex-col gap-3 ', {
             'p-l-xs': isCustomizedView,
           })}
-          span={24}>
+          span={24}
+        >
           <TitleBreadcrumb
             loading={isBreadcrumbLoading}
             titleLinks={breadcrumbs.map((link) =>
@@ -633,7 +639,8 @@ export const DataAssetsHeader = ({
                 <ButtonGroup
                   className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
-                  size="small">
+                  size="small"
+                >
                   {triggerAutoPilotApplicationButton}
                   {dataContractLatestResultButton}
 
@@ -649,7 +656,8 @@ export const DataAssetsHeader = ({
                     <Tooltip title={t('label.open-task-plural')}>
                       <Button
                         icon={<Icon component={TaskOpenIcon} />}
-                        onClick={handleOpenTaskClick}>
+                        onClick={handleOpenTaskClick}
+                      >
                         <Typography.Text>{openTaskCount}</Typography.Text>
                       </Button>
                     </Tooltip>
@@ -660,7 +668,8 @@ export const DataAssetsHeader = ({
                       className="version-button"
                       data-testid="version-button"
                       icon={<Icon component={VersionIcon} />}
-                      onClick={onVersionClick}>
+                      onClick={onVersionClick}
+                    >
                       <Typography.Text>{version}</Typography.Text>
                     </Button>
                   </Tooltip>
@@ -670,7 +679,8 @@ export const DataAssetsHeader = ({
                       <Typography.Link
                         className="cursor-pointer source-url-link"
                         href={(dataAsset as Table).sourceUrl}
-                        target="_blank">
+                        target="_blank"
+                      >
                         <Button
                           className="source-url-button cursor-pointer font-semibold"
                           data-testid="source-url-button"
@@ -679,7 +689,8 @@ export const DataAssetsHeader = ({
                               className="flex-center"
                               component={LinkIcon}
                             />
-                          }>
+                          }
+                        >
                           {t('label.view-in-service-type', {
                             serviceType: (dataAsset as Table).serviceType,
                           })}
@@ -729,7 +740,8 @@ export const DataAssetsHeader = ({
         <Col span={24}>
           <div
             className="data-asset-header-metadata"
-            data-testid="data-asset-header-metadata">
+            data-testid="data-asset-header-metadata"
+          >
             {showDomain && (
               <>
                 <DomainLabel
@@ -767,7 +779,8 @@ export const DataAssetsHeader = ({
             {tierSuggestionRender ?? (
               <Space
                 className="d-flex align-start"
-                data-testid="header-tier-container">
+                data-testid="header-tier-container"
+              >
                 <div className="d-flex flex-col gap-2">
                   <div className="tier-heading-container d-flex items-center gap-1">
                     <span className="entity-no-tier">{t('label.tier')}</span>
@@ -775,7 +788,8 @@ export const DataAssetsHeader = ({
                       <TierCard
                         currentTier={tier?.tagFQN}
                         footerActionButtonsClassName="p-x-md"
-                        updateTier={onTierUpdate}>
+                        updateTier={onTierUpdate}
+                      >
                         <EditIconButton
                           newLook
                           data-testid="edit-tier"
@@ -799,7 +813,8 @@ export const DataAssetsHeader = ({
                   ) : (
                     <span
                       className="font-medium no-tier-text text-sm"
-                      data-testid="Tier">
+                      data-testid="Tier"
+                    >
                       {NO_DATA_PLACEHOLDER}
                     </span>
                   )}
@@ -838,7 +853,8 @@ export const DataAssetsHeader = ({
                 <div className="d-flex align-start extra-info-container">
                   <Typography.Text
                     className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-                    data-testid="certification-label">
+                    data-testid="certification-label"
+                  >
                     <div className="flex gap-2">
                       <span className="extra-info-label-heading">
                         {t('label.certification')}
@@ -852,7 +868,8 @@ export const DataAssetsHeader = ({
                               : undefined
                           }
                           permission={editCertificationPermission}
-                          onCertificationUpdate={onCertificationUpdate}>
+                          onCertificationUpdate={onCertificationUpdate}
+                        >
                           <EditIconButton
                             newLook
                             data-testid="edit-certification"
@@ -866,7 +883,8 @@ export const DataAssetsHeader = ({
                     </div>
                     <div
                       className="font-medium certification-value"
-                      data-testid="certification-value">
+                      data-testid="certification-value"
+                    >
                       {(dataAsset as Table).certification ? (
                         <CertificationTag
                           showName

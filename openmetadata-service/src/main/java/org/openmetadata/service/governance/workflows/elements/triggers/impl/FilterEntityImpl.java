@@ -236,19 +236,21 @@ public class FilterEntityImpl implements JavaDelegate {
               boolean isTriggerField =
                   Arrays.stream(WorkflowTriggerFields.values())
                       .map(WorkflowTriggerFields::value)
-                      .anyMatch(fieldName::equals);
+                      .anyMatch(tf -> matchesField(fieldName, tf));
               if (!isTriggerField) {
                 return false;
               }
 
-              // Check include filter first (higher priority)
               if (includeFields != null && !includeFields.isEmpty()) {
-                // If include fields are specified, ONLY those fields should trigger
-                return includeFields.contains(fieldName);
+                return includeFields.stream().anyMatch(f -> matchesField(fieldName, f));
               }
 
-              // If no include filter specified, check exclude filter
-              return excludedFilter == null || !excludedFilter.contains(fieldName);
+              return excludedFilter == null
+                  || excludedFilter.stream().noneMatch(f -> matchesField(fieldName, f));
             });
+  }
+
+  private boolean matchesField(String fieldName, String triggerField) {
+    return fieldName.equals(triggerField) || fieldName.startsWith(triggerField + Entity.SEPARATOR);
   }
 }
