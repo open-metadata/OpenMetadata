@@ -117,6 +117,10 @@ MSSQL_GET_DATABASE = """
 SELECT name FROM master.sys.databases order by name
 """
 
+MSSQL_GET_CURRENT_DATABASE = """
+SELECT DB_NAME() AS name
+"""
+
 MSSQL_TEST_GET_QUERIES = textwrap.dedent(
     """
       SELECT TOP 1
