@@ -48,7 +48,7 @@ jobs:
 
       - name: Install Playwright Browsers
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: npx playwright install --with-deps
+        run: npx playwright install chromium --with-deps
 
       - name: Generate E2E Docs
         working-directory: openmetadata-ui/src/main/resources/ui
