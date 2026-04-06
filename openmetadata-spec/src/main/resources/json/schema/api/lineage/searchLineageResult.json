@@ -52,6 +52,10 @@
     "downstreamEdges": {
       "description": "Downstream Edges for the node.",
       "existingJavaType": "java.util.Map<java.lang.String, org.openmetadata.schema.api.lineage.EsLineageData>"
+    },
+    "paginationInfo": {
+      "description": "Optional pagination information for table-mode impact analysis.",
+      "existingJavaType": "org.openmetadata.schema.api.lineage.LineagePaginationInfo"
     }
   },
   "additionalProperties": false

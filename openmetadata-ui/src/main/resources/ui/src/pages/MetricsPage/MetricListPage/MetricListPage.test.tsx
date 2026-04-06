@@ -17,6 +17,28 @@ import { METRICS_DOCS } from '../../../constants/docs.constants';
 
 import MetricListPage from './MetricListPage';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
+  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  defaultColors: { gray: { 50: '#fafafa' } },
+}));
+
 const mockLocationPathname = '/mock-path';
 // Mocking react-router-dom hooks
 jest.mock('react-router-dom', () => ({

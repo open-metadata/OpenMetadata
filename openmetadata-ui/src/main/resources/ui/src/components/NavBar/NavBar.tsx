@@ -128,6 +128,10 @@ const NavBar = () => {
     return pathname.includes(ROUTES.TOUR);
   }, [location.pathname]);
 
+  const isDataMarketplacePage = useMemo(() => {
+    return location.pathname === ROUTES.DATA_MARKETPLACE;
+  }, [location.pathname]);
+
   const fetchOMVersion = async () => {
     try {
       const res = await getVersion();
@@ -442,7 +446,17 @@ const NavBar = () => {
 
   return (
     <>
-      <Header>
+      <Header
+        style={
+          isDataMarketplacePage
+            ? {
+                background: 'transparent',
+                marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+                position: 'relative' as const,
+                zIndex: 10,
+              }
+            : undefined
+        }>
         <div className="navbar-container">
           <div className="flex-center gap-2">
             <Tooltip
@@ -467,7 +481,7 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {!isHomePage && !isTourPage && (
+            {!isHomePage && !isTourPage && !isDataMarketplacePage && (
               <>
                 <GlobalSearchBar />
                 <DomainSelectableList

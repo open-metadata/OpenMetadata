@@ -27,6 +27,8 @@ export enum SidebarItem {
   ONTOLOGY_EXPLORER = 'ontology-explorer',
   TAGS = 'tags',
   INSIGHTS = 'insights',
+  DATA_MARKETPLACE = 'data-marketplace',
+  DATA_MARKETPLACE_SECTION = 'data-marketplace-section',
   SETTINGS = 'settings',
   LOGOUT = 'logout',
   METRICS = 'metrics',

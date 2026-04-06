@@ -15,6 +15,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import CustomControlsComponent from './CustomControls.component';
@@ -328,6 +329,36 @@ describe('CustomControls', () => {
     fireEvent.click(exportButton);
 
     expect(mockOnExportClick).toHaveBeenCalled();
+  });
+
+  it('builds impact analysis export requests from the current depth and direction', async () => {
+    const { exportLineageByEntityCountAsync } = jest.requireMock(
+      '../../../rest/lineageAPI'
+    ) as {
+      exportLineageByEntityCountAsync: jest.Mock;
+    };
+
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=4&dir=downstream',
+    }));
+
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByLabelText('label.export-as-type'));
+
+    const exportHandler = mockOnExportClick.mock.calls[0][1];
+    await exportHandler();
+
+    expect(exportLineageByEntityCountAsync).toHaveBeenCalledWith({
+      fqn: 'test.table',
+      entityType: EntityType.TABLE,
+      direction: LineageDirection.Downstream,
+      nodeDepth: 4,
+      maxDepth: 4,
+      query_filter: undefined,
+    });
   });
 
   it('opens lineage config modal when settings button is clicked', () => {

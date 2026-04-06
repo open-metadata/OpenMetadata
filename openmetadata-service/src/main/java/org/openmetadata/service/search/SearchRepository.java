@@ -2484,6 +2484,160 @@ public class SearchRepository {
     return searchClient.search(request, subjectContext);
   }
 
+  public int countSearchResults(SearchRequest baseRequest, SubjectContext subjectContext)
+      throws IOException {
+    SearchRequest countRequest =
+        new SearchRequest()
+            .withQuery(baseRequest.getQuery())
+            .withIndex(baseRequest.getIndex())
+            .withQueryFilter(baseRequest.getQueryFilter())
+            .withPostFilter(baseRequest.getPostFilter())
+            .withDeleted(baseRequest.getDeleted())
+            .withDomains(baseRequest.getDomains())
+            .withApplyDomainFilter(baseRequest.getApplyDomainFilter())
+            .withSize(0)
+            .withFrom(0)
+            .withFetchSource(false)
+            .withTrackTotalHits(true)
+            .withIncludeAggregations(false);
+    SearchResultListMapper countResult = searchClient.searchForExport(countRequest, subjectContext);
+    long total = countResult.getTotal();
+    if (total > Integer.MAX_VALUE) {
+      throw new IllegalStateException("Search results count exceeds supported maximum: " + total);
+    }
+    return (int) total;
+  }
+
+  public void exportSearchResultsCsvStream(
+      SearchRequest baseRequest,
+      SubjectContext subjectContext,
+      int totalHits,
+      int from,
+      java.io.OutputStream output)
+      throws IOException {
+    java.io.BufferedWriter writer =
+        new java.io.BufferedWriter(
+            new java.io.OutputStreamWriter(output, java.nio.charset.StandardCharsets.UTF_8));
+    try {
+      writer.write(SearchResultCsvExporter.CSV_HEADER);
+      writer.newLine();
+      writer.flush();
+
+      if (totalHits > 0) {
+        writeCsvBatches(baseRequest, subjectContext, writer, totalHits, from);
+      }
+    } finally {
+      writer.flush();
+    }
+  }
+
+  private void writeCsvBatches(
+      SearchRequest baseRequest,
+      SubjectContext subjectContext,
+      java.io.BufferedWriter writer,
+      int totalHits,
+      int from)
+      throws IOException {
+    long startTime = System.currentTimeMillis();
+    long timeoutMs = 5 * 60 * 1000L;
+    int exported = 0;
+    int maxIterations = (totalHits / SearchResultCsvExporter.BATCH_SIZE) + 2;
+    int iteration = 0;
+    List<Object> searchAfter = null;
+
+    String sortField = resolveSortField(baseRequest.getSortFieldParam());
+    List<String> sourceFields = buildSourceFields(sortField);
+
+    while (exported < totalHits && iteration < maxIterations) {
+      iteration++;
+      enforceTimeout(startTime, timeoutMs);
+
+      int remaining = totalHits - exported;
+      int batchSize = Math.min(SearchResultCsvExporter.BATCH_SIZE, remaining);
+      SearchRequest batchRequest =
+          buildBatchRequest(baseRequest, sortField, sourceFields, searchAfter, batchSize);
+
+      // On the first batch, use from-based pagination to skip to the requested offset.
+      // Subsequent batches use search_after (set above from the previous batch).
+      if (iteration == 1 && from > 0) {
+        batchRequest.withFrom(from);
+      }
+
+      SearchResultListMapper batch = searchClient.searchForExport(batchRequest, subjectContext);
+
+      if (batch.getResults().isEmpty()) {
+        break;
+      }
+
+      for (Map<String, Object> source : batch.getResults()) {
+        if (exported >= totalHits) {
+          break;
+        }
+        writer.write(SearchResultCsvExporter.toCsvRow(source));
+        writer.newLine();
+        exported++;
+      }
+      writer.flush();
+
+      if (batch.getLastHitSortValues() != null) {
+        searchAfter = Arrays.asList(batch.getLastHitSortValues());
+      } else {
+        break;
+      }
+    }
+    writer.flush();
+  }
+
+  private String resolveSortField(String sortFieldParam) {
+    if (sortFieldParam == null || sortFieldParam.isEmpty() || "_score".equals(sortFieldParam)) {
+      return "fullyQualifiedName";
+    }
+    return sortFieldParam;
+  }
+
+  private List<String> buildSourceFields(String sortField) {
+    List<String> sourceFields = new ArrayList<>(SearchResultCsvExporter.EXPORT_SOURCE_FIELDS);
+    // Dynamically include the sort field in _source so that callers can inspect it.
+    // Note: sort values for search_after come from hit.sort[], not _source, but
+    // including the field in _source is useful for debugging and completeness.
+    if (!sourceFields.contains(sortField)) {
+      sourceFields.add(sortField);
+    }
+    return sourceFields;
+  }
+
+  private void enforceTimeout(long startTime, long timeoutMs) {
+    if (System.currentTimeMillis() - startTime > timeoutMs) {
+      throw new IllegalStateException(
+          "Export timed out after 5 minutes. Please add filters to reduce the result set.");
+    }
+  }
+
+  private SearchRequest buildBatchRequest(
+      SearchRequest baseRequest,
+      String sortField,
+      List<String> sourceFields,
+      List<Object> searchAfter,
+      int batchSize) {
+    return new SearchRequest()
+        .withQuery(baseRequest.getQuery())
+        .withIndex(baseRequest.getIndex())
+        .withQueryFilter(baseRequest.getQueryFilter())
+        .withPostFilter(baseRequest.getPostFilter())
+        .withDeleted(baseRequest.getDeleted())
+        .withDomains(baseRequest.getDomains())
+        .withApplyDomainFilter(baseRequest.getApplyDomainFilter())
+        .withSize(batchSize)
+        .withFrom(0)
+        .withFetchSource(true)
+        .withTrackTotalHits(false)
+        .withIncludeAggregations(false)
+        .withIncludeSourceFields(sourceFields)
+        .withSortFieldParam(sortField)
+        .withSortOrder(baseRequest.getSortOrder() != null ? baseRequest.getSortOrder() : "asc")
+        .withSearchAfter(searchAfter);
+  }
+
   public Response previewSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {

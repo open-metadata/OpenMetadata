@@ -127,11 +127,7 @@ public class ContainerRepository extends EntityRepository<Container> {
               .collect(java.util.stream.Collectors.toList());
 
       if (!containersWithDataModels.isEmpty()) {
-        bulkPopulateEntityFieldTags(
-            containersWithDataModels,
-            entityType,
-            c -> c.getDataModel().getColumns(),
-            Container::getFullyQualifiedName);
+        bulkPopulateEntityFieldTags(containersWithDataModels, c -> c.getDataModel().getColumns());
       }
     }
   }
