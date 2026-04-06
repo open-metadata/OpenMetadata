@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
     SigmaConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -42,6 +43,8 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.sigma.models import (
@@ -54,7 +57,10 @@ from metadata.ingestion.source.database.column_helpers import truncate_column_na
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.fqn import build_es_fqn_search_string
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import (
+    get_database_name_for_lineage,
+    get_standard_chart_type,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -114,6 +120,10 @@ class SigmaSource(DashboardServiceSource):
         """
         yield Dashboard Entity
         """
+        if not dashboard_details:
+            logger.warning(f"Skipping dashboard - details are None (API error)")
+            return
+
         try:
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details.workbookId)),
@@ -155,6 +165,10 @@ class SigmaSource(DashboardServiceSource):
         """
         yield dashboard charts
         """
+        if not dashboard_details:
+            logger.warning(f"Skipping charts - dashboard details are None (API error)")
+            return
+
         charts = self.client.get_chart_details(dashboard_details.workbookId)
         for chart in charts or []:
             try:
@@ -164,7 +178,7 @@ class SigmaSource(DashboardServiceSource):
                 yield Either(
                     right=CreateChartRequest(
                         name=EntityName(str(chart.elementId)),
-                        displayName=chart.name,
+                        displayName=chart.name or f"Element {chart.elementId}",
                         chartType=get_standard_chart_type(chart.vizualizationType),
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
@@ -222,7 +236,6 @@ class SigmaSource(DashboardServiceSource):
             database_name = schema_parts[0] if len(schema_parts) > 1 else None
             table_name = node.name
 
-            # Validate prefix filters
             if (
                 prefix_table_name
                 and table_name
@@ -260,15 +273,108 @@ class SigmaSource(DashboardServiceSource):
                     schema_name=prefix_schema_name or schema_name,
                     table_name=prefix_table_name or table_name,
                 )
-                return self.metadata.search_in_any_service(
+                table_result = self.metadata.search_in_any_service(
                     entity_type=Table,
                     fqn_search_string=fqn_search_string,
                 )
+                return table_result
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error occured while finding table fqn: {exc}")
 
         return None
+
+    def _yield_lineage_from_files(
+        self,
+        dashboard_details: WorkbookDetails,
+        db_service_prefix: Optional[str] = None,
+    ):
+        """
+        Yield lineage using file-based API (fallback method)
+        """
+        for data_model in self.data_models or []:
+            try:
+                data_model_entity = self._get_datamodel(
+                    datamodel_id=data_model.elementId
+                )
+                if not data_model_entity:
+                    continue
+
+                nodes = self.client.get_lineage_details(
+                    dashboard_details.workbookId, data_model.elementId
+                )
+
+                if not nodes:
+                    continue
+
+                for node in nodes:
+                    table_entity = self._get_table_entity_from_node(
+                        node, db_service_prefix
+                    )
+                    if table_entity:
+                        column_lineage = None
+                        if data_model.columns:
+                            columns_list = data_model.columns
+                            column_lineage = self._get_column_lineage(
+                                table_entity, data_model_entity, columns_list
+                            )
+                        yield self._get_add_lineage_request(
+                            to_entity=data_model_entity,
+                            from_entity=table_entity,
+                            column_lineage=column_lineage,
+                        )
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=f"{dashboard_details.name} File-Based Lineage",
+                        error=f"Error in file-based lineage: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    def _yield_lineage_from_files_for_element(
+        self,
+        dashboard_details: WorkbookDetails,
+        data_model: Elements,
+        db_service_prefix: Optional[str] = None,
+    ):
+        """
+        Yield lineage using file-based API for a single element (fallback per element)
+        """
+        try:
+            data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
+            if not data_model_entity:
+                return
+
+            nodes = self.client.get_lineage_details(
+                dashboard_details.workbookId, data_model.elementId
+            )
+
+            if not nodes:
+                return
+
+            for node in nodes:
+                table_entity = self._get_table_entity_from_node(node, db_service_prefix)
+                if table_entity:
+                    column_lineage = None
+                    if data_model.columns:
+                        columns_list = data_model.columns
+                        column_lineage = self._get_column_lineage(
+                            table_entity, data_model_entity, columns_list
+                        )
+                    yield self._get_add_lineage_request(
+                        to_entity=data_model_entity,
+                        from_entity=table_entity,
+                        column_lineage=column_lineage,
+                    )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"{dashboard_details.name} Element {data_model.elementId} File-Based Lineage",
+                    error=f"Error in element file-based lineage fallback: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def yield_dashboard_lineage_details(
         self,
@@ -276,32 +382,88 @@ class SigmaSource(DashboardServiceSource):
         db_service_prefix: Optional[str] = None,
     ):
         """
-        yield dashboard lineage
+        Yield dashboard lineage using SQL query parsing (primary) or file-based (fallback)
         """
-        # charts and datamodels are same here as we are using charts as metadata for datamodels
+        if not dashboard_details:
+            logger.warning(f"Skipping lineage - dashboard details are None (API error)")
+            return
+
+        queries_response = self.client.get_workbook_queries(
+            dashboard_details.workbookId
+        )
+
+        if not queries_response or not queries_response.entries:
+            yield from self._yield_lineage_from_files(
+                dashboard_details, db_service_prefix
+            )
+            return
+
+        db_service_name = None
+        db_service_entity = None
+        if db_service_prefix:
+            (db_service_name, _, _, _) = self.parse_db_service_prefix(db_service_prefix)
+            if db_service_name:
+                db_service_entity = self.metadata.get_by_name(
+                    entity=DatabaseService, fqn=db_service_name
+                )
+
+        queries_by_element = {q.elementId: q for q in queries_response.entries}
+
         for data_model in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(
                     datamodel_id=data_model.elementId
                 )
-                if data_model_entity:
-                    nodes = self.client.get_lineage_details(
-                        dashboard_details.workbookId, data_model.elementId
+                if not data_model_entity:
+                    continue
+
+                query_obj = queries_by_element.get(data_model.elementId)
+
+                if not query_obj or not query_obj.sql:
+                    yield from self._yield_lineage_from_files_for_element(
+                        dashboard_details, data_model, db_service_prefix
                     )
-                    for node in nodes:
-                        table_entity = self._get_table_entity_from_node(
-                            node, db_service_prefix
+                    continue
+
+                lineage_parser = LineageParser(
+                    query_obj.sql,
+                    ConnectionTypeDialectMapper.dialect_of(
+                        db_service_entity.serviceType.value
+                    )
+                    if db_service_entity
+                    else Dialect.ANSI,
+                    parser_type=self.get_query_parser_type(),
+                )
+
+                for source_table in lineage_parser.source_tables or []:
+                    database_schema_table = fqn.split_table_name(str(source_table))
+                    database_name = database_schema_table.get("database")
+                    schema_name = database_schema_table.get("database_schema")
+                    table_name = database_schema_table.get("table")
+
+                    if db_service_entity and database_name:
+                        database_name = get_database_name_for_lineage(
+                            db_service_entity, database_name
                         )
-                        if table_entity and data_model.columns:
-                            columns_list = data_model.columns
-                            column_lineage = self._get_column_lineage(
-                                table_entity, data_model_entity, columns_list
-                            )
-                            yield self._get_add_lineage_request(
-                                to_entity=data_model_entity,
-                                from_entity=table_entity,
-                                column_lineage=column_lineage,
-                            )
+
+                    fqn_search_string = build_es_fqn_search_string(
+                        service_name=db_service_name or "*",
+                        database_name=database_name,
+                        schema_name=schema_name,
+                        table_name=table_name,
+                    )
+
+                    table_entity = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
+                    )
+
+                    if table_entity:
+                        yield self._get_add_lineage_request(
+                            to_entity=data_model_entity,
+                            from_entity=table_entity,
+                        )
+
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -335,8 +497,13 @@ class SigmaSource(DashboardServiceSource):
     def yield_datamodel(
         self, dashboard_details: WorkbookDetails
     ) -> Iterable[Either[DashboardDataModel]]:
+        if not dashboard_details:
+            logger.warning(
+                f"Skipping data models - dashboard details are None (API error)"
+            )
+            return
+
         if self.source_config.includeDataModels:
-            # we are ingesting charts/Elements as datamodels here
             self.data_models = self.client.get_chart_details(
                 dashboard_details.workbookId
             )
@@ -344,7 +511,8 @@ class SigmaSource(DashboardServiceSource):
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.elementId),
-                        displayName=data_model.name,
+                        displayName=data_model.name
+                        or f"Element {data_model.elementId}",
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
                         ),

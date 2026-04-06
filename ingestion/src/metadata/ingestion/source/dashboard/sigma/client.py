@@ -31,6 +31,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
     Workbook,
     WorkbookDetails,
     WorkBookPageResponse,
+    WorkbookQueriesResponse,
     WorkBookResponseDetails,
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER, UTF_8
@@ -202,7 +203,9 @@ class SigmaApiClient:
             if not pages.entries:
                 return None
             for page in pages.entries:
-                elements_list.extend(self.get_page_elements(workbook_id, page.pageId))
+                page_elements = self.get_page_elements(workbook_id, page.pageId)
+                if page_elements:
+                    elements_list.extend(page_elements)
             while pages.nextPage:
                 pages = WorkBookPageResponse.model_validate(
                     self.client.get(
@@ -213,15 +216,41 @@ class SigmaApiClient:
                 if not pages.entries:
                     break
                 for page in pages.entries:
-                    elements_list.extend(
-                        self.get_page_elements(workbook_id, page.pageId)
-                    )
+                    page_elements = self.get_page_elements(workbook_id, page.pageId)
+                    if page_elements:
+                        elements_list.extend(page_elements)
             return elements_list
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Failed to fetch chart details for workbook {workbook_id}: {exc}"
             )
+        return None
+
+    def get_workbook_queries(
+        self, workbook_id: str
+    ) -> Optional[WorkbookQueriesResponse]:
+        """
+        Fetch SQL queries for all elements in a workbook
+        """
+        try:
+            queries = []
+            result = WorkbookQueriesResponse.model_validate(
+                self.client.get(f"/workbooks/{workbook_id}/queries")
+            )
+            if result:
+                queries.extend(result.entries)
+                while result.nextPage:
+                    data = {"page": int(result.nextPage)}
+                    result = WorkbookQueriesResponse.model_validate(
+                        self.client.get(f"/workbooks/{workbook_id}/queries", data=data)
+                    )
+                    if result:
+                        queries.extend(result.entries)
+                return WorkbookQueriesResponse(entries=queries, total=len(queries))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch queries for workbook {workbook_id}: {exc}")
         return None
 
     def get_lineage_details(
@@ -237,16 +266,32 @@ class SigmaApiClient:
                     f"/workbooks/{workbook_id}/lineage/elements/{element_id}"
                 )
             )
-            for node in edges_response.edges:
-                if node.node_id:
+
+            for edge in edges_response.edges:
+                if not edge.node_id:
+                    continue
+
+                if edge.source in edges_response.dependencies:
+                    continue
+
+                try:
                     node_details = NodeDetails.model_validate(
-                        self.client.get(f"/files/{node.node_id}")
+                        self.client.get(f"/files/{edge.node_id}")
                     )
-                    source_nodes.append(node_details)
-            return source_nodes
+
+                    if node_details.node_type in ["table", "dataset"]:
+                        source_nodes.append(node_details)
+                except Exception as node_exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to fetch node details for {edge.node_id}: {node_exc}"
+                    )
+                    continue
+
+            return source_nodes if source_nodes else None
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Failed to fetch lineage details for workbook {workbook_id}: {exc}"
+                f"Failed to fetch lineage details for workbook {workbook_id}, element {element_id}: {exc}"
             )
         return None
