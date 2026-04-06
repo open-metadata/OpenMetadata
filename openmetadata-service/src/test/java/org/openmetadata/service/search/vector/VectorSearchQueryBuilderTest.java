@@ -698,9 +698,187 @@ class VectorSearchQueryBuilderTest {
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
         root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
-
+        
     // Should have only 1 filter: deleted=false
     assertEquals(1, mustFilters.size());
     assertFalse(mustFilters.get(0).get("term").get("deleted").asBoolean());
+  }
+
+  // -------------------------------------------------------------------------
+  // buildNativeESQuery tests (Elasticsearch 8.x/9.x top-level knn format)
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testNativeESQueryTopLevelKnnStructure() throws Exception {
+    float[] vector = {0.1f, 0.2f, 0.3f};
+    int size = 10;
+    int k = 100;
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, size, k, Map.of());
+
+    JsonNode root = MAPPER.readTree(query);
+    assertEquals(size, root.get("size").asInt());
+
+    // Must have top-level "knn", NOT "query"
+    assertTrue(root.has("knn"), "ES native query must have top-level 'knn'");
+    assertTrue(!root.has("query"), "ES native query must not have 'query' key");
+
+    JsonNode knn = root.get("knn");
+    assertEquals("embedding", knn.get("field").asText());
+    assertEquals(k, knn.get("k").asInt());
+    assertNotNull(knn.get("query_vector"));
+    assertTrue(knn.get("query_vector").isArray());
+    assertEquals(3, knn.get("query_vector").size());
+  }
+
+  @Test
+  void testNativeESQueryNumCandidates() throws Exception {
+    float[] vector = {0.1f};
+
+    // k < 100 → num_candidates should be 100
+    String query1 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 50, Map.of());
+    JsonNode root1 = MAPPER.readTree(query1);
+    assertEquals(100, root1.get("knn").get("num_candidates").asInt());
+
+    // k > 100 → num_candidates should equal k
+    String query2 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 200, Map.of());
+    JsonNode root2 = MAPPER.readTree(query2);
+    assertEquals(200, root2.get("knn").get("num_candidates").asInt());
+  }
+
+  @Test
+  void testNativeESQueryAlwaysHasDeletedFilter() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, Map.of());
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertNotNull(mustFilters);
+    assertTrue(mustFilters.isArray());
+    assertTrue(mustFilters.size() >= 1);
+    assertEquals(false, mustFilters.get(0).get("term").get("deleted").asBoolean());
+  }
+
+  @Test
+  void testNativeESQueryWithEntityTypeFilter() throws Exception {
+    float[] vector = {0.5f};
+    Map<String, List<String>> filters = Map.of("entityType", List.of("table", "dashboard"));
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 5, 50, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+    JsonNode entityTypeFilter = mustFilters.get(1);
+    assertTrue(entityTypeFilter.has("terms"));
+    JsonNode entityTypes = entityTypeFilter.get("terms").get("entityType");
+    assertEquals(2, entityTypes.size());
+    assertEquals("table", entityTypes.get(0).asText());
+    assertEquals("dashboard", entityTypes.get(1).asText());
+  }
+
+  @Test
+  void testNativeESQueryWithOwnersFilter() throws Exception {
+    float[] vector = {0.1f};
+    Map<String, List<String>> filters = Map.of("owners", List.of("user1", "team2"));
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+    JsonNode ownersFilter = mustFilters.get(1);
+    assertTrue(ownersFilter.has("bool"));
+    JsonNode shouldClauses = ownersFilter.get("bool").get("should");
+    assertNotNull(shouldClauses);
+    assertEquals(2, shouldClauses.size());
+
+    String ownersJson = shouldClauses.toString();
+    assertTrue(ownersJson.contains("user1"));
+    assertTrue(ownersJson.contains("team2"));
+  }
+
+  @Test
+  void testNativeESQueryWithTagsFilter() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    Map<String, List<String>> filters = Map.of("tags", List.of("PII.Sensitive"));
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+    JsonNode tagsFilter = mustFilters.get(1);
+    assertTrue(tagsFilter.has("nested"));
+    assertEquals("tags", tagsFilter.get("nested").get("path").asText());
+  }
+
+  @Test
+  void testNativeESQueryWithMultipleFilters() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    Map<String, List<String>> filters =
+        Map.of(
+            "entityType", List.of("table"),
+            "tier", List.of("Tier.Tier1"),
+            "serviceType", List.of("BigQuery"));
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(4, mustFilters.size(), "deleted=false + 3 user filters");
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("entityType"));
+    assertTrue(filtersJson.contains("tier"));
+    assertTrue(filtersJson.contains("serviceType"));
+  }
+
+  @Test
+  void testNativeESQuerySourceExcludesEmbedding() throws Exception {
+    float[] vector = {0.1f};
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, Map.of());
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode excludes = root.get("_source").get("excludes");
+    assertNotNull(excludes);
+    assertTrue(excludes.isArray());
+    assertEquals("embedding", excludes.get(0).asText());
+  }
+
+  @Test
+  void testNativeESQueryAndOpenSearchQueryProduceSameFilters() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    Map<String, List<String>> filters =
+        Map.of(
+            "entityType", List.of("table"),
+            "owners", List.of("alice"),
+            "tier", List.of("Tier.Gold"));
+
+    String osQuery = VectorSearchQueryBuilder.build(vector, 10, 100, filters);
+    String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, filters);
+
+    JsonNode osFilters =
+        MAPPER
+            .readTree(osQuery)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must");
+    JsonNode esFilters = MAPPER.readTree(esQuery).get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(
+        osFilters.size(),
+        esFilters.size(),
+        "Both queries should produce the same number of filter clauses");
+    assertEquals(osFilters.toString(), esFilters.toString(), "Filter clauses should be identical");
   }
 }

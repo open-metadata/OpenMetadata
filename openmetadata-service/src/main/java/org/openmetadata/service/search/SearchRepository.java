@@ -135,6 +135,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
@@ -416,9 +417,10 @@ public class SearchRepository {
         OpenSearchVectorService.init(osClient, embeddingClient);
         this.vectorIndexService = OpenSearchVectorService.getInstance();
       } else {
-        LOG.warn(
-            "Vector embedding is only supported with OpenSearch. Elasticsearch support is planned.");
-        return;
+        es.co.elastic.clients.elasticsearch.ElasticsearchClient esClient =
+            ((ElasticSearchClient) getSearchClient()).getNewClient();
+        ElasticSearchVectorService.init(esClient, embeddingClient, language);
+        this.vectorIndexService = ElasticSearchVectorService.getInstance();
       }
 
       this.vectorEmbeddingHandler = new VectorEmbeddingHandler(vectorIndexService);
@@ -588,10 +590,14 @@ public class SearchRepository {
   }
 
   private String getIndexMapping(IndexMapping indexMapping) {
+    String mappingFile = indexMapping.getIndexMappingFile();
+    boolean isOpenSearch = getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH;
+    if (!isOpenSearch && mappingFile != null && mappingFile.contains("vector_search_index.json")) {
+      mappingFile =
+          mappingFile.replace("vector_search_index.json", "vector_search_index_es_native.json");
+    }
     try (InputStream in =
-        getClass()
-            .getResourceAsStream(
-                String.format(indexMapping.getIndexMappingFile(), language.toLowerCase()))) {
+        getClass().getResourceAsStream(String.format(mappingFile, language.toLowerCase()))) {
       assert in != null;
       return new String(in.readAllBytes());
     } catch (Exception e) {
@@ -3042,6 +3048,18 @@ public class SearchRepository {
       JsonNode root = mapper.readTree(mapping);
       if (root.has("mappings")) {
         JsonNode mappings = root.get("mappings");
+        if (mappings.has("properties")) {
+          JsonNode properties = mappings.get("properties");
+          if (properties.has("embedding")) {
+            com.fasterxml.jackson.databind.node.ObjectNode embeddingNode =
+                (com.fasterxml.jackson.databind.node.ObjectNode) properties.get("embedding");
+            if (embeddingNode.has("dims")) {
+              embeddingNode.put("dims", dimension);
+            } else {
+              embeddingNode.put("dimension", dimension);
+            }
+          }
+        }
         com.fasterxml.jackson.databind.node.ObjectNode meta =
             ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
         meta.put(
@@ -3051,8 +3069,15 @@ public class SearchRepository {
       }
       return mapper.writeValueAsString(root);
     } catch (Exception e) {
-      LOG.warn("Failed to set embedding _meta in mapping JSON", e);
-      return mapping;
+      LOG.warn(
+          "Failed to parse mapping JSON for dimension patching, falling back to string replace");
+      return mapping
+          .replace("\"dimension\": 768", "\"dimension\": " + dimension)
+          .replace("\"dimension\":768", "\"dimension\":" + dimension)
+          .replace("\"dimension\": 512", "\"dimension\": " + dimension)
+          .replace("\"dimension\":512", "\"dimension\":" + dimension)
+          .replace("\"dims\": 512", "\"dims\": " + dimension)
+          .replace("\"dims\":512", "\"dims\":" + dimension);
     }
   }
 

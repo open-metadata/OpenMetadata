@@ -66,10 +66,41 @@ public class VectorSearchQueryBuilder {
 
     // Build filter inside knn for efficient k-NN filtering
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
+    appendFilterMustClauses(sb, filters);
+    sb.append("]}}"); // close must array and bool
 
+    sb.append("}}}}"); // close embedding, knn, query
+  }
+
+  public static String buildNativeESQuery(
+      float[] vector, int size, int k, Map<String, List<String>> filters) {
+    int numCandidates = Math.max(k, 100);
+    StringBuilder sb =
+        new StringBuilder(512)
+            .append("{\"size\":")
+            .append(size)
+            .append(",\"_source\":{\"excludes\":[\"embedding\"]}")
+            .append(",\"knn\":{")
+            .append("\"field\":\"embedding\"")
+            .append(",\"query_vector\":")
+            .append(Arrays.toString(vector))
+            .append(",\"k\":")
+            .append(k)
+            .append(",\"num_candidates\":")
+            .append(numCandidates);
+
+    sb.append(",\"filter\":{\"bool\":{\"must\":[");
+    appendFilterMustClauses(sb, filters);
+    sb.append("]}}"); // close must array and bool
+
+    sb.append("}}"); // close knn object
+    return sb.toString();
+  }
+
+  private static void appendFilterMustClauses(StringBuilder sb, Map<String, List<String>> filters) {
     // Only include documents where deleted=false
     sb.append("{\"term\":{\"deleted\":false}}");
-
+    
     // Then add user-specified filters
     for (var e : filters.entrySet()) {
       String field = e.getKey();
@@ -126,10 +157,35 @@ public class VectorSearchQueryBuilder {
         }
       }
     }
+  }
 
-    sb.append("]}}"); // close must array and bool
+  private static void appendNested(StringBuilder sb, String path, String field, List<String> vals) {
+    sb.append("{\"nested\":{\"path\":\"").append(path).append("\",\"query\":");
+    if (vals.size() == 1) {
+      appendOneNestedQuery(sb, field, vals.get(0));
+    } else {
+      sb.append("{\"bool\":{\"should\":[");
+      for (int i = 0; i < vals.size(); i++) {
+        if (i > 0) sb.append(',');
+        appendOneNestedQuery(sb, field, vals.get(i));
+      }
+      sb.append("]}}");
+    }
+    sb.append("}}");
+  }
 
-    sb.append("}}}"); // close embedding, knn, wrapper
+  private static void appendOneNestedQuery(StringBuilder sb, String field, String val) {
+    switch (val) {
+      case ANY -> sb.append("{\"exists\":{\"field\":\"").append(field).append("\"}}");
+      case NONE -> sb.append("{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"")
+          .append(field)
+          .append("\"}}}}");
+      default -> sb.append("{\"term\":{\"")
+          .append(field)
+          .append("\":\"")
+          .append(escape(val))
+          .append("\"}}");
+    }
   }
 
   private static void appendFlat(StringBuilder sb, String field, List<String> vals) {
