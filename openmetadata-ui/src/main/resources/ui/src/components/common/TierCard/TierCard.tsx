@@ -125,6 +125,7 @@ const TierCard = ({
     <Popover
       className="p-0"
       content={
+        <div data-react-aria-top-layer>
         <FocusTrapWithContainer active={popoverProps?.open || false}>
           <Card
             className={`tier-card ${tierCardClassName}`}
@@ -210,6 +211,7 @@ const TierCard = ({
             </Spin>
           </Card>
         </FocusTrapWithContainer>
+        </div>
       }
       overlayClassName="tier-card-popover"
       placement="bottomRight"

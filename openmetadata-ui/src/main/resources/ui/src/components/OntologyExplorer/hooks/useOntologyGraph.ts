@@ -50,6 +50,10 @@ import {
   NODE_BORDER_RADIUS,
   NODE_FILL_DEFAULT,
   NODE_LABEL_FILL,
+  NODE_SELECTED_HALO_FILL,
+  NODE_SELECTED_HALO_LINE_WIDTH,
+  NODE_SELECTED_LINE_WIDTH,
+  NODE_SELECTED_STROKE,
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
@@ -148,6 +152,7 @@ interface GraphNodeMeta {
   assetsExpanded?: boolean;
   ontologyNode?: OntologyNode;
   isDimmed?: boolean;
+  isSelected?: boolean;
 }
 
 interface GraphEdgeMeta {
@@ -490,6 +495,15 @@ export function useOntologyGraph({
               badge: hasAssetBadge,
               badges,
               labelFill: NODE_FILL_DEFAULT,
+              ...(d?.isSelected && {
+                stroke: NODE_SELECTED_STROKE,
+                lineWidth: NODE_SELECTED_LINE_WIDTH,
+                haloStroke: NODE_SELECTED_STROKE,
+                haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
+                haloStrokeOpacity: 0.7,
+                haloFill: NODE_SELECTED_HALO_FILL,
+                haloFillOpacity: 1,
+              }),
             };
           }
 
@@ -533,7 +547,8 @@ export function useOntologyGraph({
             ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
             zIndex: 2,
             opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
-            stroke: nodeBorderColor,
+            stroke: d?.isSelected ? NODE_SELECTED_STROKE : nodeBorderColor,
+            lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : 1,
             ...(hasHierarchyBadge && {
               radius: [
                 0,

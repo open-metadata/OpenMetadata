@@ -119,10 +119,10 @@ const ASSET_NODE_TYPE = 'dataAsset';
 const ASSET_RELATION_TYPE = 'hasGlossaryTerm';
 
 const ONTOLOGY_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:bg-primary tw:[background-image:radial-gradient(circle,rgba(148,163,184,0.22)_1px,transparent_1px)] tw:[background-size:14px_14px]';
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,rgba(148,163,184,0.22)_1px,transparent_1px)] tw:[background-size:14px_14px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
-  'tw:z-50 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
+  'tw:z-1 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
 
 const DEFAULT_SETTINGS: GraphSettings = {
   layout: LayoutType.Hierarchical,
@@ -1450,7 +1450,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         <div className="tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
           {/* Top filter bar — only on the standalone global page */}
           {scope === 'global' && (
-            <div className="tw:absolute tw:left-0 tw:right-0 tw:top-0 tw:z-50 tw:px-4 tw:pt-5">
+            <div className="tw:absolute tw:left-0 tw:right-0 tw:top-0 tw:z-1 tw:px-4 tw:pt-5">
               <Card className="tw:rounded-md tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-sm">
                 <FilterToolbar
                   filters={filters}
@@ -1533,7 +1533,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             )}>
             {loading ? (
               <div
-                className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
+                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
                 data-testid="ontology-graph-loading">
                 <div
                   aria-label={t('label.loading')}
@@ -1548,7 +1548,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               hierarchyGraphData !== null &&
               hierarchyGraphData.edges.length === 0 ? (
               <div
-                className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
+                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
                 data-testid="ontology-graph-hierarchy-empty">
                 <Typography as="p" className="tw:text-center tw:text-tertiary">
                   {t('message.no-hierarchical-relations-found')}
@@ -1556,7 +1556,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               </div>
             ) : !graphDataToShow || graphDataToShow.nodes.length === 0 ? (
               <div
-                className="tw:absolute tw:inset-0 tw:z-30 tw:flex tw:flex-col tw:items-center tw:justify-center"
+                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
                 data-testid="ontology-graph-empty">
                 <Typography as="p" className="tw:text-center tw:text-tertiary">
                   {withoutOntologyAutocompleteAll(filters.glossaryIds).length >
@@ -1572,10 +1572,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 {filters.searchQuery.trim() ? (
                   <div
                     aria-hidden
-                    className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-10 tw:bg-gray-950/6"
+                    className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
                   />
                 ) : null}
-                <div className="tw:relative tw:z-20 tw:h-full tw:w-full tw:min-h-0">
+                <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
                   <OntologyGraph
                     edges={graphDataToShow.edges}
                     expandedTermIds={
@@ -1627,7 +1627,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             <SlideoutMenu
               isDismissable
               isOpen
-              className="tw:z-1100"
+              className="tw:z-2"
               dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0"
               width={ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH}
               onOpenChange={(isOpen) => {

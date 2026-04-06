@@ -339,6 +339,10 @@ export const DIMMED_EDGE_OPACITY = 0.25;
 
 export const NODE_FILL_DEFAULT = '#ffffff';
 export const NODE_BORDER_COLOR = '#D5D9EB';
+export const NODE_SELECTED_STROKE = '#1570ef';
+export const NODE_SELECTED_LINE_WIDTH = 2.5;
+export const NODE_SELECTED_HALO_LINE_WIDTH = 8;
+export const NODE_SELECTED_HALO_FILL = 'rgba(21, 112, 239, 0.06)';
 export const NODE_BORDER_RADIUS = 6;
 export const NODE_PADDING_V = 9;
 export const NODE_PADDING_H = 10;
@@ -433,7 +437,7 @@ export const COMBO_PADDING = 48;
 export const COMBO_LABEL_PADDING_TOP_BOTTOM = 10;
 export const DATA_MODE_TERM_NODE_SIZE = 30;
 
-export const DATA_MODE_TERM_MIN_CENTER_SPACING = 400;
+export const DATA_MODE_TERM_MIN_CENTER_SPACING = 600;
 export const DATA_MODE_TERM_GROUP_LAYOUT_MIN_RADIUS = 200;
 export const DATA_MODE_GLOSSARY_MACRO_HULL_GAP = 120;
 export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 2;

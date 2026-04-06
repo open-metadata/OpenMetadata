@@ -40,6 +40,7 @@ export const EntitySelectableList = <T,>({
     <Popover
       destroyTooltipOnHide
       content={
+        <div data-react-aria-top-layer>
         <FocusTrapWithContainer active={popoverProps?.open || popupVisible}>
           <SelectableList
             customTagRenderer={config.customTagRenderer}
@@ -53,6 +54,7 @@ export const EntitySelectableList = <T,>({
             onUpdate={handleUpdate}
           />
         </FocusTrapWithContainer>
+        </div>
       }
       open={popupVisible}
       overlayClassName={`${config.overlayClassName} ${

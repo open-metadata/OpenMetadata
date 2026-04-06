@@ -97,6 +97,7 @@ const DomainSelectableList = ({
         destroyTooltipOnHide
         content={
           !disabled && (
+            <div data-react-aria-top-layer>
             <FocusTrapWithContainer active={popoverProps?.open || false}>
               <DomainSelectablTree
                 initialDomains={initialDomains}
@@ -109,6 +110,7 @@ const DomainSelectableList = ({
                 onSubmit={handleUpdate}
               />
             </FocusTrapWithContainer>
+            </div>
           )
         }
         open={popupVisible}
