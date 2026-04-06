@@ -479,6 +479,36 @@ class TestMWAAClientPagination:
         assert mock_mwaa_client.invoke_rest_api.call_count == 2
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
+    def test_paginate_without_total_entries_fetches_until_short_page(
+        self, mock_aws_client_cls
+    ):
+        mock_aws_client = MagicMock()
+        mock_mwaa_client = MagicMock()
+        mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
+        mock_aws_client_cls.return_value = mock_aws_client
+
+        page1 = {"dags": [{"dag_id": f"dag{i}"} for i in range(100)]}
+        page2 = {"dags": [{"dag_id": f"dag{i}"} for i in range(100, 120)]}
+
+        mock_mwaa_client.invoke_rest_api.side_effect = [
+            {"RestApiResponse": page1},
+            {"RestApiResponse": page2},
+        ]
+
+        client = MWAAClient(
+            AWSCredentials(
+                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
+            ),
+            "test-env",
+        )
+
+        result = client._paginate("/dags", "dags", limit=100)
+
+        assert len(result) == 120
+        assert result[-1]["dag_id"] == "dag119"
+        assert mock_mwaa_client.invoke_rest_api.call_count == 2
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
     def test_paginate_empty_response(self, mock_aws_client_cls):
         mock_aws_client = MagicMock()
         mock_mwaa_client = MagicMock()
