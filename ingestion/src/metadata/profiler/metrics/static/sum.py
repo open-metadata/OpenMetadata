@@ -26,7 +26,6 @@ from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.orm.registry import (
-    is_complex_type,
     is_concatenable,
     is_quantifiable,
 )
@@ -63,7 +62,7 @@ class Sum(StaticMetric):
         if is_quantifiable(self.col.type):
             return SumFn(column(self.col.name, self.col.type))
 
-        if is_concatenable(self.col.type) or is_complex_type(self.col.type):
+        if is_concatenable(self.col.type):
             return SumFn(LenFn(column(self.col.name, self.col.type)))
 
         return None
@@ -122,11 +121,6 @@ class Sum(StaticMetric):
 
             series = df[column.name].dropna()
             chunk_sum = np.vectorize(len)(series.astype(str)).sum()
-        elif is_complex_type(column.type):
-            series = df[column.name].dropna()
-            chunk_sum = series.apply(
-                lambda x: len(x) if hasattr(x, "__len__") else len(str(x))
-            ).sum()
 
         if chunk_sum is None or pd.isnull(chunk_sum):
             return current_sum

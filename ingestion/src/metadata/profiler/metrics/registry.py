@@ -30,11 +30,17 @@ from metadata.profiler.metrics.hybrid.cardinality_distribution import (
     CardinalityDistribution,
 )
 from metadata.profiler.metrics.hybrid.histogram import Histogram
+from metadata.profiler.metrics.static.collection_size import (
+    MaxCollectionSize,
+    MeanCollectionSize,
+    MinCollectionSize,
+)
 from metadata.profiler.metrics.static.column_count import ColumnCount
 from metadata.profiler.metrics.static.column_names import ColumnNames
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.count_in_set import CountInSet
 from metadata.profiler.metrics.static.distinct_count import DistinctCount
+from metadata.profiler.metrics.static.geo_size import MaxGeoSize, MeanGeoSize, MinGeoSize
 from metadata.profiler.metrics.static.ilike_count import ILikeCount
 from metadata.profiler.metrics.static.like_count import LikeCount
 from metadata.profiler.metrics.static.max import Max
@@ -49,6 +55,11 @@ from metadata.profiler.metrics.static.null_missing_count import NullMissingCount
 from metadata.profiler.metrics.static.regexp_match_count import RegexCount
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.metrics.static.stddev import StdDev
+from metadata.profiler.metrics.static.struct_size import (
+    MaxStructSize,
+    MeanStructSize,
+    MinStructSize,
+)
 from metadata.profiler.metrics.static.sum import Sum
 from metadata.profiler.metrics.static.unique_count import UniqueCount
 from metadata.profiler.metrics.system.system import System
@@ -114,3 +125,18 @@ class Metrics(MetricRegistry):
 
     # Missing Count
     nullMissingCount = NullMissingCount
+
+    # Collection Metrics (arrays, lists)
+    maxCollectionSize = MaxCollectionSize
+    minCollectionSize = MinCollectionSize
+    meanCollectionSize = MeanCollectionSize
+
+    # Struct Metrics (json, map, struct)
+    maxStructSize = MaxStructSize
+    minStructSize = MinStructSize
+    meanStructSize = MeanStructSize
+
+    # Geo Metrics (geography, geometry)
+    maxGeoSize = MaxGeoSize
+    minGeoSize = MinGeoSize
+    meanGeoSize = MeanGeoSize

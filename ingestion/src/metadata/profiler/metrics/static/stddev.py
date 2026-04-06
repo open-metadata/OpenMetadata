@@ -33,7 +33,6 @@ from metadata.profiler.orm.registry import (
     is_concatenable,
     is_date_time,
     is_quantifiable,
-    is_complex_type,
 )
 from metadata.utils.logger import profiler_logger
 
@@ -134,7 +133,7 @@ class StdDev(StaticMetric):
         if is_quantifiable(self.col.type):
             return StdDevFn(column(self.col.name, self.col.type))
 
-        if is_concatenable(self.col.type) or is_complex_type(self.col.type):
+        if is_concatenable(self.col.type):
             return StdDevFn(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
@@ -222,13 +221,6 @@ class StdDev(StaticMetric):
             import numpy as np
 
             lengths = np.vectorize(len)(clean_df.astype(str))
-            chunk_sum = lengths.sum()
-            chunk_sum_squares = (lengths**2).sum()
-            chunk_count = len(lengths)
-        elif is_complex_type(column.type):
-            lengths = clean_df.apply(
-                lambda x: len(x) if hasattr(x, "__len__") else len(str(x))
-            )
             chunk_sum = lengths.sum()
             chunk_sum_squares = (lengths**2).sum()
             chunk_count = len(lengths)

@@ -19,12 +19,7 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE
-from metadata.profiler.orm.registry import (
-    Dialects,
-    is_collection,
-    is_complex,
-    is_struct,
-)
+from metadata.profiler.orm.registry import Dialects
 
 
 class LenFn(FunctionElement):
@@ -33,41 +28,22 @@ class LenFn(FunctionElement):
 
 @compiles(LenFn)
 def _(element, compiler, **kw):
-    col_type = element.clauses.clauses[0].type
-    if is_collection(col_type):
-        return "CARDINALITY(%s)" % compiler.process(element.clauses, **kw)
     return "LEN(%s)" % compiler.process(element.clauses, **kw)
 
 
 @compiles(LenFn, Dialects.BigQuery)
 def _(element, compiler, **kw):
-    col_type = element.clauses.clauses[0].type
-    if is_collection(col_type):
-        return "ARRAY_LENGTH(%s)" % compiler.process(element.clauses, **kw)
-    if is_struct(col_type):
-        return "ARRAY_LENGTH(JSON_QUERY_ARRAY(%s))" % compiler.process(
-            element.clauses, **kw
-        )
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 
 
 @compiles(LenFn, Dialects.MySQL)
 @compiles(LenFn, Dialects.MariaDB)
 def _(element, compiler, **kw):
-    col_type = element.clauses.clauses[0].type
-    if is_struct(col_type):
-        return "JSON_LENGTH(%s)" % compiler.process(element.clauses, **kw)
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 
 
 @compiles(LenFn, Dialects.Snowflake)
 def _(element, compiler, **kw):
-    col_type = element.clauses.clauses[0].type
-    if is_collection(col_type):
-        return "ARRAY_SIZE(%s)" % compiler.process(element.clauses, **kw)
-    if is_struct(col_type):
-        proc = compiler.process(element.clauses, **kw)
-        return f"CASE WHEN IS_ARRAY({proc}) THEN ARRAY_SIZE({proc}) WHEN IS_OBJECT({proc}) THEN ARRAY_SIZE(OBJECT_KEYS({proc})) ELSE 0 END"
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 
 
@@ -96,19 +72,6 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.Cockroach)
 @compiles(LenFn, Dialects.Postgres)
 def _(element, compiler, **kw):
-    col_type = element.clauses.clauses[0].type
-    if is_collection(col_type):
-        return "cardinality(%s)" % compiler.process(element.clauses, **kw)
-    if is_struct(col_type):
-        proc = compiler.process(element.clauses, **kw)
-        return (
-            f"CASE WHEN jsonb_typeof(CAST({proc} AS jsonb)) = 'array' THEN jsonb_array_length(CAST({proc} AS jsonb)) "
-            f"WHEN jsonb_typeof(CAST({proc} AS jsonb)) = 'object' THEN (SELECT count(*) FROM jsonb_object_keys(CAST({proc} AS jsonb))) "
-            "ELSE 0 END"
-        )
-    if is_complex(col_type):
-        return "ST_NPoints(%s)" % compiler.process(element.clauses, **kw)
-
     return "LENGTH(CAST(%s AS text))" % compiler.process(element.clauses, **kw)
 
 

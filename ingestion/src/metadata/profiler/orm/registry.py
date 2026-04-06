@@ -275,4 +275,4 @@ def is_complex_type(_type) -> bool:
 
 def is_length_computable(_type) -> bool:
     """Check if length metrics can be computed for this type"""
-    return is_concatenable(_type) or is_complex_type(_type)
+    return is_concatenable(_type)

@@ -46,7 +46,16 @@
         "histogram",
         "cardinalityDistribution",
         "valueRank",
-        "nullMissingCount"
+        "nullMissingCount",
+        "maxCollectionSize",
+        "minCollectionSize",
+        "meanCollectionSize",
+        "maxStructSize",
+        "minStructSize",
+        "meanStructSize",
+        "maxGeoSize",
+        "minGeoSize",
+        "meanGeoSize"
       ]
     },
     "metricConfigurationDefinition": {
