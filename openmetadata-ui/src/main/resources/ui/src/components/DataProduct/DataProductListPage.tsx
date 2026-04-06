@@ -220,7 +220,7 @@ const DataProductListPage = () => {
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.dataProduct?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={openDrawer}
         />
       );
