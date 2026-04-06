@@ -1973,7 +1973,7 @@
           "matchType": "standard"
         },
         {
-          "field": "extension",
+          "field": "fileExtension",
           "boost": 2.0,
           "matchType": "standard"
         }
@@ -1985,9 +1985,9 @@
           "field": "fileType"
         },
         {
-          "name": "extension",
+          "name": "fileExtension",
           "type": "terms",
-          "field": "extension"
+          "field": "fileExtension"
         },
         {
           "name": "directory.displayName.keyword",
@@ -3643,7 +3643,7 @@
           "description": "Exact match on the MIME type of the file."
         },
         {
-          "name": "extension",
+          "name": "fileExtension",
           "description": "Exact match on the file extension (e.g., pdf, docx, xlsx)."
         },
         {
