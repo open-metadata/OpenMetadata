@@ -163,31 +163,33 @@ public class SchemaFieldExtractor {
   private static Schema loadMainSchema(
       String schemaPath, String entityType, String schemaUri, SchemaClient schemaClient)
       throws SchemaProcessingException {
-    InputStream schemaInputStream =
-        SchemaFieldExtractor.class.getClassLoader().getResourceAsStream(schemaPath);
-    if (schemaInputStream == null) {
-      LOG.error("Schema file not found at path: {}", schemaPath);
-      throw new SchemaProcessingException(
-          "Schema file not found for entity type: " + entityType,
-          SchemaProcessingException.ErrorType.RESOURCE_NOT_FOUND);
-    }
+    try (InputStream schemaInputStream =
+        SchemaFieldExtractor.class.getClassLoader().getResourceAsStream(schemaPath)) {
+      if (schemaInputStream == null) {
+        LOG.error("Schema file not found at path: {}", schemaPath);
+        throw new SchemaProcessingException(
+            "Schema file not found for entity type: " + entityType,
+            SchemaProcessingException.ErrorType.RESOURCE_NOT_FOUND);
+      }
 
-    JSONObject rawSchema = new JSONObject(new JSONTokener(schemaInputStream));
-    SchemaLoader schemaLoader =
-        SchemaLoader.builder()
-            .schemaJson(rawSchema)
-            .resolutionScope(schemaUri)
-            .schemaClient(schemaClient)
-            .build();
+      JSONObject rawSchema = new JSONObject(new JSONTokener(schemaInputStream));
+      SchemaLoader schemaLoader =
+          SchemaLoader.builder()
+              .schemaJson(rawSchema)
+              .resolutionScope(schemaUri)
+              .schemaClient(schemaClient)
+              .build();
 
-    try {
       Schema schema = schemaLoader.load().build();
       LOG.debug("Schema '{}' loaded successfully.", schemaPath);
       return schema;
+    } catch (SchemaProcessingException e) {
+      throw e;
     } catch (Exception e) {
-      LOG.error("Error loading schema '{}': {}", schemaPath, e.getMessage());
+      LOG.error("Error loading schema '{}'", schemaPath, e);
       throw new SchemaProcessingException(
           "Error loading schema '" + schemaPath + "': " + e.getMessage(),
+          e,
           SchemaProcessingException.ErrorType.OTHER);
     }
   }
@@ -414,30 +416,33 @@ public class SchemaFieldExtractor {
 
   private Schema loadSchema(String schemaPath, String schemaUri, SchemaClient schemaClient)
       throws SchemaProcessingException {
-    InputStream schemaInputStream = getClass().getClassLoader().getResourceAsStream(schemaPath);
-    if (schemaInputStream == null) {
-      LOG.error("Schema file not found at path: {}", schemaPath);
-      throw new SchemaProcessingException(
-          "Schema file not found for path: " + schemaPath,
-          SchemaProcessingException.ErrorType.RESOURCE_NOT_FOUND);
-    }
+    try (InputStream schemaInputStream =
+        getClass().getClassLoader().getResourceAsStream(schemaPath)) {
+      if (schemaInputStream == null) {
+        LOG.error("Schema file not found at path: {}", schemaPath);
+        throw new SchemaProcessingException(
+            "Schema file not found for path: " + schemaPath,
+            SchemaProcessingException.ErrorType.RESOURCE_NOT_FOUND);
+      }
 
-    JSONObject rawSchema = new JSONObject(new JSONTokener(schemaInputStream));
-    SchemaLoader schemaLoader =
-        SchemaLoader.builder()
-            .schemaJson(rawSchema)
-            .resolutionScope(schemaUri) // Base URI for resolving $ref
-            .schemaClient(schemaClient)
-            .build();
+      JSONObject rawSchema = new JSONObject(new JSONTokener(schemaInputStream));
+      SchemaLoader schemaLoader =
+          SchemaLoader.builder()
+              .schemaJson(rawSchema)
+              .resolutionScope(schemaUri)
+              .schemaClient(schemaClient)
+              .build();
 
-    try {
       Schema schema = schemaLoader.load().build();
       LOG.debug("Schema '{}' loaded successfully.", schemaPath);
       return schema;
+    } catch (SchemaProcessingException e) {
+      throw e;
     } catch (Exception e) {
-      LOG.error("Error loading schema '{}': {}", schemaPath, e.getMessage());
+      LOG.error("Error loading schema '{}'", schemaPath, e);
       throw new SchemaProcessingException(
           "Error loading schema '" + schemaPath + "': " + e.getMessage(),
+          e,
           SchemaProcessingException.ErrorType.OTHER);
     }
   }

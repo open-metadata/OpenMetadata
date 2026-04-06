@@ -767,7 +767,7 @@ public class FeedRepository {
       try {
         deleteThreadInternal(UUID.fromString(threadId));
       } catch (Exception ex) {
-        // Continue deletion
+        LOG.warn("Failed to delete thread {} during entity {} cleanup", threadId, entityId, ex);
       }
     }
   }
