@@ -15,6 +15,7 @@ Dialect-specific SQL syntax masking tests
 Tests for masking queries that use dialect-specific syntax features
 (typed literals, VARIANT paths, STRUCTs, DECLARE, etc.).
 """
+
 from unittest import TestCase
 
 import pytest
@@ -195,6 +196,46 @@ class TestQueryMaskerDialectSpecific(TestCase):
             # TODO: since our parser is designed to handle one sql statement at a
             # time, it returns last masked statement only, need to evaluate later
             # if multi-statement handling is required
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
+
+    def test_vertica_nextval_arguments_preserved(self):
+        """
+        Test that NEXTVAL/CURRVAL/SETVAL/LASTVAL sequence function arguments
+        are NOT masked, since they are schema/sequence identifiers, not data literals.
+
+        Addresses GitHub issue #26696: Vertica NEXTVAL() sequence arguments
+        were incorrectly parameterised as ? in lineage parser.
+        """
+        query_test_cases = [
+            {
+                "query": "INSERT INTO target_table SELECT NEXTVAL('reporting', 'my_sequence'), col1 FROM source_table WHERE status = 'active';",  # noqa: E501
+                "expected": "INSERT INTO target_table SELECT NEXTVAL('reporting', 'my_sequence'), col1 FROM source_table WHERE status = ?;",  # noqa: E501
+                "dialect": Dialect.VERTICA.value,
+            },
+            {
+                "query": "SELECT CURRVAL('public', 'id_seq') FROM dual;",
+                "expected": "SELECT CURRVAL('public', 'id_seq') FROM dual;",
+                "dialect": Dialect.VERTICA.value,
+            },
+            {
+                "query": "SELECT SETVAL('myschema', 'myseq', 100) FROM dual;",
+                "expected": "SELECT SETVAL('myschema', 'myseq', ?) FROM dual;",
+                "dialect": Dialect.VERTICA.value,
+            },
+        ]
+
+        for test_case in query_test_cases:
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlFluff",
+            )
             assert_masked_query(
                 test_case["query"],
                 test_case["expected"],

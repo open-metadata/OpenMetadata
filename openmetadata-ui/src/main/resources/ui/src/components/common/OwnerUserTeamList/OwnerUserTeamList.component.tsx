@@ -16,6 +16,7 @@ import { ReactNode } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';
 import { OwnerTeamList } from '../OwnerTeamList/OwnerTeamList.component';
 import OwnerUserList from '../OwnerUserList/OwnerUserList.component';
 
@@ -24,7 +25,7 @@ interface OwnerUserTeamListProps {
   hasPermission?: boolean;
   isAssignee?: boolean;
   onEditClick?: () => void;
-  avatarSize: number;
+  avatarSize: AvatarSize;
   className?: string;
   isCompactView: boolean;
   ownerDisplayName?: Map<string, ReactNode>;
