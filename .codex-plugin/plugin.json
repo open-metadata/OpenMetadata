@@ -1,0 +1,16 @@
+{
+  "name": "OpenMetadata",
+  "version": "0.1.0",
+  "description": "OpenMetadata is a unified metadata platform for data discovery, data observability, and data governance powered by a central metadata repository, in-depth column level lineage, and seamless team colla",
+  "author": {
+    "name": "open-metadata",
+    "url": "https://github.com/open-metadata"
+  },
+  "homepage": "https://github.com/open-metadata/OpenMetadata",
+  "repository": "https://github.com/open-metadata/OpenMetadata",
+  "keywords": [
+    "mcp",
+    "codex"
+  ],
+  "mcpServers": "./.mcp.json"
+}
