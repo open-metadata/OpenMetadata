@@ -54,13 +54,17 @@ public class CompiledRule extends Rule {
 
   /** Used only for validating the expressions when new rule is created */
   public static <T> void validateExpression(String condition, Class<T> clz) {
+    validateExpression(condition, clz, false);
+  }
+
+  public static <T> void validateExpression(String condition, Class<T> clz, boolean isUpdate) {
     if (condition == null) {
       return;
     }
 
     // parseExpression already includes safety validation
     Expression expression = parseExpression(condition);
-    RuleEvaluator ruleEvaluator = new RuleEvaluator();
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(isUpdate);
     SimpleEvaluationContext context =
         SimpleEvaluationContext.forReadOnlyDataBinding()
             .withInstanceMethods()
