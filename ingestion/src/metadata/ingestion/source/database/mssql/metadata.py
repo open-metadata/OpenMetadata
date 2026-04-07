@@ -43,6 +43,7 @@ from metadata.ingestion.source.database.mssql.models import (
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
     MSSQL_GET_DATABASE_COMMENTS,
+    MSSQL_GET_ENCRYPTED_STORED_PROCEDURES,
     MSSQL_GET_SCHEMA_COMMENTS,
     MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
@@ -107,6 +108,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
         self.database_desc_map = {}
         self.stored_procedure_desc_map = {}
+        self.encrypted_procedures_cache: dict[str, set[str]] = {}
 
     @classmethod
     def create(
@@ -160,6 +162,28 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         Method to fetch the database description
         """
         return self.database_desc_map.get(database_name)
+
+    def _get_encrypted_procedures(self, schema_name: str) -> set[str]:
+        """Fetch and cache encrypted stored procedure names for a schema"""
+        if schema_name not in self.encrypted_procedures_cache:
+            try:
+                with self.engine.connect() as conn:
+                    results = conn.execute(
+                        text(
+                            MSSQL_GET_ENCRYPTED_STORED_PROCEDURES.format(
+                                schema_name=schema_name
+                            )
+                        )
+                    ).all()
+                self.encrypted_procedures_cache[schema_name] = {
+                    row.procedure_name for row in results
+                }
+            except Exception as exc:
+                logger.debug(
+                    f"Could not fetch encrypted procedures for schema {schema_name}: {exc}"
+                )
+                self.encrypted_procedures_cache[schema_name] = set()
+        return self.encrypted_procedures_cache[schema_name]
 
     def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
         """
@@ -253,11 +277,23 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         """Prepare the stored procedure payload"""
 
         try:
+            description = self.get_stored_procedure_description(stored_procedure.name)
+            encrypted_procs = self._get_encrypted_procedures(
+                self.context.get().database_schema
+            )
+            if stored_procedure.name in encrypted_procs:
+                if description:
+                    description = Markdown(
+                        f"""{description.root}\nUnable to fetch code as this is an encrypted stored procedure"""
+                    )
+                else:
+                    description = Markdown(
+                        "Unable to fetch code as this is an encrypted stored procedure"
+                    )
+
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=self.get_stored_procedure_description(
-                    stored_procedure.name
-                ),
+                description=description,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
                     code=stored_procedure.definition,
