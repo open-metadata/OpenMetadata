@@ -152,8 +152,9 @@
     "prettier": "2.8.8"
   },
   "resolutions": {
-    "rollup": "4.59.0",
-    "minimatch": "10.2.3"
+    "lodash": "4.18.1",
+    "minimatch": "10.2.3",
+    "rollup": "4.59.0"
   },
   "publishConfig": {
     "access": "restricted",
