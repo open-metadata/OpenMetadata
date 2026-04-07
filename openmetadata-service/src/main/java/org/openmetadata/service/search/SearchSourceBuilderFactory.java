@@ -225,16 +225,60 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   }
 
   /**
-   * Remap nested owner field paths to their flat top-level equivalents.
-   * The flat fields {@code ownerDisplayName} and {@code ownerName} are
-   * denormalized copies maintained in every search index.
+   * Remap nested owner field paths to their flat top-level equivalents. The flat fields {@code
+   * ownerDisplayName} and {@code ownerName} are denormalized copies maintained in every search
+   * index.
    */
   Map<String, String> AGGREGATION_FIELD_REMAPS =
       Map.of(
           "owners.displayName.keyword", "ownerDisplayName",
-          "owners.name.keyword", "ownerName");
+          "owners.displayName", "ownerDisplayName",
+          "owners.name.keyword", "ownerName",
+          "owners.name", "ownerName");
 
-  static String remapAggregationField(String field) {
-    return AGGREGATION_FIELD_REMAPS.getOrDefault(field, field);
+  /**
+   * Root-level text fields that carry a {@code .keyword} sub-field in all index mappings. Only
+   * exact root-level names match; dotted paths (e.g. {@code columns.name}) are not resolved here.
+   */
+  Set<String> TEXT_FIELDS_WITH_KEYWORD = Set.of("name", "displayName");
+
+  /**
+   * Flat keyword fields produced by owner-field remapping. These do not carry a {@code .keyword}
+   * suffix but must be treated as keyword sort fields for correct {@code unmappedType} resolution.
+   */
+  Set<String> KEYWORD_SORT_FIELDS = Set.of("ownerDisplayName", "ownerName");
+
+  /**
+   * Resolve a field name for use in sorting or aggregation contexts.
+   *
+   * <ul>
+   *   <li>Applies owner-field remapping (e.g. {@code owners.displayName.keyword} &rarr; {@code
+   *       ownerDisplayName})
+   *   <li>Passes through ES/OS internal fields that start with {@code _}
+   *   <li>Passes through fields already ending with {@code .keyword}
+   *   <li>Appends {@code .keyword} to root-level fields that exactly match {@code
+   *       TEXT_FIELDS_WITH_KEYWORD} ({@code name}, {@code displayName}); dotted paths pass through
+   *       unchanged
+   *   <li>Passes through all other fields (numeric, date, keyword-typed) unchanged
+   * </ul>
+   */
+  static String resolveFieldForSortOrAggregation(String field) {
+    if (field == null || field.isEmpty()) {
+      return field;
+    }
+    String remapped = AGGREGATION_FIELD_REMAPS.getOrDefault(field, field);
+    if (!remapped.equals(field)) {
+      return remapped;
+    }
+    if (field.startsWith("_")) {
+      return field;
+    }
+    if (field.endsWith(".keyword")) {
+      return field;
+    }
+    if (TEXT_FIELDS_WITH_KEYWORD.contains(field)) {
+      return field + ".keyword";
+    }
+    return field;
   }
 }
