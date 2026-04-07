@@ -151,21 +151,21 @@ const DASHBOARD_DATA_MODEL = 'DashboardDataModel';
 
 export const getEntityTypeSearchIndexMapping = (entityType: string) => {
   const entityMapping = {
-    Table: 'table',
-    Topic: 'topic',
-    Dashboard: 'dashboard',
-    Pipeline: 'pipeline',
-    MlModel: 'mlmodel',
-    Container: 'container',
-    SearchIndex: 'searchIndex',
-    ApiEndpoint: 'apiEndpoint',
-    Metric: 'metric',
-    ['Store Procedure']: 'storedProcedure',
-    Directory: 'directory',
-    File: 'file',
-    Spreadsheet: 'spreadsheet',
-    Worksheet: 'worksheet',
-    [DASHBOARD_DATA_MODEL]: 'dashboardDataModel',
+    Table: 'table_search_index',
+    Topic: 'topic_search_index',
+    Dashboard: 'dashboard_search_index',
+    Pipeline: 'pipeline_search_index',
+    MlModel: 'mlmodel_search_index',
+    Container: 'container_search_index',
+    SearchIndex: 'search_entity_search_index',
+    ApiEndpoint: 'api_endpoint_search_index',
+    Metric: 'metric_search_index',
+    ['Store Procedure']: 'stored_procedure_search_index',
+    Directory: 'directory_search_index',
+    File: 'file_search_index',
+    Spreadsheet: 'spreadsheet_search_index',
+    Worksheet: 'worksheet_search_index',
+    [DASHBOARD_DATA_MODEL]: 'dashboard_data_model_search_index',
   };
 
   return entityMapping[entityType as keyof typeof entityMapping];
