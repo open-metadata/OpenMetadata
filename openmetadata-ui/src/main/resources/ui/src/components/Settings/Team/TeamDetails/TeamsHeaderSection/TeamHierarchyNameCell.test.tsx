@@ -15,8 +15,8 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
 import {
-    getEntityName,
-    highlightSearchText
+  getEntityName,
+  highlightSearchText,
 } from '../../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../../utils/StringsUtils';
@@ -58,12 +58,18 @@ jest.mock('../../../../../utils/StringsUtils', () => ({
   stringToHTML: jest.fn((html: string) => html),
 }));
 
-const mockGetEntityName = getEntityName as jest.MockedFunction<typeof getEntityName>;
-const mockHighlightSearchText =
-  highlightSearchText as jest.MockedFunction<typeof highlightSearchText>;
-const mockGetTeamsWithFqnPath =
-  getTeamsWithFqnPath as jest.MockedFunction<typeof getTeamsWithFqnPath>;
-const mockStringToHTML = stringToHTML as jest.MockedFunction<typeof stringToHTML>;
+const mockGetEntityName = getEntityName as jest.MockedFunction<
+  typeof getEntityName
+>;
+const mockHighlightSearchText = highlightSearchText as jest.MockedFunction<
+  typeof highlightSearchText
+>;
+const mockGetTeamsWithFqnPath = getTeamsWithFqnPath as jest.MockedFunction<
+  typeof getTeamsWithFqnPath
+>;
+const mockStringToHTML = stringToHTML as jest.MockedFunction<
+  typeof stringToHTML
+>;
 
 const mockTeam = {
   fullyQualifiedName: 'Organization.Engineering',
