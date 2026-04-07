@@ -509,6 +509,10 @@ export interface ElasticsearchQuery {
     must_not?: ElasticsearchQuery | ElasticsearchQuery[];
     minimum_should_match?: number;
   };
+  nested?: {
+    path: string;
+    query: ElasticsearchQuery;
+  };
   term?: {
     [key: string]: string | number | boolean;
   };
@@ -524,7 +528,7 @@ export interface ElasticsearchQuery {
 }
 
 export interface JsonLogic {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const flattenAndClauses = (clauses: JsonLogic[]): JsonLogic[] => {

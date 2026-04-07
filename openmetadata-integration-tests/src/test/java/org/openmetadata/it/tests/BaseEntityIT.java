@@ -147,6 +147,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsDomains = true;
   protected boolean supportsPatchDomains = true; // Can domains be changed via PATCH after creation?
   protected boolean supportsDataProducts = true;
+  protected boolean supportsDataContract = false;
   protected boolean supportsSoftDelete = true;
   protected boolean supportsCustomExtension = true;
   protected boolean supportsFieldsQueryParam = true;
@@ -970,14 +971,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       createEntity(createRequest);
     }
 
-    // Basic list test - just verify list works
-    org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
-    params.setLimit(10);
-    org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
+    Awaitility.await("Wait for entities to be listable")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.sdk.models.ListParams params =
+                  new org.openmetadata.sdk.models.ListParams();
+              params.setLimit(10);
+              org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
 
-    assertNotNull(response, "List response should not be null");
-    assertNotNull(response.getData(), "List data should not be null");
-    assertTrue(response.getData().size() > 0, "Should have entities in list");
+              assertNotNull(response, "List response should not be null");
+              assertNotNull(response.getData(), "List data should not be null");
+              assertTrue(response.getData().size() > 0, "Should have entities in list");
+            });
   }
 
   @Test
@@ -1831,6 +1839,45 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         Exception.class,
         () -> patchEntity(entityId, entity),
         "Setting non-existent domain should fail");
+  }
+
+  // ===================================================================
+  // DATA CONTRACT TESTS
+  // ===================================================================
+
+  @Test
+  void get_entityDataContract_200(TestNamespace ns) {
+    if (!supportsDataContract) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    org.openmetadata.schema.api.data.CreateDataContract contractRequest =
+        new org.openmetadata.schema.api.data.CreateDataContract()
+            .withName(ns.prefix("contract"))
+            .withEntity(entity.getEntityReference())
+            .withDescription("Data contract for test entity");
+    org.openmetadata.schema.entity.data.DataContract contract =
+        SdkClients.adminClient().dataContracts().create(contractRequest);
+
+    T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
+    assertNotNull(fetched.getDataContract(), "Entity should have a dataContract");
+    assertEquals(
+        contract.getId(),
+        fetched.getDataContract().getId(),
+        "DataContract reference should match created contract");
+  }
+
+  @Test
+  void get_entityWithoutDataContract_200(TestNamespace ns) {
+    if (!supportsDataContract) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
+    assertNull(
+        fetched.getDataContract(), "Entity without a contract should have null dataContract");
   }
 
   // ===================================================================

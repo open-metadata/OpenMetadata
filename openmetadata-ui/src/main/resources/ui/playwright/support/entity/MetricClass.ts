@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -77,13 +78,39 @@ export class MetricClass extends EntityClass {
     this.entityResponseData = data.entity;
   }
 
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/metrics/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.entityResponseData = await response.json();
+
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
   async visitEntityPage(page: Page) {
+    const metricName = this.entityResponseData.name ?? this.entity.name;
+    const searchTerm =
+      this.entityResponseData?.['fullyQualifiedName'] ?? metricName;
+
     await visitEntityPage({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.entityResponseData.name ?? this.entity.name}-${
-        this.entityResponseData.name ?? this.entity.name
-      }`,
+      searchTerm,
+      dataTestId: `${metricName}-${metricName}`,
     });
   }
 

@@ -89,6 +89,7 @@ export type ResponseDataType = {
   description: string;
   id: string;
   fullyQualifiedName: string;
+  version?: number;
 };
 export type TestCaseData = {
   parameterValues?: unknown[];
@@ -129,6 +130,7 @@ export interface EntityReference {
 
 export interface ServiceEntity {
   name: string;
+  displayName?: string;
   serviceType: string;
   connection: {
     config: Record<string, unknown>;

@@ -28,10 +28,17 @@ from metadata.data_quality.validations.column.base.columnValuesToBeUnique import
     BaseColumnValuesToBeUniqueValidator,
 )
 from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    PandasFailedRowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -42,7 +49,10 @@ COUNTER_ACCUMULATOR_KEY = "counter_accumulator"
 
 
 class ColumnValuesToBeUniqueValidator(
-    BaseColumnValuesToBeUniqueValidator, PandasValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeUniqueValidator,
+    PandasValidatorMixin,
+    PandasFailedRowSamplerMixin,
 ):
     """Validator for column values to be unique test case"""
 
@@ -198,27 +208,25 @@ class ColumnValuesToBeUniqueValidator(
                     top_n=top_n,
                 )
 
-                for row_dict in results_df.to_dict("records"):
-                    metric_values = self._build_metric_values_from_row(
-                        row_dict, metrics_to_compute, test_params
-                    )
-
-                    evaluation = self._evaluate_test_condition(
-                        metric_values, test_params
-                    )
-
-                    dimension_result = self._create_dimension_result(
-                        row_dict,
-                        dimension_col.name,
-                        metric_values,
-                        evaluation,
-                        test_params,
-                    )
-
-                    dimension_results.append(dimension_result)
+                dimension_results = self._process_dimension_rows(
+                    results_df.to_dict("records"),
+                    dimension_col.name,
+                    metrics_to_compute,
+                    test_params,
+                )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results
+
+    def filter(self):
+        vcs = [df[self.get_column().name].value_counts() for df in self.runner]
+        sums = sum(vcs)
+        non_unique = sums[sums > 1].index.tolist()
+        return f"{self.get_column().name}.isin({non_unique})"
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

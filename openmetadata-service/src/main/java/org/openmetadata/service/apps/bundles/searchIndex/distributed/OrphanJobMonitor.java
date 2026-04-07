@@ -47,7 +47,7 @@ public class OrphanJobMonitor {
     scheduler =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
-              Thread t = new Thread(r, "orphan-job-monitor");
+              Thread t = new Thread(r, "reindex-orphan-job-monitor");
               t.setDaemon(true);
               return t;
             });

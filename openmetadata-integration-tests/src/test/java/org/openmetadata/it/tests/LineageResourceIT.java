@@ -5,10 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.io.StringReader;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Disabled;
@@ -60,6 +66,8 @@ import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Lineage resource operations.
@@ -349,6 +357,59 @@ public class LineageResourceIT {
     cleanupTable(client, source);
     cleanupTable(client, target1);
     cleanupTable(client, target2);
+  }
+
+  @Test
+  void testDirectionalSearchPreservePathsRetainsIntermediateNodes() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table root = createTable(client, namespace, "preserve_root");
+    Table mid = createTable(client, namespace, "preserve_mid");
+    Table leaf = createTable(client, namespace, "preserve_leaf");
+
+    addLineage(client, root, mid);
+    addLineage(client, mid, leaf);
+
+    String queryFilter =
+        """
+        {
+          "query": {
+            "bool": {
+              "must": [
+                {"wildcard": {"name.keyword": {"value": "*preserve_leaf*"}}}
+              ]
+            }
+          }
+        }
+        """;
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fqn", root.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "3")
+            .queryParam("includeDeleted", "false")
+            .queryParam("query_filter", queryFilter)
+            .queryParam("preserve_paths", "true")
+            .build();
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/lineage/getLineage/Downstream", null, options);
+    JsonNode result = OBJECT_MAPPER.readTree(response);
+
+    assertTrue(result.get("nodes").has(root.getFullyQualifiedName()));
+    assertTrue(result.get("nodes").has(mid.getFullyQualifiedName()));
+    assertTrue(result.get("nodes").has(leaf.getFullyQualifiedName()));
+    assertEquals(2, result.get("downstreamEdges").size());
+
+    deleteLineage(client, root.getEntityReference(), mid.getEntityReference());
+    deleteLineage(client, mid.getEntityReference(), leaf.getEntityReference());
+    cleanupTable(client, root);
+    cleanupTable(client, mid);
+    cleanupTable(client, leaf);
   }
 
   @Test
@@ -1313,5 +1374,302 @@ public class LineageResourceIT {
     } catch (Exception e) {
       // Ignore cleanup errors
     }
+  }
+
+  @Test
+  void testExportLineageBasicChain() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table t1 = createTable(client, namespace, "export_chain_t1");
+    Table t2 = createTable(client, namespace, "export_chain_t2");
+    Table t3 = createTable(client, namespace, "export_chain_t3");
+    Table t4 = createTable(client, namespace, "export_chain_t4");
+
+    addLineage(client, t1, t2);
+    addLineage(client, t2, t3);
+    addLineage(client, t3, t4);
+
+    String csvContent =
+        exportLineageWithRetry(client, t2.getFullyQualifiedName(), "table", "2", "2", 3);
+    List<CSVRecord> rows = parseCsvRows(csvContent);
+
+    assertEdgeInCsv(rows, t1.getFullyQualifiedName(), t2.getFullyQualifiedName());
+    assertEdgeInCsv(rows, t2.getFullyQualifiedName(), t3.getFullyQualifiedName());
+    assertEdgeInCsv(rows, t3.getFullyQualifiedName(), t4.getFullyQualifiedName());
+
+    deleteLineage(client, t1.getEntityReference(), t2.getEntityReference());
+    deleteLineage(client, t2.getEntityReference(), t3.getEntityReference());
+    deleteLineage(client, t3.getEntityReference(), t4.getEntityReference());
+
+    cleanupTable(client, t1);
+    cleanupTable(client, t2);
+    cleanupTable(client, t3);
+    cleanupTable(client, t4);
+  }
+
+  @Test
+  void testExportLineageWithColumnLineage() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTableWithMultipleColumns(client, namespace, "export_col_src");
+    Table targetTable = createTableWithMultipleColumns(client, namespace, "export_col_tgt");
+
+    String srcCol1 = sourceTable.getColumns().get(0).getFullyQualifiedName();
+    String srcCol2 = sourceTable.getColumns().get(1).getFullyQualifiedName();
+    String tgtCol1 = targetTable.getColumns().get(0).getFullyQualifiedName();
+    String tgtCol2 = targetTable.getColumns().get(1).getFullyQualifiedName();
+
+    LineageDetails details = new LineageDetails();
+    details
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(srcCol1)).withToColumn(tgtCol1));
+    details
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(srcCol2)).withToColumn(tgtCol2));
+
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(sourceTable.getEntityReference())
+                    .withToEntity(targetTable.getEntityReference())
+                    .withLineageDetails(details));
+    executeAddLineage(client, addLineage);
+
+    String csvContent =
+        exportLineageWithRetry(client, sourceTable.getFullyQualifiedName(), "table", "0", "1", 1);
+    List<CSVRecord> rows = parseCsvRows(csvContent);
+
+    assertEdgeInCsv(rows, sourceTable.getFullyQualifiedName(), targetTable.getFullyQualifiedName());
+
+    boolean columnLineagePresent =
+        rows.stream()
+            .filter(
+                r ->
+                    sourceTable.getFullyQualifiedName().equals(r.get("fromFullyQualifiedName*"))
+                        && targetTable
+                            .getFullyQualifiedName()
+                            .equals(r.get("toFullyQualifiedName*")))
+            .anyMatch(r -> r.get("columnLineage") != null && !r.get("columnLineage").isEmpty());
+    assertTrue(columnLineagePresent);
+
+    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
+  }
+
+  @Test
+  void testExportLineageVaryingDepths() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table t1 = createTable(client, namespace, "export_depth_t1");
+    Table t2 = createTable(client, namespace, "export_depth_t2");
+    Table t3 = createTable(client, namespace, "export_depth_t3");
+    Table t4 = createTable(client, namespace, "export_depth_t4");
+    Table t5 = createTable(client, namespace, "export_depth_t5");
+
+    addLineage(client, t1, t2);
+    addLineage(client, t2, t3);
+    addLineage(client, t3, t4);
+    addLineage(client, t4, t5);
+
+    // Depth 1,1: direct neighbors of t3 are present
+    String csvDepth1 =
+        exportLineageWithRetry(client, t3.getFullyQualifiedName(), "table", "1", "1", 2);
+    List<CSVRecord> rowsDepth1 = parseCsvRows(csvDepth1);
+    assertEdgeInCsv(rowsDepth1, t2.getFullyQualifiedName(), t3.getFullyQualifiedName());
+    assertEdgeInCsv(rowsDepth1, t3.getFullyQualifiedName(), t4.getFullyQualifiedName());
+
+    // Depth 2,2: extended chain edges t1→t2 and t4→t5 are also present
+    String csvDepth2 =
+        exportLineageWithRetry(client, t3.getFullyQualifiedName(), "table", "2", "2", 4);
+    List<CSVRecord> rowsDepth2 = parseCsvRows(csvDepth2);
+    assertEdgeInCsv(rowsDepth2, t1.getFullyQualifiedName(), t2.getFullyQualifiedName());
+    assertEdgeInCsv(rowsDepth2, t4.getFullyQualifiedName(), t5.getFullyQualifiedName());
+    assertTrue(rowsDepth2.size() > rowsDepth1.size());
+
+    deleteLineage(client, t1.getEntityReference(), t2.getEntityReference());
+    deleteLineage(client, t2.getEntityReference(), t3.getEntityReference());
+    deleteLineage(client, t3.getEntityReference(), t4.getEntityReference());
+    deleteLineage(client, t4.getEntityReference(), t5.getEntityReference());
+
+    cleanupTable(client, t1);
+    cleanupTable(client, t2);
+    cleanupTable(client, t3);
+    cleanupTable(client, t4);
+    cleanupTable(client, t5);
+  }
+
+  private String exportLineageWithRetry(
+      OpenMetadataClient client,
+      String fqn,
+      String type,
+      String upstreamDepth,
+      String downstreamDepth,
+      int expectedMinRows) {
+    String[] holder = {null};
+    Awaitility.await("Export lineage CSV with at least " + expectedMinRows + " rows")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String csv =
+                  client.lineage().exportLineage(fqn, type, upstreamDepth, downstreamDepth);
+              try (CSVParser parser =
+                  CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(new StringReader(csv))) {
+                List<CSVRecord> rows = parser.getRecords();
+                if (rows.size() >= expectedMinRows) {
+                  holder[0] = csv;
+                  return true;
+                }
+              }
+              return false;
+            });
+    return holder[0];
+  }
+
+  private List<CSVRecord> parseCsvRows(String csvContent) throws IOException {
+    try (CSVParser parser =
+        CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(new StringReader(csvContent))) {
+      return parser.getRecords();
+    }
+  }
+
+  private void assertEdgeInCsv(List<CSVRecord> rows, String fromFqn, String toFqn) {
+    boolean found =
+        rows.stream()
+            .anyMatch(
+                r ->
+                    fromFqn.equals(r.get("fromFullyQualifiedName*"))
+                        && toFqn.equals(r.get("toFullyQualifiedName*")));
+    assertTrue(found, String.format("Expected edge %s -> %s not found in CSV", fromFqn, toFqn));
+  }
+
+  private void assertEdgeInAsyncCsv(List<CSVRecord> rows, String fromFqn, String toFqn) {
+    boolean found =
+        rows.stream()
+            .anyMatch(
+                r -> fromFqn.equals(r.get("fromEntityFQN")) && toFqn.equals(r.get("toEntityFQN")));
+    assertTrue(
+        found, String.format("Expected edge %s -> %s not found in async CSV", fromFqn, toFqn));
+  }
+
+  @Test
+  void testExportLineageAsyncBasicChain() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table t1 = createTable(client, namespace, "async_export_t1");
+    Table t2 = createTable(client, namespace, "async_export_t2");
+    Table t3 = createTable(client, namespace, "async_export_t3");
+
+    addLineage(client, t1, t2);
+    addLineage(client, t2, t3);
+
+    RequestOptions.Builder options = RequestOptions.builder();
+    options.queryParam("fqn", t2.getFullyQualifiedName());
+    options.queryParam("type", "table");
+    options.queryParam("upstreamDepth", "2");
+    options.queryParam("downstreamDepth", "2");
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/lineage/exportAsync", null, options.build());
+    JsonNode result = OBJECT_MAPPER.readTree(response);
+    assertNotNull(result.get("jobId"));
+    assertFalse(result.get("jobId").asText().isEmpty());
+
+    deleteLineage(client, t1.getEntityReference(), t2.getEntityReference());
+    deleteLineage(client, t2.getEntityReference(), t3.getEntityReference());
+
+    cleanupTable(client, t1);
+    cleanupTable(client, t2);
+    cleanupTable(client, t3);
+  }
+
+  @Test
+  void testExportLineageByEntityCountAsyncBasicChain() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table t1 = createTable(client, namespace, "ec_async_export_t1");
+    Table t2 = createTable(client, namespace, "ec_async_export_t2");
+    Table t3 = createTable(client, namespace, "ec_async_export_t3");
+
+    addLineage(client, t1, t2);
+    addLineage(client, t2, t3);
+
+    RequestOptions.Builder options = RequestOptions.builder();
+    options.queryParam("fqn", t2.getFullyQualifiedName());
+    options.queryParam("direction", "DOWNSTREAM");
+    options.queryParam("nodeDepth", "1");
+    options.queryParam("maxDepth", "2");
+    options.queryParam("type", "table");
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/lineage/exportByEntityCountAsync", null, options.build());
+    JsonNode result = OBJECT_MAPPER.readTree(response);
+    assertNotNull(result.get("jobId"));
+    assertFalse(result.get("jobId").asText().isEmpty());
+
+    deleteLineage(client, t1.getEntityReference(), t2.getEntityReference());
+    deleteLineage(client, t2.getEntityReference(), t3.getEntityReference());
+
+    cleanupTable(client, t1);
+    cleanupTable(client, t2);
+    cleanupTable(client, t3);
+  }
+
+  @Test
+  void testExportLineageAsyncWithColumnLineage() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTableWithMultipleColumns(client, namespace, "async_col_src");
+    Table targetTable = createTableWithMultipleColumns(client, namespace, "async_col_tgt");
+
+    String srcCol1 = sourceTable.getColumns().get(0).getFullyQualifiedName();
+    String tgtCol1 = targetTable.getColumns().get(0).getFullyQualifiedName();
+
+    LineageDetails details = new LineageDetails();
+    details
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(srcCol1)).withToColumn(tgtCol1));
+
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(sourceTable.getEntityReference())
+                    .withToEntity(targetTable.getEntityReference())
+                    .withLineageDetails(details));
+    executeAddLineage(client, addLineage);
+
+    RequestOptions.Builder options = RequestOptions.builder();
+    options.queryParam("fqn", sourceTable.getFullyQualifiedName());
+    options.queryParam("type", "table");
+    options.queryParam("upstreamDepth", "0");
+    options.queryParam("downstreamDepth", "1");
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/lineage/exportAsync", null, options.build());
+    JsonNode result = OBJECT_MAPPER.readTree(response);
+    assertNotNull(result.get("jobId"));
+    assertFalse(result.get("jobId").asText().isEmpty());
+
+    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
   }
 }

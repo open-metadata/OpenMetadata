@@ -78,7 +78,7 @@ export enum ResourceEntity {
   DOMAIN = 'domain',
   DATA_PRODUCT = 'dataProduct',
   STORED_PROCEDURE = 'storedProcedure',
-  APPLICATION = 'application',
+  APPLICATION = 'app',
   PERSONA = 'persona',
   API_SERVICE = 'apiService',
   API_COLLECTION = 'apiCollection',
@@ -91,6 +91,7 @@ export enum ResourceEntity {
   WORKSHEET = 'worksheet',
   NOTIFICATION_TEMPLATE = 'notificationTemplate',
   AUDIT_LOG = 'auditLog',
+  TABLE_COLUMN = 'tableColumn',
   DATA_CONTRACT = 'dataContract',
 }
 

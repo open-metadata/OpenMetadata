@@ -141,7 +141,7 @@ class StatsReconcilerTest {
       StepStats sinkStats =
           new StepStats().withTotalRecords(80).withSuccessRecords(60).withFailedRecords(20);
 
-      StepStats result = StatsReconciler.reconcileToJobStats(readerStats, sinkStats);
+      StepStats result = StatsReconciler.reconcileToJobStats(readerStats, null, sinkStats);
 
       assertEquals(100, result.getTotalRecords());
       assertEquals(60, result.getSuccessRecords());
@@ -154,7 +154,7 @@ class StatsReconcilerTest {
       StepStats sinkStats =
           new StepStats().withTotalRecords(80).withSuccessRecords(60).withFailedRecords(20);
 
-      StepStats result = StatsReconciler.reconcileToJobStats(null, sinkStats);
+      StepStats result = StatsReconciler.reconcileToJobStats(null, null, sinkStats);
 
       assertEquals(0, result.getTotalRecords());
       assertEquals(60, result.getSuccessRecords());
@@ -167,7 +167,7 @@ class StatsReconcilerTest {
       StepStats readerStats =
           new StepStats().withTotalRecords(100).withSuccessRecords(80).withFailedRecords(20);
 
-      StepStats result = StatsReconciler.reconcileToJobStats(readerStats, null);
+      StepStats result = StatsReconciler.reconcileToJobStats(readerStats, null, null);
 
       assertEquals(100, result.getTotalRecords());
       assertEquals(0, result.getSuccessRecords());
@@ -177,7 +177,7 @@ class StatsReconcilerTest {
     @Test
     @DisplayName("Should handle both null stats")
     void testReconcileToJobStatsBothNull() {
-      StepStats result = StatsReconciler.reconcileToJobStats(null, null);
+      StepStats result = StatsReconciler.reconcileToJobStats(null, null, null);
 
       assertEquals(0, result.getTotalRecords());
       assertEquals(0, result.getSuccessRecords());
@@ -190,7 +190,7 @@ class StatsReconcilerTest {
       StepStats readerStats = new StepStats();
       StepStats sinkStats = new StepStats().withSuccessRecords(50);
 
-      StepStats result = StatsReconciler.reconcileToJobStats(readerStats, sinkStats);
+      StepStats result = StatsReconciler.reconcileToJobStats(readerStats, null, sinkStats);
 
       assertEquals(0, result.getTotalRecords());
       assertEquals(50, result.getSuccessRecords());

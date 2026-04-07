@@ -8,7 +8,7 @@ source:
       awsConfig:
         awsAccessKeyId: access key id
         awsSecretAccessKey: access secret key
-        awsRegion: aws region name
+        awsRegion: us-east-1
       s3StagingDir: https://s3-directory-for-datasource.com
       workgroup: workgroup name
   sourceConfig:

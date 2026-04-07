@@ -49,6 +49,51 @@ ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
 logger = ingestion_logger()
 
 
+def _redshift_initialize(self, connection):
+    """
+    Override PGDialect + PGDialect_psycopg2 initialization to skip
+    PostgreSQL-specific queries that Redshift doesn't support
+    (e.g., SHOW standard_conforming_strings).
+    """
+    from sqlalchemy.engine.default import DefaultDialect
+
+    DefaultDialect.initialize(self, connection)
+    self._backslash_escapes = False
+    self.supports_smallserial = False
+    self._supports_drop_index_concurrently = False
+    self.supports_identity_columns = False
+    self._has_native_hstore = False
+
+
+def _load_domains(self, connection, **kw):
+    """
+    Override to return empty dict since Redshift does not support user-created
+    domains and pg_catalog.pg_collation does not exist in Redshift, causing a
+    ProgrammingError that aborts the transaction and breaks all subsequent queries.
+    """
+    return {}
+
+
+def get_temp_table_names(self, connection, schema=None, **kw):
+    """
+    Override PGDialect's get_temp_table_names to avoid querying
+    pg_catalog.pg_class.relpersistence which does not exist in Redshift,
+    causing a ProgrammingError that aborts the transaction and breaks all
+    subsequent queries.
+    """
+    return []
+
+
+def get_multi_columns(self, connection, **kw):
+    """
+    Override PGDialect's get_multi_columns to avoid querying
+    pg_attribute.attcollation which does not exist in Redshift.
+    Falls back to the default implementation that delegates to
+    the already-overridden get_columns() method.
+    """
+    return self._default_multi_reflect(self.get_columns, connection, **kw)
+
+
 # pylint: disable=protected-access
 @calculate_execution_time()
 def get_columns(self, connection, table_name, schema=None, **kw):
@@ -384,8 +429,13 @@ def get_table_comment(
 @calculate_execution_time()
 def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-argument
     """
+    Get all relation info for a schema.
+
     Uses a custom single-schema cache instead of @reflection.cache
     to prevent unbounded memory growth across schemas (issue #20649).
+    Only the most recently requested schema's data is retained.
+    The ``table_name`` kwarg is not used for filtering since the
+    cache is keyed by schema only.
     """
     # pylint: disable=consider-using-f-string
     schema = kw.get("schema", None)
@@ -397,15 +447,10 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
 
     schema_clause = "AND schema = '{schema}'".format(schema=schema) if schema else ""
 
-    table_name = kw.get("table_name", None)
-    table_clause = (
-        "AND relname = '{table}'".format(table=table_name) if table_name else ""
-    )
-
     result = connection.execute(
         sa.text(
             REDSHIFT_GET_ALL_RELATIONS.format(
-                schema_clause=schema_clause, table_clause=table_clause, limit_clause=""
+                schema_clause=schema_clause, table_clause="", limit_clause=""
             )
         )
     )

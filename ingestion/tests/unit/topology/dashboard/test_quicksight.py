@@ -16,7 +16,7 @@ Test QuickSight using the topology
 import json
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -249,3 +249,142 @@ class QuickSightUnitTest(TestCase):
         # Test with includeOwners = False
         self.quicksight.source_config.includeOwners = False
         self.assertFalse(self.quicksight.source_config.includeOwners)
+
+    @pytest.mark.order(8)
+    def test_yield_datamodel_uses_dataset_id(self):
+        """
+        Test that yield_datamodel creates separate DataModel entities per dataset,
+        not per datasource. When multiple datasets share the same datasource,
+        each dataset should produce its own DataModel.
+        """
+        shared_datasource_id = "shared-datasource-001"
+        shared_datasource_arn = (
+            "arn:aws:quicksight:us-east-2:123456789:datasource/shared-datasource-001"
+        )
+
+        mock_list_data_sets_response = {
+            "DataSetSummaries": [
+                {
+                    "DataSetId": "dataset-A",
+                    "Arn": "arn:aws:quicksight:us-east-2:123456789:dataset/dataset-A",
+                },
+                {
+                    "DataSetId": "dataset-B",
+                    "Arn": "arn:aws:quicksight:us-east-2:123456789:dataset/dataset-B",
+                },
+            ]
+        }
+
+        mock_describe_dataset_a = {
+            "DataSet": {
+                "DataSetId": "dataset-A",
+                "Name": "Dataset A",
+                "PhysicalTableMap": {
+                    "table1": {
+                        "RelationalTable": {
+                            "DataSourceArn": shared_datasource_arn,
+                            "Schema": "public",
+                            "Name": "table_a",
+                            "InputColumns": [
+                                {"Name": "id", "Type": "INTEGER"},
+                                {"Name": "name", "Type": "STRING"},
+                            ],
+                        }
+                    }
+                },
+            }
+        }
+
+        mock_describe_dataset_b = {
+            "DataSet": {
+                "DataSetId": "dataset-B",
+                "Name": "Dataset B",
+                "PhysicalTableMap": {
+                    "table1": {
+                        "RelationalTable": {
+                            "DataSourceArn": shared_datasource_arn,
+                            "Schema": "public",
+                            "Name": "table_b",
+                            "InputColumns": [
+                                {"Name": "email", "Type": "STRING"},
+                                {"Name": "created_at", "Type": "DATETIME"},
+                            ],
+                        }
+                    }
+                },
+            }
+        }
+
+        mock_list_data_sources_response = {
+            "DataSources": [
+                {
+                    "DataSourceId": shared_datasource_id,
+                    "Arn": shared_datasource_arn,
+                }
+            ]
+        }
+
+        mock_describe_data_source_response = {
+            "DataSource": {
+                "Name": "postgres_source",
+                "Type": "POSTGRESQL",
+                "DataSourceId": shared_datasource_id,
+            },
+            "RequestId": "req-001",
+            "Status": 200,
+        }
+
+        def describe_data_set_side_effect(**kwargs):
+            if kwargs["DataSetId"] == "dataset-A":
+                return mock_describe_dataset_a
+            return mock_describe_dataset_b
+
+        mock_client = MagicMock()
+        mock_client.list_data_sets.return_value = mock_list_data_sets_response
+        mock_client.describe_data_set.side_effect = describe_data_set_side_effect
+        mock_client.list_data_sources.return_value = mock_list_data_sources_response
+        mock_client.describe_data_source.return_value = (
+            mock_describe_data_source_response
+        )
+
+        self.quicksight.client = mock_client
+
+        dashboard_details = DashboardDetail(
+            DashboardId="dash-001",
+            Name="Test Dashboard",
+            Version={
+                "DataSetArns": [
+                    "arn:aws:quicksight:us-east-2:123456789:dataset/dataset-A",
+                    "arn:aws:quicksight:us-east-2:123456789:dataset/dataset-B",
+                ],
+                "Sheets": [],
+            },
+        )
+
+        results = list(self.quicksight.yield_datamodel(dashboard_details))
+
+        datamodel_requests = [
+            r.right for r in results if isinstance(r, Either) and r.right
+        ]
+
+        assert len(datamodel_requests) == 2
+
+        names = {dm.name.root for dm in datamodel_requests}
+        assert "dataset-A" in names
+        assert "dataset-B" in names
+
+        display_names = {dm.displayName for dm in datamodel_requests}
+        assert "Dataset A" in display_names
+        assert "Dataset B" in display_names
+
+        for dm in datamodel_requests:
+            assert dm.name.root != shared_datasource_id
+
+        dm_a = next(dm for dm in datamodel_requests if dm.name.root == "dataset-A")
+        dm_b = next(dm for dm in datamodel_requests if dm.name.root == "dataset-B")
+
+        col_names_a = {col.name.root for col in dm_a.columns}
+        assert col_names_a == {"id", "name"}
+
+        col_names_b = {col.name.root for col in dm_b.columns}
+        assert col_names_b == {"email", "created_at"}

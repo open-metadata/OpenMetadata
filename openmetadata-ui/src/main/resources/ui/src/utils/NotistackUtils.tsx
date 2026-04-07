@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { IconButton } from '@mui/material';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { X } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
+import type { EnqueueSnackbar } from 'notistack';
 import React from 'react';
 import NotificationMessage from '../components/common/atoms/notifications/NotificationMessage';
 import { ClientErrors } from '../enums/Axios.enum';
@@ -21,13 +22,13 @@ import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
 const CloseButton = ({ closeSnackbar }: { closeSnackbar?: () => void }) => (
-  <IconButton
+  <ButtonUtility
+    color="tertiary"
     data-testid="alert-icon-close"
-    size="small"
-    sx={{ color: 'currentColor' }}
-    onClick={closeSnackbar}>
-    <X size={16} />
-  </IconButton>
+    icon={<X size={16} />}
+    size="sm"
+    onClick={closeSnackbar}
+  />
 );
 
 /**
@@ -38,7 +39,7 @@ const CloseButton = ({ closeSnackbar }: { closeSnackbar?: () => void }) => (
  * @param anchorOrigin Optional position for the snackbar (defaults to top-right)
  */
 export const showNotistackError = (
-  enqueueSnackbar: any,
+  enqueueSnackbar: EnqueueSnackbar,
   error: AxiosError | string | React.ReactNode,
   fallbackText?: string,
   anchorOrigin?: {
@@ -59,7 +60,7 @@ export const showNotistackError = (
     'config' in error &&
     'response' in error
   ) {
-    const axiosError = error as AxiosError;
+    const axiosError = error;
     const method = axiosError.config?.method?.toUpperCase();
     const fallback =
       fallbackText && fallbackText.length > 0
@@ -81,8 +82,7 @@ export const showNotistackError = (
       return;
     }
   } else {
-    errorMessage = (fallbackText ??
-      i18n.t('server.unexpected-error')) as string;
+    errorMessage = fallbackText ?? String(i18n.t('server.unexpected-error'));
   }
 
   enqueueSnackbar(
@@ -93,9 +93,7 @@ export const showNotistackError = (
     {
       variant: 'error',
       anchorOrigin: anchorOrigin || { vertical: 'top', horizontal: 'right' },
-      SnackbarProps: {
-        'data-testid': 'alert-bar',
-      },
+      SnackbarProps: { 'data-testid': 'alert-bar' } as Record<string, string>,
       action: closeSnackbar
         ? (snackbarId: string | number) =>
             React.createElement(CloseButton, {
@@ -112,7 +110,7 @@ export const showNotistackError = (
  * @param message success message
  */
 export const showNotistackSuccess = (
-  enqueueSnackbar: any,
+  enqueueSnackbar: EnqueueSnackbar,
   message: string | React.ReactNode,
   closeSnackbar?: (key?: string | number) => void
 ) => {
@@ -123,9 +121,7 @@ export const showNotistackSuccess = (
     }),
     {
       variant: 'success',
-      SnackbarProps: {
-        'data-testid': 'alert-bar',
-      },
+      SnackbarProps: { 'data-testid': 'alert-bar' } as Record<string, string>,
       action: closeSnackbar
         ? (snackbarId: string | number) =>
             React.createElement(CloseButton, {
@@ -142,7 +138,7 @@ export const showNotistackSuccess = (
  * @param message info message
  */
 export const showNotistackInfo = (
-  enqueueSnackbar: any,
+  enqueueSnackbar: EnqueueSnackbar,
   message: string | React.ReactNode,
   closeSnackbar?: (key?: string | number) => void
 ) => {
@@ -153,9 +149,7 @@ export const showNotistackInfo = (
     }),
     {
       variant: 'info',
-      SnackbarProps: {
-        'data-testid': 'alert-bar',
-      },
+      SnackbarProps: { 'data-testid': 'alert-bar' } as Record<string, string>,
       action: closeSnackbar
         ? (snackbarId: string | number) =>
             React.createElement(CloseButton, {
@@ -172,7 +166,7 @@ export const showNotistackInfo = (
  * @param message warning message
  */
 export const showNotistackWarning = (
-  enqueueSnackbar: any,
+  enqueueSnackbar: EnqueueSnackbar,
   message: string | React.ReactNode,
   closeSnackbar?: (key?: string | number) => void
 ) => {
@@ -183,9 +177,7 @@ export const showNotistackWarning = (
     }),
     {
       variant: 'warning',
-      SnackbarProps: {
-        'data-testid': 'alert-bar',
-      },
+      SnackbarProps: { 'data-testid': 'alert-bar' } as Record<string, string>,
       action: closeSnackbar
         ? (snackbarId: string | number) =>
             React.createElement(CloseButton, {

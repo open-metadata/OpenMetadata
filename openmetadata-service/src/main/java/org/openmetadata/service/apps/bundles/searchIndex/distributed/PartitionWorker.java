@@ -155,6 +155,11 @@ public class PartitionWorker {
         rangeStart,
         rangeEnd);
 
+    if (stopped.get() || Thread.currentThread().isInterrupted()) {
+      LOG.info("Skipping partition {} because worker is already stopped", partition.getId());
+      return new PartitionResult(0, 0, true);
+    }
+
     AtomicLong successCount = new AtomicLong(0);
     AtomicLong failedCount = new AtomicLong(0);
     AtomicLong readerFailedCount = new AtomicLong(0);
@@ -313,18 +318,32 @@ public class PartitionWorker {
       waitForSinkOperations(statsTracker);
       LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
 
+      // Adjust partition counts to include process-stage failures.
+      // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.
+      // Process failures happen async in addEntity() and are tracked by StageStatsTracker.
+      long processFailed =
+          statsTracker != null ? statsTracker.getProcess().getCumulativeFailed().get() : 0;
+      if (processFailed > 0) {
+        long adjustment = Math.min(processFailed, successCount.get());
+        if (adjustment > 0) {
+          successCount.addAndGet(-adjustment);
+          failedCount.addAndGet(adjustment);
+        }
+      }
+
       // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
 
       long expectedRecords = rangeEnd - rangeStart;
       long actualProcessed = successCount.get() + failedCount.get();
       LOG.info(
-          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, warnings: {})",
+          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, warnings: {})",
           partition.getId(),
           entityType,
           successCount.get(),
           failedCount.get(),
           readerFailedCount.get(),
+          processFailed,
           warningsCount.get());
       if (actualProcessed < expectedRecords) {
         LOG.debug(
@@ -367,7 +386,6 @@ public class PartitionWorker {
    * We wait for both:
    * <ul>
    *   <li>The StageStatsTracker's pending operations (for stats accuracy)</li>
-   *   <li>The BulkSink's pending vector tasks (for vector completion)</li>
    * </ul>
    *
    * @param statsTracker The stats tracker to flush after waiting
@@ -636,6 +654,7 @@ public class PartitionWorker {
 
     SearchIndexPartition updated =
         partition.toBuilder()
+            .status(PartitionStatus.PROCESSING)
             .cursor(cursor)
             .processedCount(processed)
             .successCount(success)

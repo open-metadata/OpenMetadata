@@ -14,6 +14,7 @@ import { Typography } from 'antd';
 import {
   first,
   isEmpty,
+  isNil,
   isUndefined,
   last,
   round,
@@ -57,6 +58,7 @@ export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
         EntityType.DATABASE_SCHEMA,
         EntityType.STORED_PROCEDURE,
         EntityType.TABLE,
+        EntityType.TABLE_COLUMN,
         EntityType.QUERY,
       ];
     case 'messagingServices':
@@ -136,6 +138,20 @@ export const getChartTypeForWidget = (chartType: SystemChartType) => {
 export const getPlatformInsightsChartDataFormattingMethod =
   (chartsData: Record<SystemChartType, DataInsightCustomChartResult>) =>
   (chartType: SystemChartType) => {
+    if (
+      isNil(chartsData) ||
+      isNil(chartsData[chartType]) ||
+      isEmpty(chartsData[chartType].results)
+    ) {
+      return {
+        isIncreased: false,
+        percentageChange: 0,
+        currentPercentage: 0,
+        noRecords: true,
+        numberOfDays: 0,
+      };
+    }
+
     const summaryChartData = chartsData[chartType];
     const lastDay = last(summaryChartData?.results)?.day ?? 1;
 
@@ -190,6 +206,10 @@ export const getFormattedTotalAssetsDataFromSocketData = (
   socketData: DataInsightCustomChartResult,
   serviceCategory: ServiceTypes
 ) => {
+  if (isNil(socketData) || isNil(socketData.results)) {
+    return [];
+  }
+
   const assets = getAssetsByServiceType(serviceCategory);
 
   const buckets = assets.reduce((acc, curr) => {
@@ -356,7 +376,7 @@ export const filterDistributionChartItem = (item: {
   }
 
   // clean start and end quotes
-  const tag_name = termParts[1].replace(/(^["']+|["']+$)/g, '');
+  const tag_name = termParts[1].replaceAll(/(^["']+|["']+$)/g, '');
 
   return toLower(tag_name) === toLower(item.group);
 };

@@ -149,7 +149,7 @@ sagemaker_config = {
                     "awsAccessKeyId": "access_key",
                     "awsSecretAccessKey": "secret_access_key",
                     "awsSessionToken": "session_token",
-                    "awsRegion": "region",
+                    "awsRegion": "us-east-1",
                 },
             }
         },

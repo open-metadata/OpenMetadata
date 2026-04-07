@@ -87,6 +87,7 @@ import {
   InputType,
   SubscriptionCategory,
   SubscriptionType,
+  Type,
   Webhook,
 } from '../../generated/events/eventSubscription';
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
@@ -441,23 +442,218 @@ export const getDestinationConfigField = (
                   }
                   key={`advanced-configuration-${fieldName}`}>
                   <Row align="middle" gutter={[8, 8]}>
-                    <Col data-testid="secret-key" span={24}>
+                    <Col data-testid="auth-type" span={24}>
                       <Form.Item
                         label={
                           <Typography.Text>{`${t(
-                            'label.secret-key'
+                            'label.authentication-type'
                           )}:`}</Typography.Text>
                         }
                         labelCol={{ span: 24 }}
-                        name={[fieldName, 'config', 'secretKey']}>
-                        <Input.Password
-                          data-testid={`secret-key-input-${fieldName}`}
-                          placeholder={`${t('label.secret-key')} (${t(
-                            'label.optional'
-                          )})`}
+                        name={[fieldName, 'config', 'authType', 'type']}>
+                        <Select
+                          className="w-full"
+                          data-testid={`auth-type-select-${fieldName}`}
+                          options={[
+                            {
+                              label: t('label.no-authentication'),
+                              value: Type.None,
+                            },
+                            {
+                              label: t('label.bearer-hmac-signature'),
+                              value: Type.Bearer,
+                            },
+                            {
+                              label: t('label.oauth2-client-credential-plural'),
+                              value: Type.Oauth2,
+                            },
+                          ]}
+                          placeholder={t('label.authentication-type')}
                         />
                       </Form.Item>
                     </Col>
+                    <Form.Item
+                      noStyle
+                      shouldUpdate={(prevValues, currentValues) => {
+                        const prevType =
+                          prevValues?.destinations?.[fieldName]?.config
+                            ?.authType?.type;
+                        const currentType =
+                          currentValues?.destinations?.[fieldName]?.config
+                            ?.authType?.type;
+
+                        return prevType !== currentType;
+                      }}>
+                      {({ getFieldValue }) => {
+                        const selectedAuthType = getFieldValue([
+                          'destinations',
+                          fieldName,
+                          'config',
+                          'authType',
+                          'type',
+                        ]);
+
+                        if (selectedAuthType === Type.Bearer) {
+                          return (
+                            <Col data-testid="secret-key" span={24}>
+                              <Form.Item
+                                label={
+                                  <Typography.Text>{`${t(
+                                    'label.secret-key'
+                                  )}:`}</Typography.Text>
+                                }
+                                labelCol={{ span: 24 }}
+                                name={[
+                                  fieldName,
+                                  'config',
+                                  'authType',
+                                  'secretKey',
+                                ]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: t(
+                                      'message.field-text-is-required',
+                                      {
+                                        fieldText: t('label.secret-key'),
+                                      }
+                                    ),
+                                  },
+                                ]}>
+                                <Input.Password
+                                  data-testid={`secret-key-input-${fieldName}`}
+                                  placeholder={t('label.secret-key')}
+                                />
+                              </Form.Item>
+                            </Col>
+                          );
+                        }
+
+                        if (selectedAuthType === Type.Oauth2) {
+                          return (
+                            <>
+                              <Col span={24}>
+                                <Form.Item
+                                  label={
+                                    <Typography.Text>{`${t(
+                                      'label.token-url'
+                                    )}:`}</Typography.Text>
+                                  }
+                                  labelCol={{ span: 24 }}
+                                  name={[
+                                    fieldName,
+                                    'config',
+                                    'authType',
+                                    'tokenUrl',
+                                  ]}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t(
+                                        'message.field-text-is-required',
+                                        {
+                                          fieldText: t('label.token-url'),
+                                        }
+                                      ),
+                                    },
+                                  ]}>
+                                  <Input
+                                    data-testid={`token-url-input-${fieldName}`}
+                                    placeholder="https://auth.example.com/oauth/token"
+                                  />
+                                </Form.Item>
+                              </Col>
+                              <Col span={12}>
+                                <Form.Item
+                                  label={
+                                    <Typography.Text>{`${t(
+                                      'label.client-id'
+                                    )}:`}</Typography.Text>
+                                  }
+                                  labelCol={{ span: 24 }}
+                                  name={[
+                                    fieldName,
+                                    'config',
+                                    'authType',
+                                    'clientId',
+                                  ]}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t(
+                                        'message.field-text-is-required',
+                                        {
+                                          fieldText: t('label.client-id'),
+                                        }
+                                      ),
+                                    },
+                                  ]}>
+                                  <Input.Password
+                                    data-testid={`client-id-input-${fieldName}`}
+                                    placeholder={t('label.client-id')}
+                                  />
+                                </Form.Item>
+                              </Col>
+                              <Col span={12}>
+                                <Form.Item
+                                  label={
+                                    <Typography.Text>{`${t(
+                                      'label.client-secret'
+                                    )}:`}</Typography.Text>
+                                  }
+                                  labelCol={{ span: 24 }}
+                                  name={[
+                                    fieldName,
+                                    'config',
+                                    'authType',
+                                    'clientSecret',
+                                  ]}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t(
+                                        'message.field-text-is-required',
+                                        {
+                                          fieldText: t('label.client-secret'),
+                                        }
+                                      ),
+                                    },
+                                  ]}>
+                                  <Input.Password
+                                    data-testid={`client-secret-input-${fieldName}`}
+                                    placeholder={t('label.client-secret')}
+                                  />
+                                </Form.Item>
+                              </Col>
+                              <Col span={24}>
+                                <Form.Item
+                                  label={
+                                    <Typography.Text>{`${t(
+                                      'label.scope'
+                                    )}:`}</Typography.Text>
+                                  }
+                                  labelCol={{ span: 24 }}
+                                  name={[
+                                    fieldName,
+                                    'config',
+                                    'authType',
+                                    'scope',
+                                  ]}>
+                                  <Input
+                                    data-testid={`scope-input-${fieldName}`}
+                                    placeholder={`${t('label.scope')} (${t(
+                                      'label.optional'
+                                    )})`}
+                                  />
+                                </Form.Item>
+                              </Col>
+                            </>
+                          );
+                        }
+
+                        return null;
+                      }}
+                    </Form.Item>
                     <Col span={24}>
                       <Form.List name={[fieldName, 'config', 'headers']}>
                         {(fields, { add, remove }, { errors }) => (

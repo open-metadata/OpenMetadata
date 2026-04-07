@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
@@ -28,14 +29,16 @@ export type SearchSourceDetails =
   };
 
 export interface EntitySummaryPanelProps {
-  entityDetails: EntityDetailsObjectInterface;
-  handleClosePanel: () => void;
-  highlights?: SearchedDataProps['data'][number]['highlight'];
-  panelPath?: string;
-  isSideDrawer?: boolean;
-  upstreamDepth?: number;
-  pipelineViewMode?: PipelineViewMode;
-  downstreamDepth?: number;
-  nodesPerLayer?: number;
-  onEntityUpdate?: (updatedEntity: Partial<EntityData>) => void;
+  readonly entityDetails: EntityDetailsObjectInterface;
+  readonly handleClosePanel: () => void;
+  readonly highlights?: SearchedDataProps['data'][number]['highlight'];
+  readonly panelPath?: string;
+  readonly isSideDrawer?: boolean;
+  readonly upstreamDepth?: number;
+  readonly pipelineViewMode?: PipelineViewMode;
+  readonly downstreamDepth?: number;
+  readonly nodesPerLayer?: number;
+  readonly onEntityUpdate?: (updatedEntity: Partial<EntityData>) => void;
+  readonly ontologyExplorerRelationsSlot?: ReactNode;
+  readonly sideDrawerOverviewOnly?: boolean;
 }

@@ -8,7 +8,6 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,8 +45,7 @@ public class ElasticSearchLineChartAggregator
       long end,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder,
-      boolean live)
-      throws IOException {
+      boolean live) {
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     Map<String, Aggregation> aggregationsMap = new HashMap<>();
     int i = 0;
@@ -74,20 +72,20 @@ public class ElasticSearchLineChartAggregator
         Aggregation termsAgg =
             Aggregation.of(
                 a -> {
-                  var tb = a.terms(t -> t.field(lineChart.getxAxisField()).size(1000));
+                  var tb = a.terms(t -> t.field(lineChart.getxAxisField()).size(100));
                   if (finalIncludeTerms != null) {
                     tb =
                         a.terms(
                             t ->
                                 t.field(lineChart.getxAxisField())
-                                    .size(1000)
+                                    .size(100)
                                     .include(inc -> inc.regexp(finalIncludeTerms)));
                   }
                   if (finalExcludeTerms != null) {
                     tb =
                         a.terms(
                             t -> {
-                              var builder = t.field(lineChart.getxAxisField()).size(1000);
+                              var builder = t.field(lineChart.getxAxisField()).size(100);
                               if (finalIncludeTerms != null) {
                                 builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
                               }
@@ -132,7 +130,7 @@ public class ElasticSearchLineChartAggregator
         if (currentAgg.isTerms()) {
           // Rebuild terms aggregation with sub-aggregations
           final String fieldName = currentAgg.terms().field();
-          final int size = currentAgg.terms().size() != null ? currentAgg.terms().size() : 1000;
+          final int size = currentAgg.terms().size() != null ? currentAgg.terms().size() : 100;
           metricAggregations.put(
               metricName,
               Aggregation.of(
@@ -167,12 +165,12 @@ public class ElasticSearchLineChartAggregator
         Aggregation groupByAgg =
             Aggregation.of(
                 a -> {
-                  var termsBuilder = a.terms(t -> t.field(lineChart.getGroupBy()).size(1000));
+                  var termsBuilder = a.terms(t -> t.field(lineChart.getGroupBy()).size(100));
                   if (finalIncludeGroups != null || finalExcludeGroups != null) {
                     termsBuilder =
                         a.terms(
                             t -> {
-                              var tb = t.field(lineChart.getGroupBy()).size(1000);
+                              var tb = t.field(lineChart.getGroupBy()).size(100);
                               if (finalIncludeGroups != null) {
                                 tb = tb.include(inc -> inc.terms(finalIncludeGroups));
                               }
@@ -209,6 +207,7 @@ public class ElasticSearchLineChartAggregator
                                       .lte(
                                           es.co.elastic.clients.json.JsonData.of(
                                               String.valueOf(end))))));
+
       searchRequestBuilder.query(rangeQuery);
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
@@ -233,8 +232,6 @@ public class ElasticSearchLineChartAggregator
       SearchResponse<JsonData> searchResponse,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder) {
-    Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolderInternal =
-        metricFormulaHolder;
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     Map<String, Aggregate> aggregationMap =
@@ -261,9 +258,13 @@ public class ElasticSearchLineChartAggregator
               diChartResults.addAll(
                   processAggregations(
                       singleAggMap,
-                      metricFormulaHolderInternal.get(subAggName).formula,
+                      ((Map<String, MetricFormulaHolder>) metricFormulaHolder)
+                          .get(subAggName)
+                          .formula,
                       group,
-                      metricFormulaHolderInternal.get(subAggName).holders,
+                      ((Map<String, MetricFormulaHolder>) metricFormulaHolder)
+                          .get(subAggName)
+                          .holders,
                       getMetricName(lineChart, subAggName)));
             }
           }
@@ -274,13 +275,12 @@ public class ElasticSearchLineChartAggregator
     }
 
     List<DataInsightCustomChartResult> diChartResults = new ArrayList<>();
-    int i = 0;
     for (Map.Entry<String, Aggregate> entry : aggregationMap.entrySet()) {
       String aggName = entry.getKey();
       MetricFormulaHolder formulaHolder =
           metricFormulaHolder.get(aggName) == null
               ? new MetricFormulaHolder()
-              : metricFormulaHolderInternal.get(aggName);
+              : ((Map<String, MetricFormulaHolder>) metricFormulaHolder).get(aggName);
       String group = null;
       if (lineChart.getMetrics().size() > 1) {
         group = getMetricName(lineChart, aggName);
@@ -297,7 +297,6 @@ public class ElasticSearchLineChartAggregator
               formulaHolder.holders,
               getMetricName(lineChart, aggName));
       diChartResults.addAll(results);
-      i++;
     }
 
     resultList.setResults(diChartResults);

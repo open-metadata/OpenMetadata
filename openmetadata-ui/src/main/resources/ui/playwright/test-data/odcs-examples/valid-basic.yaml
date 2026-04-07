@@ -12,5 +12,5 @@ apiVersion: v3.1.0
 kind: DataContract
 id: basic-contract
 name: Basic ODCS Contract
-version: "1.0.0"
+version: '1.0.0'
 status: active

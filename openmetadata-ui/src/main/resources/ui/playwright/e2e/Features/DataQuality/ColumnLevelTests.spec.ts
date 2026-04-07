@@ -24,6 +24,7 @@ import {
   clickUpdateButton,
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { deleteTestCase } from '../../../utils/testCases';
 
 // use the admin user to login
@@ -1189,6 +1190,7 @@ test.describe(
       };
 
       await visitCreateTestCasePanelFromEntityPage(page, table);
+      await waitForAllLoadersToDisappear(page);
       await page
         .getByTestId('select-table-card')
         .getByText('Column Level')

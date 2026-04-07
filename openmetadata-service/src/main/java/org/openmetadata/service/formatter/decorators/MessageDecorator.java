@@ -65,6 +65,14 @@ public interface MessageDecorator<T> {
 
   String getBoldWithSpace();
 
+  default String bold(String text) {
+    return String.format(getBold(), text);
+  }
+
+  default String boldWithSpace(String text) {
+    return String.format(getBoldWithSpace(), text);
+  }
+
   String getLineBreak();
 
   String getAddMarker();
@@ -146,8 +154,7 @@ public interface MessageDecorator<T> {
     String entityUrl = "";
     switch (entityType) {
       case Entity.TEST_CASE:
-        if (entityInterface instanceof TestCase) {
-          TestCase testCase = (TestCase) entityInterface;
+        if (entityInterface instanceof TestCase testCase) {
           entityUrl = getEntityUrl("test-case", testCase.getFullyQualifiedName(), "issues");
         }
         break;

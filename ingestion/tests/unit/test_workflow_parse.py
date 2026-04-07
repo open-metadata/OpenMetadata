@@ -288,7 +288,7 @@ class TestWorkflowParse(TestCase):
                         "type": "Glue",
                         "awsConfig": {
                             "awsSecretAccessKey": "aws secret access key",
-                            "awsRegion": "aws region",
+                            "awsRegion": "us-east-1",
                             "endPointURL": "https://glue.<region_name>.amazonaws.com/",
                         },
                         "random": "extra",
@@ -404,7 +404,12 @@ class TestWorkflowParse(TestCase):
             parse_workflow_config_gracefully(config_dict)
 
         self.assertIn(
-            "We encountered an error parsing the configuration of your MatillionConnection.\nYou might need to review your config based on the original cause of this failure:\n\t - Missing parameter in ('connection', 'hostPort')\n\t - Missing parameter in ('connection', 'username')\n\t - Missing parameter in ('connection', 'password')",
+            "We encountered an error parsing the configuration of your MatillionConnection.\n"
+            "You might need to review your config based on the original cause of this failure:\n"
+            "\t - Missing parameter in ('connection', 'function-after[parse_name(), MatillionEtlAuthConfig]', 'hostPort')\n"
+            "\t - Missing parameter in ('connection', 'function-after[parse_name(), MatillionEtlAuthConfig]', 'username')\n"
+            "\t - Missing parameter in ('connection', 'function-after[parse_name(), MatillionEtlAuthConfig]', 'password')\n"
+            "\t - Invalid parameter value for ('connection', 'function-after[parse_name(), MatillionDpcAuthConfig]', 'type')",
             str(err.exception),
         )
 

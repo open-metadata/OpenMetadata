@@ -42,6 +42,13 @@ public class SchemaFieldExtractor {
   private static final Map<String, Map<String, FieldDefinition>> entityFieldsCache =
       new ConcurrentHashMap<>();
 
+  /**
+   * Entity types intentionally excluded from schema field extraction cache initialization. These
+   * entities are not currently supported by the custom-property schema extractor flow.
+   */
+  private static final Set<String> EXCLUDED_ENTITY_TYPES =
+      Set.of("promptTemplate", "agentExecution");
+
   public SchemaFieldExtractor() {
     initializeEntityFieldsCache();
   }
@@ -53,6 +60,13 @@ public class SchemaFieldExtractor {
       }
       List<String> entityTypes = getAllEntityTypes();
       for (String entityType : entityTypes) {
+        if (EXCLUDED_ENTITY_TYPES.contains(entityType)) {
+          // Keep an empty cache entry to avoid null-handling branches downstream.
+          entityFieldsCache.put(entityType, new LinkedHashMap<>());
+          LOG.debug(
+              "Skipping schema extraction cache initialization for entity type '{}'", entityType);
+          continue;
+        }
         try {
           String schemaPath = determineSchemaPath(entityType);
           String schemaUri = "classpath:///" + schemaPath;
@@ -82,7 +96,9 @@ public class SchemaFieldExtractor {
     SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
     Deque<Schema> processingStack = new ArrayDeque<>();
     Set<String> processedFields = new HashSet<>();
-    Map<String, FieldDefinition> fieldTypesMap = entityFieldsCache.get(entityType);
+    Map<String, FieldDefinition> fieldTypesMap =
+        new LinkedHashMap<>(
+            entityFieldsCache.computeIfAbsent(entityType, ignored -> new LinkedHashMap<>()));
     addCustomProperties(
         typeEntity, schemaUri, schemaClient, fieldTypesMap, processingStack, processedFields);
     return convertMapToFieldList(fieldTypesMap);
@@ -97,7 +113,9 @@ public class SchemaFieldExtractor {
       SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
       EntityUtil.Fields fieldsParam = new EntityUtil.Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, Include.ALL, false);
-      Map<String, FieldDefinition> fieldTypesMap = new LinkedHashMap<>();
+      Map<String, FieldDefinition> fieldTypesMap =
+          new LinkedHashMap<>(
+              entityFieldsCache.computeIfAbsent(entityType, ignored -> new LinkedHashMap<>()));
       Set<String> processedFields = new HashSet<>();
       Deque<Schema> processingStack = new ArrayDeque<>();
       addCustomProperties(
@@ -330,34 +348,34 @@ public class SchemaFieldExtractor {
     for (CustomProperty customProperty : typeEntity.getCustomProperties()) {
       String propertyName = customProperty.getName();
       String propertyType = customProperty.getPropertyType().getName();
-      String fullFieldName = propertyName; // No parent path for custom properties
+      // No parent path for custom properties
       String displayName = customProperty.getDisplayName();
-      LOG.debug("Processing custom property '{}'", fullFieldName);
+      LOG.debug("Processing custom property '{}'", propertyName);
 
       Object customPropertyConfigObj = customProperty.getCustomPropertyConfig();
 
       if (isEntityReferenceList(propertyType)) {
         String referenceType = "array<entityReference>";
         FieldDefinition fieldDef =
-            FieldDefinition.of(fullFieldName, displayName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(fullFieldName, fieldDef);
-        processedFields.add(fullFieldName);
-        LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
+            FieldDefinition.of(propertyName, displayName, referenceType, customPropertyConfigObj);
+        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
+        processedFields.add(propertyName);
+        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, referenceType);
 
       } else if (isEntityReference(propertyType)) {
         String referenceType = "entityReference";
         FieldDefinition fieldDef =
-            FieldDefinition.of(fullFieldName, displayName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(fullFieldName, fieldDef);
-        processedFields.add(fullFieldName);
-        LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
+            FieldDefinition.of(propertyName, displayName, referenceType, customPropertyConfigObj);
+        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
+        processedFields.add(propertyName);
+        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, referenceType);
 
       } else {
         FieldDefinition fieldDef =
-            FieldDefinition.of(fullFieldName, displayName, propertyType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(fullFieldName, fieldDef);
-        processedFields.add(fullFieldName);
-        LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, propertyType);
+            FieldDefinition.of(propertyName, displayName, propertyType, customPropertyConfigObj);
+        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
+        processedFields.add(propertyName);
+        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, propertyType);
       }
     }
   }
@@ -451,6 +469,7 @@ public class SchemaFieldExtractor {
         case "href" -> "href";
         case "timeInterval" -> "timeInterval";
         case "date" -> "date";
+        case "impersonatedBy" -> "impersonatedBy";
         case "dateTime" -> "dateTime";
         case "time" -> "time";
         case "date-cp" -> "date-cp";
@@ -470,6 +489,7 @@ public class SchemaFieldExtractor {
         case "entityExtension" -> "entityExtension";
         case "providerType" -> "providerType";
         case "componentConfig" -> "componentConfig";
+        case "semanticsRule" -> "semanticsRule";
         case "status" -> "status";
         case "sourceUrl" -> "sourceUrl";
         case "style" -> "style";
@@ -602,12 +622,18 @@ public class SchemaFieldExtractor {
             Map.entry("table", "data"),
             Map.entry("pipeline", "data"),
             Map.entry("votes", "data"),
+            Map.entry("learningResource", "learning"),
             Map.entry("dataProduct", "domains"),
             Map.entry("domain", "domains"),
             Map.entry("notificationTemplate", "events"),
             Map.entry("tag", "classification"),
             Map.entry("classification", "classification"),
+            Map.entry("agentExecution", "ai"),
+            Map.entry("aiApplication", "ai"),
+            Map.entry("aiGovernancePolicy", "ai"),
+            Map.entry("llmModel", "ai"),
             Map.entry("page", "data"),
+            Map.entry("promptTemplate", "ai"),
             Map.entry("tableColumn", "column"),
             Map.entry("dashboardDataModelColumn", "column"));
     return entityTypeToSubdirectory.getOrDefault(entityType, "data");

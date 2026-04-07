@@ -77,13 +77,14 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
     List<BulkOperation> requests = new ArrayList<>();
     List<CountDownLatch> pendingRequests = new ArrayList<>();
     long currentBatchSize = 0L;
+    int conversionFailures = 0;
 
     for (Object entity : entities) {
       try {
         BulkOperation request = convertEntityToRequest(entity, entityType);
         long requestSize = estimateOperationSize(request);
 
-        if (currentBatchSize + requestSize > maxPayloadSizeInBytes) {
+        if (!requests.isEmpty() && currentBatchSize + requestSize > maxPayloadSizeInBytes) {
           CountDownLatch latch = new CountDownLatch(1);
           pendingRequests.add(latch);
           sendBulkRequestAsyncWithCallback(new ArrayList<>(requests), entityErrorList, latch);
@@ -95,6 +96,7 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
         currentBatchSize += requestSize;
 
       } catch (Exception e) {
+        conversionFailures++;
         entityErrorList.add(
             new EntityError()
                 .withMessage(
@@ -104,6 +106,10 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
                 .withEntity(entity.toString()));
         LOG.error("Error converting entity to request", e);
       }
+    }
+
+    if (conversionFailures > 0) {
+      updateStats(0, conversionFailures);
     }
 
     if (!requests.isEmpty()) {
@@ -125,7 +131,6 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
     int totalEntities = entities.size();
     int failedEntities = entityErrorList.size();
     int successfulEntities = totalEntities - failedEntities;
-    updateStats(successfulEntities, failedEntities);
 
     if (!entityErrorList.isEmpty()) {
       throw new SearchIndexException(

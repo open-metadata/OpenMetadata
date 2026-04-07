@@ -23,7 +23,7 @@ import { uuid } from './common';
 import { visitEntityPage } from './entity';
 
 type EntityTypes = InstanceType<
-  typeof nestedChildrenTestData[keyof typeof nestedChildrenTestData]['CreationClass']
+  (typeof nestedChildrenTestData)[keyof typeof nestedChildrenTestData]['CreationClass']
 >;
 
 export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
@@ -56,6 +56,20 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
         level1Key: field1.fullyQualifiedName ?? field1.name,
         level2Key: field2.fullyQualifiedName ?? field2.name,
         expand: false,
+      };
+    }
+    case 'Container': {
+      const field0 = entityData.dataModel.columns[3];
+      const field1 = field0.children[0];
+      const field2 = field1.children[0];
+      return {
+        level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
+        level1Key:
+          field1.fullyQualifiedName ?? `${fqn}.${field0.name}.${field1.name}`,
+        level2Key:
+          field2.fullyQualifiedName ??
+          `${fqn}.${field0.name}.${field1.name}.${field2.name}`,
+        expand: true,
       };
     }
     case 'Data Model': {

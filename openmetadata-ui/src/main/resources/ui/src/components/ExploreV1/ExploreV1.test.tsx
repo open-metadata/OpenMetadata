@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
-import { ThemeColors } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import {
@@ -20,6 +19,50 @@ import {
 } from '../Explore/Explore.mock';
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreV1 from './ExploreV1.component';
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Button = ({
+    children,
+    iconLeading,
+    onClick,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+    iconLeading?: import('react').ReactNode;
+    onClick?: () => void;
+  } & Record<string, unknown>) => (
+    <button type="button" onClick={onClick} {...rest}>
+      {iconLeading}
+      {children}
+    </button>
+  );
+
+  const Typography = ({
+    children,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+  } & Record<string, unknown>) => <span {...rest}>{children}</span>;
+
+  return { Button, Typography };
+});
+
+jest.mock('@untitledui/icons', () => ({
+  Download01: () => <span data-testid="download-01-icon" />,
+}));
+
+jest.mock('../../rest/searchAPI', () => ({
+  exportSearchResultsCsvStream: jest
+    .fn()
+    .mockResolvedValue(new Blob([''], { type: 'text/csv' })),
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: { total: { value: 100 }, hits: [] },
+  }),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ search: '' }));
@@ -88,6 +131,7 @@ jest.mock(
     useAdvanceSearch: jest.fn().mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: '',
+      queryFilter: undefined,
       onResetAllFilters: jest.fn(),
     })),
   })
@@ -146,7 +190,7 @@ jest.mock('../../utils/SearchClassBase', () => ({
   __esModule: true,
   default: {
     getTabsInfo: jest.fn(() => ({
-      table_search_index: {
+      table: {
         sortingFields: [],
       },
     })),
@@ -177,20 +221,20 @@ const props = {
   tabItems: MOCK_EXPLORE_TAB_ITEMS,
   activeTabKey: SearchIndex.TABLE,
   tabCounts: {
-    data_product_search_index: 0,
-    table_search_index: 20,
-    topic_search_index: 10,
-    dashboard_search_index: 14,
-    database_search_index: 1,
-    database_schema_search_index: 1,
-    pipeline_search_index: 0,
-    mlmodel_search_index: 0,
-    container_search_index: 0,
-    stored_procedure_search_index: 0,
-    dashboard_data_model_search_index: 0,
-    glossary_term_search_index: 0,
-    tag_search_index: 10,
-    search_entity_search_index: 9,
+    dataProduct: 0,
+    table: 20,
+    topic: 10,
+    dashboard: 14,
+    database: 1,
+    databaseSchema: 1,
+    pipeline: 0,
+    mlmodel: 0,
+    container: 0,
+    storedProcedure: 0,
+    dashboardDataModel: 0,
+    glossaryTerm: 0,
+    tag: 10,
+    searchIndex: 9,
   },
   onChangeAdvancedSearchQuickFilters: onChangeAdvancedSearchQuickFilters,
   searchIndex: SearchIndex.TABLE as ExploreSearchIndex,
@@ -210,7 +254,7 @@ const props = {
   },
 };
 
-const mockThemeColors: ThemeColors = {
+const mockThemeColors = {
   white: '#FFFFFF',
   blue: {
     50: '#E6F4FF',
@@ -226,7 +270,7 @@ const mockThemeColors: ThemeColors = {
     700: '#374151',
     900: '#111827',
   },
-} as ThemeColors;
+};
 
 const theme: Theme = createTheme({
   palette: {
@@ -235,7 +279,7 @@ const theme: Theme = createTheme({
       paper: '#FFFFFF',
     },
   },
-});
+} as Parameters<typeof createTheme>[0]);
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider theme={theme}>{children}</ThemeProvider>

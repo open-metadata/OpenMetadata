@@ -35,6 +35,18 @@
           "type": "integer",
           "default": 0,
           "minimum": 0
+        },
+        "vectorSuccessRecords": {
+          "description": "Count of records with successful vector embeddings",
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
+        },
+        "vectorFailedRecords": {
+          "description": "Count of records with failed vector embeddings",
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
         }
       }
     },

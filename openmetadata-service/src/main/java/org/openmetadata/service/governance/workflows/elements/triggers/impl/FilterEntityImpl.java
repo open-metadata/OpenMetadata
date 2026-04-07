@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 public class FilterEntityImpl implements JavaDelegate {
   private static final Logger log = LoggerFactory.getLogger(FilterEntityImpl.class);
   private Expression excludedFieldsExpr;
+  private Expression includeFieldsExpr;
   private Expression filterExpr;
 
   @Override
@@ -43,6 +45,12 @@ public class FilterEntityImpl implements JavaDelegate {
     if (excludedFieldsExpr != null && excludedFieldsExpr.getValue(execution) != null) {
       excludedFilter =
           JsonUtils.readOrConvertValue(excludedFieldsExpr.getValue(execution), List.class);
+    }
+
+    List<String> includeFields = null;
+    if (includeFieldsExpr != null && includeFieldsExpr.getValue(execution) != null) {
+      includeFields =
+          JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), List.class);
     }
 
     String entityLinkStr =
@@ -62,7 +70,8 @@ public class FilterEntityImpl implements JavaDelegate {
       // We skip the entity filtering for this special case
       passesFilter = true;
     } else {
-      passesFilter = passesExcludedFilter(entityLinkStr, excludedFilter, filterLogic);
+      passesFilter =
+          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
     }
 
     if (passesFilter) {
@@ -71,9 +80,29 @@ public class FilterEntityImpl implements JavaDelegate {
       String mainWorkflowDefinitionName =
           TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(triggerWorkflowDefinitionKey);
       String currentProcessInstanceId = execution.getProcessInstanceId();
-      WorkflowHandler.getInstance()
-          .terminateDuplicateInstances(
-              mainWorkflowDefinitionName, entityLinkStr, currentProcessInstanceId);
+      // Terminate duplicate instances asynchronously to prevent a MySQL FK violation.
+      // This JavaDelegate runs inside Flowable's signalEventReceived command context (TX_A).
+      // Calling deleteProcessInstance() from within TX_A reuses the same DB transaction; the
+      // uncommitted execution DELETE holds an X-lock, and Flowable's job executor may try to
+      // INSERT a timer job referencing that execution (FK wait), causing a constraint violation
+      // when TX_A commits. Running in a separate thread gives terminateDuplicateInstances its
+      // own Flowable command context and independent DB transaction, avoiding that FK issue.
+      // The deadlock (PostgreSQL lock-order reversal between deleteProcessInstance and a
+      // concurrently auto-completing process) is prevented inside terminateDuplicateInstances
+      // by skipping deletion for processes that have no active user tasks.
+      final String workflowName = mainWorkflowDefinitionName;
+      final String entityLinkStrFinal = entityLinkStr;
+      final String processInstanceId = currentProcessInstanceId;
+      CompletableFuture.runAsync(
+              () ->
+                  WorkflowHandler.getInstance()
+                      .terminateDuplicateInstances(
+                          workflowName, entityLinkStrFinal, processInstanceId))
+          .exceptionally(
+              ex -> {
+                log.error("Async termination of duplicate instances failed", ex);
+                return null;
+              });
     }
 
     String workflowKey =
@@ -88,8 +117,7 @@ public class FilterEntityImpl implements JavaDelegate {
     }
 
     // Parse JSON string into map if needed
-    if (filterObj instanceof String) {
-      String filterStr = (String) filterObj;
+    if (filterObj instanceof String filterStr) {
       // Handle empty string as "no filter"
       if (filterStr.trim().isEmpty()) {
         return null; // Empty string means no filtering
@@ -178,7 +206,10 @@ public class FilterEntityImpl implements JavaDelegate {
   }
 
   private boolean passesExcludedFilter(
-      String entityLinkStr, List<String> excludedFilter, String filterLogic) {
+      String entityLinkStr,
+      List<String> excludedFilter,
+      List<String> includeFields,
+      String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
@@ -193,21 +224,9 @@ public class FilterEntityImpl implements JavaDelegate {
       ChangeDescription changeDescription = oChangeDescription.get();
       List<FieldChange> changedFields = getAllChangedFields(changeDescription);
 
-      // Check if ANY field is trigger-worthy AND not excluded
       fieldBasedFilter =
           changedFields.isEmpty()
-              || changedFields.stream()
-                  .anyMatch(
-                      field -> {
-                        String fieldName = field.getName();
-                        boolean isTriggerField =
-                            Arrays.stream(WorkflowTriggerFields.values())
-                                .map(WorkflowTriggerFields::value)
-                                .anyMatch(fieldName::equals);
-                        boolean isNotExcluded =
-                            excludedFilter == null || !excludedFilter.contains(fieldName);
-                        return isTriggerField && isNotExcluded;
-                      });
+              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
     }
 
     // Apply JSON filter
@@ -226,5 +245,32 @@ public class FilterEntityImpl implements JavaDelegate {
     allChanges.addAll(changeDescription.getFieldsDeleted());
     allChanges.addAll(changeDescription.getFieldsUpdated());
     return allChanges;
+  }
+
+  private boolean passesFieldBasedFilter(
+      List<FieldChange> changedFields, List<String> includeFields, List<String> excludedFilter) {
+    return changedFields.stream()
+        .anyMatch(
+            field -> {
+              String fieldName = field.getName();
+              boolean isTriggerField =
+                  Arrays.stream(WorkflowTriggerFields.values())
+                      .map(WorkflowTriggerFields::value)
+                      .anyMatch(tf -> matchesField(fieldName, tf));
+              if (!isTriggerField) {
+                return false;
+              }
+
+              if (includeFields != null && !includeFields.isEmpty()) {
+                return includeFields.stream().anyMatch(f -> matchesField(fieldName, f));
+              }
+
+              return excludedFilter == null
+                  || excludedFilter.stream().noneMatch(f -> matchesField(fieldName, f));
+            });
+  }
+
+  private boolean matchesField(String fieldName, String triggerField) {
+    return fieldName.equals(triggerField) || fieldName.startsWith(triggerField + Entity.SEPARATOR);
   }
 }

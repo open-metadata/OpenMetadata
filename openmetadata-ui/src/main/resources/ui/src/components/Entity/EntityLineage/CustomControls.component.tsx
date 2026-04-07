@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, MenuItem, Tooltip, useTheme } from '@mui/material';
+import {
+  Button,
+  ButtonUtility,
+  Dropdown,
+  Tabs,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import QueryString from 'qs';
 import {
@@ -32,7 +40,7 @@ import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exi
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-gear.svg';
-import { LINEAGE_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
+import { getLineageDropdownItems } from '../../../constants/AdvancedSearch.constants';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
   FULLSCREEN_QUERY_PARAM_KEY,
@@ -41,6 +49,7 @@ import { ExportTypes } from '../../../constants/Export.constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
@@ -56,10 +65,7 @@ import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
-import {
-  StyledIconButton,
-  StyledMenu,
-} from '../../LineageTable/LineageTable.styled';
+import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
@@ -71,6 +77,7 @@ const CustomControls: FC<{
   queryFilterNodeIds?: string[];
   deleted?: boolean;
   hasEditAccess?: boolean;
+  impactLevel?: EImpactLevel;
 }> = ({
   nodeDepthOptions,
   onSearchValueChange,
@@ -78,6 +85,7 @@ const CustomControls: FC<{
   queryFilterNodeIds,
   deleted = false,
   hasEditAccess = false,
+  impactLevel,
 }) => {
   const { t } = useTranslation();
   const {
@@ -95,11 +103,8 @@ const CustomControls: FC<{
   } = useLineageStore();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
-  const [nodeDepthAnchorEl, setNodeDepthAnchorEl] =
-    useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const location = useCustomLocation();
-  const theme = useTheme();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
@@ -164,23 +169,23 @@ const CustomControls: FC<{
 
   // Initialize quick filters on component mount
   useEffect(() => {
-    const updatedQuickFilters = LINEAGE_DROPDOWN_ITEMS.map(
-      (selectedFilterItem) => {
-        const originalFilterItem = selectedQuickFilters?.find(
-          (filter) => filter.key === selectedFilterItem.key
-        );
+    const updatedQuickFilters = getLineageDropdownItems(
+      impactLevel === EImpactLevel.ColumnLevel
+    ).map((selectedFilterItem) => {
+      const originalFilterItem = selectedQuickFilters?.find(
+        (filter) => filter.key === selectedFilterItem.key
+      );
 
-        return {
-          ...(originalFilterItem || selectedFilterItem),
-          value: originalFilterItem?.value || [],
-        };
-      }
-    );
+      return {
+        ...(originalFilterItem || selectedFilterItem),
+        value: originalFilterItem?.value || [],
+      };
+    });
 
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
     }
-  }, []);
+  }, [impactLevel]);
 
   const queryParams = useMemo(() => {
     return QueryString.parse(location.search, {
@@ -219,15 +224,23 @@ const CustomControls: FC<{
       lineageConfig.upstreamDepth,
     ]);
 
-  const handleImpactAnalysisClick = useCallback(() => {
-    queryParams['mode'] = 'impact_analysis';
-    navigate({ search: QueryString.stringify(queryParams) });
-  }, [navigate, queryParams]);
+  const handleClearAllFilters = useCallback(() => {
+    setSelectedQuickFilters((prev) =>
+      (prev ?? []).map((filter) => ({ ...filter, value: [] }))
+    );
+  }, [setSelectedQuickFilters]);
 
-  const handleLineageClick = useCallback(() => {
-    queryParams['mode'] = 'lineage';
-    navigate({ search: QueryString.stringify(queryParams) });
-  }, [navigate, queryParams]);
+  const handleTabChange = useCallback(
+    (key: string) => {
+      const params = QueryString.parse(location.search, {
+        ignoreQueryPrefix: true,
+      });
+      params['mode'] = key;
+      handleClearAllFilters();
+      navigate({ search: QueryString.stringify(params) });
+    },
+    [navigate, location.search, handleClearAllFilters]
+  );
 
   const updateURLParams = useCallback(
     (
@@ -254,7 +267,6 @@ const CustomControls: FC<{
         },
         { replace: true }
       );
-      setNodeDepthAnchorEl(null);
     },
     [location.search]
   );
@@ -271,20 +283,15 @@ const CustomControls: FC<{
       }
     }, [filterSelectionActive, updateURLParams]);
 
-  const handleClearAllFilters = useCallback(() => {
-    setSelectedQuickFilters((prev) =>
-      (prev ?? []).map((filter) => ({ ...filter, value: [] }))
-    );
-  }, [setSelectedQuickFilters]);
-
   // Function to handle export click
   const handleImpactAnalysisExport = useCallback(
     () =>
       exportLineageByEntityCountAsync({
         fqn: fqn ?? '',
-        type: entityType ?? '',
+        entityType: entityType ?? '',
         direction: lineageDirection,
         nodeDepth: nodeDepth,
+        maxDepth: nodeDepth,
         query_filter: quickFilters,
       }),
     [fqn, entityType, lineageDirection, nodeDepth, quickFilters]
@@ -296,7 +303,7 @@ const CustomControls: FC<{
     } else {
       onExportClick([ExportTypes.CSV, ExportTypes.PNG]);
     }
-  }, [activeTab, onExportClick]);
+  }, [activeTab, handleImpactAnalysisExport, onExportClick]);
 
   const handleDialogSave = (newConfig: LineageConfig) => {
     // Implement save logic here
@@ -304,20 +311,21 @@ const CustomControls: FC<{
     setDialogVisible(false);
   };
 
-  const buttonActiveStyle = {
-    outlineColor: theme.palette.allShades.blue[700],
-    backgroundColor: theme.palette.allShades.blue[50],
-    color: theme.palette.allShades.blue[700],
-    outline: '1px solid',
-    boxShadow: 'none',
+  // Filter quick filters based on impact level
+  // Column filter should only show when Impact On is Column
+  const filteredQuickFilters = useMemo(() => {
+    // Show all filters including Column when:
+    // - impactLevel is ColumnLevel
+    // - impactLevel is undefined (normal lineage view, not Impact Analysis)
+    if (impactLevel === EImpactLevel.ColumnLevel || impactLevel === undefined) {
+      return selectedQuickFilters;
+    }
 
-    '&:hover': {
-      outlineColor: theme.palette.allShades.blue[100],
-      backgroundColor: theme.palette.allShades.blue[100],
-      color: theme.palette.allShades.blue[700],
-      boxShadow: 'none',
-    },
-  };
+    // In TableLevel mode, hide Column filter (it doesn't make sense for table-level impact)
+    return selectedQuickFilters.filter(
+      (filter) => filter.key !== EntityFields.COLUMN
+    );
+  }, [selectedQuickFilters, impactLevel]);
 
   const filterApplied = useMemo(() => {
     return selectedQuickFilters.some(
@@ -326,26 +334,27 @@ const CustomControls: FC<{
   }, [selectedQuickFilters]);
 
   const searchBarComponent = useMemo(() => {
-    return activeTab === 'impact_analysis' && onSearchValueChange ? (
-      <Searchbar
-        removeMargin
-        inputClassName="w-80"
-        placeholder={t('label.search-for-type', {
-          type: t('label.asset-or-column'),
-        })}
-        searchValue={searchValue}
-        typingInterval={300}
-        onSearch={onSearchValueChange}
-      />
+    return activeTab === 'impact_analysis' ? (
+      onSearchValueChange && (
+        <Searchbar
+          removeMargin
+          inputClassName="w-80"
+          placeholder={t('label.search-for-type', {
+            type: t('label.asset-or-column'),
+          })}
+          searchValue={searchValue}
+          typingInterval={300}
+          onSearch={onSearchValueChange}
+        />
+      )
     ) : (
       <LineageSearchSelect />
     );
-  }, [searchValue, onSearchValueChange]);
+  }, [activeTab, onSearchValueChange, searchValue, t]);
 
   const handleNodeDepthUpdate = useCallback(
     (depth: number) => {
       updateURLParams({ depth });
-      setNodeDepthAnchorEl(null);
     },
     [updateURLParams]
   );
@@ -359,16 +368,16 @@ const CustomControls: FC<{
 
     return showEditOption ? (
       <Tooltip
-        arrow
         placement="top"
         title={t('label.edit-entity', { entity: t('label.lineage') })}>
-        <StyledIconButton
-          color={isEditMode ? 'primary' : 'default'}
-          data-testid="edit-lineage"
-          size="large"
-          onClick={toggleEditMode}>
-          <EditIcon />
-        </StyledIconButton>
+        <TooltipTrigger>
+          <Button
+            color={isEditMode ? 'primary' : 'secondary'}
+            data-testid="edit-lineage"
+            iconLeading={EditIcon}
+            onClick={toggleEditMode}
+          />
+        </TooltipTrigger>
       </Tooltip>
     ) : null;
   }, [
@@ -387,135 +396,134 @@ const CustomControls: FC<{
     };
 
     return (
-      <StyledIconButton
+      <ButtonUtility
         data-testid="lineage-config"
-        size="large"
-        onClick={handleSettingsClick}>
-        <SettingsOutlined />
-      </StyledIconButton>
+        icon={SettingsOutlined}
+        onClick={handleSettingsClick}
+      />
     );
   }, []);
 
   return (
     <div>
-      <div className={classNames('d-flex w-full justify-between')}>
-        <div className="d-flex items-center gap-4">
-          <Tooltip arrow placement="top" title={t('label.filter-plural')}>
-            <StyledIconButton
-              color={filterSelectionActive ? 'primary' : 'default'}
-              size="large"
-              onClick={toggleFilterSelection}>
-              <FilterLinesIcon />
-            </StyledIconButton>
+      <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
+        <div className="tw:flex tw:items-center tw:gap-4">
+          <Tooltip placement="top" title={t('label.filter-plural')}>
+            <TooltipTrigger>
+              <Button
+                aria-label={t('label.filter-plural')}
+                color={filterSelectionActive ? 'primary' : 'secondary'}
+                data-testid="filters-button"
+                iconLeading={FilterLinesIcon}
+                onClick={toggleFilterSelection}
+              />
+            </TooltipTrigger>
           </Tooltip>
           {searchBarComponent}
         </div>
-        <div className="d-flex gap-4 items-center">
+        <div className="tw:flex tw:gap-4 tw:items-center">
           {isEditMode ? null : (
-            <>
-              <Button
-                className="font-semibold"
-                sx={activeTab === 'lineage' ? buttonActiveStyle : {}}
-                variant="outlined"
-                onClick={handleLineageClick}>
-                {t('label.lineage')}
-              </Button>
-              <Button
-                className="font-semibold"
-                sx={activeTab === 'impact_analysis' ? buttonActiveStyle : {}}
-                variant="outlined"
-                onClick={handleImpactAnalysisClick}>
-                {t('label.impact-analysis')}
-              </Button>{' '}
-            </>
+            <Tabs
+              selectedKey={activeTab}
+              onSelectionChange={(key) => handleTabChange(key as string)}>
+              <Tabs.List size="sm" type="button-brand">
+                <Tabs.Item id="lineage" key="lineage">
+                  {t('label.lineage')}
+                </Tabs.Item>
+                <Tabs.Item id="impact_analysis" key="impact_analysis">
+                  {t('label.impact-analysis')}
+                </Tabs.Item>
+              </Tabs.List>
+            </Tabs>
           )}
 
           {lineageEditButton}
           <Tooltip
-            arrow
             placement="top"
             title={
               activeTab === 'impact_analysis'
                 ? t('label.export-as-type', { type: t('label.csv') })
                 : t('label.export')
             }>
-            <StyledIconButton
-              disabled={isEditMode}
-              size="large"
-              onClick={handleExportClick}>
-              <DownloadIcon />
-            </StyledIconButton>
+            <TooltipTrigger>
+              <ButtonUtility
+                aria-label={
+                  activeTab === 'impact_analysis'
+                    ? t('label.export-as-type', { type: t('label.csv') })
+                    : t('label.export')
+                }
+                data-testid="export-button"
+                disabled={isEditMode}
+                icon={DownloadIcon}
+                onClick={handleExportClick}
+              />
+            </TooltipTrigger>
           </Tooltip>
           {settingsButton}
           <Tooltip
-            arrow
             placement="top"
             title={
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen-view')
             }>
-            <StyledIconButton
-              size="large"
-              onClick={() =>
-                updateURLParams({ [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen })
-              }>
-              {isFullScreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
-            </StyledIconButton>
+            <TooltipTrigger>
+              <ButtonUtility
+                aria-label={
+                  isFullScreen
+                    ? t('label.exit-full-screen')
+                    : t('label.full-screen-view')
+                }
+                icon={isFullScreen ? ExitFullScreenIcon : FullscreenIcon}
+                onClick={() =>
+                  updateURLParams({
+                    [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
+                  })
+                }
+              />
+            </TooltipTrigger>
           </Tooltip>
         </div>
       </div>
       {filterSelectionActive ? (
-        <div className="m-t-sm d-flex items-center justify-between">
-          <div>
+        <div className="tw:mt-2 tw:flex tw:items-center tw:justify-between">
+          <div className="tw:flex tw:items-baseline">
             {activeTab === 'impact_analysis' && (
-              <>
-                <Button
-                  endIcon={<DropdownIcon />}
-                  sx={{
-                    fontWeight: 500,
-                    '& .MuiButton-endIcon': {
-                      svg: {
-                        height: 12,
-                      },
-                    },
-                  }}
-                  variant="text"
-                  onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}>
-                  {`${t('label.node-depth')}:`}{' '}
-                  <span className="text-primary m-l-xss">{nodeDepth}</span>
+              <Dropdown.Root>
+                <Button className="tw:px-3.5 tw:py-2.5" color="tertiary">
+                  <div className="tw:flex tw:items-center tw:gap-1">
+                    <Typography as="span" className="tw:font-normal">
+                      {`${t('label.node-depth')}:`}{' '}
+                    </Typography>
+                    <Typography
+                      as="span"
+                      className="tw:text-brand-600 tw:font-normal">
+                      {nodeDepth}
+                    </Typography>
+                    <DropdownIcon height={12} width={12} />
+                  </div>
                 </Button>
-                <StyledMenu
-                  anchorEl={nodeDepthAnchorEl}
-                  open={Boolean(nodeDepthAnchorEl)}
-                  slotProps={{
-                    paper: {
-                      style: {
-                        maxHeight: 48 * 4.5,
-                        width: '10ch',
-                      },
-                    },
-                    list: {
-                      'aria-labelledby': 'long-button',
-                    },
-                  }}
-                  onClose={() => setNodeDepthAnchorEl(null)}>
-                  {(nodeDepthOptions ?? [])?.map((depth) => (
-                    <MenuItem
-                      key={depth}
-                      selected={depth === nodeDepth}
-                      onClick={() => handleNodeDepthUpdate(depth)}>
-                      {depth}
-                    </MenuItem>
-                  ))}
-                </StyledMenu>
-              </>
+                <Dropdown.Popover className="tw:max-w-32">
+                  <Dropdown.Menu
+                    aria-label={t('label.node-depth')}
+                    onAction={(key) => handleNodeDepthUpdate(Number(key))}>
+                    {(nodeDepthOptions ?? []).map((depth) => (
+                      <Dropdown.Item
+                        className={depth === nodeDepth ? 'tw:text-primary' : ''}
+                        id={String(depth)}
+                        key={depth}>
+                        {depth}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             )}
             <ExploreQuickFilters
               independent
               aggregations={{}}
               defaultQueryFilter={queryFilter}
-              fields={selectedQuickFilters}
+              fields={filteredQuickFilters}
               index={SearchIndex.ALL}
               optionPageSize={AGGREGATE_PAGE_SIZE_LARGE}
               showDeleted={false}
@@ -523,13 +531,9 @@ const CustomControls: FC<{
             />
           </div>
           <Button
-            disabled={!filterApplied}
-            size="small"
-            sx={{
-              fontWeight: 500,
-              color: theme.palette.primary.main,
-            }}
-            variant="text"
+            color="link-color"
+            isDisabled={!filterApplied}
+            size="sm"
             onClick={handleClearAllFilters}>
             {t('label.clear-entity', { entity: t('label.all') })}
           </Button>

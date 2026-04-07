@@ -84,8 +84,10 @@ const PoliciesDetailPage = () => {
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [isloadingOnSave, setIsloadingOnSave] = useState(false);
-  const [selectedEntity, setEntity] =
-    useState<{ attribute: Attribute; record: EntityReference }>();
+  const [selectedEntity, setEntity] = useState<{
+    attribute: Attribute;
+    record: EntityReference;
+  }>();
   const [policyPermission, setPolicyPermission] =
     useState<OperationPermission | null>(null);
 

@@ -15,7 +15,7 @@ Validator for column values to match regex test case
 
 from typing import List, Optional, Tuple
 
-from sqlalchemy import Column
+from sqlalchemy import Column, not_
 from sqlalchemy.exc import CompileError, SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -25,9 +25,16 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToMatchRegex import (
     BaseColumnValuesToMatchRegexValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
@@ -37,7 +44,10 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToMatchRegexValidator(
-    BaseColumnValuesToMatchRegexValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToMatchRegexValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column values to match regex test case"""
 
@@ -137,21 +147,9 @@ class ColumnValuesToMatchRegexValidator(
                 top_n=top_n,
             )
 
-            for row in result_rows:
-                # Build metric_values dict using helper method
-                metric_values = self._build_metric_values_from_row(
-                    row, metrics_to_compute, test_params
-                )
-
-                # Evaluate test condition
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                # Create dimension result using helper method
-                dimension_result = self._create_dimension_result(
-                    row, dimension_col.name, metric_values, evaluation, test_params
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -169,3 +167,15 @@ class ColumnValuesToMatchRegexValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        expression = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "regex",
+            str,
+        )
+        return not_(self.get_column().regexp_match(expression))
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

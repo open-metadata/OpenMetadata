@@ -45,6 +45,9 @@ export const EXTENSION_POINTS = {
   // User Profile Page
   PROFILE_TABS: 'profile.tabs',
 
+  // Team Details Page
+  TEAM_DETAILS_TABS: 'team-details.tabs',
+
   // Global UI
   GLOBAL_FLOATING_BUTTONS: 'global.floating-buttons',
 } as const;
@@ -53,7 +56,7 @@ export const EXTENSION_POINTS = {
  * Type-safe extension point IDs
  */
 export type ExtensionPointId =
-  typeof EXTENSION_POINTS[keyof typeof EXTENSION_POINTS];
+  (typeof EXTENSION_POINTS)[keyof typeof EXTENSION_POINTS];
 
 // ============================================================================
 // Plugin Context Types
@@ -71,6 +74,7 @@ export interface PluginEntityDetailsContext {
   entity?: EntityReference;
   userData?: User;
   isLoggedInUser?: boolean;
+  teamId?: string;
 }
 
 // ============================================================================

@@ -152,6 +152,7 @@ export const ROUTES = {
   REPORTS: '/reports',
   EXPLORE: '/explore',
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
+  ONTOLOGY_EXPLORER: '/governance/ontology',
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
@@ -214,6 +215,9 @@ export const ROUTES = {
   MARKETPLACE: '/marketplace',
   MARKETPLACE_APP_DETAILS: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}`,
   MARKETPLACE_APP_INSTALL: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}/install`,
+
+  DATA_MARKETPLACE_SECTION: '/data-marketplace-section',
+  DATA_MARKETPLACE: '/data-marketplace',
 
   APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
   APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,

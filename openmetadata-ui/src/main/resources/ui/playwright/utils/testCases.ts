@@ -10,12 +10,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { fillTagDetails, pressKeyXTimes } from './importUtils';
+
+export const getFailedRowsData = (table: TableClass) => {
+  const columns = table.entity.columns.map((col) => col.name);
+  const columnCount = columns.length;
+  const sampleRows = [
+    ['2345', 'facf92d7-05ea-43d2-ba2a-067d63dee60c', 'Amber Albert'],
+    ['3456', 'd4e5f6a7-8b9c-4d0e-9c2b-fa3e4c5d6e7f', 'John Doe'],
+    ['4567', 'b2d112f5-5d7e-4b11-9c0e-490f8a5a8b5a', 'Jane Smith'],
+  ];
+
+  return {
+    columns,
+    rows: sampleRows.map((row) => {
+      if (row.length < columnCount) {
+        return [...row, ...Array(columnCount - row.length).fill('-')];
+      }
+      return row.slice(0, columnCount);
+    }),
+  };
+};
+
+export const setupTestCaseWithFailedRows = async (
+  apiContext: APIRequestContext,
+  table: TableClass
+) => {
+  const testCaseId = table.testCasesResponseData[0].id;
+  const testCaseFqn = table.testCasesResponseData[0].fullyQualifiedName;
+
+  await table.addTestCaseResult(apiContext, testCaseFqn, {
+    result: 'Test failed with sample data',
+    testCaseStatus: 'Failed',
+    timestamp: Date.now(),
+  });
+
+  await apiContext.put(
+    `/api/v1/dataQuality/testCases/${testCaseId}/failedRowsSample`,
+    { data: getFailedRowsData(table) }
+  );
+};
 
 export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
@@ -33,6 +73,79 @@ export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await toastNotification(page, /deleted successfully!/);
 };
 
+export const waitForPermissionsResponse = (page: Page) =>
+  page.waitForResponse((res) => {
+    const url = res.url();
+    return (
+      url.includes('/api/v1/permissions') &&
+      !url.includes('/api/v1/permissions/table/name/') &&
+      res.request().method() === 'GET' &&
+      res.status() === 200
+    );
+  });
+
+export const waitForTableEntityPermissionsResponse = (page: Page) =>
+  page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/permissions/table/name/') &&
+      res.request().method() === 'GET' &&
+      res.status() === 200
+  );
+
+export const waitForTestCaseListResponse = (page: Page) =>
+  page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+      res.status() === 200
+  );
+
+export const waitForTestCaseDetailsResponse = (page: Page) =>
+  page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/dataQuality/testCases/name/') &&
+      res.request().method() === 'GET' &&
+      res.status() === 200
+  );
+
+export const waitForTestSuiteListResponse = (page: Page) =>
+  page.waitForResponse(
+    (res) =>
+      (res.url().includes('/api/v1/dataQuality/testSuites') ||
+        res.url().includes('/api/v1/dataQuality/testSuites/search/list')) &&
+      res.request().method() === 'GET' &&
+      res.status() === 200
+  );
+
+export const visitTestSuitesPage = async (page: Page) => {
+  const listPromise = waitForTestSuiteListResponse(page);
+  await page.goto('/data-quality/test-suites');
+  await listPromise;
+};
+
+export const waitForTestSuiteDetailsResponse = (page: Page) =>
+  page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/dataQuality/testSuites/') &&
+      res.status() === 200
+  );
+
+export const visitTestSuiteDetailsPage = async (
+  page: Page,
+  suiteFqn: string
+) => {
+  const detailsPromise = waitForTestSuiteDetailsResponse(page);
+  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`);
+  await detailsPromise;
+};
+
+export const waitForFailedRowsSampleResponse = (page: Page) =>
+  page.waitForResponse(
+    (res) =>
+      res.url().includes('/failedRowsSample') &&
+      res.request().method() === 'GET' &&
+      res.status() === 200
+  );
+
 export const visitDataQualityTab = async (page: Page, table: TableClass) => {
   await table.visitEntityPage(page);
   await page.getByTestId('profiler').click();
@@ -48,16 +161,13 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
   table: TableClass,
   testCaseName: string
 ) => {
+  const responsePromise = waitForTestCaseDetailsResponse(page);
   await page
     .getByRole('link', {
       name: testCaseName,
     })
     .click();
-
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await responsePromise;
 
   const { service, database, databaseSchema, displayName } =
     table.entityResponseData;
@@ -81,12 +191,14 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     `${displayName}/`
   );
 
+  const tableResponsePromise = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/tables/') &&
+      res.request().method() === 'GET' &&
+      res.status() === 200
+  );
   await page.getByTestId('breadcrumb-link').nth(3).click();
-
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await tableResponsePromise;
 };
 
 export const findSystemTestDefinition = async (page: Page) => {
@@ -120,7 +232,7 @@ export const findSystemTestDefinition = async (page: Page) => {
       await nextButton.click();
       response = await nextResponsePromise;
       data = await response.json();
-      await page.waitForSelector('[data-testid="test-definition-table"]', {
+      await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
       });
     } else {
@@ -144,7 +256,7 @@ export const clickManageButton = async (
       .getByTestId('manage-button')
       .click();
   } else {
-    await page.waitForSelector('[data-testid="manage-button"]', {
+    await page.getByTestId('manage-button').waitFor({
       state: 'visible',
     });
     await page.getByTestId('manage-button').click();
@@ -162,10 +274,8 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
   );
   await page.goto(`/test-suites/${testSuiteFqn}`);
   await testCaseListResponse;
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-  await page.waitForSelector('[data-testid="manage-button"]', {
+  await waitForAllLoadersToDisappear(page);
+  await page.getByTestId('manage-button').waitFor({
     state: 'visible',
   });
 };
@@ -176,7 +286,7 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
  */
 export const navigateToGlobalDataQuality = async (page: Page) => {
   await page.goto('/data-quality/test-cases');
-  await page.waitForSelector('[data-testid="manage-button"]');
+  await page.getByTestId('manage-button').waitFor();
 };
 
 /**
@@ -187,7 +297,7 @@ export const navigateToGlobalDataQuality = async (page: Page) => {
 export const performTestCaseExport = async (page: Page) => {
   await expect(page.getByTestId('export-button')).toBeVisible();
   await page.getByTestId('export-button').click();
-  await page.waitForSelector('#export-form', {
+  await page.locator('#export-form').waitFor({
     state: 'visible',
   });
   await expect(page.locator('#export-form')).toBeVisible();
@@ -220,11 +330,10 @@ export const navigateToImportPage = async (
  * @param filePath - Path to CSV file
  */
 export const uploadCSVFile = async (page: Page, filePath: string) => {
-  await page.waitForSelector('[type="file"]', { state: 'attached' });
+  await page.locator('[type="file"]').waitFor({ state: 'attached' });
   await page.setInputFiles('[type="file"]', filePath);
-  await page.waitForSelector('[data-testid="upload-file-widget"]', {
+  await page.getByTestId('upload-file-widget').waitFor({
     state: 'hidden',
-    timeout: 10000,
   });
 };
 
@@ -233,9 +342,7 @@ export const uploadCSVFile = async (page: Page, filePath: string) => {
  * @param page - Playwright page object
  */
 export const validateImportGrid = async (page: Page) => {
-  await expect(page.getByRole('grid')).toBeVisible({
-    timeout: 15000,
-  });
+  await expect(page.getByRole('grid')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Previous' })).toBeVisible();
   await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -274,7 +381,7 @@ export const verifyPageAccess = async (
   );
   await page.goto(url);
   await permissionResponse;
-  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   if (shouldHaveAccess) {
     // Verify user has access - should stay on the page
@@ -341,9 +448,7 @@ export const verifyButtonVisibility = async (
  */
 export const navigateToBulkEditPage = async (page: Page) => {
   await page.getByTestId('bulk-edit-button').click();
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
   await expect(page.locator('.rdg-header-row')).toBeVisible();
 };
 
@@ -516,13 +621,12 @@ export const performE2EExportImportFlow = async (
     await clickManageButton(page, 'table');
     await navigateToImportPage(page);
 
-    const fileInput = await page.$('[type="file"]');
     const exportedFile = fs
       .readdirSync('downloads')
       .find((f: string) => f.includes(table.entity.name) && f.endsWith('.csv'));
-    await fileInput?.setInputFiles(['downloads/' + exportedFile]);
-
-    await page.waitForTimeout(500);
+    await page
+      .locator('[type="file"]')
+      .setInputFiles(['downloads/' + exportedFile]);
 
     await expect(page.locator('.rdg-header-row')).toBeVisible();
     await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -566,6 +670,7 @@ export const performE2EExportImportFlow = async (
         response.url().includes('recursive=true')
     );
 
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await page.click('[type="button"] >> text="Update"', { force: true });
     await updateButtonResponse;
     await page
@@ -579,7 +684,7 @@ export const performE2EExportImportFlow = async (
     await visitDataQualityTab(page, table);
     await expect(
       page.getByTestId(`e2e_${testNamePrefix}_complete_test`)
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible();
   });
 
   // Step 6: Bulk edit - Update display names and add tags
@@ -589,7 +694,7 @@ export const performE2EExportImportFlow = async (
     await page.click('[data-testid="bulk-edit-button"]');
 
     // Wait for bulk edit grid to load
-    await page.waitForSelector('.rdg-header-row', { state: 'visible' });
+    await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     // Update display name for first test case (existing test case)
@@ -642,6 +747,7 @@ export const performE2EExportImportFlow = async (
         response.url().includes('dryRun=false')
     );
 
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await page.click('[type="button"] >> text="Update"', { force: true });
     await bulkEditUpdateResponse;
     await page

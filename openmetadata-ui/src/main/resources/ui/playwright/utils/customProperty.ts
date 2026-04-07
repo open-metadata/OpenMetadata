@@ -18,8 +18,8 @@ import {
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
@@ -120,6 +120,7 @@ export const setValueForProperty = async (data: {
     `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
   );
   await editButton.scrollIntoViewIfNeeded();
+  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await editButton.click({ force: true });
 
   const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
@@ -148,6 +149,7 @@ export const setValueForProperty = async (data: {
 
     case 'enum':
       await page.click('#enumValues');
+      // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
       await page.fill('#enumValues', value, { force: true });
       await page.press('#enumValues', 'Enter');
       await clickOutside(page);
@@ -242,7 +244,7 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="add-new-row"]').click();
 
       // Editor grid to be visible
-      await page.waitForSelector('.om-rdg', { state: 'visible' });
+      await page.locator('.om-rdg').waitFor({ state: 'visible' });
 
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
@@ -764,7 +766,7 @@ export const addCustomPropertiesForEntity = async ({
     page.locator(String.raw`#root\/entityReferenceConfig_list`)
   ).not.toBeVisible();
 
-  await page.waitForSelector(descriptionBox, { state: 'visible' });
+  await page.locator(descriptionBox).waitFor({ state: 'visible' });
   await page.locator(descriptionBox).click();
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
 
@@ -783,14 +785,12 @@ export const addCustomPropertiesForEntity = async ({
   await createButton.click();
 
   const response = await createPropertyPromise;
-  await page.waitForSelector('[data-testid="custom-property-form"]', {
+  await page.getByTestId('custom-property-form').waitFor({
     state: 'detached',
   });
 
   // CRITICAL: Wait for UI to update after API response
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   expect(response.status()).toBe(200);
   await expect(
@@ -920,9 +920,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   await sidebarClick(page, SidebarItem.EXPLORE);
 
   // Wait for loader to disappear instead of networkidle
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   // Open advanced search dialog
   await showAdvancedSearchDialog(page);
@@ -1028,7 +1026,7 @@ export const editColumnCustomProperty = async (
       .click();
   } else if (propertyType === 'table-cp') {
     await page.locator('[data-testid="add-new-row"]').click();
-    await page.waitForSelector('.om-rdg', { state: 'visible' });
+    await page.locator('.om-rdg').waitFor({ state: 'visible' });
 
     // Fill Row
     await page.locator('div.rdg-cell-pw-column1').last().dblclick();
@@ -1137,24 +1135,37 @@ export const validateColumnCustomProperty = async (
 export const verifyTableColumnCustomPropertyPersistence = async ({
   page,
   columnFqn,
+  tableFqn,
   propertyName,
   propertyType,
   users,
 }: {
   page: Page;
   columnFqn: string;
+  tableFqn: string;
   propertyName: string;
   propertyType: string;
   users: Record<string, string>;
 }) => {
   const testValue = getPropertyValues(propertyType, users).value;
+  const columnsProfileResponse = () =>
+    page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(
+            `/api/v1/tables/name/${encodeURIComponent(tableFqn)}/columns`
+          ) &&
+        response.url().includes('profile') &&
+        response.request().method() === 'GET',
+      { timeout: 90_000 }
+    );
 
   // 1. Navigate and Open Column Detail Panel
-  await page.goto(`/table/${columnFqn}`);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  const initialColumnsResponse = columnsProfileResponse();
+  await page.goto(`/table/${columnFqn}`, { waitUntil: 'domcontentloaded' });
+  await initialColumnsResponse;
+  await waitForAllLoadersToDisappear(page);
   const sidePanel = page.locator('.column-detail-panel-container');
   await expect(sidePanel).toBeVisible();
 
@@ -1177,7 +1188,8 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   const updateColumnResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/columns/name') &&
-      response.request().method() === 'PUT'
+      response.request().method() === 'PUT' &&
+      response.ok()
   );
 
   // Edit logic
@@ -1187,9 +1199,7 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   await updateColumnResponse;
 
   // CRITICAL: Wait for UI to update after API response
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   // Validation
   await validateColumnCustomProperty(
@@ -1199,24 +1209,18 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
     propertyName
   );
 
-  const getTableData = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/tables/name/') &&
-      !response.url().includes('/columns') &&
-      response.url().includes('extension')
-  );
-  await page.reload();
-  const tableResponse = await getTableData;
-  expect(tableResponse.status()).toBe(200);
-
-  await page.waitForSelector(
-    '.column-detail-panel-container [data-testid="custom-properties-tab"]',
-    {
-      state: 'visible',
-    }
-  );
+  const reloadColumnsResponse = columnsProfileResponse();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadColumnsResponse;
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.locator(
+      '.column-detail-panel-container [data-testid="custom-properties-tab"]'
+    )
+  ).toBeVisible();
   await customPropertiesTab.click();
   await expect(searchbar).toBeVisible();
+  await searchbar.clear();
   await searchbar.fill(propertyName);
 
   // Validation Logic After Reload
@@ -1274,6 +1278,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
   const editButton = container.getByTestId('edit-icon-right-panel');
   await editButton.scrollIntoViewIfNeeded();
+  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await editButton.click({ force: true });
 
   const patchRequestPromise = page.waitForResponse(
@@ -1402,15 +1407,16 @@ export const updateCustomPropertyInRightPanel = async (data: {
       await page.locator('[data-testid="add-new-row"]').click();
 
       // Editor grid to be visible
-      await page.waitForSelector('.om-rdg', { state: 'visible' });
+      await page.locator('.om-rdg').waitFor({ state: 'visible' });
 
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
       await fillTableColumnInputDetails(page, values[1], 'pw-column2');
 
-      await page.locator('[data-testid="update-table-type-property"]').click({
-        force: true,
-      });
+      await page
+        .locator('[data-testid="update-table-type-property"]')
+        // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+        .click({ force: true });
 
       break;
     }

@@ -375,7 +375,7 @@ CREATE TABLE `entity_usage` (
   `percentile1` int DEFAULT NULL,
   `percentile7` int DEFAULT NULL,
   `percentile30` int DEFAULT NULL,
-  UNIQUE KEY `usageDate` (`usageDate`,`id`)
+  UNIQUE KEY `usageDate` (`id`,`usageDate`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

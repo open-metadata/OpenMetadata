@@ -86,14 +86,18 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
+      String transformedContent =
+          (indexMappingContent != null && !indexMappingContent.isEmpty())
+              ? OsUtils.enrichIndexMappingForOpenSearch(indexMappingContent)
+              : indexMappingContent;
+
       PutMappingRequest request =
           PutMappingRequest.of(
               builder -> {
                 builder.index(indexName);
-                if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
+                if (transformedContent != null && !transformedContent.isEmpty()) {
                   try {
-                    // Parse the mapping content to get the mappings section
-                    JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+                    JsonNode rootNode = JsonUtils.readTree(transformedContent);
                     JsonNode mappingsNode = rootNode.get("mappings");
 
                     if (mappingsNode != null && !mappingsNode.isNull()) {
@@ -479,10 +483,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
       response
           .result()
-          .forEach(
-              (index, aliasMetadata) -> {
-                aliases.addAll(aliasMetadata.aliases().keySet());
-              });
+          .forEach((index, aliasMetadata) -> aliases.addAll(aliasMetadata.aliases().keySet()));
 
       LOG.info("Retrieved aliases for index {}: {}", indexName, aliases);
     } catch (Exception e) {

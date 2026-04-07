@@ -20,7 +20,7 @@ export const CheckboxBlankIcon = () => (
       width: '100%',
       height: '100%',
       backgroundColor: 'white',
-      borderRadius: 4, 
+      borderRadius: 4,
       border: '1px solid',
       borderColor: 'currentColor',
       display: 'flex',
@@ -45,15 +45,13 @@ export const CheckboxCheckedIcon = () => (
       justifyContent: 'center',
       position: 'relative',
       boxSizing: 'border-box',
-    }}
-  >
+    }}>
     <svg
       fill="none"
       height="75%" // Responsive size
-      width="75%"
-      viewBox="0 0 14 14"
       style={{ position: 'absolute' }}
-    >
+      viewBox="0 0 14 14"
+      width="75%">
       <path
         d="M11.6666 3.5L5.24992 9.91667L2.33325 7"
         stroke="white"
@@ -78,15 +76,13 @@ export const CheckboxIndeterminateIcon = () => (
       justifyContent: 'center',
       position: 'relative',
       boxSizing: 'border-box',
-    }}
-  >
+    }}>
     <svg
       fill="none"
       height="60%"
-      width="60%"
-      viewBox="0 0 14 14"
       style={{ position: 'absolute' }}
-    >
+      viewBox="0 0 14 14"
+      width="60%">
       <path
         d="M2.91675 7H11.0834"
         stroke="white"

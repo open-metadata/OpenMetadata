@@ -21,6 +21,7 @@ import {
   DataQualityDimensions,
   DataType,
   EntityType,
+  TestDataType,
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
@@ -62,7 +63,7 @@ const mockExternalTestDefinition: TestDefinition = {
     {
       name: 'threshold',
       displayName: 'Threshold',
-      dataType: 'INT' as any,
+      dataType: TestDataType.Int,
       description: 'Minimum count threshold',
       required: true,
     },
@@ -338,6 +339,318 @@ describe('TestDefinitionForm Component', () => {
         const errors = screen.getAllByText('message.field-text-is-required');
 
         expect(errors.length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('Field Requirements', () => {
+    const submitEmptyForm = async () => {
+      const saveButton = screen.getByTestId('save-test-definition');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+    };
+
+    // testPlatforms defaults to [OpenMetadata] so it never fires an error on empty submit.
+    // name + entityType are the two required fields without defaults.
+    it('should show exactly 2 validation errors when create form is submitted empty', async () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      await submitEmptyForm();
+
+      await waitFor(() => {
+        const errors = screen.getAllByText('message.field-text-is-required');
+
+        expect(errors).toHaveLength(2);
+      });
+    });
+
+    describe('Required fields', () => {
+      it('name field is required', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        await submitEmptyForm();
+
+        await waitFor(() => {
+          const nameFormItem = screen
+            .getByLabelText('label.name')
+            .closest('.ant-form-item');
+
+          expect(nameFormItem).toHaveTextContent(
+            'message.field-text-is-required'
+          );
+        });
+      });
+
+      it('entityType field is required', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        await submitEmptyForm();
+
+        await waitFor(() => {
+          const entityTypeFormItem = screen
+            .getByLabelText('label.entity-type')
+            .closest('.ant-form-item');
+
+          expect(entityTypeFormItem).toHaveTextContent(
+            'message.field-text-is-required'
+          );
+        });
+      });
+
+      it('testPlatforms field is required', () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        // testPlatforms defaults to [OpenMetadata] so submitting never triggers
+        // an error. Verify required status via the asterisk class Ant Design adds
+        // to the label when rules contain required: true.
+        const testPlatformsFormItem = screen
+          .getByLabelText('label.test-platform-plural')
+          .closest('.ant-form-item');
+
+        expect(
+          testPlatformsFormItem?.querySelector('.ant-form-item-required')
+        ).toBeInTheDocument();
+      });
+
+      it('parameter name field is required', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        const addButtons = screen.getAllByRole('button', {
+          name: /label.add-entity/i,
+        });
+        await act(async () => {
+          fireEvent.click(addButtons[addButtons.length - 1]);
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
+        });
+
+        await submitEmptyForm();
+
+        await waitFor(() => {
+          const paramNameFormItem = screen
+            .getByPlaceholderText('label.parameter-name')
+            .closest('.ant-form-item');
+
+          expect(paramNameFormItem).toHaveTextContent(
+            'message.field-text-is-required'
+          );
+        });
+      });
+    });
+
+    describe('Optional fields', () => {
+      // Helper: verifies that a form item contains no required-field error after submit.
+      const assertNoRequiredError = async (formItem: Element | null) => {
+        await waitFor(() => {
+          expect(formItem).not.toHaveTextContent(
+            'message.field-text-is-required'
+          );
+        });
+      };
+
+      it('displayName field is optional', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        await submitEmptyForm();
+
+        const formItem = screen
+          .getByLabelText('label.display-name')
+          .closest('.ant-form-item');
+
+        await assertNoRequiredError(formItem);
+      });
+
+      it('description field is optional', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        await submitEmptyForm();
+
+        const formItem = screen
+          .getByLabelText('label.description')
+          .closest('.ant-form-item');
+
+        await assertNoRequiredError(formItem);
+      });
+
+      it('sqlExpression field is optional', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        await submitEmptyForm();
+
+        const formItem = screen
+          .getByTestId('code-editor')
+          .closest('.ant-form-item');
+
+        await assertNoRequiredError(formItem);
+      });
+
+      it('dataQualityDimension field is optional', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        await submitEmptyForm();
+
+        const formItem = screen
+          .getByLabelText('label.data-quality-dimension')
+          .closest('.ant-form-item');
+
+        await assertNoRequiredError(formItem);
+      });
+
+      it('supportedServices field is optional', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        await submitEmptyForm();
+
+        const formItem = screen
+          .getByLabelText('label.supported-service-plural')
+          .closest('.ant-form-item');
+
+        await assertNoRequiredError(formItem);
+      });
+
+      it('supportedDataTypes field is optional', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        await submitEmptyForm();
+
+        const formItem = screen
+          .getByLabelText('label.supported-data-type-plural')
+          .closest('.ant-form-item');
+
+        await assertNoRequiredError(formItem);
+      });
+
+      it('parameter dataType field is optional', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        const addButtons = screen.getAllByText('label.add-entity');
+        await act(async () => {
+          fireEvent.click(addButtons[addButtons.length - 1]);
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
+        });
+
+        await submitEmptyForm();
+
+        const formItem = screen
+          .getByLabelText('label.data-type')
+          .closest('.ant-form-item');
+
+        await assertNoRequiredError(formItem);
+      });
+
+      it('parameter displayName field is optional', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        const addButtons = screen.getAllByText('label.add-entity');
+        await act(async () => {
+          fireEvent.click(addButtons[addButtons.length - 1]);
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
+        });
+
+        await submitEmptyForm();
+
+        const paramDisplayNameFormItem = screen
+          .getByPlaceholderText('label.parameter-display-name')
+          .closest('.ant-form-item');
+
+        await assertNoRequiredError(paramDisplayNameFormItem);
+      });
+
+      it('parameter description field is optional', async () => {
+        render(
+          <TestDefinitionForm
+            onCancel={mockOnCancel}
+            onSuccess={mockOnSuccess}
+          />
+        );
+
+        const addButtons = screen.getAllByText('label.add-entity');
+        await act(async () => {
+          fireEvent.click(addButtons[addButtons.length - 1]);
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
+        });
+
+        await submitEmptyForm();
+
+        const paramDescFormItem = screen
+          .getByPlaceholderText('label.parameter-description')
+          .closest('.ant-form-item');
+
+        await assertNoRequiredError(paramDescFormItem);
       });
     });
   });

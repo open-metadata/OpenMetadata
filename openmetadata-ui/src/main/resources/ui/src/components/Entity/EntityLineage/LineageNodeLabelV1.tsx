@@ -14,7 +14,7 @@ import { Breadcrumbs, Button, Chip, IconButton, Tooltip } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -44,7 +44,7 @@ interface LineageNodeLabelProps {
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
-const EntityLabel = ({ node }: LineageNodeLabelProps) => {
+const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -87,7 +87,7 @@ const EntityLabel = ({ node }: LineageNodeLabelProps) => {
         <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
         </div>
-        <Space align="start" direction="vertical" size={0}>
+        <Space align="start" className="flex-1" direction="vertical" size={0}>
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"
@@ -175,13 +175,13 @@ const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelProps) => {
   );
 };
 
-const EntityTypeIcon = ({ entityType }: { entityType?: string }) => {
+const EntityTypeIcon = memo(({ entityType }: { entityType?: string }) => {
   return (
     <span style={{ width: '16px', height: '16px' }}>
       {getEntityTypeIcon(entityType)}
     </span>
   );
-};
+});
 
 const EntityFooter = ({
   isChildrenListExpanded,

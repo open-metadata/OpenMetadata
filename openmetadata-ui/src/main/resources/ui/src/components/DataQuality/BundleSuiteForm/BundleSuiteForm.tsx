@@ -43,7 +43,6 @@ import {
 } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestSuite } from '../../../generated/api/tests/createTestSuite';
 import { LogLevels } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
@@ -52,7 +51,7 @@ import {
   deployIngestionPipelineById,
 } from '../../../rest/ingestionPipelineAPI';
 import {
-  addTestCaseToLogicalTestSuite,
+  addTestCasesToLogicalTestSuiteBulk,
   createTestSuites,
 } from '../../../rest/testAPI';
 import {
@@ -72,6 +71,7 @@ import AlertBar from '../../AlertBar/AlertBar';
 import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
 import '../AddDataQualityTest/components/TestCaseFormV1.less';
 import { AddTestCaseList } from '../AddTestCaseList/AddTestCaseList.component';
+import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
 import {
   BundleSuiteFormData,
   BundleSuiteFormProps,
@@ -105,9 +105,17 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
   // =============================================
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>(
-    initialValues?.testCases || []
-  );
+  const [testCaseSelectionPayload, setTestCaseSelectionPayload] =
+    useState<AddTestCaseListChangePayload>(() => {
+      const initialTestCases = initialValues?.testCases || [];
+
+      return {
+        selectAll: false,
+        includeIds: initialTestCases.map((tc) => tc.id ?? '').filter(Boolean),
+        excludeIds: [],
+        testCases: initialTestCases,
+      };
+    });
 
   // =============================================
   // HOOKS - Memoized Values
@@ -185,28 +193,33 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
     [t]
   );
 
+  const selectedTestNames = useMemo(() => {
+    return testCaseSelectionPayload.testCases
+      ?.map((tc) => tc.name ?? '')
+      .filter(Boolean);
+  }, [testCaseSelectionPayload.testCases]);
+
   // =============================================
   // HOOKS - Effects
   // =============================================
 
-  // Initialize form values
   useEffect(() => {
     if (initialValues) {
       form.setFieldsValue({
         name: initialValues.name || '',
         description: initialValues.description || '',
-        testCases: initialValues.testCases || [],
-      });
+        testCaseSelection: testCaseSelectionPayload,
+      } as Record<string, unknown>);
     }
-  }, [initialValues, form]);
+  }, [initialValues, form, testCaseSelectionPayload]);
 
   // =============================================
   // HOOKS - Callbacks
   // =============================================
   const handleTestCaseSelection = useCallback(
-    (testCases: TestCase[]) => {
-      setSelectedTestCases(testCases);
-      form.setFieldValue('testCases', testCases);
+    (payload: AddTestCaseListChangePayload) => {
+      setTestCaseSelectionPayload(payload);
+      form.setFieldValue('testCaseSelection', payload);
     },
     [form]
   );
@@ -275,9 +288,10 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
 
     const testSuite = await createTestSuites(testSuitePayload);
 
-    await addTestCaseToLogicalTestSuite({
-      testCaseIds: selectedTestCases.map((testCase) => testCase.id ?? ''),
-      testSuiteId: testSuite.id ?? '',
+    await addTestCasesToLogicalTestSuiteBulk(testSuite.id ?? '', {
+      selectAll: testCaseSelectionPayload.selectAll,
+      includeIds: testCaseSelectionPayload.includeIds,
+      excludeIds: testCaseSelectionPayload.excludeIds,
     });
 
     if (formData.enableScheduler && ingestionPipeline.Create) {
@@ -291,9 +305,9 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
     setIsSubmitting(true);
     setErrorMessage('');
     try {
-      const formData = {
+      const formData: BundleSuiteFormData = {
         ...values,
-        testCases: selectedTestCases,
+        testCaseSelection: testCaseSelectionPayload,
       };
 
       const testSuite = await createTestSuiteWithPipeline(formData);
@@ -359,7 +373,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
       )}
 
       <Form
-        className="new-form-style"
+        className="new-form-style bundle-suite-form"
         form={form}
         id="bundle-suite-form"
         initialValues={{
@@ -367,7 +381,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           raiseOnError: true,
           cron: DEFAULT_SCHEDULE_CRON_DAILY,
           enableDebugLog: false,
-          ...initialValues,
+          name: initialValues?.name ?? '',
+          description: initialValues?.description ?? '',
         }}
         layout="vertical"
         onFinish={handleFormSubmit}
@@ -379,21 +394,32 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
 
         {/* Test Case Selection */}
         <Card
-          className="form-card-section"
+          className="form-card-section bundle-suite-form-test-case-selection-card"
           data-testid="test-case-selection-card">
           <Form.Item
             label={t('label.test-case-plural')}
-            name="testCases"
+            name="testCaseSelection"
             rules={[
               {
-                required: true,
-                message: t('label.field-required', {
-                  field: t('label.test-case-plural'),
-                }),
+                validator: (_, value) => {
+                  const valid =
+                    value &&
+                    (value.selectAll || (value.includeIds?.length ?? 0) > 0);
+
+                  return valid
+                    ? Promise.resolve()
+                    : Promise.reject(
+                        new Error(
+                          t('label.field-required', {
+                            field: t('label.test-case-plural'),
+                          })
+                        )
+                      );
+                },
               },
             ]}>
             <AddTestCaseList
-              selectedTest={selectedTestCases.map((tc) => tc.name)}
+              selectedTest={selectedTestNames}
               showButton={false}
               onChange={handleTestCaseSelection}
             />

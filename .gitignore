@@ -12,6 +12,7 @@
 # Created by .ignore support plugin (hsz.mobi)
 # Maven
 .venv
+.venv-devcontainer
 __pycache__
 target/
 pom.xml.tag
@@ -70,6 +71,7 @@ dist
 # ts build info and report
 openmetadata-ui/src/main/resources/ui/webpack
 openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
+openmetadata-ui/src/main/resources/ui/playwright/tsconfig.tsbuildinfo
 
 #tests
 .coverage*
@@ -187,3 +189,11 @@ memory
 .claude/agents
 ingestion/.claude/agents
 
+# AI scaffold working documents — stay local, never committed
+**/CONNECTOR_CONTEXT.md
+
+# Connector audit working files — per-session, never committed
+.claude/audit-results/
+.claude/connector-audit.json
+
+test-results/

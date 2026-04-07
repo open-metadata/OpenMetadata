@@ -12,20 +12,9 @@
  */
 
 import {
-  CheckCircleOutlineOutlined,
-  DeleteOutlineOutlined,
-  TaskAltOutlined,
-} from '@mui/icons-material';
-import CancelIcon from '@mui/icons-material/Cancel';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CloseIcon from '@mui/icons-material/Close';
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -40,6 +29,15 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import {
+  AlertTriangle,
+  CheckCircle,
+  CheckVerified01,
+  File06,
+  Trash01,
+  XCircle,
+  XClose,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { load as yamlLoad } from 'js-yaml';
@@ -62,6 +60,7 @@ import {
   validateODCSYaml,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import {
   ContractImportModalProps,
   ImportMode,
@@ -759,7 +758,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               {t('label.parse-error')}
             </Typography>
             <Chip
-              icon={<CloseIcon sx={{ fontSize: '12px !important' }} />}
+              icon={<XClose size={12} />}
               label={t('label.failed')}
               size="small"
               sx={{
@@ -813,12 +812,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               borderTop: `1px solid ${theme.palette.allShades.error[100]}`,
             }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CancelIcon
-                sx={{
-                  fontSize: '16px',
-                  color: theme.palette.allShades.error[600],
-                }}
-              />
+              <XCircle color={theme.palette.allShades.error[600]} size={16} />
               <Typography sx={{ fontSize: '14px' }}>
                 {t('label.syntax')} : <strong>{t('label.invalid')}</strong>
               </Typography>
@@ -840,7 +834,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-          <CircularProgress size={24} sx={{ mb: '12px' }} />
+          <Loader size="small" style={{ marginBottom: '12px' }} />
           <Typography
             sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
             {t('message.validating-contract-schema')}
@@ -873,7 +867,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               {t('label.schema-validation')}
             </Typography>
             <Chip
-              icon={<CloseIcon sx={{ fontSize: '12px !important' }} />}
+              icon={<XClose size={12} />}
               label={t('label.failed')}
               size="small"
               sx={{
@@ -906,23 +900,16 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 gap: '8px',
                 mb: '8px',
               }}>
-              <CheckCircleIcon
-                sx={{
-                  fontSize: '16px',
-                  color: theme.palette.allShades.success[500],
-                }}
+              <CheckCircle
+                color={theme.palette.allShades.success[500]}
+                size={16}
               />
               <Typography sx={{ fontSize: '14px' }}>
                 {t('label.syntax')} : <strong>{t('label.valid')}</strong>
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CancelIcon
-                sx={{
-                  fontSize: '16px',
-                  color: theme.palette.allShades.error[600],
-                }}
-              />
+              <XCircle color={theme.palette.allShades.error[600]} size={16} />
               <Typography sx={{ fontSize: '14px' }}>
                 {t('label.schema')} : <strong>{t('label.error')}</strong>
               </Typography>
@@ -959,7 +946,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               {t('label.schema-validation')}
             </Typography>
             <Chip
-              icon={<CloseIcon sx={{ fontSize: '12px !important' }} />}
+              icon={<XClose size={12} />}
               label={t('label.failed')}
               size="small"
               sx={{
@@ -1060,23 +1047,16 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 gap: '8px',
                 mb: '8px',
               }}>
-              <CheckCircleIcon
-                sx={{
-                  fontSize: '16px',
-                  color: theme.palette.allShades.success[500],
-                }}
+              <CheckCircle
+                color={theme.palette.allShades.success[500]}
+                size={16}
               />
               <Typography sx={{ fontSize: '14px' }}>
                 {t('label.syntax')} : <strong>{t('label.valid')}</strong>
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CancelIcon
-                sx={{
-                  fontSize: '16px',
-                  color: theme.palette.allShades.error[600],
-                }}
-              />
+              <XCircle color={theme.palette.allShades.error[600]} size={16} />
               <Typography sx={{ fontSize: '14px' }}>
                 {t('label.schema')} :{' '}
                 {serverValidation.schemaValidation?.failed}{' '}
@@ -1124,7 +1104,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               {t('label.contract-validation')}
             </Typography>
             <Chip
-              icon={<CloseIcon sx={{ fontSize: '12px !important' }} />}
+              icon={<XClose size={12} />}
               label={t('label.failed')}
               size="small"
               sx={{
@@ -1182,23 +1162,16 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 gap: '8px',
                 mb: '8px',
               }}>
-              <CheckCircleIcon
-                sx={{
-                  fontSize: '16px',
-                  color: theme.palette.allShades.success[500],
-                }}
+              <CheckCircle
+                color={theme.palette.allShades.success[500]}
+                size={16}
               />
               <Typography sx={{ fontSize: '14px' }}>
                 {t('label.syntax')} : <strong>{t('label.valid')}</strong>
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CancelIcon
-                sx={{
-                  fontSize: '16px',
-                  color: theme.palette.allShades.error[600],
-                }}
-              />
+              <XCircle color={theme.palette.allShades.error[600]} size={16} />
               <Typography sx={{ fontSize: '14px' }}>
                 {t('label.contract')} :{' '}
                 <strong>{t('label.validation-failed')}</strong>
@@ -1241,7 +1214,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             {t('label.schema-validation')}
           </Typography>
           <Chip
-            icon={<TaskAltOutlined sx={{ fontSize: '12px !important' }} />}
+            icon={<CheckVerified01 size={12} />}
             label={
               hasTypeMismatches
                 ? t('label.passed-with-warnings')
@@ -1298,11 +1271,9 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                         alignItems: 'center',
                         gap: '8px',
                       }}>
-                      <WarningAmberIcon
-                        sx={{
-                          fontSize: '14px',
-                          color: theme.palette.allShades.warning[600],
-                        }}
+                      <AlertTriangle
+                        color={theme.palette.allShades.warning[600]}
+                        size={14}
                       />
                       <Typography
                         data-testid={`type-mismatch-warning-${index}`}
@@ -1329,11 +1300,9 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               gap: '8px',
               mb: '8px',
             }}>
-            <CheckCircleOutlineOutlined
-              sx={{
-                fontSize: '16px',
-                color: theme.palette.allShades.success[700],
-              }}
+            <CheckCircle
+              color={theme.palette.allShades.success[700]}
+              size={16}
             />
             <Typography sx={{ fontSize: '14px' }}>
               {t('label.syntax')} : <strong>{t('label.valid')}</strong>
@@ -1342,11 +1311,9 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           {serverValidation?.schemaValidation?.total !== undefined &&
             serverValidation.schemaValidation.total > 0 && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircleOutlineOutlined
-                  sx={{
-                    fontSize: '16px',
-                    color: theme.palette.allShades.success[700],
-                  }}
+                <CheckCircle
+                  color={theme.palette.allShades.success[700]}
+                  size={16}
                 />
                 <Typography sx={{ fontSize: '14px' }}>
                   {t('label.schema')} :{' '}
@@ -1391,12 +1358,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             borderRadius: '8px',
             p: '12px',
           }}>
-          <WarningAmberIcon
-            sx={{
-              color: theme.palette.allShades.warning[600],
-              fontSize: '20px',
-              mt: '2px',
-            }}
+          <AlertTriangle
+            color={theme.palette.allShades.warning[600]}
+            size={20}
+            style={{ marginTop: '2px' }}
           />
           <Typography
             sx={{
@@ -1616,7 +1581,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         </Box>
         {!isLoading && (
           <IconButton size="medium" sx={{ p: 0 }} onClick={handleReset}>
-            <CloseIcon />
+            <XClose data-testid="CloseIcon" />
           </IconButton>
         )}
       </DialogTitle>
@@ -1699,7 +1664,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               <>
                 <Box className="file-info-card" data-testid="file-info-card">
                   <Box className="file-info">
-                    <DescriptionOutlinedIcon className="file-icon" />
+                    <File06 className="file-icon" />
 
                     <Typography className="file-name" component="span">
                       {fileName}
@@ -1708,10 +1673,11 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
                   <IconButton
                     className="remove-button"
+                    data-testid="remove-file-button"
                     size="small"
                     title="Delete file"
                     onClick={handleRemoveFile}>
-                    <DeleteOutlineOutlined fontSize="small" />
+                    <Trash01 size={20} />
                   </IconButton>
                 </Box>
 
@@ -1764,7 +1730,11 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           variant="contained"
           onClick={handleImport}>
           {(isLoading || isValidating) && (
-            <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} />
+            <Loader
+              size="x-small"
+              style={{ marginRight: '8px' }}
+              type="white"
+            />
           )}
           {t('label.import')}
         </Button>

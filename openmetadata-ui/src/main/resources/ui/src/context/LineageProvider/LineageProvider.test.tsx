@@ -94,19 +94,27 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+const mockSetNodes = jest.fn();
+const mockSetEdges = jest.fn();
+const mockOnNodesChange = jest.fn();
+const mockOnEdgesChange = jest.fn();
+const mockRemoveNodeById = jest.fn();
+const mockRemoveEdgeById = jest.fn();
+const mockRemoveEdgesBySourceTarget = jest.fn();
+
 jest.mock('../../hooks/useMapBasedNodesEdges', () => ({
   useMapBasedNodesEdges: jest.fn().mockImplementation(() => ({
     nodes: [],
     edges: [],
     nodeEdges: [],
     columnEdges: [],
-    setNodes: jest.fn(),
-    setEdges: jest.fn(),
-    onNodesChange: jest.fn(),
-    onEdgesChange: jest.fn(),
-    removeNodeById: jest.fn(),
-    removeEdgeById: jest.fn(),
-    removeEdgesBySourceTarget: jest.fn(),
+    setNodes: mockSetNodes,
+    setEdges: mockSetEdges,
+    onNodesChange: mockOnNodesChange,
+    onEdgesChange: mockOnEdgesChange,
+    removeNodeById: mockRemoveNodeById,
+    removeEdgeById: mockRemoveEdgeById,
+    removeEdgesBySourceTarget: mockRemoveEdgesBySourceTarget,
     removeEdgesByDocId: jest.fn(),
     addNodes: jest.fn(),
     addEdges: jest.fn(),
@@ -121,11 +129,14 @@ const DummyChildrenComponent = () => {
     onEdgeClick,
     updateEntityData,
     onColumnMouseEnter,
+    redraw,
+    onNodeCollapse,
   } = useLineageProvider();
 
   const nodeData = {
     name: 'table1',
     type: 'table',
+    entityType: 'table',
     fullyQualifiedName: 'table1',
     id: 'table1',
   };
@@ -146,6 +157,22 @@ const DummyChildrenComponent = () => {
           type: 'test',
         },
       },
+    },
+  };
+
+  const MOCK_NODE = {
+    id: 'table1',
+    type: 'default',
+    position: { x: 0, y: 0 },
+    data: {
+      node: {
+        id: 'table1',
+        name: 'table1',
+        fullyQualifiedName: 'table1',
+        type: 'table',
+      },
+      isRootNode: false,
+      fullyQualifiedName: 'table1',
     },
   };
 
@@ -179,6 +206,14 @@ const DummyChildrenComponent = () => {
       </button>
       <button data-testid="openConfirmationModal">
         Close Confirmation Modal
+      </button>
+      <button data-testid="redraw" onClick={() => redraw()}>
+        Redraw
+      </button>
+      <button
+        data-testid="node-collapse"
+        onClick={() => onNodeCollapse(MOCK_NODE, LineageDirection.Downstream)}>
+        Node Collapse
       </button>
     </div>
   );
@@ -224,11 +259,20 @@ jest.mock('../../rest/lineageAPI', () => ({
   getDataQualityLineage: jest.fn(),
 }));
 
+const mockCenterNodePosition = jest.fn();
+jest.mock('../../utils/EntityLineageUtils', () => ({
+  ...jest.requireActual('../../utils/EntityLineageUtils'),
+  centerNodePosition: (...args: unknown[]) => mockCenterNodePosition(...args),
+}));
+
 describe('LineageProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsAlertSupported = false;
     mockLocation.search = '';
+    mockSetNodes.mockClear();
+    mockSetEdges.mockClear();
+    mockCenterNodePosition.mockClear();
   });
 
   it('renders Lineage component and fetches data', async () => {
@@ -321,5 +365,166 @@ describe('LineageProvider', () => {
     fireEvent.click(columnEnter);
 
     expect(mockSetTracedColumns).toHaveBeenCalled();
+  });
+
+  it('should call redraw handler', async () => {
+    (getLineageDataByFQN as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        nodes: {},
+        downstreamEdges: {},
+        upstreamEdges: {},
+      })
+    );
+
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
+
+    const redrawButton = screen.getByTestId('redraw');
+    fireEvent.click(redrawButton);
+
+    expect(redrawButton).toBeInTheDocument();
+  });
+
+  it('should call onNodeCollapse handler', async () => {
+    (getLineageDataByFQN as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        nodes: {},
+        downstreamEdges: {},
+        upstreamEdges: {},
+      })
+    );
+
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
+
+    const collapseButton = screen.getByTestId('node-collapse');
+    fireEvent.click(collapseButton);
+
+    expect(collapseButton).toBeInTheDocument();
+  });
+
+  it('should handle loadChildNodesHandler with upstream direction', async () => {
+    const nodeData = {
+      name: 'table2',
+      type: 'table',
+      entityType: 'table',
+      fullyQualifiedName: 'table2',
+      id: 'table2',
+    };
+
+    (getLineageDataByFQN as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        nodes: { table2: { entity: nodeData } },
+        downstreamEdges: {},
+        upstreamEdges: {},
+      })
+    );
+
+    const TestComponent = () => {
+      const { loadChildNodesHandler } = useLineageProvider();
+
+      return (
+        <button
+          data-testid="load-upstream-nodes"
+          onClick={() =>
+            loadChildNodesHandler(
+              nodeData as SourceType,
+              LineageDirection.Upstream,
+              1
+            )
+          }>
+          Load Upstream Nodes
+        </button>
+      );
+    };
+
+    render(
+      <LineageProvider>
+        <TestComponent />
+      </LineageProvider>
+    );
+
+    const loadButton = screen.getByTestId('load-upstream-nodes');
+    fireEvent.click(loadButton);
+
+    await waitFor(() => {
+      expect(getLineageDataByFQN).toHaveBeenCalled();
+    });
+  });
+
+  it('should call loadChildNodesHandler and update lineage data', async () => {
+    const nodeData = {
+      name: 'table3',
+      type: 'table',
+      entityType: 'table',
+      fullyQualifiedName: 'table3',
+      id: 'table3',
+      downstreamExpandPerformed: false,
+    };
+
+    const mockLineageResponse = {
+      nodes: {
+        table3: { entity: nodeData },
+        table4: {
+          entity: {
+            id: 'table4',
+            name: 'table4',
+            entityType: 'table',
+            fullyQualifiedName: 'table4',
+          },
+        },
+      },
+      downstreamEdges: {
+        'table3-table4': {
+          fromEntity: { id: 'table3', type: 'table' },
+          toEntity: { id: 'table4', type: 'table' },
+        },
+      },
+      upstreamEdges: {},
+    };
+
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(mockLineageResponse);
+
+    const TestComponent = () => {
+      const { loadChildNodesHandler } = useLineageProvider();
+
+      return (
+        <button
+          data-testid="load-child-nodes"
+          onClick={() =>
+            loadChildNodesHandler(
+              nodeData as SourceType,
+              LineageDirection.Downstream,
+              1
+            )
+          }>
+          Load Child Nodes
+        </button>
+      );
+    };
+
+    render(
+      <LineageProvider>
+        <TestComponent />
+      </LineageProvider>
+    );
+
+    const loadButton = screen.getByTestId('load-child-nodes');
+    fireEvent.click(loadButton);
+
+    await waitFor(() => {
+      expect(getLineageDataByFQN).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fqn: 'table3',
+          entityType: 'table',
+        })
+      );
+    });
   });
 });

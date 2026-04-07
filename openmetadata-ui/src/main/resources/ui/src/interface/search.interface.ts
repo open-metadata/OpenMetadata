@@ -22,7 +22,10 @@ import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { Database } from '../generated/entity/data/database';
+import {
+  Database,
+  DatabaseServiceType,
+} from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Directory } from '../generated/entity/data/directory';
 import { File } from '../generated/entity/data/file';
@@ -35,7 +38,7 @@ import { Query } from '../generated/entity/data/query';
 import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../generated/entity/data/storedProcedure';
-import { Table } from '../generated/entity/data/table';
+import { Column as TableColumn, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Worksheet } from '../generated/entity/data/worksheet';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
@@ -52,6 +55,7 @@ import { SearchService } from '../generated/entity/services/searchService';
 import { StorageService } from '../generated/entity/services/storageService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
+import { EntityReference } from '../generated/entity/type';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
@@ -88,7 +92,20 @@ interface SearchSourceBase {
   typescript does not allow this for interface extension.
   (More here: https://github.com/microsoft/TypeScript/issues/16936)
  */
-export interface TableSearchSource extends SearchSourceBase, Table {} // extends EntityInterface
+export interface TableSearchSource extends SearchSourceBase, Table {
+  columnNames?: string[];
+} // extends EntityInterface
+
+export interface TableColumnSearchSource extends SearchSourceBase, TableColumn {
+  database?: EntityReference;
+  databaseSchema?: EntityReference;
+  service?: EntityReference;
+  table?: EntityReference;
+  serviceType?: DatabaseServiceType;
+  owners?: EntityReference[];
+  domains?: EntityReference[];
+  entityType: string;
+} // extends EntityInterface
 
 export interface DashboardSearchSource extends SearchSourceBase, Dashboard {} // extends EntityInterface
 
@@ -246,7 +263,8 @@ export type ExploreSearchSource =
   | APIServiceSearchSource
   | APICollectionSearchSource
   | APIEndpointSearchSource
-  | MetricSearchSource;
+  | MetricSearchSource
+  | TableColumnSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
@@ -283,14 +301,15 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
   [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
-  [SearchIndex.API_SERVICE_INDEX]: APIServiceSearchSource;
-  [SearchIndex.API_COLLECTION_INDEX]: APICollectionSearchSource;
-  [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointSearchSource;
-  [SearchIndex.METRIC_SEARCH_INDEX]: MetricSearchSource;
-  [SearchIndex.DIRECTORY_SEARCH_INDEX]: DirectorySearchSource;
-  [SearchIndex.FILE_SEARCH_INDEX]: FileSearchSource;
-  [SearchIndex.SPREADSHEET_SEARCH_INDEX]: SpreadsheetSearchSource;
-  [SearchIndex.WORKSHEET_SEARCH_INDEX]: WorksheetSearchSource;
+  [SearchIndex.API_SERVICE]: APIServiceSearchSource;
+  [SearchIndex.API_COLLECTION]: APICollectionSearchSource;
+  [SearchIndex.API_ENDPOINT]: APIEndpointSearchSource;
+  [SearchIndex.METRIC]: MetricSearchSource;
+  [SearchIndex.DIRECTORY]: DirectorySearchSource;
+  [SearchIndex.FILE]: FileSearchSource;
+  [SearchIndex.SPREADSHEET]: SpreadsheetSearchSource;
+  [SearchIndex.WORKSHEET]: WorksheetSearchSource;
+  [SearchIndex.COLUMN]: TableColumnSearchSource;
 };
 
 export type SearchRequest<

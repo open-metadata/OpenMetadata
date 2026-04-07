@@ -25,7 +25,10 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -103,10 +106,13 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
-    ScheduledExecutorService threadScheduler = Executors.newScheduledThreadPool(1);
+    ScheduledExecutorService threadScheduler =
+        Executors.newScheduledThreadPool(
+            1, Thread.ofPlatform().name("om-app-error-trigger-reset").factory());
     threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
+  }
 
-    // Start Scheduler
+  public void start() throws SchedulerException {
     this.scheduler.start();
   }
 
@@ -355,6 +361,14 @@ public class AppScheduler {
         }
       }
       if (!isJobRunning) {
+        // Quartz doesn't see the job, but a distributed indexing job may still be
+        // running independently. Try to stop it via the coordinator directly.
+        if (tryStopViaApp(application)) {
+          LOG.info(
+              "No Quartz job found for {}, but stopped running distributed job via coordinator",
+              application.getName());
+          return;
+        }
         LOG.error(
             "No running job found for application: {}. Scheduled key: {}, OnDemand key: {}",
             application.getName(),
@@ -392,7 +406,16 @@ public class AppScheduler {
         }
       }
 
-      // Delete the job after interrupting
+      // Wait briefly for the interrupt to propagate and cleanup to start before deleting
+      // the job. Deleting immediately can kill the Quartz thread before the application's
+      // stop/cleanup logic (e.g., flushing sinks, transitioning job status) can complete.
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+
+      // Delete the job after interrupt has had time to propagate
       JobKey scheduledJobKey = new JobKey(application.getName(), APPS_JOB_GROUP);
       if (jobDetailScheduled != null) {
         LOG.info("Deleting Scheduled Job for App: {}", application.getName());
@@ -415,6 +438,19 @@ public class AppScheduler {
       }
     } catch (SchedulerException ex) {
       LOG.error("Failed to stop job execution for app: {}", application.getName(), ex);
+    }
+  }
+
+  private boolean tryStopViaApp(App application) {
+    try {
+      AbstractNativeApplication appInstance =
+          ApplicationHandler.getInstance()
+              .runAppInit(
+                  application, Entity.getCollectionDAO(), Entity.getSearchRepository(), true);
+      return appInstance.tryStopOutsideQuartz();
+    } catch (Exception e) {
+      LOG.error("Failed to stop app via fallback: {}", application.getName(), e);
+      return false;
     }
   }
 

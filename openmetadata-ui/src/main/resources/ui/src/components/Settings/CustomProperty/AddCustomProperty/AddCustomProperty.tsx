@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Chip, Typography, useTheme } from '@mui/material';
+import { Badge } from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormInstance, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
@@ -80,12 +80,12 @@ const AddCustomProperty = ({
 }: AddCustomPropertyProps) => {
   const [localForm] = Form.useForm();
   const form = formRef ?? localForm;
-  const { entityType: entityTypeParam } =
-    useRequiredParams<{ entityType: EntityType }>();
+  const { entityType: entityTypeParam } = useRequiredParams<{
+    entityType: EntityType;
+  }>();
   const entityType = entityTypeProp ?? entityTypeParam;
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const theme = useTheme();
   const [typeDetail, setTypeDetail] = useState<Type>();
 
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
@@ -126,7 +126,7 @@ const AddCustomProperty = ({
         ];
 
       // Remove -cp from the name and convert to start case
-      const title = startCase(getEntityName(type).replace(/-cp/g, ''));
+      const title = startCase(getEntityName(type).replaceAll('-cp', ''));
 
       return {
         searchField: title,
@@ -235,24 +235,16 @@ const AddCustomProperty = ({
 
   const getAppliesToField = useCallback(() => {
     return (
-      <Chip
-        icon={<ColumnIcon height={14} width={14} />}
-        label={
-          <Typography
-            color={theme.palette.allShades.gray['700']}
-            variant="body2">
-            {t('label.table-column')}
-          </Typography>
-        }
-        sx={{
-          borderColor: theme.palette.allShades.blueGray['200'],
-          backgroundColor: theme.palette.allShades.blueGray['40'],
-        }}
-        variant="filled"
-        onClick={undefined}
-      />
+      <Badge
+        className="flex items-center gap-1"
+        color="gray"
+        size="md"
+        type="pill-color">
+        <ColumnIcon height={14} width={14} />
+        {t('label.table-column')}
+      </Badge>
     );
-  }, [theme, t]);
+  }, [t]);
 
   const supportedFormats = useMemo(() => {
     const propertyName = watchedOption?.key ?? '';
@@ -461,21 +453,15 @@ const AddCustomProperty = ({
             validator: async (_, value) => {
               if (isArray(value)) {
                 if (value.length > 3) {
-                  return Promise.reject(
-                    t('message.maximum-count-allowed', {
-                      count: 3,
-                      label: t('label.column-plural'),
-                    })
-                  );
+                  throw t('message.maximum-count-allowed', {
+                    count: 3,
+                    label: t('label.column-plural'),
+                  });
                 }
-
-                return Promise.resolve();
               } else {
-                return Promise.reject(
-                  t('label.field-required', {
-                    field: t('label.column-plural'),
-                  })
-                );
+                throw t('label.field-required', {
+                  field: t('label.column-plural'),
+                });
               }
             },
           },

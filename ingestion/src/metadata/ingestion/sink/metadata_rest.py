@@ -13,9 +13,10 @@ This is the main used sink for all OM Workflows.
 It picks up the generated Entities and send them
 to the OM API.
 """
+
 import traceback
 from functools import singledispatchmethod
-from typing import Any, Dict, Optional, TypeVar, Union
+from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -23,6 +24,7 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.ai.createMcpServer import CreateMcpServerRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
@@ -57,7 +59,7 @@ from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
     SearchIndexSampleData,
 )
-from metadata.generated.schema.entity.data.table import DataModel, Table
+from metadata.generated.schema.entity.data.table import DataModel, Table, TableData
 from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
@@ -96,6 +98,7 @@ from metadata.ingestion.models.pipeline_status import (
 )
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
+from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResolutionStatus,
@@ -112,6 +115,7 @@ from metadata.ingestion.source.pipeline.pipeline_service import (
     PipelineUsage,
     TablePipelineObservability,
 )
+from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -225,6 +229,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateTestCaseRequest,
                     CreateTestSuiteRequest,
                     CreateTestDefinitionRequest,
+                    CreateMcpServerRequest,
                     CreateGlossaryRequest,
                 ),
             )
@@ -349,10 +354,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 ),
                 right=None,
             )
-
-        # Clear buffer and tracking set
-        self.buffer = []
-        self.buffered_entity_names.clear()
+        finally:
+            self.buffer = []
+            self.buffered_entity_names.clear()
 
         if result and result.status == basic.Status.success:
             self.status.scanned_all(result.successRequest)
@@ -730,7 +734,41 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(
             f"Successfully ingested test case results for test case {record.testCase.name.root}"
         )
+        self._ingest_failed_rows_sample(record)
         return Either(right=res)
+
+    def _ingest_failed_rows_sample(self, record: TestCaseResultResponse):
+        """Ingest failed row sample and inspection query if present on the record."""
+        if record.failedRowsSample is not None:
+            try:
+                self.metadata.ingest_failed_rows_sample(
+                    record.testCase,
+                    record.failedRowsSample,
+                    validate=record.validateColumns,
+                )
+                logger.debug(
+                    f"Successfully ingested failed rows sample for {record.testCase.name.root}"
+                )
+            except Exception:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Failed to ingest failed rows sample for {record.testCase.name.root}"
+                )
+
+        if record.inspectionQuery is not None:
+            try:
+                self.metadata.ingest_inspection_query(
+                    record.testCase,
+                    record.inspectionQuery,
+                )
+                logger.debug(
+                    f"Successfully ingested inspection query for {record.testCase.name.root}"
+                )
+            except Exception:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Failed to ingest inspection query for {record.testCase.name.root}"
+                )
 
     @_run_dispatch.register
     def write_test_case_resolution_status(
@@ -803,40 +841,114 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.deferred_lifecycle_records.append(record)
         return Either(right=None)
 
-    @_run_dispatch.register
-    def write_sampler_response(self, record: SamplerResponse) -> Either[Table]:
-        """Ingest the sample data - if needed - and the PII tags"""
-        if record.sample_data and record.sample_data.store:
-            table_data = self.metadata.ingest_table_sample_data(
-                table=record.table, sample_data=record.sample_data.data
+    @singledispatchmethod
+    def _ingest_entity_sample_data(self, entity, sample_data):
+        """
+        Generic dispatcher for ingesting sample data for any classifiable entity.
+        Uses singledispatchmethod for polymorphic dispatch based on entity type.
+
+        Args:
+            entity: The classifiable entity
+            sample_data: Sample data to ingest
+
+        Returns:
+            bool: Success status
+
+        Raises:
+            NotImplementedError: If entity type is not supported
+        """
+        raise NotImplementedError(
+            f"Sample data ingestion not implemented for entity type {type(entity).__name__}"
+        )
+
+    @_ingest_entity_sample_data.register
+    def _(self, entity: Table, sample_data: TableData) -> bool:
+        """Table-specific sample data ingestion implementation"""
+        table_data = self.metadata.ingest_table_sample_data(
+            table=entity, sample_data=sample_data
+        )
+        if table_data:
+            logger.debug(
+                f"Successfully ingested sample data for {entity.fullyQualifiedName.root}"
             )
-            if not table_data:
+            return True
+        return False
+
+    @singledispatchmethod
+    def _patch_entity_column_tags(self, entity, column_tags: List[ColumnTag]):
+        """
+        Generic dispatcher for patching column tags on any classifiable entity.
+        Uses singledispatchmethod for polymorphic dispatch based on entity type.
+
+        Args:
+            entity: The classifiable entity
+            column_tags: Column tags to patch
+
+        Returns:
+            bool: Success status
+
+        Raises:
+            NotImplementedError: If entity type is not supported
+        """
+        raise NotImplementedError(
+            f"Column tag patching not implemented for entity type {type(entity).__name__}"
+        )
+
+    @_patch_entity_column_tags.register
+    def _(self, entity: Table, column_tags: List[ColumnTag]) -> bool:
+        """Table-specific column tag patching implementation"""
+        patched = self.metadata.patch_column_tags(table=entity, column_tags=column_tags)
+        if patched:
+            logger.debug(
+                f"Successfully patched tags for {entity.fullyQualifiedName.root}"
+            )
+            return True
+        return False
+
+    @_run_dispatch.register
+    def write_sampler_response(
+        self, record: SamplerResponse
+    ) -> Either[ClassifiableEntityType]:
+        """Ingest the sample data - if needed - and the PII tags"""
+        entity = record.entity
+
+        if record.sample_data and record.sample_data.store:
+            try:
+                success = self._ingest_entity_sample_data(
+                    entity, sample_data=record.sample_data.data
+                )
+                if not success:
+                    self.status.failed(
+                        StackTraceError(
+                            name=entity.fullyQualifiedName.root,
+                            error="Error trying to ingest sample data for entity",
+                        )
+                    )
+            except NotImplementedError as exc:
                 self.status.failed(
                     StackTraceError(
-                        name=record.table.fullyQualifiedName.root,
-                        error="Error trying to ingest sample data for table",
+                        name=entity.fullyQualifiedName.root,
+                        error=str(exc),
                     )
-                )
-            else:
-                logger.debug(
-                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.root}"
                 )
 
         if record.column_tags:
-            patched = self.metadata.patch_column_tags(
-                table=record.table, column_tags=record.column_tags
-            )
-            if not patched:
-                self.status.warning(
-                    key=record.table.fullyQualifiedName.root,
-                    reason="Error patching tags for table",
+            try:
+                success = self._patch_entity_column_tags(
+                    entity, column_tags=record.column_tags
                 )
-            else:
-                logger.debug(
-                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.root}"
+                if not success:
+                    self.status.warning(
+                        key=entity.fullyQualifiedName.root,
+                        reason="Error patching tags for entity",
+                    )
+            except NotImplementedError as exc:
+                self.status.warning(
+                    key=entity.fullyQualifiedName.root,
+                    reason=str(exc),
                 )
 
-        return Either(right=record.table)
+        return Either(right=record.entity)
 
     @_run_dispatch.register
     def write_profiler_response(self, record: ProfilerResponse) -> Either[Table]:
@@ -875,6 +987,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 test_results=result.testCaseResult,
                 test_case_fqn=result.testCase.fullyQualifiedName.root,
             )
+            self._ingest_failed_rows_sample(result)
             self.status.scanned(result)
 
         return Either(right=record)

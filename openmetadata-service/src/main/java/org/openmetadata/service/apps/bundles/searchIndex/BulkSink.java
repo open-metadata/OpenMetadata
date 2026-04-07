@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.system.StepStats;
@@ -12,7 +11,7 @@ public interface BulkSink {
 
   StepStats getStats();
 
-  void close() throws IOException;
+  void close();
 
   /**
    * Flush any pending bulk requests and wait for them to complete. Unlike close(), this does not
@@ -120,6 +119,16 @@ public interface BulkSink {
     return ok
         ? VectorCompletionResult.success(waited)
         : VectorCompletionResult.timeout(getPendingVectorTaskCount(), waited);
+  }
+
+  /**
+   * Returns the column indexing statistics. Columns are indexed as a side effect of table
+   * processing, so their stats are tracked separately.
+   *
+   * @return StepStats with column indexing success/failed counts, or null if not supported
+   */
+  default StepStats getColumnStats() {
+    return null;
   }
 
   /** Key for passing StageStatsTracker through context data to the sink. */

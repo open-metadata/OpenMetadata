@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 import type { Components, Theme } from '@mui/material/styles';
+import type { ThemeColors } from '../types';
 import {
   buttonConstants,
   createIconButtonColorVariant,
   createIconButtonSizeVariant,
 } from '../utils/buttonConstants';
-import { COMPONENT_FONT_SIZES, COMPONENT_LINE_HEIGHTS } from './typography-constants';
+import {
+  COMPONENT_FONT_SIZES,
+  COMPONENT_LINE_HEIGHTS,
+} from './typography-constants';
 
 export const buttonTheme = (
-  colors: any
+  colors: ThemeColors
 ): Pick<
   Components<Theme>,
   'MuiButtonBase' | 'MuiButton' | 'MuiIconButton' | 'MuiButtonGroup'

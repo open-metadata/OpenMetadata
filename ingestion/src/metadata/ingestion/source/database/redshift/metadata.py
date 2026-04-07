@@ -11,9 +11,8 @@
 """
 Redshift source ingestion
 """
-import re
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -36,11 +35,8 @@ from metadata.generated.schema.entity.data.storedProcedure import (
 )
 from metadata.generated.schema.entity.data.table import (
     ConstraintType,
-    PartitionColumnDetails,
-    PartitionIntervalTypes,
     Table,
     TableConstraint,
-    TablePartition,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
@@ -82,23 +78,23 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_STORED_PROCEDURES,
     REDSHIFT_LIFE_CYCLE_QUERY,
-    REDSHIFT_PARTITION_DETAILS,
 )
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
     _get_column_info,
     _get_pg_column_info,
     _get_schema_column_info,
+    _load_domains,
+    _redshift_initialize,
     get_columns,
+    get_multi_columns,
     get_redshift_columns,
     get_table_comment,
+    get_temp_table_names,
     get_view_definition,
 )
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import (
-    calculate_execution_time,
-    calculate_execution_time_generator,
-)
+from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
@@ -121,11 +117,15 @@ STANDARD_TABLE_TYPES = {
 # pylint: disable=protected-access
 RedshiftDialectMixin._get_column_info = _get_column_info
 RedshiftDialectMixin._get_schema_column_info = _get_schema_column_info
+RedshiftDialectMixin.initialize = _redshift_initialize
+RedshiftDialectMixin._load_domains = _load_domains
 RedshiftDialectMixin.get_columns = get_columns
+RedshiftDialectMixin.get_multi_columns = get_multi_columns
 PGDialect._get_column_info = _get_pg_column_info
 RedshiftDialect.get_all_table_comments = get_all_table_comments
 RedshiftDialect.get_table_comment = get_table_comment
 RedshiftDialect.get_view_definition = get_view_definition
+RedshiftDialect.get_temp_table_names = get_temp_table_names
 RedshiftDialect._get_redshift_columns = get_redshift_columns
 RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
     _get_all_relation_info
@@ -149,7 +149,6 @@ class RedshiftSource(
         incremental_configuration: IncrementalConfig,
     ):
         super().__init__(config, metadata)
-        self.partition_details = {}
         self.constraint_details: dict[
             str, dict[str, set[str] | list[dict[str, str]]]
         ] = {}
@@ -190,22 +189,6 @@ class RedshiftSource(
             (self.context.get().database, schema_name, table_name)
         )
 
-    def get_partition_details(self, schema_name: Optional[str] = None) -> None:
-        """
-        Populate partition details for the given schema (or all schemas if None).
-        """
-        try:
-            self.partition_details.clear()
-            query = REDSHIFT_PARTITION_DETAILS
-            if schema_name:
-                query += f" AND \"schema\" = '{schema_name}'"
-            results = self.connection.execute(statement=query).fetchall()
-            for row in results:
-                self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
-        except Exception as exe:
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch partition details due: {exe}")
-
     def _clear_reflection_cache(self) -> None:
         """Clear the SQLAlchemy inspector's info_cache to release
         cached column / relation data from prior schemas.
@@ -230,7 +213,6 @@ class RedshiftSource(
         # prevent unbounded memory growth (issue #20649)
         self._clear_reflection_cache()
 
-        self.get_partition_details(schema_name)
         self._set_constraint_details(schema_name)
 
         result = self.connection.execute(
@@ -362,36 +344,6 @@ class RedshiftSource(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
 
-    def _get_partition_key(self, diststyle: str) -> Optional[str]:
-        try:
-            regex = re.match(r"KEY\((\w+)\)", diststyle)
-            if regex:
-                return regex.group(1)
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(err)
-        return None
-
-    @calculate_execution_time()
-    def get_table_partition_details(
-        self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:
-        diststyle = self.partition_details.get(f"{schema_name}.{table_name}")
-        if diststyle:
-            distkey = self._get_partition_key(diststyle)
-            if distkey is not None:
-                partition_details = TablePartition(
-                    columns=[
-                        PartitionColumnDetails(
-                            columnName=distkey,
-                            intervalType=PartitionIntervalTypes.COLUMN_VALUE,
-                            interval=None,
-                        )
-                    ]
-                )
-                return True, partition_details
-        return False, None
-
     def process_additional_table_constraints(
         self, column: dict, table_constraints: List[TableConstraint]
     ) -> None:
@@ -419,8 +371,10 @@ class RedshiftSource(
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
             results = self.connection.execute(
-                REDSHIFT_GET_STORED_PROCEDURES.format(
-                    schema_name=self.context.get().database_schema,
+                text(
+                    REDSHIFT_GET_STORED_PROCEDURES.format(
+                        schema_name=self.context.get().database_schema,
+                    )
                 )
             ).all()
             for row in results:

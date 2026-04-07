@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   'Incident Manager',
   'Alerts',
   'Insights',
-  'Domains',
+  'Marketplace',
   'Govern',
   'Glossary',
   'Classification',
@@ -53,7 +53,7 @@ export const validateLeftSidebarWithHiddenItems = async (
     if (
       item === SidebarItem.OBSERVABILITY ||
       item === SidebarItem.GOVERNANCE ||
-      item === SidebarItem.DOMAINS
+      item === SidebarItem.DATA_MARKETPLACE_SECTION
     ) {
       await expect(page.getByTestId(item)).toBeVisible();
     } else {
@@ -77,6 +77,7 @@ export const validateLeftSidebarWithHiddenItems = async (
         } catch {
           // If no children are visible, the dropdown might not have expanded
           // Wait a bit more and continue
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown expansion fallback delay
           await page.waitForTimeout(500);
         }
 
@@ -107,13 +108,15 @@ export const validateLeftSidebarWithHiddenItems = async (
 
         continue;
       }
-      hiddenItems.includes(item)
-        ? await expect(
-            page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
-          ).not.toBeVisible()
-        : await expect(
-            page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
-          ).toBeVisible();
+      if (hiddenItems.includes(item)) {
+        await expect(
+          page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
+        ).not.toBeVisible();
+      } else {
+        await expect(
+          page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
+        ).toBeVisible();
+      }
     }
   }
 };
@@ -124,5 +127,4 @@ export const selectPersona = async (page: Page, persona: PersonaClass) => {
     .getByTestId('persona-label')
     .getByText(persona.data.displayName)
     .click();
-  await page.waitForLoadState('networkidle');
 };

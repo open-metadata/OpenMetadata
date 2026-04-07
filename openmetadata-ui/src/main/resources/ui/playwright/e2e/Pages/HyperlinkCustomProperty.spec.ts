@@ -21,6 +21,7 @@ import {
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -54,6 +55,7 @@ test.describe('Hyperlink Custom Property Tests', () => {
         `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
       );
       await editButton.scrollIntoViewIfNeeded();
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
       await editButton.click({ force: true });
 
       await page
@@ -186,6 +188,7 @@ test.describe('Hyperlink Custom Property Tests', () => {
     try {
       await EntityDataClass.container1.visitEntityPage(page);
       await page.click('[data-testid="custom_properties"]');
+      await waitForAllLoadersToDisappear(page);
 
       const containerLocator = page.locator(
         `[data-testid="custom-property-${propertyName}-card"]`

@@ -3,6 +3,7 @@ package org.openmetadata.service.search.security;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.*;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -22,6 +23,7 @@ import org.springframework.expression.spel.standard.SpelExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
+@Slf4j
 public class RBACConditionEvaluator {
 
   private final QueryBuilderFactory queryBuilderFactory;
@@ -284,11 +286,15 @@ public class RBACConditionEvaluator {
 
   public void isOwner(User user, ConditionCollector collector) {
     List<OMQueryBuilder> ownerQueries = new ArrayList<>();
-    ownerQueries.add(queryBuilderFactory.termQuery("owners.id", user.getId().toString()));
+    ownerQueries.add(
+        queryBuilderFactory.nestedQuery(
+            "owners", queryBuilderFactory.termQuery("owners.id", user.getId().toString())));
 
     if (user.getTeams() != null) {
       for (EntityReference team : user.getTeams()) {
-        ownerQueries.add(queryBuilderFactory.termQuery("owners.id", team.getId().toString()));
+        ownerQueries.add(
+            queryBuilderFactory.nestedQuery(
+                "owners", queryBuilderFactory.termQuery("owners.id", team.getId().toString())));
       }
     }
 
@@ -303,8 +309,9 @@ public class RBACConditionEvaluator {
   }
 
   public void noOwner(ConditionCollector collector) {
-    OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("owners.id");
-    collector.addMustNot(existsQuery); // Wrap existsQuery in a List
+    OMQueryBuilder existsQuery =
+        queryBuilderFactory.nestedQuery("owners", queryBuilderFactory.existsQuery("owners.id"));
+    collector.addMustNot(existsQuery);
   }
 
   public void isReviewer(User user, ConditionCollector collector) {
@@ -344,13 +351,18 @@ public class RBACConditionEvaluator {
     User user = (User) spelContext.lookupVariable("user");
     if (user == null || nullOrEmpty(user.getDomains())) {
       OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
-      collector.addMustNot(existsQuery); // Wrap existsQuery in a List
+      collector.addMustNot(existsQuery);
     } else {
+      List<OMQueryBuilder> domainQueries = new ArrayList<>();
       for (EntityReference domain : user.getDomains()) {
         String domainId = domain.getId().toString();
-        OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domains.id", domainId);
-        collector.addMust(domainQuery);
+        domainQueries.add(queryBuilderFactory.termQuery("domains.id", domainId));
       }
+      domainQueries.add(
+          queryBuilderFactory
+              .boolQuery()
+              .mustNot(List.of(queryBuilderFactory.existsQuery("domains.id"))));
+      collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
     }
   }
 
@@ -377,11 +389,21 @@ public class RBACConditionEvaluator {
   }
 
   private OMQueryBuilder getIndexFilter(List<String> resources) {
-    List<String> indices =
-        resources.stream()
-            .map(resource -> Entity.getSearchRepository().getIndexOrAliasName(resource))
-            .toList();
-
+    var searchRepository = Entity.getSearchRepository();
+    List<String> indices = new ArrayList<>();
+    for (String resource : resources) {
+      if (searchRepository == null) {
+        LOG.warn(
+            "SearchRepository is not initialized while building RBAC index filter for resource [{}]; falling back to resource name",
+            resource);
+        indices.add(resource.toLowerCase());
+        continue;
+      }
+      indices.add(searchRepository.getIndexOrAliasName(resource));
+      for (String childAlias : searchRepository.getChildIndexAliases(resource)) {
+        indices.add(searchRepository.getIndexOrAliasName(childAlias));
+      }
+    }
     return queryBuilderFactory.termsQuery("_index", indices);
   }
 }

@@ -82,10 +82,14 @@ public class DistributedSearchIndexCoordinator {
    */
   private static final int MAX_IN_FLIGHT_PARTITIONS_PER_SERVER = 5;
 
+  /** Throttle interval for touching job.updatedAt from partition completions */
+  private static final long JOB_TOUCH_INTERVAL_MS = TimeUnit.MINUTES.toMillis(2);
+
   private final CollectionDAO collectionDAO;
   private final PartitionCalculator partitionCalculator;
   private final String serverId;
   private EntityCompletionTracker entityTracker;
+  private final AtomicLong lastJobTouchTime = new AtomicLong(0);
 
   /** Monotonic counter to guarantee unique claimedAt values across concurrent worker threads. */
   private final AtomicLong claimCounter = new AtomicLong(0);
@@ -451,6 +455,12 @@ public class DistributedSearchIndexCoordinator {
         successCount,
         failedCount);
 
+    // Keep job.updatedAt fresh so OrphanJobMonitor doesn't mark it as orphaned.
+    // This is especially important after recovery when no coordinator lock-refresh loop is running.
+    // Throttled to avoid excessive DB writes — ABANDONED_LOCK_THRESHOLD is 10 min, so every 2 min
+    // is safe.
+    touchJobThrottled(record.jobId(), now);
+
     // Record partition completion for per-entity index promotion
     if (entityTracker != null) {
       LOG.debug(
@@ -464,6 +474,18 @@ public class DistributedSearchIndexCoordinator {
 
     // Check if job should be marked as complete
     checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
+  }
+
+  private void touchJobThrottled(String jobId, long now) {
+    long last = lastJobTouchTime.get();
+    if (now - last < JOB_TOUCH_INTERVAL_MS || !lastJobTouchTime.compareAndSet(last, now)) {
+      return;
+    }
+    try {
+      collectionDAO.searchIndexJobDAO().touchJob(jobId, now);
+    } catch (Exception e) {
+      LOG.debug("Failed to touch job updatedAt for {}: {}", jobId, e.getMessage());
+    }
   }
 
   /**
@@ -664,7 +686,7 @@ public class DistributedSearchIndexCoordinator {
 
     // Get per-server stats for distributed visibility
     List<ServerStatsRecord> serverStatsList = partitionDAO.getServerStats(jobId.toString());
-    LOG.info("Fetched server stats for job {}: {} records from DB", jobId, serverStatsList.size());
+    LOG.debug("Fetched server stats for job {}: {} records from DB", jobId, serverStatsList.size());
     Map<String, SearchIndexJob.ServerStats> serverStatsMap = new HashMap<>();
     for (ServerStatsRecord ss : serverStatsList) {
       LOG.debug(
@@ -742,14 +764,16 @@ public class DistributedSearchIndexCoordinator {
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name());
     List<SearchIndexPartitionRecord> failed =
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name());
+    List<SearchIndexPartitionRecord> cancelled =
+        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name());
 
     if (pending.isEmpty() && processing.isEmpty()) {
       // All partitions are done
       IndexJobStatus newStatus;
-      if (!failed.isEmpty()) {
-        newStatus = IndexJobStatus.COMPLETED_WITH_ERRORS;
-      } else if (job.getStatus() == IndexJobStatus.STOPPING) {
+      if (job.getStatus() == IndexJobStatus.STOPPING) {
         newStatus = IndexJobStatus.STOPPED;
+      } else if (!failed.isEmpty() || !cancelled.isEmpty()) {
+        newStatus = IndexJobStatus.COMPLETED_WITH_ERRORS;
       } else {
         newStatus = IndexJobStatus.COMPLETED;
       }
@@ -775,6 +799,45 @@ public class DistributedSearchIndexCoordinator {
           newStatus,
           completed.getSuccessRecords(),
           completed.getFailedRecords());
+    }
+  }
+
+  /**
+   * Force-complete any partitions still in PROCESSING state. Called during shutdown/stop to ensure
+   * partitions don't stay stuck and block the job from reaching a terminal state.
+   */
+  public void forceCompleteProcessingPartitions(UUID jobId) {
+    SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
+    List<SearchIndexPartitionRecord> processing =
+        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name());
+
+    if (!processing.isEmpty()) {
+      long now = System.currentTimeMillis();
+      for (SearchIndexPartitionRecord p : processing) {
+        LOG.warn(
+            "Force-cancelling partition {} (entity={}, processed={}, success={}, failed={}) during job stop",
+            p.id(),
+            p.entityType(),
+            p.processedCount(),
+            p.successCount(),
+            p.failedCount());
+        partitionDAO.update(
+            p.id(),
+            PartitionStatus.CANCELLED.name(),
+            p.cursor(),
+            p.processedCount(),
+            p.successCount(),
+            p.failedCount(),
+            p.assignedServer(),
+            p.claimedAt(),
+            p.startedAt(),
+            now,
+            now,
+            "Force-cancelled during job stop",
+            p.retryCount());
+      }
+      LOG.info(
+          "Force-cancelled {} processing partitions for stopping job {}", processing.size(), jobId);
     }
   }
 

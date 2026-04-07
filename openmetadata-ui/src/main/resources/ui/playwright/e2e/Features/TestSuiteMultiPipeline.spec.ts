@@ -18,6 +18,7 @@ import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -69,10 +70,7 @@ test(
       await createTestCaseResponse;
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByRole('tab', { name: 'Data Quality' }).click();
       await page.getByRole('tab', { name: 'Pipeline' }).click();
@@ -93,7 +91,7 @@ test(
       await page.getByTestId('deploy-button').click();
       await deployResponse;
 
-      await page.waitForSelector('[data-testid="body-text"]', {
+      await page.getByTestId('body-text').waitFor({
         state: 'detached',
       });
 
@@ -113,27 +111,24 @@ test(
      * @description Opens pipeline actions, enters edit flow, adjusts the weekly schedule segment, deploys, and
      * validates the updated success messaging before returning to the service view.
      */
-    await test.step(
-      'Verify test case count column displays correct values',
-      async () => {
-        await page.getByRole('tab', { name: 'Pipeline' }).click();
+    await test.step('Verify test case count column displays correct values', async () => {
+      await page.getByRole('tab', { name: 'Pipeline' }).click();
 
-        // Verify the pipeline with selected test case shows count "1"
-        const pipelineRow = page.getByRole('row', {
-          name: new RegExp(pipelineName),
-        });
-        await expect(
-          pipelineRow.getByTestId(new RegExp('test-case-count-'))
-        ).toContainText('1');
+      // Verify the pipeline with selected test case shows count "1"
+      const pipelineRow = page.getByRole('row', {
+        name: new RegExp(pipelineName),
+      });
+      await expect(
+        pipelineRow.getByTestId(new RegExp('test-case-count-'))
+      ).toContainText('1');
 
-        // Verify the default pipeline shows "All" for test case count
-        const defaultPipelineTestCaseCount = page
-          .getByTestId('ingestion-list-table')
-          .getByTestId(new RegExp('test-case-count-'))
-          .filter({ hasNotText: '1' });
-        await expect(defaultPipelineTestCaseCount.first()).toContainText('All');
-      }
-    );
+      // Verify the default pipeline shows "All" for test case count
+      const defaultPipelineTestCaseCount = page
+        .getByTestId('ingestion-list-table')
+        .getByTestId(new RegExp('test-case-count-'))
+        .filter({ hasNotText: '1' });
+      await expect(defaultPipelineTestCaseCount.first()).toContainText('All');
+    });
 
     await test.step('Update the pipeline', async () => {
       await page.getByRole('tab', { name: 'Pipeline' }).click();
@@ -162,7 +157,7 @@ test(
       await page.getByTestId('deploy-button').click();
       await updateDeployResponse;
 
-      await page.waitForSelector('[data-testid="body-text"]', {
+      await page.getByTestId('body-text').waitFor({
         state: 'detached',
       });
 
@@ -272,6 +267,7 @@ test(
         name: new RegExp(pipeline?.['name']),
       })
       .getByTestId('more-actions')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
       .click({ force: true });
 
     await page
@@ -296,7 +292,7 @@ test(
     await page.getByTestId('deploy-button').click();
     await editDeployResponse;
 
-    await page.waitForSelector('[data-testid="body-text"]', {
+    await page.getByTestId('body-text').waitFor({
       state: 'detached',
     });
 

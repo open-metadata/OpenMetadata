@@ -38,6 +38,7 @@ export const fetchEntityCoveredWithDQ = (
     }),
     index: 'testCase',
     aggregationQuery: `bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN`,
+    domain: filters?.domainFqn,
   });
 };
 
@@ -59,6 +60,7 @@ export const fetchTotalEntityCount = (
     }),
     index: 'table',
     aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+    domain: filters?.domainFqn,
   });
 };
 
@@ -78,6 +80,7 @@ export const fetchTestCaseSummary = (
     index: 'testCase',
     aggregationQuery:
       'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -97,6 +100,7 @@ export const fetchTestCaseSummaryByDimension = (
     index: 'testCase',
     aggregationQuery:
       'bucketName=dimension:aggType=terms:field=dataQualityDimension,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -124,6 +128,7 @@ export const fetchTestCaseSummaryByNoDimension = (
     index: 'testCase',
     aggregationQuery:
       'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -163,6 +168,7 @@ export const fetchCountOfIncidentStatusTypeByDays = (
     index: 'testCaseResolutionStatus',
     aggregationQuery:
       'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -211,6 +217,7 @@ export const fetchIncidentTimeMetrics = (
     index: 'testCaseResolutionStatus',
     aggregationQuery:
       'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -259,6 +266,7 @@ export const fetchTestCaseStatusMetricsByDays = (
     index: 'testCaseResult',
     aggregationQuery:
       'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+    domain: filters?.domainFqn,
   });
 };
 

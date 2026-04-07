@@ -29,6 +29,7 @@ from metadata.ingestion.source.database.dbt.constants import (
     DbtCommonEnum,
     RawQueriesEnum,
 )
+from metadata.ingestion.source.database.dbt.models import SnapshotNodeLocation
 from metadata.utils import entity_link
 from metadata.utils.logger import ingestion_logger
 
@@ -646,6 +647,41 @@ def create_test_case_parameter_values(dbt_test):
     return None
 
 
+# Subset of characters that are forbidden in entityLink column-name segments by
+# the Pydantic pattern
+#   (?u)^<#E::\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$.
+# The full pattern also treats unescaped ':' as reserved, but we intentionally
+# do not include ':' here because it may appear in valid identifiers and is
+# correctly handled (escaped) by the entity_link utilities when building the
+# final entityLink string.  When test_metadata.kwargs["column_name"] contains
+# any of these characters it typically means dbt is referencing a SQL expression
+# (e.g. "date || '-' || order_id") rather than a real column identifier.
+# Returning None in that case causes the test case to be created at table level,
+# which is semantically more accurate than pointing to a column that does not
+# actually exist in the table.
+_ENTITY_LINK_FORBIDDEN_CHARS = frozenset("|<>")
+
+
+def get_manifest_column_name(manifest_node) -> Optional[str]:
+    column_name = getattr(manifest_node, "column_name", None)
+    if column_name:
+        return column_name
+    test_metadata = getattr(manifest_node, "test_metadata", None)
+    if not test_metadata:
+        return None
+    kwargs = getattr(test_metadata, "kwargs", None)
+    if isinstance(kwargs, dict):
+        col = kwargs.get("column_name")
+        # SQL expressions such as "date || '-' || order_id" contain characters
+        # that are banned in entityLink strings.  These are not valid column
+        # identifiers, so skip them to avoid a Pydantic ValidationError on
+        # CreateTestCaseRequest.entityLink.
+        if col and any(c in col for c in _ENTITY_LINK_FORBIDDEN_CHARS):
+            return None
+        return col
+    return None
+
+
 def generate_entity_link(dbt_test):
     """
     Method returns entity link
@@ -655,9 +691,7 @@ def generate_entity_link(dbt_test):
         entity_link.get_entity_link(
             Table,
             fqn=table_fqn,
-            column_name=manifest_node.column_name
-            if hasattr(manifest_node, "column_name")
-            else None,
+            column_name=get_manifest_column_name(manifest_node),
         )
         for table_fqn in dbt_test[DbtCommonEnum.UPSTREAM.value]
     ]
@@ -751,6 +785,30 @@ def get_data_model_path(manifest_node):
         else:
             datamodel_path = manifest_node.original_file_path
     return datamodel_path
+
+
+def get_snapshot_effective_schema_and_database(
+    manifest_node: Any,
+) -> SnapshotNodeLocation:
+    """
+    For snapshot nodes, config.target_schema and config.target_database
+    override manifest_node.schema_ and manifest_node.database respectively.
+    Returns a SnapshotNodeLocation with the resolved schema and database.
+    """
+    effective_schema: str = manifest_node.schema_
+    effective_database: Optional[str] = manifest_node.database
+    if hasattr(manifest_node, "config") and manifest_node.config:
+        if (
+            hasattr(manifest_node.config, "target_schema")
+            and manifest_node.config.target_schema
+        ):
+            effective_schema = manifest_node.config.target_schema
+        if (
+            hasattr(manifest_node.config, "target_database")
+            and manifest_node.config.target_database
+        ):
+            effective_database = manifest_node.config.target_database
+    return SnapshotNodeLocation(schema_=effective_schema, database=effective_database)
 
 
 def find_entity_by_type_and_fqn(

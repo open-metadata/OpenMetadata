@@ -109,7 +109,14 @@ describe('MyDataWidget component', () => {
       queryFilter: {
         query: {
           bool: {
-            should: [{ term: { 'owners.id': '113' } }],
+            should: [
+              {
+                nested: {
+                  path: 'owners',
+                  query: { term: { 'owners.id': '113' } },
+                },
+              },
+            ],
             minimum_should_match: 1,
           },
         },

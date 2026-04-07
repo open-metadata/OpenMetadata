@@ -77,42 +77,9 @@ class SearchIndexStatsTest {
 
       ElasticSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
 
-      assertTrue(
-          invokeIsPayloadTooLargeError(
-              processor, new RuntimeException("Request entity too large")));
-      assertTrue(invokeIsPayloadTooLargeError(processor, new RuntimeException("Content too long")));
-      assertTrue(invokeIsPayloadTooLargeError(processor, new RuntimeException("HTTP 413 error")));
-    }
-
-    @Test
-    @DisplayName("Should NOT identify normal errors as payload too large")
-    void testNormalErrorsNotPayloadTooLarge() throws Exception {
-      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L);
-
-      ElasticSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
-
-      assertFalse(
-          invokeIsPayloadTooLargeError(processor, new RuntimeException("Connection timeout")));
-      assertFalse(
-          invokeIsPayloadTooLargeError(
-              processor, new RuntimeException("rejected_execution_exception")));
-      assertFalse(invokeIsPayloadTooLargeError(processor, new RuntimeException("Index not found")));
-    }
-
-    private ElasticSearchBulkSink.CustomBulkProcessor getCustomBulkProcessor(
-        ElasticSearchBulkSink sink) throws Exception {
-      java.lang.reflect.Field field = ElasticSearchBulkSink.class.getDeclaredField("bulkProcessor");
-      field.setAccessible(true);
-      return (ElasticSearchBulkSink.CustomBulkProcessor) field.get(sink);
-    }
-
-    private boolean invokeIsPayloadTooLargeError(
-        ElasticSearchBulkSink.CustomBulkProcessor processor, Throwable error) throws Exception {
-      Method method =
-          ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
-              "isPayloadTooLargeError", Throwable.class);
-      method.setAccessible(true);
-      return (boolean) method.invoke(processor, error);
+      assertTrue(invokeIsPayloadTooLargeError(processor, "Request entity too large"));
+      assertTrue(invokeIsPayloadTooLargeError(processor, "Content too long"));
+      assertTrue(invokeIsPayloadTooLargeError(processor, "HTTP 413 error"));
     }
   }
 
@@ -235,64 +202,54 @@ class SearchIndexStatsTest {
   @DisplayName("Backpressure Detection Tests")
   class BackpressureDetectionTests {
 
-    private SearchIndexExecutor executor;
-
-    @BeforeEach
-    void setUp() {
-      executor = new SearchIndexExecutor(collectionDAO, searchRepository);
-    }
-
     @Test
-    @DisplayName("Should detect 'Request entity too large' as backpressure error")
+    @DisplayName("Should detect payload-too-large errors as retryable backpressure")
     void testPayloadTooLargeDetectedAsBackpressure() throws Exception {
-      Method method =
-          SearchIndexExecutor.class.getDeclaredMethod("isBackpressureError", String.class);
-      method.setAccessible(true);
+      ElasticSearchBulkSink.CustomBulkProcessor processor =
+          getCustomBulkProcessor(new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L));
 
-      assertTrue((boolean) method.invoke(executor, "Request entity too large"));
-      assertTrue((boolean) method.invoke(executor, "Content too long for bulk request"));
-      assertTrue((boolean) method.invoke(executor, "HTTP 413: Payload too large"));
+      assertTrue(invokeShouldRetry(processor, 0, "Request entity too large"));
+      assertTrue(invokeShouldRetry(processor, 0, "Content too long for bulk request"));
+      assertTrue(invokeShouldRetry(processor, 0, "HTTP 413: Payload too large"));
     }
 
     @Test
     @DisplayName("Should detect rejected_execution_exception as backpressure error")
     void testRejectedExecutionDetectedAsBackpressure() throws Exception {
-      Method method =
-          SearchIndexExecutor.class.getDeclaredMethod("isBackpressureError", String.class);
-      method.setAccessible(true);
+      ElasticSearchBulkSink.CustomBulkProcessor processor =
+          getCustomBulkProcessor(new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L));
 
-      assertTrue((boolean) method.invoke(executor, "rejected_execution_exception"));
-      assertTrue((boolean) method.invoke(executor, "circuit_breaking_exception"));
-      assertTrue((boolean) method.invoke(executor, "too_many_requests"));
+      assertTrue(invokeShouldRetry(processor, 0, "rejected_execution_exception"));
+      assertTrue(invokeShouldRetry(processor, 0, "circuit_breaking_exception"));
+      assertTrue(invokeShouldRetry(processor, 0, "too_many_requests"));
     }
 
     @Test
-    @DisplayName("Should NOT detect normal errors as backpressure")
+    @DisplayName(
+        "Should detect only known backpressure errors while treating null messages as retryable")
     void testNormalErrorsNotBackpressure() throws Exception {
-      Method method =
-          SearchIndexExecutor.class.getDeclaredMethod("isBackpressureError", String.class);
-      method.setAccessible(true);
+      ElasticSearchBulkSink.CustomBulkProcessor processor =
+          getCustomBulkProcessor(new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L));
 
-      assertFalse((boolean) method.invoke(executor, "Index not found"));
-      assertFalse((boolean) method.invoke(executor, "Document parsing exception"));
-      assertFalse((boolean) method.invoke(executor, "Mapping error"));
-      assertFalse((boolean) method.invoke(executor, (String) null));
+      assertFalse(invokeShouldRetry(processor, 0, "Index not found"));
+      assertFalse(invokeShouldRetry(processor, 0, "Document parsing exception"));
+      assertFalse(invokeShouldRetry(processor, 0, "Mapping error"));
+      assertTrue(invokeShouldRetry(processor, 0, null));
     }
 
     @Test
     @DisplayName("Should identify payload too large error correctly")
     void testIsPayloadTooLargeError() throws Exception {
-      Method method =
-          SearchIndexExecutor.class.getDeclaredMethod("isPayloadTooLargeError", String.class);
-      method.setAccessible(true);
+      ElasticSearchBulkSink.CustomBulkProcessor processor =
+          getCustomBulkProcessor(new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L));
 
-      assertTrue((boolean) method.invoke(executor, "Request entity too large"));
-      assertTrue((boolean) method.invoke(executor, "Content too long"));
-      assertTrue((boolean) method.invoke(executor, "error code: 413"));
+      assertTrue(invokeIsPayloadTooLargeError(processor, "Request entity too large"));
+      assertTrue(invokeIsPayloadTooLargeError(processor, "Content too long"));
+      assertTrue(invokeIsPayloadTooLargeError(processor, "error code: 413"));
 
-      assertFalse((boolean) method.invoke(executor, "rejected_execution_exception"));
-      assertFalse((boolean) method.invoke(executor, "timeout"));
-      assertFalse((boolean) method.invoke(executor, (String) null));
+      assertFalse(invokeIsPayloadTooLargeError(processor, "rejected_execution_exception"));
+      assertFalse(invokeIsPayloadTooLargeError(processor, "timeout"));
+      assertFalse(invokeIsPayloadTooLargeError(processor, null));
     }
   }
 
@@ -369,5 +326,119 @@ class SearchIndexStatsTest {
       executor.updateReaderStats(5, 1, 0);
       executor.updateSinkTotalSubmitted(10);
     }
+
+    @Test
+    @DisplayName("Entity total should be adjusted when success + failed exceeds initial total")
+    void testEntityTotalAdjustedWhenExceeded() {
+      Set<String> entities = Set.of("table");
+
+      lenient()
+          .when(searchRepository.getEntityIndexMap())
+          .thenReturn(Map.of("table", mock(IndexMapping.class)));
+
+      Stats stats = executor.initializeTotalRecords(entities);
+      executor.getStats().set(stats);
+
+      // Initial total is 0 (mocked). Simulate batches that exceed it.
+      executor.updateStats("table", new StepStats().withSuccessRecords(50).withFailedRecords(2));
+      executor.updateStats("table", new StepStats().withSuccessRecords(55).withFailedRecords(1));
+
+      Stats finalStats = executor.getStats().get();
+      StepStats tableStats = finalStats.getEntityStats().getAdditionalProperties().get("table");
+
+      assertEquals(105, tableStats.getSuccessRecords());
+      assertEquals(3, tableStats.getFailedRecords());
+      // Total should have been bumped to success + failed
+      assertEquals(108, tableStats.getTotalRecords());
+
+      // Job total should also reflect the adjusted entity total
+      assertEquals(108, finalStats.getJobStats().getTotalRecords());
+      assertEquals(105, finalStats.getJobStats().getSuccessRecords());
+      assertEquals(3, finalStats.getJobStats().getFailedRecords());
+    }
+
+    @Test
+    @DisplayName("Entity total should not decrease when already higher than success + failed")
+    void testEntityTotalNotDecreasedWhenAlreadyHigher() {
+      Set<String> entities = Set.of("table");
+
+      lenient()
+          .when(searchRepository.getEntityIndexMap())
+          .thenReturn(Map.of("table", mock(IndexMapping.class)));
+
+      Stats stats = executor.initializeTotalRecords(entities);
+      executor.getStats().set(stats);
+
+      // Manually set a higher initial total to simulate real DB count
+      stats.getEntityStats().getAdditionalProperties().get("table").setTotalRecords(200);
+      stats.getJobStats().setTotalRecords(200);
+      stats.getReaderStats().setTotalRecords(200);
+
+      executor.updateStats("table", new StepStats().withSuccessRecords(50).withFailedRecords(2));
+
+      Stats finalStats = executor.getStats().get();
+      StepStats tableStats = finalStats.getEntityStats().getAdditionalProperties().get("table");
+
+      assertEquals(50, tableStats.getSuccessRecords());
+      assertEquals(2, tableStats.getFailedRecords());
+      // Total should remain 200 since 52 < 200
+      assertEquals(200, tableStats.getTotalRecords());
+    }
+
+    @Test
+    @DisplayName("Reader total should be adjusted when job total exceeds it")
+    void testReaderTotalAdjustedFromJobTotal() {
+      Set<String> entities = Set.of("table", "dashboard");
+
+      lenient()
+          .when(searchRepository.getEntityIndexMap())
+          .thenReturn(
+              Map.of("table", mock(IndexMapping.class), "dashboard", mock(IndexMapping.class)));
+
+      Stats stats = executor.initializeTotalRecords(entities);
+      executor.getStats().set(stats);
+
+      // Simulate processing that exceeds initial totals
+      executor.updateStats("table", new StepStats().withSuccessRecords(60).withFailedRecords(5));
+      executor.updateStats(
+          "dashboard", new StepStats().withSuccessRecords(30).withFailedRecords(2));
+
+      Stats finalStats = executor.getStats().get();
+
+      // Reader total should have been bumped to match the adjusted job total
+      int expectedTotal = 65 + 32; // table (60+5) + dashboard (30+2)
+      assertEquals(expectedTotal, finalStats.getReaderStats().getTotalRecords());
+      assertEquals(expectedTotal, finalStats.getJobStats().getTotalRecords());
+    }
+  }
+
+  private ElasticSearchBulkSink.CustomBulkProcessor getCustomBulkProcessor(
+      ElasticSearchBulkSink sink) throws Exception {
+    java.lang.reflect.Field field = ElasticSearchBulkSink.class.getDeclaredField("bulkProcessor");
+    field.setAccessible(true);
+    return (ElasticSearchBulkSink.CustomBulkProcessor) field.get(sink);
+  }
+
+  private boolean invokeShouldRetry(
+      ElasticSearchBulkSink.CustomBulkProcessor processor, int attemptNumber, String errorMessage)
+      throws Exception {
+    Method method =
+        ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
+            "shouldRetry", int.class, Throwable.class);
+    method.setAccessible(true);
+    Throwable error =
+        errorMessage == null ? new RuntimeException() : new RuntimeException(errorMessage);
+    return (boolean) method.invoke(processor, attemptNumber, error);
+  }
+
+  private boolean invokeIsPayloadTooLargeError(
+      ElasticSearchBulkSink.CustomBulkProcessor processor, String errorMessage) throws Exception {
+    Method method =
+        ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
+            "isPayloadTooLargeError", Throwable.class);
+    method.setAccessible(true);
+    Throwable error =
+        errorMessage == null ? new RuntimeException() : new RuntimeException(errorMessage);
+    return (boolean) method.invoke(processor, error);
   }
 }

@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,7 +22,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of();
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     assertNotNull(query);
 
@@ -50,7 +51,7 @@ class VectorSearchQueryBuilderTest {
     // First filter should always be deleted=false
     JsonNode deletedFilter = filter.get(0);
     assertTrue(deletedFilter.has("term"));
-    assertEquals(false, deletedFilter.get("term").get("deleted").asBoolean());
+    assertFalse(deletedFilter.get("term").get("deleted").asBoolean());
   }
 
   @Test
@@ -60,7 +61,7 @@ class VectorSearchQueryBuilderTest {
     int k = 50;
     Map<String, List<String>> filters = Map.of("entityType", List.of("table", "dashboard"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -87,7 +88,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("owners", List.of("user1", "team2"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -123,7 +124,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("owners", List.of("__ANY__"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -159,7 +160,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("owners", List.of("__NONE__"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -187,7 +188,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("tags", List.of("PII.Sensitive", "Classification.Public"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -196,23 +197,19 @@ class VectorSearchQueryBuilderTest {
     // Should have 2 filters: deleted=false + tags
     assertEquals(2, mustFilters.size());
 
-    // Second filter should be nested tags query
+    // Second filter should be a flat terms query over tag FQNs
     JsonNode tagsFilter = mustFilters.get(1);
-    assertTrue(tagsFilter.has("nested"));
+    assertTrue(tagsFilter.has("terms"));
 
-    JsonNode nested = tagsFilter.get("nested");
-    assertEquals("tags", nested.get("path").asText());
+    JsonNode terms = tagsFilter.get("terms");
+    assertTrue(terms.has("tags.tagFQN"));
 
-    // Multiple tags use bool.should with term queries
-    JsonNode boolQuery = nested.get("query").get("bool");
-    assertNotNull(boolQuery);
-
-    JsonNode shouldClauses = boolQuery.get("should");
-    assertNotNull(shouldClauses);
-    assertEquals(2, shouldClauses.size());
+    JsonNode tagValues = terms.get("tags.tagFQN");
+    assertNotNull(tagValues);
+    assertEquals(2, tagValues.size());
 
     // Verify both tag values are present
-    String tagsJson = shouldClauses.toString();
+    String tagsJson = tagValues.toString();
     assertTrue(tagsJson.contains("PII.Sensitive"));
     assertTrue(tagsJson.contains("Classification.Public"));
   }
@@ -224,7 +221,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("tier", List.of("Tier.Tier1", "Tier.Tier2"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -258,7 +255,7 @@ class VectorSearchQueryBuilderTest {
             "owners", List.of("DataTeam"),
             "serviceType", List.of("BigQuery"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -268,7 +265,7 @@ class VectorSearchQueryBuilderTest {
     assertEquals(5, mustFilters.size());
 
     // First should always be deleted=false
-    assertEquals(false, mustFilters.get(0).get("term").get("deleted").asBoolean());
+    assertFalse(mustFilters.get(0).get("term").get("deleted").asBoolean());
 
     // Verify all filters are present (order may vary)
     String filtersJson = mustFilters.toString();
@@ -276,6 +273,127 @@ class VectorSearchQueryBuilderTest {
     assertTrue(filtersJson.contains("tier"));
     assertTrue(filtersJson.contains("owners"));
     assertTrue(filtersJson.contains("serviceType"));
+  }
+
+  @Test
+  void testBuildsQueryWithServiceFilter__ANY__() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("service", List.of("__ANY__"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode serviceFilter = mustFilters.get(1);
+    assertTrue(serviceFilter.has("bool"));
+    JsonNode shouldClauses = serviceFilter.get("bool").get("should");
+    assertEquals(1, shouldClauses.size());
+
+    JsonNode existsQuery = shouldClauses.get(0).get("exists");
+    assertNotNull(existsQuery);
+    assertEquals("service.name", existsQuery.get("field").asText());
+  }
+
+  @Test
+  void testBuildsQueryWithServiceFilter__NONE__() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("service", List.of("__NONE__"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode serviceFilter = mustFilters.get(1);
+    assertTrue(serviceFilter.has("bool"));
+    JsonNode shouldClauses = serviceFilter.get("bool").get("should");
+    assertEquals(1, shouldClauses.size());
+
+    JsonNode mustNot = shouldClauses.get(0).get("bool").get("must_not");
+    assertNotNull(mustNot);
+    assertEquals("service.name", mustNot.get("exists").get("field").asText());
+  }
+
+  @Test
+  void testBuildsQueryWithDatabaseFilter__ANY__() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("database", List.of("__ANY__"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode databaseFilter = mustFilters.get(1);
+    assertTrue(databaseFilter.has("bool"));
+    JsonNode shouldClauses = databaseFilter.get("bool").get("should");
+    assertEquals(1, shouldClauses.size());
+
+    JsonNode existsQuery = shouldClauses.get(0).get("exists");
+    assertNotNull(existsQuery);
+    assertEquals("database.name", existsQuery.get("field").asText());
+  }
+
+  @Test
+  void testBuildsQueryWithDatabaseFilter__NONE__() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("database", List.of("__NONE__"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode databaseFilter = mustFilters.get(1);
+    assertTrue(databaseFilter.has("bool"));
+    JsonNode shouldClauses = databaseFilter.get("bool").get("should");
+    assertEquals(1, shouldClauses.size());
+
+    JsonNode mustNot = shouldClauses.get(0).get("bool").get("must_not");
+    assertNotNull(mustNot);
+    assertEquals("database.name", mustNot.get("exists").get("field").asText());
+  }
+
+  @Test
+  void testBuildsQueryWithServiceFilterNormalValue() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("service", List.of("my_service"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("service.name"));
+    assertTrue(filtersJson.contains("service.displayName"));
+    assertTrue(filtersJson.contains("my_service"));
   }
 
   @Test
@@ -289,7 +407,7 @@ class VectorSearchQueryBuilderTest {
             "tags", List.of() // Empty list should be ignored
             );
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -308,7 +426,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("entityType", List.of("table"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
 
@@ -334,7 +452,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("customProperties.department", List.of("engineering"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -343,16 +461,13 @@ class VectorSearchQueryBuilderTest {
     // Should have 2 filters: deleted=false + customProperties
     assertEquals(2, mustFilters.size());
 
-    // Second filter should be match query with fuzziness
+    // Second filter should route through the typed custom properties nested path
     JsonNode customPropsFilter = mustFilters.get(1);
-    assertTrue(customPropsFilter.has("match"));
-
-    JsonNode matchQuery = customPropsFilter.get("match");
-    assertTrue(matchQuery.has("customProperties.department"));
-
-    JsonNode departmentQuery = matchQuery.get("customProperties.department");
-    assertEquals("engineering", departmentQuery.get("query").asText());
-    assertEquals("AUTO", departmentQuery.get("fuzziness").asText());
+    String filterJson = customPropsFilter.toString();
+    assertTrue(customPropsFilter.has("bool"));
+    assertTrue(filterJson.contains("\"path\":\"customPropertiesTyped\""));
+    assertTrue(filterJson.contains("\"customPropertiesTyped.name\":\"department\""));
+    assertTrue(filterJson.contains("\"engineering\""));
   }
 
   @Test
@@ -365,7 +480,7 @@ class VectorSearchQueryBuilderTest {
             "customProperties.department", List.of("engineering"),
             "customProperties.location", List.of("remote"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -374,14 +489,13 @@ class VectorSearchQueryBuilderTest {
     // Should have 3 filters: deleted=false + 2 customProperties
     assertEquals(3, mustFilters.size());
 
-    // Verify all custom properties filters are present
+    // Verify all custom properties filters are present in the typed nested form
     String filtersJson = mustFilters.toString();
-    assertTrue(filtersJson.contains("customProperties.department"));
-    assertTrue(filtersJson.contains("customProperties.location"));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"department\""));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"location\""));
     assertTrue(filtersJson.contains("engineering"));
     assertTrue(filtersJson.contains("remote"));
-    assertTrue(filtersJson.contains("fuzziness"));
-    assertTrue(filtersJson.contains("AUTO"));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.textValue\""));
   }
 
   @Test
@@ -392,7 +506,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("customProperties.steward.name", List.of("John Doe"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -401,16 +515,12 @@ class VectorSearchQueryBuilderTest {
     // Should have 2 filters: deleted=false + customProperties
     assertEquals(2, mustFilters.size());
 
-    // Second filter should be exact term query for .name fields
+    // Second filter should preserve the custom property key inside the typed nested form
     JsonNode customPropsFilter = mustFilters.get(1);
-    assertTrue(customPropsFilter.has("term"));
-
-    JsonNode termQuery = customPropsFilter.get("term");
-    assertTrue(termQuery.has("customProperties.steward.name"));
-
-    // For .name fields, should use exact term matching, not fuzzy search
-    String nameValue = termQuery.get("customProperties.steward.name").asText();
-    assertEquals("John Doe", nameValue);
+    String filterJson = customPropsFilter.toString();
+    assertTrue(customPropsFilter.has("bool"));
+    assertTrue(filterJson.contains("\"customPropertiesTyped.name\":\"steward.name\""));
+    assertTrue(filterJson.contains("\"John Doe\""));
   }
 
   @Test
@@ -421,7 +531,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("customProperties.owner.name", List.of("O'Brien, \"Data\" Smith"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -430,16 +540,12 @@ class VectorSearchQueryBuilderTest {
     // Should have 2 filters: deleted=false + customProperties
     assertEquals(2, mustFilters.size());
 
-    // Second filter should be exact term query for .name fields
+    // Second filter should preserve the full custom property key and value
     JsonNode customPropsFilter = mustFilters.get(1);
-    assertTrue(customPropsFilter.has("term"));
-
-    JsonNode termQuery = customPropsFilter.get("term");
-    assertTrue(termQuery.has("customProperties.owner.name"));
-
-    // For .name fields with special characters, should still use exact term matching
-    String nameValue = termQuery.get("customProperties.owner.name").asText();
-    assertEquals("O'Brien, \"Data\" Smith", nameValue);
+    String filterJson = customPropsFilter.toString();
+    assertTrue(customPropsFilter.has("bool"));
+    assertTrue(filterJson.contains("\"customPropertiesTyped.name\":\"owner.name\""));
+    assertTrue(filterJson.contains("O'Brien, \\\"Data\\\" Smith"));
   }
 
   @Test
@@ -453,7 +559,7 @@ class VectorSearchQueryBuilderTest {
             "customProperties.description", List.of("data warehouse") // Should use match query
             );
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -462,29 +568,11 @@ class VectorSearchQueryBuilderTest {
     // Should have 3 filters: deleted=false + 2 customProperties
     assertEquals(3, mustFilters.size());
 
-    // Find the term query filter for .name field
-    JsonNode termFilter = null;
-    JsonNode matchFilter = null;
-
-    for (int i = 0; i < mustFilters.size(); i++) {
-      JsonNode filter = mustFilters.get(i);
-      if (filter.has("term") && filter.get("term").has("customProperties.steward.name")) {
-        termFilter = filter;
-      }
-      if (filter.has("match") && filter.get("match").has("customProperties.description")) {
-        matchFilter = filter;
-      }
-    }
-
-    // Verify .name field uses term query (exact match)
-    assertNotNull(termFilter, "Should have a term filter for .name field");
-    assertEquals("John Doe", termFilter.get("term").get("customProperties.steward.name").asText());
-
-    // Verify non-name field uses match query (fuzzy search)
-    assertNotNull(matchFilter, "Should have a match filter for non-name field");
-    JsonNode matchQuery = matchFilter.get("match").get("customProperties.description");
-    assertEquals("data warehouse", matchQuery.get("query").asText());
-    assertEquals("AUTO", matchQuery.get("fuzziness").asText());
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"steward.name\""));
+    assertTrue(filtersJson.contains("\"John Doe\""));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"description\""));
+    assertTrue(filtersJson.contains("\"data warehouse\""));
   }
 
   @Test
@@ -497,7 +585,7 @@ class VectorSearchQueryBuilderTest {
             "customProperties.department", List.of(), // Empty list should be ignored
             "entityType", List.of("table"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -521,7 +609,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("customProperties.notes", List.of("test \"quoted\" value"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -531,13 +619,10 @@ class VectorSearchQueryBuilderTest {
     assertEquals(2, mustFilters.size());
 
     JsonNode customPropsFilter = mustFilters.get(1);
-    assertTrue(customPropsFilter.has("match"));
-
-    JsonNode matchQuery = customPropsFilter.get("match");
-    assertTrue(matchQuery.has("customProperties.notes"));
-
-    JsonNode notesQuery = matchQuery.get("customProperties.notes");
-    assertEquals("test \"quoted\" value", notesQuery.get("query").asText());
+    String filterJson = customPropsFilter.toString();
+    assertTrue(customPropsFilter.has("bool"));
+    assertTrue(filterJson.contains("\"customPropertiesTyped.name\":\"notes\""));
+    assertTrue(filterJson.contains("test \\\"quoted\\\" value"));
   }
 
   @Test
@@ -552,7 +637,7 @@ class VectorSearchQueryBuilderTest {
             "tier", List.of("Tier.Tier1"),
             "customProperties.cost_center", List.of("12345"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -569,13 +654,12 @@ class VectorSearchQueryBuilderTest {
     assertTrue(filtersJson.contains("tier"));
     assertTrue(filtersJson.contains("Tier.Tier1"));
 
-    // Verify custom properties filters with fuzzy matching
-    assertTrue(filtersJson.contains("customProperties.department"));
+    // Verify custom properties filters with typed nested matching
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"department\""));
     assertTrue(filtersJson.contains("engineering"));
-    assertTrue(filtersJson.contains("customProperties.cost_center"));
+    assertTrue(filtersJson.contains("\"customPropertiesTyped.name\":\"cost_center\""));
     assertTrue(filtersJson.contains("12345"));
-    assertTrue(filtersJson.contains("fuzziness"));
-    assertTrue(filtersJson.contains("AUTO"));
+    assertTrue(filtersJson.contains("\"path\":\"customPropertiesTyped\""));
   }
 
   @Test
@@ -588,7 +672,7 @@ class VectorSearchQueryBuilderTest {
             "unknownKey", List.of("value"),
             "entityType", List.of("table"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -609,7 +693,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("unknownKey", List.of("value"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -617,6 +701,6 @@ class VectorSearchQueryBuilderTest {
 
     // Should have only 1 filter: deleted=false
     assertEquals(1, mustFilters.size());
-    assertEquals(false, mustFilters.get(0).get("term").get("deleted").asBoolean());
+    assertFalse(mustFilters.get(0).get("term").get("deleted").asBoolean());
   }
 }

@@ -1,7 +1,9 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -24,6 +26,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class SetApprovalAssigneesImpl implements JavaDelegate {
@@ -102,7 +105,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           if (teamFqn != null && !teamFqn.trim().isEmpty()) {
             try {
               MessageParser.EntityLink teamLink = new MessageParser.EntityLink("team", teamFqn);
-              Team team = (Team) Entity.getEntity(teamLink, "users", Include.ALL);
+              Team team = Entity.getEntity(teamLink, "users", Include.ALL);
               if (team.getUsers() != null) {
                 assignees.addAll(getEntityLinkStringFromEntityReference(team.getUsers()));
               }
@@ -114,6 +117,28 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       }
 
       List<String> assigneeList = new ArrayList<>(assignees);
+
+      // Prevent self-approval: Remove updatedBy user from assignees list
+      try {
+        String updatedBy =
+            (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+        if (updatedBy != null && !updatedBy.trim().isEmpty()) {
+          String updatedByEntityLink =
+              new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
+                  .getLinkString();
+          boolean removed = assigneeList.remove(updatedByEntityLink);
+          if (removed) {
+            LOG.debug(
+                "[Process: {}] Prevented self-approval: Removed updatedBy user '{}' from assignees",
+                execution.getProcessInstanceId(),
+                updatedBy);
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to retrieve updatedBy variable for self-approval prevention: {}",
+            e.getMessage());
+      }
 
       // Persist the list as JSON array so TaskListener can read it.
       // Using setVariable instead of setVariableLocal to ensure visibility across subprocess.
@@ -131,9 +156,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           hasAssignees ? "create USER TASK" : "AUTO-APPROVE");
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
-          exc);
+          "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }

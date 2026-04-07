@@ -65,7 +65,7 @@ public class WebSocketManager {
                   ? socket.getInitialQuery().get("userId")
                   : userIdHeaders.get(0);
 
-          if (userId != null && !userId.equals("")) {
+          if (userId != null && !userId.isEmpty()) {
             LOG.info(
                 "Client : {} with Remote Address:{} connected {} ",
                 userId,

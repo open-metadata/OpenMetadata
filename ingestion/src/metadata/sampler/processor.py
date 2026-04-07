@@ -15,6 +15,9 @@ import traceback
 from copy import deepcopy
 from typing import Optional, Type, cast
 
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    ProfilerConfiguration,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
@@ -47,8 +50,11 @@ from metadata.utils.dependency_injector.dependency_injector import (
     Inject,
     inject,
 )
+from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import import_sampler_class
+
+logger = profiler_logger()
 
 
 class SamplerProcessor(Processor):
@@ -91,6 +97,12 @@ class SamplerProcessor(Processor):
 
     def _run(self, record: ProfilerSourceAndEntity) -> Either[SamplerResponse]:
         """Fetch the sample data and pass it down the pipeline"""
+        if not record.entity.columns:
+            logger.warning(
+                "Skipping sampler for table '%s': no columns found",
+                record.entity.fullyQualifiedName.root,
+            )
+            return Either()
 
         try:
             entity = cast(Table, record.entity)
@@ -126,14 +138,33 @@ class SamplerProcessor(Processor):
                 default_sample_config=SampleConfig(),
                 default_sample_data_count=self.source_config.sampleDataCount,
             )
+
+            settings = self.metadata.get_profiler_config_settings()
+            profiler_global_config = (
+                cast(ProfilerConfiguration, settings.config_value) if settings else None
+            )
+
+            sample_data_config = (
+                profiler_global_config.sampleDataConfig
+                if profiler_global_config
+                else None
+            )
+
             sample_data = SampleData(
-                data=sampler_interface.generate_sample_data(),
-                store=self.source_config.storeSampleData,
+                data=sampler_interface.generate_sample_data(
+                    sample_data_config if sample_data_config else None
+                ),
+                store=bool(
+                    self.source_config.storeSampleData
+                    and (
+                        sample_data_config is None or sample_data_config.storeSampleData
+                    )
+                ),
             )
             sampler_interface.close()
             return Either(
                 right=SamplerResponse(
-                    table=entity,
+                    entity=entity,
                     sample_data=sample_data,
                 )
             )

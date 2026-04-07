@@ -41,6 +41,40 @@ let mockEntityType = EntityType.TABLE;
 let mockLocationSearch = '';
 let mockAppPreferences = MOCK_APP_PREFERENCES;
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  type GridProps = { children?: React.ReactNode };
+
+  type GridMockType = jest.Mock<JSX.Element, [GridProps]> & {
+    Item: jest.Mock<JSX.Element, [GridProps]>;
+  };
+  const GridMock = jest.fn(({ children }: GridProps) => (
+    <div>{children}</div>
+  )) as GridMockType;
+
+  GridMock.Item = jest.fn(({ children }: GridProps) => <div>{children}</div>);
+
+  return {
+    Grid: GridMock,
+    Tooltip: jest
+      .fn()
+      .mockImplementation(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: { children: React.ReactNode }) => (
+        <span>{children}</span>
+      )),
+    ButtonUtility: jest
+      .fn()
+      .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
+        <button data-testid={testId} onClick={onClick}>
+          {children}
+        </button>
+      )),
+  };
+});
+
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(() => mockNavigate),
 }));
@@ -204,16 +238,6 @@ jest.mock('antd', () => {
     ...actual,
     Select: jest.fn(() => <div>Select</div>),
     Card: jest.fn(({ children }) => <div>{children}</div>),
-  };
-});
-
-jest.mock('@mui/material', () => {
-  const actual = jest.requireActual('@mui/material');
-
-  return {
-    ...actual,
-    Grid: jest.fn(({ children }) => <div>{children}</div>),
-    Tooltip: jest.fn(({ children }) => <div>{children}</div>),
   };
 });
 
@@ -422,8 +446,7 @@ describe('PlatformLineage Component Logic', () => {
         expect(mockLineage).toHaveBeenCalled();
       });
 
-      const lineageCall =
-        mockLineage.mock.calls[mockLineage.mock.calls.length - 1];
+      const lineageCall = mockLineage.mock.calls.at(-1);
       const platformHeader = lineageCall[0].platformHeader;
       const headerElement = render(platformHeader);
       const searchInput = headerElement.container.querySelector('input');
@@ -457,8 +480,7 @@ describe('PlatformLineage Component Logic', () => {
         expect(mockLineage).toHaveBeenCalled();
       });
 
-      const lineageCall =
-        mockLineage.mock.calls[mockLineage.mock.calls.length - 1];
+      const lineageCall = mockLineage.mock.calls.at(-1);
       const platformHeader = lineageCall[0].platformHeader;
       const headerElement = render(platformHeader);
       const searchInput = headerElement.container.querySelector('input');
@@ -530,8 +552,7 @@ describe('PlatformLineage Component Logic', () => {
         expect(mockLineage).toHaveBeenCalled();
       });
 
-      const lineageCall =
-        mockLineage.mock.calls[mockLineage.mock.calls.length - 1];
+      const lineageCall = mockLineage.mock.calls.at(-1);
       const platformHeader = lineageCall[0].platformHeader;
 
       expect(platformHeader).toBeDefined();
@@ -786,8 +807,7 @@ describe('PlatformLineage Component Logic', () => {
         expect(mockLineage).toHaveBeenCalled();
       });
 
-      const lineageCall =
-        mockLineage.mock.calls[mockLineage.mock.calls.length - 1];
+      const lineageCall = mockLineage.mock.calls.at(-1);
       const platformHeader = lineageCall[0].platformHeader;
       const headerElement = render(platformHeader);
 

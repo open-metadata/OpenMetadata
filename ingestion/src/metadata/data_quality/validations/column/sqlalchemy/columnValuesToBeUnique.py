@@ -14,9 +14,9 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, cast
 
-from sqlalchemy import Column, case, func, literal_column, select
+from sqlalchemy import Column, case, func, inspect, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -26,19 +26,30 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.unique_count import _unique_count_dimensional_cte
 from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.processor.runner import QueryRunner
 
 logger = logging.getLogger(__name__)
 
 
 class ColumnValuesToBeUniqueValidator(
-    BaseColumnValuesToBeUniqueValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeUniqueValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column values to be unique test case"""
 
@@ -176,15 +187,9 @@ class ColumnValuesToBeUniqueValidator(
                 top_n=top_n,
             )
 
-            for row in result_rows:
-                metric_values = self._build_metric_values_from_row(
-                    row, metrics_to_compute, test_params
-                )
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-                dimension_result = self._create_dimension_result(
-                    row, dimension_col.name, metric_values, evaluation, test_params
-                )
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -223,3 +228,25 @@ class ColumnValuesToBeUniqueValidator(
             }
 
         return build_others_metric_expressions
+
+    def filter(self):
+        self.runner = cast(QueryRunner, self.runner)
+        col = self.get_column_from_list(
+            self.test_case.entityLink.root,
+            inspect(self.runner.dataset).c,
+        )
+        filters = [
+            (
+                col,
+                "in",
+                (self.runner._build_query(col).group_by(col).having(func.count() > 1)),
+            )
+        ]
+        return {
+            "filters": filters,
+            "or_filter": False,
+        }
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

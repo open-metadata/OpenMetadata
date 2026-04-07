@@ -67,6 +67,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
@@ -86,7 +87,9 @@ from metadata.ingestion.source.database.bigquery.models import (
 )
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
     BIGQUERY_GET_TABLE_DDLS,
+    BIGQUERY_GET_TABLE_DDLS_BY_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -116,6 +119,7 @@ _bigquery_table_types = {
     "EXTERNAL": TableType.External,
     "MATERIALIZED_VIEW": TableType.MaterializedView,
     "VIEW": TableType.View,
+    "ICEBERG": TableType.Iceberg,
 }
 
 
@@ -448,6 +452,44 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
         return self._current_dataset_obj
 
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Override to skip lifecycle data for schemas whose dataset location does not
+        match the configured usageLocation.
+
+        BigQuery routes INFORMATION_SCHEMA queries to the location specified in the
+        connection (usageLocation). When a dataset lives in a different GCP region,
+        the query returns a 404. Skipping early avoids one failed API call per table
+        in the affected schema.
+        """
+        usage_location = getattr(self.service_connection, "usageLocation", None)
+        if usage_location:
+            schema_name = self.context.get().database_schema
+            try:
+                dataset_obj = self.get_dataset_obj(schema_name)
+                dataset_location = getattr(dataset_obj, "location", None)
+                if (
+                    dataset_location
+                    and dataset_location.upper() != usage_location.upper()
+                ):
+                    logger.debug(
+                        "Skipping lifecycle data for schema '%s': dataset location '%s' "
+                        "differs from configured usageLocation '%s'. "
+                        "BigQuery INFORMATION_SCHEMA queries are location-specific.",
+                        schema_name,
+                        dataset_location,
+                        usage_location,
+                    )
+                    return
+            except Exception as exc:
+                logger.debug(
+                    "Could not verify dataset location for schema '%s', "
+                    "proceeding with lifecycle query: %s",
+                    schema_name,
+                    exc,
+                )
+        yield from super().yield_life_cycle_data(_)
+
     def _prefetch_policy_tags(self):
         """Pre-fetch all policy tags at schema level to avoid per-column API calls"""
         if not self.service_connection.includePolicyTags:
@@ -504,18 +546,47 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
         self._table_ddl_cache.clear()
 
+        database = self.context.get().database
+
         try:
-            database = self.context.get().database
-            query = BIGQUERY_GET_TABLE_DDLS.format(
+            dataset_obj = self.get_dataset_obj(schema_name)
+            location = getattr(dataset_obj, "location", None)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                "Could not retrieve dataset location for '%s.%s', "
+                "falling back to dataset-scoped query: %s",
+                database,
+                schema_name,
+                exc,
+            )
+            location = None
+
+        query = (
+            BIGQUERY_GET_TABLE_DDLS_BY_REGION.format(
+                database_name=database,
+                schema_name=schema_name,
+                region=location,
+            )
+            if location
+            else BIGQUERY_GET_TABLE_DDLS.format(
                 database_name=database,
                 schema_name=schema_name,
             )
+        )
+
+        try:
             with self.engine.connect() as conn:
                 results = conn.execute(text(query)).all()
             for row in results:
                 self._table_ddl_cache[row.table_name] = row.ddl
         except Exception as exc:
-            logger.warning(f"Error pre-fetching table DDLs for {schema_name}: {exc}")
+            logger.warning(
+                "Error pre-fetching table DDLs for '%s.%s': %s",
+                database,
+                schema_name,
+                exc,
+            )
             logger.debug(traceback.format_exc())
 
     def yield_tag(
@@ -1118,21 +1189,50 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     def get_stored_procedures(self) -> Iterable[BigQueryStoredProcedure]:
         """List BigQuery Stored Procedures"""
         if self.source_config.includeStoredProcedures:
-            with self.engine.connect() as conn:
-                results = conn.execute(
-                    text(
-                        BIGQUERY_GET_STORED_PROCEDURES.format(
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
-                        )
-                    )
-                ).all()
-            for row in results:
-                row_dict = row._asdict() if hasattr(row, "_asdict") else row
-                stored_procedure = BigQueryStoredProcedure.model_validate(row_dict)
-                if self.is_stored_procedure_filtered(stored_procedure.name):
-                    continue
-                yield stored_procedure
+            database = self.context.get().database
+            schema = self.context.get().database_schema
+            try:
+                dataset_obj = self.get_dataset_obj(schema)
+                location = getattr(dataset_obj, "location", None)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.debug(
+                    "Could not retrieve dataset location for '%s.%s', "
+                    "falling back to dataset-scoped query: %s",
+                    database,
+                    schema,
+                    exc,
+                )
+                location = None
+            query = (
+                BIGQUERY_GET_STORED_PROCEDURES_BY_REGION.format(
+                    database_name=database,
+                    schema_name=schema,
+                    region=location,
+                )
+                if location
+                else BIGQUERY_GET_STORED_PROCEDURES.format(
+                    database_name=database,
+                    schema_name=schema,
+                )
+            )
+            try:
+                with self.engine.connect() as conn:
+                    results = conn.execute(text(query)).all()
+                for row in results:
+                    row_dict = row._asdict() if hasattr(row, "_asdict") else row
+                    stored_procedure = BigQueryStoredProcedure.model_validate(row_dict)
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
+                    yield stored_procedure
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Error listing stored procedures for schema '%s.%s': %s",
+                    database,
+                    schema,
+                    exc,
+                )
 
     def yield_stored_procedure(
         self, stored_procedure: BigQueryStoredProcedure

@@ -423,6 +423,9 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       )}
       renderOption={renderOption}
       renderTags={renderTags}
+      slotProps={{
+        popper: { 'data-react-aria-top-layer': true } as object,
+      }}
       sx={{ width: '100%' }}
       value={isMultiple ? selectedOptions : selectedOptions[0] || null}
       onChange={handleChange}

@@ -3,7 +3,6 @@ package org.openmetadata.service.search.security;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.openmetadata.service.util.TestUtils.assertFieldDoesNotExist;
 import static org.openmetadata.service.util.TestUtils.assertFieldExists;
@@ -17,6 +16,7 @@ import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import jakarta.json.stream.JsonGenerator;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -71,6 +71,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
               String resource = invocation.getArgument(0);
               return resource.toLowerCase();
             });
+    when(mockSearchRepository.getChildIndexAliases(anyString()))
+        .thenReturn(Collections.emptyList());
     Entity.setSearchRepository(mockSearchRepository);
 
     mockSubjectContext = mock(SubjectContext.class);
@@ -272,12 +274,12 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[0].bool.must_not[?(@.term['owners.id'])]",
+        "$.bool.must[1].bool.should[0].bool.must_not[?(@.nested.query.term['owners.id'])]",
         "owners.id in must_not");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[1].bool.must_not[?(@.exists.field=='owners.id')]",
+        "$.bool.must[1].bool.should[1].bool.must_not[?(@.nested.query.exists.field=='owners.id')]",
         "no owner must_not clause");
 
     ObjectMapper objectMapper = new ObjectMapper();
@@ -286,6 +288,24 @@ class ElasticSearchRBACConditionEvaluatorTest {
     countBoolQueries(rootNode, boolQueryCount);
     assertEquals(
         6, boolQueryCount.get(), "There should be no more than 5 'bool' clauses in the query.");
+  }
+
+  @Test
+  void getIndexFilterFallsBackToLowercaseResourcesWhenSearchRepositoryIsUnavailable()
+      throws Exception {
+    Entity.setSearchRepository(null);
+
+    Method method = RBACConditionEvaluator.class.getDeclaredMethod("getIndexFilter", List.class);
+    method.setAccessible(true);
+
+    OMQueryBuilder queryBuilder =
+        (OMQueryBuilder) method.invoke(evaluator, List.of("TABLE", "MlModel"));
+    Query elasticQuery = ((ElasticQueryBuilder) queryBuilder).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+
+    assertTrue(generatedQuery.contains("\"_index\""));
+    assertTrue(generatedQuery.contains("\"table\""));
+    assertTrue(generatedQuery.contains("\"mlmodel\""));
   }
 
   @Test
@@ -305,6 +325,48 @@ class ElasticSearchRBACConditionEvaluatorTest {
     assertTrue(
         generatedQuery.contains(domain.getId().toString()),
         "The query should contain the user's domain ID.");
+  }
+
+  @Test
+  void testHasDomainWithMultipleDomains() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference domain1 = new EntityReference();
+    domain1.setId(UUID.randomUUID());
+    domain1.setName("Finance");
+
+    EntityReference domain2 = new EntityReference();
+    domain2.setId(UUID.randomUUID());
+    domain2.setName("Engineering");
+
+    when(mockUser.getDomains()).thenReturn(List.of(domain1, domain2));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertTrue(generatedQuery.contains("domains.id"), "The query should contain 'domains.id'.");
+    assertTrue(
+        generatedQuery.contains(domain1.getId().toString()),
+        "The query should contain domain1 ID.");
+    assertTrue(
+        generatedQuery.contains(domain2.getId().toString()),
+        "The query should contain domain2 ID.");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.id'].value=='" + domain1.getId() + "')]",
+        "domain1 should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.id'].value=='" + domain2.getId() + "')]",
+        "domain2 should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.bool.must_not)]",
+        "should include a clause for entities with no domain");
   }
 
   @Test
@@ -333,11 +395,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    assertFieldExists(jsonContext, "$.bool.must[?(@.term['domains.id'])]", "domains.id");
+    assertFieldExists(jsonContext, "$..bool.should[?(@.term['domains.id'])]", "domains.id");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
         "user's domain ID");
 
     assertFieldExists(
@@ -453,7 +515,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + mockUser.getId().toString()
+            + "')]",
         "owner.id");
     assertFieldExists(
         jsonContext,
@@ -557,7 +621,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must_not[0].bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal");
     assertFieldExists(
-        jsonContext, "$.bool.must_not[0].bool.should[?(@.term['owners.id'])]", "owners.id");
+        jsonContext,
+        "$.bool.must_not[0].bool.should[?(@.nested.query.term['owners.id'])]",
+        "owners.id");
   }
 
   @Test
@@ -674,7 +740,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "must_not for matchAnyTag 'Restricted'");
 
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.bool.must[?(@.term['owners.id'])])]", "owners.id");
+        jsonContext,
+        "$.bool.should[?(@.bool.must[?(@.nested.query.term['owners.id'])])]",
+        "owners.id");
   }
 
   @Test
@@ -753,7 +821,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
-    assertFieldExists(jsonContext, "$.bool.must[?(@.term['domains.id'])]", "domains.id");
+    assertFieldExists(jsonContext, "$..bool.should[?(@.term['domains.id'])]", "domains.id");
 
     assertFieldExists(
         jsonContext,
@@ -771,7 +839,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     // Ownership (isOwner condition) should be in `should`
     assertFieldExists(
-        jsonContext, "$.bool.must[1].bool.should[?(@.term['owners.id'])]", "owners.id");
+        jsonContext,
+        "$.bool.must[1].bool.should[?(@.nested.query.term['owners.id'])]",
+        "owners.id");
   }
 
   @Test
@@ -792,7 +862,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + mockUser.getId().toString()
+            + "')]",
         "owners.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
@@ -848,7 +920,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
         jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
         "domains.id");
   }
 
@@ -938,7 +1010,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['domains.id'].value=='"
+        "$.bool.should[0]..bool.should[?(@.term['domains.id'].value=='"
             + domain.getId().toString()
             + "')]",
         "user's domain ID");
@@ -981,7 +1053,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['domains.id'].value=='"
+        "$.bool.should[0]..bool.should[?(@.term['domains.id'].value=='"
             + domain.getId().toString()
             + "')]",
         "user's domain ID");
@@ -1098,16 +1170,16 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owners.id'].value=='" + userId + "')]",
+        "$.bool.should[?(@.nested.query.term['owners.id'].value=='" + userId + "')]",
         "The query should allow resources where the user is the owner");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owners.id'].value=='" + teamId1 + "')]",
+        "$.bool.should[?(@.nested.query.term['owners.id'].value=='" + teamId1 + "')]",
         "The query should allow resources where TeamA is the owner");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owners.id'].value=='" + teamId2 + "')]",
+        "$.bool.should[?(@.nested.query.term['owners.id'].value=='" + teamId2 + "')]",
         "The query should allow resources where TeamB is the owner");
   }
 
@@ -1320,6 +1392,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -1373,6 +1447,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -1414,6 +1490,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -1424,5 +1502,123 @@ class ElasticSearchRBACConditionEvaluatorTest {
           generatedQuery.contains("must_not") && generatedQuery.contains("match_all"),
           "Query should result in match_nothing since user doesn't have Admin role");
     }
+  }
+
+  @Test
+  void testAllowOnTableIncludesChildAliasesInIndexFilter() {
+    SearchRepository mockRepo = mock(SearchRepository.class);
+    when(mockRepo.getIndexOrAliasName(anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+    when(mockRepo.getChildIndexAliases(anyString())).thenReturn(Collections.emptyList());
+    when(mockRepo.getChildIndexAliases("table")).thenReturn(List.of("column"));
+    Entity.setSearchRepository(mockRepo);
+
+    setupMockPolicies(
+        List.of(""),
+        "ALLOW",
+        List.of(List.of("table")),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.terms._index[?(@ == 'table')])]",
+        "Allow policy should include 'table' in _index filter");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.terms._index[?(@ == 'column')])]",
+        "Allow policy should include 'column' (child of table) in _index filter");
+  }
+
+  @Test
+  void testDenyOnTableIncludesChildAliasesInIndexFilter() {
+    SearchRepository mockRepo = mock(SearchRepository.class);
+    when(mockRepo.getIndexOrAliasName(anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+    when(mockRepo.getChildIndexAliases(anyString())).thenReturn(Collections.emptyList());
+    when(mockRepo.getChildIndexAliases("table")).thenReturn(List.of("column"));
+    Entity.setSearchRepository(mockRepo);
+
+    setupMockPolicies(
+        List.of(""),
+        "DENY",
+        List.of(List.of("table")),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[*].bool.must[?(@.terms._index[?(@ == 'table')])]",
+        "Deny policy should include 'table' in must_not _index filter");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[*].bool.must[?(@.terms._index[?(@ == 'column')])]",
+        "Deny policy should include 'column' (child of table) in must_not _index filter");
+  }
+
+  @Test
+  void testNestedQueryWorksForMappedFields() {
+    // Verifies nested query produces correct structure for indexes that have the field mapped
+    ElasticQueryBuilderFactory factory = new ElasticQueryBuilderFactory();
+
+    OMQueryBuilder nested =
+        factory.nestedQuery("owners", factory.termQuery("owners.id", "user-abc"));
+    Query query = ((ElasticQueryBuilder) nested).build();
+    String json = serializeQueryToJson(query);
+
+    assertTrue(json.contains("\"path\":\"owners\""), "must target correct nested path");
+    assertTrue(json.contains("\"owners.id\""), "must query the nested field");
+    assertTrue(json.contains("\"user-abc\""), "must contain the search value");
+  }
+
+  @Test
+  void testNestedQueryDoesNotFailForUnmappedFields() {
+    // Verifies ignore_unmapped=true is set so indexes without the nested field don't throw errors
+    ElasticQueryBuilderFactory factory = new ElasticQueryBuilderFactory();
+
+    OMQueryBuilder nested =
+        factory.nestedQuery("owners", factory.termQuery("owners.id", "user-abc"));
+    Query query = ((ElasticQueryBuilder) nested).build();
+    String json = serializeQueryToJson(query);
+
+    assertTrue(
+        json.contains("\"ignore_unmapped\":true"),
+        "must set ignore_unmapped so query works on indexes without this nested field");
+  }
+
+  @Test
+  void testStaticNestedQueryWorksForMappedFields() {
+    Query inner = Query.of(q -> q.term(t -> t.field("owners.id").value("team-1")));
+
+    Query nested =
+        org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.nestedQuery(
+            "owners", inner);
+    String json = serializeQueryToJson(nested);
+
+    assertTrue(json.contains("\"path\":\"owners\""), "must target correct nested path");
+    assertTrue(json.contains("\"owners.id\""), "must query the nested field");
+    assertTrue(json.contains("\"team-1\""), "must contain the search value");
+  }
+
+  @Test
+  void testStaticNestedQueryDoesNotFailForUnmappedFields() {
+    Query inner = Query.of(q -> q.term(t -> t.field("owners.id").value("team-1")));
+
+    Query nested =
+        org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.nestedQuery(
+            "owners", inner);
+    String json = serializeQueryToJson(nested);
+
+    assertTrue(
+        json.contains("\"ignore_unmapped\":true"),
+        "must set ignore_unmapped so query works on indexes without this nested field");
   }
 }

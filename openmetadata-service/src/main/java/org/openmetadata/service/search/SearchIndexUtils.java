@@ -58,6 +58,25 @@ public final class SearchIndexUtils {
     return ownersRef.stream().map(item -> item.getId().toString()).toList();
   }
 
+  public static Map<String, Object> toEntityRefMap(EntityReference ref) {
+    if (ref == null) {
+      return null;
+    }
+    Map<String, Object> map = new HashMap<>();
+    map.put("id", ref.getId() != null ? ref.getId().toString() : null);
+    map.put("name", ref.getName());
+    map.put(
+        "displayName",
+        ref.getDisplayName() != null && !ref.getDisplayName().isBlank()
+            ? ref.getDisplayName()
+            : ref.getName());
+    map.put("fullyQualifiedName", ref.getFullyQualifiedName());
+    map.put("description", ref.getDescription());
+    map.put("deleted", ref.getDeleted());
+    map.put("type", ref.getType());
+    return map;
+  }
+
   public static void removeNonIndexableFields(Map<String, Object> doc, Set<String> fields) {
     for (String key : fields) {
       if (key.contains(".")) {
@@ -70,6 +89,10 @@ public final class SearchIndexUtils {
 
   public static void removeFieldByPath(Map<String, Object> jsonMap, String path) {
     String[] pathElements = path.split("\\.");
+    if (pathElements.length == 1) {
+      jsonMap.remove(pathElements[0]);
+      return;
+    }
     Map<String, Object> currentMap = jsonMap;
 
     String key = pathElements[0];
@@ -79,7 +102,9 @@ public final class SearchIndexUtils {
     } else if (value instanceof List) {
       List<?> list = (List<Map<String, Object>>) value;
       for (Object obj : list) {
-        Map<String, Object> item = JsonUtils.getMap(obj);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> item =
+            obj instanceof Map ? (Map<String, Object>) obj : JsonUtils.getMap(obj);
         removeFieldByPath(
             item,
             Arrays.stream(pathElements, 1, pathElements.length).collect(Collectors.joining(".")));
@@ -188,8 +213,7 @@ public final class SearchIndexUtils {
                       val.ifPresentOrElse(
                           s -> {
                             switch (s.getValueType()) {
-                              case NUMBER -> nodeData.put(
-                                  dimensions.get(0), String.valueOf((JsonNumber) s));
+                              case NUMBER -> nodeData.put(dimensions.get(0), String.valueOf(s));
                               default -> nodeData.put(
                                   dimensions.get(0), ((JsonString) s).getString());
                             }
@@ -443,12 +467,10 @@ public final class SearchIndexUtils {
     if (value instanceof Number || value instanceof Boolean) {
       return value.toString();
     }
-    if (value instanceof List) {
-      List<?> list = (List<?>) value;
+    if (value instanceof List<?> list) {
       return list.stream().map(SearchIndexUtils::flattenValue).collect(Collectors.joining(" "));
     }
-    if (value instanceof Map) {
-      Map<?, ?> map = (Map<?, ?>) value;
+    if (value instanceof Map<?, ?> map) {
       return flattenMapValue(map);
     }
     return value.toString();

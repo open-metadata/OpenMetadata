@@ -27,6 +27,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -252,12 +253,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setEntityFqn(fqn);
   }, []);
 
-  const lineageLayer = useMemo(() => {
+  const { lineageLayer, lineageMode } = useMemo(() => {
     const searchData = QueryString.parse(location.search, {
       ignoreQueryPrefix: true,
     });
 
-    return searchData.layers as LineageLayer[] | undefined;
+    return {
+      lineageLayer: searchData.layers as LineageLayer[] | undefined,
+      lineageMode: searchData.mode ?? 'lineage',
+    };
   }, [location.search]);
 
   const cachedEntityEdgesAndMaps = useMemo(() => {
@@ -324,8 +328,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       entityFqn,
       incomingMap,
       outgoingMap,
-      isColumnLevelLineage,
-      undefined
+      isColumnLevelLineage
     );
   }, [
     cachedEdgesAndMaps,
@@ -357,7 +360,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const redrawLineage = useCallback(
     async (
       lineageData: EntityLineageResponse,
-      recenter = true,
+      recenter?: string | boolean,
       isFirstTime = false
     ) => {
       if (!reactFlowInstance?.viewportInitialized) {
@@ -454,9 +457,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       }));
 
       if (recenter) {
-        const rootNode = visibleNodes.find((n) => n.data.isRootNode);
-        if (rootNode) {
-          centerNodePosition(rootNode, reactFlowInstance, zoomValue);
+        // If recenter is a string, find the node with the matching fullyQualifiedName
+        // else fallback to rootNode
+        const nodeToFocus =
+          typeof recenter === 'string'
+            ? visibleNodes.find((n) => n.data.fullyQualifiedName === recenter)
+            : visibleNodes.find((n) => n.data.isRootNode);
+
+        if (nodeToFocus) {
+          centerNodePosition(nodeToFocus, reactFlowInstance, zoomValue);
         } else if (visibleNodes.length > 0) {
           centerNodePosition(visibleNodes[0], reactFlowInstance, zoomValue);
         }
@@ -483,15 +492,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       newLineageData: EntityLineageResponse,
       options: {
         shouldRedraw?: boolean;
-        centerNode?: boolean;
+        centerNode?: string;
         isFirstTime?: boolean;
       } = {}
     ) => {
-      const {
-        shouldRedraw = false,
-        centerNode = false,
-        isFirstTime = false,
-      } = options;
+      const { shouldRedraw = false, centerNode, isFirstTime = false } = options;
 
       setEntityLineage(newLineageData);
 
@@ -544,7 +549,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const fetchLineageData = useCallback(
     async (fqn: string, entityType: string, config?: LineageConfig) => {
-      if (isTourOpen) {
+      if (isTourOpen || lineageMode === 'impact_analysis') {
         return;
       }
 
@@ -588,7 +593,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
-    [queryFilter, entityFqn]
+    [queryFilter, entityFqn, lineageMode]
   );
 
   const onPlatformViewChange = useCallback(
@@ -750,7 +755,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         updateLineageData(updatedEntityLineage, {
           shouldRedraw: true,
-          centerNode: false,
+          centerNode: currentNode?.fullyQualifiedName,
           isFirstTime: false,
         });
 
@@ -829,12 +834,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     (
       entityType: EntityType,
       entity?: SourceType,
-      isPlatformLineage?: boolean
+      isPlatformLineage: boolean = false
     ) => {
-      setEntity(entity);
-      setEntityFqn(entity?.fullyQualifiedName ?? '');
-      setEntityType(entityType);
-      setIsPlatformLineage(isPlatformLineage ?? false);
+      flushSync(() => {
+        setEntity(entity);
+        setEntityFqn(entity?.fullyQualifiedName ?? '');
+        setEntityType(entityType);
+      });
+
+      // This runs after React states are committed
+      setIsPlatformLineage(isPlatformLineage);
       if (isPlatformLineage && !entity) {
         onPlatformViewChange(LineagePlatformView.Service);
       }
@@ -1026,6 +1035,48 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, entityLineage]
   );
 
+  function onEntitySelect(selectedEntity: EntityReference, nodeId: string) {
+    const isExistingNode = nodes.some(
+      (n) =>
+        n.data.node.fullyQualifiedName === selectedEntity.fullyQualifiedName
+    );
+    if (isExistingNode) {
+      setNodes((es) =>
+        es
+          .map((n) =>
+            n.id.includes(nodeId)
+              ? {
+                  ...n,
+                  selectable: true,
+                  className: `${n.className} selected`,
+                }
+              : n
+          )
+          .filter((es) => es.id !== nodeId)
+      );
+      setNewAddedNode({} as Node);
+    } else {
+      setNodes((es) => {
+        return es.map((el) => {
+          if (el.id === nodeId) {
+            return {
+              ...el,
+              connectable: true,
+              selectable: true,
+              id: selectedEntity.id,
+              data: {
+                saved: false,
+                node: getNodeLineageData(selectedEntity),
+              },
+            };
+          } else {
+            return el;
+          }
+        });
+      });
+    }
+  }
+
   const onNodeDrop = (event: DragEvent, reactFlowBounds: DOMRect) => {
     event.preventDefault();
     const entityType = event.dataTransfer.getData('application/reactflow');
@@ -1115,10 +1166,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         entityFqn
       );
 
-      const uniqueNodeMap = new Map<string, typeof newNodes[0]>();
+      const uniqueNodeMap = new Map<string, (typeof newNodes)[0]>();
       newNodes.forEach((n) => uniqueNodeMap.set(n.id, n));
 
-      const uniqueEdgeMap = new Map<string, typeof newEdges[0]>();
+      const uniqueEdgeMap = new Map<string, (typeof newEdges)[0]>();
       newEdges.forEach((e) => {
         const key = `${e.fromEntity.id}-${e.toEntity.id}`;
         uniqueEdgeMap.set(key, e);
@@ -1213,6 +1264,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setTracedColumns(new Set([sourceHandle, targetHandle]));
     }
   }, []);
+
+  const redraw = useCallback(async () => {
+    if (entityLineage) {
+      await redrawLineage(entityLineage, true);
+    }
+  }, [entityLineage, redrawLineage]);
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
     setReactFlowInstance(reactFlowInstance);
@@ -1393,48 +1450,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setSelectedEdge(undefined);
   }, []);
 
-  const onEntitySelect = (selectedEntity: EntityReference, nodeId: string) => {
-    const isExistingNode = nodes.some(
-      (n) =>
-        n.data.node.fullyQualifiedName === selectedEntity.fullyQualifiedName
-    );
-    if (isExistingNode) {
-      setNodes((es) =>
-        es
-          .map((n) =>
-            n.id.includes(nodeId)
-              ? {
-                  ...n,
-                  selectable: true,
-                  className: `${n.className} selected`,
-                }
-              : n
-          )
-          .filter((es) => es.id !== nodeId)
-      );
-      setNewAddedNode({} as Node);
-    } else {
-      setNodes((es) => {
-        return es.map((el) => {
-          if (el.id === nodeId) {
-            return {
-              ...el,
-              connectable: true,
-              selectable: true,
-              id: selectedEntity.id,
-              data: {
-                saved: false,
-                node: getNodeLineageData(selectedEntity),
-              },
-            };
-          } else {
-            return el;
-          }
-        });
-      });
-    }
-  };
-
   const onAddPipelineModalSave = useCallback(
     async (pipelineData?: EntityReference) => {
       if (!selectedEdge || !entityLineage) {
@@ -1492,7 +1507,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         if (selectedEdge?.id) {
           updateEdge(selectedEdge.id, (edge) => ({
             ...edge,
-            animated: isEmpty(pipelineData) ? false : true,
+            animated: !isEmpty(pipelineData),
             data: {
               ...edge.data,
               edge: {
@@ -1634,19 +1649,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         },
         {
           shouldRedraw: true,
-          centerNode: false,
+          centerNode: node.data.node.fullyQualifiedName,
           isFirstTime: false,
         }
       );
     },
     [nodes, edges, entityLineage]
   );
-
-  const redraw = useCallback(async () => {
-    if (entityLineage) {
-      await redrawLineage(entityLineage, true);
-    }
-  }, [entityLineage, redrawLineage]);
 
   useEffect(() => {
     redraw();
@@ -1710,7 +1719,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         pipelineViewMode: defaultLineageConfig.pipelineViewMode,
         nodesPerLayer: 50,
       });
-
       setActiveLayer(
         defaultLineageConfig.lineageLayer === LineageLayer.EntityLineage
           ? []
@@ -1880,33 +1888,33 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, [dataQualityLineage, edges, dqHighlightedEdges]);
 
-  const breadcrumbs = useMemo(
-    () =>
-      entity
-        ? [
-            ...getEntityBreadcrumbs(entity, entityType, isFullScreen),
-            {
-              name: t('label.lineage'),
-              url: '',
-              activeTitle: true,
-            },
-          ]
-        : platformView
-        ? [
-            {
-              name: '',
-              icon: <Home02 size={12} />,
-              url: '/',
-              activeTitle: true,
-            },
-            {
-              name: t('label.lineage'),
-              url: '',
-            },
-          ]
-        : [],
-    [entity, isFullScreen, entityType]
-  );
+  const breadcrumbs = useMemo(() => {
+    const platformBreadcrumbs = platformView
+      ? [
+          {
+            name: '',
+            icon: <Home02 size={12} />,
+            url: '/',
+            activeTitle: true,
+          },
+          {
+            name: t('label.lineage'),
+            url: '',
+          },
+        ]
+      : [];
+
+    return entity
+      ? [
+          ...getEntityBreadcrumbs(entity, entityType, isFullScreen),
+          {
+            name: t('label.lineage'),
+            url: '',
+            activeTitle: true,
+          },
+        ]
+      : platformBreadcrumbs;
+  }, [entity, isFullScreen, entityType]);
 
   // flush store values
   useEffect(() => {

@@ -14,8 +14,8 @@ import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
-import { waitForAllLoadersToDisappear } from './entity';
 import { EntityClass } from '../support/entity/EntityClass';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const getEntityFqn = (
   entityInstance: EntityClass
@@ -25,33 +25,36 @@ export const getEntityFqn = (
   ).entityResponseData?.fullyQualifiedName;
 };
 
-export const openEntitySummaryPanel = async (
-  page: Page,
-  entityName: string,
-  endpoint?: string,
-  fullyQualifiedName?: string
-) => {
+export const openEntitySummaryPanel = async ({
+  page,
+  entityName,
+  endpoint,
+  fullyQualifiedName,
+  exploreTab,
+}: {
+  page: Page;
+  entityName: string;
+  endpoint?: string;
+  fullyQualifiedName?: string;
+  exploreTab?: string;
+}) => {
   if (
     endpoint &&
     ENDPOINT_TO_FILTER_MAP[endpoint] &&
     ENDPOINT_TO_FILTER_MAP[endpoint] !== 'Search Index'
   ) {
-    await page.waitForSelector('[data-testid="global-search-selector"]', {
+    await page.getByTestId('global-search-selector').waitFor({
       state: 'visible',
     });
     await page.getByTestId('global-search-selector').click();
-    await page.waitForSelector(
-      '[data-testid="global-search-select-dropdown"]',
-      {
-        state: 'visible',
-      }
-    );
+    await page.getByTestId('global-search-select-dropdown').waitFor({
+      state: 'visible',
+    });
     await page
       .getByTestId(
         `global-search-select-option-${ENDPOINT_TO_FILTER_MAP[endpoint]}`
       )
       .click();
-    await page.waitForLoadState('networkidle');
   }
   const searchResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/api/v1/search/query')
@@ -64,6 +67,15 @@ export const openEntitySummaryPanel = async (
 
   await page.getByTestId('searchBox').press('Enter');
   await waitForAllLoadersToDisappear(page);
+
+  if (exploreTab) {
+    const tab = page
+      .getByTestId('explore-left-panel')
+      .getByRole('menuitem', { name: exploreTab });
+    await tab.waitFor({ state: 'visible' });
+    await tab.click();
+    await waitForAllLoadersToDisappear(page);
+  }
 
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
@@ -79,7 +91,6 @@ export const openEntitySummaryPanel = async (
   const isCardVisible = await entityCard.isVisible().catch(() => false);
   if (isCardVisible) {
     await entityCard.click();
-    await page.waitForLoadState('networkidle');
   }
 };
 // ... (lines 48-468 unchanged)
@@ -96,7 +107,7 @@ export async function navigateToExploreAndSelectTable(
     response.url().includes('/permissions')
   );
 
-  await openEntitySummaryPanel(page, entityName, endpoint);
+  await openEntitySummaryPanel({ page, entityName, endpoint });
 
   const permissionsResponse = await permissionsResponsePromise;
   expect(permissionsResponse.status()).toBe(200);
@@ -131,9 +142,7 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   });
 
   await tab.click();
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const editTags = async (page: Page, tagName: string) => {
@@ -159,7 +168,7 @@ export const editTags = async (page: Page, tagName: string) => {
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(`q=`) &&
-      response.url().includes('index=tag_search_index')
+      response.url().includes('index=tag')
   );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
@@ -167,9 +176,7 @@ export const editTags = async (page: Page, tagName: string) => {
   const searchTagResponse = await searchTagResponsePromise;
   expect(searchTagResponse.status()).toBe(200);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const tagOption = page.getByTitle(tagName);
   // Wait for tag option to be visible before clicking
@@ -188,12 +195,14 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
-  await page.waitForSelector(
-    '[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]',
-    {
+  await page
+    .locator(
+      '[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]'
+    )
+    .first()
+    .waitFor({
       state: 'visible',
-    }
-  );
+    });
 
   const editIcon = page.locator('[data-testid="edit-glossary-terms"]');
   if (await editIcon.isVisible()) {
@@ -215,9 +224,7 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     );
 
     await searchBar.fill(termName);
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
     const termOption = page
       .locator('.ant-list-item')
       .filter({ hasText: termName });
@@ -240,7 +247,7 @@ export const editDomain = async (page: Page, domainName: string) => {
   await domainsSection
     .locator('[data-testid="add-domain"]')
     .scrollIntoViewIfNeeded();
-  await page.waitForSelector('[data-testid="add-domain"]', {
+  await page.getByTestId('add-domain').waitFor({
     state: 'visible',
   });
   await page.locator('[data-testid="add-domain"]').click();
@@ -276,9 +283,7 @@ export const editDomain = async (page: Page, domainName: string) => {
   const patchResponse = await patchReqPromise;
   expect(patchResponse.status()).toBe(200);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const verifyDeletedEntityNotVisible = async (
@@ -288,15 +293,14 @@ export const verifyDeletedEntityNotVisible = async (
   searchIndexType: 'user' | 'team' | 'tag' | 'glossaryTerm'
 ) => {
   const searchIndexMap = {
-    user: 'user_search_index',
-    team: 'team_search_index',
-    tag: 'tag_search_index',
-    glossaryTerm: 'glossary_term_search_index',
+    user: 'user',
+    team: 'team',
+    tag: 'tag',
+    glossaryTerm: 'glossaryTerm',
   };
 
-  const searchBar = await page.waitForSelector(
-    `[data-testid="${searchBarTestId}"]`
-  );
+  const searchBar = page.getByTestId(searchBarTestId);
+  await searchBar.waitFor();
   const searchResponsePromise = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
@@ -306,9 +310,7 @@ export const verifyDeletedEntityNotVisible = async (
 
   const searchResponse = await searchResponsePromise;
   expect(searchResponse.status()).toBe(200);
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const deletedItem = page.getByTitle(entityName);
 
@@ -323,9 +325,7 @@ export const clickDataQualityStatCard = async (
     `[data-testid="data-quality-stat-card-${statType}"]`
   );
   await statCard.click();
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const navigateToIncidentsTab = async (page: Page) => {
@@ -338,9 +338,7 @@ export const navigateToIncidentsTab = async (page: Page) => {
 
   if (await incidentsTabButton.isVisible()) {
     await incidentsTabButton.click();
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
   }
 };
 
@@ -354,9 +352,7 @@ export const removeTagsFromPanel = async (
     .locator('[data-testid="selectable-list"]')
     .waitFor({ state: 'visible' });
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   for (const tagName of tagDisplayNames) {
     const tagOption = page.getByTitle(tagName);
@@ -377,19 +373,17 @@ export const removeGlossaryTermFromPanel = async (
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
 
-  await page.waitForSelector('[data-testid="edit-glossary-terms"]', {
+  await page.getByTestId('edit-glossary-terms').waitFor({
     state: 'visible',
   });
-  // Use force click to ensure popover triggers even if animating/partially obstructed
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-glossary-terms').click({ force: true });
 
   await page
     .locator('[data-testid="selectable-list"]')
     .waitFor({ state: 'visible' });
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
   for (const termName of termDisplayNames) {
     const searchBar = page.getByTestId('glossary-term-select-search-bar');
     await searchBar.fill(termName);
@@ -416,9 +410,10 @@ export const removeOwnerFromPanel = async (
   ownerNames: string[],
   type: 'Users' | 'Teams' = 'Users'
 ) => {
-  await page.waitForSelector('[data-testid="edit-owners"]', {
+  await page.getByTestId('edit-owners').waitFor({
     state: 'visible',
   });
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-owners').click({ force: true });
 
   await page.getByTestId('select-owner-tabs').waitFor({ state: 'visible' });
@@ -458,11 +453,11 @@ export const removeOwnerFromPanel = async (
 };
 
 export const removeDomainFromPanel = async (page: Page, domainName: string) => {
-  await page.waitForSelector('[data-testid="add-domain"]', {
+  await page.getByTestId('add-domain').waitFor({
     state: 'visible',
   });
 
-  // Use force click to ensure popover triggers even if animating/partially obstructed
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('add-domain').click({ force: true });
 
   const domainTree = page.getByTestId('domain-selectable-tree');
@@ -492,15 +487,16 @@ export const removeDomainFromPanel = async (page: Page, domainName: string) => {
 };
 
 export const assignTierToPanel = async (page: Page, tierName: string) => {
-  await page.waitForSelector('[data-testid="edit-icon-tier"]', {
+  await page.getByTestId('edit-icon-tier').waitFor({
     state: 'visible',
   });
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-icon-tier').click({ force: true });
 
   const tierPopover = page.getByTestId('cards');
   await tierPopover.waitFor({ state: 'visible' });
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   const tierRadioButton = page.getByTestId(`radio-btn-${tierName}`);
   await tierRadioButton.waitFor({ state: 'visible' });
@@ -515,14 +511,15 @@ export const assignTierToPanel = async (page: Page, tierName: string) => {
 
   await patchPromise;
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const removeTierFromPanel = async (page: Page) => {
   await page.locator('[data-testid="edit-icon-tier"]').scrollIntoViewIfNeeded();
-  await page.waitForSelector('[data-testid="edit-icon-tier"]', {
+  await page.getByTestId('edit-icon-tier').waitFor({
     state: 'visible',
   });
+  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-icon-tier').click({ force: true });
 
   const tierPopover = page.getByTestId('cards');

@@ -14,20 +14,17 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const DESCRIPTION_SEARCH =
-  // eslint-disable-next-line max-len
   'The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test('searching for longer description should work', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test('searching for longer description should work', async ({ page }) => {
   await redirectToHomePage(page);
 
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.waitForLoadState('networkidle');
 
   await page.getByTestId('global-search-selector').click();
   await page.getByTestId('global-search-select-option-Table').click();
@@ -39,14 +36,11 @@ test('searching for longer description should work', PLAYWRIGHT_SAMPLE_DATA_TAG_
 
   await page.keyboard.press('Enter');
 
-  await page.waitForSelector(
-    '[data-testid="search-container"] [data-testid="loader"]',
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId('search-container').getByTestId('loader').waitFor({
+    state: 'detached',
+  });
 
-  await page.waitForSelector('[data-testid="search-results"]', {
+  await page.getByTestId('search-results').waitFor({
     state: 'visible',
   });
 
@@ -58,7 +52,7 @@ test('searching for longer description should work', PLAYWRIGHT_SAMPLE_DATA_TAG_
       )
   ).toBeVisible();
 
-  expect(
+  await expect(
     page
       .getByTestId('search-results')
       .getByTestId(
@@ -67,5 +61,5 @@ test('searching for longer description should work', PLAYWRIGHT_SAMPLE_DATA_TAG_
       .getByTestId('entity-link')
   ).toHaveText('dim_customer');
 
-  expect(page.getByTestId('alert-bar')).not.toBeVisible();
+  await expect(page.getByTestId('alert-bar')).not.toBeVisible();
 });

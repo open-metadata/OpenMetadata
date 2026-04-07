@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01 } from '@untitledui/icons';
+import { Building02, Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
@@ -23,6 +23,7 @@ import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contrac
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
+import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
@@ -37,6 +38,15 @@ import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 const DataProductIcon = createIconWithStroke(
   Cube01 as React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+  }>,
+  1.2
+);
+
+const MarketplaceIcon = createIconWithStroke(
+  Building02 as React.ComponentType<{
     size?: number;
     strokeWidth?: number;
     style?: React.CSSProperties;
@@ -117,11 +127,18 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
-    key: 'domains-section',
-    title: 'label.domain-plural',
-    icon: DomainsIcon,
-    dataTestId: SidebarItem.DOMAINS_SECTION,
+    key: ROUTES.DATA_MARKETPLACE_SECTION,
+    title: 'label.data-marketplace',
+    icon: MarketplaceIcon,
+    dataTestId: SidebarItem.DATA_MARKETPLACE_SECTION,
     children: [
+      {
+        key: ROUTES.DATA_MARKETPLACE,
+        title: 'label.data-marketplace',
+        icon: MarketplaceIcon,
+        redirect_url: ROUTES.DATA_MARKETPLACE,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_MARKETPLACE}`,
+      },
       {
         key: ROUTES.DOMAIN,
         title: 'label.domain-plural',
@@ -150,6 +167,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.GLOSSARY,
         icon: GlossaryIcon,
         dataTestId: `app-bar-item-${SidebarItem.GLOSSARY}`,
+      },
+      {
+        key: ROUTES.ONTOLOGY_EXPLORER,
+        title: 'label.ontology-explorer',
+        redirect_url: ROUTES.ONTOLOGY_EXPLORER,
+        icon: LineageIcon,
+        dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
       },
       {
         key: ROUTES.TAGS,

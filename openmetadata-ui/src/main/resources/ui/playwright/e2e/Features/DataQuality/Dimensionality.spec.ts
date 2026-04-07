@@ -17,11 +17,11 @@ import {
 } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
-import { visitDataQualityTab } from '../../../utils/testCases';
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
+import { visitDataQualityTab } from '../../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -83,7 +83,7 @@ test(
       await testCaseDoc;
 
       await page.click('[id="root\\/column"]');
-      await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
+      await page.locator('[data-id="column"]').waitFor({ state: 'visible' });
 
       await expect(page.locator('[data-id="column"]')).toBeVisible();
 
@@ -92,7 +92,7 @@ test(
       );
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.waitForSelector(`[data-id="dimensionColumns"]`, {
+      await page.locator('[data-id="dimensionColumns"]').waitFor({
         state: 'visible',
       });
 
@@ -171,7 +171,7 @@ test(
       );
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.waitForSelector(`[data-id="dimensionColumns"]`, {
+      await page.locator('[data-id="dimensionColumns"]').waitFor({
         state: 'visible',
       });
 
