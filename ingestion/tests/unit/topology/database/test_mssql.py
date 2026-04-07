@@ -55,6 +55,7 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
     MSSQL_TEST_GET_QUERIES,
 )
+from metadata.utils.sqa_utils import update_mssql_ischema_names
 
 mock_mssql_config = {
     "source": {
@@ -337,6 +338,55 @@ class MssqlUnitTest(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
+
+
+class TestUpdateMssqlIschemaNames:
+    """Verify update_mssql_ischema_names mutates the dict in-place and returns None."""
+
+    EXPECTED_MSSQL_TYPES = [
+        "nvarchar",
+        "nchar",
+        "ntext",
+        "bit",
+        "image",
+        "binary",
+        "smallmoney",
+        "money",
+        "real",
+        "smalldatetime",
+        "datetime2",
+        "datetimeoffset",
+        "sql_variant",
+        "uniqueidentifier",
+        "xml",
+        "hierarchyid",
+        "geography",
+        "geometry",
+    ]
+
+    def test_returns_none(self):
+        result = update_mssql_ischema_names({})
+        assert result is None
+
+    def test_mutates_dict_in_place(self):
+        target = {}
+        update_mssql_ischema_names(target)
+        for type_key in self.EXPECTED_MSSQL_TYPES:
+            assert (
+                type_key in target
+            ), f"'{type_key}' was not added by update_mssql_ischema_names"
+
+    def test_all_added_types_are_not_none(self):
+        target = {}
+        update_mssql_ischema_names(target)
+        for type_key in self.EXPECTED_MSSQL_TYPES:
+            assert target[type_key] is not None, f"'{type_key}' was mapped to None"
+
+    def test_does_not_overwrite_existing_entries(self):
+        sentinel = object()
+        target = {"existing_key": sentinel}
+        update_mssql_ischema_names(target)
+        assert target["existing_key"] is sentinel
 
     @patch(
         "metadata.ingestion.source.database.mssql.connection.test_connection_db_common"
