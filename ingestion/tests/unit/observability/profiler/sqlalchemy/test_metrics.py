@@ -19,7 +19,7 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Date, DateTime, Float, Integer, String, Time, JSON
+from sqlalchemy import JSON, TEXT, Column, Date, DateTime, Float, Integer, String, Time
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
