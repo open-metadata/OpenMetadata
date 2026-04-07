@@ -97,8 +97,6 @@ export const deletedUserChecks = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
-  // wait for all user to be loaded
-  const userListRequest = page.waitForResponse('/api/v1/users?*');
   await settingClick(page, GlobalSettingOptions.USERS);
 
   const userList = page.getByTestId('user-list-v1-component');
@@ -106,29 +104,19 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   const searchBar = page.getByTestId('searchbar');
   const userRow = page.getByTestId(userName);
 
-  await userListRequest;
-  await expect
-    .poll(
-      async () => {
-        // wait for search request to be completed
-        const searchRequest = page.waitForResponse('/api/v1/search/query*');
+  // clear and fill search bar
+  const searchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(userName)) &&
+      response.request().method() === 'GET'
+  );
+  await searchBar.clear();
+  await searchBar.fill(userName);
+  await searchRequest;
+  await loader.waitFor({ state: 'detached' });
 
-        // clear and fill search bar
-        await searchBar.clear();
-        await searchBar.fill(userName);
-        await searchRequest;
-        await loader.waitFor({ state: 'detached' });
-
-        return userRow.count();
-      },
-      {
-        timeout: 60_000,
-        intervals: [1_000, 2_000, 5_000],
-        message: `Timed out waiting for user ${userName} to become visible in the user list`,
-      }
-    )
-    .toBeGreaterThan(0);
-
+  await expect(userRow).toBeVisible();
   await userRow.click();
 };
 
