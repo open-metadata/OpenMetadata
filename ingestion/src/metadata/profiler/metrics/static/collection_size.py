@@ -95,6 +95,7 @@ class MaxCollectionSize(StaticMetric):
 
     @staticmethod
     def _update(current_max: Optional[int], df: "pd.DataFrame", col) -> Optional[int]:
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
 
         sizes = df[col.name].dropna().apply(_collection_element_count).dropna()
@@ -158,6 +159,7 @@ class MinCollectionSize(StaticMetric):
 
     @staticmethod
     def _update(current_min: Optional[int], df: "pd.DataFrame", col) -> Optional[int]:
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
 
         sizes = df[col.name].dropna().apply(_collection_element_count).dropna()

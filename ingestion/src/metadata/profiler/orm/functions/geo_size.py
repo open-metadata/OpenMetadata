@@ -12,9 +12,9 @@
 """
 Defines the SQL function to compute the number of points in a geometry/geography column.
 """
-
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 

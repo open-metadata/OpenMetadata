@@ -103,6 +103,7 @@ class MaxStructSize(StaticMetric):
 
     @staticmethod
     def _update(current_max: Optional[int], df: "pd.DataFrame", col) -> Optional[int]:
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
 
         sizes = df[col.name].dropna().apply(_struct_key_count).dropna()
@@ -164,6 +165,7 @@ class MinStructSize(StaticMetric):
 
     @staticmethod
     def _update(current_min: Optional[int], df: "pd.DataFrame", col) -> Optional[int]:
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
 
         sizes = df[col.name].dropna().apply(_struct_key_count).dropna()

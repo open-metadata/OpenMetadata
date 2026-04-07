@@ -93,6 +93,7 @@ class MaxGeoSize(StaticMetric):
 
     @staticmethod
     def _update(current_max: Optional[int], df: "pd.DataFrame", col) -> Optional[int]:
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
 
         sizes = df[col.name].dropna().apply(_geo_point_count).dropna()
@@ -150,6 +151,7 @@ class MinGeoSize(StaticMetric):
 
     @staticmethod
     def _update(current_min: Optional[int], df: "pd.DataFrame", col) -> Optional[int]:
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
 
         sizes = df[col.name].dropna().apply(_geo_point_count).dropna()
