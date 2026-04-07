@@ -14,7 +14,7 @@ IOMETE source methods.
 """
 
 import traceback
-from typing import Optional
+from typing import Iterable, Optional
 
 from sqlalchemy.engine.reflection import Inspector
 
@@ -28,6 +28,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.connections_utils import kill_active_connections
+from metadata.ingestion.source.database.iomete.connection import get_connection
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -53,6 +55,29 @@ class IometeSource(CommonDbSourceService):
                 f"Expected IometeConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def set_inspector(self, database_name: str) -> None:
+        # The base implementation does `new_service_connection.database = database_name`,
+        # but IometeConnection uses `catalog` (not `database`) for this concept.
+        # We override to set `catalog` correctly so get_connection builds the right
+        # SQLAlchemy URL and the dialect scopes queries to the intended catalog.
+        kill_active_connections(self.engine)
+        logger.info(f"Ingesting from catalog: {database_name}")
+        new_service_connection = IometeConnection(
+            **{
+                **self.service_connection.model_dump(),
+                "catalog": database_name,
+            }
+        )
+        self.engine = get_connection(new_service_connection)
+        self._connection_map = {}
+        self._inspector_map = {}
+
+    def get_database_names(self) -> Iterable[str]:
+        if self.service_connection.catalog:
+            yield self.service_connection.catalog
+        else:
+            yield from super().get_database_names()
 
     def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector

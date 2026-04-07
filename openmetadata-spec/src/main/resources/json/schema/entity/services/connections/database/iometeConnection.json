@@ -46,14 +46,14 @@
       "description": "IOMETE data plane name.",
       "type": "string"
     },
-    "databaseSchema": {
-      "title": "Database Schema",
-      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
+    "catalog": {
+      "title": "Catalog",
+      "description": "Catalog of the data source (e.g. spark_catalog). This is an optional parameter; if left blank, OpenMetadata uses default catalog.",
       "type": "string"
     },
-    "databaseName": {
-      "title": "Database Name",
-      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an optional parameter; if left blank, OpenMetadata attempts to scan all databases in the catalog.",
       "type": "string"
     },
     "connectionOptions": {
@@ -66,17 +66,12 @@
     },
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
-      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "description": "Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
     },
     "tableFilterPattern": {
       "title": "Default Table Filter Pattern",
       "description": "Regex to only include/exclude tables that matches the pattern.",
-      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
-    },
-    "databaseFilterPattern": {
-      "title": "Default Database Filter Pattern",
-      "description": "Regex to only include/exclude databases that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
     },
     "supportsMetadataExtraction": {
@@ -99,5 +94,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort"]
+  "required": ["hostPort", "username", "password", "cluster", "dataPlane"]
 }

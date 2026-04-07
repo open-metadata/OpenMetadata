@@ -15,30 +15,26 @@
  */
 export interface IometeConnection {
     /**
+     * Catalog of the data source (e.g. spark_catalog). This is an optional parameter; if left
+     * blank, OpenMetadata uses default catalog.
+     */
+    catalog?: string;
+    /**
      * IOMETE lakehouse cluster name to connect to.
      */
-    cluster?:             string;
+    cluster:              string;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Regex to only include/exclude databases that matches the pattern.
-     */
-    databaseFilterPattern?: FilterPattern;
-    /**
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
-     */
-    databaseName?: string;
-    /**
-     * Database Schema of the data source. This is optional parameter, if you would like to
-     * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the schemas.
+     * IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an
+     * optional parameter; if left blank, OpenMetadata attempts to scan all databases in the
+     * catalog.
      */
     databaseSchema?: string;
     /**
      * IOMETE data plane name.
      */
-    dataPlane?: string;
+    dataPlane: string;
     /**
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      */
@@ -46,10 +42,11 @@ export interface IometeConnection {
     /**
      * Password to connect to IOMETE.
      */
-    password?:                string;
+    password:                 string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
-     * Regex to only include/exclude schemas that matches the pattern.
+     * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+     * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
      */
     schemaFilterPattern?:           FilterPattern;
     supportsDBTExtraction?:         boolean;
@@ -67,27 +64,7 @@ export interface IometeConnection {
     /**
      * Username to connect to IOMETE.
      */
-    username?: string;
-}
-
-/**
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- */
-export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+    username: string;
 }
 
 /**
@@ -172,6 +149,25 @@ export interface AwsCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+ * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

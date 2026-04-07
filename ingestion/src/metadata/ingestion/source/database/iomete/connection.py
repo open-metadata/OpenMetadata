@@ -52,11 +52,12 @@ def get_connection(connection: IometeConnection) -> Engine:
         query["data_plane"] = connection.dataPlane
 
     url = URL.create(
-        "iomete+flightsql",
+        "iomete",
         username=connection.username,
         password=connection.password.get_secret_value() if connection.password else None,
         host=host,
         port=port,
+        database=connection.catalog if connection.catalog else None,
         query=query,
     )
     return sqlalchemy.create_engine(url)
