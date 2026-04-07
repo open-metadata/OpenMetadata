@@ -642,7 +642,7 @@ export const getEntityColumns = (
 };
 
 export const openImpactAnalysisTab = async (page: Page) => {
-  const impactAnalysisTab = page.getByRole('tab', {
+  const impactAnalysisTab = page.getByRole('button', {
     name: 'Impact Analysis',
   });
 
