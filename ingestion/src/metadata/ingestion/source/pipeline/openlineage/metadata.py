@@ -289,14 +289,8 @@ class OpenlineageSource(PipelineServiceSource):
             db_scheme = extract_db_scheme_from_namespace(namespace)
             if db_scheme:
                 matched = find_services_by_scheme(db_scheme, self._db_service_type_map)
-                if len(matched) == 1:
+                if matched:
                     result = matched
-                elif len(matched) > 1:
-                    raise AmbiguousServiceException(
-                        f"Namespace '{namespace}' (scheme={db_scheme}) matches "
-                        f"multiple DB services: {matched}. Configure "
-                        f"'namespaceToServiceMapping' to disambiguate."
-                    )
 
         if result is not None:
             self._namespace_to_service_cache[namespace] = result
@@ -341,7 +335,9 @@ class OpenlineageSource(PipelineServiceSource):
     ) -> str:
         """
         Looks for matching Table entity in OM across all configured DB services.
+        Raises AmbiguousServiceException if the table exists in multiple services.
         """
+        found = []
         for db_service in services or self.get_db_service_names():
             result = fqn.build(
                 metadata=self.metadata,
@@ -352,7 +348,14 @@ class OpenlineageSource(PipelineServiceSource):
                 table_name=table_details.name,
             )
             if result:
-                return result
+                found.append(result)
+        if len(found) == 1:
+            return found[0]
+        if len(found) > 1:
+            raise AmbiguousServiceException(
+                f"Table '{table_details.name}' found in multiple services: "
+                f"{found}. Configure 'namespaceToServiceMapping' to disambiguate."
+            )
         raise FQNNotFoundException(f"Table FQN not found for {table_details}")
 
     def _build_broker_to_service_map(self) -> Dict[str, str]:
