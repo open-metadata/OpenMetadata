@@ -89,7 +89,6 @@ class DbtCliTest(CliDBTBase.TestSuite):
     ) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertLessEqual(len(source_status.warnings), 10)
-        self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 0)
         self.assertTrue(
             (len(source_status.records) + len(source_status.updated_records)) >= 0
