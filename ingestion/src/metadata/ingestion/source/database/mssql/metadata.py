@@ -277,26 +277,22 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         """Prepare the stored procedure payload"""
 
         try:
-            description = self.get_stored_procedure_description(stored_procedure.name)
-            encrypted_procs = self._get_encrypted_procedures(
-                self.context.get().database_schema
-            )
-            if stored_procedure.name in encrypted_procs:
-                if description:
-                    description = Markdown(
-                        f"""{description.root}\nUnable to fetch code as this is an encrypted stored procedure"""
-                    )
-                else:
-                    description = Markdown(
-                        "Unable to fetch code as this is an encrypted stored procedure"
-                    )
+            proc_definition = stored_procedure.definition
+            if not proc_definition:
+                encrypted_procs = self._get_encrypted_procedures(
+                    self.context.get().database_schema
+                )
+                if stored_procedure.name in encrypted_procs:
+                    proc_definition = "-- Unable to fetch code as this is an encrypted stored procedure"
 
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=description,
+                description=self.get_stored_procedure_description(
+                    stored_procedure.name
+                ),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
-                    code=stored_procedure.definition,
+                    code=proc_definition,
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,

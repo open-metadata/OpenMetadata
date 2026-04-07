@@ -393,8 +393,8 @@ class MssqlUnitTest(TestCase):
         self.mssql.stored_procedure_desc_map = {}
         self.mssql.encrypted_procedures_cache = {}
 
-    def test_yield_stored_procedure_encrypted_no_description(self):
-        """Encrypted procedure with no description gets the encrypted message"""
+    def test_yield_stored_procedure_encrypted_no_definition(self):
+        """Encrypted procedure with no definition gets the encrypted message as code"""
         self._setup_stored_procedure_context()
         self.mssql.encrypted_procedures_cache[MOCK_DATABASE_SCHEMA.name.root] = {
             "sp_encrypted"
@@ -404,12 +404,13 @@ class MssqlUnitTest(TestCase):
         results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
 
         assert len(results) == 1
-        assert results[0].description == Markdown(
-            "Unable to fetch code as this is an encrypted stored procedure"
+        assert results[0].description is None
+        assert results[0].storedProcedureCode.code == (
+            "-- Unable to fetch code as this is an encrypted stored procedure"
         )
 
     def test_yield_stored_procedure_encrypted_with_description(self):
-        """Encrypted procedure with existing description appends the encrypted message"""
+        """Encrypted procedure with existing description preserves description, sets code"""
         self._setup_stored_procedure_context()
         self.mssql.stored_procedure_desc_map[
             (
@@ -426,13 +427,13 @@ class MssqlUnitTest(TestCase):
         results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
 
         assert len(results) == 1
-        assert results[0].description == Markdown(
-            "My procedure description\n"
-            "Unable to fetch code as this is an encrypted stored procedure"
+        assert results[0].description == Markdown("My procedure description")
+        assert results[0].storedProcedureCode.code == (
+            "-- Unable to fetch code as this is an encrypted stored procedure"
         )
 
     def test_yield_stored_procedure_not_encrypted(self):
-        """Non-encrypted procedure does not get the encrypted message"""
+        """Non-encrypted procedure keeps its definition as code, no encrypted message"""
         self._setup_stored_procedure_context()
         self.mssql.encrypted_procedures_cache[MOCK_DATABASE_SCHEMA.name.root] = set()
 
