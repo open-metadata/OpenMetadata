@@ -199,6 +199,7 @@ class StdDev(StaticMetric):
         Returns:
             Updated accumulator with new chunk's statistics added
         """
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
 
         clean_df = df[column.name].dropna()
@@ -217,6 +218,7 @@ class StdDev(StaticMetric):
             chunk_sum_squares = (numeric_df**2).sum()
             chunk_count = len(numeric_df)
         elif is_concatenable(column.type):
+            # pylint: disable=import-outside-toplevel
             import numpy as np
 
             lengths = np.vectorize(len)(clean_df.astype(str))
