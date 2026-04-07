@@ -384,6 +384,10 @@ public class OpenLineageEntityResolver {
    * extract schema and table correctly. Strips leading/trailing slashes and collapses
    * consecutive slashes to avoid producing empty parts.
    *
+   * <p>Only enable this flag when dataset names use "/" exclusively as hierarchy separators
+   * (e.g. Spark with Delta Lake on S3/EMR). Names that mix "/" and "." separators (e.g.
+   * {@code my.schema/table}) are not supported and will produce unexpected split results.
+   *
    * <p>Package-private for testability.
    */
   String normalizeDatasetName(String datasetName) {

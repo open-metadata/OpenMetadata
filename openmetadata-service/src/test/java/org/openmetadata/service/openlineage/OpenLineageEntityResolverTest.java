@@ -434,6 +434,16 @@ class OpenLineageEntityResolverTest {
   }
 
   @Test
+  void normalizeDatasetName_mixedSlashAndDot_convertsSlashes() {
+    // Mixed "/" and "." names are not officially supported (see normalizeDatasetName javadoc).
+    // The method converts all "/" to "." regardless, which may produce unexpected FQN splits.
+    // This test documents the current behaviour so any future change is explicit.
+    OpenLineageEntityResolver resolver =
+        new OpenLineageEntityResolver(true, "openlineage", null, true);
+    assertEquals("my.schema.my_table", resolver.normalizeDatasetName("my.schema/my_table"));
+  }
+
+  @Test
   void ownershipFacet_emptyOwners_handledGracefully() {
     OwnershipFacet ownership = new OwnershipFacet();
     // Default initialization may give empty list or null depending on schema
