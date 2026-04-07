@@ -1402,7 +1402,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     <div
       className={classNames(
         'tw:flex tw:flex-col tw:overflow-hidden',
-        { 'ontology-slideout-open': Boolean(selectedNode) },
         className
       )}
       data-testid="ontology-explorer"

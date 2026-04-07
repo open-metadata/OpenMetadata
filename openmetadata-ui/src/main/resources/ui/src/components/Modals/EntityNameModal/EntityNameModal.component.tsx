@@ -64,7 +64,6 @@ const EntityNameModal = <T extends EntityName>({
         </Button>,
       ]}
       maskClosable={false}
-      modalRender={(node) => <div data-react-aria-top-layer>{node}</div>}
       okText={t('label.save')}
       open={visible}
       title={
@@ -72,7 +71,6 @@ const EntityNameModal = <T extends EntityName>({
           {title}
         </Typography.Text>
       }
-      zIndex={1200}
       onCancel={onCancel}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
