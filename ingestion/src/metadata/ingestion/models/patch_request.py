@@ -145,6 +145,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "numberOfObjects": True,
     "size": True,
     "fileFormats": True,
+    "extension": True,
 }
 
 RESTRICT_UPDATE_LIST = [
@@ -153,6 +154,7 @@ RESTRICT_UPDATE_LIST = [
     "owners",
     "displayName",
     "tableConstraints",
+    "extension",
 ]
 
 ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]

@@ -325,6 +325,35 @@ class TestAthenaService(unittest.TestCase):
         )
         assert column_lineage == EXPECTED_COLUMN_LINEAGE
 
+    def test_get_table_extensions_returns_none_without_type_ref(self):
+        self.athena_source._string_property_type_ref = None
+        assert self.athena_source.get_table_extensions(MOCK_TABLE_NAME) is None
+
+    def test_get_table_extensions_returns_properties_from_description(self):
+        from metadata.generated.schema.type.customProperty import PropertyType
+
+        self.athena_source._string_property_type_ref = PropertyType(
+            EntityReference(
+                id=UUID("00000000-0000-0000-0000-000000000001"), type="type"
+            )
+        )
+        mock_inspector = MagicMock()
+        mock_inspector.get_table_comment.return_value = {"text": "desc"}
+        mock_inspector.get_table_options.return_value = {
+            "awsathena_location": "s3://bucket/path",
+            "awsathena_tblproperties": {"prop_key": "prop_value", "null_prop": None},
+        }
+        self.athena_source.get_table_description(
+            MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME, mock_inspector
+        )
+
+        with patch.object(self.athena_source, "metadata") as mock_metadata:
+            result = self.athena_source.get_table_extensions(MOCK_TABLE_NAME)
+
+        assert result == {"prop_key": "prop_value"}
+        assert "null_prop" not in result
+        mock_metadata.create_or_update_custom_property.assert_called_once()
+
 
 SUBMISSION_DT = datetime(2024, 1, 2, 10, 0, 0)
 COMPLETION_DT = datetime(2024, 1, 2, 10, 5, 0)
