@@ -460,6 +460,7 @@ test.describe('Lineage Settings modal', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await visitLineageTab(page);
   });

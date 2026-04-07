@@ -32,6 +32,7 @@ import {
   getApiContext,
   getDefaultAdminAPIContext,
   getEntityTypeSearchIndexMapping,
+  redirectToHomePage,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -124,6 +125,7 @@ test.describe('Lineage Filters', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
     await lineageEntity.visitEntityPage(page);
     await visitLineageTab(page);
     await waitForAllLoadersToDisappear(page);
