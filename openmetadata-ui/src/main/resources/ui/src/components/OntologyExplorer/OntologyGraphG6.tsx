@@ -109,7 +109,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     useImperativeHandle(
       ref,
       () => ({
-        fitView: () => {
+        fitView: async () => {
           const graph = graphRef.current;
           if (!graph) {
             return;
@@ -119,8 +119,8 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
             explorationMode === 'data'
               ? FIT_VIEW_ZOOM_OUT_DATA_MODE
               : FIT_VIEW_ZOOM_OUT;
-          graph.fitView(undefined, { duration });
-          graph.zoomBy(zoomAfterFit, { duration });
+          await graph.fitView(undefined, { duration });
+          await graph.zoomBy(zoomAfterFit, { duration });
         },
         zoomIn: () => {
           graphRef.current?.zoomBy(1.2);
