@@ -122,7 +122,7 @@ def get_connection(connection: HiveConnection) -> Engine:
             "kerberos_service_name"
         ] = connection.kerberosServiceName
 
-    # SSL cert paths (ssl_ca, ssl_cert, ssl_key) are set by ssl_manager.setup_ssl()
+    # SSL cert paths (ssl_ca_certs, ssl_certfile, ssl_keyfile) are set by ssl_manager.setup_ssl()
     # via SSLManager.create_temp_file(). Do not assign sslConfig fields here directly —
     # SecretStr values are not file paths and will cause a driver-level file-not-found error.
     ssl_manager = check_ssl_and_init(connection)
