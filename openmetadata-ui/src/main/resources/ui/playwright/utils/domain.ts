@@ -387,7 +387,7 @@ export const verifyAssetsInDomain = async (
   }
 };
 
-const fillCommonFormItems = async (
+export const fillCommonFormItems = async (
   page: Page,
   entity: Domain['data'] | DataProduct['data'] | SubDomain['data']
 ) => {

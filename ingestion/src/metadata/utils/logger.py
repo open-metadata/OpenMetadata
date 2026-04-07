@@ -17,7 +17,7 @@ from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -320,6 +320,38 @@ def _(record: OMetaUserProfile) -> str:
         f"User Profile: {get_log_name(record.user)},"
         f"Teams: {record.teams if record.teams else 'None'}, \nRoles: {record.roles if record.roles else 'None'}"
     )
+
+
+class StatusWarningHandler(logging.Handler):
+    """
+    Logging handler that intercepts WARNING-level records from our metadata
+    loggers and forwards them to the workflow Status object so the final
+    summary reflects the true warning count.
+
+    Records from Status.failed() (module="status") and the Step framework
+    error handling (module="step") are skipped — those are already counted
+    as failures, not warnings.
+    """
+
+    _SKIP_MODULES = frozenset({"status", "step"})
+
+    def __init__(self, status: Any) -> None:
+        super().__init__(level=logging.WARNING)
+        self._status = status
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # Only capture WARNING; ERROR/CRITICAL are already tracked as failures by Step.run()
+        if record.levelno != logging.WARNING:
+            return
+        if record.module in self._SKIP_MODULES:
+            return
+        try:
+            self._status.warning(
+                key=record.module,
+                reason=record.getMessage(),
+            )
+        except Exception:  # pylint: disable=broad-except
+            self.handleError(record)
 
 
 def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:

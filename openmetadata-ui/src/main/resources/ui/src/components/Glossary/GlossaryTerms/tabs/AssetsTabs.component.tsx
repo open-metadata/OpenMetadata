@@ -674,7 +674,7 @@ const AssetsTabs = forwardRef(
             })}
             icon={<FolderEmptyIcon />}
             permission={permissions.Create}
-            type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+            type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
             onClick={onAddAsset}
           />
         );

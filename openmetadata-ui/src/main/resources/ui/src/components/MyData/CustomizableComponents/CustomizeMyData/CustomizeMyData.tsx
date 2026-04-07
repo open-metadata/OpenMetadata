@@ -29,6 +29,7 @@ import { Page } from '../../../../generated/system/ui/page';
 import { PageType } from '../../../../generated/system/ui/uiCustomization';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
 import {
   getAddWidgetHandler,
@@ -61,11 +62,13 @@ function CustomizeMyData({
   onBackgroundColorUpdate,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
+  const { currentPageType } = useCustomizeStore();
+
+  const defaultLayout = customizeMyDataPageClassBase.defaultLayout;
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLandingPageLayoutWithEmptyWidgetPlaceholder(
-      (initialPageData?.layout as WidgetConfig[]) ??
-        customizeMyDataPageClassBase.defaultLayout
+      (initialPageData?.layout as WidgetConfig[]) ?? defaultLayout
     )
   );
 
@@ -162,7 +165,7 @@ function CustomizeMyData({
     await onSaveLayout({
       ...(initialPageData ??
         ({
-          pageType: PageType.LandingPage,
+          pageType: currentPageType ?? PageType.LandingPage,
         } as Page)),
       layout: getUniqueFilteredLayout(updatedLayout ?? layout),
     });
@@ -205,14 +208,12 @@ function CustomizeMyData({
   };
 
   const handleReset = useCallback(async () => {
-    // Get default layout with the empty widget added at the end
-    const newMainPanelLayout = getLandingPageLayoutWithEmptyWidgetPlaceholder(
-      customizeMyDataPageClassBase.defaultLayout
-    );
+    const newMainPanelLayout =
+      getLandingPageLayoutWithEmptyWidgetPlaceholder(defaultLayout);
     setLayout(newMainPanelLayout);
     await handleBackgroundColorUpdate();
     await onSaveLayout();
-  }, [handleBackgroundColorUpdate, onSaveLayout]);
+  }, [defaultLayout, handleBackgroundColorUpdate, onSaveLayout]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();

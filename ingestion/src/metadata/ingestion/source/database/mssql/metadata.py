@@ -43,6 +43,7 @@ from metadata.ingestion.source.database.mssql.models import (
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
     MSSQL_GET_DATABASE_COMMENTS,
+    MSSQL_GET_ENCRYPTED_STORED_PROCEDURES,
     MSSQL_GET_SCHEMA_COMMENTS,
     MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
@@ -75,7 +76,7 @@ logger = ingestion_logger()
 # Avoid using these data types in new development work, and plan to modify applications that currently use them.
 # Use nvarchar(max), varchar(max), and varbinary(max) instead.
 # ref: https://learn.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql?view=sql-server-ver16
-ischema_names = update_mssql_ischema_names(ischema_names)
+update_mssql_ischema_names(ischema_names)
 
 MSDialect.get_table_comment = get_table_comment
 MSDialect.get_view_definition = get_view_definition
@@ -107,6 +108,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
         self.database_desc_map = {}
         self.stored_procedure_desc_map = {}
+        self.encrypted_procedures_cache: dict[tuple[str, str], set[str]] = {}
 
     @classmethod
     def create(
@@ -160,6 +162,28 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         Method to fetch the database description
         """
         return self.database_desc_map.get(database_name)
+
+    def _get_encrypted_procedures(
+        self, database_name: str, schema_name: str
+    ) -> set[str]:
+        """Fetch and cache encrypted stored procedure names for a database and schema"""
+        cache_key = (database_name, schema_name)
+        if cache_key not in self.encrypted_procedures_cache:
+            try:
+                with self.engine.connect() as conn:
+                    results = conn.execute(
+                        text(MSSQL_GET_ENCRYPTED_STORED_PROCEDURES),
+                        {"schema_name": schema_name},
+                    ).all()
+                self.encrypted_procedures_cache[cache_key] = {
+                    row.procedure_name for row in results
+                }
+            except Exception as exc:
+                logger.debug(
+                    f"Could not fetch encrypted procedures for {database_name}.{schema_name}: {exc}"
+                )
+                self.encrypted_procedures_cache[cache_key] = set()
+        return self.encrypted_procedures_cache[cache_key]
 
     def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
         """
@@ -253,6 +277,15 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         """Prepare the stored procedure payload"""
 
         try:
+            proc_definition = stored_procedure.definition
+            if not proc_definition:
+                encrypted_procs = self._get_encrypted_procedures(
+                    self.context.get().database,
+                    self.context.get().database_schema,
+                )
+                if stored_procedure.name in encrypted_procs:
+                    proc_definition = "-- Unable to fetch code as this is an encrypted stored procedure"
+
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
                 description=self.get_stored_procedure_description(
@@ -260,7 +293,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 ),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
-                    code=stored_procedure.definition,
+                    code=proc_definition,
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
