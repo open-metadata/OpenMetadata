@@ -12,6 +12,7 @@
 """
 Defines the SQL function to compute the number of elements in a collection (array/list).
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string
 
@@ -31,6 +32,11 @@ class CollectionSizeFn(FunctionElement):
 @compiles(CollectionSizeFn)
 def _(element, compiler, **kw):
     return "CARDINALITY(%s)" % compiler.process(element.clauses, **kw)
+
+
+@compiles(CollectionSizeFn, Dialects.SQLite)
+def _(element, compiler, **kw):
+    return "NULL"
 
 
 @compiles(CollectionSizeFn, Dialects.BigQuery)

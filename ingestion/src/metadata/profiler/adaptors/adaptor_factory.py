@@ -11,6 +11,7 @@
 """
 factory for NoSQL adaptors that are used in the NoSQLProfiler.
 """
+
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )

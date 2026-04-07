@@ -12,6 +12,7 @@
 """
 Struct size metrics: max, min, and mean number of keys/elements in JSON/Map/Struct columns.
 """
+
 # pylint: disable=duplicate-code
 
 import json

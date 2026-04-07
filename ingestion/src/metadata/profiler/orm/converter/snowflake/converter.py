@@ -14,7 +14,6 @@ Converter logic to transform an OpenMetadata Table Entity for Snowflake
 to an SQLAlchemy ORM class.
 """
 
-
 from typing import Dict, Set
 
 from sqlalchemy.sql.sqltypes import TypeEngine

@@ -12,6 +12,7 @@
 """
 Cardinality Distribution Metric definition
 """
+
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from sqlalchemy import case, column, desc, func, or_

@@ -11,6 +11,7 @@
 """
 Profiler Processor Step
 """
+
 import traceback
 from typing import Optional, Type, cast
 

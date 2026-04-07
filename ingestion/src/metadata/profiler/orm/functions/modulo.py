@@ -12,6 +12,7 @@
 """
 Define Modulo function
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=duplicate-code
 

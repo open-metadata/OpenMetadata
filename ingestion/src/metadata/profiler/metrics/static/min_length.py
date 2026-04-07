@@ -12,6 +12,7 @@
 """
 MIN_LENGTH Metric definition
 """
+
 # pylint: disable=duplicate-code
 
 
@@ -24,7 +25,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import Metric
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
-from metadata.profiler.orm.registry import is_concatenable
+from metadata.profiler.orm.registry import is_complex_type, is_concatenable
 from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
@@ -60,6 +61,9 @@ class MinLength(StaticMetric):
     @_label
     def fn(self):
         """sqlalchemy function"""
+        if is_complex_type(self.col.type):
+            return None
+
         if is_concatenable(self.col.type):
             return func.min(LenFn(column(self.col.name, self.col.type)))
 
@@ -71,7 +75,7 @@ class MinLength(StaticMetric):
     # pylint: disable=import-outside-toplevel
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """dataframe function"""
-        if dfs is None:
+        if dfs is None or is_complex_type(self.col.type):
             return None
         computation = self.get_pandas_computation()
         accumulator = computation.create_accumulator()

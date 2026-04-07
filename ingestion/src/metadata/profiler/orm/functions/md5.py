@@ -12,6 +12,7 @@
 """
 Define MD5 hashing function
 """
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 

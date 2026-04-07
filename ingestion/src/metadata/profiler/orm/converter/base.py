@@ -13,6 +13,7 @@
 Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
+
 from typing import Optional, cast
 
 import sqlalchemy

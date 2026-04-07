@@ -12,6 +12,7 @@
 """
 Type adapter for Trino to handle NamedRowTuple serialization
 """
+
 from typing import Any
 
 from sqlalchemy import ARRAY

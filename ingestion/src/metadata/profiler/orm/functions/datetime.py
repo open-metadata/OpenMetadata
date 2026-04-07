@@ -12,6 +12,7 @@
 """
 Define Median function
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=duplicate-code
 from sqlalchemy.ext.compiler import compiles

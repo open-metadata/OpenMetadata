@@ -11,6 +11,7 @@
 """
 DyanmoDB adaptor for the NoSQL profiler.
 """
+
 from typing import TYPE_CHECKING, Dict, List
 
 from metadata.generated.schema.entity.data.table import Column, Table

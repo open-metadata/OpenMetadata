@@ -16,8 +16,7 @@ from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.profiler_utils import QueryResult
 from metadata.utils.time_utils import datetime_to_timestamp
 
-SYSTEM_QUERY = textwrap.dedent(
-    """
+SYSTEM_QUERY = textwrap.dedent("""
     SELECT
         timestamp AS starttime,
         COALESCE(CAST({column1} AS BIGINT), 0) + COALESCE(CAST({column2} AS BIGINT), 0) AS rows,
@@ -26,8 +25,7 @@ SYSTEM_QUERY = textwrap.dedent(
         '{table}' AS table
     FROM (DESCRIBE HISTORY `{database}`.`{schema}`.`{table}`)
     WHERE operation IN ({operations}) AND timestamp > DATEADD(day, -1, CURRENT_TIMESTAMP())
-    """
-)
+    """)
 
 
 @register_system_metrics(PythonDialects.Databricks)

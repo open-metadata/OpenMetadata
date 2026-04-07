@@ -12,6 +12,7 @@
 """
 Define Concat function
 """
+
 # Keep SQA docs style defining custom constructs
 
 from sqlalchemy.ext.compiler import compiles

@@ -12,6 +12,7 @@
 """
 Defines the SQL function to compute the number of keys/elements in a struct or JSON column.
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string
 
@@ -29,6 +30,7 @@ class StructSizeFn(FunctionElement):
 
 
 @compiles(StructSizeFn)
+@compiles(StructSizeFn, Dialects.SQLite)
 def _(element, compiler, **kw):
     return "NULL"
 

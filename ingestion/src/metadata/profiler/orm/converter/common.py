@@ -12,6 +12,7 @@
 """
 Common Class For Profiler Converter.
 """
+
 from typing import Dict, Set
 
 import sqlalchemy

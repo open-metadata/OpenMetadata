@@ -11,6 +11,7 @@
 """
 NoSQL adaptor for the NoSQL profiler.
 """
+
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union
 

@@ -14,6 +14,7 @@
 """
 Undetermined types for cases where we dont have typ mappings
 """
+
 from sqlalchemy.sql.sqltypes import String, TypeDecorator
 
 

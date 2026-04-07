@@ -13,6 +13,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+
 from copy import deepcopy
 from typing import List, Type, cast
 

@@ -12,6 +12,7 @@
 """
 Define Median function
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy.ext.compiler import compiles
@@ -235,9 +236,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
             ) temp
         WHERE temp.row_num = ROUND({percentile} * @counter)
         )
-        """.format(
-            col=col, table=table, percentile=percentile
-        )
+        """.format(col=col, table=table, percentile=percentile)
 
 
 @compiles(MedianFn, Dialects.SQLite)
@@ -302,9 +301,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
                 WHERE {col} IS NOT NULL
             )
         )
-        """.format(
-            col=col, table=table, percentile=percentile
-        )
+        """.format(col=col, table=table, percentile=percentile)
 
 
 @compiles(MedianFn, Dialects.Doris)

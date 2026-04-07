@@ -12,6 +12,7 @@
 """
 Regex Count Metric definition
 """
+
 # pylint: disable=duplicate-code
 
 import traceback

@@ -12,6 +12,7 @@
 """
 Unique Count Metric definition
 """
+
 import json
 from collections import Counter
 from typing import TYPE_CHECKING, Optional
@@ -82,7 +83,7 @@ class UniqueCount(QueryMetric):
         """
         Build the Unique Count metric
         """
-        if dfs is None:
+        if dfs is None or is_complex_type(self.col.type):
             return None
         try:
             computation = self.get_pandas_computation()

@@ -12,6 +12,7 @@
 """
 Min Metric definition
 """
+
 from functools import partial
 from typing import TYPE_CHECKING, Callable, Optional
 

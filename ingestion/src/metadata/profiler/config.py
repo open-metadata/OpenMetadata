@@ -11,6 +11,7 @@
 """
 Profiler configuration helpers
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.data.database import (

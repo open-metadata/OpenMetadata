@@ -12,6 +12,7 @@
 """
 Median Metric definition
 """
+
 # pylint: disable=duplicate-code
 
 from typing import TYPE_CHECKING, Optional

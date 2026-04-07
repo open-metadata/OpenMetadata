@@ -12,6 +12,7 @@
 """
 Defines the SQL function to compute the number of points in a geometry/geography column.
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string
 
@@ -29,6 +30,7 @@ class GeoSizeFn(FunctionElement):
 
 
 @compiles(GeoSizeFn)
+@compiles(GeoSizeFn, Dialects.SQLite)
 def _(element, compiler, **kw):
     return "NULL"
 
