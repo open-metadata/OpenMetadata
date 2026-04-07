@@ -274,7 +274,7 @@ test.describe('Lineage Filters', () => {
           await page.reload();
           await waitForAllLoadersToDisappear(page);
 
-          await page.getByTestId('filters-button').click();
+          await page.getByRole('button', { name: 'Filters' }).click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
           await page.getByTitle(filterValue).click();
@@ -316,7 +316,7 @@ test.describe('Lineage Filters', () => {
           await impactAnalysisTab.click();
           await waitForAllLoadersToDisappear(page);
 
-          await page.getByTestId('filters-button').click();
+          await page.getByRole('button', { name: 'Filters' }).click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
           await page
