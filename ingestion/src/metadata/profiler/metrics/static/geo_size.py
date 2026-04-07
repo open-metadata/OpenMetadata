@@ -12,7 +12,6 @@
 """
 Geo size metrics: max, min, and mean number of points in geography/geometry columns.
 """
-
 # pylint: disable=duplicate-code
 
 from typing import TYPE_CHECKING, NamedTuple, Optional

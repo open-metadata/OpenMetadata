@@ -12,7 +12,6 @@
 """
 AVG Metric definition
 """
-
 from functools import partial
 from typing import TYPE_CHECKING, Callable, NamedTuple, Optional
 

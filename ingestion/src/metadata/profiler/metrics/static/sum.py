@@ -12,7 +12,6 @@
 """
 SUM Metric definition
 """
-
 from functools import partial
 from typing import TYPE_CHECKING, Callable, Optional
 
@@ -25,10 +24,7 @@ from metadata.profiler.metrics.core import StaticMetric, T, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.sum import SumFn
-from metadata.profiler.orm.registry import (
-    is_concatenable,
-    is_quantifiable,
-)
+from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 # pylint: disable=duplicate-code
@@ -102,6 +98,7 @@ class Sum(StaticMetric):
         Maintains a single maximum value (not a list). Compares chunk's max
         with current maximum and returns the larger value.
         """
+        # pylint: disable=import-outside-toplevel
         import pandas as pd
 
         chunk_sum = None
@@ -117,6 +114,7 @@ class Sum(StaticMetric):
                 except Exception:
                     return None
         elif is_concatenable(column.type):
+            # pylint: disable=import-outside-toplevel
             import numpy as np
 
             series = df[column.name].dropna()

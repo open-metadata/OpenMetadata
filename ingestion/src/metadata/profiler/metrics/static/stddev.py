@@ -12,7 +12,6 @@
 """
 Population Standard deviation Metric definition
 """
-
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 

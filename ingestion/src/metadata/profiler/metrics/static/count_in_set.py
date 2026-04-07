@@ -12,7 +12,6 @@
 """
 CountInSet Metric definition
 """
-
 # pylint: disable=duplicate-code
 import traceback
 from typing import TYPE_CHECKING, List, Optional

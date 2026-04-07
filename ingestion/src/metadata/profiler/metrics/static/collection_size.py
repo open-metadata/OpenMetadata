@@ -12,7 +12,6 @@
 """
 Collection size metrics: max, min, and mean number of elements in array/list columns.
 """
-
 # pylint: disable=duplicate-code
 
 from typing import TYPE_CHECKING, NamedTuple, Optional
