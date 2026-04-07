@@ -19,7 +19,7 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Date, DateTime, Float, Integer, String, Time
+from sqlalchemy import TEXT, Column, Date, DateTime, Float, Integer, String, Time, JSON
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
@@ -55,6 +55,7 @@ class User(Base):
     tob = Column(Time)  # time of birth
     doe = Column(Date)  # date of employment
     email = Column(String(256))  # unique email for testing allValuesUnique
+    json_col = Column(JSON)
 
 
 class MetricsTest(TestCase):
@@ -120,6 +121,7 @@ class MetricsTest(TestCase):
                 tob=datetime.time(11, 2, 32),
                 doe=datetime.date(2020, 1, 12),
                 email="john1@example.com",
+                json_col={"a": 1, "b": 2},
             ),
             User(
                 name="Jane",
@@ -131,6 +133,7 @@ class MetricsTest(TestCase):
                 tob=datetime.time(10, 1, 31),
                 doe=datetime.date(2009, 11, 11),
                 email="jane@example.com",
+                json_col={"x": 5},
             ),
             User(
                 name="John",
@@ -142,6 +145,7 @@ class MetricsTest(TestCase):
                 tob=datetime.time(9, 3, 25),
                 doe=datetime.date(2012, 12, 1),
                 email="john2@example.com",
+                json_col=None,
             ),
         ]
         cls.sqa_profiler_interface.session.add_all(data)
@@ -790,6 +794,7 @@ class MetricsTest(TestCase):
 
         assert res.get(User.comments.name)[Metrics.minLength.name] == 11
 
+
     def test_max_length(self):
         """
         Check MAX_LENGTH metric
@@ -831,6 +836,37 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.comments.name)[Metrics.maxLength.name] == 19
+    def test_min_struct_size(self):
+        """
+        Check MIN_STRUCT_SIZE metric
+        """
+        min_struct = Metrics.minStructSize.value
+        res = (
+            Profiler(
+                min_struct,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+        # One row has {"x": 5} -> len 1.
+        assert res.get(User.json_col.name).get(Metrics.minStructSize.name) == 1
+
+    def test_max_struct_size(self):
+        """
+        Check MAX_STRUCT_SIZE metric
+        """
+        max_struct = Metrics.maxStructSize.value
+        res = (
+            Profiler(
+                max_struct,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+        # One row has {"a": 1, "b": 2} -> len 2.
+        assert res.get(User.json_col.name).get(Metrics.maxStructSize.name) == 2
 
     def test_sum(self):
         """

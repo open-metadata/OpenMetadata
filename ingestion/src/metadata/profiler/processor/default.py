@@ -53,6 +53,18 @@ def get_default_metrics(
         metrics_registry.uniqueProportion.value,
         metrics_registry.interQuartileRange.value,
         metrics_registry.nonParametricSkew.value,
+        # Collection Metrics
+        metrics_registry.maxCollectionSize.value,
+        metrics_registry.minCollectionSize.value,
+        metrics_registry.meanCollectionSize.value,
+        # Struct Metrics
+        metrics_registry.maxStructSize.value,
+        metrics_registry.minStructSize.value,
+        metrics_registry.meanStructSize.value,
+        # Geo Metrics
+        metrics_registry.maxGeoSize.value,
+        metrics_registry.minGeoSize.value,
+        metrics_registry.meanGeoSize.value,
     ]
 
 

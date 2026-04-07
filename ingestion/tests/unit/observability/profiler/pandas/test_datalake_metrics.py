@@ -471,6 +471,7 @@ class DatalakeMetricsTest(TestCase):
 
         assert res.get(User.comments.name)[Metrics.minLength.name] == 11
 
+
     def test_max_length(self):
         """
         Check MAX_LENGTH metric
@@ -512,6 +513,37 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert res.get(User.comments.name)[Metrics.maxLength.name] == 19
+    def test_min_struct_size(self):
+        """
+        Check MIN_STRUCT_SIZE metric
+        """
+        min_struct = Metrics.minStructSize.value
+        res = (
+            Profiler(
+                min_struct,
+                profiler_interface=self.datalake_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+        assert res.get("json").get(Metrics.minStructSize.name) is not None
+        assert res.get("json").get(Metrics.minStructSize.name) > 0
+
+    def test_max_collection_size(self):
+        """
+        Check MAX_COLLECTION_SIZE metric
+        """
+        max_col = Metrics.maxCollectionSize.value
+        res = (
+            Profiler(
+                max_col,
+                profiler_interface=self.datalake_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+        assert res.get("array").get(Metrics.maxCollectionSize.name) is not None
+        assert res.get("array").get(Metrics.maxCollectionSize.name) > 0
 
     def test_sum(self):
         """
