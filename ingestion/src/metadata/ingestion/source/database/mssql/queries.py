@@ -117,6 +117,10 @@ MSSQL_GET_DATABASE = """
 SELECT name FROM master.sys.databases order by name
 """
 
+MSSQL_GET_CURRENT_DATABASE = """
+SELECT DB_NAME() AS name
+"""
+
 MSSQL_TEST_GET_QUERIES = textwrap.dedent(
     """
       SELECT TOP 1
@@ -243,6 +247,16 @@ JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
    AND ROUTINE_CATALOG = '{database_name}'
    AND ROUTINE_SCHEMA = '{schema_name}'
+    """
+)
+
+MSSQL_GET_ENCRYPTED_STORED_PROCEDURES = textwrap.dedent(
+    """
+SELECT p.name AS procedure_name
+FROM sys.procedures p
+JOIN sys.schemas s ON s.schema_id = p.schema_id
+WHERE s.name = :schema_name
+  AND OBJECTPROPERTY(p.object_id, 'IsEncrypted') = 1
     """
 )
 

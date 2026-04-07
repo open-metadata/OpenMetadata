@@ -77,6 +77,7 @@ def _get_kafka_connection(broker: KafkaBrokerConfig) -> KafkaConsumer:
                     "ssl.key.location": broker.sslConfig.root.sslKey,
                 }
             )
+
         if broker.securityProtocol.value in (
             KafkaSecProtocol.SASL_PLAINTEXT.value,
             KafkaSecProtocol.SASL_SSL.value,

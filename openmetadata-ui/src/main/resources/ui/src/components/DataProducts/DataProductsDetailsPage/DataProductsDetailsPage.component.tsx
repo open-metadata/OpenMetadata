@@ -57,6 +57,7 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getContractByEntityId } from '../../../rest/contractAPI';
@@ -89,8 +90,8 @@ import {
   getPrioritizedEditPermission,
 } from '../../../utils/PermissionsUtils';
 import {
+  getDataProductDetailsPath,
   getDomainPath,
-  getEntityDetailsPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
@@ -134,6 +135,7 @@ const DataProductsDetailsPage = ({
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
+  const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
@@ -231,13 +233,18 @@ const DataProductsDetailsPage = ({
   const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
     const items: BreadcrumbItem[] = [];
 
-    // Add Data Products listing page FIRST
+    if (isMarketplace) {
+      items.push({
+        name: t('label.data-marketplace'),
+        url: ROUTES.DATA_MARKETPLACE,
+      });
+    }
+
     items.push({
       name: t('label.data-product-plural'),
-      url: ROUTES.DATA_PRODUCT,
+      url: dataProductBasePath,
     });
 
-    // Add parent domain SECOND (if exists)
     if (dataProduct.domains && dataProduct.domains.length > 0) {
       items.push({
         name: getEntityName(dataProduct.domains[0]),
@@ -246,7 +253,7 @@ const DataProductsDetailsPage = ({
     }
 
     return items;
-  }, [dataProduct.domains, t]);
+  }, [dataProduct.domains, isMarketplace, dataProductBasePath, t]);
 
   const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 
@@ -497,14 +504,9 @@ const DataProductsDetailsPage = ({
 
         // If name changed, navigate to the new URL
         if (name && name.trim() !== dataProduct.name) {
-          navigate(
-            getEntityDetailsPath(
-              EntityType.DATA_PRODUCT,
-              name.trim(),
-              activeTab
-            ),
-            { replace: true }
-          );
+          navigate(getDataProductDetailsPath(name.trim(), activeTab), {
+            replace: true,
+          });
         }
       } catch {
         // Error is already handled by the parent component
@@ -542,11 +544,7 @@ const DataProductsDetailsPage = ({
             toString(dataProduct.version),
             activeKey
           )
-        : getEntityDetailsPath(
-            EntityType.DATA_PRODUCT,
-            dataProductFqn,
-            activeKey
-          );
+        : getDataProductDetailsPath(dataProductFqn, activeKey);
 
       navigate(path, {
         replace: true,
@@ -556,7 +554,7 @@ const DataProductsDetailsPage = ({
 
   const handleVersionClick = async () => {
     const path = isVersionsView
-      ? getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn)
+      ? getDataProductDetailsPath(dataProductFqn)
       : getVersionPath(
           EntityType.DATA_PRODUCT,
           dataProductFqn,

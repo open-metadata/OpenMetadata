@@ -21,6 +21,28 @@ import { getAllAlerts } from '../../rest/alertsAPI';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import NotificationListPage from './NotificationListPage';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
+  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  defaultColors: { gray: { 50: '#fafafa' } },
+}));
+
 const MOCK_DATA = [
   {
     id: '971a21b3-eeaf-4765-bda7-4e2cdb9788de',
