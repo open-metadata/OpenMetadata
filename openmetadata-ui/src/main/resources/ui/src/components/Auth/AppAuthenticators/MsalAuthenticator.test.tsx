@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InteractionStatus } from '@azure/msal-browser';
+import {
+  InteractionRequiredAuthError,
+  InteractionStatus,
+} from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { act, render, screen } from '@testing-library/react';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
@@ -37,7 +40,7 @@ const mockInstance = {
   loginPopup: jest.fn(),
   loginRedirect: jest.fn(),
   handleRedirectPromise: jest.fn(),
-  ssoSilent: jest.fn(),
+  acquireTokenSilent: jest.fn(),
   logout: jest.fn(),
 };
 
@@ -141,7 +144,7 @@ describe('MsalAuthenticator', () => {
   });
 
   it('should handle renewIdToken successfully', async () => {
-    mockInstance.ssoSilent.mockResolvedValueOnce({
+    mockInstance.acquireTokenSilent.mockResolvedValueOnce({
       account: { username: 'test@example.com' },
       idToken: 'new-token',
     });
@@ -155,8 +158,27 @@ describe('MsalAuthenticator', () => {
 
     const result = await authenticatorRef?.renewIdToken();
 
-    expect(mockInstance.ssoSilent).toHaveBeenCalled();
+    expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
     expect(result).toBe('mock-id-token');
+  });
+
+  it('should throw InteractionRequiredAuthError when renewIdToken encounters expired session', async () => {
+    const interactionError = new InteractionRequiredAuthError(
+      'interaction_required'
+    );
+    mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    await expect(authenticatorRef?.renewIdToken()).rejects.toThrow(
+      InteractionRequiredAuthError
+    );
+    expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
   });
 
   it('should show loader when interaction is in progress', () => {

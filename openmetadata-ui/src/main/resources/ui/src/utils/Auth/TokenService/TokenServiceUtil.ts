@@ -37,12 +37,12 @@ class TokenService {
 
   // Setup Service Worker listener for token updates (if available)
   private setupServiceWorkerListener() {
-    if ('serviceWorker' in navigator && 'indexedDB' in window) {
+    if ('serviceWorker' in navigator && 'indexedDB' in globalThis) {
       try {
         navigator.serviceWorker.addEventListener('message', (event) => {
           if (event.data.type === 'TOKEN_UPDATE') {
             // Token was updated via Service Worker, notify other tabs
-            this.refreshSuccessCallback && this.refreshSuccessCallback();
+            this.refreshSuccessCallback?.();
           } else if (event.data.type === 'TOKEN_CLEARED') {
             // Tokens were cleared (logout), don't trigger refresh callbacks
             // This prevents token restoration after logout
@@ -68,7 +68,7 @@ class TokenService {
   }
 
   public updateRefreshSuccessCallback(callback: () => void) {
-    window.addEventListener('storage', (event) => {
+    globalThis.addEventListener('storage', (event) => {
       if (event.key === REFRESHED_KEY && event.newValue === 'true') {
         callback(); // Notify the tab that the token was refreshed
         // Clear once notified
@@ -79,9 +79,6 @@ class TokenService {
 
   // Refresh the token if it is expired
   async refreshToken() {
-    // eslint-disable-next-line no-console
-    console.timeLog('refreshToken', 'Token initiated refresh');
-
     if (this.isTokenUpdateInProgress()) {
       return;
     }
@@ -100,7 +97,7 @@ class TokenService {
         if (newToken) {
           // Wait briefly for token to be persisted in SW+IndexedDB before notifying
           await new Promise((resolve) => setTimeout(resolve, 100));
-          this.refreshSuccessCallback && this.refreshSuccessCallback();
+          this.refreshSuccessCallback?.();
           // To update all the tabs on updating channel token
           // Notify all tabs that the token has been refreshed
           localStorage.setItem(REFRESHED_KEY, 'true');
