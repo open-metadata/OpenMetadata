@@ -98,6 +98,7 @@ import {
   getApplicationDetailsPath,
   getBotsPath,
   getClassificationTagPath,
+  getDataProductDetailsPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
@@ -360,12 +361,7 @@ class EntityUtilClassBase {
 
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
-        return getEntityDetailsPath(
-          EntityType.DATA_PRODUCT,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
+        return getDataProductDetailsPath(fullyQualifiedName, tab, subTab);
       case EntityType.APPLICATION:
         return getApplicationDetailsPath(fullyQualifiedName);
 

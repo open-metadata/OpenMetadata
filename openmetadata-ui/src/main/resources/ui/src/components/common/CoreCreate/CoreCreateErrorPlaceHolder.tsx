@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Typography } from '@mui/material';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 
-export interface MUICreateErrorPlaceHolderProps {
+export interface CoreCreateErrorPlaceHolderProps {
   buttonId?: string;
   children?: ReactNode;
   className?: string;
@@ -24,10 +24,10 @@ export interface MUICreateErrorPlaceHolderProps {
   permission?: boolean;
   buttonTitle?: string;
   onClick?: () => void;
-  contentMaxWidth?: string;
+  contentMaxWidthClass?: string;
 }
 
-const MUICreateErrorPlaceHolder = ({
+const CoreCreateErrorPlaceHolder = ({
   children,
   buttonId,
   className,
@@ -36,42 +36,45 @@ const MUICreateErrorPlaceHolder = ({
   buttonTitle,
   permission = false,
   onClick,
-  contentMaxWidth,
-}: MUICreateErrorPlaceHolderProps) => {
+  contentMaxWidthClass = 'tw:max-w-64',
+}: CoreCreateErrorPlaceHolderProps) => {
   return (
     <div
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm bg-white w-full p-8'
+        'tw:h-full tw:flex-center tw:border-default tw:border-radius-sm tw:bg-white tw:w-full tw:p-8 tw:pt-0'
       )}
-      data-testid="no-data-placeholder"
-      style={{ paddingTop: 0 }}>
-      <Box sx={{ textAlign: 'center' }}>
+      data-testid="no-data-placeholder">
+      <div className="tw:flex tw:flex-col tw:items-center">
         {icon && <div className="m-b-xs">{icon}</div>}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            flexDirection: 'column',
-            maxWidth: contentMaxWidth ?? '16rem',
-          }}>
-          {heading && <Typography>{heading}</Typography>}
+        <div
+          className={classNames(
+            'tw:flex tw:items-center tw:flex-col',
+            contentMaxWidthClass
+          )}>
+          {heading && (
+            <Typography
+              as="h5"
+              className="tw:text-gray-900 tw:text-center"
+              size="text-md">
+              {heading}
+            </Typography>
+          )}
           {children}
           {permission && onClick && (
             <Button
+              className="tw:mt-3 tw:min-w-40"
               color="primary"
               data-testid={buttonId}
-              startIcon={<Plus />}
-              sx={{ mt: 3, minWidth: '10rem' }}
-              variant="contained"
-              onClick={onClick}>
+              iconLeading={Plus}
+              onPress={onClick}>
               {buttonTitle}
             </Button>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default MUICreateErrorPlaceHolder;
+export default CoreCreateErrorPlaceHolder;

@@ -923,3 +923,30 @@ class PostgresUnitTest(TestCase):
                 self.assertEqual(
                     call_args[1]["entity_source_state"], expected_source_state
                 )
+
+
+class TestPostgresCommonMappings(TestCase):
+    """Verify extended type entries in the shared PostgreSQL ischema_names map."""
+
+    def test_tid_type_registered(self):
+        """'tid' must be present in the PostgreSQL ischema_names after common_pg_mappings is loaded."""
+        # common_pg_mappings registers types as a side-effect of module import
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+
+        self.assertIn("tid", pg_ischema_names)
+
+    def test_tid_maps_to_string(self):
+        """'tid' must map to a String-compatible SQLAlchemy type."""
+        from sqlalchemy import String as SqlAlchemyString
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+
+        tid_type = pg_ischema_names["tid"]
+        self.assertIs(tid_type, SqlAlchemyString)

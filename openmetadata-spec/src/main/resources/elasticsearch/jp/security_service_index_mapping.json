@@ -54,7 +54,13 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -207,6 +213,7 @@
             }
           },
           "owners": {
+            "type": "nested",
             "properties": {
               "id": {
                 "type": "keyword",
