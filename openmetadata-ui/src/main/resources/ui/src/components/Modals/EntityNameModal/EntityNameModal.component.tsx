@@ -72,7 +72,6 @@ const EntityNameModal = <T extends EntityName>({
           {title}
         </Typography.Text>
       }
-      zIndex={1200}
       onCancel={onCancel}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
