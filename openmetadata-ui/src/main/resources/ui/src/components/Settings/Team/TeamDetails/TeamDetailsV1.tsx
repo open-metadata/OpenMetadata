@@ -956,7 +956,7 @@ const TeamDetailsV1 = ({
         <div className="w-full p-t-xs">
           {!isOrganization && <TitleBreadcrumb titleLinks={slashedTeamName} />}
           <div className="d-flex items-center justify-between p-t-xs">
-            <div className="d-flex items-center gap-2 tw:flex-1 tw:min-w-0">
+            <div className="d-flex items-center gap-2 flex-1 w-min-0">
               <Avatar className="teams-profile" size={40}>
                 <IconTeams className="text-primary" width={20} />
               </Avatar>
@@ -967,10 +967,12 @@ const TeamDetailsV1 = ({
                 updateTeamHandler={updateTeamHandler}
               />
 
-              <LearningIcon
-                pageId={LEARNING_PAGE_IDS.TEAMS}
-                title={t('label.team-plural')}
-              />
+              <div className="d-flex flex-1 items-center justify-end w-min-0">
+                <LearningIcon
+                  pageId={LEARNING_PAGE_IDS.TEAMS}
+                  title={t('label.team-plural')}
+                />
+              </div>
             </div>
 
             <Space align="center">

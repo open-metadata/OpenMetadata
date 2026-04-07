@@ -10,57 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement, type ElementType, type ReactNode } from 'react';
 import { TeamType } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import TeamsHeadingLabel from './TeamsHeadingLabel.component';
-
-jest.mock('@openmetadata/ui-core-components', () => {
-  const actual = jest.requireActual('@openmetadata/ui-core-components');
-
-  const TypographyMock = (props: {
-    as?: ElementType;
-    children?: ReactNode;
-    className?: string;
-    'data-testid'?: string;
-    ellipsis?: boolean | { rows?: number; tooltip?: ReactNode };
-  }) => {
-    const {
-      as: Component = 'span',
-      children,
-      className,
-      'data-testid': dataTestId,
-      ellipsis,
-    } = props;
-    const truncateClass =
-      ellipsis === true || (typeof ellipsis === 'object' && ellipsis)
-        ? ' tw:truncate'
-        : '';
-
-    return createElement(
-      Component,
-      {
-        className: `${className ?? ''}${truncateClass}`.trim() || undefined,
-        'data-testid': dataTestId,
-      },
-      children
-    );
-  };
-
-  return {
-    ...actual,
-    Typography: TypographyMock,
-  };
-});
 
 jest.mock('../../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
@@ -107,10 +62,8 @@ const teamProps = {
 };
 
 describe('TeamsHeadingLabel', () => {
-  it('should render Teams Heading Label', async () => {
-    await act(async () => {
-      render(<TeamsHeadingLabel {...teamProps} />);
-    });
+  it('should render Teams Heading Label', () => {
+    render(<TeamsHeadingLabel {...teamProps} />);
     const teamHeading = screen.getByTestId('team-heading');
 
     expect(teamHeading).toHaveTextContent('Test Team');

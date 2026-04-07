@@ -15,8 +15,7 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Input, Space, Tooltip } from 'antd';
+import { Button, Input, Space, Tooltip, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,9 +91,11 @@ const TeamsHeadingLabel = ({
       isHeadingEditing ? (
         // Used onClick stop click propagation event anywhere in the component to parent
         // TeamDetailsV1 component collapsible panel
-        <Space onClick={(e) => e.stopPropagation()}>
+        <div
+          className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
+          onClick={(e) => e.stopPropagation()}>
           <Input
-            className="w-48"
+            className="flex-1 w-min-0"
             data-testid="team-name-input"
             placeholder={t('message.enter-comma-separated-field', {
               field: t('label.term-lowercase'),
@@ -103,7 +104,7 @@ const TeamsHeadingLabel = ({
             value={heading}
             onChange={(e) => setHeading(e.target.value)}
           />
-          <Space data-testid="buttons" size={4}>
+          <Space className="flex-none" data-testid="buttons" size={4}>
             <Button
               className="rounded-4 text-sm p-xss"
               data-testid="cancelAssociatedTag"
@@ -121,28 +122,26 @@ const TeamsHeadingLabel = ({
               <CheckOutlined />
             </Button>
           </Space>
-        </Space>
+        </div>
       ) : (
         <>
           <>
             {heading ? (
-              <Typography
-                as="h5"
-                className="m-b-0"
+              <Typography.Title
+                className="m-b-0 flex-1 w-min-0"
                 data-testid="team-heading"
-                ellipsis={{ tooltip: heading }}
-                size="text-md"
-                weight="semibold">
+                ellipsis={{ tooltip: true }}
+                level={5}>
                 {heading}
-              </Typography>
+              </Typography.Title>
             ) : (
-              <Typography
-                className="m-b-0 text-grey-muted text-sm"
+              <Typography.Text
+                className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
                 data-testid="team-heading">
                 {t('label.no-entity', {
                   entity: t('label.display-name'),
                 })}
-              </Typography>
+              </Typography.Text>
             )}
             {(hasAccess || isCurrentTeamOwner) && !currentTeam.deleted && (
               <Tooltip
@@ -196,10 +195,7 @@ const TeamsHeadingLabel = ({
   }, [currentTeam]);
 
   return (
-    <div
-      className={`d-flex items-center tw:gap-1${
-        isHeadingEditing ? '' : ' tw:max-w-1/3'
-      }`}>
+    <div className="d-flex items-center gap-1 teams-heading-label-container w-min-0">
       {teamHeadingRender}
     </div>
   );
