@@ -40,6 +40,12 @@ export interface OpenLineageSettings {
      * 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
+    /**
+     * Normalize path separators in dataset names by converting '/' to '.' before resolving.
+     * Enable this when receiving events from file-system or S3-based sources (e.g. Spark with
+     * Delta Lake) where dataset names use '/' instead of '.' as hierarchy separators.
+     */
+    normalizeDatasetNames?: boolean;
 }
 
 export enum EventTypeFilter {

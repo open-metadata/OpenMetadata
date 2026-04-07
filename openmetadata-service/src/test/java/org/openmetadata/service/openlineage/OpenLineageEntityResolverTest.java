@@ -400,12 +400,8 @@ class OpenLineageEntityResolverTest {
     OpenLineageEntityResolver resolver =
         new OpenLineageEntityResolver(true, "openlineage", null, true);
 
-    assertEquals(
-        "my_schema.my_table",
-        resolver.normalizeDatasetName("/my_schema/my_table/"));
-    assertEquals(
-        "my_schema.my_table",
-        resolver.normalizeDatasetName("///my_schema/my_table///"));
+    assertEquals("my_schema.my_table", resolver.normalizeDatasetName("/my_schema/my_table/"));
+    assertEquals("my_schema.my_table", resolver.normalizeDatasetName("///my_schema/my_table///"));
   }
 
   @Test
@@ -413,12 +409,8 @@ class OpenLineageEntityResolverTest {
     OpenLineageEntityResolver resolver =
         new OpenLineageEntityResolver(true, "openlineage", null, true);
 
-    assertEquals(
-        "my_schema.my_table",
-        resolver.normalizeDatasetName("my_schema//my_table"));
-    assertEquals(
-        "a.b.c",
-        resolver.normalizeDatasetName("a///b//c"));
+    assertEquals("my_schema.my_table", resolver.normalizeDatasetName("my_schema//my_table"));
+    assertEquals("a.b.c", resolver.normalizeDatasetName("a///b//c"));
   }
 
   @Test
@@ -437,8 +429,7 @@ class OpenLineageEntityResolverTest {
     assertEquals("a.b", resolver.normalizeDatasetName("a/b"));
 
     // 3-arg ctor defaults normalizeDatasetNames to false (backward compatible)
-    OpenLineageEntityResolver resolver2 =
-        new OpenLineageEntityResolver(true, "openlineage", null);
+    OpenLineageEntityResolver resolver2 = new OpenLineageEntityResolver(true, "openlineage", null);
     assertEquals("a/b", resolver2.normalizeDatasetName("a/b"));
   }
 
