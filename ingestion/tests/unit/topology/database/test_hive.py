@@ -1304,8 +1304,8 @@ class HiveSourceMetastoreValidationTest(TestCase):
             self._make_describe_row("# Partition Information"),
             self._make_describe_row("# col_name", "data_type", "comment"),
             self._make_describe_row("dt", "string"),
-            self._make_describe_row(""),  # blank row — triggers break
-            self._make_describe_row("# Detailed Table Information"),
+            self._make_describe_row(""),  # blank row — skipped, not a break
+            self._make_describe_row("# Detailed Table Information"),  # triggers break
             self._make_describe_row("Database:", "default"),
         ]
 
@@ -1375,6 +1375,34 @@ class HiveSourceMetastoreValidationTest(TestCase):
 
         self.assertFalse(is_partitioned)
         self.assertIsNone(partition)
+
+    def test_get_table_partition_details_blank_lines_between_keys(self):
+        """
+        Some Hive versions emit blank rows between partition key rows.
+        The parser must skip them and continue collecting keys, not break early.
+        """
+        rows = [
+            self._make_describe_row("id", "int"),
+            self._make_describe_row("# Partition Information"),
+            self._make_describe_row("# col_name", "data_type", "comment"),
+            self._make_describe_row("year", "int"),
+            self._make_describe_row(""),  # blank row between keys
+            self._make_describe_row("month", "int"),
+            self._make_describe_row("# Detailed Table Information"),
+        ]
+
+        self.hive.service_connection.metastoreConnection = None
+        self.hive.engine = self._mock_engine_rows(rows)
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="logs",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertTrue(is_partitioned)
+        keys = [c.columnName for c in partition.columns]
+        self.assertEqual(keys, ["year", "month"])
 
     def test_get_table_partition_details_section_exit_bug(self):
         """

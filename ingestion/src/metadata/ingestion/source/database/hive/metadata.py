@@ -197,12 +197,20 @@ class HiveSource(CommonDbSourceService):
         if self._get_validated_metastore_connection():
             return False, None
 
+        # Sanitize identifiers: escape any backticks in names to prevent
+        # malformed HiveQL. Table/schema names come from the inspector but
+        # we guard defensively here.
+        safe_schema = schema_name.replace("`", "``")
+        safe_table = table_name.replace("`", "``")
+
         partition_keys: List[str] = []
         in_partition_section = False
         try:
             with self.engine.connect() as conn:
                 rows = conn.execute(
-                    text(f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`")
+                    text(
+                        f"DESCRIBE FORMATTED `{safe_schema}`.`{safe_table}`"
+                    )
                 )
                 for row in rows:
                     col_name = row[0].strip() if row[0] else ""
@@ -212,18 +220,19 @@ class HiveSource(CommonDbSourceService):
                         continue
 
                     if in_partition_section:
-                        # Bug fix 2: Break on any new section header.
+                        # Any new top-level section header signals the end of
+                        # the partition block — exit immediately so we never
+                        # collect metadata rows (e.g. "Database:", "Location:")
+                        # as partition keys.
                         # "# col_name" is the sub-header *within* the partition
-                        # block — skip it. Every other "#…" line marks a new
-                        # top-level section (e.g. "# Detailed Table Information",
-                        # "# Storage Information"), so we exit immediately instead
-                        # of continuing and collecting those rows as partition keys.
-                        if not col_name or (
-                            col_name.startswith("#") and col_name != "# col_name"
-                        ):
+                        # block and must be skipped, not treated as an exit.
+                        if col_name.startswith("#") and col_name != "# col_name":
                             break
-                        if col_name.startswith("#"):
-                            # "# col_name" sub-header — skip without breaking
+                        # Skip the "# col_name" sub-header and blank rows
+                        # (blank rows may appear between partition keys on some
+                        # Hive versions — skip rather than break so we don't
+                        # miss later keys).
+                        if not col_name or col_name.startswith("#"):
                             continue
                         partition_keys.append(col_name)
 
