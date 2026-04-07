@@ -101,32 +101,26 @@ class Sum(StaticMetric):
         # pylint: disable=import-outside-toplevel
         import pandas as pd
 
-        chunk_sum = None
-
         if is_quantifiable(column.type):
+            chunk_sum = None
             try:
                 series = df[column.name].dropna()
                 if not series.empty:
-                    chunk_sum = series.sum()
+                    chunk_sum = df[column.name].sum()
             except (TypeError, ValueError):
                 try:
-                    chunk_sum = series.astype(float).sum()
+                    chunk_sum = df[column.name].astype(float).sum()
                 except Exception:
                     return None
-        elif is_concatenable(column.type):
-            # pylint: disable=import-outside-toplevel
-            import numpy as np
 
-            series = df[column.name].dropna()
-            chunk_sum = np.vectorize(len)(series.astype(str)).sum()
+            if chunk_sum is None or pd.isnull(chunk_sum):
+                return current_sum
 
-        if chunk_sum is None or pd.isnull(chunk_sum):
-            return current_sum
+            if current_sum is None:
+                return chunk_sum
 
-        if current_sum is None:
-            return chunk_sum
-
-        return current_sum + chunk_sum
+            return current_sum + chunk_sum
+        return None
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
         """nosql function"""
