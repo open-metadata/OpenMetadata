@@ -37,7 +37,6 @@ class TestVerticaTypeMappingRegistered:
             "VARBINARY",
             "LONG VARBINARY",
             "LONG VARCHAR",
-            "INTERVAL",
             "ARRAY",
             "NATIVE ARRAY",
             "ROW",
@@ -60,7 +59,6 @@ class TestVerticaTypeMappingResolution:
             ("VARBINARY", sqltypes.LargeBinary),
             ("LONG VARBINARY", sqltypes.LargeBinary),
             ("LONG VARCHAR", sqltypes.Text),
-            ("INTERVAL", sqltypes.Interval),
         ],
     )
     def test_standard_type_resolves_to_expected_class(
