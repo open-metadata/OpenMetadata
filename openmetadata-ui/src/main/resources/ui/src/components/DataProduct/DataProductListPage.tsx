@@ -18,6 +18,7 @@ import { useSnackbar } from 'notistack';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
+import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -25,6 +26,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -47,6 +49,7 @@ import { useDataProductListingData } from './hooks/useDataProductListingData';
 
 const DataProductListPage = () => {
   const dataProductListing = useDataProductListingData();
+  const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const theme = useTheme();
   const { t } = useTranslation();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
@@ -73,6 +76,7 @@ const DataProductListPage = () => {
     title: t('label.add-entity', { entity: t('label.data-product') }),
     width: 670,
     closeOnEscape: false,
+    className: 'tw:z-[20]',
     onCancel: () => {
       form.resetFields();
     },
@@ -119,7 +123,17 @@ const DataProductListPage = () => {
 
   // Composable hooks for each UI component
   const { breadcrumbs } = useBreadcrumbs({
-    items: [{ name: t('label.data-product-plural'), url: '/dataProduct' }],
+    items: [
+      ...(isMarketplace
+        ? [
+            {
+              name: t('label.data-marketplace'),
+              url: ROUTES.DATA_MARKETPLACE,
+            },
+          ]
+        : []),
+      { name: t('label.data-product-plural'), url: dataProductBasePath },
+    ],
   });
 
   const { pageHeader } = usePageHeader({
@@ -220,7 +234,7 @@ const DataProductListPage = () => {
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.dataProduct?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={openDrawer}
         />
       );
@@ -287,5 +301,7 @@ const DataProductListPage = () => {
     </>
   );
 };
+
+export { DataProductListPage };
 
 export default withPageLayout(DataProductListPage);

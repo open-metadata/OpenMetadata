@@ -16,7 +16,6 @@ import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
@@ -25,6 +24,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import {
   addFollower,
   getDomainByName,
@@ -47,6 +47,7 @@ const DomainDetailPage = () => {
   const { fqn: domainFqn } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { domainBasePath } = useMarketplaceStore();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
   const { permissions } = usePermissionProvider();
@@ -89,8 +90,7 @@ const DomainDetailPage = () => {
   };
 
   const handleDomainDelete = () => {
-    // Navigate back to domains listing page after deletion
-    navigate(ROUTES.DOMAIN);
+    navigate(domainBasePath);
   };
 
   const fetchDomainByName = async (domainFqn: string) => {
@@ -212,12 +212,11 @@ const DomainDetailPage = () => {
     }
   }, [domainFqn]);
 
-  // If no domain FQN is provided, redirect to domains listing
   useEffect(() => {
     if (!domainFqn) {
-      navigate(ROUTES.DOMAIN);
+      navigate(domainBasePath);
     }
-  }, [domainFqn, navigate]);
+  }, [domainFqn, navigate, domainBasePath]);
 
   if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
     return (
