@@ -255,7 +255,7 @@ MSSQL_GET_ENCRYPTED_STORED_PROCEDURES = textwrap.dedent(
 SELECT p.name AS procedure_name
 FROM sys.procedures p
 JOIN sys.schemas s ON s.schema_id = p.schema_id
-WHERE s.name = '{schema_name}'
+WHERE s.name = :schema_name
   AND OBJECTPROPERTY(p.object_id, 'IsEncrypted') = 1
     """
 )

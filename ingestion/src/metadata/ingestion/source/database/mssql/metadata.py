@@ -169,11 +169,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             try:
                 with self.engine.connect() as conn:
                     results = conn.execute(
-                        text(
-                            MSSQL_GET_ENCRYPTED_STORED_PROCEDURES.format(
-                                schema_name=schema_name
-                            )
-                        )
+                        text(MSSQL_GET_ENCRYPTED_STORED_PROCEDURES),
+                        {"schema_name": schema_name},
                     ).all()
                 self.encrypted_procedures_cache[schema_name] = {
                     row.procedure_name for row in results
