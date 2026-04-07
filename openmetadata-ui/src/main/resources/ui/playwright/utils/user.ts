@@ -97,6 +97,8 @@ export const deletedUserChecks = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
+  // wait for all user to be loaded
+  const userListRequest = page.waitForResponse('/api/v1/users?*');
   await settingClick(page, GlobalSettingOptions.USERS);
 
   const userList = page.getByTestId('user-list-v1-component');
@@ -104,29 +106,14 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   const searchBar = page.getByTestId('searchbar');
   const userRow = page.getByTestId(userName);
 
-  await loader.waitFor({ state: 'detached' });
-
+  await userListRequest;
   await expect
     .poll(
       async () => {
-        const searchRequest = page.waitForResponse((response) => {
-          if (
-            !response.url().includes('/api/v1/search/query') ||
-            response.request().method() !== 'GET'
-          ) {
-            return false;
-          }
+        // wait for search request to be completed
+        const searchRequest = page.waitForResponse('/api/v1/search/query*');
 
-          const url = new URL(response.url());
-          const q = url.searchParams.get('q') ?? '';
-
-          return (
-            url.searchParams.get('index') === 'user' &&
-            url.searchParams.get('deleted') === 'false' &&
-            q.includes(userName)
-          );
-        });
-
+        // clear and fill search bar
         await searchBar.clear();
         await searchBar.fill(userName);
         await searchRequest;

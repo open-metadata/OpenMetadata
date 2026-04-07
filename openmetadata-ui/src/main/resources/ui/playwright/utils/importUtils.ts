@@ -773,17 +773,11 @@ export const fillRowDetails = async (
 
   const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
 
-  await expect(async () => {
-    // Re-click the cell to reset state before pressing Enter
-    await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-    const certificationResponse = page.waitForResponse(
-      '/api/v1/tags?parent=Certification*'
-    );
-    await page.keyboard.press('Enter', { delay: 100 });
-    await certificationResponse;
-
-    await expect(certRadioBtn).toBeVisible({ timeout: 5000 });
-  }).toPass({ timeout: 30000, intervals: [2000, 3000, 5000] });
+  const certificationResponse = page.waitForResponse(
+    '/api/v1/tags?parent=Certification*'
+  );
+  await page.keyboard.press('Enter', { delay: 100 });
+  await certificationResponse;
 
   await certRadioBtn.click();
   await page.getByTestId('update-certification').click();

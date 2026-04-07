@@ -124,19 +124,30 @@ test.describe(
       if (incidentId) {
         return incidentId;
       }
-      const now = Date.now();
-      const incidentUrl = `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${
-        now - 300000
-      }&endTs=${now + 60000}`;
-      const res = await apiContext.get(incidentUrl);
-      const list = await res.json();
-      const incident = list.data?.find(
-        (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
-          i.testCaseReference?.fullyQualifiedName === testCaseFqn
-      );
-      if (incident) {
-        incidentId = incident.id;
-      }
+
+      await expect
+        .poll(
+          async () => {
+            const now = Date.now();
+            const res = await apiContext.get(
+              `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${
+                now - 300000
+              }&endTs=${now + 60000}`
+            );
+            const list = await res.json();
+            const incident = list.data?.find(
+              (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
+                i.testCaseReference?.fullyQualifiedName === testCaseFqn
+            );
+            if (incident) {
+              incidentId = incident.id;
+            }
+
+            return !!incidentId;
+          },
+          { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
+        )
+        .toBe(true);
 
       return incidentId;
     };
@@ -366,16 +377,15 @@ test.describe(
         expect(postRes.status()).toBe(403);
 
         const id = await fetchIncidentId(apiContext);
-        if (id) {
-          const patchRes = await apiContext.patch(
-            `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${id}`,
-            {
-              data: [{ op: 'add', path: '/severity', value: 'Severity4' }],
-              headers: { 'Content-Type': 'application/json-patch+json' },
-            }
-          );
-          expect(patchRes.status()).toBe(403);
-        }
+        expect(id).toBeDefined();
+        const patchRes = await apiContext.patch(
+          `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${id}`,
+          {
+            data: [{ op: 'add', path: '/severity', value: 'Severity4' }],
+            headers: { 'Content-Type': 'application/json-patch+json' },
+          }
+        );
+        expect(patchRes.status()).toBe(403);
       });
     });
   }

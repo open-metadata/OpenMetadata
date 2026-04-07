@@ -13,6 +13,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
+import { removeLandingBanner } from './common';
 import {
   BIG_ENTITY_DELETE_TIMEOUT,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
@@ -63,16 +64,12 @@ export const visitEntityPage = async (data: {
 
   await waitForAllLoadersToDisappear(page);
 
-  // Dismiss welcome screen if visible — use toPass for reliable dismissal
   const welcomeScreen = page.getByTestId('welcome-screen');
   const closeBtn = page.getByTestId('welcome-screen-close-btn');
 
-  await expect(async () => {
-    if (await welcomeScreen.isVisible().catch(() => false)) {
-      await closeBtn.click();
-    }
-    await expect(welcomeScreen).not.toBeVisible();
-  }).toPass({ timeout: 10_000, intervals: [1_000, 2_000] });
+  if (await welcomeScreen.isVisible().catch(() => false)) {
+    await closeBtn.click();
+  }
 
   await page.getByTestId('searchBox').fill(searchTerm);
   await page.waitForResponse(
@@ -221,7 +218,15 @@ export const addOwnerWithoutValidation = async ({
   const ownerSearchBar = page.getByTestId(
     `owner-select-${lowerCase(type)}-search-bar`
   );
-  await expect(ownerSearchBar).toBeVisible();
+  await expect(async () => {
+    if (!(await ownerSearchBar.isVisible().catch(() => false))) {
+      // Re-click tab if search bar hasn't rendered yet
+      if (type === 'Users') {
+        await page.getByRole('tab', { name: type }).click();
+      }
+    }
+    await expect(ownerSearchBar).toBeVisible();
+  }).toPass({ timeout: 10_000, intervals: [1_000, 2_000] });
 
   const searchUser = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
@@ -793,7 +798,9 @@ export const assignTag = async (
 
   const searchTags = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/search/query') &&
+      response
+        .url()
+        .includes(`/api/v1/search/query?q=*${encodeURIComponent(tag)}*`) &&
       response.request().method() === 'GET'
   );
 
