@@ -32,6 +32,7 @@ import {
   DEFAULT_RANGE_DATA,
   DEFAULT_SELECTED_RANGE,
 } from '../../../../../constants/profiler.constant';
+import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
@@ -110,12 +111,16 @@ const TabFilters = () => {
     table,
   } = useTableProfiler();
 
+  const { permissions: globalPermissions } = usePermissionProvider();
+
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: datasetFQN } = useFqn();
   const editDataProfile =
     permissions &&
     getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
+  const createTestCasePermission =
+    permissions?.CreateTests || globalPermissions?.testCase?.Create || false;
 
   const handleTestCaseClick = () => {
     onTestCaseDrawerOpen(formType as TestLevel);
@@ -184,7 +189,8 @@ const TabFilters = () => {
       alignItems="center"
       direction="row"
       justifyContent="flex-end"
-      spacing={5}>
+      spacing={5}
+    >
       {!isEmpty(activeColumnFqn) && (
         <Box alignItems="center" display="flex" gap={2}>
           <Typography
@@ -192,7 +198,8 @@ const TabFilters = () => {
               color: theme.palette.grey[900],
               fontSize: theme.typography.pxToRem(13),
               fontWeight: 500,
-            }}>
+            }}
+          >
             {`${t('label.column')}:`}
           </Typography>
           <ColumnPickerMenu
@@ -215,7 +222,8 @@ const TabFilters = () => {
               color: theme.palette.grey[900],
               fontSize: theme.typography.pxToRem(13),
               fontWeight: 500,
-            }}>
+            }}
+          >
             {`${t('label.date')}:`}
           </Typography>
           <MuiDatePickerMenu
@@ -227,7 +235,7 @@ const TabFilters = () => {
         </Box>
       )}
 
-      {editDataProfile && !isTableDeleted && (
+      {(editDataProfile || createTestCasePermission) && !isTableDeleted && (
         <>
           <LimitWrapper resource="dataQuality">
             <>
@@ -236,7 +244,8 @@ const TabFilters = () => {
                 endIcon={<KeyboardArrowDown />}
                 sx={{ height: '32px' }}
                 variant="contained"
-                onClick={handleMenuClick}>
+                onClick={handleMenuClick}
+              >
                 {t('label.add')}
               </Button>
               <Menu
@@ -255,16 +264,21 @@ const TabFilters = () => {
                   vertical: 'top',
                   horizontal: 'right',
                 }}
-                onClose={handleMenuClose}>
-                <MenuItem onClick={handleTestCaseClick}>
-                  <TabsLabel id="test-case" name={t('label.test-case')} />
-                </MenuItem>
-                <MenuItem onClick={handleCustomMetricClick}>
-                  <TabsLabel
-                    id="custom-metric"
-                    name={t('label.custom-metric')}
-                  />
-                </MenuItem>
+                onClose={handleMenuClose}
+              >
+                {createTestCasePermission && (
+                  <MenuItem onClick={handleTestCaseClick}>
+                    <TabsLabel id="test-case" name={t('label.test-case')} />
+                  </MenuItem>
+                )}
+                {editDataProfile && (
+                  <MenuItem onClick={handleCustomMetricClick}>
+                    <TabsLabel
+                      id="custom-metric"
+                      name={t('label.custom-metric')}
+                    />
+                  </MenuItem>
+                )}
               </Menu>
             </>
           </LimitWrapper>
@@ -277,7 +291,8 @@ const TabFilters = () => {
                 height: '32px',
               }}
               variant="outlined"
-              onClick={onSettingButtonClick}>
+              onClick={onSettingButtonClick}
+            >
               <SettingIcon />
             </Button>
           </Tooltip>
