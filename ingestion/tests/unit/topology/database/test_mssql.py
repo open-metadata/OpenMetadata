@@ -396,9 +396,8 @@ class MssqlUnitTest(TestCase):
     def test_yield_stored_procedure_encrypted_no_definition(self):
         """Encrypted procedure with no definition gets the encrypted message as code"""
         self._setup_stored_procedure_context()
-        self.mssql.encrypted_procedures_cache[MOCK_DATABASE_SCHEMA.name.root] = {
-            "sp_encrypted"
-        }
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = {"sp_encrypted"}
 
         sp = MssqlStoredProcedure(name="sp_encrypted", language="SQL", definition=None)
         results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
@@ -419,9 +418,8 @@ class MssqlUnitTest(TestCase):
                 "sp_encrypted",
             )
         ] = "My procedure description"
-        self.mssql.encrypted_procedures_cache[MOCK_DATABASE_SCHEMA.name.root] = {
-            "sp_encrypted"
-        }
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = {"sp_encrypted"}
 
         sp = MssqlStoredProcedure(name="sp_encrypted", language="SQL", definition=None)
         results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
@@ -435,7 +433,8 @@ class MssqlUnitTest(TestCase):
     def test_yield_stored_procedure_not_encrypted(self):
         """Non-encrypted procedure keeps its definition as code, no encrypted message"""
         self._setup_stored_procedure_context()
-        self.mssql.encrypted_procedures_cache[MOCK_DATABASE_SCHEMA.name.root] = set()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = set()
 
         sp = MssqlStoredProcedure(
             name="sp_normal",
@@ -464,9 +463,10 @@ class MssqlUnitTest(TestCase):
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
+        database = MOCK_DATABASE.name.root
         schema = MOCK_DATABASE_SCHEMA.name.root
-        result1 = self.mssql._get_encrypted_procedures(schema)
-        result2 = self.mssql._get_encrypted_procedures(schema)
+        result1 = self.mssql._get_encrypted_procedures(database, schema)
+        result2 = self.mssql._get_encrypted_procedures(database, schema)
 
         assert result1 == {"sp_secret"}
         assert result1 == result2
@@ -484,6 +484,6 @@ class MssqlUnitTest(TestCase):
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-        result = self.mssql._get_encrypted_procedures("dbo")
+        result = self.mssql._get_encrypted_procedures("test_db", "dbo")
 
         assert result == set()

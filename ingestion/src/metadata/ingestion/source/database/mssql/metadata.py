@@ -108,7 +108,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
         self.database_desc_map = {}
         self.stored_procedure_desc_map = {}
-        self.encrypted_procedures_cache: dict[str, set[str]] = {}
+        self.encrypted_procedures_cache: dict[tuple[str, str], set[str]] = {}
 
     @classmethod
     def create(
@@ -163,24 +163,27 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         """
         return self.database_desc_map.get(database_name)
 
-    def _get_encrypted_procedures(self, schema_name: str) -> set[str]:
-        """Fetch and cache encrypted stored procedure names for a schema"""
-        if schema_name not in self.encrypted_procedures_cache:
+    def _get_encrypted_procedures(
+        self, database_name: str, schema_name: str
+    ) -> set[str]:
+        """Fetch and cache encrypted stored procedure names for a database and schema"""
+        cache_key = (database_name, schema_name)
+        if cache_key not in self.encrypted_procedures_cache:
             try:
                 with self.engine.connect() as conn:
                     results = conn.execute(
                         text(MSSQL_GET_ENCRYPTED_STORED_PROCEDURES),
                         {"schema_name": schema_name},
                     ).all()
-                self.encrypted_procedures_cache[schema_name] = {
+                self.encrypted_procedures_cache[cache_key] = {
                     row.procedure_name for row in results
                 }
             except Exception as exc:
                 logger.debug(
-                    f"Could not fetch encrypted procedures for schema {schema_name}: {exc}"
+                    f"Could not fetch encrypted procedures for {database_name}.{schema_name}: {exc}"
                 )
-                self.encrypted_procedures_cache[schema_name] = set()
-        return self.encrypted_procedures_cache[schema_name]
+                self.encrypted_procedures_cache[cache_key] = set()
+        return self.encrypted_procedures_cache[cache_key]
 
     def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
         """
@@ -277,7 +280,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             proc_definition = stored_procedure.definition
             if not proc_definition:
                 encrypted_procs = self._get_encrypted_procedures(
-                    self.context.get().database_schema
+                    self.context.get().database,
+                    self.context.get().database_schema,
                 )
                 if stored_procedure.name in encrypted_procs:
                     proc_definition = "-- Unable to fetch code as this is an encrypted stored procedure"
