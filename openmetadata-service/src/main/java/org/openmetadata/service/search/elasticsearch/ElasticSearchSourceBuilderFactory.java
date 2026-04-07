@@ -275,7 +275,8 @@ public class ElasticSearchSourceBuilderFactory
               int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
               if (!nullOrEmpty(agg.getField())) {
-                String field = SearchSourceBuilderFactory.remapAggregationField(agg.getField());
+                String field =
+                    SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(agg.getField());
                 termsAgg = ElasticAggregationBuilder.termsAggregation(field, maxSize);
               } else if (!nullOrEmpty(agg.getScript())) {
                 termsAgg =
@@ -932,7 +933,7 @@ public class ElasticSearchSourceBuilderFactory
       int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
       if (!nullOrEmpty(agg.getField())) {
-        String field = SearchSourceBuilderFactory.remapAggregationField(agg.getField());
+        String field = SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(agg.getField());
         termsAgg = ElasticAggregationBuilder.termsAggregation(field, maxSize);
       } else if (!nullOrEmpty(agg.getScript())) {
         termsAgg = ElasticAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
