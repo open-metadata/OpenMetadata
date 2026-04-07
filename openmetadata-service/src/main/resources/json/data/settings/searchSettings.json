@@ -90,35 +90,35 @@
       {
         "field": "tier.tagFQN",
         "value": "Tier.Tier1",
-        "boost": 50
+        "boost": 0.05
       },
       {
         "field": "tier.tagFQN",
         "value": "Tier.Tier2",
-        "boost": 30
+        "boost": 0.03
       },
       {
         "field": "tier.tagFQN",
         "value": "Tier.Tier3",
-        "boost": 10
+        "boost": 0.01
       }
     ],
     "fieldValueBoosts": [
       {
         "field": "usageSummary.weeklyStats.count",
-        "factor": 4.0,
-        "modifier": "sqrt",
+        "factor": 0.002,
+        "modifier": "log1p",
         "missing": 1
       },
       {
         "field": "totalVotes",
-        "factor": 2.0,
-        "modifier": "sqrt",
+        "factor": 0.005,
+        "modifier": "log1p",
         "missing": 0
       },
       {
         "field": "usageSummary.weeklyStats.percentileRank",
-        "factor": 1.0,
+        "factor": 0.0005,
         "modifier": "none",
         "missing": 0
       }
@@ -186,7 +186,7 @@
       ],
       "aggregations": [],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "matchTypeBoostMultipliers": {
         "exactMatchMultiplier": 2.0,
         "phraseMatchMultiplier": 1.5,
@@ -264,7 +264,7 @@
       ],
       "aggregations": [],
       "scoreMode": "sum",
-      "boostMode": "sum"
+      "boostMode": "multiply"
     },
     {
       "assetType": "table",
@@ -353,7 +353,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "description",
@@ -362,13 +362,13 @@
       "fieldValueBoosts": [
         {
           "field": "usageSummary.monthlyStats.count",
-          "factor": 3.0,
+          "factor": 0.002,
           "modifier": "log1p",
           "missing": 0
         },
         {
           "field": "usageSummary.monthlyStats.percentileRank",
-          "factor": 1.0,
+          "factor": 0.0005,
           "modifier": "none",
           "missing": 0
         }
@@ -474,7 +474,7 @@
       "termBoosts": [],
       "fieldValueBoosts": [],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "matchTypeBoostMultipliers": {
         "exactMatchMultiplier": 2.0,
         "phraseMatchMultiplier": 1.5,
@@ -548,7 +548,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "description",
@@ -632,7 +632,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "description",
@@ -726,7 +726,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -855,7 +855,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -950,7 +950,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1035,7 +1035,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1121,7 +1121,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1207,7 +1207,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1298,7 +1298,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1415,7 +1415,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1494,7 +1494,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1567,7 +1567,7 @@
       ],
       "aggregations": [],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1645,7 +1645,7 @@
       ],
       "aggregations": [],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1749,7 +1749,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1817,7 +1817,7 @@
       ],
       "aggregations": [],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1901,7 +1901,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -1973,7 +1973,7 @@
           "matchType": "standard"
         },
         {
-          "field": "extension",
+          "field": "fileExtension",
           "boost": 2.0,
           "matchType": "standard"
         }
@@ -1985,9 +1985,9 @@
           "field": "fileType"
         },
         {
-          "name": "extension",
+          "name": "fileExtension",
           "type": "terms",
-          "field": "extension"
+          "field": "fileExtension"
         },
         {
           "name": "directory.displayName.keyword",
@@ -2001,7 +2001,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -2086,7 +2086,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -2186,7 +2186,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -2256,7 +2256,7 @@
       ],
       "aggregations": [],
       "scoreMode": "sum",
-      "boostMode": "sum",
+      "boostMode": "multiply",
       "highlightFields": [
         "name",
         "displayName",
@@ -3643,7 +3643,7 @@
           "description": "Exact match on the MIME type of the file."
         },
         {
-          "name": "extension",
+          "name": "fileExtension",
           "description": "Exact match on the file extension (e.g., pdf, docx, xlsx)."
         },
         {
