@@ -345,7 +345,11 @@ export class TableClass extends EntityClass {
       !searchTerm || (tableFqn.length > 0 && searchTerm === tableFqn);
 
     if (canUseDirectNavigation && tableFqn.length > 0) {
+      const tableResponse = page.waitForResponse(
+        `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
+      );
       await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+      await tableResponse;
       await waitForAllLoadersToDisappear(page);
 
       return;
