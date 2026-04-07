@@ -99,7 +99,7 @@ const Sidebar = ({ className }: SidebarProps) => {
             />
           ) : (
             <BrandImage
-              className="tw:h-10 tw:w-auto"
+              className="tw:h-10 tw:w-auto tw:max-w-[150px]"
               dataTestId="image"
               height={40}
               width="auto"
