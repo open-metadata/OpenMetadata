@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   'Incident Manager',
   'Alerts',
   'Insights',
-  'Domains',
+  'Marketplace',
   'Govern',
   'Glossary',
   'Classification',
@@ -53,7 +53,7 @@ export const validateLeftSidebarWithHiddenItems = async (
     if (
       item === SidebarItem.OBSERVABILITY ||
       item === SidebarItem.GOVERNANCE ||
-      item === SidebarItem.DOMAINS
+      item === SidebarItem.DATA_MARKETPLACE_SECTION
     ) {
       await expect(page.getByTestId(item)).toBeVisible();
     } else {
@@ -108,13 +108,15 @@ export const validateLeftSidebarWithHiddenItems = async (
 
         continue;
       }
-      hiddenItems.includes(item)
-        ? await expect(
-            page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
-          ).not.toBeVisible()
-        : await expect(
-            page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
-          ).toBeVisible();
+      if (hiddenItems.includes(item)) {
+        await expect(
+          page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
+        ).not.toBeVisible();
+      } else {
+        await expect(
+          page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
+        ).toBeVisible();
+      }
     }
   }
 };

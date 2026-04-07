@@ -720,7 +720,7 @@ export const getDomainIcon = (iconURL?: string) => {
   // Try to render the icon using the utility (handles both URLs and icon names)
   const iconElement = renderIcon(iconURL, {
     size: 24,
-    className: 'domain-icon-url h-6 w-6',
+    className: 'tw:h-6 tw:w-6',
   });
 
   // If we got an icon element, return it

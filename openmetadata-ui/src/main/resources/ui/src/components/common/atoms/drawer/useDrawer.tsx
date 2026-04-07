@@ -23,6 +23,7 @@ export interface DrawerConfig {
   children?: ReactNode;
   defaultOpen?: boolean;
   testId?: string;
+  className?: string;
 }
 
 export const useDrawer = (config: DrawerConfig = {}) => {
@@ -56,6 +57,7 @@ export const useDrawer = (config: DrawerConfig = {}) => {
   const drawer = useMemo(
     () => (
       <SlideoutMenu
+        className={config.className}
         data-testid={config.testId}
         isDismissable={config.closeOnBackdrop !== false}
         isKeyboardDismissDisabled={config.closeOnEscape === false}
@@ -70,6 +72,7 @@ export const useDrawer = (config: DrawerConfig = {}) => {
       config.children,
       config.testId,
       config.closeOnBackdrop,
+      config.className,
       config.closeOnEscape,
       config.width,
       handleOpenChange,

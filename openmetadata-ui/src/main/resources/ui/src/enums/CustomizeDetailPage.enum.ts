@@ -54,6 +54,9 @@ export enum DetailPageWidgetKeys {
   WORKSHEET_COLUMNS = 'KnowledgePanel.WorksheetColumns',
   TIER = 'KnowledgePanel.Tier',
   CERTIFICATION = 'KnowledgePanel.Certification',
+  MARKETPLACE_DATA_PRODUCTS = 'KnowledgePanel.MarketplaceDataProducts',
+  MARKETPLACE_DOMAINS = 'KnowledgePanel.MarketplaceDomains',
+  MARKETPLACE_ANNOUNCEMENTS = 'KnowledgePanel.MarketplaceAnnouncements',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

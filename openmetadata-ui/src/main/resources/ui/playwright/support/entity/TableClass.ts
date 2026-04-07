@@ -497,7 +497,9 @@ export class TableClass extends EntityClass {
     patchData: Operation[];
   }) {
     const response = await apiContext.patch(
-      `/api/v1/tables/name/${this.entityResponseData?.fullyQualifiedName}`,
+      `/api/v1/tables/name/${encodeURIComponent(
+        this.entityResponseData?.fullyQualifiedName ?? ''
+      )}`,
       {
         data: patchData,
         headers: {
