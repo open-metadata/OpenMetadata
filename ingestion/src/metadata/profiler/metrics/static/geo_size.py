@@ -68,9 +68,7 @@ class MaxGeoSize(StaticMetric):
     def fn(self):
         if is_complex(self.col.type):
             return func.max(GeoSizeFn(column(self.col.name, self.col.type)))
-        logger.debug(
-            f"Column {self.col.name} is not a geo type; skipping MAX_GEO_SIZE"
-        )
+        logger.debug(f"Column {self.col.name} is not a geo type; skipping MAX_GEO_SIZE")
         return None
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
@@ -82,9 +80,7 @@ class MaxGeoSize(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(
-                    f"Error computing MAX_GEO_SIZE for {self.col.name}: {err}"
-                )
+                logger.debug(f"Error computing MAX_GEO_SIZE for {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
@@ -129,9 +125,7 @@ class MinGeoSize(StaticMetric):
     def fn(self):
         if is_complex(self.col.type):
             return func.min(GeoSizeFn(column(self.col.name, self.col.type)))
-        logger.debug(
-            f"Column {self.col.name} is not a geo type; skipping MIN_GEO_SIZE"
-        )
+        logger.debug(f"Column {self.col.name} is not a geo type; skipping MIN_GEO_SIZE")
         return None
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
@@ -143,9 +137,7 @@ class MinGeoSize(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(
-                    f"Error computing MIN_GEO_SIZE for {self.col.name}: {err}"
-                )
+                logger.debug(f"Error computing MIN_GEO_SIZE for {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 

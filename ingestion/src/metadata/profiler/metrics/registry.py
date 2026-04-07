@@ -18,6 +18,7 @@ Note that we are using our own Registry definition
 that allows us to directly call our metrics without
 having the verbosely pass .value all the time...
 """
+
 from metadata.profiler.metrics.composed.distinct_ratio import DistinctRatio
 from metadata.profiler.metrics.composed.duplicate_count import DuplicateCount
 from metadata.profiler.metrics.composed.ilike_ratio import ILikeRatio
@@ -40,7 +41,11 @@ from metadata.profiler.metrics.static.column_names import ColumnNames
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.count_in_set import CountInSet
 from metadata.profiler.metrics.static.distinct_count import DistinctCount
-from metadata.profiler.metrics.static.geo_size import MaxGeoSize, MeanGeoSize, MinGeoSize
+from metadata.profiler.metrics.static.geo_size import (
+    MaxGeoSize,
+    MeanGeoSize,
+    MinGeoSize,
+)
 from metadata.profiler.metrics.static.ilike_count import ILikeCount
 from metadata.profiler.metrics.static.like_count import LikeCount
 from metadata.profiler.metrics.static.max import Max

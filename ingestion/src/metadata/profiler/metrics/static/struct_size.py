@@ -97,9 +97,7 @@ class MaxStructSize(StaticMetric):
     def get_pandas_computation(self) -> PandasComputation:
         return PandasComputation[Optional[int], Optional[int]](
             create_accumulator=lambda: None,
-            update_accumulator=lambda acc, df: MaxStructSize._update(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: MaxStructSize._update(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
@@ -160,9 +158,7 @@ class MinStructSize(StaticMetric):
     def get_pandas_computation(self) -> PandasComputation:
         return PandasComputation[Optional[int], Optional[int]](
             create_accumulator=lambda: None,
-            update_accumulator=lambda acc, df: MinStructSize._update(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: MinStructSize._update(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
