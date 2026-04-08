@@ -18,12 +18,14 @@ import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import i18n from '../../utils/i18next/LocalUtil';
+import { isNewLayoutRoute } from '../../utils/LayoutUtils';
+import AppSidebar from '../AppSidebar/AppSidebar.component';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
-import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import NavBar from '../NavBar/NavBar';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import './app-container.less';
@@ -41,6 +43,15 @@ const AppContainer = () => {
   const { isAuthenticated } = useApplicationStore();
 
   const { setConfig, bannerDetails } = useLimitStore();
+  const { setLineageConfig } = useLineageStore();
+
+  const renderNavBar = () => {
+    if (isNewLayoutRoute(location.pathname)) {
+      return null;
+    }
+
+    return <NavBar />;
+  };
 
   const fetchAppConfigurations = useCallback(async () => {
     try {
@@ -49,13 +60,23 @@ const AppContainer = () => {
         getSettingsByType(SettingType.LineageSettings),
       ]);
 
+      const defaultLineageConfig = lineageConfig as LineageSettings;
+
+      setLineageConfig({
+        upstreamDepth: defaultLineageConfig.upstreamDepth,
+        downstreamDepth: defaultLineageConfig.downstreamDepth,
+        pipelineViewMode: defaultLineageConfig.pipelineViewMode,
+        nodesPerLayer: 50,
+      });
+
       setConfig(response);
       setAppPreferences({
         ...appPreferences,
-        lineageConfig: lineageConfig as LineageSettings,
+        lineageConfig: defaultLineageConfig,
       });
     } catch (error) {
-      // silent fail
+      // eslint-disable-next-line no-console
+      console.error('Error fetching app configurations:', error);
     }
   }, []);
 
@@ -75,19 +96,20 @@ const AppContainer = () => {
     <Layout>
       <LimitBanner />
       <Layout
+        hasSider
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
         })}>
         {/* Render left side navigation */}
-        <LeftSidebar />
+        <AppSidebar />
 
         {/* Render main content */}
         <Layout>
           {/* Render Appbar */}
           {applicationRoutesClass.isProtectedRoute(location.pathname) &&
-          isAuthenticated ? (
-            <NavBar />
-          ) : null}
+          isAuthenticated
+            ? renderNavBar()
+            : null}
 
           {/* Render main content */}
           <Content>

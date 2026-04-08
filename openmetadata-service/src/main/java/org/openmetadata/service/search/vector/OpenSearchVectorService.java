@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -103,6 +104,52 @@ public class OpenSearchVectorService implements VectorIndexService {
         HYBRID_PIPELINE_NAME,
         keywordWeight,
         semanticWeight);
+  }
+
+  public Optional<String> checkHybridSearchPipeline() {
+    try {
+      OpenSearchGenericClient genericClient = client.generic();
+      var request =
+          Requests.builder()
+              .endpoint("/_search/pipeline/" + HYBRID_PIPELINE_NAME)
+              .method("GET")
+              .build();
+      try (var response = genericClient.execute(request)) {
+        int status = response.getStatus();
+        if (status < 400) {
+          return Optional.empty();
+        }
+        if (status == 404) {
+          return Optional.of(
+              "Hybrid search pipeline '"
+                  + HYBRID_PIPELINE_NAME
+                  + "' not found. Run a reindex to create it.");
+        }
+        String detail =
+            response
+                .getBody()
+                .map(
+                    b -> {
+                      try {
+                        String body = new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
+                        return body.length() > 200 ? body.substring(0, 200) : body;
+                      } catch (Exception ignored) {
+                        return "";
+                      }
+                    })
+                .orElse("");
+        return Optional.of(
+            "Unexpected status "
+                + status
+                + " when checking hybrid search pipeline '"
+                + HYBRID_PIPELINE_NAME
+                + "'."
+                + (detail.isEmpty() ? "" : " Response: " + detail));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to check hybrid search pipeline '{}'", HYBRID_PIPELINE_NAME, e);
+      return Optional.of("Failed to check hybrid search pipeline: " + e.toString());
+    }
   }
 
   @Override

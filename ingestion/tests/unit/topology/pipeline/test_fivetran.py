@@ -117,6 +117,28 @@ MOCK_PIPELINE = Pipeline(
 )
 
 
+class TestGetDatabaseName:
+    def test_returns_database_key(self):
+        details = {"config": {"database": "my_database"}}
+        assert FivetranSource._get_database_name(details) == "my_database"
+
+    def test_returns_catalog_key(self):
+        details = {"config": {"catalog": "my_catalog"}}
+        assert FivetranSource._get_database_name(details) == "my_catalog"
+
+    def test_returns_project_id_key(self):
+        details = {"config": {"project_id": "my_project_id"}}
+        assert FivetranSource._get_database_name(details) == "my_project_id"
+
+    def test_returns_project_key(self):
+        details = {"config": {"project": "my_project"}}
+        assert FivetranSource._get_database_name(details) == "my_project"
+
+    def test_returns_none_when_no_key_matches(self):
+        details = {"config": {"host": "localhost"}}
+        assert FivetranSource._get_database_name(details) is None
+
+
 class FivetranUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"

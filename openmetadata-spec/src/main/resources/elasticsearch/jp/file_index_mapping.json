@@ -87,7 +87,13 @@
         "enabled": false
       },
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -161,8 +167,11 @@
       "mimeType": {
         "type": "keyword"
       },
-      "extension": {
+      "fileExtension": {
         "type": "keyword"
+      },
+      "extension": {
+        "type": "flattened"
       },
       "path": {
         "type": "keyword"

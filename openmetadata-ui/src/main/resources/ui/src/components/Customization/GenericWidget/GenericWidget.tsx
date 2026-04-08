@@ -82,12 +82,14 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     <Card
       className="generic-widget-card"
       extra={
-        <Button
-          data-testid="remove-widget-button"
-          icon={<MinusCircleOutlined size={16} />}
-          size="small"
-          onClick={handleRemoveClick}
-        />
+        props.handleRemoveWidget ? (
+          <Button
+            data-testid="remove-widget-button"
+            icon={<MinusCircleOutlined size={16} />}
+            size="small"
+            onClick={handleRemoveClick}
+          />
+        ) : undefined
       }
       title={
         <Space>

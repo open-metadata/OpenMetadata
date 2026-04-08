@@ -143,7 +143,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       }
 
       String aggregationField =
-          SearchSourceBuilderFactory.remapAggregationField(request.getFieldName());
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
       if (aggregationField == null || aggregationField.isBlank()) {
         throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
       }

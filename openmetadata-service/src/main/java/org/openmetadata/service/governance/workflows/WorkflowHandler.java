@@ -18,8 +18,6 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
-import org.flowable.bpmn.model.BpmnModel;
-import org.flowable.bpmn.model.Message;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
 import org.flowable.engine.HistoryService;
@@ -1027,115 +1025,42 @@ public class WorkflowHandler {
               .processVariableValueEquals("customTaskId", customTaskId.toString())
               .list();
       for (Task task : tasks) {
-        // Find the correct termination message for this task
-        String terminationMessageName = findTerminationMessageName(runtimeService, task);
-        if (terminationMessageName != null) {
-          Execution execution =
-              runtimeService
-                  .createExecutionQuery()
-                  .processInstanceId(task.getProcessInstanceId())
-                  .messageEventSubscriptionName(terminationMessageName)
-                  .singleResult();
-          if (execution != null) {
-            runtimeService.messageEventReceived(terminationMessageName, execution.getId());
-            LOG.debug(
-                "Terminated task {} using message '{}'", customTaskId, terminationMessageName);
-          } else {
-            LOG.warn(
-                "No execution found for termination message '{}' for task {}",
-                terminationMessageName,
-                customTaskId);
-          }
-        } else {
-          LOG.warn("No termination message found for task {}", customTaskId);
-        }
+        terminateTask(runtimeService, task, customTaskId);
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug("Flowable Task for Task ID {} not found.", customTaskId);
     }
   }
 
-  /**
-   * Find the termination message name for a task.
-   * Uses deterministic message names based on the subprocess ID.
-   */
-  private String findTerminationMessageName(RuntimeService runtimeService, Task task) {
+  private void terminateTask(RuntimeService runtimeService, Task task, UUID customTaskId) {
     try {
       String taskDefinitionKey = task.getTaskDefinitionKey();
-      LOG.debug(
-          "Finding termination message for task {} with definition key '{}'",
-          task.getId(),
-          taskDefinitionKey);
-
-      // List all message event subscriptions for this process instance
-      List<Execution> allMessageExecutions =
+      int lastDot = taskDefinitionKey.lastIndexOf('.');
+      if (lastDot < 0) {
+        LOG.warn(
+            "Task definition key '{}' has no '.' separator; cannot derive termination message",
+            taskDefinitionKey);
+        return;
+      }
+      String messageName = taskDefinitionKey.substring(0, lastDot) + ".terminateProcess";
+      Execution execution =
           runtimeService
               .createExecutionQuery()
               .processInstanceId(task.getProcessInstanceId())
-              .list();
-
-      LOG.debug(
-          "Found {} executions for process {}",
-          allMessageExecutions.size(),
-          task.getProcessInstanceId());
-
-      for (Execution exec : allMessageExecutions) {
-        if (exec.getActivityId() != null) {
-          LOG.debug("Execution {} has activity ID: {}", exec.getId(), exec.getActivityId());
-        }
+              .messageEventSubscriptionName(messageName)
+              .singleResult();
+      if (execution != null) {
+        runtimeService.messageEventReceived(messageName, execution.getId());
+        LOG.debug("Terminated task {} using message '{}'", customTaskId, messageName);
+      } else {
+        LOG.warn(
+            "No termination message subscription '{}' found for task {} (definition key '{}')",
+            messageName,
+            task.getId(),
+            taskDefinitionKey);
       }
-
-      // Get the BpmnModel to see what messages are available
-      BpmnModel model =
-          processEngine.getRepositoryService().getBpmnModel(task.getProcessDefinitionId());
-
-      LOG.debug("Available messages in model:");
-      for (Message msg : model.getMessages()) {
-        LOG.debug("  - Message ID: {}, Name: {}", msg.getId(), msg.getName());
-      }
-
-      // Extract the subprocess ID from the task definition key
-      // E.g., "ApproveGlossaryTerm_approvalTask" -> "ApproveGlossaryTerm"
-      String subProcessId =
-          taskDefinitionKey.contains("_")
-              ? taskDefinitionKey.substring(0, taskDefinitionKey.lastIndexOf("_"))
-              : taskDefinitionKey;
-
-      LOG.debug(
-          "Extracted subprocess ID: '{}' from task key '{}'", subProcessId, taskDefinitionKey);
-
-      // Try both possible termination message patterns
-      // UserApprovalTask uses: subProcessId_terminateProcess
-      // ChangeReviewTask uses: subProcessId_terminateChangeReviewProcess
-      String[] messagePatterns = {
-        subProcessId + "_terminateProcess", subProcessId + "_terminateChangeReviewProcess"
-      };
-
-      for (String messageName : messagePatterns) {
-        LOG.debug("Checking for message subscription: {}", messageName);
-        List<Execution> executions =
-            runtimeService
-                .createExecutionQuery()
-                .processInstanceId(task.getProcessInstanceId())
-                .messageEventSubscriptionName(messageName)
-                .list();
-        if (!executions.isEmpty()) {
-          LOG.debug(
-              "Found {} executions with message subscription '{}'", executions.size(), messageName);
-          return messageName;
-        } else {
-          LOG.debug("No executions found for message: {}", messageName);
-        }
-      }
-
-      LOG.warn(
-          "No termination message found for task {} with definition key '{}'",
-          task.getId(),
-          task.getTaskDefinitionKey());
-      return null;
     } catch (Exception e) {
-      LOG.error("Error finding termination message for task {}", task.getId(), e);
-      return null;
+      LOG.error("Error terminating task {}", task.getId(), e);
     }
   }
 
@@ -1474,44 +1399,65 @@ public class WorkflowHandler {
         return;
       }
 
+      // Terminate Flowable process instances OUTSIDE any JDBI transaction.
+      // Calling runtimeService.deleteProcessInstance() inside a JDBI transaction causes a race
+      // condition: the uncommitted DELETE on ACT_RU_EXECUTION holds an X-lock, Flowable's async
+      // job executor concurrently tries to INSERT a timer job referencing that execution (FK
+      // S-lock wait), and when the JDBI tx commits the execution is gone, so the timer INSERT
+      // fails with SQLIntegrityConstraintViolationException.
+      for (WorkflowInstance instance : conflictingInstances) {
+        ProcessInstance mainInstance =
+            runningProcessInstances.stream()
+                .filter(
+                    pi ->
+                        pi.getBusinessKey() != null
+                            && pi.getBusinessKey().equals(instance.getId().toString()))
+                .findFirst()
+                .orElse(null);
+
+        if (mainInstance != null) {
+          String processId = mainInstance.getId();
+          long activeUserTasks =
+              processEngine
+                  .getTaskService()
+                  .createTaskQuery()
+                  .processInstanceId(processId)
+                  .active()
+                  .count();
+          if (activeUserTasks == 0) {
+            LOG.debug(
+                "Process instance {} has no active user tasks — it is auto-completing; skipping external deletion",
+                processId);
+            continue;
+          }
+          LOG.info(
+              "Terminating main workflow instance {} for conflicting instance {}",
+              mainInstance.getId(),
+              instance.getId());
+          try {
+            runtimeService.deleteProcessInstance(
+                processId, "Terminated due to conflicting workflow instance");
+          } catch (FlowableObjectNotFoundException e) {
+            LOG.debug(
+                "Process instance {} already completed before termination, skipping", processId);
+          }
+        }
+      }
+
       Entity.getJdbi()
           .inTransaction(
               TransactionIsolationLevel.READ_COMMITTED,
               handle -> {
                 try {
-                  // Terminate both trigger and main workflow instances
-
-                  // Now terminate the main workflow instances that contain the user tasks
                   for (WorkflowInstance instance : conflictingInstances) {
-                    ProcessInstance mainInstance =
-                        runningProcessInstances.stream()
-                            .filter(
-                                pi ->
-                                    pi.getBusinessKey() != null
-                                        && pi.getBusinessKey().equals(instance.getId().toString()))
-                            .findFirst()
-                            .orElse(null);
-
-                    if (mainInstance != null) {
-                      LOG.info(
-                          "Terminating main workflow instance {} for conflicting instance {}",
-                          mainInstance.getId(),
-                          instance.getId());
-                      runtimeService.deleteProcessInstance(
-                          mainInstance.getId(), "Terminated due to conflicting workflow instance");
-                    }
-
                     workflowInstanceStateRepository.markInstanceStatesAsFailed(
                         instance.getId(), "Terminated due to conflicting workflow instance");
                     workflowInstanceRepository.markInstanceAsFailed(
                         instance.getId(), "Terminated due to conflicting workflow instance");
                   }
-
                   return null;
                 } catch (Exception e) {
-                  LOG.error(
-                      "Failed to terminate conflicting instances in transaction: {}",
-                      e.getMessage());
+                  LOG.error("Failed to update instance states in transaction: {}", e.getMessage());
                   throw e;
                 }
               });
@@ -1529,5 +1475,13 @@ public class WorkflowHandler {
 
   public RuntimeService getRuntimeService() {
     return processEngine.getRuntimeService();
+  }
+
+  public ManagementService getManagementService() {
+    return processEngine.getManagementService();
+  }
+
+  public RepositoryService getRepositoryService() {
+    return processEngine.getRepositoryService();
   }
 }

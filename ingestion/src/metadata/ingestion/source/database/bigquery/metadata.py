@@ -119,6 +119,7 @@ _bigquery_table_types = {
     "EXTERNAL": TableType.External,
     "MATERIALIZED_VIEW": TableType.MaterializedView,
     "VIEW": TableType.View,
+    "ICEBERG": TableType.Iceberg,
 }
 
 
@@ -399,13 +400,21 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 ):
                     continue
 
-                if self.incremental.enabled:
+                if (
+                    self.incremental.enabled
+                    and not self.incremental_table_processor.query_failed
+                ):
                     if (
                         table.table_id
                         not in self.incremental_table_processor.get_not_deleted(
                             schema_name
                         )
                     ):
+                        logger.debug(
+                            "Skipping unchanged table '%s.%s'",
+                            schema_name,
+                            table.table_id,
+                        )
                         continue
 
                 yield TableNameAndType(
@@ -648,16 +657,29 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return ""
 
     def _prepare_schema_incremental_data(self, schema_name: str):
-        """Prepares the data for Incremental Extraction.
+        """Adds deleted tables for this schema to the global context.
 
-        1. Queries Cloud Logging for the changes
-        2. Sets the table map with the changes within the BigQueryIncrementalTableProcessor
-        3. Adds the Deleted Tables to the context
+        Cloud Logging is already queried in get_database_names() for all
+        datasets at once. This method just reads from the populated map.
         """
-        self.incremental_table_processor.set_changed_tables_map(
-            project=self.context.get().database,
-            dataset=schema_name,
-            start_date=self.incremental.start_datetime_utc,
+        if self.incremental_table_processor.query_failed:
+            logger.debug(
+                "Skipping incremental data for schema '%s' — "
+                "Cloud Logging query failed, using full extraction",
+                schema_name,
+            )
+            return
+
+        deleted_tables = self.incremental_table_processor.get_deleted(schema_name)
+        not_deleted_tables = self.incremental_table_processor.get_not_deleted(
+            schema_name
+        )
+        logger.info(
+            "Incremental extraction for schema '%s': "
+            "%d changed table(s), %d deleted table(s)",
+            schema_name,
+            len(not_deleted_tables),
+            len(deleted_tables),
         )
 
         self.context.get_global().deleted_tables.extend(
@@ -670,9 +692,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     schema_name=schema_name,
                     table_name=table_name,
                 )
-                for table_name in self.incremental_table_processor.get_deleted(
-                    schema_name
-                )
+                for table_name in deleted_tables
             ]
         )
 
@@ -684,6 +704,27 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             datasets = self.client.list_datasets(project)
             for dataset in datasets:
                 yield dataset.dataset_id
+
+    def _get_filtered_datasets(self, project_id: str) -> List[str]:
+        """Return dataset IDs that pass the schema filter pattern."""
+        return [
+            schema_name
+            for schema_name in self.get_raw_database_schema_names()
+            if not filter_by_schema(
+                self.source_config.schemaFilterPattern,
+                (
+                    fqn.build(
+                        self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=project_id,
+                        schema_name=schema_name,
+                    )
+                    if self.source_config.useFqnForFiltering
+                    else schema_name
+                ),
+            )
+        ]
 
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
@@ -889,6 +930,24 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         self.incremental_table_processor = (
                             BigQueryIncrementalTableProcessor.from_project(project_id)
                         )
+                        filtered_datasets = self._get_filtered_datasets(project_id)
+                        logger.info(
+                            "Starting incremental extraction for project '%s' "
+                            "with %d datasets",
+                            project_id,
+                            len(filtered_datasets),
+                        )
+                        self.incremental_table_processor.set_tables_map(
+                            project=project_id,
+                            start_date=self.incremental.start_datetime_utc,
+                            datasets=filtered_datasets,
+                        )
+                        if self.incremental_table_processor.query_failed:
+                            logger.warning(
+                                "Cloud Logging query failed for project '%s'. "
+                                "Falling back to full extraction.",
+                                project_id,
+                            )
                     yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())

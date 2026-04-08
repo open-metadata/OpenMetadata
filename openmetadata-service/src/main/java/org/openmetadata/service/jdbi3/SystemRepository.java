@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.annotations.VisibleForTesting;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
@@ -560,7 +561,8 @@ public class SystemRepository {
   public void addExtraValidations(
       OpenMetadataApplicationConfig applicationConfig, ValidationResponse validation) {}
 
-  private StepValidation getEmbeddingsValidation(OpenMetadataApplicationConfig applicationConfig) {
+  @VisibleForTesting
+  StepValidation getEmbeddingsValidation(OpenMetadataApplicationConfig applicationConfig) {
     StepValidation embeddingsValidation = new StepValidation();
     String description = "Embeddings are used to allow Semantic Search";
     SearchRepository searchRepository = Entity.getSearchRepository();
@@ -576,15 +578,24 @@ public class SystemRepository {
     String configMessage = getEmbeddingConfigurationMessage(applicationConfig);
 
     if (searchRepository.getVectorIndexService() == null) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage("Embeddings are not configured properly. " + configMessage)
-          .withPassed(false);
+      return retryInitAndReportError(
+          searchRepository, embeddingsValidation, description, configMessage);
     }
 
     try {
-      return validateEmbeddingGeneration(
-          searchRepository.getEmbeddingClient(), embeddingsValidation, description, configMessage);
+      StepValidation embeddingResult =
+          validateEmbeddingGeneration(
+              searchRepository.getEmbeddingClient(),
+              embeddingsValidation,
+              description,
+              configMessage);
+
+      if (Boolean.FALSE.equals(embeddingResult.getPassed())) {
+        return embeddingResult;
+      }
+
+      return validateHybridSearchPipeline(
+          searchRepository, embeddingResult, description, configMessage);
     } catch (Exception e) {
       LOG.error("Error during embedding generation validation", e);
       return embeddingsValidation
@@ -592,6 +603,84 @@ public class SystemRepository {
           .withMessage("Embedding generation failed: " + e.getMessage() + ". " + configMessage)
           .withPassed(false);
     }
+  }
+
+  private StepValidation retryInitAndReportError(
+      SearchRepository searchRepository,
+      StepValidation embeddingsValidation,
+      String description,
+      String configMessage) {
+    searchRepository.initializeVectorSearchService();
+
+    if (searchRepository.getVectorIndexService() != null) {
+      try {
+        StepValidation embeddingResult =
+            validateEmbeddingGeneration(
+                searchRepository.getEmbeddingClient(),
+                embeddingsValidation,
+                description,
+                configMessage);
+        if (Boolean.FALSE.equals(embeddingResult.getPassed())) {
+          return embeddingResult;
+        }
+        return validateHybridSearchPipeline(
+            searchRepository, embeddingResult, description, configMessage);
+      } catch (Exception e) {
+        LOG.error("Error during embedding generation validation after retry", e);
+        return embeddingsValidation
+            .withDescription(description)
+            .withMessage("Embedding generation failed: " + e.getMessage() + ". " + configMessage)
+            .withPassed(false);
+      }
+    }
+
+    String initError = searchRepository.getVectorServiceInitError();
+    String errorSuffix = initError != null ? " Error: " + initError + "." : "";
+    if (searchRepository.getEmbeddingClient() == null) {
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage(
+              "Embedding client could not be initialized."
+                  + errorSuffix
+                  + " Check the embedding provider configuration. "
+                  + configMessage)
+          .withPassed(false);
+    }
+
+    return embeddingsValidation
+        .withDescription(description)
+        .withMessage(
+            "Vector search service could not be initialized. "
+                + "The embedding client is configured but the OpenSearch vector service failed to start."
+                + errorSuffix
+                + " "
+                + configMessage)
+        .withPassed(false);
+  }
+
+  private StepValidation validateHybridSearchPipeline(
+      SearchRepository searchRepository,
+      StepValidation embeddingsValidation,
+      String description,
+      String configMessage) {
+    Optional<String> pipelineError = searchRepository.checkHybridSearchPipeline();
+    if (pipelineError.isPresent()) {
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage(
+              "Embeddings are working but the hybrid search pipeline check failed: "
+                  + pipelineError.get()
+                  + " "
+                  + configMessage)
+          .withPassed(false);
+    }
+
+    return embeddingsValidation
+        .withDescription(description)
+        .withMessage(
+            String.format(
+                "Embeddings and hybrid search pipeline are working correctly. %s", configMessage))
+        .withPassed(true);
   }
 
   private StepValidation validateEmbeddingGeneration(

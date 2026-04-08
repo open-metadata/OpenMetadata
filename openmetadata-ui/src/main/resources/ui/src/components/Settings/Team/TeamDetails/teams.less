@@ -42,6 +42,43 @@
 }
 
 .teams-list-table {
+  .ant-table-content > table,
+  .ant-table-container .ant-table-content > table {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  td.teams-hierarchy-name-column.ant-table-cell-with-append {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .teams-hierarchy-team-name-cell {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .teams-hierarchy-team-name-tooltip-trigger {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .teams-hierarchy-team-name-link {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  th.teams-hierarchy-name-column {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .ant-table-thead {
     tr > th {
       border-right: 0px !important;
@@ -85,11 +122,14 @@
   }
 
   .teams-profile-container {
+    .ant-card {
+      background: @white;
+    }
     .collapse-panel-container {
       padding: 20px;
     }
-    .ant-card {
-      background: none;
+    .ant-card-head {
+      background: @white;
     }
 
     .ant-collapse-header,
@@ -145,6 +185,19 @@
     display: flex;
   }
 }
+
+.teams-heading-label-container {
+  flex: 0 1 auto;
+  max-width: 50%;
+  min-width: 0;
+}
+
+.teams-heading-label-edit-row {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
 .team-assets-right-panel {
   .summary-panel-container {
     height: 100%;
