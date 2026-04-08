@@ -604,9 +604,9 @@ export interface ConfigObject {
      *
      * Host and port of the Informix service.
      *
-     * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
-     *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
+     * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
@@ -1140,6 +1140,9 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
      * are mapped as schemas.
+     *
+     * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+     * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -1297,6 +1300,10 @@ export interface ConfigObject {
      *
      * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
      * as the schema name
+     *
+     * IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an
+     * optional parameter; if left blank, OpenMetadata attempts to scan all databases in the
+     * catalog.
      */
     databaseSchema?: string;
     /**
@@ -1323,6 +1330,9 @@ export interface ConfigObject {
      * Presto catalog
      *
      * Catalog of the data source.
+     *
+     * Catalog of the data source (e.g. spark_catalog). This is an optional parameter; if left
+     * blank, OpenMetadata uses default catalog.
      */
     catalog?: string;
     /**
@@ -2314,6 +2324,9 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude tables that match the pattern.
  *
  * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+ *
+ * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+ * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
  *
  * Regex to only fetch topics that matches the pattern.
  *
