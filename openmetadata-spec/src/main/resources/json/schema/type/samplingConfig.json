@@ -4,79 +4,6 @@
   "title": "SamplingConfig",
   "description": "Sampling configuration types for the profiler.",
   "definitions": {
-    "profileSampleType": {
-      "description": "Type of Profile Sample (percentage or rows)",
-      "type": "string",
-      "enum": ["PERCENTAGE", "ROWS"],
-      "default": "PERCENTAGE"
-    },
-    "samplingMethodType": {
-      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
-      "type": "string",
-      "enum": ["BERNOULLI", "SYSTEM"]
-    },
-    "staticSamplingConfig": {
-      "javaType": "org.openmetadata.schema.type.StaticSamplingConfig",
-      "title": "Static Sampling Configuration",
-      "description": "Configuration for static sampling based on table row count.",
-      "type": "object",
-      "properties": {
-        "profileSample": {
-          "description": "Percentage of data or no. of rows used to compute the profiler metrics and run data quality tests",
-          "type": "number",
-          "default": null,
-          "title": "Profile Sample"
-        },
-        "profileSampleType": {
-          "$ref": "#/definitions/profileSampleType",
-          "title": "Profile Sample Type"
-        },
-        "samplingMethodType": {
-          "$ref": "#/definitions/samplingMethodType",
-          "title": "Sampling Method Type"
-        }
-      },
-      "additionalProperties": false
-    },
-    "dynamicSamplingConfig": {
-      "javaType": "org.openmetadata.schema.type.DynamicSamplingConfig",
-      "title": "Dynamic Sampling Configuration",
-      "description": "Configuration for dynamic sampling based on table row count.",
-      "type": "object",
-      "properties": {
-        "thresholds": {
-          "description": "Row count thresholds for sampling. Evaluated in order from highest to lowest threshold. Tables below the lowest threshold are profiled at 100% (no sampling).",
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "rowCountThreshold": {
-                "description": "Minimum row count for this tier to apply",
-                "type": "integer",
-                "minimum": 1,
-                "title": "Row Count Threshold"
-              },
-              "profileSample": {
-                "description": "Sample percentage or row count to use for tables at or above this threshold",
-                "type": "number",
-                "default": null,
-                "title": "Profile Sample"
-              },
-              "profileSampleType": {
-                "$ref": "#/definitions/profileSampleType",
-                "title": "Profile Sample Type"
-              },
-              "samplingMethodType": {
-                "$ref": "#/definitions/samplingMethodType",
-                "title": "Sampling Method Type"
-              }
-            },
-            "required": ["rowCountThreshold", "profileSample"]
-          }
-        }
-      },
-      "additionalProperties": false
-    },
     "profileSampleConfig": {
       "javaType": "org.openmetadata.schema.type.ProfileSampleConfig",
       "description": "Profile sample configuration supporting static and dynamic sampling strategies.",
@@ -95,10 +22,10 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "#/definitions/dynamicSamplingConfig"
+              "$ref": "./dynamicSamplingConfig.json"
             },
             {
-              "$ref": "#/definitions/staticSamplingConfig"
+              "$ref": "./staticSamplingConfig.json"
             }
           ]
         }

@@ -12,10 +12,10 @@
   ],
   "definitions": {
     "profileSampleType": {
-      "$ref": "../../type/samplingConfig.json#/definitions/profileSampleType"
+      "$ref": "../../type/basic.json#/definitions/profileSampleType"
     },
     "samplingMethodType": {
-      "$ref": "../../type/samplingConfig.json#/definitions/samplingMethodType"
+      "$ref": "../../type/basic.json#/definitions/samplingMethodType"
     },
     "profileSampleConfig": {
       "$ref": "../../type/samplingConfig.json#/definitions/profileSampleConfig"
