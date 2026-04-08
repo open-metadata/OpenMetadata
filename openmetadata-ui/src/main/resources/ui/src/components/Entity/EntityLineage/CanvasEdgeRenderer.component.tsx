@@ -43,7 +43,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const { isEditMode, columnsInCurrentPages, isCanvasReady } =
     useLineageStore();
-  const { edges } = useLineageProvider();
+  const { edges, nodes } = useLineageProvider();
   const { getNode } = useReactFlow();
   const viewport = useViewport();
 
@@ -133,7 +133,14 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     }
 
     return calculateEdgeMidpoints(edges, getNode, columnsInCurrentPages);
-  }, [isPlaywright, edges, getNode, columnsInCurrentPages, isCanvasReady]);
+  }, [
+    isPlaywright,
+    edges,
+    nodes,
+    getNode,
+    columnsInCurrentPages,
+    isCanvasReady,
+  ]);
 
   const hoveredEdge = useMemo(() => {
     if (!hoveredButton) {

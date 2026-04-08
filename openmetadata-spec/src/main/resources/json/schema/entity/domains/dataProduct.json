@@ -178,13 +178,11 @@
     },
     "consumesFrom": {
       "description": "Other data products that this product consumes data from",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": []
+      "$ref": "../../type/entityReferenceList.json"
     },
     "providesTo": {
       "description": "Other data products that consume data from this product",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": []
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags associated with the Data Product.",

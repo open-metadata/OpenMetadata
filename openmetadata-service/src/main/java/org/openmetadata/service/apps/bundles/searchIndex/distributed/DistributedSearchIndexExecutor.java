@@ -109,8 +109,8 @@ public class DistributedSearchIndexExecutor {
   private ExecutorService workerExecutor;
   private final Set<UUID> activePartitions = ConcurrentHashMap.newKeySet();
   private final List<PartitionWorker> activeWorkers = new ArrayList<>();
-  private Thread lockRefreshThread;
-  private Thread partitionHeartbeatThread;
+  private volatile Thread lockRefreshThread;
+  private volatile Thread partitionHeartbeatThread;
   private Thread staleReclaimerThread;
 
   // App context for WebSocket broadcasts
@@ -999,6 +999,11 @@ public class DistributedSearchIndexExecutor {
   public void stop() {
     if (stopped.compareAndSet(false, true)) {
       LOG.info("Stop requested for distributed executor");
+
+      // Interrupt lock-refresh and heartbeat threads first so they cannot flip
+      // the job back to RUNNING or extend the lock TTL after requestStop() is called.
+      interruptAndJoin(lockRefreshThread, "lock-refresh");
+      interruptAndJoin(partitionHeartbeatThread, "partition-heartbeat");
 
       // Stop all active workers
       synchronized (activeWorkers) {

@@ -29,6 +29,7 @@ from metadata.ingestion.source.database.dbt.constants import (
     DbtCommonEnum,
     RawQueriesEnum,
 )
+from metadata.ingestion.source.database.dbt.models import SnapshotNodeLocation
 from metadata.utils import entity_link
 from metadata.utils.logger import ingestion_logger
 
@@ -784,6 +785,30 @@ def get_data_model_path(manifest_node):
         else:
             datamodel_path = manifest_node.original_file_path
     return datamodel_path
+
+
+def get_snapshot_effective_schema_and_database(
+    manifest_node: Any,
+) -> SnapshotNodeLocation:
+    """
+    For snapshot nodes, config.target_schema and config.target_database
+    override manifest_node.schema_ and manifest_node.database respectively.
+    Returns a SnapshotNodeLocation with the resolved schema and database.
+    """
+    effective_schema: str = manifest_node.schema_
+    effective_database: Optional[str] = manifest_node.database
+    if hasattr(manifest_node, "config") and manifest_node.config:
+        if (
+            hasattr(manifest_node.config, "target_schema")
+            and manifest_node.config.target_schema
+        ):
+            effective_schema = manifest_node.config.target_schema
+        if (
+            hasattr(manifest_node.config, "target_database")
+            and manifest_node.config.target_database
+        ):
+            effective_database = manifest_node.config.target_database
+    return SnapshotNodeLocation(schema_=effective_schema, database=effective_database)
 
 
 def find_entity_by_type_and_fqn(

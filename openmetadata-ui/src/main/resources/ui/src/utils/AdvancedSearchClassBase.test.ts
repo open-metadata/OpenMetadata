@@ -63,6 +63,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.DATA_PRODUCT,
       'serviceType',
       EntityFields.TAG,
+      EntityFields.GLOSSARY_TERMS,
       EntityFields.CERTIFICATION,
       EntityFields.TIER,
       'extension',

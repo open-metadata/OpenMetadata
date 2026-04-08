@@ -2,12 +2,32 @@ package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+// Mirror of EXCLUDED_FIELDS — can't reference it directly
+// because SearchIndex has a static initializer that requires Entity to be bootstrapped.
+
 class SearchIndexTest {
+
+  private static final Set<String> EXCLUDED_FIELDS =
+      Set.of(
+          "changeDescription",
+          "incrementalChangeDescription",
+          "upstreamLineage.pipeline.changeDescription",
+          "upstreamLineage.pipeline.incrementalChangeDescription",
+          "connection",
+          "changeSummary");
+
+  private static final Set<String> BANNED_FIELDS =
+      Set.of("changeDescription", "incrementalChangeDescription", "changeSummary");
 
   // Test the getFQNParts logic directly without instantiating SearchIndex
   private Set<String> getFQNParts(String fqn) {
@@ -87,5 +107,196 @@ class SearchIndexTest {
 
     // Should return empty set since we exclude the entity name
     assertTrue(parts.isEmpty(), "Single part FQN should return empty set");
+  }
+
+  @Test
+  void testChangeDescriptionWithStringNewValueIsRemoved() {
+    Map<String, Object> doc = buildDocWithChangeDescription("some text value");
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    assertFalse(
+        doc.containsKey("changeDescription"),
+        "changeDescription should be removed from top-level doc");
+    assertEquals("test-query", doc.get("name"));
+  }
+
+  @Test
+  void testChangeDescriptionWithBooleanNewValueIsRemoved() {
+    Map<String, Object> doc = buildDocWithChangeDescription(true);
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    assertFalse(
+        doc.containsKey("changeDescription"),
+        "changeDescription with boolean newValue should be removed");
+  }
+
+  @Test
+  void testChangeDescriptionWithMixedTypesInFieldsUpdated() {
+    // Simulates the exact scenario from the ES/OS error: first doc has string newValue,
+    // second doc has boolean newValue. Both should be stripped.
+    Map<String, Object> doc1 = buildDocWithChangeDescription("text value");
+    Map<String, Object> doc2 = buildDocWithChangeDescription(false);
+
+    SearchIndexUtils.removeNonIndexableFields(doc1, EXCLUDED_FIELDS);
+    SearchIndexUtils.removeNonIndexableFields(doc2, EXCLUDED_FIELDS);
+
+    assertFalse(doc1.containsKey("changeDescription"));
+    assertFalse(doc2.containsKey("changeDescription"));
+  }
+
+  @Test
+  void testIncrementalChangeDescriptionIsAlsoRemoved() {
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "test-query");
+    doc.put(
+        "incrementalChangeDescription",
+        Map.of("fieldsUpdated", List.of(Map.of("name", "deleted", "newValue", true))));
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    assertFalse(
+        doc.containsKey("incrementalChangeDescription"),
+        "incrementalChangeDescription should be removed");
+  }
+
+  @Test
+  void testNestedChangeDescriptionMustNotLeakIntoDoc() {
+    // Nested entities (e.g., a Query inside QueryCostRecord) must have
+    // changeDescription stripped BEFORE being placed into the doc.
+    // The index code (e.g., QueryCostRecordIndex) is responsible for
+    // nulling out changeDescription on nested entities. This test
+    // verifies that if someone forgets, findBannedFields catches it.
+    Map<String, Object> nestedEntity = new HashMap<>();
+    nestedEntity.put("id", "ref-1");
+    nestedEntity.put(
+        "changeDescription",
+        Map.of("fieldsUpdated", List.of(Map.of("name", "field", "newValue", true))));
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "test-query");
+    doc.put("someNestedRef", nestedEntity);
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    assertFalse(
+        doc.containsKey("changeDescription"), "Top-level changeDescription should be removed");
+
+    List<String> violations = findBannedFields(doc, BANNED_FIELDS);
+    assertFalse(
+        violations.isEmpty(),
+        "Nested changeDescription should be detected — index code must null it before doc.put()");
+    assertTrue(violations.get(0).contains("someNestedRef.changeDescription"));
+  }
+
+  @Test
+  void testNoBannedFieldsAfterProperCleanup() {
+    Map<String, Object> nestedEntity = new HashMap<>();
+    nestedEntity.put("id", "ref-1");
+    nestedEntity.put("name", "clean-entity");
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "test-record");
+    doc.put("changeDescription", Map.of("fieldsUpdated", List.of()));
+    doc.put("incrementalChangeDescription", Map.of("fieldsUpdated", List.of()));
+    doc.put("changeSummary", Map.of());
+    doc.put("nestedRef", nestedEntity);
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    List<String> violations = findBannedFields(doc, BANNED_FIELDS);
+    assertTrue(violations.isEmpty(), "No banned fields should remain after cleanup: " + violations);
+  }
+
+  @Test
+  void testBannedFieldsDetectedAtMultipleNestingLevels() {
+    Map<String, Object> level2 = new HashMap<>();
+    level2.put("id", "deep");
+    level2.put("changeDescription", Map.of("fieldsUpdated", List.of()));
+
+    Map<String, Object> level1 = new HashMap<>();
+    level1.put("id", "mid");
+    level1.put("incrementalChangeDescription", Map.of("fieldsUpdated", List.of()));
+    level1.put("child", level2);
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "test");
+    doc.put("nested", level1);
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    List<String> violations = findBannedFields(doc, BANNED_FIELDS);
+    assertEquals(2, violations.size(), "Should detect banned fields at both nesting levels");
+  }
+
+  @Test
+  void testBannedFieldsDetectedInsideLists() {
+    Map<String, Object> listItem = new HashMap<>();
+    listItem.put("id", "item-1");
+    listItem.put("changeDescription", Map.of("fieldsUpdated", List.of()));
+
+    List<Object> items = new ArrayList<>();
+    items.add(listItem);
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "test");
+    doc.put("entities", items);
+
+    SearchIndexUtils.removeNonIndexableFields(doc, EXCLUDED_FIELDS);
+
+    List<String> violations = findBannedFields(doc, BANNED_FIELDS);
+    assertFalse(violations.isEmpty(), "Should detect changeDescription inside list items");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<String> findBannedFields(Map<String, Object> doc, Set<String> bannedKeys) {
+    List<String> violations = new ArrayList<>();
+    findBannedFieldsRecursive(doc, bannedKeys, "", violations);
+    return violations;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void findBannedFieldsRecursive(
+      Map<String, Object> map, Set<String> bannedKeys, String path, List<String> violations) {
+    for (Map.Entry<String, Object> entry : map.entrySet()) {
+      String fullPath = path.isEmpty() ? entry.getKey() : path + "." + entry.getKey();
+      if (bannedKeys.contains(entry.getKey())) {
+        violations.add(fullPath);
+      }
+      Object value = entry.getValue();
+      if (value instanceof Map) {
+        findBannedFieldsRecursive((Map<String, Object>) value, bannedKeys, fullPath, violations);
+      } else if (value instanceof List) {
+        int i = 0;
+        for (Object item : (List<?>) value) {
+          if (item instanceof Map) {
+            findBannedFieldsRecursive(
+                (Map<String, Object>) item, bannedKeys, fullPath + "[" + i + "]", violations);
+          }
+          i++;
+        }
+      }
+    }
+  }
+
+  private Map<String, Object> buildDocWithChangeDescription(Object newValue) {
+    Map<String, Object> fieldChange = new HashMap<>();
+    fieldChange.put("name", "deleted");
+    fieldChange.put("oldValue", "oldVal");
+    fieldChange.put("newValue", newValue);
+
+    List<Object> fieldsUpdated = new ArrayList<>();
+    fieldsUpdated.add(fieldChange);
+
+    Map<String, Object> changeDesc = new HashMap<>();
+    changeDesc.put("fieldsUpdated", fieldsUpdated);
+    changeDesc.put("previousVersion", 0.1);
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "test-query");
+    doc.put("fullyQualifiedName", "service.test-query");
+    doc.put("changeDescription", changeDesc);
+    return doc;
   }
 }

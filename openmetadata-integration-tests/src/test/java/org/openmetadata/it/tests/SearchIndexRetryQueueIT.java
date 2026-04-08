@@ -227,14 +227,15 @@ class SearchIndexRetryQueueIT {
     String entityId = UUID.randomUUID().toString();
     String entityFqn = ns.prefix("rq") + ".entity";
 
-    retryQueueDAO.upsert(entityId, entityFqn, "failure", SearchIndexRetryQueue.STATUS_PENDING, "");
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "failure", SearchIndexRetryQueue.STATUS_COMPLETED, "");
 
     int first =
-        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_COMPLETED);
     assertEquals(1, first);
 
     int second =
-        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_COMPLETED);
     assertEquals(0, second);
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
@@ -296,10 +297,12 @@ class SearchIndexRetryQueueIT {
 
     List<SearchIndexRetryRecord> inProgress =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_IN_PROGRESS, 1000);
-    assertTrue(inProgress.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
+    SearchIndexRetryRecord claimedRecord =
+        inProgress.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
+    assertNotNull(claimedRecord.getClaimedAt());
 
-    // Use a cutoff in the future to simulate "stale" records
-    Timestamp futureCutoff = new Timestamp(System.currentTimeMillis() + 60_000);
+    // Build the cutoff from the database-generated claim time to avoid host/DB clock skew.
+    Timestamp futureCutoff = new Timestamp(claimedRecord.getClaimedAt().getTime() + 1_000);
     int recovered = retryQueueDAO.recoverStaleInProgress(futureCutoff);
     assertTrue(recovered >= 1);
 
@@ -321,14 +324,20 @@ class SearchIndexRetryQueueIT {
     retryQueueDAO.upsert(entityId, entityFqn, "failure", SearchIndexRetryQueue.STATUS_PENDING, "");
     retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
 
-    // Use a cutoff in the past — the recently claimed record should NOT be recovered
-    Timestamp pastCutoff = new Timestamp(System.currentTimeMillis() - 60_000);
+    List<SearchIndexRetryRecord> inProgress =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_IN_PROGRESS, 1000);
+    SearchIndexRetryRecord claimedRecord =
+        inProgress.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
+    assertNotNull(claimedRecord.getClaimedAt());
+
+    // Build the cutoff from the database-generated claim time to avoid host/DB clock skew.
+    Timestamp pastCutoff = new Timestamp(claimedRecord.getClaimedAt().getTime() - 1_000);
     int recovered = retryQueueDAO.recoverStaleInProgress(pastCutoff);
     assertEquals(0, recovered);
 
-    List<SearchIndexRetryRecord> inProgress =
+    List<SearchIndexRetryRecord> updatedInProgress =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_IN_PROGRESS, 100);
-    assertTrue(inProgress.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
+    assertTrue(updatedInProgress.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
   }
 
   // ---------------------------------------------------------------------------
@@ -658,9 +667,11 @@ class SearchIndexRetryQueueIT {
 
     List<SearchIndexRetryRecord> inProgress =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_IN_PROGRESS, 1000);
-    assertTrue(inProgress.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
+    SearchIndexRetryRecord claimedRecord =
+        inProgress.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
+    assertNotNull(claimedRecord.getClaimedAt());
 
-    Timestamp futureCutoff = new Timestamp(System.currentTimeMillis() + 60_000);
+    Timestamp futureCutoff = new Timestamp(claimedRecord.getClaimedAt().getTime() + 1_000);
     int recovered = retryQueueDAO.recoverStaleInProgress(futureCutoff);
     assertTrue(recovered >= 1);
 

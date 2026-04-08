@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { useReducer } from 'react';
+import { useCallback, useReducer } from 'react';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { LineageNode } from '../Lineage/Lineage.interface';
+import {
+  ColumnLevelLineageNode,
+  LineageNode,
+} from '../Lineage/Lineage.interface';
 import {
   EImpactLevel,
   LineagePagingInfo,
@@ -99,73 +102,76 @@ function lineageTableReducer(
 export function useLineageTableState() {
   const [state, dispatch] = useReducer(lineageTableReducer, initialState);
 
-  const setFilterNodes = (nodes: LineageNode[]) => {
+  const setFilterNodes = useCallback((nodes: LineageNode[]) => {
     dispatch({ type: 'SET_FILTER_NODES', payload: nodes });
-  };
+  }, []);
 
-  const setLoading = (loading: boolean) => {
+  const setLoading = useCallback((loading: boolean) => {
     dispatch({ type: 'SET_LOADING', payload: loading });
-  };
+  }, []);
 
-  const setFilterSelectionActive = (active: boolean) => {
+  const setFilterSelectionActive = useCallback((active: boolean) => {
     dispatch({ type: 'SET_FILTER_SELECTION_ACTIVE', payload: active });
-  };
+  }, []);
 
-  const toggleFilterSelection = () => {
+  const toggleFilterSelection = useCallback(() => {
     dispatch({ type: 'TOGGLE_FILTER_SELECTION' });
-  };
+  }, []);
 
-  const setSearchValue = (value: string) => {
+  const setSearchValue = useCallback((value: string) => {
     dispatch({ type: 'SET_SEARCH_VALUE', payload: value });
-  };
+  }, []);
 
-  const setDialogVisible = (visible: boolean) => {
+  const setDialogVisible = useCallback((visible: boolean) => {
     dispatch({ type: 'SET_DIALOG_VISIBLE', payload: visible });
-  };
+  }, []);
 
-  const setImpactLevel = (level: EImpactLevel) => {
-    // Need to show loader when impact level changes
-    // as it show blank table in between
-    dispatch({ type: 'SET_LOADING', payload: true });
+  const setImpactLevel = useCallback((level: EImpactLevel) => {
     dispatch({ type: 'SET_IMPACT_LEVEL', payload: level });
-    setTimeout(() => {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }, 0);
-  };
+  }, []);
 
-  const setUpstreamColumnLineageNodes = (nodes: LineageNode[]) => {
-    dispatch({ type: 'SET_UPSTREAM_COLUMN_LINEAGE_NODES', payload: nodes });
-  };
+  const setUpstreamColumnLineageNodes = useCallback(
+    (nodes: ColumnLevelLineageNode[]) => {
+      dispatch({ type: 'SET_UPSTREAM_COLUMN_LINEAGE_NODES', payload: nodes });
+    },
+    []
+  );
 
-  const setDownstreamColumnLineageNodes = (nodes: LineageNode[]) => {
-    dispatch({ type: 'SET_DOWNSTREAM_COLUMN_LINEAGE_NODES', payload: nodes });
-  };
+  const setDownstreamColumnLineageNodes = useCallback(
+    (nodes: ColumnLevelLineageNode[]) => {
+      dispatch({ type: 'SET_DOWNSTREAM_COLUMN_LINEAGE_NODES', payload: nodes });
+    },
+    []
+  );
 
-  const setColumnLineageNodes = (
-    upstream: LineageNode[],
-    downstream: LineageNode[]
-  ) => {
-    dispatch({
-      type: 'SET_COLUMN_LINEAGE_NODES',
-      payload: { upstream, downstream },
-    });
-  };
+  const setColumnLineageNodes = useCallback(
+    (
+      upstream: ColumnLevelLineageNode[],
+      downstream: ColumnLevelLineageNode[]
+    ) => {
+      dispatch({
+        type: 'SET_COLUMN_LINEAGE_NODES',
+        payload: { upstream, downstream },
+      });
+    },
+    []
+  );
 
-  const setLineageDirection = (direction: LineageDirection) => {
+  const setLineageDirection = useCallback((direction: LineageDirection) => {
     dispatch({ type: 'SET_LINEAGE_DIRECTION', payload: direction });
-  };
+  }, []);
 
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     dispatch({ type: 'RESET_FILTERS' });
-  };
+  }, []);
 
-  const setLineagePagingInfo = (info: LineagePagingInfo | null) => {
+  const setLineagePagingInfo = useCallback((info: LineagePagingInfo | null) => {
     dispatch({ type: 'SET_LINEAGE_PAGING_INFO', payload: info });
-  };
+  }, []);
 
-  const setNodeDepth = (depth: number) => {
+  const setNodeDepth = useCallback((depth: number) => {
     dispatch({ type: 'UPDATE_NODE_DEPTH', payload: depth });
-  };
+  }, []);
 
   return {
     // State values

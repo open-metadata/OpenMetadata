@@ -59,10 +59,10 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 
   const popoverContent = (
     <div className="tw:min-w-0 tw:rounded-lg">
-      <div className="tw:flex tw:items-center tw:justify-between tw:shrink-0 tw:border-b tw:border-gray-200">
+      <div className="tw:flex tw:items-center tw:justify-between tw:shrink-0 tw:border-b tw:border-gray-200 tw:px-4 tw:py-3 ">
         <Typography
           as="span"
-          className="tw:text-sm tw:font-semibold tw:text-gray-900 tw:py-4">
+          className="tw:text-sm tw:font-semibold tw:text-gray-900">
           {t('label.graph-settings')}
         </Typography>
         <ButtonUtility
@@ -74,7 +74,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
           onClick={() => setOpen(false)}
         />
       </div>
-      <div className="tw:space-y-3">
+      <div className="tw:space-y-3 tw:px-4">
         <div className="tw:space-y-1.5 tw:w-full tw:pt-4">
           <Typography
             as="span"
@@ -127,9 +127,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
         iconLeading={<Settings01 height={20} width={20} />}
         size="sm"
       />
-      <Dropdown.Popover
-        aria-label={t('label.graph-settings')}
-        className="tw:absolute tw:right-0 tw:bottom-full tw:z-50 tw:mb-1 tw:rounded-lg tw:border-0 tw:bg-white tw:py-0 tw:shadow-lg tw:ring-1 tw:ring-gray-200 tw:px-4">
+      <Dropdown.Popover aria-label={t('label.graph-settings')}>
         {popoverContent}
       </Dropdown.Popover>
     </Dropdown.Root>

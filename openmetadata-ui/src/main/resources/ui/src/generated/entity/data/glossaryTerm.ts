@@ -31,6 +31,10 @@ export interface GlossaryTerm {
      */
     conceptMappings?: ConceptMapping[];
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -235,6 +239,8 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Reference to the data contract for this entity.
+ *
  * Glossary that this term belongs to.
  *
  * Parent glossary term that this term is child of. When `null` this term is the root term
@@ -329,6 +335,7 @@ export enum ConceptMappingType {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",

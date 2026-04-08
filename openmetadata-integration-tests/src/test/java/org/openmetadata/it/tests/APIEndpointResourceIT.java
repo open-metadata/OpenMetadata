@@ -52,6 +52,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================

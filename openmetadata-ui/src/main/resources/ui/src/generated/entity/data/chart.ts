@@ -25,6 +25,10 @@ export interface Chart {
      */
     dashboards?: EntityReference[];
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -448,6 +452,8 @@ export enum ChartType {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Reference to the data contract for this entity.
+ *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Link to service where this dashboard is hosted in.
@@ -503,6 +509,7 @@ export interface EntityReference {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",

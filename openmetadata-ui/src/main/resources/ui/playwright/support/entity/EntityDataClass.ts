@@ -245,73 +245,10 @@ export class EntityDataClass {
     await Promise.allSettled(dependentEntityCreationPromises);
   }
 
-  static async postRequisitesForTests(apiContext: APIRequestContext) {
-    const promises = [
-      this.domain1.delete(apiContext),
-      this.domain2.delete(apiContext),
-      this.glossary1.delete(apiContext),
-      this.glossary2.delete(apiContext),
-      this.user1.delete(apiContext),
-      this.user2.delete(apiContext),
-      this.user3.delete(apiContext),
-      this.team1.delete(apiContext),
-      this.team2.delete(apiContext),
-      this.certificationTag1.delete(apiContext),
-      this.certificationTag2.delete(apiContext),
-      this.tierTag1.delete(apiContext),
-      this.classification1.delete(apiContext),
-      this.glossaryTerm1.delete(apiContext),
-      this.glossaryTerm2.delete(apiContext),
-      this.dataProduct1.delete(apiContext),
-      this.dataProduct2.delete(apiContext),
-      this.dataProduct3.delete(apiContext),
-      this.tag1.delete(apiContext),
-      this.table1.delete(apiContext),
-      this.table2.delete(apiContext),
-      this.topic1.delete(apiContext),
-      this.topic2.delete(apiContext),
-      this.dashboard1.delete(apiContext),
-      this.dashboard2.delete(apiContext),
-      this.mlModel1.delete(apiContext),
-      this.mlModel2.delete(apiContext),
-      this.pipeline1.delete(apiContext),
-      this.pipeline2.delete(apiContext),
-      this.dashboardDataModel1.delete(apiContext),
-      this.dashboardDataModel2.delete(apiContext),
-      this.apiCollection1.delete(apiContext),
-      this.apiCollection2.delete(apiContext),
-      this.apiEndpoint1.delete(apiContext),
-      this.apiEndpoint2.delete(apiContext),
-      this.storedProcedure1.delete(apiContext),
-      this.storedProcedure2.delete(apiContext),
-      this.searchIndex1.delete(apiContext),
-      this.searchIndex2.delete(apiContext),
-      this.container1.delete(apiContext),
-      this.container2.delete(apiContext),
-      this.databaseService.delete(apiContext),
-      this.database.delete(apiContext),
-      this.databaseSchema.delete(apiContext),
-      this.apiService.delete(apiContext),
-      this.dashboardService.delete(apiContext),
-      this.messagingService.delete(apiContext),
-      this.mlmodelService.delete(apiContext),
-      this.pipelineService.delete(apiContext),
-      this.searchIndexService.delete(apiContext),
-      this.storageService.delete(apiContext),
-      this.metric1.delete(apiContext),
-      this.chart1.delete(apiContext),
-      this.driveService.delete(apiContext),
-      this.directory1.delete(apiContext),
-      this.directory2.delete(apiContext),
-      this.file1.delete(apiContext),
-      this.file2.delete(apiContext),
-      this.spreadsheet1.delete(apiContext),
-      this.spreadsheet2.delete(apiContext),
-      this.worksheet1.delete(apiContext),
-      this.worksheet2.delete(apiContext),
-    ];
-
-    return await Promise.allSettled(promises);
+  static async postRequisitesForTests(_apiContext: APIRequestContext) {
+    // Temporary: entity teardown removed to prevent OOM kills (exit 137)
+    // caused by 60+ concurrent cascade DELETE requests spiking memory.
+    // Monitoring AUT runs to confirm stability before deciding on permanent approach.
   }
 
   static saveResponseData() {

@@ -23,6 +23,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TEAM;
@@ -124,7 +125,9 @@ import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -174,16 +177,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return new ResultList<>(new ArrayList<>(), null, null, 0);
     }
 
-    InheritedFieldQuery query =
-        InheritedFieldQuery.forGlossaryTerm(term.getFullyQualifiedName(), offset, limit);
+    String fqn = term.getFullyQualifiedName();
+    InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, offset, limit);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
             query,
             () -> {
-              LOG.warn(
-                  "Search fallback for glossary term {} assets. Returning empty list.",
-                  term.getFullyQualifiedName());
+              LOG.warn("Search fallback for glossary term {} assets. Returning empty list.", fqn);
               return new InheritedFieldResult(new ArrayList<>(), 0);
             });
 
@@ -196,31 +197,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return getGlossaryTermAssets(term.getId(), limit, offset);
   }
 
-  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount() {
+  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount(String parent) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for glossary term asset counts");
       return new HashMap<>();
     }
 
-    List<GlossaryTerm> allGlossaryTerms =
-        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    List<String> fqns;
+    if (parent != null && !parent.isEmpty()) {
+      fqns =
+          daoCollection.glossaryTermDAO().getNestedTerms(parent).stream()
+              .map(json -> JsonUtils.readTree(json).path("fullyQualifiedName").asText())
+              .collect(Collectors.toList());
+    } else {
+      fqns =
+          listAll(getFields("fullyQualifiedName"), new ListFilter(null)).stream()
+              .map(GlossaryTerm::getFullyQualifiedName)
+              .collect(Collectors.toList());
+    }
+
     Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();
 
-    for (GlossaryTerm term : allGlossaryTerms) {
-      InheritedFieldQuery query =
-          InheritedFieldQuery.forGlossaryTerm(term.getFullyQualifiedName(), 0, 0);
+    for (String fqn : fqns) {
+      InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, 0, 0);
 
       Integer count =
           inheritedFieldEntitySearch.getCountForField(
               query,
               () -> {
-                LOG.warn(
-                    "Search fallback for glossary term {} asset count. Returning 0.",
-                    term.getFullyQualifiedName());
+                LOG.warn("Search fallback for glossary term {} asset count. Returning 0.", fqn);
                 return 0;
               });
 
-      glossaryTermAssetCounts.put(term.getFullyQualifiedName(), count);
+      glossaryTermAssetCounts.put(fqn, count);
     }
 
     return glossaryTermAssetCounts;
@@ -379,6 +388,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected String getInheritableFields() {
     return "owners,domains,reviewers";
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    return descriptors;
   }
 
   @Override
@@ -1495,6 +1517,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     daoCollection
         .tagUsageDAO()
         .deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
+
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeFromCondition(
+                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
   }
 
   @Override
@@ -2177,6 +2204,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
 
       updateEntityLinks(oldFqn, newFqn, updated);
+
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renamePrefixInCondition(
+                  condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
       if (nameChanged) {
         recordChange("name", oldTermName, updated.getName());

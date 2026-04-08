@@ -334,6 +334,13 @@ class LookerUnitTest(TestCase):
             "`db.schema.table`",
         )
 
+        self.assertEqual(
+            self.looker._clean_table_name(
+                "`table_catalog`.`table_schema`.`table_name`", Dialect.DATABRICKS
+            ),
+            "table_catalog.table_schema.table_name",
+        )
+
     def test_render_table_name(self):
         """
         Check that table is rendered correctly if "openmetadata" or default condition apply, or no templating is present

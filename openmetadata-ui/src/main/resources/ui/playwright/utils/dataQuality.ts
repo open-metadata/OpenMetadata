@@ -14,6 +14,7 @@ import { expect, Page, Response } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 /** Recharts PieChart id for the Test Case Result pie on the Data Quality dashboard. */
@@ -147,18 +148,15 @@ export const addTestCaseToLogicalTestSuite = async (
   testCaseName: string
 ) => {
   await page.goto(`test-suites/${testSuiteName}`);
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
   await page.click('[data-testid="add-test-case-btn"]');
   await testCaseResponse;
-  await page.waitForSelector(
-    "[data-testid='test-case-selection-card'] [data-testid='loader']",
-    { state: 'detached' }
-  );
+  await page
+    .locator("[data-testid='test-case-selection-card'] [data-testid='loader']")
+    .waitFor({ state: 'detached' });
 
   const getTestCase = page.waitForResponse(
     `/api/v1/dataQuality/testCases/search/list?*`
@@ -172,9 +170,9 @@ export const addTestCaseToLogicalTestSuite = async (
   );
   await page.click('[data-testid="submit"]');
   await updateTestCase;
-  await page.waitForSelector('[data-testid="test-case-selection-card"]', {
-    state: 'detached',
-  });
+  await page
+    .locator('[data-testid="test-case-selection-card"]')
+    .waitFor({ state: 'detached' });
 };
 
 export const removeTestCasesFromLogicalTestSuite = async (
@@ -264,4 +262,132 @@ export const addTestSuitePipeline = async (page: Page) => {
   );
   await page.getByTestId('view-service-button').click();
   await testSuiteDetailsResponse;
+};
+
+export const navigateToDataQualityTestCases = async (page: Page) => {
+  await sidebarClick(page, SidebarItem.DATA_QUALITY);
+  const listResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testCases/search/list?*fields=*'
+  );
+  await page.getByTestId('test-cases').click();
+  await listResponse;
+  await page.locator('[data-testid="test-case-container"]').waitFor();
+};
+
+export const selectTestCasesByCheckbox = async (
+  page: Page,
+  count: number = 1
+) => {
+  const rows = page.locator('tr[data-row-key]');
+  await expect(rows.first()).toBeVisible();
+
+  for (let i = 0; i < count; i++) {
+    const checkbox = rows.nth(i).locator('input[type="checkbox"]');
+    await checkbox.check();
+  }
+};
+
+export const verifyTestCaseSelectionCount = async (
+  page: Page,
+  count: number
+) => {
+  await expect(page.getByText(`${count} test case(s) selected`)).toBeVisible();
+  await expect(page.getByTestId('add-selected-to-bundle-suite')).toBeVisible();
+};
+
+export const openCreateNewBundleSuiteForm = async (page: Page) => {
+  await page.getByTestId('add-selected-to-bundle-suite').click();
+  const listResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testCases/search/list?*'
+  );
+  await page.getByTestId('create-new-bundle-suite').click();
+  await listResponse;
+  await page.locator('form.bundle-suite-form').waitFor();
+};
+
+export const fillAndSubmitBundleSuiteForm = async (
+  page: Page,
+  name: string
+) => {
+  await page.getByTestId('test-suite-name').fill(name);
+  const createResponse = page.waitForResponse('/api/v1/dataQuality/testSuites');
+  await page.getByTestId('submit-button').click();
+  await createResponse;
+};
+
+export const openAddToExistingBundleSuiteModal = async (page: Page) => {
+  await page.getByTestId('add-selected-to-bundle-suite').click();
+  const listResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testSuites/search/list?*'
+  );
+  await page.getByTestId('add-to-existing-bundle-suite').click();
+  await listResponse;
+};
+
+export const selectExistingBundleSuite = async (
+  page: Page,
+  suiteName: string
+) => {
+  const modal = page.getByRole('dialog', {
+    name: 'Add test cases to Bundle Suite',
+  });
+
+  await expect(modal).toBeVisible();
+
+  const dropdownInput = modal.getByRole('combobox').first();
+  await dropdownInput.click();
+  await dropdownInput.fill(suiteName);
+
+  const dropdown = page.locator('.ant-select-dropdown:visible');
+  const option = dropdown.locator('.ant-select-item-option', {
+    hasText: suiteName,
+  });
+
+  await expect(option).toBeVisible();
+  await option.click();
+};
+
+export const submitAddToExistingBundleSuite = async (page: Page) => {
+  const modal = page.getByRole('dialog', {
+    name: 'Add test cases to Bundle Suite',
+  });
+
+  const addResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testCases/logicalTestCases/bulk'
+  );
+
+  await modal.getByRole('button', { name: 'Add', exact: true }).click();
+  await addResponse;
+};
+
+export const verifyBundleSuitePageLoaded = async (
+  page: Page,
+  suiteName: string,
+  expectedTestCaseCount: number
+) => {
+  await expect(page).toHaveURL(new RegExp(`.*test-suites.*${suiteName}.*`));
+
+  await expect
+    .poll(
+      async () => {
+        const listTestCasesResponse = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list?*'
+        );
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
+        await expect(page.getByTestId('entity-header-name')).toBeVisible();
+        await listTestCasesResponse;
+
+        const rows = await page
+          .locator('[data-testid="test-case-table"] tbody tr[data-row-key]')
+          .count();
+
+        return rows;
+      },
+      {
+        timeout: 15000,
+        intervals: [3000],
+      }
+    )
+    .toBe(expectedTestCaseCount);
 };

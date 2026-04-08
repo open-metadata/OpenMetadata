@@ -28,9 +28,6 @@ public class DefaultPromptsContext {
     McpSchema.GetPromptResult result;
     try {
       switch (promptName) {
-        case "create-greeting":
-          result = new GreetingsPrompt().callPrompt(promptRequest);
-          break;
         case "search_metadata":
           result = new SearchPrompt().callPrompt(promptRequest);
           break;

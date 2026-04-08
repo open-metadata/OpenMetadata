@@ -469,7 +469,16 @@ public interface CollectionDAO {
   AIGovernancePolicyDAO aiGovernancePolicyDAO();
 
   @CreateSqlObject
+  McpServerDAO mcpServerDAO();
+
+  @CreateSqlObject
+  McpExecutionDAO mcpExecutionDAO();
+
+  @CreateSqlObject
   LLMServiceDAO llmServiceDAO();
+
+  @CreateSqlObject
+  McpServiceDAO mcpServiceDAO();
 
   @CreateSqlObject
   SearchIndexJobDAO searchIndexJobDAO();
@@ -1767,6 +1776,37 @@ public interface CollectionDAO {
         condition = "AND deleted = TRUE";
       }
       return findToBatchWithCondition(fromIds, relation, toEntityType, condition);
+    }
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation = :relation "
+            + "AND fromEntity = :fromEntityType "
+            + "AND toEntity = :toEntityType "
+            + "<cond>")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatchWithCondition(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("relation") int relation,
+        @Bind("fromEntityType") String fromEntityType,
+        @Bind("toEntityType") String toEntityType,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findToBatch(
+        List<String> fromIds,
+        String fromEntityType,
+        String toEntityType,
+        int relation,
+        Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findToBatchWithCondition(fromIds, relation, fromEntityType, toEntityType, condition);
     }
 
     @SqlQuery(
@@ -6154,8 +6194,9 @@ public interface CollectionDAO {
             new UsageStats()
                 .withCount(r.getInt("count30"))
                 .withPercentileRank(r.getDouble("percentile30"));
+        java.sql.Date usageDate = r.getDate("usageDate");
         return new UsageDetails()
-            .withDate(r.getString("usageDate"))
+            .withDate(usageDate != null ? usageDate.toString() : null)
             .withDailyStats(dailyStats)
             .withWeeklyStats(weeklyStats)
             .withMonthlyStats(monthlyStats);
@@ -6197,9 +6238,10 @@ public interface CollectionDAO {
             new UsageStats()
                 .withCount(r.getInt("count30"))
                 .withPercentileRank(r.getDouble("percentile30"));
+        java.sql.Date usageDate = r.getDate("usageDate");
         UsageDetails usageDetails =
             new UsageDetails()
-                .withDate(r.getString("usageDate"))
+                .withDate(usageDate != null ? usageDate.toString() : null)
                 .withDailyStats(dailyStats)
                 .withWeeklyStats(weeklyStats)
                 .withMonthlyStats(monthlyStats);
@@ -7876,6 +7918,9 @@ public interface CollectionDAO {
         "DELETE FROM apps_extension_time_series WHERE appId = :appId AND extension = :extension")
     void delete(@Bind("appId") String appId, @Bind("extension") String extension);
 
+    @SqlUpdate("DELETE FROM apps_extension_time_series WHERE appId = :appId")
+    void deleteAllByAppId(@Bind("appId") String appId);
+
     @SqlQuery(
         "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND <service_filter>")
     int listAppExtensionCount(
@@ -9380,6 +9425,12 @@ public interface CollectionDAO {
                 + "WHERE workflowInstanceId = :workflowInstanceId AND stage = :stage ORDER BY timestamp DESC")
     List<String> listWorkflowInstanceStateForStage(
         @Bind("workflowInstanceId") String workflowInstanceId, @Bind("stage") String stage);
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM workflow_instance_state_time_series "
+                + "WHERE workflowInstanceId = :workflowInstanceId ORDER BY timestamp ASC")
+    List<String> listAllStatesForInstance(@Bind("workflowInstanceId") String workflowInstanceId);
   }
 
   interface RecognizerFeedbackDAO {
@@ -9832,6 +9883,92 @@ public interface CollectionDAO {
     }
   }
 
+  interface McpServerDAO extends EntityDAO<org.openmetadata.schema.entity.ai.McpServer> {
+    @Override
+    default String getTableName() {
+      return "mcp_server_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.McpServer> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.McpServer.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface McpExecutionDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "mcp_execution_entity";
+    }
+
+    @Override
+    default String getPartitionFieldName() {
+      return "serverId";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO <table>(json) VALUES (:json) AS new_data ON DUPLICATE KEY UPDATE json = new_data.json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO <table>(json) VALUES (:json::jsonb) ON CONFLICT (id) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertWithoutExtension(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO <table>(json) VALUES (:json) AS new_data ON DUPLICATE KEY UPDATE json = new_data.json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO <table>(json) VALUES (:json::jsonb) ON CONFLICT (id) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insert(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM <table> WHERE serverId = :serverId AND timestamp = :timestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM <table> WHERE serverId = :serverId AND timestamp = :timestamp",
+        connectionType = POSTGRES)
+    void deleteAtTimestamp(
+        @Define("table") String table,
+        @Bind("serverId") String serverId,
+        @Bind("extension") String extension,
+        @Bind("timestamp") Long timestamp);
+
+    @SqlQuery(
+        "SELECT json FROM <table> WHERE serverId = :serverId ORDER BY timestamp DESC LIMIT :limit")
+    List<String> listByServerId(
+        @Define("table") String table, @Bind("serverId") String serverId, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT count(*) FROM <table> <cond>")
+    int listCount(@Define("table") String table, @Define("cond") String condition);
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM <table> WHERE serverId = :serverId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM <table> WHERE serverId = :serverId",
+        connectionType = POSTGRES)
+    void deleteByServerId(@Define("table") String table, @Bind("serverId") String serverId);
+  }
+
   interface LLMServiceDAO extends EntityDAO<org.openmetadata.schema.entity.services.LLMService> {
     @Override
     default String getTableName() {
@@ -9841,6 +9978,23 @@ public interface CollectionDAO {
     @Override
     default Class<org.openmetadata.schema.entity.services.LLMService> getEntityClass() {
       return org.openmetadata.schema.entity.services.LLMService.class;
+    }
+  }
+
+  interface McpServiceDAO extends EntityDAO<org.openmetadata.schema.entity.services.McpService> {
+    @Override
+    default String getTableName() {
+      return "mcp_service_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.services.McpService> getEntityClass() {
+      return org.openmetadata.schema.entity.services.McpService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
     }
   }
 
@@ -9930,6 +10084,9 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM search_index_job WHERE status IN ('COMPLETED', 'FAILED', 'STOPPED') AND completedAt < :before")
     int deleteOldJobs(@Bind("before") long before);
+
+    @SqlUpdate("DELETE FROM search_index_job")
+    void deleteAll();
 
     @SqlUpdate(
         "UPDATE search_index_job SET registeredServerCount = :serverCount, updatedAt = :updatedAt WHERE id = :id")
@@ -10246,6 +10403,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM search_index_partition WHERE jobId = :jobId")
     void deleteByJobId(@Bind("jobId") String jobId);
+
+    @SqlUpdate("DELETE FROM search_index_partition")
+    void deleteAll();
 
     @SqlQuery(
         "SELECT assignedServer, "
@@ -10887,6 +11047,16 @@ public interface CollectionDAO {
       return claimed;
     }
 
+    @SqlQuery(
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+            + "FROM search_index_retry_queue ORDER BY retryCount DESC, claimedAt DESC "
+            + "LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
+    List<SearchIndexRetryRecord> listAll(@Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_retry_queue")
+    int countAll();
+
     class SearchIndexRetryRecordMapper implements RowMapper<SearchIndexRetryRecord> {
       @Override
       public SearchIndexRetryRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -11137,6 +11307,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM search_index_server_stats WHERE jobId = :jobId")
     void deleteByJobId(@Bind("jobId") String jobId);
+
+    @SqlUpdate("DELETE FROM search_index_server_stats")
+    void deleteAll();
 
     class ServerStatsMapper implements RowMapper<ServerStatsRecord> {
       @Override

@@ -357,6 +357,7 @@ class DefaultInheritedFieldEntitySearchTest {
     assertEquals("dataProducts.fullyQualifiedName", dataProduct.getFieldPath());
     assertFalse(dataProduct.isIncludeDeleted());
     assertEquals("tags.tagFQN", glossary.getFieldPath());
+    assertFalse(glossary.isSupportsHierarchy());
     assertEquals("owners.id", team.getFieldPath());
     assertEquals(InheritedFieldEntitySearch.QueryFilterType.OWNER_ASSETS, team.getFilterType());
     assertEquals(List.of("user", "team1"), user.getFieldValues());

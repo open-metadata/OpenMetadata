@@ -16,7 +16,7 @@ import type { HTMLAttributes, ReactNode } from 'react';
 export type DividerOrientation = 'horizontal' | 'vertical';
 export type DividerLabelAlignment = 'start' | 'center' | 'end';
 
-export interface DividerProps extends HTMLAttributes<HTMLHRElement> {
+export interface DividerProps extends HTMLAttributes<HTMLDivElement> {
   orientation?: DividerOrientation;
   label?: ReactNode;
   labelAlign?: DividerLabelAlignment;
@@ -31,32 +31,35 @@ export const Divider = ({
 }: DividerProps) => {
   if (orientation === 'vertical') {
     return (
-      <hr
+      <div
         {...props}
         aria-orientation="vertical"
         className={cx(
           'tw:self-stretch tw:w-px tw:shrink-0 tw:bg-border-secondary',
           className
         )}
+        role="separator"
       />
     );
   }
 
   if (!label) {
     return (
-      <hr
+      <div
         {...props}
         aria-orientation="horizontal"
         className={cx(
           'tw:w-full tw:h-px tw:shrink-0 tw:bg-border-secondary',
           className
         )}
+        role="separator"
       />
     );
   }
 
   return (
-    <hr
+    <div
+      role="separator"
       {...props}
       aria-orientation="horizontal"
       className={cx('tw:flex tw:items-center tw:w-full tw:gap-2', className)}>
@@ -69,7 +72,7 @@ export const Divider = ({
       {labelAlign !== 'end' && (
         <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
       )}
-    </hr>
+    </div>
   );
 };
 

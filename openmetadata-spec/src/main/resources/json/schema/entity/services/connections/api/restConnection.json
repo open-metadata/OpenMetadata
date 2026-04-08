@@ -58,6 +58,14 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "title": "Default API Endpoint Filter Pattern"
     },
+    "verifySSL": {
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "description": "Supports Metadata Extraction.",

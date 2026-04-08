@@ -27,6 +27,10 @@ export interface Dashboard {
     charts?:        EntityReference[];
     dashboardType?: DashboardType;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data models used by this dashboard or the charts contained on it.
      */
     dataModels?: EntityReference[];
@@ -436,6 +440,8 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Reference to the data contract for this entity.
+ *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Link to service where this dashboard is hosted in.
@@ -499,6 +505,7 @@ export enum DashboardType {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",

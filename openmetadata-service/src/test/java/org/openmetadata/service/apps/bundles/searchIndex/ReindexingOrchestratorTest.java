@@ -143,7 +143,7 @@ class ReindexingOrchestratorTest {
       verify(strategy, times(2)).addListener(any(ReindexingProgressListener.class));
       verify(strategy).execute(any(ReindexingConfiguration.class), eq(jobContext));
       verify(context).storeRunStats(stats);
-      verify(context, times(2)).storeRunRecord(anyString());
+      verify(context, times(3)).storeRunRecord(anyString());
       assertEquals(EventPublisherJob.Status.COMPLETED, orchestrator.getJobData().getStatus());
       assertSame(stats, orchestrator.getJobData().getStats());
       assertEquals(
@@ -269,7 +269,7 @@ class ReindexingOrchestratorTest {
     orchestrator.stop();
 
     verify(strategy).stop();
-    verify(context).storeRunRecord(anyString());
+    verify(context, times(2)).storeRunRecord(anyString());
     verify(context).pushStatusUpdate(appRunRecord, true);
     assertEquals(EventPublisherJob.Status.STOPPED, jobData.getStatus());
     assertEquals(AppRunRecord.Status.STOPPED, appRunRecord.getStatus());
@@ -454,7 +454,7 @@ class ReindexingOrchestratorTest {
       invokePrivate("finalizeJobExecution", new Class<?>[0]);
 
       assertEquals(2, cleanerConstruction.constructed().size());
-      verify(context).storeRunRecord(anyString());
+      verify(context, times(2)).storeRunRecord(anyString());
       assertEquals(AppRunRecord.Status.STOPPED, appRunRecord.getStatus());
     }
   }

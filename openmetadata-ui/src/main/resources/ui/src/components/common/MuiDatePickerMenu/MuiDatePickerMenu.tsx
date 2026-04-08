@@ -278,6 +278,11 @@ const MuiDatePickerMenu = ({
           vertical: 'bottom',
         }}
         open={Boolean(anchorEl)}
+        slotProps={{
+          paper: {
+            'data-react-aria-top-layer': true,
+          } as object,
+        }}
         sx={{
           '.MuiPaper-root': {
             maxHeight: '500px',

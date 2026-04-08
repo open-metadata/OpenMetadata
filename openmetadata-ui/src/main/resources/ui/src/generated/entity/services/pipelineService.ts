@@ -20,6 +20,10 @@ export interface PipelineService {
     changeDescription?: ChangeDescription;
     connection?:        PipelineConnection;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -240,7 +244,7 @@ export interface ConfigObject {
      *
      * Matillion Auth Configuration
      */
-    connection?: AirflowConnection;
+    connection?: ConnectionClass;
     /**
      * Pipeline Service Management/UI URI.
      *
@@ -403,6 +407,12 @@ export interface ConfigObject {
      */
     brokerConfig?: BrokerConfiguration;
     /**
+     * Map OpenLineage dataset namespaces (or prefixes) to OpenMetadata database service names.
+     * Used when multiple services of the same type exist. Example: 'mysql://cluster-a:3306' ->
+     * 'mysql-cluster-a'.
+     */
+    namespaceToServiceMapping?: { [key: string]: string };
+    /**
      * We support username/password or No Authentication
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
@@ -430,6 +440,11 @@ export interface ConfigObject {
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
     projectIds?: string[];
+    /**
+     * Number of days to look back when fetching lineage events from Matillion DPC OpenLineage
+     * API.
+     */
+    lineageLookbackDays?: number;
     /**
      * Available sources to fetch metadata.
      */
@@ -824,8 +839,10 @@ export interface AzureCredentials {
  * Matillion Auth Configuration
  *
  * Matillion ETL Auth Config.
+ *
+ * Matillion Data Productivity Cloud Auth Config.
  */
-export interface AirflowConnection {
+export interface ConnectionClass {
     /**
      * Airflow REST API version.
      */
@@ -869,7 +886,8 @@ export interface AirflowConnection {
      */
     databaseSchema?: string;
     /**
-     * Host and port of the MySQL service.
+     * Host and port of the MySQL service. For GCP CloudSQL, use the instance connection name in
+     * the format 'project_id:region:instance_name'.
      *
      * Host and port of the source service.
      *
@@ -958,6 +976,22 @@ export interface AirflowConnection {
      */
     password?:                      string;
     supportsViewLineageExtraction?: boolean;
+    /**
+     * OAuth2 Client ID for Matillion DPC authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth2 Client Secret for Matillion DPC authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Personal Access Token for Matillion DPC. Alternative to OAuth2 Client Credentials.
+     */
+    personalAccessToken?: string;
+    /**
+     * Matillion DPC region. Determines the API base URL.
+     */
+    region?: Region;
 }
 
 /**
@@ -1013,6 +1047,8 @@ export interface AuthenticationConfiguration {
  * GCP credentials configuration.
  *
  * GCP credentials configs.
+ *
+ * GCP credentials to use. If not provided, Application Default Credentials will be used.
  */
 export interface GCPCredentials {
     /**
@@ -1150,14 +1186,26 @@ export interface MWAAConfiguration {
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
+ *
+ * GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.
  */
 export interface AuthConfigurationType {
     /**
      * Password to connect to source.
+     *
+     * Database user password. Leave empty if using IAM database authentication.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+    /**
+     * Use GCP IAM for database authentication instead of a password.
+     */
+    enableIamAuth?: boolean;
+    /**
+     * GCP credentials to use. If not provided, Application Default Credentials will be used.
+     */
+    gcpConfig?: GCPCredentials;
 }
 
 /**
@@ -1188,6 +1236,14 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Matillion DPC region. Determines the API base URL.
+ */
+export enum Region {
+    Eu1 = "eu1",
+    Us1 = "us1",
 }
 
 /**
@@ -1307,6 +1363,7 @@ export enum SSLMode {
  */
 export enum Type {
     Backend = "Backend",
+    MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
     Mysql = "Mysql",
     Postgres = "Postgres",
@@ -1544,14 +1601,16 @@ export enum VerifySSL {
 }
 
 /**
- * List of data products this entity is part of.
+ * Reference to the data contract for this entity.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * List of data products this entity is part of.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -1609,6 +1668,7 @@ export interface EntityReference {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",

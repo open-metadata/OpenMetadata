@@ -254,13 +254,18 @@ public class SearchClusterMetrics {
     recommendedQueueSize = Math.max(1000, recommendedQueueSize);
 
     // --- CPU budget: derive internal thread pool sizes from available cores ---
-    // Each worker is a platform thread driving: DB read → field-fetch → doc-build → bulk send
-    // On small instances (2 vCPUs), uncapped threads cause 99%+ CPU and throughput collapse
+    // Consumer threads are mostly I/O-bound (waiting on search bulk responses), so they
+    // don't need a full core each. We cap CPU-intensive pools (field-fetch, doc-build) tightly
+    // but allow more consumer threads since they spend ~90% of time in I/O wait.
+    // On small instances (2 vCPUs) we must still reserve capacity for healthcheck probes
+    // to avoid liveness failures and SIGKILL (137).
     double targetCpuPercent = 0.70;
     double cpuBudget = availableCores * targetCpuPercent;
     int cpuBudgetedWorkers = Math.max(1, availableCores - 1);
-    recommendedConsumerThreads = Math.min(recommendedConsumerThreads, cpuBudgetedWorkers);
-    int recommendedFieldFetchThreads = Math.max(2, Math.min(50, availableCores * 2));
+    // Consumer threads are I/O-bound — allow more than CPU-bound budget
+    int consumerCap = Math.max(2, cpuBudgetedWorkers * 3);
+    recommendedConsumerThreads = Math.min(recommendedConsumerThreads, consumerCap);
+    int recommendedFieldFetchThreads = Math.max(2, Math.min(50, cpuBudgetedWorkers * 2));
     int recommendedDocBuildThreads = Math.max(1, Math.min(50, (int) Math.floor(cpuBudget * 2)));
     recommendedConcurrentRequests =
         Math.min(recommendedConcurrentRequests, Math.max(10, availableCores * 10));

@@ -5,6 +5,7 @@ When this DAG runs with the OL provider installed and transport configured,
 Airflow 3.x emits COMPLETE events with these datasets as inputs/outputs.
 The OM OpenLineage endpoint resolves them to existing sample_data tables.
 """
+
 from datetime import datetime, timezone
 
 from airflow.decorators import dag, task

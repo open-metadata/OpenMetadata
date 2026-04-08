@@ -50,6 +50,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 TASK_STATUS_MAP = {
+    "FINISHED": StatusType.Successful,
     "RUNNING": StatusType.Pending,
     "FAILED": StatusType.Failed,
     "CANCELED": StatusType.Failed,
@@ -81,7 +82,8 @@ class FlinkSource(PipelineServiceSource):
         pipeline_info = self.client.get_pipeline_info(pipeline_details.id)
         return [
             Task(
-                name=f"{task.name}_{task.id}",
+                name=str(task.id),
+                displayName=str(task.name),
             )
             for task in pipeline_info.tasks
         ]
@@ -136,7 +138,7 @@ class FlinkSource(PipelineServiceSource):
             for task in self.client.get_pipeline_info(pipeline_details.id).tasks:
                 task_status.append(
                     TaskStatus(
-                        name=f"{task.name}_{task.id}",
+                        name=str(task.id),
                         executionStatus=TASK_STATUS_MAP.get(task.status),
                         startTime=Timestamp(task.start_time),
                         endTime=Timestamp(task.end_time),

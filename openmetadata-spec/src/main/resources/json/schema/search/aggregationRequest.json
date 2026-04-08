@@ -43,6 +43,10 @@
         "type": "string"
       }
     },
+    "queryText": {
+      "description": "Free-text search query used to scope aggregation results to matching documents.",
+      "type": "string"
+    },
     "topHits": {
       "description": "Optional top_hits sub-aggregation to fetch selected source fields per bucket.",
       "type": "object",

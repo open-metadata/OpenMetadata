@@ -25,7 +25,10 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -358,6 +361,14 @@ public class AppScheduler {
         }
       }
       if (!isJobRunning) {
+        // Quartz doesn't see the job, but a distributed indexing job may still be
+        // running independently. Try to stop it via the coordinator directly.
+        if (tryStopViaApp(application)) {
+          LOG.info(
+              "No Quartz job found for {}, but stopped running distributed job via coordinator",
+              application.getName());
+          return;
+        }
         LOG.error(
             "No running job found for application: {}. Scheduled key: {}, OnDemand key: {}",
             application.getName(),
@@ -427,6 +438,19 @@ public class AppScheduler {
       }
     } catch (SchedulerException ex) {
       LOG.error("Failed to stop job execution for app: {}", application.getName(), ex);
+    }
+  }
+
+  private boolean tryStopViaApp(App application) {
+    try {
+      AbstractNativeApplication appInstance =
+          ApplicationHandler.getInstance()
+              .runAppInit(
+                  application, Entity.getCollectionDAO(), Entity.getSearchRepository(), true);
+      return appInstance.tryStopOutsideQuartz();
+    } catch (Exception e) {
+      LOG.error("Failed to stop app via fallback: {}", application.getName(), e);
+      return false;
     }
   }
 

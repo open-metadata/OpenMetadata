@@ -153,4 +153,53 @@ class RuleEngineTest {
       assertTrue(errors.isEmpty());
     }
   }
+
+  @Test
+  void validateRuleWithEmptyStringRuleTreatsAsFailure() {
+    Table table = new Table().withId(UUID.randomUUID());
+    SemanticsRule emptyRule =
+        new SemanticsRule().withName("empty_rule").withEnabled(true).withRule("\"\"");
+
+    List<SemanticsRule> failed =
+        RuleEngine.getInstance().evaluateAndReturn(table, List.of(emptyRule), false, false);
+
+    assertEquals(List.of(emptyRule), failed, "Empty string rule should be treated as a failure");
+  }
+
+  @Test
+  void validateRuleWithNonBooleanResultTreatsAsFailure() {
+    Table table = new Table().withId(UUID.randomUUID());
+    SemanticsRule numericRule =
+        new SemanticsRule().withName("numeric_rule").withEnabled(true).withRule("42");
+
+    List<SemanticsRule> failed =
+        RuleEngine.getInstance().evaluateAndReturn(table, List.of(numericRule), false, false);
+
+    assertEquals(
+        List.of(numericRule), failed, "Non-boolean rule result should be treated as a failure");
+  }
+
+  @Test
+  void validateRuleWithNullResultTreatsAsFailure() {
+    Table table = new Table().withId(UUID.randomUUID());
+    SemanticsRule nullRule =
+        new SemanticsRule().withName("null_rule").withEnabled(true).withRule("null");
+
+    List<SemanticsRule> failed =
+        RuleEngine.getInstance().evaluateAndReturn(table, List.of(nullRule), false, false);
+
+    assertEquals(List.of(nullRule), failed, "Null rule result should be treated as a failure");
+  }
+
+  @Test
+  void validateRuleWithValidBooleanTruePassesThrough() {
+    Table table = new Table().withId(UUID.randomUUID());
+    SemanticsRule trueRule =
+        new SemanticsRule().withName("true_rule").withEnabled(true).withRule("true");
+
+    List<SemanticsRule> failed =
+        RuleEngine.getInstance().evaluateAndReturn(table, List.of(trueRule), false, false);
+
+    assertTrue(failed.isEmpty(), "Rule evaluating to true should pass");
+  }
 }

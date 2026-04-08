@@ -322,11 +322,12 @@ export const getGlossaryTermAssets = async (
   return response.data;
 };
 
-export const getGlossaryTermsAssetCounts = async (): Promise<
-  Record<string, number>
-> => {
+export const getGlossaryTermsAssetCounts = async (
+  parent?: string
+): Promise<Record<string, number>> => {
   const response = await APIClient.get<Record<string, number>>(
-    '/glossaryTerms/assets/counts'
+    '/glossaryTerms/assets/counts',
+    { params: parent ? { parent } : undefined }
   );
 
   return response.data;

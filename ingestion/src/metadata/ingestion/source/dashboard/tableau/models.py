@@ -123,6 +123,7 @@ class DatasourceField(BaseModel):
     name: Optional[str] = None
     upstreamColumns: Optional[List[Union[UpstreamColumn, None]]] = None
     description: Optional[str] = None
+    formula: Optional[str] = None
 
 
 class UpstreamTableColumn(BaseModel):
@@ -158,6 +159,7 @@ class DataSource(BaseModel):
     id: str
     name: Optional[str] = None
     description: Optional[str] = None
+    projectName: Optional[str] = None
     tags: Optional[List[TableauDataModelTag]] = []
     fields: Optional[List[DatasourceField]] = None
     upstreamTables: Optional[List[UpstreamTable]] = None

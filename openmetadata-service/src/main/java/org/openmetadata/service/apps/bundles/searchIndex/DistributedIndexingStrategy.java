@@ -95,6 +95,14 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       return doExecute(config, context, startTime);
     } catch (Exception e) {
       LOG.error("Distributed reindexing failed", e);
+      if (searchIndexSink != null) {
+        try {
+          searchIndexSink.close();
+        } catch (Exception closeEx) {
+          LOG.error("Error closing search index sink during exception handling", closeEx);
+        }
+        searchIndexSink = null;
+      }
       Stats stats = currentStats.get();
       return ExecutionResult.fromStats(stats, ExecutionResult.Status.FAILED, startTime);
     }
@@ -266,6 +274,13 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       LOG.warn("Distributed job monitoring interrupted");
     } finally {
       monitor.shutdownNow();
+      try {
+        if (!monitor.awaitTermination(5, TimeUnit.SECONDS)) {
+          LOG.warn("Distributed job monitor did not terminate within 5 seconds");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 
@@ -281,16 +296,6 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
           Entity.getCollectionDAO()
               .searchIndexServerStatsDAO()
               .getAggregatedStats(distributedJob.getId().toString());
-      if (serverStatsAggr != null) {
-        LOG.info(
-            "Fetched aggregated server stats for job {}: readerSuccess={}, readerFailed={}, "
-                + "sinkSuccess={}, sinkFailed={}",
-            distributedJob.getId(),
-            serverStatsAggr.readerSuccess(),
-            serverStatsAggr.readerFailed(),
-            serverStatsAggr.sinkSuccess(),
-            serverStatsAggr.sinkFailed());
-      }
     } catch (Exception e) {
       LOG.debug("Could not fetch aggregated server stats for job {}", distributedJob.getId(), e);
     }

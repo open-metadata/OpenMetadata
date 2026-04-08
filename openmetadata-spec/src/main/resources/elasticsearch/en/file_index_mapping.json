@@ -75,6 +75,12 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "id": {
         "type": "text",
         "fields": {
@@ -307,8 +313,11 @@
       "mimeType": {
         "type": "keyword"
       },
-      "extension": {
+      "fileExtension": {
         "type": "keyword"
+      },
+      "extension": {
+        "type": "flattened"
       },
       "path": {
         "type": "text",

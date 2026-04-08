@@ -19,7 +19,7 @@ on:
         type: string
 
 concurrency:
-  group: typescript-generation-${{ github.head_ref || github.run_id }}
+  group: typescript-generation-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:

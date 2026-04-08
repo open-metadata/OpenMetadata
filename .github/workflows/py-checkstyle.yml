@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: py-checkstyle-${{ github.head_ref }}
+  group: py-checkstyle-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
