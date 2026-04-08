@@ -514,10 +514,10 @@ export const AuthProvider = ({
                 // Refresh the token and retry the requests in the queue
                 tokenService.current
                   .refreshToken()
-                  .then((token) => {
+                  .then(async (token) => {
                     if (token) {
                       // Retry the pending requests
-                      initializeAxiosInterceptors();
+                      await initializeAxiosInterceptors();
                       pendingRequests.forEach(({ resolve, reject, config }) => {
                         axiosClient.request(config).then(resolve).catch(reject);
                       });

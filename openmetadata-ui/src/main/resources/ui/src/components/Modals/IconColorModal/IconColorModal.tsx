@@ -52,7 +52,7 @@ const IconColorModal: FC<StyleModalProps> = ({
       isDismissable={!isSaving}
       isOpen={open}
       onOpenChange={(v) => !v && !isSaving && onCancel()}>
-      <Modal>
+      <Modal data-testid="icon-color-modal">
         <Dialog title={t('label.edit-entity', { entity: t('label.style') })}>
           <Dialog.Content>
             <Form

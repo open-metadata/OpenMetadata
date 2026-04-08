@@ -62,6 +62,13 @@ ischema_names.update(
         "UInt8": SMALLINT,
         "IPv4": create_sqlalchemy_type("IPv4"),
         "IPv6": create_sqlalchemy_type("IPv6"),
+        # ClickHouse geo types (v21+)
+        "Point": create_sqlalchemy_type("Point"),
+        "Ring": create_sqlalchemy_type("Ring"),
+        "Polygon": create_sqlalchemy_type("Polygon"),
+        "MultiPolygon": create_sqlalchemy_type("MultiPolygon"),
+        "LineString": create_sqlalchemy_type("LineString"),
+        "MultiLineString": create_sqlalchemy_type("MultiLineString"),
     }
 )
 

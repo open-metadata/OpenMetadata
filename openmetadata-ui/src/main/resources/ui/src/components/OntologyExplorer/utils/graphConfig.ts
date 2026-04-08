@@ -87,6 +87,28 @@ export const HIERARCHY_DAGRE_RANK_SEP = 200;
 /** Extra separation when glossary hulls are shown so cross-glossary edges avoid overlapping nodes. */
 const CROSS_GLOSSARY_LAYOUT_EXTRA = 90;
 
+/**
+ * Scales a spacing value down for large graphs so the canvas stays compact
+ * enough for fitView to show all nodes at a legible zoom level.
+ * Small graphs (≤50 nodes) use the full base value unchanged.
+ */
+function adaptiveSpacing(base: number, nodeCount: number): number {
+  if (nodeCount <= 50) {
+    return base;
+  }
+  if (nodeCount <= 200) {
+    return Math.ceil(base * 0.7);
+  }
+  if (nodeCount <= 1000) {
+    return Math.ceil(base * 0.45);
+  }
+  if (nodeCount <= 5000) {
+    return Math.ceil(base * 0.25);
+  }
+
+  return Math.ceil(base * 0.15);
+}
+
 export function getLayoutConfig(
   layoutType: LayoutType | LayoutEngineType,
   nodeCount: number,
@@ -104,16 +126,25 @@ export function getLayoutConfig(
   const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
 
   if (engineType === LayoutEngine.Dagre) {
-    let nodesep = hasHulls
+    const baseNodeSep = hasHulls
       ? COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA
       : DAGRE_NODE_SEP;
-    let ranksep = hasHulls
+    const baseRankSep = hasHulls
       ? COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA
       : DAGRE_RANK_SEP;
 
+    let nodesep = adaptiveSpacing(baseNodeSep, nodeCount);
+    let ranksep = adaptiveSpacing(baseRankSep, nodeCount);
+
     if (isHierarchyMode) {
-      nodesep = Math.max(nodesep, HIERARCHY_DAGRE_NODE_SEP);
-      ranksep = Math.max(ranksep, HIERARCHY_DAGRE_RANK_SEP);
+      nodesep = Math.max(
+        nodesep,
+        adaptiveSpacing(HIERARCHY_DAGRE_NODE_SEP, nodeCount)
+      );
+      ranksep = Math.max(
+        ranksep,
+        adaptiveSpacing(HIERARCHY_DAGRE_RANK_SEP, nodeCount)
+      );
     }
 
     return {
