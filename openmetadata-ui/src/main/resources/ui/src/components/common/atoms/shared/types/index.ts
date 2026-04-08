@@ -149,7 +149,6 @@ export interface TableViewConfig<T> {
   listing: ListingData<T>;
   enableSelection?: boolean;
   entityLabelKey?: string;
-  customTableRow?: React.ComponentType<Record<string, unknown>>;
 }
 
 export interface DropdownConfig {
