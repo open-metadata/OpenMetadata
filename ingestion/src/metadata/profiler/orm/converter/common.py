@@ -63,6 +63,7 @@ class CommonMapTypes:
         DataType.GEOGRAPHY: sqa_types.SQASGeography,
         DataType.ENUM: sqlalchemy.Enum,
         DataType.JSON: sqlalchemy.JSON,
+        DataType.SUPER: sqlalchemy.JSON,
         DataType.UUID: CustomTypes.UUID.value,
         DataType.BYTEA: CustomTypes.BYTEA.value,
         DataType.NTEXT: sqlalchemy.NVARCHAR,

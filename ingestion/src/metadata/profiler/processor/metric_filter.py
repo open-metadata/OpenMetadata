@@ -34,6 +34,7 @@ from metadata.profiler.metrics.core import (
     TMetric,
 )
 from metadata.profiler.orm.converter.converter_registry import converter_registry
+from metadata.profiler.orm.registry import is_complex_profiler_type
 from metadata.profiler.registry import MetricRegistry
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
@@ -45,6 +46,11 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 
 class MetricFilter:
     """Metric filter class for profiler"""
+
+    COMPLEX_TYPE_METRIC_ALLOWLIST = {
+        StaticMetric: {"valuesCount", "nullCount"},
+        ComposedMetric: {"nullProportion"},
+    }
 
     @inject
     def __init__(
@@ -280,5 +286,9 @@ class MetricFilter:
         )
         if metrics:
             metrics = self.filter_column_metrics_from_table_config(metrics, column)
+
+        if is_complex_profiler_type(column.type):
+            allowed_metrics = self.COMPLEX_TYPE_METRIC_ALLOWLIST.get(metric_type, set())
+            return [metric for metric in metrics if metric.name() in allowed_metrics]
 
         return metrics

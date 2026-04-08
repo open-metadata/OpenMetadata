@@ -47,8 +47,9 @@ from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.profiler.metrics.core import MetricTypes, add_props
+from metadata.profiler.metrics.core import ComposedMetric, MetricTypes, add_props
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.converter.common import CommonMapTypes
 from metadata.profiler.processor.core import MissingMetricException, Profiler
 from metadata.profiler.processor.default import DefaultProfiler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
@@ -273,6 +274,55 @@ class ProfilerTest(TestCase):
                     assert metric.metrics[0].name.root == "custom_metric"
                 else:
                     assert metric.metrics[0].name() == "firstQuartile"
+
+    def test_complex_types_prepare_only_safe_metrics(self):
+        """Check that complex types only prepare safe metrics."""
+
+        class ComplexTypes(Base):
+            __tablename__ = "complex_types"
+            id = Column(Integer, primary_key=True)
+            array_col = Column(sqlalchemy.ARRAY(Integer, dimensions=1))
+            json_col = Column(sqlalchemy.JSON)
+            map_col = Column(sqa_types.SQAMap)
+            struct_col = Column(sqa_types.SQAStruct)
+
+        profiler = Profiler(
+            Metrics.valuesCount.value,
+            Metrics.nullCount.value,
+            Metrics.distinctCount.value,
+            Metrics.nullProportion.value,
+            Metrics.distinctProportion.value,
+            profiler_interface=self.sqa_profiler_interface,
+        )
+        profiler._columns = [
+            ComplexTypes.__table__.c.array_col,
+            ComplexTypes.__table__.c.json_col,
+            ComplexTypes.__table__.c.map_col,
+            ComplexTypes.__table__.c.struct_col,
+        ]
+
+        metrics = profiler._prepare_column_metrics()
+        static_metrics = {
+            metric.column.name: [col_metric.name() for col_metric in metric.metrics]
+            for metric in metrics
+            if metric.metric_type is MetricTypes.Static and metric.metrics
+        }
+
+        for column_name in {"array_col", "json_col", "map_col", "struct_col"}:
+            assert static_metrics[column_name] == ["valuesCount", "nullCount"]
+
+        composed_metrics = profiler.metric_filter.get_column_metrics(
+            ComposedMetric,
+            ComplexTypes.__table__.c.json_col,
+            self.sqa_profiler_interface.table_entity.serviceType,
+        )
+        assert [metric.name() for metric in composed_metrics] == ["nullProportion"]
+
+    def test_common_map_types_maps_super_to_json(self):
+        """Check that SUPER columns can be mapped for profiling."""
+        column = EntityColumn(name=ColumnName("payload"), dataType=DataType.SUPER)
+
+        assert CommonMapTypes().map_types(column, None) == sqlalchemy.JSON
 
     def test__prepare_table_metrics(self):
         """test _prepare_table_metrics returns as expected"""

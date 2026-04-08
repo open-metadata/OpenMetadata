@@ -137,6 +137,25 @@ NOT_COMPUTE = {
     DataType.XML.value,
     CustomTypes.UNDETERMINED.value.__name__,
 }
+COMPLEX_PROFILABLE_TYPES = {
+    sqlalchemy.ARRAY.__name__,
+    sqlalchemy.JSON.__name__,
+    sqa_types.SQAMap.__name__,
+    sqa_types.SQAStruct.__name__,
+    sqa_types.SQASet.__name__,
+    sqa_types.SQAUnion.__name__,
+    sqa_types.SQASGeography.__name__,
+    DataType.ARRAY.value,
+    DataType.JSON.value,
+    DataType.MAP.value,
+    DataType.STRUCT.value,
+    DataType.SET.value,
+    DataType.UNION.value,
+    DataType.GEOGRAPHY.value,
+    DataType.GEOMETRY.value,
+    DataType.SUPER.value,
+    CustomTypes.ARRAY.value.__name__,
+}
 FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
 QUANTIFIABLE_SET = {
@@ -208,6 +227,16 @@ def is_concatenable(_type) -> bool:
     if isinstance(_type, DataType):
         return _type.value in CONCATENABLE_SET
     return issubclass(_type.__class__, Concatenable)
+
+
+def is_complex_profiler_type(_type) -> bool:
+    """
+    Check if the type is a complex type for which we support
+    a restricted subset of profiler metrics.
+    """
+    if isinstance(_type, DataType):
+        return _type.value in COMPLEX_PROFILABLE_TYPES
+    return _type.__class__.__name__ in COMPLEX_PROFILABLE_TYPES
 
 
 def is_value_non_numeric(value) -> bool:

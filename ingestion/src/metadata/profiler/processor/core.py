@@ -50,7 +50,7 @@ from metadata.profiler.metrics.core import (
     TMetric,
 )
 from metadata.profiler.metrics.static.row_count import RowCount
-from metadata.profiler.orm.registry import NOT_COMPUTE
+from metadata.profiler.orm.registry import NOT_COMPUTE, is_complex_profiler_type
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.utils.logger import profiler_logger
 
@@ -377,7 +377,10 @@ class Profiler(Generic[TMetric]):
         columns = [
             column
             for column in self.columns
-            if column.type.__class__.__name__ not in NOT_COMPUTE
+            if (
+                column.type.__class__.__name__ not in NOT_COMPUTE
+                or is_complex_profiler_type(column.type)
+            )
         ]
         static_metrics = [
             ThreadPoolMetrics(
