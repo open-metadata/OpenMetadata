@@ -11,9 +11,10 @@
 """
 Sampling Models
 """
+from enum import Enum
 from typing import Any, List, Optional, Union
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from typing_extensions import Annotated
 
 from metadata.config.common import ConfigModel
@@ -34,6 +35,51 @@ from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.pii.types import ClassifiableEntityType
 
 
+class ProfileSampleConfigType(str, Enum):
+    STATIC = "STATIC"
+    DYNAMIC = "DYNAMIC"
+
+
+class DynamicSamplingThreshold(ConfigModel):
+    """Single threshold entry for dynamic sampling"""
+
+    rowCountThreshold: int
+    profileSample: Union[float, int]
+    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
+    samplingMethodType: Optional[SamplingMethodType] = None
+
+
+class DynamicSamplingConfig(ConfigModel):
+    """Configuration for dynamic sampling with row-count-based thresholds"""
+
+    thresholds: Optional[List[DynamicSamplingThreshold]] = None
+
+    @field_validator("thresholds")
+    @classmethod
+    def sort_thresholds_descending(
+        cls, v: Optional[List[DynamicSamplingThreshold]]
+    ) -> Optional[List[DynamicSamplingThreshold]]:
+        if v is not None:
+            return sorted(v, key=lambda t: t.rowCountThreshold, reverse=True)
+        return v
+
+
+class StaticSamplingConfig(ConfigModel):
+    """Configuration for static sampling"""
+
+    profileSample: Optional[Union[float, int]] = None
+    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
+    samplingMethodType: Optional[SamplingMethodType] = None
+
+
+class ProfileSampleConfig(ConfigModel):
+    """Profile sample configuration supporting static and dynamic sampling"""
+
+    enabled: bool = False
+    type: ProfileSampleConfigType = ProfileSampleConfigType.STATIC
+    config: Optional[Union[DynamicSamplingConfig, StaticSamplingConfig]] = None
+
+
 class BaseProfileConfig(ConfigModel):
     """base profile config"""
 
@@ -43,6 +89,7 @@ class BaseProfileConfig(ConfigModel):
     samplingMethodType: Optional[SamplingMethodType] = None
     sampleDataCount: Optional[int] = 100
     randomizedSample: Optional[bool] = True
+    profileSampleConfig: Optional[ProfileSampleConfig] = None
 
 
 class ColumnConfig(ConfigModel):
@@ -70,6 +117,7 @@ class TableConfig(BaseProfileConfig):
             profileSampleType=config.profileSampleType,
             sampleDataCount=config.sampleDataCount,
             samplingMethodType=config.samplingMethodType,
+            profileSampleConfig=config.profileSampleConfig,
         )
         return table_config
 
@@ -128,3 +176,4 @@ class SampleConfig(ConfigModel):
     profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
     samplingMethodType: Optional[SamplingMethodType] = None
     randomizedSample: Optional[bool] = True
+    profileSampleConfig: Optional[ProfileSampleConfig] = None

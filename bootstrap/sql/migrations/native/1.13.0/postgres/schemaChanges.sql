@@ -150,3 +150,128 @@ FROM user_entity ue, role_entity re
 WHERE ue.name = 'mcpapplicationbot'
   AND re.name = 'ApplicationBotImpersonationRole'
 ON CONFLICT DO NOTHING;
+
+-- Migrate profiler sampling config: move flat profileSample/profileSampleType/samplingMethodType
+-- into the new profileSampleConfig structure. Default to STATIC since DYNAMIC is new.
+
+-- table_entity: build profileSampleConfig from existing flat fields (skip if already migrated)
+UPDATE table_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{tableProfilerConfig,profileSampleConfig}',
+    jsonb_build_object(
+        'enabled', true,
+        'type', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{tableProfilerConfig,profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{tableProfilerConfig,profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{tableProfilerConfig,samplingMethodType}'
+        )
+    )
+)::json
+WHERE json::jsonb #>> '{tableProfilerConfig,profileSample}' IS NOT NULL
+  AND json::jsonb #> '{tableProfilerConfig,profileSampleConfig}' IS NULL;
+
+-- table_entity: remove old flat fields
+UPDATE table_entity
+SET json = (json::jsonb #- '{tableProfilerConfig,profileSample}'
+                        #- '{tableProfilerConfig,profileSampleType}'
+                        #- '{tableProfilerConfig,samplingMethodType}')::json
+WHERE json::jsonb #>> '{tableProfilerConfig,profileSample}' IS NOT NULL
+   OR json::jsonb #>> '{tableProfilerConfig,profileSampleType}' IS NOT NULL
+   OR json::jsonb #>> '{tableProfilerConfig,samplingMethodType}' IS NOT NULL;
+
+-- database_entity: build profileSampleConfig from existing flat fields (skip if already migrated)
+UPDATE database_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{databaseProfilerConfig,profileSampleConfig}',
+    jsonb_build_object(
+        'enabled', true,
+        'type', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{databaseProfilerConfig,profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{databaseProfilerConfig,profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{databaseProfilerConfig,samplingMethodType}'
+        )
+    )
+)::json
+WHERE json::jsonb #>> '{databaseProfilerConfig,profileSample}' IS NOT NULL
+  AND json::jsonb #> '{databaseProfilerConfig,profileSampleConfig}' IS NULL;
+
+-- database_entity: remove old flat fields
+UPDATE database_entity
+SET json = (json::jsonb #- '{databaseProfilerConfig,profileSample}'
+                        #- '{databaseProfilerConfig,profileSampleType}'
+                        #- '{databaseProfilerConfig,samplingMethodType}')::json
+WHERE json::jsonb #>> '{databaseProfilerConfig,profileSample}' IS NOT NULL
+   OR json::jsonb #>> '{databaseProfilerConfig,profileSampleType}' IS NOT NULL
+   OR json::jsonb #>> '{databaseProfilerConfig,samplingMethodType}' IS NOT NULL;
+
+-- database_schema_entity: build profileSampleConfig from existing flat fields (skip if already migrated)
+UPDATE database_schema_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{databaseSchemaProfilerConfig,profileSampleConfig}',
+    jsonb_build_object(
+        'enabled', true,
+        'type', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{databaseSchemaProfilerConfig,profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{databaseSchemaProfilerConfig,profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{databaseSchemaProfilerConfig,samplingMethodType}'
+        )
+    )
+)::json
+WHERE json::jsonb #>> '{databaseSchemaProfilerConfig,profileSample}' IS NOT NULL
+  AND json::jsonb #> '{databaseSchemaProfilerConfig,profileSampleConfig}' IS NULL;
+
+-- database_schema_entity: remove old flat fields
+UPDATE database_schema_entity
+SET json = (json::jsonb #- '{databaseSchemaProfilerConfig,profileSample}'
+                        #- '{databaseSchemaProfilerConfig,profileSampleType}'
+                        #- '{databaseSchemaProfilerConfig,samplingMethodType}')::json
+WHERE json::jsonb #>> '{databaseSchemaProfilerConfig,profileSample}' IS NOT NULL
+   OR json::jsonb #>> '{databaseSchemaProfilerConfig,profileSampleType}' IS NOT NULL
+   OR json::jsonb #>> '{databaseSchemaProfilerConfig,samplingMethodType}' IS NOT NULL;
+
+-- ingestion_pipeline_entity (profiler pipelines): build profileSampleConfig (skip if already migrated)
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{sourceConfig,config,profileSampleConfig}',
+    jsonb_build_object(
+        'enabled', true,
+        'type', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{sourceConfig,config,profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{sourceConfig,config,profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{sourceConfig,config,samplingMethodType}'
+        )
+    )
+)::json
+WHERE json #>> '{pipelineType}' = 'profiler'
+  AND json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+  AND json::jsonb #> '{sourceConfig,config,profileSampleConfig}' IS NULL;
+
+-- ingestion_pipeline_entity (profiler pipelines): remove old flat fields
+UPDATE ingestion_pipeline_entity
+SET json = (json::jsonb #- '{sourceConfig,config,profileSample}'
+                        #- '{sourceConfig,config,profileSampleType}'
+                        #- '{sourceConfig,config,samplingMethodType}')::json
+WHERE json #>> '{pipelineType}' = 'profiler'
+  AND (json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,profileSampleType}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,samplingMethodType}' IS NOT NULL);

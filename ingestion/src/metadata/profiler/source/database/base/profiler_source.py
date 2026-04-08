@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion import databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -44,7 +45,7 @@ from metadata.sampler.config import (
     get_exclude_columns,
     get_include_columns,
 )
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
@@ -141,6 +142,34 @@ class ProfilerSource(ProfilerSourceInterface):
 
         return config_copy
 
+    def _build_default_sample_config(self) -> SampleConfig:
+        """Build a SampleConfig from the pipeline's profileSampleConfig.
+
+        Extracts flat profileSample/profileSampleType/samplingMethodType from
+        a STATIC config so existing hierarchy resolution still picks them up.
+        For DYNAMIC configs these stay None — resolved at runtime.
+        """
+        profile_sample = None
+        profile_sample_type = None
+        sampling_method_type = None
+        profile_sample_config = None
+
+        raw = self.source_config.profileSampleConfig
+        if raw:
+            profile_sample_config = ProfileSampleConfig.model_validate(raw.model_dump())
+            if raw.type == databaseServiceProfilerPipeline.Type.STATIC and raw.config:
+                profile_sample = getattr(raw.config, "profileSample", None)
+                profile_sample_type = getattr(raw.config, "profileSampleType", None)
+                sampling_method_type = getattr(raw.config, "samplingMethodType", None)
+
+        return SampleConfig(
+            profileSample=profile_sample,
+            profileSampleType=profile_sample_type,
+            samplingMethodType=sampling_method_type,
+            randomizedSample=self.source_config.randomizedSample,
+            profileSampleConfig=profile_sample_config,
+        )
+
     @inject
     def create_profiler_interface(
         self,
@@ -177,12 +206,7 @@ class ProfilerSource(ProfilerSourceInterface):
             schema_entity=schema_entity,
             database_entity=database_entity,
             table_config=config,
-            default_sample_config=SampleConfig(
-                profileSample=self.source_config.profileSample,
-                profileSampleType=self.source_config.profileSampleType,
-                samplingMethodType=self.source_config.samplingMethodType,
-                randomizedSample=self.source_config.randomizedSample,
-            ),
+            default_sample_config=self._build_default_sample_config(),
             # TODO: Change this when we have the processing engine configuration implemented. Right now it does nothing.
             processing_engine=self.get_processing_engine(self.source_config),
         )

@@ -25,6 +25,12 @@
       "default": {
         "type": "Native"
       }
+    },
+    "staticSamplingConfig": {
+      "$ref": "../entity/data/table.json#/definitions/staticSamplingConfig"
+    },
+    "dynamicSamplingConfig": {
+      "$ref": "../entity/data/table.json#/definitions/dynamicSamplingConfig"
     }
   },
   "properties": {
@@ -86,19 +92,31 @@
       "default": false,
       "title": "Use System Table Statistics"
     },
-    "profileSampleType": {
-      "$ref": "../entity/data/table.json#/definitions/profileSampleType",
-      "title": "Profile Sample Type"
-    },
-    "profileSample": {
-      "description": "Percentage of data or no. of rows used to compute the profiler metrics and run data quality tests",
-      "type": "number",
-      "default": null,
-      "title": "Profile Sample"
-    },
-    "samplingMethodType": {
-      "$ref": "../entity/data/table.json#/definitions/samplingMethodType",
-      "title": "Sampling Method Type"
+    "profileSampleConfig": {
+      "description": "Enable dynamic sampling based on table row count. When enabled, profileSample is ignored and the sample size is determined at runtime based on the table's row count and the configured thresholds.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "type": {
+          "description": "Type of dynamic sampling to apply when enabled. ROW_COUNT_BASED: Sample size is determined based on the table's row count and the configured thresholds.",
+          "type": "string",
+          "enum": ["STATIC", "DYNAMIC"],
+          "default": "STATIC"
+        },
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/dynamicSamplingConfig"
+            },
+            {
+              "$ref": "#/definitions/staticSamplingConfig"
+            }
+          ]
+        }
+      }
     },
     "randomizedSample": {
       "description": "Whether to randomize the sample data or not.",

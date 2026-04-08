@@ -31,7 +31,12 @@ from metadata.profiler.config import (
     get_database_profiler_config,
     get_schema_profiler_config,
 )
-from metadata.sampler.models import DatabaseAndSchemaConfig, SampleConfig, TableConfig
+from metadata.sampler.models import (
+    DatabaseAndSchemaConfig,
+    ProfileSampleConfig,
+    SampleConfig,
+    TableConfig,
+)
 
 
 def get_sample_storage_config(
@@ -96,6 +101,36 @@ def get_storage_config_for_table(
     return None
 
 
+def _resolve_profile_sample_config(
+    entity_config: Optional[Union[TableConfig, DatabaseAndSchemaConfig]],
+    table_profiler_config,
+    schema_profiler_config,
+    database_profiler_config,
+    default_sample_config: Optional[SampleConfig],
+) -> Optional[ProfileSampleConfig]:
+    """Resolve profileSampleConfig through the config hierarchy.
+
+    Returns the first enabled ProfileSampleConfig found, or None.
+    """
+    for config in (
+        entity_config,
+        table_profiler_config,
+        schema_profiler_config,
+        database_profiler_config,
+        default_sample_config,
+    ):
+        try:
+            if (
+                config
+                and config.profileSampleConfig
+                and config.profileSampleConfig.enabled
+            ):
+                return config.profileSampleConfig
+        except AttributeError:
+            pass
+    return None
+
+
 def get_profile_sample_config(
     entity: Table,
     schema_entity: Optional[DatabaseSchema],
@@ -107,6 +142,14 @@ def get_profile_sample_config(
     schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
     database_profiler_config = get_database_profiler_config(
         database_entity=database_entity
+    )
+
+    profile_sample_config = _resolve_profile_sample_config(
+        entity_config=entity_config,
+        table_profiler_config=entity.tableProfilerConfig,
+        schema_profiler_config=schema_profiler_config,
+        database_profiler_config=database_profiler_config,
+        default_sample_config=default_sample_config,
     )
 
     for config in (
@@ -123,11 +166,12 @@ def get_profile_sample_config(
                     profileSampleType=config.profileSampleType,
                     samplingMethodType=config.samplingMethodType,
                     randomizedSample=config.randomizedSample,
+                    profileSampleConfig=profile_sample_config,
                 )
         except AttributeError:
             pass
 
-    return SampleConfig()
+    return SampleConfig(profileSampleConfig=profile_sample_config)
 
 
 def get_sample_query(
