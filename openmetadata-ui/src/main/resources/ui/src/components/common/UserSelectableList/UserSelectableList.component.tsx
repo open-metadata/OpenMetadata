@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
 import { Button, Popover, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,

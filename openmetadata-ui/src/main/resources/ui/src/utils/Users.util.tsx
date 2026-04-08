@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
+import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
