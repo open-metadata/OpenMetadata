@@ -27,8 +27,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.connections_utils import kill_active_connections
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.iomete.connection import get_connection
 from metadata.utils.logger import ingestion_logger
 
@@ -75,7 +75,8 @@ class IometeSource(CommonDbSourceService):
     def get_database_names(self) -> Iterable[str]:
         if self.service_connection.catalog:
             logger.debug(
-                "get_database_names: yielding catalog=%r", self.service_connection.catalog
+                "get_database_names: yielding catalog=%r",
+                self.service_connection.catalog,
             )
             yield self.service_connection.catalog
         else:
@@ -104,7 +105,5 @@ class IometeSource(CommonDbSourceService):
             logger.warning("Schema definition not implemented")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to fetch schema definition for {table_name}: {exc}"
-            )
+            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None

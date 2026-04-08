@@ -56,7 +56,9 @@ def get_connection(connection: IometeConnection) -> Engine:
     url = URL.create(
         "iomete",
         username=connection.username,
-        password=connection.password.get_secret_value() if connection.password else None,
+        password=connection.password.get_secret_value()
+        if connection.password
+        else None,
         host=host,
         port=port,
         database=connection.catalog if connection.catalog else None,

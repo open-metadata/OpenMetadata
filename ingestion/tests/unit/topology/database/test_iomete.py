@@ -13,7 +13,7 @@ Unit tests for the IOMETE connector — no live cluster required.
 """
 
 import types
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -25,8 +25,8 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.database.iomete.connection import get_connection
 from metadata.ingestion.source.database.iomete.metadata import IometeSource
 
-
 # ── fixtures ──────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def iomete_connection():
@@ -65,6 +65,7 @@ def minimal_connection():
 
 # ── get_connection: URL construction ─────────────────────────────────────────
 
+
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
 def test_get_connection_uses_flightsql_dialect(mock_engine, iomete_connection):
     get_connection(iomete_connection)
@@ -81,7 +82,9 @@ def test_get_connection_parses_host_and_port(mock_engine, iomete_connection):
 
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
-def test_get_connection_defaults_to_port_443_when_no_port(mock_engine, iomete_connection_no_port):
+def test_get_connection_defaults_to_port_443_when_no_port(
+    mock_engine, iomete_connection_no_port
+):
     get_connection(iomete_connection_no_port)
     url = mock_engine.call_args[0][0]
     assert url.host == "dev.iomete.cloud"
@@ -119,7 +122,9 @@ def test_get_connection_passes_catalog_as_database(mock_engine, minimal_connecti
 
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
-def test_get_connection_omits_database_when_catalog_not_set(mock_engine, minimal_connection):
+def test_get_connection_omits_database_when_catalog_not_set(
+    mock_engine, minimal_connection
+):
     get_connection(minimal_connection)
     url = mock_engine.call_args[0][0]
     assert url.database is None
@@ -184,6 +189,7 @@ def test_create_raises_for_wrong_connection_type(mock_test_conn):
 
 
 # ── get_schema_definition ─────────────────────────────────────────────────────
+
 
 @patch(
     "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
@@ -256,7 +262,9 @@ def test_get_schema_definition_strips_whitespace(mock_test_conn):
         source.source_config = MagicMock(includeDDL=True)
 
     inspector = types.SimpleNamespace()
-    inspector.get_view_definition = MagicMock(return_value="  CREATE TABLE t (id INT)  ")
+    inspector.get_view_definition = MagicMock(
+        return_value="  CREATE TABLE t (id INT)  "
+    )
 
     result = source.get_schema_definition("Regular", "t", "my_schema", inspector)
     assert result == "CREATE TABLE t (id INT)"
