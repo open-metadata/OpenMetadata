@@ -31,6 +31,7 @@ from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
+    AirflowTask,
 )
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
 
@@ -998,3 +999,72 @@ class TestAirflow(TestCase):
         assert f"/dags/{quote(dag_id)}/tasks/{quote(task_id)}" in task_url
         assert "/taskinstance/list/" not in task_url
         assert "_flt_3_dag_id=" not in task_url
+
+    def test_get_task_instances_bulk_query(self):
+        """
+        Verify that get_task_instances fires a single DB query for all run_ids
+        (no N+1 per DagRun) and groups the returned rows by run_id.
+        Tasks not present in serialized_tasks are excluded from the result.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [
+            AirflowTask(task_id="task_a"),
+            AirflowTask(task_id="task_b"),
+        ]
+
+        row_run1 = MagicMock()
+        row_run1._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+        row_run2 = MagicMock()
+        row_run2._asdict.return_value = {
+            "task_id": "task_b",
+            "state": "failed",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_2",
+        }
+        unknown_task_row = MagicMock()
+        unknown_task_row._asdict.return_value = {
+            "task_id": "task_unknown",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = [row_run1, row_run2, unknown_task_row]
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "my_dag", ["run_1", "run_2"], serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        # Single DB query — not one per run_id
+        mock_session.query.assert_called_once()
+
+        # Results grouped correctly by run_id
+        self.assertIn("run_1", result)
+        self.assertIn("run_2", result)
+
+        # task_unknown is not in serialized_tasks so it must be excluded
+        self.assertEqual(len(result["run_1"]), 1)
+        self.assertEqual(result["run_1"][0].task_id, "task_a")
+        self.assertEqual(result["run_1"][0].state, "success")
+
+        self.assertEqual(len(result["run_2"]), 1)
+        self.assertEqual(result["run_2"][0].task_id, "task_b")
+        self.assertEqual(result["run_2"][0].state, "failed")

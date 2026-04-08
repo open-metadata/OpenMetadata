@@ -320,18 +320,15 @@ class AirflowSource(PipelineServiceSource):
             return []
 
     def get_task_instances(
-        self, dag_id: str, run_id: str, serialized_tasks: List[AirflowTask]
-    ) -> List[OMTaskInstance]:
+        self, dag_id: str, run_ids: List[str], serialized_tasks: List[AirflowTask]
+    ) -> Dict[str, List[OMTaskInstance]]:
         """
-        We are building our own scoped TaskInstance
-        class to only focus on core properties required
-        by the metadata ingestion.
-
-        This makes the versioning more flexible on which Airflow
-        sources we support.
+        Fetch all TaskInstances for the given DAG and run IDs in a single query,
+        returning a dict keyed by run_id. This avoids an N+1 pattern where a
+        separate query was previously fired for each DagRun.
         """
-        task_instance_list = None
         serialized_tasks_ids = {task.task_id for task in serialized_tasks}
+        result: Dict[str, List[OMTaskInstance]] = defaultdict(list)
 
         try:
             task_instance_list = (
@@ -344,34 +341,30 @@ class AirflowSource(PipelineServiceSource):
                 )
                 .filter(
                     TaskInstance.dag_id == dag_id,
-                    TaskInstance.run_id == run_id,
+                    TaskInstance.run_id.in_(run_ids),
                     # updating old runs flag deleted tasks as `removed`
                     TaskInstance.state != AirflowTaskStatus.REMOVED.value,
                 )
                 .all()
             )
+            for elem in task_instance_list:
+                row = elem._asdict()
+                if row.get("task_id") in serialized_tasks_ids:
+                    result[row["run_id"]].append(
+                        OMTaskInstance(
+                            task_id=row.get("task_id"),
+                            state=row.get("state"),
+                            start_date=row.get("start_date"),
+                            end_date=row.get("end_date"),
+                        )
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Tried to get TaskInstances with run_id. It might not be available in older Airflow versions - {exc}."
+                f"Tried to get TaskInstances for run_ids. The run_id column might not be available in older Airflow DB schemas - {exc}."
             )
 
-        task_instance_dict = (
-            [elem._asdict() for elem in task_instance_list]
-            if task_instance_list
-            else []
-        )
-
-        return [
-            OMTaskInstance(
-                task_id=elem.get("task_id"),
-                state=elem.get("state"),
-                start_date=elem.get("start_date"),
-                end_date=elem.get("end_date"),
-            )
-            for elem in task_instance_dict
-            if elem.get("task_id") in serialized_tasks_ids
-        ]
+        return result
 
     def yield_pipeline_status(
         self, pipeline_details: AirflowDagDetails
@@ -379,15 +372,28 @@ class AirflowSource(PipelineServiceSource):
         try:
             dag_run_list = self.get_pipeline_status(pipeline_details.dag_id)
 
+            # Collect all run_ids up front so we can fetch all TaskInstances in
+            # one query instead of one per DagRun (N+1 avoidance).
+            run_ids = [
+                dag_run.run_id
+                for dag_run in dag_run_list
+                if dag_run.run_id and self.context.get().task_names
+            ]
+            tasks_by_run_id = (
+                self.get_task_instances(
+                    dag_id=pipeline_details.dag_id,
+                    run_ids=run_ids,
+                    serialized_tasks=pipeline_details.tasks,
+                )
+                if run_ids
+                else {}
+            )
+
             for dag_run in dag_run_list:
                 if (
                     dag_run.run_id and self.context.get().task_names
                 ):  # Airflow dags can have old task which are turned off/commented out in code
-                    tasks = self.get_task_instances(
-                        dag_id=dag_run.dag_id,
-                        run_id=dag_run.run_id,
-                        serialized_tasks=pipeline_details.tasks,
-                    )
+                    tasks = tasks_by_run_id.get(dag_run.run_id, [])
 
                     task_statuses = [
                         TaskStatus(

@@ -365,7 +365,7 @@ class TestYieldPipelineStatus:
         source.context.get.return_value = mock_context
 
         source.get_pipeline_status = MagicMock(return_value=[dag_run])
-        source.get_task_instances = MagicMock(return_value=[])
+        source.get_task_instances = MagicMock(return_value={})
         source.metadata = MagicMock()
 
         mock_pipeline_details = MagicMock()
@@ -397,7 +397,7 @@ class TestYieldPipelineStatus:
         source.context.get.return_value = mock_context
 
         source.get_pipeline_status = MagicMock(return_value=[dag_run])
-        source.get_task_instances = MagicMock(return_value=[])
+        source.get_task_instances = MagicMock(return_value={})
         source.metadata = MagicMock()
 
         mock_pipeline_details = MagicMock()
