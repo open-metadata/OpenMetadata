@@ -18,7 +18,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.type.samplingConfig import ProfileSampleType
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )

@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
-from metadata.generated.schema.type.samplingConfig import (
+from metadata.generated.schema.type.basic import (
     ProfileSampleType,
     SamplingMethodType,
 )

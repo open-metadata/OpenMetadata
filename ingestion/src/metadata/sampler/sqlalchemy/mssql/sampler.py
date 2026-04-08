@@ -18,7 +18,7 @@ from sqlalchemy import Table, text
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import TableType
-from metadata.generated.schema.type.samplingConfig import ProfileSampleType
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 

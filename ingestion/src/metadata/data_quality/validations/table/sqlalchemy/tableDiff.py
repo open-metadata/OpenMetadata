@@ -39,7 +39,7 @@ from metadata.data_quality.validations.models import (
     TableParameter,
 )
 from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.type.samplingConfig import ProfileSampleType
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaScheme,
 )
