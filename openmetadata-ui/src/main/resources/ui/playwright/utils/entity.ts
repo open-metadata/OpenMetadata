@@ -203,13 +203,19 @@ export const addOwnerWithoutValidation = async ({
       (await usersTab.getAttribute('aria-selected')) === 'true';
 
     if (!isTabAlreadySelected) {
+      // The call with size > 0 only fires after the tab click.
       const userListResponse = page.waitForResponse(
-        '/api/v1/search/query?q=&index=user&*'
+        (response) =>
+          response.url().includes('/api/v1/search/query?q=&index=user') &&
+          !response.url().includes('size=0') &&
+          response.status() === 200
       );
       await usersTab.click();
+      await expect(usersTab).toHaveAttribute('aria-selected', 'true');
       await userListResponse;
     }
   }
+
   await waitForAllLoadersToDisappear(page);
 
   const ownerSearchBar = await page
