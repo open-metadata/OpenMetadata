@@ -220,4 +220,24 @@ class LabelBuilderTest {
   void testSanitizeLabelValue_emptyInput_returnsEmpty() {
     assertEquals("", LabelBuilder.sanitizeLabelValue(""));
   }
+
+  @Test
+  void testSanitizeLabelValue_startsWithDot_strippedToAlphanumeric() {
+    String input = ".starts-with-dot";
+    String result = LabelBuilder.sanitizeLabelValue(input);
+    assertTrue(
+        result.matches("[a-zA-Z0-9].*"),
+        "Result must start with alphanumeric, got: " + result);
+    assertFalse(result.isEmpty(), "Result must not be empty");
+  }
+
+  @Test
+  void testSanitizeLabelValue_startsWithUnderscore_strippedToAlphanumeric() {
+    String input = "_starts-with-underscore";
+    String result = LabelBuilder.sanitizeLabelValue(input);
+    assertTrue(
+        result.matches("[a-zA-Z0-9].*"),
+        "Result must start with alphanumeric, got: " + result);
+    assertFalse(result.isEmpty(), "Result must not be empty");
+  }
 }

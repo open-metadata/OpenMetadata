@@ -155,9 +155,19 @@ public class LabelBuilder {
       return "";
     }
 
-    // Replace invalid characters with hyphens, collapse runs, strip leading/trailing hyphens
+    // Replace invalid characters with hyphens, collapse runs,
+    // strip leading/trailing non-alphanumeric chars (K8s label values
+    // must start and end with [a-zA-Z0-9])
     String sanitized =
-        value.replaceAll("[^a-zA-Z0-9\\-_.]", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
+        value
+            .replaceAll("[^a-zA-Z0-9\\-_.]", "-")
+            .replaceAll("-+", "-")
+            .replaceAll("^[^a-zA-Z0-9]+", "")
+            .replaceAll("[^a-zA-Z0-9]+$", "");
+
+    if (sanitized.isEmpty()) {
+      return "omjob";
+    }
 
     if (sanitized.length() <= MAX_LABEL_LENGTH) {
       return sanitized;
@@ -166,6 +176,9 @@ public class LabelBuilder {
     // Truncate to prefix length and strip trailing non-alphanumeric chars
     String prefix =
         sanitized.substring(0, MAX_LABEL_PREFIX_LENGTH).replaceAll("[^a-zA-Z0-9]+$", "");
+    if (prefix.isEmpty()) {
+      prefix = "omjob";
+    }
     String hash = md5Hash(value).substring(0, 7);
     return prefix + "-" + hash;
   }
