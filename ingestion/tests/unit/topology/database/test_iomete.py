@@ -69,7 +69,7 @@ def minimal_connection():
 def test_get_connection_uses_flightsql_dialect(mock_engine, iomete_connection):
     get_connection(iomete_connection)
     url = mock_engine.call_args[0][0]
-    assert url.drivername == "iomete+flightsql"
+    assert url.drivername == "iomete"
 
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")

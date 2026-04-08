@@ -38,8 +38,7 @@ logger = ingestion_logger()
 class IometeSource(CommonDbSourceService):
     """
     IOMETE metadata source. Uses Arrow Flight SQL via adbc_driver_flightsql
-    with a custom SQLAlchemy dialect that correctly handles Spark SQL
-    SHOW TABLES output (namespace, tableName, isTemporary).
+    with a custom SQLAlchemy dialect.
     """
 
     service_connection: IometeConnection

@@ -11,7 +11,7 @@
 
 """
 IOMETE source connection handler.
-Uses the sqlalchemy-iomete-flightsql dialect (iomete+flightsql) which is
+Uses the iomete-sqlalchemy dialect which is
 registered automatically via its setuptools entry point.
 """
 
@@ -40,6 +40,8 @@ def get_connection(connection: IometeConnection) -> Engine:
     host_port = connection.hostPort
     if ":" in host_port:
         host, port_str = host_port.rsplit(":", 1)
+        if not port_str.isdigit():
+            raise ValueError(f"Invalid port '{port_str}' in hostPort '{host_port}'")
         port = int(port_str)
     else:
         host = host_port
