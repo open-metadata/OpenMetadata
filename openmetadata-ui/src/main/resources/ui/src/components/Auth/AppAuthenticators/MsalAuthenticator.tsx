@@ -87,7 +87,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         scopes: msalLoginRequest.scopes,
       };
       try {
-        const response = await instance.ssoSilent(tokenRequest);
+        const response = await instance.acquireTokenSilent(tokenRequest);
         const msalResponse = await parseMSALResponse(response);
 
         return msalResponse;
@@ -107,6 +107,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     i18nKey="message.popup-block-message"
                     renderElement={
                       <a
+                        aria-label="Open popup settings"
                         href={getPopupSettingLink()}
                         rel="noopener noreferrer"
                         target="_blank"
