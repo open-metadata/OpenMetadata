@@ -12,7 +12,6 @@
  */
 
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
-import { SmartToyOutlined } from '@mui/icons-material';
 import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
