@@ -56,14 +56,6 @@
       "description": "IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an optional parameter; if left blank, OpenMetadata attempts to scan all databases in the catalog.",
       "type": "string"
     },
-    "connectionOptions": {
-      "title": "Connection Options",
-      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-    },
-    "connectionArguments": {
-      "title": "Connection Arguments",
-      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
-    },
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.",
