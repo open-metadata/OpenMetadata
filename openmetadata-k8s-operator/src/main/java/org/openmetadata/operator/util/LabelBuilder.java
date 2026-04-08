@@ -13,6 +13,8 @@
 
 package org.openmetadata.operator.util;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.operator.model.OMJobResource;
@@ -43,6 +45,10 @@ public class LabelBuilder {
   public static final String POD_TYPE_MAIN = "main";
   public static final String POD_TYPE_EXIT_HANDLER = "exit-handler";
 
+  // Kubernetes label value limits
+  private static final int MAX_LABEL_LENGTH = 63;
+  private static final int MAX_LABEL_PREFIX_LENGTH = 55; // 55 + "-" + 7 hash chars = 63
+
   private LabelBuilder() {
     // Utility class
   }
@@ -56,12 +62,12 @@ public class LabelBuilder {
     labels.put(LABEL_APP_NAME, APP_NAME);
     labels.put(LABEL_APP_COMPONENT, COMPONENT_INGESTION);
     labels.put(LABEL_APP_MANAGED_BY, MANAGED_BY_OMJOB_OPERATOR);
-    labels.put(LABEL_OMJOB_NAME, omJob.getMetadata().getName());
+    labels.put(LABEL_OMJOB_NAME, sanitizeLabelValue(omJob.getMetadata().getName()));
 
     // Copy pipeline and run-id from OMJob labels
     String pipelineName = omJob.getPipelineName();
     if (pipelineName != null) {
-      labels.put(LABEL_APP_PIPELINE, pipelineName);
+      labels.put(LABEL_APP_PIPELINE, sanitizeLabelValue(pipelineName));
     }
 
     String runId = omJob.getRunId();
@@ -113,7 +119,7 @@ public class LabelBuilder {
    */
   public static Map<String, String> buildPodSelector(OMJobResource omJob) {
     Map<String, String> selector = new HashMap<>();
-    selector.put(LABEL_OMJOB_NAME, omJob.getMetadata().getName());
+    selector.put(LABEL_OMJOB_NAME, sanitizeLabelValue(omJob.getMetadata().getName()));
     selector.put(LABEL_APP_MANAGED_BY, MANAGED_BY_OMJOB_OPERATOR);
     return selector;
   }
@@ -137,17 +143,47 @@ public class LabelBuilder {
   }
 
   /**
-   * Sanitize label value to be Kubernetes-compliant
+   * Sanitize label value to be Kubernetes-compliant.
+   *
+   * <p>Kubernetes label values must be at most 63 characters and match
+   * [a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?. When truncation is needed,
+   * a 7-character MD5 hash suffix is appended to avoid collisions between
+   * similarly-named pipelines.
    */
   public static String sanitizeLabelValue(String value) {
     if (value == null || value.isEmpty()) {
       return "";
     }
 
-    // Replace invalid characters with hyphens and truncate to 63 chars
+    // Replace invalid characters with hyphens, collapse runs, strip leading/trailing hyphens
     String sanitized =
         value.replaceAll("[^a-zA-Z0-9\\-_.]", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
 
-    return sanitized.length() > 63 ? sanitized.substring(0, 63) : sanitized;
+    if (sanitized.length() <= MAX_LABEL_LENGTH) {
+      return sanitized;
+    }
+
+    // Truncate to prefix length and strip trailing non-alphanumeric chars
+    String prefix =
+        sanitized.substring(0, MAX_LABEL_PREFIX_LENGTH).replaceAll("[^a-zA-Z0-9]+$", "");
+    String hash = md5Hash(value).substring(0, 7);
+    return prefix + "-" + hash;
+  }
+
+  /**
+   * Compute the MD5 hex digest of a string.
+   */
+  private static String md5Hash(String input) {
+    try {
+      MessageDigest md = MessageDigest.getInstance("MD5");
+      byte[] digest = md.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      StringBuilder sb = new StringBuilder();
+      for (byte b : digest) {
+        sb.append(String.format("%02x", b));
+      }
+      return sb.toString();
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("MD5 algorithm not available", e);
+    }
   }
 }

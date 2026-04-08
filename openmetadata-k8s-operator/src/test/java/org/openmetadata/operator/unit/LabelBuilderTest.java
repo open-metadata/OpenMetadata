@@ -87,7 +87,8 @@ class LabelBuilderTest {
     // Test truncation (> 63 chars)
     String longValue = "a".repeat(70);
     String sanitized = LabelBuilder.sanitizeLabelValue(longValue);
-    assertEquals(63, sanitized.length());
+    assertTrue(sanitized.length() <= 63,
+        "Sanitized value must be <= 63 chars, got: " + sanitized.length());
   }
 
   private OMJobResource createTestOMJob() {
@@ -105,5 +106,118 @@ class LabelBuilderTest {
 
     omJob.setMetadata(metadata);
     return omJob;
+  }
+
+  private OMJobResource createTestOMJob(String name) {
+    OMJobResource omJob = new OMJobResource();
+
+    ObjectMeta metadata =
+        new ObjectMetaBuilder()
+            .withName(name)
+            .withNamespace("test-namespace")
+            .withLabels(
+                Map.of(
+                    "app.kubernetes.io/pipeline", "mysql-pipeline",
+                    "app.kubernetes.io/run-id", "run-12345"))
+            .build();
+
+    omJob.setMetadata(metadata);
+    return omJob;
+  }
+
+  // --- New tests for hash-preserving truncation (issue #27004) ---
+
+  @Test
+  void testSanitizeLabelValue_shortName_unchanged() {
+    String input = "my-pipeline-name";
+    String result = LabelBuilder.sanitizeLabelValue(input);
+    assertEquals(input, result);
+  }
+
+  @Test
+  void testSanitizeLabelValue_exactly63Chars_unchanged() {
+    String input = "a".repeat(63);
+    String result = LabelBuilder.sanitizeLabelValue(input);
+    assertEquals(63, result.length());
+    assertEquals(input, result);
+  }
+
+  @Test
+  void testSanitizeLabelValue_longName_truncatedTo63() {
+    String input = "om-job-data-mart-warehouse-production-metadata-jwef2ikn-ada040a6";
+    String result = LabelBuilder.sanitizeLabelValue(input);
+    assertTrue(
+        result.length() <= 63,
+        "Label value must be <= 63 chars, got: " + result.length());
+  }
+
+  @Test
+  void testSanitizeLabelValue_longName_endsWithAlphanumeric() {
+    String input = "om-job-data-mart-warehouse-production-metadata-jwef2ikn-ada040a6";
+    String result = LabelBuilder.sanitizeLabelValue(input);
+    assertTrue(
+        result.matches(".*[a-zA-Z0-9]$"),
+        "Label value must end with alphanumeric, got: " + result);
+  }
+
+  @Test
+  void testSanitizeLabelValue_deterministic() {
+    String input = "om-job-data-mart-warehouse-production-metadata-jwef2ikn-ada040a6";
+    String result1 = LabelBuilder.sanitizeLabelValue(input);
+    String result2 = LabelBuilder.sanitizeLabelValue(input);
+    assertEquals(result1, result2, "Same input must always produce same output");
+  }
+
+  @Test
+  void testSanitizeLabelValue_differentLongNames_differentOutputs() {
+    String input1 = "om-job-data-mart-warehouse-production-metadata-pipeline-alpha-01";
+    String input2 = "om-job-data-mart-warehouse-production-metadata-pipeline-beta-02";
+    String result1 = LabelBuilder.sanitizeLabelValue(input1);
+    String result2 = LabelBuilder.sanitizeLabelValue(input2);
+    assertNotEquals(
+        result1, result2, "Different long names must not collide after truncation");
+  }
+
+  @Test
+  void testBuildBaseLabels_longName_labelsAreValid() {
+    String longName =
+        "om-job-data-mart-warehouse-production-metadata-jwef2ikn-ada040a6";
+    OMJobResource omJob = createTestOMJob(longName);
+
+    Map<String, String> labels = LabelBuilder.buildBaseLabels(omJob);
+
+    String nameLabel = labels.get(LabelBuilder.LABEL_OMJOB_NAME);
+    assertNotNull(nameLabel);
+    assertTrue(
+        nameLabel.length() <= 63,
+        "LABEL_OMJOB_NAME must be <= 63 chars, got: " + nameLabel.length());
+    assertTrue(
+        nameLabel.matches("[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?"),
+        "LABEL_OMJOB_NAME must match K8s label value regex");
+  }
+
+  @Test
+  void testBuildPodSelector_longName_matchesBuildBaseLabels() {
+    String longName =
+        "om-job-data-mart-warehouse-production-metadata-jwef2ikn-ada040a6";
+    OMJobResource omJob = createTestOMJob(longName);
+
+    Map<String, String> labels = LabelBuilder.buildBaseLabels(omJob);
+    Map<String, String> selector = LabelBuilder.buildPodSelector(omJob);
+
+    assertEquals(
+        labels.get(LabelBuilder.LABEL_OMJOB_NAME),
+        selector.get(LabelBuilder.LABEL_OMJOB_NAME),
+        "Label value and selector value MUST match for pod lookup to work");
+  }
+
+  @Test
+  void testSanitizeLabelValue_nullInput_returnsEmpty() {
+    assertEquals("", LabelBuilder.sanitizeLabelValue(null));
+  }
+
+  @Test
+  void testSanitizeLabelValue_emptyInput_returnsEmpty() {
+    assertEquals("", LabelBuilder.sanitizeLabelValue(""));
   }
 }
