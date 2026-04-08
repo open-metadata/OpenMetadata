@@ -1485,7 +1485,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               <Tabs.Panel className="tw:hidden" id="data" />
             </Tabs>
             <Input
-              className="tw:min-w-54.5 tw:rounded-xl"
               data-testid="ontology-graph-search"
               icon={SearchMd}
               inputClassName="tw:pl-10"

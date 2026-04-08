@@ -83,7 +83,7 @@ export interface GraphFilters {
 }
 
 export interface OntologyGraphHandle {
-  fitView: () => void;
+  fitView: () => Promise<void>;
   zoomIn: () => void;
   zoomOut: () => void;
   runLayout: () => void;

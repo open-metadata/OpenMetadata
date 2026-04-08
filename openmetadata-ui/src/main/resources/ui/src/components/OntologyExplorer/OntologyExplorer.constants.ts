@@ -385,11 +385,11 @@ export const TERM_LABEL_BG_PADDING: [number, number, number, number] = [
   8, 8, 8, 8,
 ];
 
-export const MIN_ZOOM = 0.1;
+export const MIN_ZOOM = 0.02;
 export const MAX_ZOOM = 3;
 export const DEFAULT_ZOOM = 1;
-export const FIT_VIEW_ZOOM_OUT = 0.9;
-export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.7;
+export const FIT_VIEW_ZOOM_OUT = 0.95;
+export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.85;
 
 export const DATA_MODE_ASSET_LOAD_PAGE_SIZE = 1000;
 export const DATA_MODE_ASSET_CIRCLE_SIZE = 20;
