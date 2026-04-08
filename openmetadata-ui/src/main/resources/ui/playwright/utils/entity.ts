@@ -196,8 +196,8 @@ export const addOwnerWithoutValidation = async ({
   type?: 'Teams' | 'Users';
   initiatorId?: string;
 }) => {
-    await page.getByTestId(initiatorId).click();
-    if (type === 'Users') {
+  await page.getByTestId(initiatorId).click();
+  if (type === 'Users') {
     const usersTab = page.getByRole('tab', { name: type });
     const isTabAlreadySelected =
       (await usersTab.getAttribute('aria-selected')) === 'true';
