@@ -214,7 +214,7 @@ export const addOwnerWithoutValidation = async ({
       await expect(usersTab).toHaveAttribute('aria-selected', 'true');
       await userListResponse;
     }
-    }
+  }
 
   await waitForAllLoadersToDisappear(page);
 
