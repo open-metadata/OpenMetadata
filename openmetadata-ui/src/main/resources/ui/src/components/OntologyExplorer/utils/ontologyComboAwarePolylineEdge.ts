@@ -15,11 +15,10 @@ import {
   idOf,
   Polyline,
   register,
-  type Point,
+  type Combo,
+  type Node,
   type PolylineStyleProps,
 } from '@antv/g6';
-import { orth } from '@antv/g6/esm/utils/router/orth';
-import { aStarSearch } from '@antv/g6/esm/utils/router/shortest-path';
 
 const COMBO_HIERARCHY = 'combo' as const;
 
@@ -28,16 +27,21 @@ export const ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE =
 
 type ParsedPolylineStyle = Required<PolylineStyleProps>;
 
+type ElementLike = {
+  getCombos: () => Combo[];
+  getNodes: () => Node[];
+};
+
 /**
  * Polyline edge whose shortest-path router treats glossary combo hulls as
  * obstacles (built-in {@link Polyline} only avoids other nodes).
  */
 export class OntologyComboAwarePolyline extends Polyline {
-  private buildRoutingObstacles(
+  private buildRoutingObstacleNodes(
     sourceNode: { id: string },
     targetNode: { id: string },
-    nodes: unknown[]
-  ): unknown[] {
+    nodes: Node[]
+  ): Node[] {
     const { element, model } = this.context;
     const skipComboIds = new Set<string>();
     model.getAncestorsData(sourceNode.id, COMBO_HIERARCHY).forEach((d) => {
@@ -47,58 +51,43 @@ export class OntologyComboAwarePolyline extends Polyline {
       skipComboIds.add(idOf(d));
     });
 
-    const comboElements = (element?.getCombos() ?? []).filter(
-      (c): c is NonNullable<typeof c> =>
+    const comboElements =
+      (element as ElementLike | undefined)?.getCombos() ?? [];
+    const comboObstacles = comboElements.filter(
+      (c) =>
         Boolean(c) && !c.destroyed && c.isVisible() && !skipComboIds.has(c.id)
     );
 
-    return [...nodes, ...comboElements];
+    return [...nodes, ...comboObstacles] as Node[];
   }
 
-  protected getControlPoints(attributes: ParsedPolylineStyle): Point[] {
+  protected getControlPoints(attributes: ParsedPolylineStyle) {
     const { router } = attributes;
-    const { sourceNode, targetNode } = this;
-    const [sourcePoint, targetPoint] = this.getEndpoints(attributes, false);
-    let controlPoints: Point[] = [];
+    const element = this.context.element as ElementLike | undefined;
 
-    if (!router) {
-      controlPoints = attributes.controlPoints ?? [];
-    } else if (router.type === 'shortest-path') {
-      const element = this.context.element;
-      const nodes = element?.getNodes() ?? [];
-      const routingNodes =
-        router.enableObstacleAvoidance === true
-          ? this.buildRoutingObstacles(sourceNode, targetNode, nodes)
-          : nodes;
-
-      controlPoints = aStarSearch(
-        sourceNode,
-        targetNode,
-        routingNodes as Parameters<typeof aStarSearch>[2],
-        router
-      );
-      if (!controlPoints.length) {
-        controlPoints = orth(
-          sourcePoint,
-          targetPoint,
+    if (
+      router &&
+      router.type === 'shortest-path' &&
+      router.enableObstacleAvoidance === true &&
+      element
+    ) {
+      const { sourceNode, targetNode } = this;
+      const originalGetNodes = element.getNodes.bind(element) as () => Node[];
+      element.getNodes = () =>
+        this.buildRoutingObstacleNodes(
           sourceNode,
           targetNode,
-          attributes.controlPoints,
-          { padding: router.offset }
+          originalGetNodes()
         );
+
+      try {
+        return super.getControlPoints(attributes);
+      } finally {
+        element.getNodes = originalGetNodes;
       }
-    } else if (router.type === 'orth') {
-      controlPoints = orth(
-        sourcePoint,
-        targetPoint,
-        sourceNode,
-        targetNode,
-        attributes.controlPoints,
-        router
-      );
     }
 
-    return controlPoints;
+    return super.getControlPoints(attributes);
   }
 }
 
