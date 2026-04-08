@@ -636,7 +636,13 @@ const TeamDetailsV1 = ({
       );
     }
 
-    return currentTeam.childrenCount === 0 && !searchTerm ? (
+    const showEmptyTeamPlaceholder =
+      isEmpty(searchTerm) &&
+      isEmpty(childTeamList) &&
+      (currentTeam.childrenCount ?? 0) === 0 &&
+      !isTeamBasicDataLoading;
+
+    return showEmptyTeamPlaceholder ? (
       <ErrorPlaceHolder
         className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
@@ -696,6 +702,7 @@ const TeamDetailsV1 = ({
     entityPermissions.Create,
     isFetchingAllTeamAdvancedDetails,
     isSearchLoading,
+    isTeamBasicDataLoading,
     onTeamExpand,
     handleAddTeamButtonClick,
     handleTeamSearch,
@@ -946,15 +953,10 @@ const TeamDetailsV1 = ({
   const teamsCollapseHeader = useMemo(
     () => (
       <>
-        <Space wrap className="w-full justify-between">
-          <Space
-            align="start"
-            className="w-full flex-col justify-center p-t-xs"
-            size="middle">
-            {!isOrganization && (
-              <TitleBreadcrumb titleLinks={slashedTeamName} />
-            )}
-            <div className="d-flex items-center gap-2">
+        <div className="w-full p-t-xs">
+          {!isOrganization && <TitleBreadcrumb titleLinks={slashedTeamName} />}
+          <div className="d-flex items-center justify-between p-t-xs">
+            <div className="d-flex items-center gap-2 flex-1 w-min-0">
               <Avatar className="teams-profile" size={40}>
                 <IconTeams className="text-primary" width={20} />
               </Avatar>
@@ -965,50 +967,54 @@ const TeamDetailsV1 = ({
                 updateTeamHandler={updateTeamHandler}
               />
 
-              <LearningIcon
-                pageId={LEARNING_PAGE_IDS.TEAMS}
-                title={t('label.team-plural')}
-              />
+              <div className="d-flex flex-1 items-center justify-end w-min-0">
+                <LearningIcon
+                  pageId={LEARNING_PAGE_IDS.TEAMS}
+                  title={t('label.team-plural')}
+                />
+              </div>
             </div>
-          </Space>
 
-          <Space align="center">
-            {teamActionButton}
-            {!isOrganization ? (
-              entityPermissions.EditAll && (
+            <Space align="center">
+              {teamActionButton}
+              {!isOrganization ? (
+                entityPermissions.EditAll && (
+                  <ManageButton
+                    isRecursiveDelete
+                    afterDeleteAction={afterDeleteAction}
+                    allowSoftDelete={!currentTeam.deleted}
+                    canDelete={entityPermissions.EditAll}
+                    displayName={getEntityName(currentTeam)}
+                    entityId={currentTeam.id}
+                    entityName={
+                      currentTeam.fullyQualifiedName ?? currentTeam.name
+                    }
+                    entityType={EntityType.TEAM}
+                    extraDropdownContent={extraDropdownContent}
+                    hardDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName ?? currentTeam.name,
+                      t('label.permanently-lowercase')
+                    )}
+                    softDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName ?? currentTeam.name,
+                      t('label.soft-lowercase')
+                    )}
+                  />
+                )
+              ) : (
                 <ManageButton
-                  isRecursiveDelete
-                  afterDeleteAction={afterDeleteAction}
-                  allowSoftDelete={!currentTeam.deleted}
-                  canDelete={entityPermissions.EditAll}
+                  canDelete={false}
                   displayName={getEntityName(currentTeam)}
-                  entityId={currentTeam.id}
                   entityName={
                     currentTeam.fullyQualifiedName ?? currentTeam.name
                   }
                   entityType={EntityType.TEAM}
-                  extraDropdownContent={extraDropdownContent}
-                  hardDeleteMessagePostFix={getDeleteMessagePostFix(
-                    currentTeam.fullyQualifiedName ?? currentTeam.name,
-                    t('label.permanently-lowercase')
-                  )}
-                  softDeleteMessagePostFix={getDeleteMessagePostFix(
-                    currentTeam.fullyQualifiedName ?? currentTeam.name,
-                    t('label.soft-lowercase')
-                  )}
+                  extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
                 />
-              )
-            ) : (
-              <ManageButton
-                canDelete={false}
-                displayName={getEntityName(currentTeam)}
-                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
-                entityType={EntityType.TEAM}
-                extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
-              />
-            )}
-          </Space>
-        </Space>
+              )}
+            </Space>
+          </div>
+        </div>
         <div className="p-t-md ">
           <TeamsInfo
             childTeamsCount={childTeams.length}
