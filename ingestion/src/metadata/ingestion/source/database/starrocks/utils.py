@@ -43,6 +43,6 @@ def get_table_comment(_, connection, table_name, schema=None, **kw):
         **kw,
     )
     for table_comment in rows:
-        comment = table_comment
+        comment = table_comment[0]
         break
     return {"text": comment}

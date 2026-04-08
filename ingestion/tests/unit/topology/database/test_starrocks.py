@@ -182,7 +182,7 @@ class TestStarRocksIcebergMapping(TestCase):
 
 
 class TestStarRocksGetTableDescription(TestCase):
-    """Tests for get_table_description querying INFORMATION_SCHEMA directly (fixes #26692)"""
+    """Tests for get_table_description delegating to utils.get_table_comment"""
 
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
@@ -194,15 +194,14 @@ class TestStarRocksGetTableDescription(TestCase):
             mock_starrocks_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
+        thread_id = self.source.context.get_current_thread_id()
+        self.source._connection_map[thread_id] = MagicMock()
 
     @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+        "metadata.ingestion.source.database.starrocks.metadata.get_table_comment"
     )
-    def test_returns_table_comment(self, mock_connection):
-        mock_result = MagicMock()
-        mock_result.first.return_value = ("审计日志表",)
-        mock_connection.execute.return_value = mock_result
-        self.source.connection = mock_connection
+    def test_returns_table_comment(self, mock_get_table_comment):
+        mock_get_table_comment.return_value = {"text": "审计日志表"}
 
         description = self.source.get_table_description(
             schema_name="test_db",
@@ -210,15 +209,15 @@ class TestStarRocksGetTableDescription(TestCase):
             inspector=MagicMock(),
         )
         assert description == "审计日志表"
+        mock_get_table_comment.assert_called_once_with(
+            None, self.source.connection, "audit_tbl", schema="test_db"
+        )
 
     @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+        "metadata.ingestion.source.database.starrocks.metadata.get_table_comment"
     )
-    def test_returns_none_for_empty_comment(self, mock_connection):
-        mock_result = MagicMock()
-        mock_result.first.return_value = ("",)
-        mock_connection.execute.return_value = mock_result
-        self.source.connection = mock_connection
+    def test_returns_none_for_empty_comment(self, mock_get_table_comment):
+        mock_get_table_comment.return_value = {"text": None}
 
         description = self.source.get_table_description(
             schema_name="test_db",
@@ -228,27 +227,10 @@ class TestStarRocksGetTableDescription(TestCase):
         assert description is None
 
     @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+        "metadata.ingestion.source.database.starrocks.metadata.get_table_comment"
     )
-    def test_returns_none_when_no_row(self, mock_connection):
-        mock_result = MagicMock()
-        mock_result.first.return_value = None
-        mock_connection.execute.return_value = mock_result
-        self.source.connection = mock_connection
-
-        description = self.source.get_table_description(
-            schema_name="test_db",
-            table_name="missing_tbl",
-            inspector=MagicMock(),
-        )
-        assert description is None
-
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
-    def test_returns_none_on_exception(self, mock_connection):
-        mock_connection.execute.side_effect = Exception("connection error")
-        self.source.connection = mock_connection
+    def test_returns_none_on_exception(self, mock_get_table_comment):
+        mock_get_table_comment.side_effect = Exception("connection error")
 
         description = self.source.get_table_description(
             schema_name="test_db",
