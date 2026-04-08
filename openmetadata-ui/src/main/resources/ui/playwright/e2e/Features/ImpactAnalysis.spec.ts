@@ -429,7 +429,7 @@ test.describe('Impact Analysis', () => {
   test('verify owner filter for Asset level impact analysis', async ({
     page,
   }) => {
-    await page.getByTestId('filters-button').click();
+    await page.getByRole('button', { name: 'Filters' }).click();
     await page.getByTestId('search-dropdown-Owners').click();
 
     await expect(
@@ -456,7 +456,7 @@ test.describe('Impact Analysis', () => {
   });
 
   test('verify domain for Asset level impact analysis', async ({ page }) => {
-    await page.getByTestId('filters-button').click();
+    await page.getByRole('button', { name: 'Filters' }).click();
     await page.getByTestId('search-dropdown-Domains').click();
 
     await expect(
@@ -485,7 +485,7 @@ test.describe('Impact Analysis', () => {
   });
 
   test('verify tier for Asset level impact analysis', async ({ page }) => {
-    await page.getByTestId('filters-button').click();
+    await page.getByRole('button', { name: 'Filters' }).click();
     await page.getByTestId('search-dropdown-Tier').click();
 
     await expect(
@@ -874,7 +874,7 @@ test.describe('Impact Analysis', () => {
   test('Verify service type filter for Asset level impact analysis', async ({
     page,
   }) => {
-    await page.getByTestId('filters-button').click();
+    await page.getByRole('button', { name: 'Filters' }).click();
     await page.getByTestId('search-dropdown-Service Type').click();
 
     const serviceTypeOption = page.getByTitle('mlflow', { exact: true });
@@ -917,7 +917,7 @@ test.describe('Impact Analysis', () => {
 
     const initialRowCount = await page.locator('[data-row-key]').count();
 
-    await page.getByTestId('filters-button').click();
+    await page.getByRole('button', { name: 'Filters' }).click();
     await page.getByTestId('search-dropdown-Tag').click();
 
     await waitForAllLoadersToDisappear(page);
@@ -978,7 +978,7 @@ test.describe('Impact Analysis', () => {
   test('Verify switching between table and column level clears filters', async ({
     page,
   }) => {
-    await page.getByTestId('filters-button').click();
+    await page.getByRole('button', { name: 'Filters' }).click();
     await page.getByTestId('search-dropdown-Tier').click();
 
     await page
@@ -1043,7 +1043,7 @@ test.describe('Impact Analysis', () => {
     await columnLineageResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('filters-button').click();
+    await page.getByRole('button', { name: 'Filters' }).click();
     await page.getByTestId('search-dropdown-Glossary Terms').click();
     const glossaryOptions = page
       .getByTestId('drop-down-menu')

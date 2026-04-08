@@ -55,6 +55,7 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.beforeEach(async ({ page }) => {
+  await redirectToHomePage(page);
   await table.visitEntityPage(page);
   await visitLineageTab(page);
   await performZoomOut(page);

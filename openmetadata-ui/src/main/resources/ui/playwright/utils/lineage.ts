@@ -124,7 +124,7 @@ export const editLineageClick = async (page: Page) => {
 export const editLineage = async (page: Page) => {
   await editLineageClick(page);
 
-  await expect(page.getByTestId('table-draggable-icon')).toBeVisible();
+  await expect(page.getByTestId('table_search_index-draggable-icon')).toBeVisible();
 };
 
 export const performZoomOut = async (page: Page, xTimes = 10) => {
@@ -642,7 +642,7 @@ export const getEntityColumns = (
 };
 
 export const openImpactAnalysisTab = async (page: Page) => {
-  const impactAnalysisTab = page.getByRole('tab', {
+  const impactAnalysisTab = page.getByRole('button', {
     name: 'Impact Analysis',
   });
 
@@ -719,9 +719,9 @@ export const verifyCSVHeaders = async (headers: string[]) => {
 };
 
 export const getLineageCSVData = async (page: Page) => {
-  await expect(page.getByTestId('export-button')).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
 
-  await page.getByTestId('export-button').click();
+  await page.getByRole('button', { name: 'Export' }).click();
 
   await page
     .locator('[data-testid="export-entity-modal"] #submit-button')
@@ -804,9 +804,9 @@ export const verifyExportLineagePNG = async (
   page: Page,
   isPNGSelected?: boolean
 ) => {
-  await expect(page.getByTestId('export-button')).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
 
-  await page.getByTestId('export-button').click();
+  await page.getByRole('button', { name: 'Export' }).click();
 
   await page
     .locator('[data-testid="export-entity-modal"] #submit-button')

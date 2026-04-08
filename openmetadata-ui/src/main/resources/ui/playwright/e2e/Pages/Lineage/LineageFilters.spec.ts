@@ -31,7 +31,8 @@ import { WorksheetClass } from '../../../support/entity/WorksheetClass';
 import {
   getApiContext,
   getDefaultAdminAPIContext,
-  getEntityTypeSearchIndexMapping,
+  getEntityTypeMapping,
+  redirectToHomePage,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -98,11 +99,11 @@ test.describe('Lineage Filters', () => {
       apiContext,
       {
         id: lineageEntity.entityResponseData.id,
-        type: getEntityTypeSearchIndexMapping(lineageEntity.type),
+        type: getEntityTypeMapping(lineageEntity.type),
       },
       {
         id: depth1Entity.entityResponseData.id,
-        type: getEntityTypeSearchIndexMapping(depth1Entity.type),
+        type: getEntityTypeMapping(depth1Entity.type),
       }
     );
 
@@ -111,11 +112,11 @@ test.describe('Lineage Filters', () => {
         apiContext,
         {
           id: depth1Entity.entityResponseData.id,
-          type: getEntityTypeSearchIndexMapping(lineageEntity.type),
+          type: getEntityTypeMapping(lineageEntity.type),
         },
         {
           id: entity.entityResponseData.id,
-          type: getEntityTypeSearchIndexMapping(entity.type),
+          type: getEntityTypeMapping(entity.type),
         }
       );
     }
@@ -124,6 +125,7 @@ test.describe('Lineage Filters', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
     await lineageEntity.visitEntityPage(page);
     await visitLineageTab(page);
     await waitForAllLoadersToDisappear(page);
@@ -274,7 +276,7 @@ test.describe('Lineage Filters', () => {
           await page.reload();
           await waitForAllLoadersToDisappear(page);
 
-          await page.getByTestId('filters-button').click();
+          await page.getByRole('button', { name: 'Filters' }).click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
           await page.getByTitle(filterValue).click();
@@ -307,16 +309,9 @@ test.describe('Lineage Filters', () => {
 
         await test.step('Verify filters working for Impact Analysis tab', async () => {
           // Navigate to Impact Analysis
-          const impactAnalysisTab = page.getByRole('tab', {
-            name: 'Impact Analysis',
-          });
+          await openImpactAnalysisTab(page);
 
-          await expect(impactAnalysisTab).toBeVisible();
-          await impactAnalysisTab.scrollIntoViewIfNeeded();
-          await impactAnalysisTab.click();
-          await waitForAllLoadersToDisappear(page);
-
-          await page.getByTestId('filters-button').click();
+          await page.getByRole('button', { name: 'Filters' }).click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
           await page
@@ -726,11 +721,11 @@ test.describe('Lineage Filters', () => {
           apiContext,
           {
             id: lineageEntity.entityResponseData.id,
-            type: getEntityTypeSearchIndexMapping(lineageEntity.type),
+            type: getEntityTypeMapping(lineageEntity.type),
           },
           {
             id: depth1Entity.entityResponseData.id,
-            type: getEntityTypeSearchIndexMapping(depth1Entity.type),
+            type: getEntityTypeMapping(depth1Entity.type),
           },
           [
             {
@@ -938,7 +933,7 @@ test.describe('Lineage Filters', () => {
 
   test.describe('Verify filters for Impact Analysis', () => {
     test.beforeEach('navigate to impact analysis', async ({ page }) => {
-      await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+      await openImpactAnalysisTab(page);
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -953,7 +948,7 @@ test.describe('Lineage Filters', () => {
 
       await depth1Entity.visitEntityPage(page);
       await visitLineageTab(page);
-      await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+      await openImpactAnalysisTab(page);
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -963,7 +958,7 @@ test.describe('Lineage Filters', () => {
       for (const entity of depth2ndEntities) {
         await entity.visitEntityPage(page);
         await visitLineageTab(page);
-        await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+        await openImpactAnalysisTab(page);
         await waitForAllLoadersToDisappear(page);
 
         await expect(
@@ -988,8 +983,7 @@ test.describe('Lineage Filters', () => {
 
       await depth1Entity.visitEntityPage(page);
       await visitLineageTab(page);
-      await page.getByRole('tab', { name: 'Impact Analysis' }).click();
-      await waitForAllLoadersToDisappear(page);
+      await openImpactAnalysisTab(page);
 
       // Verify Dashboard is visible in Impact Analysis for Upstream
       await page.getByRole('button', { name: 'Upstream' }).click();
@@ -1002,9 +996,8 @@ test.describe('Lineage Filters', () => {
       for (const entity of depth2ndEntities) {
         await entity.visitEntityPage(page);
         await visitLineageTab(page);
-        await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+        await openImpactAnalysisTab(page);
 
-        await waitForAllLoadersToDisappear(page);
         // Verify Dashboard is visible in Impact Analysis for Upstream
         await page.getByRole('button', { name: 'Upstream' }).click();
         await waitForAllLoadersToDisappear(page);
