@@ -196,22 +196,8 @@ export const addOwnerWithoutValidation = async ({
   type?: 'Teams' | 'Users';
   initiatorId?: string;
 }) => {
-    // Register both prefetch listeners before the panel opens.
-    const teamsPrefetch = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query?q=&index=team') &&
-        response.status() === 200
-    );
-    const usersPrefetch = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query?q=&index=user') &&
-        response.status() === 200
-    );
     await page.getByTestId(initiatorId).click();
-    await page.getByTestId('user-team-select-popover').waitFor({ state: 'visible' });
-    await teamsPrefetch;
-    await usersPrefetch;
-
+    if (type === 'Users') {
     const usersTab = page.getByRole('tab', { name: type });
     const isTabAlreadySelected =
       (await usersTab.getAttribute('aria-selected')) === 'true';
@@ -228,6 +214,8 @@ export const addOwnerWithoutValidation = async ({
       await expect(usersTab).toHaveAttribute('aria-selected', 'true');
       await userListResponse;
     }
+    }
+
   await waitForAllLoadersToDisappear(page);
 
   const ownerSearchBar = await page
