@@ -28,64 +28,6 @@
         "SYSTEM"
       ]
     },
-    "staticSamplingConfig": {
-      "title": "Static Sampling Configuration",
-      "description": "Configuration for static sampling based on table row count.",
-      "type": "object",
-      "properties": {
-        "profileSample": {
-          "description": "Percentage of data or no. of rows used to compute the profiler metrics and run data quality tests",
-          "type": "number",
-          "default": null,
-          "title": "Profile Sample"
-        },
-        "profileSampleType": {
-          "$ref": "#/definitions/profileSampleType",
-          "title": "Profile Sample Type"
-        },
-        "samplingMethodType": {
-          "$ref": "#/definitions/samplingMethodType",
-          "title": "Sampling Method Type"
-        }
-      }
-    },
-    "dynamicSamplingConfig": {
-      "title": "Dynamic Sampling Configuration",
-      "description": "Configuration for dynamic sampling based on table row count.",
-      "type": "object",
-      "properties": {
-        "thresholds": {
-          "description": "Row count thresholds for sampling. Evaluated in order from highest to lowest threshold. Tables below the lowest threshold are profiled at 100% (no sampling).",
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "rowCountThreshold": {
-                "description": "Minimum row count for this tier to apply",
-                "type": "integer",
-                "minimum": 1,
-                "title": "Row Count Threshold"
-              },
-              "profileSample": {
-                "description": "Sample percentage or row count to use for tables at or above this threshold",
-                "type": "number",
-                "default": null,
-                "title": "Profile Sample"
-              },
-              "profileSampleType": {
-                "$ref": "#/definitions/profileSampleType",
-                "title": "Profile Sample Type"
-              },
-              "samplingMethodType": {
-                "$ref": "#/definitions/samplingMethodType",
-                "title": "Sampling Method Type"
-              }
-            },
-            "required": ["rowCountThreshold", "profileSample"]
-          }
-        }
-      }
-    },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
@@ -951,30 +893,7 @@
           "default": null
         },
         "profileSampleConfig": {
-          "description": "Profile sample configuration supporting static and dynamic sampling strategies.",
-          "type": "object",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false
-            },
-            "type": {
-              "description": "Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at runtime based on row count thresholds.",
-              "type": "string",
-              "enum": ["STATIC", "DYNAMIC"],
-              "default": "STATIC"
-            },
-            "config": {
-              "oneOf": [
-                {
-                  "$ref": "#/definitions/dynamicSamplingConfig"
-                },
-                {
-                  "$ref": "#/definitions/staticSamplingConfig"
-                }
-              ]
-            }
-          }
+          "$ref": "../../type/profileSampleConfig.json"
         }
       }
     },
@@ -1011,6 +930,14 @@
             "$ref": "#/definitions/customMetricProfile"
           },
           "default": null
+        },
+        "profileSample": {
+          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
+          "type": "number",
+          "default": null
+        },
+        "profileSampleType": {
+          "$ref": "#/definitions/profileSampleType"
         }
       },
       "required": [
