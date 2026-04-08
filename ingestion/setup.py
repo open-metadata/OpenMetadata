@@ -297,7 +297,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iomete": {
-        "iomete-sqlalchemy",
+        "iomete-sqlalchemy>=1.0.22",
         "adbc-driver-flightsql",
         "adbc-driver-manager",
     },

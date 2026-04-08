@@ -75,8 +75,12 @@ class IometeSource(CommonDbSourceService):
 
     def get_database_names(self) -> Iterable[str]:
         if self.service_connection.catalog:
+            logger.debug(
+                "get_database_names: yielding catalog=%r", self.service_connection.catalog
+            )
             yield self.service_connection.catalog
         else:
+            logger.debug("get_database_names: no catalog set, delegating to super()")
             yield from super().get_database_names()
 
     def get_schema_definition(
