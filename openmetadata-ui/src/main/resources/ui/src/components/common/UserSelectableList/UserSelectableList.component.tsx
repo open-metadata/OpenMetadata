@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SmartToyOutlined } from '@mui/icons-material';
 import { Button, Popover, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
@@ -166,11 +166,12 @@ export const UserSelectableList = ({
       <div className="d-flex items-center gap-2">
         {botUserIds.current.has(item.id) && (
           <Tooltip title={t('label.bot')}>
-            <SmartToyOutlined
+            <BotIcon
               aria-label={t('label.bot')}
+              color={TEXT_GREY_MUTED}
               data-testid="bot-indicator"
-              style={{ fontSize: 16, color: TEXT_GREY_MUTED }}
-              titleAccess={t('label.bot')}
+              height={16}
+              width={16}
             />
           </Tooltip>
         )}

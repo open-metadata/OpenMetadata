@@ -57,10 +57,7 @@ export interface OntologyGraphData {
   edges: OntologyEdge[];
 }
 
-import {
-  LayoutType,
-  type LayoutEngineType,
-} from './OntologyExplorer.constants';
+import { LayoutType } from './OntologyExplorer.constants';
 import type { GraphSearchHighlightInput } from './utils/graphSearchHighlight';
 
 export type LayoutAlgorithm = LayoutType;
@@ -83,7 +80,7 @@ export interface GraphFilters {
 }
 
 export interface OntologyGraphHandle {
-  fitView: () => void;
+  fitView: () => Promise<void>;
   zoomIn: () => void;
   zoomOut: () => void;
   runLayout: () => void;
@@ -171,7 +168,7 @@ export interface MergedEdge {
 }
 
 export interface LayoutConfig {
-  type: 'dagre' | 'radial' | 'circular';
+  type: 'antv-dagre' | 'dagre' | 'radial' | 'circular';
   [key: string]: unknown;
 }
 

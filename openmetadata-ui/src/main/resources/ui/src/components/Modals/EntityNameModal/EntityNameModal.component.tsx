@@ -71,6 +71,9 @@ const EntityNameModal = <T extends EntityName>({
           {title}
         </Typography.Text>
       }
+      wrapProps={{
+        'data-react-aria-top-layer': 'true',
+      }}
       onCancel={onCancel}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
