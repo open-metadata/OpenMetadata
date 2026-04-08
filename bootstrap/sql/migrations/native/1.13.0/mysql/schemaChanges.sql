@@ -131,110 +131,49 @@ WHERE ue.name = 'mcpapplicationbot'
   AND re.name = 'ApplicationBotImpersonationRole';
 
 
--- table_entity: build profileSampleConfig from existing flat fields (skip if already migrated)
-UPDATE table_entity
+UPDATE entity_extension
 SET json = JSON_SET(
     json,
-    '$.tableProfilerConfig.profileSampleConfig',
+    '$.profileSampleConfig',
     JSON_OBJECT(
         'enabled', true,
         'sampleConfigType', 'STATIC',
         'config', JSON_OBJECT(
-            'profileSample', JSON_EXTRACT(json, '$.tableProfilerConfig.profileSample'),
+            'profileSample', JSON_EXTRACT(json, '$.profileSample'),
             'profileSampleType', COALESCE(
-                JSON_EXTRACT(json, '$.tableProfilerConfig.profileSampleType'),
+                JSON_EXTRACT(json, '$.profileSampleType'),
                 CAST('"PERCENTAGE"' AS JSON)
             ),
-            'samplingMethodType', JSON_EXTRACT(json, '$.tableProfilerConfig.samplingMethodType')
+            'samplingMethodType', JSON_EXTRACT(json, '$.samplingMethodType')
         )
     )
 )
-WHERE JSON_EXTRACT(json, '$.tableProfilerConfig.profileSample') IS NOT NULL
-  AND JSON_TYPE(JSON_EXTRACT(json, '$.tableProfilerConfig.profileSample')) != 'NULL'
-  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.tableProfilerConfig.profileSampleConfig');
+WHERE extension IN (
+    'table.tableProfilerConfig',
+    'database.databaseProfilerConfig',
+    'databaseSchema.databaseSchemaProfilerConfig'
+)
+  AND JSON_EXTRACT(json, '$.profileSample') IS NOT NULL
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.profileSample')) != 'NULL'
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.profileSampleConfig');
 
--- table_entity: remove old flat fields
-UPDATE table_entity
+-- entity_extension: remove old flat fields
+UPDATE entity_extension
 SET json = JSON_REMOVE(
     JSON_REMOVE(
-        JSON_REMOVE(json, '$.tableProfilerConfig.samplingMethodType'),
-        '$.tableProfilerConfig.profileSampleType'
+        JSON_REMOVE(json, '$.samplingMethodType'),
+        '$.profileSampleType'
     ),
-    '$.tableProfilerConfig.profileSample'
+    '$.profileSample'
 )
-WHERE JSON_CONTAINS_PATH(json, 'one', '$.tableProfilerConfig.profileSample')
-   OR JSON_CONTAINS_PATH(json, 'one', '$.tableProfilerConfig.profileSampleType')
-   OR JSON_CONTAINS_PATH(json, 'one', '$.tableProfilerConfig.samplingMethodType');
-
--- database_entity
-UPDATE database_entity
-SET json = JSON_SET(
-    json,
-    '$.databaseProfilerConfig.profileSampleConfig',
-    JSON_OBJECT(
-        'enabled', true,
-        'sampleConfigType', 'STATIC',
-        'config', JSON_OBJECT(
-            'profileSample', JSON_EXTRACT(json, '$.databaseProfilerConfig.profileSample'),
-            'profileSampleType', COALESCE(
-                JSON_EXTRACT(json, '$.databaseProfilerConfig.profileSampleType'),
-                CAST('"PERCENTAGE"' AS JSON)
-            ),
-            'samplingMethodType', JSON_EXTRACT(json, '$.databaseProfilerConfig.samplingMethodType')
-        )
-    )
+WHERE extension IN (
+    'table.tableProfilerConfig',
+    'database.databaseProfilerConfig',
+    'databaseSchema.databaseSchemaProfilerConfig'
 )
-WHERE JSON_EXTRACT(json, '$.databaseProfilerConfig.profileSample') IS NOT NULL
-  AND JSON_TYPE(JSON_EXTRACT(json, '$.databaseProfilerConfig.profileSample')) != 'NULL'
-  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.databaseProfilerConfig.profileSampleConfig');
-
--- database_entity: remove old flat fields
-UPDATE database_entity
-SET json = JSON_REMOVE(
-    JSON_REMOVE(
-        JSON_REMOVE(json, '$.databaseProfilerConfig.samplingMethodType'),
-        '$.databaseProfilerConfig.profileSampleType'
-    ),
-    '$.databaseProfilerConfig.profileSample'
-)
-WHERE JSON_CONTAINS_PATH(json, 'one', '$.databaseProfilerConfig.profileSample')
-   OR JSON_CONTAINS_PATH(json, 'one', '$.databaseProfilerConfig.profileSampleType')
-   OR JSON_CONTAINS_PATH(json, 'one', '$.databaseProfilerConfig.samplingMethodType');
-
--- database_schema_entity: build profileSampleConfig from existing flat fields (skip if already migrated)
-UPDATE database_schema_entity
-SET json = JSON_SET(
-    json,
-    '$.databaseSchemaProfilerConfig.profileSampleConfig',
-    JSON_OBJECT(
-        'enabled', true,
-        'sampleConfigType', 'STATIC',
-        'config', JSON_OBJECT(
-            'profileSample', JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.profileSample'),
-            'profileSampleType', COALESCE(
-                JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.profileSampleType'),
-                CAST('"PERCENTAGE"' AS JSON)
-            ),
-            'samplingMethodType', JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.samplingMethodType')
-        )
-    )
-)
-WHERE JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.profileSample') IS NOT NULL
-  AND JSON_TYPE(JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.profileSample')) != 'NULL'
-  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.databaseSchemaProfilerConfig.profileSampleConfig');
-
--- database_schema_entity: remove old flat fields
-UPDATE database_schema_entity
-SET json = JSON_REMOVE(
-    JSON_REMOVE(
-        JSON_REMOVE(json, '$.databaseSchemaProfilerConfig.samplingMethodType'),
-        '$.databaseSchemaProfilerConfig.profileSampleType'
-    ),
-    '$.databaseSchemaProfilerConfig.profileSample'
-)
-WHERE JSON_CONTAINS_PATH(json, 'one', '$.databaseSchemaProfilerConfig.profileSample')
-   OR JSON_CONTAINS_PATH(json, 'one', '$.databaseSchemaProfilerConfig.profileSampleType')
-   OR JSON_CONTAINS_PATH(json, 'one', '$.databaseSchemaProfilerConfig.samplingMethodType');
+  AND (JSON_CONTAINS_PATH(json, 'one', '$.profileSample')
+    OR JSON_CONTAINS_PATH(json, 'one', '$.profileSampleType')
+    OR JSON_CONTAINS_PATH(json, 'one', '$.samplingMethodType'));
 
 -- ingestion_pipeline_entity (profiler pipelines): build profileSampleConfig (skip if already migrated)
 UPDATE ingestion_pipeline_entity

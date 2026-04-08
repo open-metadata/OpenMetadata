@@ -154,95 +154,49 @@ ON CONFLICT DO NOTHING;
 -- Migrate profiler sampling config: move flat profileSample/profileSampleType/samplingMethodType
 -- into the new profileSampleConfig structure. Default to STATIC since DYNAMIC is new.
 
--- table_entity: build profileSampleConfig from existing flat fields (skip if already migrated)
-UPDATE table_entity
+-- Profiler configs are stored in entity_extension table, not in entity json columns.
+-- Extension keys: table.tableProfilerConfig, database.databaseProfilerConfig, databaseSchema.databaseSchemaProfilerConfig
+-- The json column in entity_extension contains the config object directly (flat root-level fields).
+
+-- entity_extension: build profileSampleConfig from existing flat fields (skip if already migrated)
+UPDATE entity_extension
 SET json = jsonb_set(
     json::jsonb,
-    '{tableProfilerConfig,profileSampleConfig}',
+    '{profileSampleConfig}',
     jsonb_build_object(
         'enabled', true,
         'sampleConfigType', 'STATIC',
         'config', jsonb_build_object(
-            'profileSample', json::jsonb #> '{tableProfilerConfig,profileSample}',
+            'profileSample', json::jsonb #> '{profileSample}',
             'profileSampleType', COALESCE(
-                json::jsonb #> '{tableProfilerConfig,profileSampleType}',
+                json::jsonb #> '{profileSampleType}',
                 '"PERCENTAGE"'::jsonb
             ),
-            'samplingMethodType', json::jsonb #> '{tableProfilerConfig,samplingMethodType}'
+            'samplingMethodType', json::jsonb #> '{samplingMethodType}'
         )
     )
 )::json
-WHERE json::jsonb #>> '{tableProfilerConfig,profileSample}' IS NOT NULL
-  AND json::jsonb #> '{tableProfilerConfig,profileSampleConfig}' IS NULL;
+WHERE extension IN (
+    'table.tableProfilerConfig',
+    'database.databaseProfilerConfig',
+    'databaseSchema.databaseSchemaProfilerConfig'
+)
+  AND json::jsonb #>> '{profileSample}' IS NOT NULL
+  AND json::jsonb #> '{profileSampleConfig}' IS NULL;
 
--- table_entity: remove old flat fields
-UPDATE table_entity
-SET json = (json::jsonb #- '{tableProfilerConfig,profileSample}'
-                        #- '{tableProfilerConfig,profileSampleType}'
-                        #- '{tableProfilerConfig,samplingMethodType}')::json
-WHERE json::jsonb #>> '{tableProfilerConfig,profileSample}' IS NOT NULL
-   OR json::jsonb #>> '{tableProfilerConfig,profileSampleType}' IS NOT NULL
-   OR json::jsonb #>> '{tableProfilerConfig,samplingMethodType}' IS NOT NULL;
-
--- database_entity: build profileSampleConfig from existing flat fields (skip if already migrated)
-UPDATE database_entity
-SET json = jsonb_set(
-    json::jsonb,
-    '{databaseProfilerConfig,profileSampleConfig}',
-    jsonb_build_object(
-        'enabled', true,
-        'sampleConfigType', 'STATIC',
-        'config', jsonb_build_object(
-            'profileSample', json::jsonb #> '{databaseProfilerConfig,profileSample}',
-            'profileSampleType', COALESCE(
-                json::jsonb #> '{databaseProfilerConfig,profileSampleType}',
-                '"PERCENTAGE"'::jsonb
-            ),
-            'samplingMethodType', json::jsonb #> '{databaseProfilerConfig,samplingMethodType}'
-        )
-    )
-)::json
-WHERE json::jsonb #>> '{databaseProfilerConfig,profileSample}' IS NOT NULL
-  AND json::jsonb #> '{databaseProfilerConfig,profileSampleConfig}' IS NULL;
-
--- database_entity: remove old flat fields
-UPDATE database_entity
-SET json = (json::jsonb #- '{databaseProfilerConfig,profileSample}'
-                        #- '{databaseProfilerConfig,profileSampleType}'
-                        #- '{databaseProfilerConfig,samplingMethodType}')::json
-WHERE json::jsonb #>> '{databaseProfilerConfig,profileSample}' IS NOT NULL
-   OR json::jsonb #>> '{databaseProfilerConfig,profileSampleType}' IS NOT NULL
-   OR json::jsonb #>> '{databaseProfilerConfig,samplingMethodType}' IS NOT NULL;
-
--- database_schema_entity: build profileSampleConfig from existing flat fields (skip if already migrated)
-UPDATE database_schema_entity
-SET json = jsonb_set(
-    json::jsonb,
-    '{databaseSchemaProfilerConfig,profileSampleConfig}',
-    jsonb_build_object(
-        'enabled', true,
-        'sampleConfigType', 'STATIC',
-        'config', jsonb_build_object(
-            'profileSample', json::jsonb #> '{databaseSchemaProfilerConfig,profileSample}',
-            'profileSampleType', COALESCE(
-                json::jsonb #> '{databaseSchemaProfilerConfig,profileSampleType}',
-                '"PERCENTAGE"'::jsonb
-            ),
-            'samplingMethodType', json::jsonb #> '{databaseSchemaProfilerConfig,samplingMethodType}'
-        )
-    )
-)::json
-WHERE json::jsonb #>> '{databaseSchemaProfilerConfig,profileSample}' IS NOT NULL
-  AND json::jsonb #> '{databaseSchemaProfilerConfig,profileSampleConfig}' IS NULL;
-
--- database_schema_entity: remove old flat fields
-UPDATE database_schema_entity
-SET json = (json::jsonb #- '{databaseSchemaProfilerConfig,profileSample}'
-                        #- '{databaseSchemaProfilerConfig,profileSampleType}'
-                        #- '{databaseSchemaProfilerConfig,samplingMethodType}')::json
-WHERE json::jsonb #>> '{databaseSchemaProfilerConfig,profileSample}' IS NOT NULL
-   OR json::jsonb #>> '{databaseSchemaProfilerConfig,profileSampleType}' IS NOT NULL
-   OR json::jsonb #>> '{databaseSchemaProfilerConfig,samplingMethodType}' IS NOT NULL;
+-- entity_extension: remove old flat fields
+UPDATE entity_extension
+SET json = (json::jsonb #- '{profileSample}'
+                        #- '{profileSampleType}'
+                        #- '{samplingMethodType}')::json
+WHERE extension IN (
+    'table.tableProfilerConfig',
+    'database.databaseProfilerConfig',
+    'databaseSchema.databaseSchemaProfilerConfig'
+)
+  AND (json::jsonb #>> '{profileSample}' IS NOT NULL
+    OR json::jsonb #>> '{profileSampleType}' IS NOT NULL
+    OR json::jsonb #>> '{samplingMethodType}' IS NOT NULL);
 
 -- ingestion_pipeline_entity (profiler pipelines): build profileSampleConfig (skip if already migrated)
 UPDATE ingestion_pipeline_entity
