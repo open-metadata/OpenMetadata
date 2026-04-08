@@ -12,6 +12,7 @@
  */
 import {
   LayoutEngine,
+  MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS,
   NODE_PADDING_H,
   NODE_PADDING_V,
   toLayoutEngineType,
@@ -30,10 +31,53 @@ export const HULL_GAP = 56;
 export const MIN_NODE_SPACING = 24;
 export const MIN_LINK_DISTANCE = 160;
 
-/** Minimum node width so label doesn't clip. */
+export const DAGRE_RANK_SEP = 150;
+export const DAGRE_NODE_SEP = 100;
+export const HIERARCHY_DAGRE_NODE_SEP = 260;
+export const HIERARCHY_DAGRE_RANK_SEP = 200;
+const CROSS_GLOSSARY_LAYOUT_EXTRA = 90;
+
 export const MIN_NODE_WIDTH = 72;
-/** Minimum width when node shows cross-glossary badge (e.g. "[Bank] Term"). */
 export const BADGE_MIN_NODE_WIDTH = 100;
+
+function adaptiveSpacing(base: number, nodeCount: number): number {
+  if (nodeCount <= 50) {
+    return base;
+  }
+  if (nodeCount <= 200) {
+    return Math.ceil(base * 0.7);
+  }
+  if (nodeCount <= 1000) {
+    return Math.ceil(base * 0.45);
+  }
+  if (nodeCount <= 5000) {
+    return Math.ceil(base * 0.25);
+  }
+
+  return Math.ceil(base * 0.15);
+}
+
+function adaptiveSpacingModel(base: number, nodeCount: number): number {
+  if (nodeCount <= 80) {
+    return base;
+  }
+  if (nodeCount <= 200) {
+    return Math.ceil(base * 0.72);
+  }
+  if (nodeCount <= 1000) {
+    return Math.ceil(base * 0.48);
+  }
+
+  return Math.ceil(base * 0.32);
+}
+
+export interface GetOntologyLayoutConfigOptions {
+  hasCombos: boolean;
+  focusNode?: string;
+  isDataMode: boolean;
+  isModelView: boolean;
+  isHierarchyMode: boolean;
+}
 
 export function getNodeSize(d?: LayoutNodeLike): [number, number] {
   const size = d?.data?.size;
@@ -75,101 +119,113 @@ export function truncateNodeLabelByWidth(label: string, width: number): string {
   return `${label.slice(0, maxChars - 1)}...`;
 }
 
-/**
- * Shared dagre spacing so hierarchy and overview look consistent.
- * Larger values keep edge labels clear of nodes and arrowheads off node borders.
- */
-export const DAGRE_RANK_SEP = 150;
-export const DAGRE_NODE_SEP = 100;
-/** Extra separation in hierarchy mode so glossary combo boxes do not overlap. */
-export const HIERARCHY_DAGRE_NODE_SEP = 260;
-export const HIERARCHY_DAGRE_RANK_SEP = 200;
-/** Extra separation when glossary hulls are shown so cross-glossary edges avoid overlapping nodes. */
-const CROSS_GLOSSARY_LAYOUT_EXTRA = 90;
-
-/**
- * Scales a spacing value down for large graphs so the canvas stays compact
- * enough for fitView to show all nodes at a legible zoom level.
- * Small graphs (≤50 nodes) use the full base value unchanged.
- */
-function adaptiveSpacing(base: number, nodeCount: number): number {
-  if (nodeCount <= 50) {
-    return base;
-  }
-  if (nodeCount <= 200) {
-    return Math.ceil(base * 0.7);
-  }
-  if (nodeCount <= 1000) {
-    return Math.ceil(base * 0.45);
-  }
-  if (nodeCount <= 5000) {
-    return Math.ceil(base * 0.25);
-  }
-
-  return Math.ceil(base * 0.15);
-}
-
 export function getLayoutConfig(
   layoutType: LayoutType | LayoutEngineType,
   nodeCount: number,
-  hasHulls = false,
-  focusNode?: string,
-  isDataMode = false,
-  isHierarchyMode = false
+  options: GetOntologyLayoutConfigOptions
 ): LayoutConfig {
+  const { hasCombos, focusNode, isDataMode, isModelView, isHierarchyMode } =
+    options;
+
+  const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
+
   const engineType: LayoutEngineType =
     layoutType === LayoutEngine.Dagre ||
     layoutType === LayoutEngine.Radial ||
     layoutType === LayoutEngine.Circular
       ? layoutType
       : toLayoutEngineType(layoutType as LayoutType);
-  const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
 
-  if (engineType === LayoutEngine.Dagre) {
-    const baseNodeSep = hasHulls
-      ? COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA
-      : DAGRE_NODE_SEP;
-    const baseRankSep = hasHulls
-      ? COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA
-      : DAGRE_RANK_SEP;
+  if (!isModelView) {
+    if (engineType === LayoutEngine.Dagre) {
+      const baseNodeSep =
+        COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA;
+      const baseRankSep =
+        COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA;
 
-    let nodesep = adaptiveSpacing(baseNodeSep, nodeCount);
-    let ranksep = adaptiveSpacing(baseRankSep, nodeCount);
+      let nodesep = adaptiveSpacing(baseNodeSep, nodeCount);
+      let ranksep = adaptiveSpacing(baseRankSep, nodeCount);
 
-    if (isHierarchyMode) {
-      nodesep = Math.max(
+      if (isHierarchyMode) {
+        nodesep = Math.max(
+          nodesep,
+          adaptiveSpacing(HIERARCHY_DAGRE_NODE_SEP, nodeCount)
+        );
+        ranksep = Math.max(
+          ranksep,
+          adaptiveSpacing(HIERARCHY_DAGRE_RANK_SEP, nodeCount)
+        );
+      }
+
+      return {
+        type: LayoutEngine.Dagre,
+        animation: false,
+        rankdir: 'TB',
         nodesep,
-        adaptiveSpacing(HIERARCHY_DAGRE_NODE_SEP, nodeCount)
-      );
-      ranksep = Math.max(
         ranksep,
-        adaptiveSpacing(HIERARCHY_DAGRE_RANK_SEP, nodeCount)
-      );
+        preventOverlap: true,
+        nodeSize: baseNodeSize,
+      };
+    }
+
+    if (engineType === LayoutEngine.Radial) {
+      return {
+        type: LayoutEngine.Radial,
+        animation: false,
+        ...(focusNode && !isDataMode && { focusNode }),
+        unitRadius: isDataMode ? 220 : nodeCount <= 2 ? MIN_LINK_DISTANCE : 150,
+        preventOverlap: true,
+        nodeSize: isDataMode ? 20 : 40,
+        nodeSpacing: isDataMode ? 30 : MIN_NODE_SPACING,
+        linkDistance: isDataMode ? 220 : 200,
+        strictRadial: false,
+        maxIteration: 1000,
+        sortBy: 'degree',
+      };
+    }
+
+    if (engineType === LayoutEngine.Circular) {
+      return {
+        type: LayoutEngine.Circular,
+        animation: false,
+        nodeSize: baseNodeSize,
+        nodeSpacing: MIN_NODE_SPACING,
+      };
     }
 
     return {
-      type: LayoutEngine.Dagre,
+      type: engineType,
+    };
+  }
+
+  if (engineType === LayoutEngine.Dagre) {
+    return {
+      type: 'antv-dagre',
       animation: false,
-      rankdir: 'TB',
-      nodesep,
-      ranksep,
-      preventOverlap: true,
+      sortByCombo: hasCombos,
       nodeSize: baseNodeSize,
+      enableWorker: nodeCount > 250,
+      ...(hasCombos && { ranksep: MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS }),
     };
   }
 
   if (engineType === LayoutEngine.Radial) {
+    const unitRadius = adaptiveSpacingModel(
+      nodeCount <= 2 ? MIN_LINK_DISTANCE : 140,
+      nodeCount
+    );
+
     return {
       type: LayoutEngine.Radial,
       animation: false,
-      ...(focusNode && !isDataMode && { focusNode }),
-      unitRadius: isDataMode ? 220 : nodeCount <= 2 ? MIN_LINK_DISTANCE : 150,
+      ...(focusNode && { focusNode }),
+      unitRadius,
       preventOverlap: true,
-      nodeSize: isDataMode ? 20 : 40,
-      nodeSpacing: isDataMode ? 30 : MIN_NODE_SPACING,
-      linkDistance: isDataMode ? 220 : 200,
+      nodeSize: baseNodeSize,
+      nodeSpacing: adaptiveSpacingModel(MIN_NODE_SPACING, nodeCount),
+      linkDistance: adaptiveSpacingModel(200, nodeCount),
       strictRadial: false,
-      maxIteration: 1000,
+      maxIteration: nodeCount > 500 ? 600 : 1000,
       sortBy: 'degree',
     };
   }
@@ -179,7 +235,7 @@ export function getLayoutConfig(
       type: LayoutEngine.Circular,
       animation: false,
       nodeSize: baseNodeSize,
-      nodeSpacing: MIN_NODE_SPACING,
+      nodeSpacing: adaptiveSpacingModel(MIN_NODE_SPACING, nodeCount),
     };
   }
 
