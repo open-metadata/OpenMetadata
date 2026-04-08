@@ -87,7 +87,7 @@
       "title": "Use System Table Statistics"
     },
     "profileSampleConfig": {
-      "$ref": "../type/profileSampleConfig.json"
+      "$ref": "../type/samplingConfig.json#/definitions/profileSampleConfig"
     },
     "randomizedSample": {
       "description": "Whether to randomize the sample data or not.",

@@ -441,7 +441,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
                 .withProfileSampleConfig(
                     new ProfileSampleConfig()
                         .withEnabled(true)
-                        .withType(ProfileSampleConfig.Type.STATIC)
+                        .withSampleConfigType(ProfileSampleConfig.SampleConfigType.STATIC)
                         .withConfig(
                             new StaticSamplingConfig()
                                 .withProfileSample(50.0)

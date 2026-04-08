@@ -157,7 +157,7 @@ class ProfilerSource(ProfilerSourceInterface):
         raw = self.source_config.profileSampleConfig
         if raw:
             profile_sample_config = ProfileSampleConfig.model_validate(raw.model_dump())
-            if raw.type == databaseServiceProfilerPipeline.Type.STATIC and raw.config:
+            if raw.sampleConfigType == "STATIC" and raw.config:
                 profile_sample = getattr(raw.config, "profileSample", None)
                 profile_sample_type = getattr(raw.config, "profileSampleType", None)
                 sampling_method_type = getattr(raw.config, "samplingMethodType", None)

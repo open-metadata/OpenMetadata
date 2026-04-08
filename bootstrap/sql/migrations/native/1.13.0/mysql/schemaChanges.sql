@@ -138,7 +138,7 @@ SET json = JSON_SET(
     '$.tableProfilerConfig.profileSampleConfig',
     JSON_OBJECT(
         'enabled', true,
-        'type', 'STATIC',
+        'sampleConfigType', 'STATIC',
         'config', JSON_OBJECT(
             'profileSample', JSON_EXTRACT(json, '$.tableProfilerConfig.profileSample'),
             'profileSampleType', COALESCE(
@@ -173,7 +173,7 @@ SET json = JSON_SET(
     '$.databaseProfilerConfig.profileSampleConfig',
     JSON_OBJECT(
         'enabled', true,
-        'type', 'STATIC',
+        'sampleConfigType', 'STATIC',
         'config', JSON_OBJECT(
             'profileSample', JSON_EXTRACT(json, '$.databaseProfilerConfig.profileSample'),
             'profileSampleType', COALESCE(
@@ -208,7 +208,7 @@ SET json = JSON_SET(
     '$.databaseSchemaProfilerConfig.profileSampleConfig',
     JSON_OBJECT(
         'enabled', true,
-        'type', 'STATIC',
+        'sampleConfigType', 'STATIC',
         'config', JSON_OBJECT(
             'profileSample', JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.profileSample'),
             'profileSampleType', COALESCE(
@@ -243,7 +243,7 @@ SET json = JSON_SET(
     '$.sourceConfig.config.profileSampleConfig',
     JSON_OBJECT(
         'enabled', true,
-        'type', 'STATIC',
+        'sampleConfigType', 'STATIC',
         'config', JSON_OBJECT(
             'profileSample', JSON_EXTRACT(json, '$.sourceConfig.config.profileSample'),
             'profileSampleType', COALESCE(

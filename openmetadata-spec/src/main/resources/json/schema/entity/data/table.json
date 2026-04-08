@@ -12,21 +12,13 @@
   ],
   "definitions": {
     "profileSampleType": {
-      "description": "Type of Profile Sample (percentage or rows)",
-      "type": "string",
-      "enum": [
-        "PERCENTAGE",
-        "ROWS"
-      ],
-      "default": "PERCENTAGE"
+      "$ref": "../../type/samplingConfig.json#/definitions/profileSampleType"
     },
     "samplingMethodType": {
-      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
-      "type": "string",
-      "enum": [
-        "BERNOULLI",
-        "SYSTEM"
-      ]
+      "$ref": "../../type/samplingConfig.json#/definitions/samplingMethodType"
+    },
+    "profileSampleConfig": {
+      "$ref": "../../type/samplingConfig.json#/definitions/profileSampleConfig"
     },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
@@ -893,7 +885,7 @@
           "default": null
         },
         "profileSampleConfig": {
-          "$ref": "../../type/profileSampleConfig.json"
+          "$ref": "#/definitions/profileSampleConfig"
         }
       }
     },

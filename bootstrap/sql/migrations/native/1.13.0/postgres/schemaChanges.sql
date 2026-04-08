@@ -161,7 +161,7 @@ SET json = jsonb_set(
     '{tableProfilerConfig,profileSampleConfig}',
     jsonb_build_object(
         'enabled', true,
-        'type', 'STATIC',
+        'sampleConfigType', 'STATIC',
         'config', jsonb_build_object(
             'profileSample', json::jsonb #> '{tableProfilerConfig,profileSample}',
             'profileSampleType', COALESCE(
@@ -191,7 +191,7 @@ SET json = jsonb_set(
     '{databaseProfilerConfig,profileSampleConfig}',
     jsonb_build_object(
         'enabled', true,
-        'type', 'STATIC',
+        'sampleConfigType', 'STATIC',
         'config', jsonb_build_object(
             'profileSample', json::jsonb #> '{databaseProfilerConfig,profileSample}',
             'profileSampleType', COALESCE(
@@ -221,7 +221,7 @@ SET json = jsonb_set(
     '{databaseSchemaProfilerConfig,profileSampleConfig}',
     jsonb_build_object(
         'enabled', true,
-        'type', 'STATIC',
+        'sampleConfigType', 'STATIC',
         'config', jsonb_build_object(
             'profileSample', json::jsonb #> '{databaseSchemaProfilerConfig,profileSample}',
             'profileSampleType', COALESCE(
@@ -251,7 +251,7 @@ SET json = jsonb_set(
     '{sourceConfig,config,profileSampleConfig}',
     jsonb_build_object(
         'enabled', true,
-        'type', 'STATIC',
+        'sampleConfigType', 'STATIC',
         'config', jsonb_build_object(
             'profileSample', json::jsonb #> '{sourceConfig,config,profileSample}',
             'profileSampleType', COALESCE(

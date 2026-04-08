@@ -958,8 +958,9 @@ public class TableRepository extends EntityRepository<Table> {
       }
       ProfileSampleConfig profileSampleConfig = tableProfilerConfig.getProfileSampleConfig();
       if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
-        ProfileSampleConfig.Type profileSampleType = profileSampleConfig.getType();
-        if (profileSampleType.equals(ProfileSampleConfig.Type.STATIC)) {
+        ProfileSampleConfig.SampleConfigType sampleConfigType =
+            profileSampleConfig.getSampleConfigType();
+        if (sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
           StaticSamplingConfig staticConfig =
               JsonUtils.convertValue(profileSampleConfig.getConfig(), StaticSamplingConfig.class);
           if (staticConfig.getProfileSampleType() != null

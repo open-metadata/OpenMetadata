@@ -21,10 +21,12 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
-    ProfileSampleType,
-    SamplingMethodType,
     Table,
     TableData,
+)
+from metadata.generated.schema.type.samplingConfig import (
+    ProfileSampleType,
+    SamplingMethodType,
 )
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     SampleDataStorageConfig,
@@ -76,7 +78,7 @@ class ProfileSampleConfig(ConfigModel):
     """Profile sample configuration supporting static and dynamic sampling"""
 
     enabled: bool = False
-    type: ProfileSampleConfigType = ProfileSampleConfigType.STATIC
+    sampleConfigType: ProfileSampleConfigType = ProfileSampleConfigType.STATIC
     config: Optional[Union[DynamicSamplingConfig, StaticSamplingConfig]] = None
 
 

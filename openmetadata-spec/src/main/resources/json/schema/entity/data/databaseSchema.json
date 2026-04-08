@@ -163,7 +163,7 @@
           "default": true
         },
         "profileSampleConfig": {
-          "$ref": "../../type/profileSampleConfig.json"
+          "$ref": "../../type/samplingConfig.json#/definitions/profileSampleConfig"
         }
       }
     },

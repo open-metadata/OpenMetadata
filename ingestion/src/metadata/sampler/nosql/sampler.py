@@ -11,7 +11,8 @@
 """NoSQL Sampler"""
 from typing import Dict, List, Optional, Tuple
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.type.samplingConfig import ProfileSampleType
 from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.sampler.sampler_interface import SamplerInterface
