@@ -385,11 +385,24 @@ export const TERM_LABEL_BG_PADDING: [number, number, number, number] = [
   8, 8, 8, 8,
 ];
 
-export const MIN_ZOOM = 0.02;
+export const MIN_ZOOM = 0.001;
 export const MAX_ZOOM = 3;
 export const DEFAULT_ZOOM = 1;
 export const FIT_VIEW_ZOOM_OUT = 0.95;
 export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.85;
+export const ONTOLOGY_FIT_VIEW_PADDING = 40;
+export const ONTOLOGY_LARGE_GRAPH_NODE_COUNT = 1500;
+
+export function getOntologyFitViewZoomRatio(
+  nodeCount: number,
+  isDataMode: boolean
+): number {
+  if (nodeCount >= ONTOLOGY_LARGE_GRAPH_NODE_COUNT) {
+    return 1;
+  }
+
+  return isDataMode ? FIT_VIEW_ZOOM_OUT_DATA_MODE : FIT_VIEW_ZOOM_OUT;
+}
 
 export const DATA_MODE_ASSET_LOAD_PAGE_SIZE = 1000;
 export const DATA_MODE_ASSET_CIRCLE_SIZE = 20;
@@ -406,10 +419,12 @@ export const DATA_MODE_ASSET_LABEL_BOX_PADDING: [
   number
 ] = [6, 10, 6, 10];
 export const DATA_MODE_ASSET_LABEL_LAYOUT_STACK = 62;
-/** Extra radial gap from term node center to the first asset ring (longer connector feel in data mode). */
 export const DATA_MODE_TERM_TO_FIRST_RING_GAP = 168;
 export const COMBO_HEADER_HEIGHT = 34;
+export const COMBO_INTERIOR_PADDING_TOP = COMBO_HEADER_HEIGHT + 10;
+export const COMBO_INTERIOR_PADDING_SIDES = 12;
 export const COMBO_LABEL_PADDING_LEFT = 13;
+export const MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS = 100;
 
 export enum LayoutType {
   Hierarchical = 'hierarchical',
@@ -433,13 +448,9 @@ export function toLayoutEngineType(layout: LayoutType): LayoutEngineType {
   return layout as LayoutEngineType;
 }
 
-export const COMBO_PADDING = 48;
 export const COMBO_LABEL_PADDING_TOP_BOTTOM = 10;
 export const DATA_MODE_TERM_NODE_SIZE = 30;
-
 export const DATA_MODE_TERM_MIN_CENTER_SPACING = 600;
-export const DATA_MODE_TERM_GROUP_LAYOUT_MIN_RADIUS = 200;
-export const DATA_MODE_GLOSSARY_MACRO_HULL_GAP = 120;
 export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 2;
 /** Outer soft ring behind the term circle (G6 halo), light gray like elevated selection. */
 export const DATA_MODE_TERM_HALO_LINE_WIDTH = 5;

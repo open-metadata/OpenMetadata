@@ -18,12 +18,8 @@ import {
   LayoutEngine,
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
+import { OntologyNode } from '../OntologyExplorer.interface';
 import {
-  HierarchyGraphResult,
-  OntologyNode,
-} from '../OntologyExplorer.interface';
-import {
-  BADGE_MIN_NODE_WIDTH,
   DAGRE_NODE_SEP,
   DAGRE_RANK_SEP,
   NODE_HEIGHT,
@@ -33,9 +29,6 @@ import {
 const COMBO_PADDING = 56;
 const HULL_GAP = 72;
 const MIN_NODE_SPACING = 40;
-
-const DATA_MODE_ASSET_SPACING_ALONG_ARC = 90;
-const DATA_MODE_RING_SAFETY_PAD = 45;
 
 function getMacroCols(numGroups: number): number {
   if (numGroups <= 1) {
@@ -50,6 +43,9 @@ function getMacroCols(numGroups: number): number {
 
 const CIRCLE_MIN_RADIUS = 100;
 const CIRCLE_NODE_SPACING = 80;
+
+const DATA_MODE_ASSET_SPACING_ALONG_ARC = 90;
+const DATA_MODE_RING_SAFETY_PAD = 45;
 
 export function computeGlossaryGroupPositions(
   inputNodes: OntologyNode[],
@@ -213,140 +209,6 @@ export function computeGlossaryGroupPositions(
       positions[nodeId] = {
         x: originX + localPos.x,
         y: originY + localPos.y,
-      };
-    });
-  });
-
-  return positions;
-}
-
-export function computeHierarchyComboPositions(
-  data: HierarchyGraphResult
-): Record<string, { x: number; y: number }> {
-  const { nodes, edges, combos } = data;
-  const positions: Record<string, { x: number; y: number }> = {};
-  if (combos.length === 0) {
-    return positions;
-  }
-
-  const minNodeWidth = Math.max(NODE_WIDTH, BADGE_MIN_NODE_WIDTH);
-  const H_STEP = minNodeWidth + DAGRE_NODE_SEP;
-  const RANK_SEP = DAGRE_RANK_SEP;
-  const COMBO_HEADER = COMBO_HEADER_HEIGHT;
-
-  const nodesByCombo = new Map<string, typeof nodes>();
-  nodes.forEach((n) => {
-    const list = nodesByCombo.get(n.glossaryId) ?? [];
-    list.push(n);
-    nodesByCombo.set(n.glossaryId, list);
-  });
-
-  interface ComboLayout {
-    glossaryId: string;
-    localPositions: Map<string, { x: number; y: number }>;
-    width: number;
-    height: number;
-  }
-
-  const comboLayouts: ComboLayout[] = [];
-  combos.forEach((combo) => {
-    const comboNodes = nodesByCombo.get(combo.glossaryId) ?? [];
-    if (comboNodes.length === 0) {
-      return;
-    }
-
-    const nodeIds = new Set(comboNodes.map((n) => n.id));
-    const childToParent = new Map<string, string>();
-    edges.forEach((e) => {
-      if (nodeIds.has(e.from) && nodeIds.has(e.to)) {
-        const parent = e.from;
-        const child = e.to;
-        childToParent.set(child, parent);
-      }
-    });
-    const roots = comboNodes.filter((n) => !childToParent.has(n.id));
-    const rankByNode = new Map<string, number>();
-    roots.forEach((r) => rankByNode.set(r.id, 0));
-    const queue = roots.map((r) => r.id);
-    let i = 0;
-    while (i < queue.length) {
-      const id = queue[i];
-      const r = rankByNode.get(id) ?? 0;
-      edges.forEach((e) => {
-        if (e.from === id && nodeIds.has(e.to) && !rankByNode.has(e.to)) {
-          rankByNode.set(e.to, r + 1);
-          queue.push(e.to);
-        }
-      });
-      i++;
-    }
-    comboNodes.forEach((n) => {
-      if (!rankByNode.has(n.id)) {
-        rankByNode.set(n.id, 0);
-      }
-    });
-
-    const rankToNodes = new Map<number, typeof comboNodes>();
-    comboNodes.forEach((n) => {
-      const rank = rankByNode.get(n.id) ?? 0;
-      const list = rankToNodes.get(rank) ?? [];
-      list.push(n);
-      rankToNodes.set(rank, list);
-    });
-    const ranks = Array.from(rankToNodes.keys()).sort((a, b) => a - b);
-
-    const localPositions = new Map<string, { x: number; y: number }>();
-    let minX = 0;
-    let maxX = 0;
-    let minY = 0;
-    let maxY = 0;
-    ranks.forEach((rank) => {
-      const list = rankToNodes.get(rank) ?? [];
-      list.forEach((node, idx) => {
-        const x = idx * H_STEP + minNodeWidth / 2;
-        const y = COMBO_HEADER + rank * RANK_SEP + NODE_HEIGHT / 2;
-        localPositions.set(node.id, { x, y });
-        minX = Math.min(minX, x - minNodeWidth / 2);
-        maxX = Math.max(maxX, x + minNodeWidth / 2);
-        minY = Math.min(minY, y - NODE_HEIGHT / 2);
-        maxY = Math.max(maxY, y + NODE_HEIGHT / 2);
-      });
-    });
-
-    const width = maxX - minX + COMBO_PADDING * 2;
-    const height = maxY - minY + COMBO_PADDING * 2;
-    comboLayouts.push({
-      glossaryId: combo.glossaryId,
-      localPositions,
-      width,
-      height,
-    });
-  });
-
-  const numGroups = comboLayouts.length;
-  const macroCols = getMacroCols(numGroups);
-  const maxW = Math.max(...comboLayouts.map((c) => c.width), NODE_WIDTH);
-  const maxH = Math.max(...comboLayouts.map((c) => c.height), NODE_HEIGHT);
-  const cellW = maxW + HULL_GAP;
-  const cellH = maxH + HULL_GAP;
-
-  comboLayouts.forEach((layout, gi) => {
-    const macroCol = gi % macroCols;
-    const macroRow = Math.floor(gi / macroCols);
-    const originX = macroCol * cellW + COMBO_PADDING;
-    const originY = macroRow * cellH + COMBO_PADDING;
-
-    let boxMinX = Infinity;
-    let boxMinY = Infinity;
-    const halfW = minNodeWidth / 2;
-    layout.localPositions.forEach((pos) => {
-      boxMinX = Math.min(boxMinX, pos.x - halfW);
-      boxMinY = Math.min(boxMinY, pos.y - NODE_HEIGHT / 2);
-    });
-    layout.localPositions.forEach((pos, nodeId) => {
-      positions[nodeId] = {
-        x: originX + (pos.x - boxMinX),
-        y: originY + (pos.y - boxMinY),
       };
     });
   });
