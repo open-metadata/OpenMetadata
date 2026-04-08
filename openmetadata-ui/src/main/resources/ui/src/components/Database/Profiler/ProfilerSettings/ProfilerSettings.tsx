@@ -20,10 +20,7 @@ import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
-import {
-  DatabaseProfilerConfig as ProfilerConfig,
-  ProfileSampleType,
-} from '../../../../generated/entity/data/database';
+import { DatabaseProfilerConfig as ProfilerConfig } from '../../../../generated/entity/data/database';
 import profilerSettingsSchema from '../../../../jsons/profilerSettings.json';
 import {
   getDatabaseProfilerConfig,
@@ -110,17 +107,25 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
     }
   };
 
+  const profileSampleType =
+    profilerConfig?.profileSampleConfig?.config?.profileSampleType;
+
   const uiSchema = useMemo(
     () => ({
-      'ui:order': ['profileSampleType', '*'],
-      profileSample: {
-        'ui:widget':
-          profilerConfig?.profileSampleType === ProfileSampleType.Percentage
-            ? 'range'
-            : 'updown',
+      profileSampleConfig: {
+        'ui:order': ['enabled', 'sampleConfigType', 'config', '*'],
+        enabled: { 'ui:widget': 'hidden' },
+        sampleConfigType: { 'ui:widget': 'hidden' },
+        config: {
+          'ui:order': ['profileSampleType', 'profileSample', '*'],
+          profileSample: {
+            'ui:widget':
+              profileSampleType === 'PERCENTAGE' ? 'range' : 'updown',
+          },
+        },
       },
     }),
-    [profilerConfig]
+    [profileSampleType]
   );
 
   useEffect(() => {
