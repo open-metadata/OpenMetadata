@@ -516,7 +516,19 @@ test.describe('User with different Roles', () => {
       .getByText('Application bot role', { exact: true })
       .click();
 
+    await adminPage.getByTestId('profile-edit-roles-select').click();
+
+    await adminPage.locator('.ant-select-dropdown').waitFor({
+      state: 'hidden',
+    });
+
+    const saveTeamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
     await adminPage.getByTestId('user-profile-edit-roles-save-button').click();
+    await saveTeamsResponse;
 
     await expect(adminPage.getByTestId('user-profile-roles')).toContainText(
       'Application bot role'
