@@ -16,13 +16,15 @@ class RequestLatencyContextTest {
 
   @BeforeEach
   void setUp() {
-    Metrics.globalRegistry.clear();
-    Metrics.globalRegistry.getRegistries().forEach(Metrics.globalRegistry::remove);
+      Metrics.globalRegistry.clear();
+      // Create a copy (new HashSet or ArrayList) to avoid ConcurrentModificationException
+      new java.util.HashSet<>(Metrics.globalRegistry.getRegistries())
+          .forEach(Metrics.globalRegistry::remove);
 
-    SimpleMeterRegistry registry = new SimpleMeterRegistry();
-    Metrics.addRegistry(registry);
-    RequestLatencyContext.endRequest();
-    RequestLatencyContext.reset();
+      SimpleMeterRegistry registry = new SimpleMeterRegistry();
+      Metrics.addRegistry(registry);
+      RequestLatencyContext.endRequest();
+      RequestLatencyContext.reset();
   }
 
   @Test
