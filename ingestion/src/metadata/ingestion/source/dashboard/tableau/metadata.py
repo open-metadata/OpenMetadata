@@ -753,16 +753,19 @@ class TableauSource(DashboardServiceSource):
                 data_model_entity = self._get_datamodel(datamodel=datamodel)
                 if data_model_entity:
                     if datamodel.upstreamDatasources:
-                        # if we have upstreamDatasources(Published Datasources), create lineage in below format
-                        # Table<->Published Datasource<->Embedded Datasource
+                        # Process Published Datasource → Embedded Datasource lineage
+                        # AND Table → Published Datasource lineage
                         yield from self._get_datamodel_table_lineage(
                             datamodel=datamodel,
                             data_model_entity=data_model_entity,
                             db_service_prefix=db_service_prefix,
                         )
-                    else:
-                        # else we'll create lineage only using Embedded Datasources in below format
-                        # Table<->Embedded Datasource
+
+                    if datamodel.upstreamTables:
+                        # Always process direct Table → Embedded Datasource lineage
+                        # This runs regardless of whether upstreamDatasources exists
+                        # Fixes: embedded datasources that extend published datasources
+                        # with additional direct table dependencies
                         yield from self._get_table_datamodel_lineage(
                             upstream_data_model=datamodel,
                             datamodel=datamodel,

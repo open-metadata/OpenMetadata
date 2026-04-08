@@ -1076,3 +1076,265 @@ class TableauUnitTest(TestCase):
         columns = self.tableau.get_column_info(data_source)
         assert len(columns) == 1
         assert columns[0].description is None
+
+    def test_lineage_only_upstream_datasources(self):
+        """
+        When datamodel has ONLY upstreamDatasources (no upstreamTables):
+        - _get_datamodel_table_lineage should be called once
+        - _get_table_datamodel_lineage should NOT be called
+        """
+        mock_dashboard = TableauDashboard(
+            id="wb-lineage-001",
+            name="Lineage Test WB",
+            charts=[],
+            dataModels=[
+                DataSource(
+                    id="ds-emb-001",
+                    name="Embedded DS",
+                    upstreamDatasources=[
+                        DataSource(id="ds-pub-001", name="Published DS")
+                    ],
+                    upstreamTables=None,
+                )
+            ],
+            tags=[],
+        )
+
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Embedded DS",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=mock_data_model_entity
+        ):
+            with patch.object(
+                self.tableau, "_get_datamodel_table_lineage", return_value=iter([])
+            ) as mock_pub_lineage:
+                with patch.object(
+                    self.tableau, "_get_table_datamodel_lineage", return_value=iter([])
+                ) as mock_tbl_lineage:
+                    list(
+                        self.tableau.yield_dashboard_lineage_details(
+                            dashboard_details=mock_dashboard,
+                            db_service_prefix=None,
+                        )
+                    )
+
+                    mock_pub_lineage.assert_called_once()
+                    mock_tbl_lineage.assert_not_called()
+
+    def test_lineage_only_upstream_tables(self):
+        """
+        When datamodel has ONLY upstreamTables (no upstreamDatasources):
+        - _get_datamodel_table_lineage should NOT be called
+        - _get_table_datamodel_lineage should be called once
+        """
+        mock_dashboard = TableauDashboard(
+            id="wb-lineage-002",
+            name="Lineage Test WB",
+            charts=[],
+            dataModels=[
+                DataSource(
+                    id="ds-emb-002",
+                    name="Embedded DS",
+                    upstreamDatasources=None,
+                    upstreamTables=[
+                        UpstreamTable(
+                            id="table1",
+                            luid="table1_luid",
+                            name="raw_table",
+                        )
+                    ],
+                )
+            ],
+            tags=[],
+        )
+
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Embedded DS",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=mock_data_model_entity
+        ):
+            with patch.object(
+                self.tableau, "_get_datamodel_table_lineage", return_value=iter([])
+            ) as mock_pub_lineage:
+                with patch.object(
+                    self.tableau, "_get_table_datamodel_lineage", return_value=iter([])
+                ) as mock_tbl_lineage:
+                    list(
+                        self.tableau.yield_dashboard_lineage_details(
+                            dashboard_details=mock_dashboard,
+                            db_service_prefix=None,
+                        )
+                    )
+
+                    mock_pub_lineage.assert_not_called()
+                    mock_tbl_lineage.assert_called_once()
+
+    # Regression test for Issue #26890
+    def test_lineage_both_upstream_datasources_and_tables(self):
+        """
+        When datamodel has BOTH upstreamDatasources AND upstreamTables:
+        - _get_datamodel_table_lineage should be called once
+        - _get_table_datamodel_lineage should ALSO be called once
+        - Both lineage paths must execute independently
+        This is the core regression test for Issue #26890
+        """
+        mock_dashboard = TableauDashboard(
+            id="wb-lineage-003",
+            name="Lineage Test WB",
+            charts=[],
+            dataModels=[
+                DataSource(
+                    id="ds-emb-003",
+                    name="Embedded DS",
+                    upstreamDatasources=[
+                        DataSource(id="ds-pub-003", name="Published DS")
+                    ],
+                    upstreamTables=[
+                        UpstreamTable(
+                            id="table-c",
+                            luid="table_c_luid",
+                            name="extra_table",
+                        )
+                    ],
+                )
+            ],
+            tags=[],
+        )
+
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Embedded DS",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=mock_data_model_entity
+        ):
+            with patch.object(
+                self.tableau, "_get_datamodel_table_lineage", return_value=iter([])
+            ) as mock_pub_lineage:
+                with patch.object(
+                    self.tableau, "_get_table_datamodel_lineage", return_value=iter([])
+                ) as mock_tbl_lineage:
+                    list(
+                        self.tableau.yield_dashboard_lineage_details(
+                            dashboard_details=mock_dashboard,
+                            db_service_prefix=None,
+                        )
+                    )
+
+                    # Both must be called — this was the bug:
+                    # previously the else branch prevented this
+                    mock_pub_lineage.assert_called_once()
+                    mock_tbl_lineage.assert_called_once()
+
+    def test_lineage_neither_upstream_fields(self):
+        """
+        When datamodel has neither upstreamDatasources nor upstreamTables:
+        - Neither lineage method should be called
+        - No lineage emitted, no errors
+        """
+        mock_dashboard = TableauDashboard(
+            id="wb-lineage-004",
+            name="Lineage Test WB",
+            charts=[],
+            dataModels=[
+                DataSource(
+                    id="ds-emb-004",
+                    name="Embedded DS",
+                    upstreamDatasources=None,
+                    upstreamTables=None,
+                )
+            ],
+            tags=[],
+        )
+
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Embedded DS",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=mock_data_model_entity
+        ):
+            with patch.object(
+                self.tableau, "_get_datamodel_table_lineage", return_value=iter([])
+            ) as mock_pub_lineage:
+                with patch.object(
+                    self.tableau, "_get_table_datamodel_lineage", return_value=iter([])
+                ) as mock_tbl_lineage:
+                    results = list(
+                        self.tableau.yield_dashboard_lineage_details(
+                            dashboard_details=mock_dashboard,
+                            db_service_prefix=None,
+                        )
+                    )
+
+                    mock_pub_lineage.assert_not_called()
+                    mock_tbl_lineage.assert_not_called()
+                    self.assertEqual(len(results), 0)
+
+    def test_lineage_skipped_when_no_data_model_entity(self):
+        """
+        When _get_datamodel returns None:
+        - Neither lineage method should be called regardless of upstream fields
+        """
+        mock_dashboard = TableauDashboard(
+            id="wb-lineage-005",
+            name="Lineage Test WB",
+            charts=[],
+            dataModels=[
+                DataSource(
+                    id="ds-emb-005",
+                    name="Embedded DS",
+                    upstreamDatasources=[
+                        DataSource(id="ds-pub-005", name="Published DS")
+                    ],
+                    upstreamTables=[
+                        UpstreamTable(
+                            id="table-x",
+                            luid="table_x_luid",
+                            name="some_table",
+                        )
+                    ],
+                )
+            ],
+            tags=[],
+        )
+
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=None
+        ):
+            with patch.object(
+                self.tableau, "_get_datamodel_table_lineage", return_value=iter([])
+            ) as mock_pub_lineage:
+                with patch.object(
+                    self.tableau, "_get_table_datamodel_lineage", return_value=iter([])
+                ) as mock_tbl_lineage:
+                    results = list(
+                        self.tableau.yield_dashboard_lineage_details(
+                            dashboard_details=mock_dashboard,
+                            db_service_prefix=None,
+                        )
+                    )
+
+                    mock_pub_lineage.assert_not_called()
+                    mock_tbl_lineage.assert_not_called()
+                    self.assertEqual(len(results), 0)
