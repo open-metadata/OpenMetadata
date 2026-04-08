@@ -73,6 +73,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -211,6 +212,7 @@ public class SearchRepository {
   @Getter private EmbeddingClient embeddingClient;
   @Getter private VectorIndexService vectorIndexService;
   @Getter private VectorEmbeddingHandler vectorEmbeddingHandler;
+  @Getter private volatile String vectorServiceInitError;
   private volatile boolean vectorServiceInitialized = false;
 
   public SearchRepository(ElasticSearchConfiguration config, int maxDBConnections) {
@@ -424,6 +426,7 @@ public class SearchRepository {
       this.vectorEmbeddingHandler = new VectorEmbeddingHandler(vectorIndexService);
 
       vectorServiceInitialized = true;
+      this.vectorServiceInitError = null;
 
       ensureHybridSearchPipeline();
 
@@ -432,6 +435,7 @@ public class SearchRepository {
           cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
           embeddingClient.getDimension());
     } catch (Exception e) {
+      this.vectorServiceInitError = e.toString();
       LOG.error("Failed to initialize vector search service: {}", e.getMessage(), e);
     }
   }
@@ -471,6 +475,13 @@ public class SearchRepository {
     } else {
       LOG.warn("Hybrid search pipeline update is only supported with OpenSearch");
     }
+  }
+
+  public Optional<String> checkHybridSearchPipeline() {
+    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
+      return openSearchVectorService.checkHybridSearchPipeline();
+    }
+    return Optional.empty();
   }
 
   public IndexMapping getIndexMapping(String entityType) {

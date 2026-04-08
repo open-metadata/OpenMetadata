@@ -43,7 +43,7 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = ingestion_logger()
 
-ischema_names = update_mssql_ischema_names(ischema_names)
+update_mssql_ischema_names(ischema_names)
 
 MSDialect.get_table_comment = get_table_comment
 MSDialect.get_view_definition = get_view_definition

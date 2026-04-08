@@ -5,6 +5,7 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getU
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorCause;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
@@ -17,6 +18,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.system.EntityError;
@@ -191,12 +193,26 @@ public class ElasticSearchIndexSink
         if (item.error() != null) {
           errors.add(
               new EntityError()
-                  .withMessage(item.error().reason())
+                  .withMessage(buildErrorMessage(item.error()))
                   .withEntity(taggedOps.get(i).entityRef()));
         }
       }
     }
     return errors;
+  }
+
+  private String buildErrorMessage(ErrorCause error) {
+    String message = String.format("%s: %s", error.type(), error.reason());
+    if (error.causedBy() != null) {
+      message = String.format("%s | Caused by: %s", message, buildErrorMessage(error.causedBy()));
+    } else if (error.rootCause() != null && !error.rootCause().isEmpty()) {
+      String rootCauses =
+          error.rootCause().stream()
+              .map(c -> String.format("%s: %s", c.type(), c.reason()))
+              .collect(Collectors.joining("; "));
+      message = String.format("%s | Root cause: [%s]", message, rootCauses);
+    }
+    return message;
   }
 
   @Override

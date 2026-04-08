@@ -37,8 +37,7 @@ import {
   EDGE_LINE_WIDTH_DEFAULT,
   EDGE_LINE_WIDTH_HIGHLIGHTED,
   EDGE_STROKE_COLOR,
-  FIT_VIEW_ZOOM_OUT,
-  FIT_VIEW_ZOOM_OUT_DATA_MODE,
+  getOntologyFitViewZoomRatio,
   HIERARCHY_BADGE_OFFSET_Y,
   HIERARCHY_BADGE_TEXT_INSET,
   LayoutEngine,
@@ -54,6 +53,7 @@ import {
   NODE_SELECTED_HALO_LINE_WIDTH,
   NODE_SELECTED_LINE_WIDTH,
   NODE_SELECTED_STROKE,
+  ONTOLOGY_FIT_VIEW_PADDING,
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
@@ -273,7 +273,6 @@ export function useOntologyGraph({
     return positions;
   }, []);
 
-  /** Places asset nodes in concentric rings around their parent term's current drawn position. */
   const positionAssetNodes = useCallback((graph: Graph) => {
     const map = assetToTermMapRef.current;
     const assetsByTerm = new Map<string, string[]>();
@@ -302,7 +301,7 @@ export function useOntologyGraph({
           }
         });
       } catch {
-        // term not yet in graph
+        // Term not yet in graph.
       }
     });
 
@@ -320,25 +319,22 @@ export function useOntologyGraph({
     [explorationMode, inputNodes]
   );
 
+  const isModelView = explorationMode === 'model';
+
   const hasBakedPositions = useMemo(() => {
-    const hierarchyWithBakedLayout =
-      explorationMode === 'hierarchy' &&
-      (layoutType === LayoutEngine.Circular ||
-        layoutType === LayoutEngine.Radial);
-    if (hierarchyWithBakedLayout) {
+    if (explorationMode === 'data') {
       return true;
     }
-    if (explorationMode === 'hierarchy') {
-      return false;
+    if (
+      explorationMode === 'hierarchy' &&
+      (layoutType === LayoutEngine.Circular ||
+        layoutType === LayoutEngine.Radial)
+    ) {
+      return true;
     }
-    const distinctGlossaryIds = new Set(
-      inputNodes.map((n) => n.glossaryId).filter(Boolean)
-    );
-    const hasGroupLayout =
-      explorationMode !== 'data' && distinctGlossaryIds.size > 1;
 
-    return hasGroupLayout || explorationMode === 'data';
-  }, [inputNodes, explorationMode, layoutType]);
+    return false;
+  }, [explorationMode, layoutType]);
 
   useEffect(() => {
     if (!containerRef.current || termNodeCount === 0) {
@@ -350,11 +346,14 @@ export function useOntologyGraph({
     const height = container.offsetHeight || 600;
 
     const isDataMode = explorationMode === 'data';
+    const isHierarchyMode = explorationMode === 'hierarchy';
+    const hasCombos = Boolean(graphData.combos && graphData.combos.length > 0);
     const graph = new Graph({
       container,
       width,
       height,
       data: graphData,
+      padding: ONTOLOGY_FIT_VIEW_PADDING,
       zoomRange: [MIN_ZOOM, MAX_ZOOM],
       zoom: DEFAULT_ZOOM,
       theme: false,
@@ -645,16 +644,16 @@ export function useOntologyGraph({
           };
         },
       },
-      layout: getLayoutConfig(
-        layoutType,
-        inputNodes.length,
-        true,
-        layoutType === LayoutEngine.Radial
-          ? focusNodeId ?? selectedNodeId ?? undefined
-          : undefined,
+      layout: getLayoutConfig(layoutType, inputNodes.length, {
+        hasCombos,
+        focusNode:
+          layoutType === LayoutEngine.Radial
+            ? focusNodeId ?? selectedNodeId ?? undefined
+            : undefined,
         isDataMode,
-        explorationMode === 'hierarchy'
-      ),
+        isHierarchyMode,
+        isModelView,
+      }),
       behaviors: [
         { type: 'drag-canvas' },
         { type: 'zoom-canvas' },
@@ -755,11 +754,14 @@ export function useOntologyGraph({
         await graph.render();
       }
       const duration = 0;
-      const zoomAfterFit = isDataMode
-        ? FIT_VIEW_ZOOM_OUT_DATA_MODE
-        : FIT_VIEW_ZOOM_OUT;
-      await graph.fitView(undefined, { duration });
-      await graph.zoomBy(zoomAfterFit, { duration });
+      await graph.fitView({ when: 'always', direction: 'both' }, { duration });
+      const zoomAfterFit = getOntologyFitViewZoomRatio(
+        termNodeCount,
+        isDataMode
+      );
+      if (zoomAfterFit !== 1) {
+        await graph.zoomBy(zoomAfterFit, { duration });
+      }
     };
 
     runRender();
@@ -788,7 +790,7 @@ export function useOntologyGraph({
       graph.destroy();
       graphRef.current = null;
     };
-  }, [termNodeCount, explorationMode]);
+  }, [termNodeCount, explorationMode, hasBakedPositions, layoutType]);
 
   useEffect(() => {
     const graph = graphRef.current;
@@ -867,14 +869,19 @@ export function useOntologyGraph({
       assetFingerprintRef.current = newAssetFingerprint;
     }
 
-    const layoutOptions = getLayoutConfig(
-      layoutType,
-      inputNodes.length,
-      true,
-      focusNodeId ?? undefined,
-      explorationMode === 'data',
-      explorationMode === 'hierarchy'
-    );
+    const hasCombos = Boolean(graphData.combos && graphData.combos.length > 0);
+    const isHierarchyMode = explorationMode === 'hierarchy';
+    const isModelViewLocal = explorationMode === 'model';
+    const layoutOptions = getLayoutConfig(layoutType, inputNodes.length, {
+      hasCombos,
+      focusNode:
+        layoutType === LayoutEngine.Radial
+          ? focusNodeId ?? selectedNodeId ?? undefined
+          : undefined,
+      isDataMode,
+      isHierarchyMode,
+      isModelView: isModelViewLocal,
+    });
 
     if (cancelPendingUpdateRef.current) {
       cancelPendingUpdateRef.current();
@@ -891,68 +898,48 @@ export function useOntologyGraph({
           return;
         }
 
-        const savedTermPositions: Record<string, { x: number; y: number }> = {};
-        if (isDataMode && !termFingerprintChanged) {
-          graph.getNodeData().forEach((node) => {
-            const pos = graph.getElementPosition(node.id as string);
-            if (pos) {
-              savedTermPositions[node.id as string] = {
-                x: pos[0],
-                y: pos[1],
-              };
-            }
-          });
-        }
-
         setClickedEdgeIdRef.current(null);
         graph.setData(graphData);
 
+        if (!hasBakedPositions) {
+          graph.setLayout(layoutOptions);
+          await graph.layout();
+        }
+        if (cancelled) {
+          return;
+        }
+        graph.draw();
         if (isDataMode) {
-          graph.draw();
-          // Restore term node positions that the user may have dragged before
-          // setData reset them to their baked layout coordinates.
-          if (Object.keys(savedTermPositions).length > 0) {
-            const posUpdates = graph
-              .getNodeData()
-              .filter((node) => savedTermPositions[node.id as string])
-              .map((node) => ({
-                id: node.id,
-                style: {
-                  ...(node.style ?? {}),
-                  x: savedTermPositions[node.id as string].x,
-                  y: savedTermPositions[node.id as string].y,
-                },
-              }));
-            if (posUpdates.length > 0) {
-              graph.updateNodeData(posUpdates);
-            }
-          }
           positionAssetNodes(graph);
           graph.draw();
-          if (termFingerprintChanged) {
-            await graph.fitView(undefined, { duration: 0 });
-            await graph.zoomBy(FIT_VIEW_ZOOM_OUT_DATA_MODE, { duration: 0 });
-          }
-        } else {
-          if (!hasBakedPositions) {
-            graph.setLayout(layoutOptions);
-            await graph.layout();
-            if (cancelled) {
-              return;
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const fitOpts = { when: 'always' as const, direction: 'both' as const };
+        const zoomRatio = getOntologyFitViewZoomRatio(
+          termNodeCount,
+          isDataMode
+        );
+
+        if (isDataMode) {
+          if (termFingerprintChanged || assetFingerprintChanged) {
+            await graph.fitView(fitOpts, { duration: 0 });
+            if (zoomRatio !== 1) {
+              await graph.zoomBy(zoomRatio, { duration: 0 });
             }
           }
-          graph.draw();
-
-          if (cancelled) {
-            return;
+        } else if (inputNodes.length === 1) {
+          await graph.fitCenter({ duration: 0 });
+          if (zoomRatio !== 1) {
+            await graph.zoomBy(zoomRatio, { duration: 0 });
           }
-
-          if (inputNodes.length === 1) {
-            await graph.fitCenter({ duration: 0 });
-            await graph.zoomBy(FIT_VIEW_ZOOM_OUT, { duration: 0 });
-          } else {
-            await graph.fitView(undefined, { duration: 0 });
-            await graph.zoomBy(FIT_VIEW_ZOOM_OUT, { duration: 0 });
+        } else {
+          await graph.fitView(fitOpts, { duration: 0 });
+          if (zoomRatio !== 1) {
+            await graph.zoomBy(zoomRatio, { duration: 0 });
           }
         }
       } finally {
@@ -976,6 +963,8 @@ export function useOntologyGraph({
     explorationMode,
     focusNodeId,
     expandedTermIds,
+    hasBakedPositions,
+    positionAssetNodes,
   ]);
 
   return { graphRef, extractNodePositions };

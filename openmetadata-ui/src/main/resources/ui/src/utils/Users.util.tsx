@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { SmartToyOutlined } from '@mui/icons-material';
 import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
+import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
@@ -55,11 +55,12 @@ export const commonUserDetailColumns = (
       <Space size={4}>
         {record.isBot && (
           <Tooltip title={t('label.bot')}>
-            <SmartToyOutlined
+            <BotIcon
               aria-label={t('label.bot')}
+              color={TEXT_GREY_MUTED}
               data-testid="bot-icon"
-              style={{ fontSize: 16, color: TEXT_GREY_MUTED }}
-              titleAccess={t('label.bot')}
+              height={16}
+              width={16}
             />
           </Tooltip>
         )}

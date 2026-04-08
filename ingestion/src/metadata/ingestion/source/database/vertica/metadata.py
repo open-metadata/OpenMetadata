@@ -56,6 +56,18 @@ ischema_names.update(
     {
         "UUID": create_sqlalchemy_type("UUID"),
         "GEOGRAPHY": create_sqlalchemy_type("GEOGRAPHY"),
+        "GEOMETRY": create_sqlalchemy_type("GEOMETRY"),
+        # Binary types
+        "BINARY": sqltypes.LargeBinary,
+        "VARBINARY": sqltypes.LargeBinary,
+        "LONG VARBINARY": sqltypes.LargeBinary,
+        # Long string
+        "LONG VARCHAR": sqltypes.Text,
+        # Complex / semi-structured types (Vertica v11+)
+        "ARRAY": create_sqlalchemy_type("ARRAY"),
+        "NATIVE ARRAY": create_sqlalchemy_type("ARRAY"),
+        "ROW": create_sqlalchemy_type("ROW"),
+        "SET": create_sqlalchemy_type("SET"),
     }
 )
 

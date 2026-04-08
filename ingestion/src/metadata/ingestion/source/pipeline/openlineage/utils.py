@@ -55,3 +55,12 @@ class FQNNotFoundException(Exception):
     """
 
     pass
+
+
+class AmbiguousServiceException(Exception):
+    """
+    Raised when a dataset namespace matches multiple DB services of the same
+    type and cannot be unambiguously resolved.
+    """
+
+    pass
