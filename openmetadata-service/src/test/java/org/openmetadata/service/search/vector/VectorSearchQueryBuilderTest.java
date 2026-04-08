@@ -861,7 +861,7 @@ class VectorSearchQueryBuilderTest {
             "owners", List.of("alice"),
             "tier", List.of("Tier.Gold"));
 
-    String osQuery = VectorSearchQueryBuilder.build(vector, 10, 100, filters);
+    String osQuery = VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0);
     String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, filters);
 
     JsonNode osFilters =
