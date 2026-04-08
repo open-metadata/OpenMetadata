@@ -197,9 +197,7 @@ class TestStarRocksGetTableDescription(TestCase):
         thread_id = self.source.context.get_current_thread_id()
         self.source._connection_map[thread_id] = MagicMock()
 
-    @patch(
-        "metadata.ingestion.source.database.starrocks.metadata.get_table_comment"
-    )
+    @patch("metadata.ingestion.source.database.starrocks.metadata.get_table_comment")
     def test_returns_table_comment(self, mock_get_table_comment):
         mock_get_table_comment.return_value = {"text": "审计日志表"}
 
@@ -213,9 +211,7 @@ class TestStarRocksGetTableDescription(TestCase):
             None, self.source.connection, "audit_tbl", schema="test_db"
         )
 
-    @patch(
-        "metadata.ingestion.source.database.starrocks.metadata.get_table_comment"
-    )
+    @patch("metadata.ingestion.source.database.starrocks.metadata.get_table_comment")
     def test_returns_none_for_empty_comment(self, mock_get_table_comment):
         mock_get_table_comment.return_value = {"text": None}
 
@@ -226,9 +222,7 @@ class TestStarRocksGetTableDescription(TestCase):
         )
         assert description is None
 
-    @patch(
-        "metadata.ingestion.source.database.starrocks.metadata.get_table_comment"
-    )
+    @patch("metadata.ingestion.source.database.starrocks.metadata.get_table_comment")
     def test_returns_none_on_exception(self, mock_get_table_comment):
         mock_get_table_comment.side_effect = Exception("connection error")
 
