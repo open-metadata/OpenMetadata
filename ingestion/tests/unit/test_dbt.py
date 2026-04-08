@@ -2244,6 +2244,79 @@ class DbtUnitTest(TestCase):
                     "dbtSourceProject field should not be None",
                 )
 
+    def test_remove_manifest_non_required_keys_strips_constraint_extra_keys(self):
+        """
+        Regression test: extra keys in constraint objects should be removed from each
+        constraint dict, not from the column dict that contains those constraints.
+        Before the fix, the code iterated over column-level keys and deleted any that
+        weren't in REQUIRED_CONSTRAINT_KEYS, wiping column fields like description,
+        meta, and the constraints list itself — causing false version bumps on every
+        subsequent dbt ingestion run.
+        """
+        manifest = {
+            "metadata": {"dbt_schema_version": "v1"},
+            "nodes": {
+                "model.project.orders": {
+                    "name": "orders",
+                    "resource_type": "model",
+                    "schema": "public",
+                    "columns": {
+                        "order_id": {
+                            "name": "order_id",
+                            "description": "Primary key for orders",
+                            "meta": {"pii": False},
+                            "tags": ["primary"],
+                            "constraints": [
+                                {
+                                    "type": "not_null",
+                                    "name": "order_id_not_null",
+                                    "expression": None,
+                                    "warn_unenforced": False,
+                                    "warn_unsupported": False,
+                                    "custom_undocumented_key": "should_be_removed",
+                                }
+                            ],
+                        },
+                        "status": {
+                            "name": "status",
+                            "description": "Order status",
+                            "meta": {},
+                            "tags": [],
+                            "constraints": None,
+                        },
+                    },
+                }
+            },
+            "sources": {},
+            "exposures": {},
+        }
+
+        self.dbt_source_obj.remove_manifest_non_required_keys(manifest_dict=manifest)
+
+        order_id_col = manifest["nodes"]["model.project.orders"]["columns"]["order_id"]
+        status_col = manifest["nodes"]["model.project.orders"]["columns"]["status"]
+
+        # Column-level keys must be preserved — the bug stripped them
+        assert order_id_col["description"] == "Primary key for orders"
+        assert order_id_col["meta"] == {"pii": False}
+        assert order_id_col["tags"] == ["primary"]
+        assert order_id_col["constraints"] is not None
+
+        # Extra key inside constraint should be removed
+        constraint = order_id_col["constraints"][0]
+        assert "custom_undocumented_key" not in constraint
+
+        # Required constraint keys must be preserved
+        assert constraint["type"] == "not_null"
+        assert constraint["name"] == "order_id_not_null"
+        assert constraint["expression"] is None
+        assert constraint["warn_unenforced"] is False
+        assert constraint["warn_unsupported"] is False
+
+        # Column without constraints gets constraints set to None
+        assert status_col["constraints"] is None
+        assert status_col["description"] == "Order status"
+
     def test_constants_required_constraint_keys(self):
         """Test REQUIRED_CONSTRAINT_KEYS constant"""
         from metadata.ingestion.source.database.dbt.constants import (
