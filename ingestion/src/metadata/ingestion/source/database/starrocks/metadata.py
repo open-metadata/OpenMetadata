@@ -280,7 +280,7 @@ class StarRocksSource(CommonDbSourceService):
 
         return tables
 
-    # pylint: disable=arguments-differ
+    # pylint: disable=arguments-differ,unused-argument
     def get_table_description(
         self, schema_name: str, table_name: str, inspector: Inspector
     ) -> Optional[str]:
