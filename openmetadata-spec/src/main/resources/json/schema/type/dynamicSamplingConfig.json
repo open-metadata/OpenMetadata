@@ -33,7 +33,8 @@
             "title": "Sampling Method Type"
           }
         },
-        "required": ["rowCountThreshold", "profileSample"]
+        "required": ["rowCountThreshold", "profileSample"],
+        "additionalProperties": false
       }
     }
   },

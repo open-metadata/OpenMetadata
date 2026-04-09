@@ -732,7 +732,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
       ProfileSampleConfig.SampleConfigType sampleConfigType =
           profileSampleConfig.getSampleConfigType();
-      if (sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
+      if (!nullOrEmpty(sampleConfigType) && sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
         StaticSamplingConfig staticConfig =
             JsonUtils.convertValue(profileSampleConfig.getConfig(), StaticSamplingConfig.class);
         if (staticConfig.getProfileSampleType() != null

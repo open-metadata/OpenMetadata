@@ -20,7 +20,10 @@ import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
-import { DatabaseProfilerConfig as ProfilerConfig } from '../../../../generated/entity/data/database';
+import {
+  DatabaseProfilerConfig as ProfilerConfig,
+  ProfileSampleType,
+} from '../../../../generated/entity/data/database';
 import profilerSettingsSchema from '../../../../jsons/profilerSettings.json';
 import {
   getDatabaseProfilerConfig,
@@ -108,7 +111,8 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
   };
 
   const profileSampleType =
-    profilerConfig?.profileSampleConfig?.config?.profileSampleType;
+    profilerConfig?.profileSampleConfig?.config?.profileSampleType ??
+    ProfileSampleType.Percentage;
 
   const uiSchema = useMemo(
     () => ({
@@ -119,7 +123,9 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
           'ui:order': ['profileSampleType', 'profileSample', '*'],
           profileSample: {
             'ui:widget':
-              profileSampleType === 'PERCENTAGE' ? 'range' : 'updown',
+              profileSampleType === ProfileSampleType.Percentage
+                ? 'range'
+                : 'updown',
           },
         },
       },
