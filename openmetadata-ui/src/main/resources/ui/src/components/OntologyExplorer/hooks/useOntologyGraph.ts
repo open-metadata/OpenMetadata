@@ -81,11 +81,18 @@ import { computeAssetRingPositions } from '../utils/layoutCalculations';
  * to the 'afterlayout' event is the only reliable way to know the worker has
  * written positions back to all nodes.
  */
+const LAYOUT_TIMEOUT_MS = 15_000;
+
 function runLayout(graph: Graph): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
+  const layoutDone = new Promise<void>((resolve, reject) => {
     graph.once(GraphEvent.AFTER_LAYOUT, () => resolve());
     graph.layout().catch(reject);
   });
+  const timeout = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error('layout timeout')), LAYOUT_TIMEOUT_MS)
+  );
+
+  return Promise.race([layoutDone, timeout]);
 }
 
 const toIdSet = <T extends { id?: string }>(elements: readonly T[]) =>
@@ -853,6 +860,14 @@ export function useOntologyGraph({
     };
     graph.on('edge:click', handleEdgeClick);
 
+    const fitAndClampZoom = async () => {
+      await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
+      const zoom = graph.getZoom();
+      if (zoom < PRACTICAL_MIN_ZOOM) {
+        graph.zoomTo(PRACTICAL_MIN_ZOOM, { duration: 0 }, graph.getCanvasCenter());
+      }
+    };
+
     let renderCancelled = false;
     const runRender = async () => {
       try {
@@ -863,17 +878,9 @@ export function useOntologyGraph({
             graph.draw();
           }
         } else if (isModelView && hasCombos) {
-          // For model-view with combo boxes, skip the layout algorithm.
-          // antv-dagre stacks combos on top of each other for large graphs
-          // because it doesn't account for the actual visual combo sizes.
-          // positionModelModeNodes() computes a deterministic grid that is
-          // guaranteed to be non-overlapping.
           positionModelModeNodes(graph);
           await graph.draw();
         } else {
-          // Use the afterlayout event to wait for the worker to finish.
-          // graph.layout() resolves when the worker *starts*, not when
-          // positions are written back — runLayout() waits for the event.
           await runLayout(graph);
           if (renderCancelled) {
             return;
@@ -883,29 +890,13 @@ export function useOntologyGraph({
         if (renderCancelled) {
           return;
         }
-        await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
-        const initialZoom = graph.getZoom();
-        if (initialZoom < PRACTICAL_MIN_ZOOM) {
-          graph.zoomTo(
-            PRACTICAL_MIN_ZOOM,
-            { duration: 0 },
-            graph.getCanvasCenter()
-          );
-        }
+        await fitAndClampZoom();
       } catch {
         // Layout or draw failed — attempt a bare draw so at least something
         // renders, then still try to fit the view.
         try {
           await graph.draw();
-          await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
-          const initialZoom = graph.getZoom();
-          if (initialZoom < PRACTICAL_MIN_ZOOM) {
-            graph.zoomTo(
-              PRACTICAL_MIN_ZOOM,
-              { duration: 0 },
-              graph.getCanvasCenter()
-            );
-          }
+          await fitAndClampZoom();
         } catch {
           // Graph may have been destroyed; ignore.
         }

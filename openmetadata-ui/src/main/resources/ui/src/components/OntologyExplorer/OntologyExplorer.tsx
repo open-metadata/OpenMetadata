@@ -42,6 +42,7 @@ import {
   getGlossariesList,
   getGlossaryTerms,
   getGlossaryTermsAssetCounts,
+  getGlossaryTermsById,
 } from '../../rest/glossaryAPI';
 import { getMetrics } from '../../rest/metricsAPI';
 import {
@@ -753,6 +754,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const fetchAllMetrics = useCallback(async (): Promise<Metric[]> => {
     const allMetrics: Metric[] = [];
     let after: string | undefined;
+    let pages = 0;
+    const MAX_SAFE_PAGES = 500;
 
     do {
       const response = await getMetrics({
@@ -762,7 +765,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       });
       allMetrics.push(...response.data);
       after = response.paging?.after;
-    } while (after);
+      pages += 1;
+    } while (after && pages < MAX_SAFE_PAGES);
 
     return allMetrics;
   }, []);
@@ -941,13 +945,15 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+      const MAX_SAFE_PAGES = 100;
       try {
         const allNodes: GraphData['nodes'] = [];
         const allEdges: GraphData['edges'] = [];
         let offset = 0;
         let source: string | undefined;
+        let pages = 0;
 
-        while (true) {
+        while (pages < MAX_SAFE_PAGES) {
           const page = await getGlossaryTermGraph({
             glossaryId: glossaryIdParam,
             limit: PAGE_SIZE,
@@ -962,6 +968,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           allNodes.push(...page.nodes);
           allEdges.push(...(page.edges ?? []));
           source = source ?? page.source;
+          pages += 1;
 
           if (page.nodes.length < PAGE_SIZE) {
             break;
@@ -1002,12 +1009,14 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         ? glossariesToUse.filter((g) => g.id === glossaryIdParam)
         : glossariesToUse;
 
-      const CONCURRENCY = 20;
+      const CONCURRENCY = 8;
+      const MAX_SAFE_PAGES = 50;
       const fetchTermsForGlossary = async (
         glossary: Glossary
       ): Promise<GlossaryTerm[]> => {
         const terms: GlossaryTerm[] = [];
         let after: string | undefined;
+        let pages = 0;
         do {
           try {
             const termsResponse = await getGlossaryTerms({
@@ -1023,10 +1032,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             });
             terms.push(...termsResponse.data);
             after = termsResponse.paging?.after;
+            pages += 1;
           } catch {
             break;
           }
-        } while (after);
+        } while (after && pages < MAX_SAFE_PAGES);
 
         return terms;
       };
@@ -1042,6 +1052,45 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             allTerms.push(...r.value);
           }
         });
+      }
+
+      // When fetching a single glossary (scoped view), related terms from
+      // other glossaries are not included. Fetch them so their edges render.
+      if (glossaryIdParam) {
+        const fetchedIds = new Set(allTerms.map((t) => t.id));
+        const missingIds = new Set<string>();
+        allTerms.forEach((term) => {
+          term.relatedTerms?.forEach((relation) => {
+            const id = relation.term?.id;
+            if (id && !fetchedIds.has(id)) {
+              missingIds.add(id);
+            }
+          });
+        });
+
+        if (missingIds.size > 0) {
+          const missingIdList = Array.from(missingIds);
+          for (let i = 0; i < missingIdList.length; i += CONCURRENCY) {
+            const batch = missingIdList.slice(i, i + CONCURRENCY);
+            const fetched = await Promise.allSettled(
+              batch.map((id) =>
+                getGlossaryTermsById(id, {
+                  fields: [
+                    TabSpecificField.RELATED_TERMS,
+                    TabSpecificField.CHILDREN,
+                    TabSpecificField.PARENT,
+                    TabSpecificField.OWNERS,
+                  ],
+                })
+              )
+            );
+            fetched.forEach((r) => {
+              if (r.status === 'fulfilled') {
+                allTerms.push(r.value);
+              }
+            });
+          }
+        }
       }
 
       return buildGraphFromAllTerms(allTerms, glossariesToFetch);
@@ -1060,6 +1109,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           (async () => {
             const collected = [];
             let afterCursor: string | undefined;
+            let pages = 0;
+            const MAX_SAFE_PAGES = 500;
             do {
               const glossariesResponse = await getGlossariesList({
                 fields: 'owners,tags',
@@ -1068,7 +1119,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               });
               collected.push(...glossariesResponse.data);
               afterCursor = glossariesResponse.paging?.after;
-            } while (afterCursor);
+              pages += 1;
+            } while (afterCursor && pages < MAX_SAFE_PAGES);
 
             return collected;
           })(),
