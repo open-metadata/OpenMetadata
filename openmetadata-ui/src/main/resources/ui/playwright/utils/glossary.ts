@@ -700,16 +700,24 @@ export const validateGlossaryTerm = async (
   await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
 
   await expect(
-    page.getByTestId('glossary-terms-table').getByText('Terms')
+    page
+      .getByTestId('glossary-terms-table')
+      .getByRole('columnheader', { name: 'Terms' })
   ).toBeVisible();
   await expect(
-    page.getByTestId('glossary-terms-table').getByText('Description')
+    page
+      .getByTestId('glossary-terms-table')
+      .getByRole('columnheader', { name: 'Description' })
   ).toBeVisible();
   await expect(
-    page.getByTestId('glossary-terms-table').getByText('Owners')
+    page
+      .getByTestId('glossary-terms-table')
+      .getByRole('columnheader', { name: 'Owners' })
   ).toBeVisible();
   await expect(
-    page.getByTestId('glossary-terms-table').getByText('Status')
+    page
+      .getByTestId('glossary-terms-table')
+      .getByRole('columnheader', { name: 'Status' })
   ).toBeVisible();
 
   if (isGlossaryTermPage) {
