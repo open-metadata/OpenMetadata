@@ -15,7 +15,6 @@ import { expect, test } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
-import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import {
   CERT_FILE,
   lookerFormDetails,
@@ -25,12 +24,7 @@ import {
   supersetFormDetails4,
 } from '../../constant/serviceForm';
 import { UserClass } from '../../support/user/UserClass';
-import {
-  createNewPage,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-} from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
 
@@ -370,27 +364,19 @@ test.describe(
         await expect(page.locator('#name_help')).toContainText(
           'Name already exists.'
         );
+      });
 
-        await page.getByRole('link', { name: 'Database Services' }).click();
-        await waitForAllLoadersToDisappear(page);
-        await page
-          .getByTestId(`service-name-${SERVICE_NAMES.service1}`)
-          .click();
-        await page.getByTestId('manage-button').click();
-        await page.getByTestId('delete-button-title').click();
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
 
-        const deleteResponse = page.waitForResponse(
-          `/api/v1/services/databaseServices/async/*?hardDelete=false&recursive=true`
+        // Cleanup the created service
+        await apiContext.delete(
+          `/api/v1/services/databaseServices/name/${encodeURIComponent(
+            SERVICE_NAMES.service1
+          )}?recursive=true&hardDelete=true`
         );
-        await page.getByTestId('confirm-button').click();
-        await deleteResponse;
 
-        await toastNotification(
-          page,
-          /(deleted successfully!|Delete operation initiated)/,
-          BIG_ENTITY_DELETE_TIMEOUT
-        );
+        await afterAction();
       });
     });
 
@@ -411,27 +397,36 @@ test.describe(
           .fill(`${SERVICE_NAMES.service2}`);
         await page.getByTestId('next-button').click();
 
-        await page.locator('#root\\/clientId').clear();
-        await page.fill('#root\\/clientId', lookerFormDetails.clientId);
+        await page.locator(String.raw`#root\/clientId`).clear();
+        await page.fill(
+          String.raw`#root\/clientId`,
+          lookerFormDetails.clientId
+        );
 
-        await page.locator('#root\\/clientSecret').clear();
-        await page.fill('#root\\/clientSecret', lookerFormDetails.clientSecret);
+        await page.locator(String.raw`#root\/clientSecret`).clear();
+        await page.fill(
+          String.raw`#root\/clientSecret`,
+          lookerFormDetails.clientSecret
+        );
 
-        await page.locator('#root\\/hostPort').clear();
-        await page.fill('#root\\/hostPort', lookerFormDetails.hostPort);
+        await page.locator(String.raw`#root\/hostPort`).clear();
+        await page.fill(
+          String.raw`#root\/hostPort`,
+          lookerFormDetails.hostPort
+        );
 
         await page
           .getByTestId('select-widget-root/gitCredentials__oneof_select')
           .click();
         await page.click(`.ant-select-dropdown:visible [title="Local Path"]`);
 
-        await page.locator('#root\\/gitCredentials').waitFor({
+        await page.locator(String.raw`#root\/gitCredentials`).waitFor({
           state: 'visible',
         });
 
-        await page.locator('#root\\/gitCredentials').clear();
+        await page.locator(String.raw`#root\/gitCredentials`).clear();
         await page.fill(
-          '#root\\/gitCredentials',
+          String.raw`#root\/gitCredentials`,
           lookerFormDetails.gitCredentials
         );
 

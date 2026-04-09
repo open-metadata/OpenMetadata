@@ -2,6 +2,7 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -330,6 +331,210 @@ class LineageUtilTest {
         .withId(id)
         .withName(fqn)
         .withFullyQualifiedName(fqn);
+  }
+
+  // ── replaceWithEntityLevelTagsBatch tests ──
+
+  @Test
+  void replaceWithEntityLevelTagsBatch_nullList_noOp() {
+    LineageUtil.replaceWithEntityLevelTagsBatch(null);
+  }
+
+  @Test
+  void replaceWithEntityLevelTagsBatch_emptyList_noOp() {
+    LineageUtil.replaceWithEntityLevelTagsBatch(new java.util.ArrayList<>());
+  }
+
+  @Test
+  void replaceWithEntityLevelTagsBatch_docsWithoutFqn_noOp() {
+    java.util.List<java.util.Map<String, Object>> docs = new java.util.ArrayList<>();
+    docs.add(new java.util.HashMap<>(java.util.Map.of("name", "test")));
+    LineageUtil.replaceWithEntityLevelTagsBatch(docs);
+    // Should not crash, tags unchanged
+  }
+
+  @Test
+  void replaceWithEntityLevelTagsBatch_validFqns_replacesTagsFromDB() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.TagUsageDAO tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
+
+    String fqn1 = "service.db.schema.table1";
+    String fqn1Hash = FullyQualifiedName.buildHash(fqn1);
+
+    CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tagResult =
+        new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
+    tagResult.setTargetFQNHash(fqn1Hash);
+    tagResult.setSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION.ordinal());
+    tagResult.setTagFQN("PersonalData.Personal");
+    tagResult.setLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL.ordinal());
+    tagResult.setState(org.openmetadata.schema.type.TagLabel.State.CONFIRMED.ordinal());
+
+    when(collectionDAO.tagUsageDAO()).thenReturn(tagUsageDAO);
+    when(tagUsageDAO.getTagsInternalBatch(any())).thenReturn(java.util.List.of(tagResult));
+
+    java.util.List<java.util.Map<String, Object>> docs = new java.util.ArrayList<>();
+    java.util.Map<String, Object> doc1 = new java.util.HashMap<>();
+    doc1.put("fullyQualifiedName", fqn1);
+    doc1.put("tags", java.util.List.of("old-tag"));
+    docs.add(doc1);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      try (MockedStatic<org.openmetadata.service.resources.tags.TagLabelUtil> mockedTagUtil =
+          mockStatic(org.openmetadata.service.resources.tags.TagLabelUtil.class)) {
+        mockedTagUtil
+            .when(
+                () ->
+                    org.openmetadata.service.resources.tags.TagLabelUtil.applyTagCommonFieldsBatch(
+                        any()))
+            .then(invocation -> null);
+
+        LineageUtil.replaceWithEntityLevelTagsBatch(docs);
+      }
+    }
+
+    Object tags = doc1.get("tags");
+    assertTrue(tags instanceof java.util.List);
+    @SuppressWarnings("unchecked")
+    java.util.List<org.openmetadata.schema.type.TagLabel> tagList =
+        (java.util.List<org.openmetadata.schema.type.TagLabel>) tags;
+    assertEquals(1, tagList.size());
+    assertEquals("PersonalData.Personal", tagList.get(0).getTagFQN());
+  }
+
+  @Test
+  void replaceWithEntityLevelTagsBatch_mixedTaggedAndUntagged() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.TagUsageDAO tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
+
+    String fqn1 = "service.db.schema.tagged_table";
+    String fqn2 = "service.db.schema.untagged_table";
+    String fqn1Hash = FullyQualifiedName.buildHash(fqn1);
+
+    CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tagResult =
+        new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
+    tagResult.setTargetFQNHash(fqn1Hash);
+    tagResult.setSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION.ordinal());
+    tagResult.setTagFQN("PII.Sensitive");
+    tagResult.setLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL.ordinal());
+    tagResult.setState(org.openmetadata.schema.type.TagLabel.State.CONFIRMED.ordinal());
+
+    when(collectionDAO.tagUsageDAO()).thenReturn(tagUsageDAO);
+    when(tagUsageDAO.getTagsInternalBatch(any())).thenReturn(java.util.List.of(tagResult));
+
+    java.util.List<java.util.Map<String, Object>> docs = new java.util.ArrayList<>();
+    java.util.Map<String, Object> doc1 = new java.util.HashMap<>();
+    doc1.put("fullyQualifiedName", fqn1);
+    docs.add(doc1);
+    java.util.Map<String, Object> doc2 = new java.util.HashMap<>();
+    doc2.put("fullyQualifiedName", fqn2);
+    docs.add(doc2);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      try (MockedStatic<org.openmetadata.service.resources.tags.TagLabelUtil> mockedTagUtil =
+          mockStatic(org.openmetadata.service.resources.tags.TagLabelUtil.class)) {
+        mockedTagUtil
+            .when(
+                () ->
+                    org.openmetadata.service.resources.tags.TagLabelUtil.applyTagCommonFieldsBatch(
+                        any()))
+            .then(invocation -> null);
+
+        LineageUtil.replaceWithEntityLevelTagsBatch(docs);
+      }
+    }
+
+    @SuppressWarnings("unchecked")
+    java.util.List<org.openmetadata.schema.type.TagLabel> tags1 =
+        (java.util.List<org.openmetadata.schema.type.TagLabel>) doc1.get("tags");
+    assertEquals(1, tags1.size());
+    assertEquals("PII.Sensitive", tags1.get(0).getTagFQN());
+
+    @SuppressWarnings("unchecked")
+    java.util.List<org.openmetadata.schema.type.TagLabel> tags2 =
+        (java.util.List<org.openmetadata.schema.type.TagLabel>) doc2.get("tags");
+    assertTrue(tags2.isEmpty());
+  }
+
+  @Test
+  void replaceWithEntityLevelTagsBatch_dbThrowsException_tagsUnchanged() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.TagUsageDAO tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
+
+    when(collectionDAO.tagUsageDAO()).thenReturn(tagUsageDAO);
+    when(tagUsageDAO.getTagsInternalBatch(any())).thenThrow(new RuntimeException("DB error"));
+
+    java.util.List<java.util.Map<String, Object>> docs = new java.util.ArrayList<>();
+    java.util.Map<String, Object> doc = new java.util.HashMap<>();
+    doc.put("fullyQualifiedName", "service.db.schema.table1");
+    doc.put("tags", java.util.List.of("original-tag"));
+    docs.add(doc);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      LineageUtil.replaceWithEntityLevelTagsBatch(docs);
+    }
+
+    assertEquals(java.util.List.of("original-tag"), doc.get("tags"));
+  }
+
+  @Test
+  void replaceWithEntityLevelTagsBatch_filtersTierTags() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.TagUsageDAO tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
+
+    String fqn1 = "service.db.schema.table1";
+    String fqn1Hash = FullyQualifiedName.buildHash(fqn1);
+
+    CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tierTag =
+        new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
+    tierTag.setTargetFQNHash(fqn1Hash);
+    tierTag.setSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION.ordinal());
+    tierTag.setTagFQN("Tier.Tier1");
+    tierTag.setLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL.ordinal());
+    tierTag.setState(org.openmetadata.schema.type.TagLabel.State.CONFIRMED.ordinal());
+
+    CollectionDAO.TagUsageDAO.TagLabelWithFQNHash normalTag =
+        new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
+    normalTag.setTargetFQNHash(fqn1Hash);
+    normalTag.setSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION.ordinal());
+    normalTag.setTagFQN("PII.Sensitive");
+    normalTag.setLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL.ordinal());
+    normalTag.setState(org.openmetadata.schema.type.TagLabel.State.CONFIRMED.ordinal());
+
+    when(collectionDAO.tagUsageDAO()).thenReturn(tagUsageDAO);
+    when(tagUsageDAO.getTagsInternalBatch(any())).thenReturn(java.util.List.of(tierTag, normalTag));
+
+    java.util.List<java.util.Map<String, Object>> docs = new java.util.ArrayList<>();
+    java.util.Map<String, Object> doc = new java.util.HashMap<>();
+    doc.put("fullyQualifiedName", fqn1);
+    docs.add(doc);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      try (MockedStatic<org.openmetadata.service.resources.tags.TagLabelUtil> mockedTagUtil =
+          mockStatic(org.openmetadata.service.resources.tags.TagLabelUtil.class)) {
+        mockedTagUtil
+            .when(
+                () ->
+                    org.openmetadata.service.resources.tags.TagLabelUtil.applyTagCommonFieldsBatch(
+                        any()))
+            .then(invocation -> null);
+
+        LineageUtil.replaceWithEntityLevelTagsBatch(docs);
+      }
+    }
+
+    @SuppressWarnings("unchecked")
+    java.util.List<org.openmetadata.schema.type.TagLabel> tags =
+        (java.util.List<org.openmetadata.schema.type.TagLabel>) doc.get("tags");
+    assertEquals(1, tags.size());
+    assertEquals("PII.Sensitive", tags.get(0).getTagFQN());
   }
 
   private static CollectionDAO.EntityRelationshipObject relationshipObject(EntityReference ref) {

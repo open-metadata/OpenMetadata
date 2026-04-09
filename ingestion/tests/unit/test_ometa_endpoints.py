@@ -14,6 +14,9 @@ OpenMetadata high-level API endpoint test
 """
 from unittest import TestCase
 
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -22,6 +25,9 @@ from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPi
     CreateIngestionPipelineRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createTestCaseResult import (
+    CreateTestCaseResult,
+)
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -30,7 +36,7 @@ from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -46,6 +52,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -117,13 +124,19 @@ class OMetaEndpointTest(TestCase):
         """
 
         entity = self.metadata.get_entity_from_create(CreateTopicRequest)
-        assert issubclass(entity, Topic)
+        assert entity is Topic
 
         entity = self.metadata.get_entity_from_create(CreateDatabaseServiceRequest)
-        assert issubclass(entity, DatabaseService)
+        assert entity is DatabaseService
 
         entity = self.metadata.get_entity_from_create(CreateUserRequest)
-        assert issubclass(entity, User)
+        assert entity is User
 
         entity = self.metadata.get_entity_from_create(CreateIngestionPipelineRequest)
-        assert issubclass(entity, IngestionPipeline)
+        assert entity is IngestionPipeline
+
+        entity = self.metadata.get_entity_from_create(CreateTestCaseResult)
+        assert entity is TestCaseResult
+
+        entity = self.metadata.get_entity_from_create(CreateTableProfileRequest)
+        assert entity is TableProfile

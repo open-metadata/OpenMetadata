@@ -98,6 +98,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_model_name,
     get_dbt_raw_query,
     get_manifest_column_name,
+    get_snapshot_effective_schema_and_database,
     validate_custom_property_value,
 )
 from metadata.ingestion.source.database.dbt.models import DbtMeta
@@ -615,8 +616,8 @@ class DbtSource(DbtServiceSource):
                     if model_tags:
                         dbt_tags_list.extend(self.filter_tags(model_tags))
 
-                    # Add the tags from the columns
-                    for _, column in manifest_node.columns.items():
+                    # snapshot nodes may have columns=None (columns are inferred at runtime)
+                    for _, column in (manifest_node.columns or {}).items():
                         column_tags = column.tags
                         if column_tags:
                             dbt_tags_list.extend(self.filter_tags(column_tags))
@@ -903,10 +904,21 @@ class DbtSource(DbtServiceSource):
 
                     model_name = get_dbt_model_name(manifest_node)
 
-                    # Filter the dbt models based on filter patterns
+                    # snapshots can redirect output to a different schema/database via config.target_schema/target_database
+                    if resource_type == "snapshot":
+                        location = get_snapshot_effective_schema_and_database(
+                            manifest_node
+                        )
+                        node_schema = location.schema_
+                        node_database = location.database
+                    else:
+                        node_schema = manifest_node.schema_
+                        node_database = manifest_node.database
+
+                    # Filter the dbt models based on filter patterns using effective schema/database
                     filter_model = self.is_filtered(
-                        database_name=get_corrected_name(manifest_node.database),
-                        schema_name=get_corrected_name(manifest_node.schema_),
+                        database_name=get_corrected_name(node_database),
+                        schema_name=get_corrected_name(node_schema),
                         table_name=model_name,
                     )
                     if filter_model.is_filtered:
@@ -931,13 +943,12 @@ class DbtSource(DbtServiceSource):
                             )
                             or []
                         )
-
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
-                        database_name=get_corrected_name(manifest_node.database),
-                        schema_name=get_corrected_name(manifest_node.schema_),
+                        database_name=get_corrected_name(node_database),
+                        schema_name=get_corrected_name(node_schema),
                         table_name=model_name,
                     )
 
@@ -1017,9 +1028,24 @@ class DbtSource(DbtServiceSource):
                     parent_node = manifest_entities[node]
                     table_name = get_dbt_model_name(parent_node)
 
+                    parent_resource_type = getattr(
+                        parent_node.resource_type,
+                        "value",
+                        parent_node.resource_type,
+                    )
+                    if parent_resource_type == "snapshot":
+                        parent_location = get_snapshot_effective_schema_and_database(
+                            parent_node
+                        )
+                        parent_database = parent_location.database
+                        parent_schema = parent_location.schema_
+                    else:
+                        parent_database = parent_node.database
+                        parent_schema = parent_node.schema_
+
                     filter_model = self.is_filtered(
-                        database_name=get_corrected_name(parent_node.database),
-                        schema_name=get_corrected_name(parent_node.schema_),
+                        database_name=get_corrected_name(parent_database),
+                        schema_name=get_corrected_name(parent_schema),
                         table_name=table_name,
                     )
                     if filter_model.is_filtered:
@@ -1036,8 +1062,8 @@ class DbtSource(DbtServiceSource):
                             self.metadata,
                             entity_type=Table,
                             service_name=self.config.serviceName,
-                            database_name=get_corrected_name(parent_node.database),
-                            schema_name=get_corrected_name(parent_node.schema_),
+                            database_name=get_corrected_name(parent_database),
+                            schema_name=get_corrected_name(parent_schema),
                             table_name=table_name,
                         )
 
@@ -1060,7 +1086,8 @@ class DbtSource(DbtServiceSource):
         Method to parse the DBT columns
         """
         columns = []
-        manifest_columns = manifest_node.columns
+        # snapshot nodes default columns to None; treat as empty to avoid AttributeError
+        manifest_columns = manifest_node.columns or {}
         for key, manifest_column in manifest_columns.items():
             try:
                 logger.debug(f"Processing DBT column: {key}")
@@ -1103,6 +1130,36 @@ class DbtSource(DbtServiceSource):
                             )
                             or []
                         )
+
+                    if (
+                        self.source_config.includeTags
+                        and dbt_column_meta.openmetadata
+                        and dbt_column_meta.openmetadata.tags
+                    ):
+                        for tag_fqn in dbt_column_meta.openmetadata.tags:
+                            if not tag_fqn:
+                                continue
+                            try:
+                                tag_parts = fqn.split(tag_fqn)
+                            except Exception as exc:  # pylint: disable=broad-except
+                                logger.debug(traceback.format_exc())
+                                logger.warning(
+                                    f"Failed to parse tag FQN {tag_fqn!r} for column"
+                                    f" {column_name}: {exc}"
+                                )
+                                continue
+                            if len(tag_parts) >= 2:
+                                classification_name = tag_parts[0]
+                                tag_name = fqn.FQN_SEPARATOR.join(tag_parts[1:])
+                                dbt_column_tag_list.extend(
+                                    get_tag_labels(
+                                        metadata=self.metadata,
+                                        tags=[tag_name],
+                                        classification_name=classification_name,
+                                        include_tags=self.source_config.includeTags,
+                                    )
+                                    or []
+                                )
 
                 columns.append(
                     Column(
@@ -1404,10 +1461,23 @@ class DbtSource(DbtServiceSource):
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain
 
-            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
+            if (
+                self.source_config.includeTags
+                and dbt_meta_info.openmetadata
+                and dbt_meta_info.openmetadata.tags
+            ):
                 for tag_fqn in dbt_meta_info.openmetadata.tags:
-                    # Parse classification.tag format
-                    tag_parts = tag_fqn.split(fqn.FQN_SEPARATOR)
+                    if not tag_fqn:
+                        continue
+                    try:
+                        tag_parts = fqn.split(tag_fqn)
+                    except Exception as exc:  # pylint: disable=broad-except
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Failed to parse tag FQN {tag_fqn!r} for table"
+                            f" {table_fqn}: {exc}"
+                        )
+                        continue
                     if len(tag_parts) >= 2:
                         classification_name = tag_parts[0]
                         tag_name = fqn.FQN_SEPARATOR.join(tag_parts[1:])
@@ -1416,7 +1486,7 @@ class DbtSource(DbtServiceSource):
                                 metadata=self.metadata,
                                 tags=[tag_name],
                                 classification_name=classification_name,
-                                include_tags=True,
+                                include_tags=self.source_config.includeTags,
                             )
                             or []
                         )

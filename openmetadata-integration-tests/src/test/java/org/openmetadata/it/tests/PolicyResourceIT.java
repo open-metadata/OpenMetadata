@@ -16,22 +16,34 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -482,6 +494,573 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     Policy fetched = client.policies().get(policy.getId().toString(), "owners");
     assertNotNull(fetched.getOwners());
     assertFalse(fetched.getOwners().isEmpty());
+  }
+
+  /**
+   * Reproduces the bug where deleting a tag that is referenced in a policy rule condition blocks
+   * future edits of that policy. The matchAnyTag condition is validated on every update, so a stale
+   * tag reference causes validation to fail even for unrelated changes like updating the
+   * description.
+   *
+   * <p>Steps: 1) Create a classification and tag 2) Create a policy with a rule condition using
+   * matchAnyTag referencing that tag 3) Hard-delete the tag 4) Attempt to edit the policy (e.g.
+   * update description) 5) The edit should succeed but currently fails because the deleted tag still
+   * appears in the condition and re-validation rejects it.
+   */
+  @Test
+  void test_editPolicyAfterReferencedTagIsDeleted(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Step 1: Create a classification and a tag under it
+    String classificationName = ns.prefix("TagCleanupClassification");
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(classificationName)
+                    .withDescription("Classification for tag cleanup test"));
+
+    String tagName = ns.prefix("StaleTag");
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(tagName)
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Tag that will be deleted"));
+
+    String tagFqn = tag.getFullyQualifiedName();
+
+    // Step 2: Create a policy with a rule whose condition references the tag
+    Rule tagRule =
+        new Rule()
+            .withName("tagConditionRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("matchAnyTag('" + tagFqn + "')");
+
+    CreatePolicy createPolicy =
+        new CreatePolicy()
+            .withName(ns.prefix("tagRefPolicy"))
+            .withRules(List.of(tagRule))
+            .withDescription("Policy referencing a tag that will be deleted");
+
+    Policy policy = createEntity(createPolicy);
+    String policyId = policy.getId().toString();
+    assertNotNull(policy.getRules());
+    assertEquals("matchAnyTag('" + tagFqn + "')", policy.getRules().get(0).getCondition());
+
+    // Step 3: Hard-delete the tag
+    client.tags().delete(tag.getId().toString(), Map.of("hardDelete", "true"));
+
+    // Step 4: Attempt to edit the policy — this should succeed but currently fails
+    // because the deleted tag in the condition triggers validation failure
+    Policy fetched = getEntity(policyId);
+    fetched.setDescription("Updated after tag deletion");
+    Policy updated = patchEntity(policyId, fetched);
+
+    assertEquals("Updated after tag deletion", updated.getDescription());
+  }
+
+  @Test
+  void test_editPolicyAfterReferencedRoleIsDeleted(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String roleName = ns.prefix("StaleRole");
+    Policy helperPolicy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("helperPolicyForRole"))
+                .withRules(
+                    List.of(
+                        new Rule()
+                            .withName("helperRule")
+                            .withResources(List.of(ALL_RESOURCES))
+                            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                            .withEffect(Effect.ALLOW)))
+                .withDescription("Helper policy for role creation"));
+    Role role =
+        client
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(roleName)
+                    .withPolicies(List.of(helperPolicy.getFullyQualifiedName()))
+                    .withDescription("Role that will be deleted"));
+
+    Rule roleRule =
+        new Rule()
+            .withName("roleConditionRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("hasAnyRole('" + role.getName() + "')");
+
+    Policy policy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("roleRefPolicy"))
+                .withRules(List.of(roleRule))
+                .withDescription("Policy referencing a role that will be deleted"));
+    String policyId = policy.getId().toString();
+
+    client.roles().delete(role.getId().toString(), Map.of("hardDelete", "true"));
+
+    Policy fetched = getEntity(policyId);
+    fetched.setDescription("Updated after role deletion");
+    Policy updated = patchEntity(policyId, fetched);
+
+    assertEquals("Updated after role deletion", updated.getDescription());
+  }
+
+  @Test
+  void test_editPolicyAfterReferencedTeamIsDeleted(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String teamName = ns.prefix("StaleTeam");
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(teamName);
+    createTeam.setDescription("Team that will be deleted");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    Team team = client.teams().create(createTeam);
+
+    Rule teamRule =
+        new Rule()
+            .withName("teamConditionRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("inAnyTeam('" + team.getName() + "')");
+
+    Policy policy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("teamRefPolicy"))
+                .withRules(List.of(teamRule))
+                .withDescription("Policy referencing a team that will be deleted"));
+    String policyId = policy.getId().toString();
+
+    client
+        .teams()
+        .delete(team.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    Policy fetched = getEntity(policyId);
+    fetched.setDescription("Updated after team deletion");
+    Policy updated = patchEntity(policyId, fetched);
+
+    assertEquals("Updated after team deletion", updated.getDescription());
+  }
+
+  @Test
+  void test_createPolicyWithDeletedTagStillFails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix("CreateFailClassification"))
+                    .withDescription("Classification for create-fail test"));
+
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.prefix("DeletedTag"))
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Tag that will be deleted before policy creation"));
+
+    String tagFqn = tag.getFullyQualifiedName();
+    client.tags().delete(tag.getId().toString(), Map.of("hardDelete", "true"));
+
+    Rule tagRule =
+        new Rule()
+            .withName("staleTagRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("matchAnyTag('" + tagFqn + "')");
+
+    CreatePolicy createPolicy =
+        new CreatePolicy()
+            .withName(ns.prefix("shouldFailPolicy"))
+            .withRules(List.of(tagRule))
+            .withDescription("Policy that should fail to create");
+
+    assertThrows(Exception.class, () -> createEntity(createPolicy));
+  }
+
+  @Test
+  void test_deletedTagIsRemovedFromPolicyCondition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix("CleanupClassification"))
+                    .withDescription("Classification for cleanup test"));
+
+    Tag tag1 =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.prefix("Tag1"))
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("First tag"));
+    Tag tag2 =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.prefix("Tag2"))
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Second tag"));
+
+    String tag1Fqn = tag1.getFullyQualifiedName();
+    String tag2Fqn = tag2.getFullyQualifiedName();
+
+    Rule tagRule =
+        new Rule()
+            .withName("multiTagRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("matchAnyTag('" + tag1Fqn + "', '" + tag2Fqn + "')");
+
+    Policy policy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("multiTagPolicy"))
+                .withRules(List.of(tagRule))
+                .withDescription("Policy with two tags"));
+    String policyId = policy.getId().toString();
+
+    client.tags().delete(tag1.getId().toString(), Map.of("hardDelete", "true"));
+
+    Policy fetched = getEntity(policyId);
+    String updatedCondition = fetched.getRules().get(0).getCondition();
+    assertEquals("matchAnyTag('" + tag2Fqn + "')", updatedCondition);
+  }
+
+  @Test
+  void test_deletingAllTagsRemovesCondition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix("AllDeleteClassification"))
+                    .withDescription("Classification for full delete test"));
+
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.prefix("OnlyTag"))
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Only tag"));
+
+    Rule tagRule =
+        new Rule()
+            .withName("singleTagRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("matchAnyTag('" + tag.getFullyQualifiedName() + "')");
+
+    Policy policy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("singleTagPolicy"))
+                .withRules(List.of(tagRule))
+                .withDescription("Policy with one tag"));
+    String policyId = policy.getId().toString();
+
+    client.tags().delete(tag.getId().toString(), Map.of("hardDelete", "true"));
+
+    Policy fetched = getEntity(policyId);
+    assertNull(fetched.getRules().get(0).getCondition());
+  }
+
+  @Test
+  void test_renamedTagIsUpdatedInPolicyCondition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix("RenameClassification"))
+                    .withDescription("Classification for rename test"));
+
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.prefix("OldTagName"))
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Tag that will be renamed"));
+
+    String oldFqn = tag.getFullyQualifiedName();
+
+    Rule tagRule =
+        new Rule()
+            .withName("renameTestRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("matchAnyTag('" + oldFqn + "')");
+
+    Policy policy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("renameTagPolicy"))
+                .withRules(List.of(tagRule))
+                .withDescription("Policy referencing a tag that will be renamed"));
+    String policyId = policy.getId().toString();
+
+    String newTagName = ns.prefix("NewTagName");
+    tag.setName(newTagName);
+    Tag renamedTag = client.tags().update(tag.getId().toString(), tag);
+    String newFqn = renamedTag.getFullyQualifiedName();
+
+    Policy fetched = getEntity(policyId);
+    String updatedCondition = fetched.getRules().get(0).getCondition();
+    assertEquals("matchAnyTag('" + newFqn + "')", updatedCondition);
+  }
+
+  @Test
+  void test_deletedRoleIsRemovedFromPolicyCondition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Policy helperPolicy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("helperPolicyForRoles"))
+                .withRules(
+                    List.of(
+                        new Rule()
+                            .withName("helperRule")
+                            .withResources(List.of(ALL_RESOURCES))
+                            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                            .withEffect(Effect.ALLOW)))
+                .withDescription("Helper policy for role creation"));
+    String helperPolicyFqn = helperPolicy.getFullyQualifiedName();
+
+    Role role1 =
+        client
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("Role1"))
+                    .withPolicies(List.of(helperPolicyFqn))
+                    .withDescription("First role"));
+    Role role2 =
+        client
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("Role2"))
+                    .withPolicies(List.of(helperPolicyFqn))
+                    .withDescription("Second role"));
+
+    Rule roleRule =
+        new Rule()
+            .withName("multiRoleRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("hasAnyRole('" + role1.getName() + "', '" + role2.getName() + "')");
+
+    Policy policy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("multiRolePolicy"))
+                .withRules(List.of(roleRule))
+                .withDescription("Policy with two roles"));
+    String policyId = policy.getId().toString();
+
+    client.roles().delete(role1.getId().toString(), Map.of("hardDelete", "true"));
+
+    Policy fetched = getEntity(policyId);
+    String updatedCondition = fetched.getRules().get(0).getCondition();
+    assertEquals("hasAnyRole('" + role2.getName() + "')", updatedCondition);
+  }
+
+  @Test
+  void test_deletedTeamIsRemovedFromPolicyCondition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String teamName = ns.prefix("CleanupTeam");
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(teamName);
+    createTeam.setDescription("Team for cleanup test");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    Team team = client.teams().create(createTeam);
+
+    Policy helperPolicy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("helperPolicyForTeamTest"))
+                .withRules(
+                    List.of(
+                        new Rule()
+                            .withName("helperRule")
+                            .withResources(List.of(ALL_RESOURCES))
+                            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                            .withEffect(Effect.ALLOW)))
+                .withDescription("Helper policy for role creation"));
+
+    Role dsSteward =
+        client
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("DataSteward"))
+                    .withPolicies(List.of(helperPolicy.getFullyQualifiedName()))
+                    .withDescription("Steward role"));
+
+    Rule teamRuleWithActualRole =
+        new Rule()
+            .withName("teamCleanupRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition(
+                "inAnyTeam('" + team.getName() + "') && hasAnyRole('" + dsSteward.getName() + "')");
+
+    Policy policy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("teamCleanupPolicy"))
+                .withRules(List.of(teamRuleWithActualRole))
+                .withDescription("Policy with team and role"));
+    String policyId = policy.getId().toString();
+
+    client
+        .teams()
+        .delete(team.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    Policy fetched = getEntity(policyId);
+    String updatedCondition = fetched.getRules().get(0).getCondition();
+    assertEquals("hasAnyRole('" + dsSteward.getName() + "')", updatedCondition);
+  }
+
+  @Test
+  void test_deletedClassificationRemovesChildTagsFromPolicyCondition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix("DeleteClassification"))
+                    .withDescription("Classification that will be deleted"));
+
+    Tag tag1 =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.prefix("CTag1"))
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Child tag 1"));
+    Tag tag2 =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.prefix("CTag2"))
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Child tag 2"));
+
+    Rule tagRule =
+        new Rule()
+            .withName("classificationDeleteRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition(
+                "matchAnyTag('"
+                    + tag1.getFullyQualifiedName()
+                    + "', '"
+                    + tag2.getFullyQualifiedName()
+                    + "')");
+
+    Policy policy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("classificationDeletePolicy"))
+                .withRules(List.of(tagRule))
+                .withDescription("Policy referencing tags under a classification"));
+    String policyId = policy.getId().toString();
+
+    client
+        .classifications()
+        .delete(
+            classification.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    Policy fetched = getEntity(policyId);
+    assertNull(fetched.getRules().get(0).getCondition());
+  }
+
+  @Test
+  void test_deletedGlossaryRemovesTermsFromPolicyCondition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("DeleteGlossary"))
+                    .withDescription("Glossary that will be deleted"));
+
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("GTerm1"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Glossary term"));
+
+    Rule tagRule =
+        new Rule()
+            .withName("glossaryDeleteRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("matchAnyTag('" + term.getFullyQualifiedName() + "')");
+
+    Policy policy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("glossaryDeletePolicy"))
+                .withRules(List.of(tagRule))
+                .withDescription("Policy referencing a glossary term"));
+    String policyId = policy.getId().toString();
+
+    client
+        .glossaries()
+        .delete(glossary.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    Policy fetched = getEntity(policyId);
+    assertNull(fetched.getRules().get(0).getCondition());
   }
 
   // ===================================================================

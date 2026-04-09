@@ -13,7 +13,7 @@ prerequisites:
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
-	playwright install --with-deps
+	playwright install chromium --with-deps
 
 .PHONY: run_e2e_tests
 run_e2e_tests: ## Run e2e tests

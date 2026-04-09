@@ -251,11 +251,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     // Then, if columns field is requested, also fetch column-level tags
     if (fields.contains("columns")) {
       // Use bulk tag fetching to avoid N+1 queries
-      bulkPopulateEntityFieldTags(
-          dataModels,
-          entityType,
-          DashboardDataModel::getColumns,
-          DashboardDataModel::getFullyQualifiedName);
+      bulkPopulateEntityFieldTags(dataModels, DashboardDataModel::getColumns);
     }
   }
 

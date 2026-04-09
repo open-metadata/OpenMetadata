@@ -10,6 +10,7 @@ on:
       - openmetadata-ui/src/main/resources/ui/**
       - "!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
       - "!openmetadata-ui/src/main/resources/ui/playwright/docs/**"
+      - "!openmetadata-ui/src/main/resources/ui/scripts/**"
 
 permissions:
   contents: read

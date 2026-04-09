@@ -260,6 +260,20 @@ class OMetaTableMixin:
 
         return None
 
+    def delete_sample_data(self, table: Table) -> None:
+        """
+        DELETE call for the /sampleData endpoint for a given Table
+        """
+        try:
+            self.client.delete(
+                f"{self.get_suffix(Table)}/{table.id.root}/sampleData",
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to DELETE sample data for {table.fullyQualifiedName.root}: {exc}"
+            )
+
     def add_pipeline_observability(
         self, table_id: Uuid, pipeline_observability: List[PipelineObservability]
     ) -> Optional[Table]:

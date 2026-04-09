@@ -18,7 +18,9 @@ import traceback
 from collections import defaultdict
 from itertools import groupby, product
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
+
+from cachetools import LRUCache
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -31,6 +33,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.openLineageC
     KafkaBrokerConfig,
     KinesisBrokerConfig,
     OpenLineageConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -63,7 +68,20 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     TopicDetails,
     TopicFQN,
 )
+from metadata.ingestion.source.pipeline.openlineage.service_resolver import (
+    build_service_name,
+    extract_integration_type,
+    find_pipeline_by_namespace,
+    get_or_create_pipeline_service,
+    resolve_pipeline_service_type,
+)
+from metadata.ingestion.source.pipeline.openlineage.table_resolver import (
+    extract_db_scheme_from_namespace,
+    find_service_by_namespace_mapping,
+    find_services_by_scheme,
+)
 from metadata.ingestion.source.pipeline.openlineage.utils import (
+    AmbiguousServiceException,
     FQNNotFoundException,
     message_to_open_lineage_event,
 )
@@ -88,6 +106,8 @@ class OpenlineageSource(PipelineServiceSource):
     """
 
     _db_service_names_warned: bool = False
+    _service_cache: Dict[str, str]
+    _current_pipeline_service: Optional[str] = None
 
     @classmethod
     def create(
@@ -103,7 +123,11 @@ class OpenlineageSource(PipelineServiceSource):
         return cls(config, metadata)
 
     def prepare(self):
-        """Nothing to prepare"""
+        self._service_cache = {}
+        self._current_pipeline_service = None
+        self._entity_cache: LRUCache = LRUCache(maxsize=10000)
+        self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
+        self._db_service_type_map: Dict[str, str] = self._build_db_service_type_map()
 
     def close(self) -> None:
         self.metadata.compute_percentile(Pipeline, self.today)
@@ -193,15 +217,89 @@ class OpenlineageSource(PipelineServiceSource):
         except KeyError:
             raise ValueError("Topic name is not present")
 
-        broker_hostname = urlparse(namespace).hostname
+        parsed = urlparse(namespace)
+        broker_hostname = parsed.hostname
         if not broker_hostname:
             raise ValueError(
                 f"Could not extract broker hostname from namespace: {namespace}"
             )
 
+        if parsed.port:
+            broker_hostname = f"{broker_hostname}:{parsed.port}"
+
         return TopicDetails(name=name, broker_hostname=broker_hostname)
 
-    def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
+    def _get_by_name_cached(self, entity_class, fqn_str: str, **kwargs):
+        """Wrapper around metadata.get_by_name with in-memory caching."""
+        if not hasattr(self, "_entity_cache"):
+            return self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
+        key = f"{entity_class.__name__}:{fqn_str}"
+        if key not in self._entity_cache:
+            result = self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
+            if result is not None:
+                self._entity_cache[key] = result
+            return result
+        return self._entity_cache[key]
+
+    def _build_db_service_type_map(self):
+        """Build a map of {service_name: DatabaseServiceType} filtered to configured dbServiceNames."""
+        type_map = {}
+        for service_name in self.get_db_service_names():
+            try:
+                resp = self.metadata.client.get(
+                    f"/services/databaseServices/name/{quote(service_name, safe='')}"
+                )
+                svc_type_str = resp.get("serviceType")
+                if svc_type_str:
+                    type_map[service_name] = DatabaseServiceType(svc_type_str)
+            except Exception:
+                logger.debug(f"Could not fetch DB service: {service_name}")
+        return type_map
+
+    def _resolve_db_services_for_namespace(self, namespace: str) -> Optional[List[str]]:
+        """
+        Resolve which DB services to search for a given OL dataset namespace.
+
+        Resolution order:
+        1. Check namespaceToServiceMapping config (exact then prefix match).
+        2. Extract scheme from namespace, filter services by matching DB type.
+           If exactly one match -> use it. If multiple -> log warning and return all.
+        3. Return None -> caller falls back to all dbServiceNames.
+        """
+        if not hasattr(self, "_namespace_to_service_cache"):
+            return None
+
+        if namespace in self._namespace_to_service_cache:
+            return self._namespace_to_service_cache[namespace]
+
+        result = None
+        configured = set(self.get_db_service_names() or [])
+
+        mapping = self.service_connection.namespaceToServiceMapping or {}
+        mapped_service = find_service_by_namespace_mapping(namespace, mapping)
+        if mapped_service and mapped_service in configured:
+            result = [mapped_service]
+        elif mapped_service:
+            logger.warning(
+                f"Namespace mapping resolved '{namespace}' to service "
+                f"'{mapped_service}', but it is not in the configured "
+                f"dbServiceNames. Falling back to scheme-based resolution."
+            )
+        if not result:
+            # Auto-discover by extracting the DB scheme from the namespace URL
+            db_scheme = extract_db_scheme_from_namespace(namespace)
+            if db_scheme:
+                matched = find_services_by_scheme(db_scheme, self._db_service_type_map)
+                if matched:
+                    result = matched
+
+        if result is not None:
+            self._namespace_to_service_cache[namespace] = result
+        return result
+
+    def _get_table_fqn(
+        self, table_details: TableDetails, namespace: Optional[str] = None
+    ) -> Optional[str]:
         if not self.get_db_service_names():
             if not self._db_service_names_warned:
                 logger.warning(
@@ -211,15 +309,59 @@ class OpenlineageSource(PipelineServiceSource):
                 )
                 self._db_service_names_warned = True
             return None
-        try:
-            return self._get_table_fqn_from_om(table_details)
-        except FQNNotFoundException:
-            try:
-                schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
 
-                return f"{schema_fqn}.{table_details.name}"
+        try:
+            resolved_services = self._resolve_db_services_for_namespace(namespace)
+
+            try:
+                return self._get_table_fqn_from_om(
+                    table_details, services=resolved_services
+                )
             except FQNNotFoundException:
-                return None
+                try:
+                    schema_fqn = self._get_schema_fqn_from_om(
+                        table_details.schema, services=resolved_services
+                    )
+                    return f"{schema_fqn}.{table_details.name}"
+                except FQNNotFoundException:
+                    return None
+        except Exception:
+            logger.warning(
+                f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}"
+            )
+            return None
+
+    def _get_table_fqn_from_om(
+        self, table_details: TableDetails, services: Optional[List[str]] = None
+    ) -> str:
+        """
+        Looks for matching Table entity in OM across all configured DB services.
+        Raises AmbiguousServiceException if the table exists in multiple services
+        of the same scheme-resolved type.
+        """
+        resolved = services is not None
+        found = []
+        for db_service in services or self.get_db_service_names():
+            result = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=db_service,
+                database_name=table_details.database,
+                schema_name=table_details.schema,
+                table_name=table_details.name,
+            )
+            if result:
+                if not resolved:
+                    return result
+                found.append(result)
+                if len(found) > 1:
+                    raise AmbiguousServiceException(
+                        f"Table '{table_details.name}' found in multiple services: "
+                        f"{found}. Configure 'namespaceToServiceMapping' to disambiguate."
+                    )
+        if found:
+            return found[0]
+        raise FQNNotFoundException(f"Table FQN not found for {table_details}")
 
     def _build_broker_to_service_map(self) -> Dict[str, str]:
         """
@@ -241,9 +383,9 @@ class OpenlineageSource(PipelineServiceSource):
                         bootstrap_servers = svc.connection.config.bootstrapServers or ""
                         svc_fqn = svc.fullyQualifiedName.root
                         for broker in bootstrap_servers.split(","):
-                            hostname = broker.strip().split(":")[0]
-                            if hostname:
-                                self._broker_to_service[hostname] = svc_fqn
+                            broker = broker.strip()
+                            if broker:
+                                self._broker_to_service[broker] = svc_fqn
                     except Exception:
                         logger.debug(
                             f"Could not extract bootstrapServers from service {svc.name}"
@@ -296,15 +438,18 @@ class OpenlineageSource(PipelineServiceSource):
             logger.warning(f"Error finding topic for {topic_details.name}: {exc}")
             return None
 
-    def _get_schema_fqn_from_om(self, schema: str) -> Optional[str]:
+    def _get_schema_fqn_from_om(
+        self, schema: str, services: Optional[List[str]] = None
+    ) -> Optional[str]:
         """
         Based on partial schema name look for any matching DatabaseSchema object in open metadata.
 
         :param schema: schema name
+        :param services: optional list of service names to search
         :return: fully qualified name of a DatabaseSchema in Open Metadata
         """
         result = None
-        services = self.get_db_service_names()
+        services = services or self.get_db_service_names()
 
         for db_service in services:
             result = fqn.build(
@@ -456,7 +601,10 @@ class OpenlineageSource(PipelineServiceSource):
             entity_details = self._get_entity_details(table)
             if entity_details.entity_type != "table":
                 continue
-            table_fqn = self._get_table_fqn(entity_details.table_details)
+            table_fqn = self._get_table_fqn(
+                entity_details.table_details,
+                namespace=table.get("namespace"),
+            )
 
             if table_fqn:
                 result[OpenlineageSource._get_ol_table_name(table)] = table_fqn
@@ -492,7 +640,10 @@ class OpenlineageSource(PipelineServiceSource):
             if entity_details.entity_type != "table":
                 continue
 
-            output_table_fqn = self._get_table_fqn(entity_details.table_details)
+            output_table_fqn = self._get_table_fqn(
+                entity_details.table_details,
+                namespace=table.get("namespace"),
+            )
             for field_name, field_spec in (
                 table.get("facets", {})
                 .get("columnLineage", {})
@@ -515,16 +666,50 @@ class OpenlineageSource(PipelineServiceSource):
 
         return OpenlineageSource._create_output_lineage_dict(_result)
 
+    def _resolve_pipeline_service(self, pipeline_details: OpenLineageEvent) -> str:
+        """
+        Resolve the pipeline service for the current event.
+
+        Resolution order:
+        1. **Namespace fallback** — try ``namespace.jobName`` as a pipeline
+           FQN.  If a pipeline already exists (e.g. ingested by a native
+           Airflow connector), reuse its service.
+        2. **Integration type** — extract from
+           ``job.facets.jobType.integration`` and create a typed service
+           (e.g. ``spark_openlineage``).
+        3. **Default** — fall back to the configured OpenLineage service.
+        """
+        fallback = self.context.get().pipeline_service
+
+        ns_result = find_pipeline_by_namespace(self.metadata, pipeline_details)
+        if ns_result:
+            service_name, _ = ns_result
+            return service_name
+
+        integration = extract_integration_type(pipeline_details)
+        service_name = build_service_name(integration, fallback)
+
+        if service_name != fallback:
+            service_type = resolve_pipeline_service_type(integration)
+            get_or_create_pipeline_service(
+                self.metadata, service_name, service_type, self._service_cache
+            )
+
+        return service_name
+
     def yield_pipeline(
         self, pipeline_details: OpenLineageEvent
     ) -> Iterable[Either[CreatePipelineRequest]]:
         pipeline_name = self.get_pipeline_name(pipeline_details)
+        self._current_pipeline_service = self._resolve_pipeline_service(
+            pipeline_details
+        )
         try:
             description = f"""```json
             {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
             request = CreatePipelineRequest(
                 name=pipeline_name,
-                service=self.context.get().pipeline_service,
+                service=self._current_pipeline_service,
                 description=description,
                 tasks=[],
             )
@@ -665,10 +850,13 @@ class OpenlineageSource(PipelineServiceSource):
                     if create_table_request:
                         yield create_table_request
 
-                    table_fqn = self._get_table_fqn(entity_details.table_details)
+                    table_fqn = self._get_table_fqn(
+                        entity_details.table_details,
+                        namespace=entity_data.get("namespace"),
+                    )
 
                     if table_fqn:
-                        table_entity = self.metadata.get_by_name(Table, table_fqn)
+                        table_entity = self._get_by_name_cached(Table, table_fqn)
                         if table_entity:
                             entity_list.append(
                                 LineageNode(
@@ -715,10 +903,13 @@ class OpenlineageSource(PipelineServiceSource):
             for n in product(input_edges, output_edges)
         ]
 
+        service_name = (
+            self._current_pipeline_service or self.context.get().pipeline_service
+        )
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
-            service_name=self.context.get().pipeline_service,
+            service_name=service_name,
             pipeline_name=self.context.get().pipeline,
         )
 

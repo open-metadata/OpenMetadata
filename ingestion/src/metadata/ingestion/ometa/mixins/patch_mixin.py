@@ -13,6 +13,7 @@ Mixin class containing PATCH specific methods
 
 To be used by OpenMetadata class
 """
+
 import json
 import traceback
 from copy import deepcopy
@@ -731,9 +732,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 data=json.dumps(
                     [
                         {
-                            PatchField.OPERATION: PatchOperation.REPLACE
-                            if existing_custom_properties
-                            else PatchOperation.ADD,
+                            PatchField.OPERATION: (
+                                PatchOperation.REPLACE
+                                if existing_custom_properties
+                                else PatchOperation.ADD
+                            ),
                             PatchField.PATH: "/extension",
                             PatchField.VALUE: final_properties,
                         }

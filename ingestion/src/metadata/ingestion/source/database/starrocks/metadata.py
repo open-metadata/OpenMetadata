@@ -53,7 +53,7 @@ RELKIND_MAP = {
     "ELASTICSEARCH": TableType.External,
     "HIVE": TableType.External,
     "JDBC": TableType.External,
-    "ICEBERG": TableType.External,
+    "ICEBERG": TableType.Iceberg,
     "HUDI": TableType.External,
 }
 
@@ -93,8 +93,12 @@ def _get_sqlalchemy_type(type_str):
     type_mapping = {
         "VARCHAR": sqltypes.VARCHAR,
         "CHAR": sqltypes.CHAR,
+        "TINYINT": sqltypes.SMALLINT,
+        "SMALLINT": sqltypes.SMALLINT,
         "INT": sqltypes.INT,
+        "INTEGER": sqltypes.INTEGER,
         "BIGINT": sqltypes.BIGINT,
+        "LARGEINT": sqltypes.BIGINT,
         "FLOAT": sqltypes.FLOAT,
         "DOUBLE": sqltypes.FLOAT,
         "DECIMAL": sqltypes.DECIMAL,
@@ -103,11 +107,17 @@ def _get_sqlalchemy_type(type_str):
         "TIMESTAMP": sqltypes.TIMESTAMP,
         "BOOLEAN": sqltypes.BOOLEAN,
         "ARRAY": sqltypes.ARRAY,
+        "MAP": sqltypes.TEXT,
+        "STRUCT": sqltypes.TEXT,
         "JSON": sqltypes.JSON,
         "STRING": sqltypes.TEXT,
         "BINARY": sqltypes.BINARY,
         "VARBINARY": sqltypes.VARBINARY,
         "TEXT": sqltypes.TEXT,
+        # StarRocks specialised analytics types — no SQL equivalent; store as TEXT
+        "BITMAP": sqltypes.TEXT,
+        "HLL": sqltypes.TEXT,
+        "PERCENTILE": sqltypes.TEXT,
         "UNKNOWN": sqltypes.NullType,
     }
 

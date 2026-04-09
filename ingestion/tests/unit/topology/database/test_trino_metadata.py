@@ -14,7 +14,12 @@
 import unittest
 from unittest.mock import Mock
 
-from metadata.ingestion.source.database.trino.metadata import get_view_definition
+from metadata.generated.schema.entity.data.table import TableType
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
+from metadata.ingestion.source.database.trino.metadata import (
+    TrinoSource,
+    get_view_definition,
+)
 
 
 class TestTrinoMetadata(unittest.TestCase):
@@ -210,6 +215,38 @@ class TestTrinoMetadata(unittest.TestCase):
                 "test_view",
                 schema=None,
             )
+
+
+class TestTrinoIcebergDetection(unittest.TestCase):
+    def _make_mock_source(self, connector_name, table_names):
+        mock_self = Mock()
+        mock_self.context.get.return_value.database = "test_catalog"
+        mock_result = Mock()
+        mock_result.first.return_value = (connector_name,) if connector_name else None
+        mock_self.connection.execute.return_value = mock_result
+        mock_self.inspector.get_table_names.return_value = table_names
+        return mock_self
+
+    def test_iceberg_catalog_returns_iceberg_type(self):
+        mock_self = self._make_mock_source("iceberg", ["orders", "customers"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [
+            TableNameAndType(name="orders", type_=TableType.Iceberg),
+            TableNameAndType(name="customers", type_=TableType.Iceberg),
+        ]
+
+    def test_non_iceberg_catalog_returns_regular_type(self):
+        mock_self = self._make_mock_source("hive", ["orders"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
+
+    def test_connection_error_falls_back_to_regular(self):
+        mock_self = Mock()
+        mock_self.context.get.return_value.database = "test_catalog"
+        mock_self.connection.execute.side_effect = Exception("permission denied")
+        mock_self.inspector.get_table_names.return_value = ["orders"]
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
 
 
 if __name__ == "__main__":

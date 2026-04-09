@@ -66,12 +66,6 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.java == 'true' }}
     steps:
-      - name: Require safe-to-test label
-        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'safe to test') }}
-        run: |
-          echo "The 'safe to test' label is required before running OpenMetadata service unit tests."
-          exit 1
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
