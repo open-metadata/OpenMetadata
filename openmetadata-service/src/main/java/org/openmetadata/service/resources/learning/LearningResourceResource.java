@@ -451,4 +451,26 @@ public class LearningResourceResource
             : LearningResource.Status.fromValue(create.getStatus().value()));
     return resource;
   }
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteLearningResourcePrefixHard",
+      summary = "Hard-delete a learning resource and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this learning resource and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the learning resource", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
+  }
+
 }

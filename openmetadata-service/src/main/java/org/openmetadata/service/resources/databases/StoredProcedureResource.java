@@ -32,6 +32,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.PathParam;
 
 @Path("/v1/storedProcedures")
 @Tag(
@@ -564,6 +566,28 @@ public class StoredProcedureResource
           @PathParam("id")
           UUID id) {
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteStoredProcedurePrefixHard",
+      summary = "Hard-delete a stored procedure and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this stored procedure and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the stored procedure", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

@@ -589,6 +589,28 @@ public class PipelineServiceResource
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deletePipelineServicePrefixHard",
+      summary = "Hard-delete a pipeline service and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this pipeline service and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
+  }
+
   @DELETE
   @Path("/name/{fqn}")
   @Operation(

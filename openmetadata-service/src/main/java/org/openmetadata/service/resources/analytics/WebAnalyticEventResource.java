@@ -352,6 +352,28 @@ public class WebAnalyticEventResource
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteWebAnalyticEventPrefixHard",
+      summary = "Hard-delete a web analytic event and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this web analytic event and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
+  }
+
   @DELETE
   @Path("/name/{fqn}")
   @Operation(

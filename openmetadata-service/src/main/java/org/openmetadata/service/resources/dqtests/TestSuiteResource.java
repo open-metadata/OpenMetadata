@@ -806,6 +806,28 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return repository.deleteLogicalTestSuiteAsync(securityContext, testSuite, hardDelete);
   }
 
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteTestSuitePrefixHard",
+      summary = "Hard-delete a test suite and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this test suite and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
+  }
+
   @DELETE
   @Path("/name/{name}")
   @Operation(

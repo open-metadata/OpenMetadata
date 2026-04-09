@@ -541,6 +541,28 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteMetricPrefixHard",
+      summary = "Hard-delete a metric and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this metric and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
+  }
+
   @DELETE
   @Path("/name/{fqn}")
   @Operation(

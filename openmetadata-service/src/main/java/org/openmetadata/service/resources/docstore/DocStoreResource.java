@@ -452,6 +452,28 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     return deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteDocStorePrefixHard",
+      summary = "Hard-delete a doc store and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this doc store and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the doc store", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
+  }
+
   @DELETE
   @Path("/name/{name}")
   @Operation(

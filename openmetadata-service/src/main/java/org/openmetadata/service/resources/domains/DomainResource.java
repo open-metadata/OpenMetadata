@@ -496,6 +496,28 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return deleteByIdAsync(uriInfo, securityContext, id, true, true);
   }
 
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteDomainPrefixHard",
+      summary = "Hard-delete a domain and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this domain and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
+  }
+
   @DELETE
   @Path("/name/{name}")
   @Operation(

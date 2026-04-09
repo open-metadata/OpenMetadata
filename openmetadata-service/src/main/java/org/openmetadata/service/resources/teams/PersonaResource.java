@@ -47,6 +47,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.PathParam;
 
 @Slf4j
 @Path("/v1/personas")
@@ -412,6 +414,28 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
           UUID id) {
     authorizer.authorizeAdmin(securityContext);
     return deleteByIdAsync(uriInfo, securityContext, id, false, true);
+  }
+
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deletePersonaPrefixHard",
+      summary = "Hard-delete a persona and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this persona and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the persona", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE
