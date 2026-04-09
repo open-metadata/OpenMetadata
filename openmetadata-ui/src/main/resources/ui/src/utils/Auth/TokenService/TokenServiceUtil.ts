@@ -96,7 +96,7 @@ class TokenService {
         const newToken = await this.fetchNewToken();
         if (newToken) {
           // Wait briefly for token to be persisted in SW+IndexedDB before notifying
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          await this.waitForTokenPersistence(oldToken);
           this.refreshSuccessCallback?.();
           // To update all the tabs on updating channel token
           // Notify all tabs that the token has been refreshed
