@@ -152,8 +152,8 @@ WHERE relation IN (0, 8);
 
 -- Entity deletion lock table for preventing orphaned entities during cascade deletion
 CREATE TABLE IF NOT EXISTS entity_deletion_lock (
-    id VARCHAR(36) NOT NULL,
-    entityId VARCHAR(36) NOT NULL,
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    entityId UUID NOT NULL,
     entityType VARCHAR(256) NOT NULL,
     entityFqn VARCHAR(2048) NOT NULL,
     lockType VARCHAR(50) NOT NULL, -- 'DELETE_IN_PROGRESS', 'DELETE_SCHEDULED'
