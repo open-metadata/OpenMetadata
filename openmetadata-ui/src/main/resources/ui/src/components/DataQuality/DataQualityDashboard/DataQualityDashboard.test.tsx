@@ -328,6 +328,9 @@ describe('DataQualityDashboard', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('search-dropdown-label.tag')).toBeInTheDocument();
     expect(
+      screen.getByTestId('search-dropdown-label.data-product')
+    ).toBeInTheDocument();
+    expect(
       screen.getByTestId('search-dropdown-label.glossary-term')
     ).toBeInTheDocument();
     expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
@@ -746,7 +749,7 @@ describe('DataQualityDashboard', () => {
       jest.clearAllMocks();
     });
 
-    it('hides Owner, Tier, Tag and Glossary Term dropdowns when hideFilterBar is true', async () => {
+    it('hides Owner, Tier, Tag, Data Product and Glossary Term dropdowns when hideFilterBar is true', async () => {
       render(<DataQualityDashboard hideFilterBar />, { wrapper: MemoryRouter });
 
       expect(
@@ -757,6 +760,9 @@ describe('DataQualityDashboard', () => {
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('search-dropdown-label.tag')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('search-dropdown-label.data-product')
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('search-dropdown-label.glossary-term')
@@ -1054,9 +1060,12 @@ describe('DataQualityDashboard', () => {
     });
 
     it('does not call tag search API when tags is in hiddenFilters', async () => {
-      render(<DataQualityDashboard hiddenFilters={['tags']} />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <DataQualityDashboard hiddenFilters={['tags', 'dataProducts']} />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
 
       await waitFor(() => {
         expect(
@@ -1069,9 +1078,14 @@ describe('DataQualityDashboard', () => {
     });
 
     it('does not call glossary term search API when glossaryTerms is in hiddenFilters', async () => {
-      render(<DataQualityDashboard hiddenFilters={['glossaryTerms']} />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <DataQualityDashboard
+          hiddenFilters={['glossaryTerms', 'dataProducts']}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
 
       await waitFor(() => {
         expect(
@@ -1100,6 +1114,9 @@ describe('DataQualityDashboard', () => {
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('search-dropdown-label.tag')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('search-dropdown-label.data-product')
       ).not.toBeInTheDocument();
     });
   });
@@ -1299,7 +1316,7 @@ describe('DataQualityDashboard', () => {
           (args[0] as Record<string, unknown>).query === '***'
       );
 
-      expect(wildcardCalls.length).toBeGreaterThanOrEqual(2); // tags + glossaryTerms
+      expect(wildcardCalls.length).toBeGreaterThanOrEqual(3); // tags + glossaryTerms + data products
       expect(tripleStarCalls).toHaveLength(0);
     });
 
