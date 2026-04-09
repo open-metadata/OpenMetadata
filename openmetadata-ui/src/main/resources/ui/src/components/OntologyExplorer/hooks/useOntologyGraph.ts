@@ -864,7 +864,11 @@ export function useOntologyGraph({
       await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
       const zoom = graph.getZoom();
       if (zoom < PRACTICAL_MIN_ZOOM) {
-        graph.zoomTo(PRACTICAL_MIN_ZOOM, { duration: 0 }, graph.getCanvasCenter());
+        graph.zoomTo(
+          PRACTICAL_MIN_ZOOM,
+          { duration: 0 },
+          graph.getCanvasCenter()
+        );
       }
     };
 
