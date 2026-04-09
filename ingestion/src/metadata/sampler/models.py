@@ -24,14 +24,14 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
-from metadata.generated.schema.type.basic import (
-    ProfileSampleType,
-    SamplingMethodType,
-)
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     SampleDataStorageConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    FullyQualifiedEntityName,
+    ProfileSampleType,
+    SamplingMethodType,
+)
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.pii.types import ClassifiableEntityType

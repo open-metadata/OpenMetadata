@@ -39,7 +39,6 @@ from metadata.data_quality.validations.models import (
     TableParameter,
 )
 from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaScheme,
 )
@@ -51,6 +50,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.functions.md5 import MD5
