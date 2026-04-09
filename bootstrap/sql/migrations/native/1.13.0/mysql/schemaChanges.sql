@@ -136,7 +136,6 @@ SET json = JSON_SET(
     json,
     '$.profileSampleConfig',
     JSON_OBJECT(
-        'enabled', true,
         'sampleConfigType', 'STATIC',
         'config', JSON_OBJECT(
             'profileSample', JSON_EXTRACT(json, '$.profileSample'),
@@ -181,7 +180,6 @@ SET json = JSON_SET(
     json,
     '$.sourceConfig.config.profileSampleConfig',
     JSON_OBJECT(
-        'enabled', true,
         'sampleConfigType', 'STATIC',
         'config', JSON_OBJECT(
             'profileSample', JSON_EXTRACT(json, '$.sourceConfig.config.profileSample'),

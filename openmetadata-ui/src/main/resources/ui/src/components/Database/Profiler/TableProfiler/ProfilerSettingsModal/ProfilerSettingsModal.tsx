@@ -310,7 +310,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         profileSampleConfig:
           profileSampleType && profileSample
             ? {
-                enabled: true,
                 sampleConfigType: SampleConfigType.Static,
                 config: {
                   profileSample,

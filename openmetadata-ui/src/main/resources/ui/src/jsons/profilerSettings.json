@@ -7,10 +7,6 @@
       "title": "Profile Sample Configuration",
       "type": "object",
       "properties": {
-        "enabled": {
-          "type": "boolean",
-          "default": true
-        },
         "sampleConfigType": {
           "type": "string",
           "enum": ["STATIC", "DYNAMIC"],

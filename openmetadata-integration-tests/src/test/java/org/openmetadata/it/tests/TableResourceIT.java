@@ -1569,7 +1569,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         new TableProfilerConfig()
             .withProfileSampleConfig(
                 new ProfileSampleConfig()
-                    .withEnabled(true)
                     .withSampleConfigType(ProfileSampleConfig.SampleConfigType.STATIC)
                     .withConfig(
                         new StaticSamplingConfig()

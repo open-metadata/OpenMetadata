@@ -164,7 +164,6 @@ SET json = jsonb_set(
     json::jsonb,
     '{profileSampleConfig}',
     jsonb_build_object(
-        'enabled', true,
         'sampleConfigType', 'STATIC',
         'config', jsonb_build_object(
             'profileSample', json::jsonb #> '{profileSample}',
@@ -204,7 +203,6 @@ SET json = jsonb_set(
     json::jsonb,
     '{sourceConfig,config,profileSampleConfig}',
     jsonb_build_object(
-        'enabled', true,
         'sampleConfigType', 'STATIC',
         'config', jsonb_build_object(
             'profileSample', json::jsonb #> '{sourceConfig,config,profileSample}',

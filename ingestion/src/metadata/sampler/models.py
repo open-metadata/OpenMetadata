@@ -77,7 +77,6 @@ class StaticSamplingConfig(ConfigModel):
 class ProfileSampleConfig(ConfigModel):
     """Profile sample configuration supporting static and dynamic sampling"""
 
-    enabled: bool = False
     sampleConfigType: ProfileSampleConfigType = ProfileSampleConfigType.STATIC
     config: Optional[Union[DynamicSamplingConfig, StaticSamplingConfig]] = None
 

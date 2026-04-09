@@ -113,8 +113,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
   const uiSchema = useMemo(
     () => ({
       profileSampleConfig: {
-        'ui:order': ['enabled', 'sampleConfigType', 'config', '*'],
-        enabled: { 'ui:widget': 'hidden' },
+        'ui:order': ['sampleConfigType', 'config', '*'],
         sampleConfigType: { 'ui:widget': 'hidden' },
         config: {
           'ui:order': ['profileSampleType', 'profileSample', '*'],

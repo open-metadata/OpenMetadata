@@ -120,11 +120,7 @@ def _resolve_profile_sample_config(
         default_sample_config,
     ):
         try:
-            if (
-                config
-                and config.profileSampleConfig
-                and config.profileSampleConfig.enabled
-            ):
+            if config and config.profileSampleConfig:
                 return config.profileSampleConfig
         except AttributeError:
             pass

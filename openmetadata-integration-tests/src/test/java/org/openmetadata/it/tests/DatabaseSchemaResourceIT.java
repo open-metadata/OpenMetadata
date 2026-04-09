@@ -440,7 +440,6 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
             new org.openmetadata.schema.type.DatabaseSchemaProfilerConfig()
                 .withProfileSampleConfig(
                     new ProfileSampleConfig()
-                        .withEnabled(true)
                         .withSampleConfigType(ProfileSampleConfig.SampleConfigType.STATIC)
                         .withConfig(
                             new StaticSamplingConfig()
