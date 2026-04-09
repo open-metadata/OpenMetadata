@@ -1003,7 +1003,7 @@ public class LineageRepository {
               .findLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
       // Finally, delete lineage relationship
       dao.relationshipDAO()
-          .deleteLineageBySourcePipeline(toId, toEntity, Relationship.UPSTREAM.ordinal());
+          .deleteLineageBySourcePipeline(toId, source, Relationship.UPSTREAM.ordinal());
     } else {
       relations =
           dao.relationshipDAO()

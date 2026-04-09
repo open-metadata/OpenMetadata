@@ -492,6 +492,7 @@ class LineageRepositoryTest {
             LineageDetails.Source.OPEN_LINEAGE.value(),
             Relationship.UPSTREAM.ordinal());
     org.mockito.Mockito.verify(relationshipDAO)
-        .deleteLineageBySourcePipeline(entityId, "table", Relationship.UPSTREAM.ordinal());
+        .deleteLineageBySourcePipeline(
+            entityId, LineageDetails.Source.OPEN_LINEAGE.value(), Relationship.UPSTREAM.ordinal());
   }
 }
