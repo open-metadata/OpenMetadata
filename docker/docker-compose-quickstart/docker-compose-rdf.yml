@@ -148,7 +148,7 @@ services:
       OIDC_CLIENT_AUTH_METHOD: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
       OIDC_TENANT: ${OIDC_TENANT:-""}
       OIDC_MAX_CLOCK_SKEW: ${OIDC_MAX_CLOCK_SKEW:-""}
-      OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
+      OIDC_CUSTOM_PARAMS: "${OIDC_CUSTOM_PARAMS:-{}}"
 
       # Database configuration for MySQL
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
@@ -318,7 +318,7 @@ services:
       OIDC_CLIENT_AUTH_METHOD: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
       OIDC_TENANT: ${OIDC_TENANT:-""}
       OIDC_MAX_CLOCK_SKEW: ${OIDC_MAX_CLOCK_SKEW:-""}
-      OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
+      OIDC_CUSTOM_PARAMS: "${OIDC_CUSTOM_PARAMS:-{}}"
 
       # Database configuration for MySQL
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
