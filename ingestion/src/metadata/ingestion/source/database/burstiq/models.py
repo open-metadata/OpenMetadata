@@ -31,10 +31,15 @@ class SdzMetricsResponse(BaseModel):
 
 class TQLRecord(BaseModel):
     model_config = ConfigDict(extra="allow")
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[Any] = None
 
     def to_record(self) -> Dict[str, Any]:
-        return self.data if self.data is not None else (self.model_extra or {})
+        if isinstance(self.data, dict):
+            return self.data
+        record = dict(self.model_extra or {})
+        if self.data is not None:
+            record["data"] = self.data
+        return record
 
 
 class BurstIQAttribute(BaseModel):

@@ -30,7 +30,7 @@ from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.sqa_like_column import SQALikeColumn
 
-_PAGE_SIZE = 1_000
+_PAGE_SIZE = 5_000
 
 _NUMERIC_TYPES = {
     DataType.INT,

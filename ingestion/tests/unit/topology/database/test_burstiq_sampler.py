@@ -34,7 +34,7 @@ from metadata.generated.schema.entity.services.connections.database.burstIQConne
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sampler.models import SampleConfig
-from metadata.sampler.pandas.burstiq.sampler import BurstIQSampler
+from metadata.sampler.pandas.burstiq.sampler import _PAGE_SIZE, BurstIQSampler
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -155,18 +155,19 @@ class TestBurstIQSamplerRawDataset:
 
     def test_pagination_splits_into_multiple_pages(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
-        mock_client.get_chain_metrics.return_value = {"TestChain": 2500}
-        page1 = [{"score": float(i)} for i in range(1000)]
-        page2 = [{"score": float(i)} for i in range(1000, 2000)]
-        page3 = [{"score": float(i)} for i in range(2000, 2500)]
+        total = _PAGE_SIZE * 2 + _PAGE_SIZE // 2
+        mock_client.get_chain_metrics.return_value = {"TestChain": total}
+        page1 = [{"score": float(i)} for i in range(_PAGE_SIZE)]
+        page2 = [{"score": float(i)} for i in range(_PAGE_SIZE, _PAGE_SIZE * 2)]
+        page3 = [{"score": float(i)} for i in range(_PAGE_SIZE * 2, total)]
         mock_client.get_records_by_tql.side_effect = [page1, page2, page3]
 
         dfs = list(sampler.raw_dataset())
 
         assert len(dfs) == 3
-        assert len(dfs[0]) == 1000
-        assert len(dfs[1]) == 1000
-        assert len(dfs[2]) == 500
+        assert len(dfs[0]) == _PAGE_SIZE
+        assert len(dfs[1]) == _PAGE_SIZE
+        assert len(dfs[2]) == _PAGE_SIZE // 2
 
     def test_stops_early_on_short_page(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()

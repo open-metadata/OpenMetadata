@@ -50,6 +50,7 @@ class BurstIQClient:
 
         self.access_token: Optional[str] = None
         self.token_expires_at: Optional[datetime] = None
+        self._chain_metrics: Optional[Dict[str, int]] = None
 
     def test_authenticate(self):
         """
@@ -308,12 +309,17 @@ class BurstIQClient:
         Returns:
             Dict mapping chain name to asset (row) count
         """
+        if self._chain_metrics is not None:
+            return self._chain_metrics
         logger.info("Fetching chain metrics from BurstIQ...")
         data = self._make_request("GET", "/api/metrics/sdz")
         if data is None:
             return {}
         metrics = SdzMetricsResponse.model_validate(data)
-        return {name: chain.assets for name, chain in metrics.chainMetrics.items()}
+        self._chain_metrics = {
+            name: chain.assets for name, chain in metrics.chainMetrics.items()
+        }
+        return self._chain_metrics
 
     def get_records_by_tql(
         self, chain: str, limit: int, skip: int = 0
