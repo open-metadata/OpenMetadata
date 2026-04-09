@@ -50,6 +50,25 @@ class IndexMappingNestedFieldConsistencyTest {
   }
 
   @Test
+  void extensionFieldMustBeFlattenedInAllIndices() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      String entity = entry.getKey();
+      JsonNode properties = getTopLevelProperties(entry.getValue());
+      assertNotNull(
+          properties,
+          "Index mapping for '" + entity + "' has no properties — mapping file may be malformed.");
+      findExtensionTypeViolations(properties, "", violations, entity);
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "The 'extension' field must have \"type\": \"flattened\" in all index mappings. "
+            + "Using 'keyword' or 'object' will cause reindex failures when custom properties "
+            + "(entityExtension) contain object/map values. Violations: "
+            + violations);
+  }
+
+  @Test
   void ownersFieldMustBeNestedInAllIndices() {
     List<String> violations = new ArrayList<>();
     for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
@@ -70,6 +89,28 @@ class IndexMappingNestedFieldConsistencyTest {
             + "Missing in: "
             + violations
             + ". RBAC nested queries will fail on these indices.");
+  }
+
+  private static void findExtensionTypeViolations(
+      JsonNode properties, String currentPath, List<String> violations, String entity) {
+    Iterator<String> fieldNames = properties.fieldNames();
+    while (fieldNames.hasNext()) {
+      String name = fieldNames.next();
+      JsonNode fieldNode = properties.get(name);
+      String path = currentPath.isEmpty() ? name : currentPath + "." + name;
+      if (name.equals("extension")) {
+        String type = fieldNode.path("type").asText("");
+        if (!"flattened".equals(type)) {
+          String detail =
+              type.isEmpty() ? "missing \"type\" (implicit object)" : "\"" + type + "\"";
+          violations.add(entity + " (" + path + "): " + detail);
+        }
+      }
+      JsonNode childProps = fieldNode.path("properties");
+      if (!childProps.isMissingNode()) {
+        findExtensionTypeViolations(childProps, path, violations, entity);
+      }
+    }
   }
 
   private static void findViolations(

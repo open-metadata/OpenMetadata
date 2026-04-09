@@ -16,6 +16,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
   DATA_MODE_ASSET_EDGE_STROKE_COLOR,
+  DATA_MODE_TERM_MIN_CENTER_SPACING,
   DATA_MODE_TERM_NODE_SIZE,
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
@@ -48,6 +49,7 @@ import {
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
 import { computeGlossaryGroupPositions } from '../utils/layoutCalculations';
+import { ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE } from '../utils/ontologyComboAwarePolylineEdge';
 
 const INVERSE_RELATION_PAIRS: Record<string, string> = {
   broader: 'narrower',
@@ -301,26 +303,14 @@ export function useGraphDataBuilder({
       nodeIdToType.set(n.id, n.type);
     });
 
-    const distinctGlossaryIds = new Set(
-      nodesForGraph.map((n) => n.glossaryId).filter(Boolean)
-    );
-    const needsGroupLayout =
-      explorationMode !== 'data' &&
-      explorationMode !== 'hierarchy' &&
-      distinctGlossaryIds.size > 1;
-
-    const groupPositions: Record<string, { x: number; y: number }> =
-      needsGroupLayout
-        ? computeGlossaryGroupPositions(nodesForGraph, layoutType)
-        : {};
-
     const dataModeTermPositions: Record<string, { x: number; y: number }> =
       explorationMode === 'data'
         ? computeGlossaryGroupPositions(
             nodesForGraph.filter(
               (n) => n.type !== 'dataAsset' && n.type !== 'metric'
             ),
-            LayoutEngine.Dagre
+            LayoutEngine.Dagre,
+            DATA_MODE_TERM_MIN_CENTER_SPACING
           )
         : {};
 
@@ -369,7 +359,7 @@ export function useGraphDataBuilder({
           ? isDataAsset
             ? undefined
             : dataModeTermPositions[node.id]
-          : groupPositions[node.id] ?? nodePositions?.[node.id];
+          : undefined;
       const isSelected =
         explorationMode === 'hierarchy'
           ? node.termId === selectedNodeId || selectedNodeId === node.id
@@ -555,6 +545,18 @@ export function useGraphDataBuilder({
         toType !== 'dataAsset' &&
         toType !== 'metric';
 
+      const isTermTermEdge =
+        fromType !== 'dataAsset' &&
+        fromType !== 'metric' &&
+        toType !== 'dataAsset' &&
+        toType !== 'metric';
+
+      const isCrossGlossaryTermEdge =
+        isCrossTeam && isTermTermEdge && explorationMode !== 'data';
+
+      const useComboAwarePolyline =
+        isTermTermInDataMode || isCrossGlossaryTermEdge;
+
       const rawEdgeColor =
         explorationMode === 'data' && !isTermTermInDataMode
           ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
@@ -590,6 +592,10 @@ export function useGraphDataBuilder({
           getEdgeRelationLabelStyle(labelText, edge.relationType)),
       };
 
+      const edgeType = useComboAwarePolyline
+        ? ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE
+        : 'cubic-vertical';
+
       return {
         id: edgeId,
         source: edge.from,
@@ -601,11 +607,18 @@ export function useGraphDataBuilder({
           isClickedEdge,
           isCrossTeam,
           isEdgeDimmed,
-          edgeShapeType: 'cubic-vertical',
+          edgeShapeType: edgeType,
         },
-        type: 'cubic-vertical',
+        type: edgeType,
         style: {
           ...baseEdgeStyle,
+          ...(useComboAwarePolyline && {
+            router: {
+              type: 'shortest-path',
+              offset: 20,
+              enableObstacleAvoidance: true,
+            },
+          }),
         },
       };
     });
@@ -666,11 +679,11 @@ export function useGraphDataBuilder({
     settings.showEdgeLabels,
     selectedNodeId,
     expandedTermIds,
-    nodePositions,
     glossaryColorMap,
     neighborSet,
     computeNodeColor,
     clickedEdgeId,
+    nodePositions,
     layoutType,
     explorationMode,
     hierarchyCombos,

@@ -62,6 +62,7 @@ export const getLineageDataByFQN = async ({
   entityType,
   config,
   queryFilter,
+  columnFilter,
   from,
   direction,
 }: {
@@ -69,6 +70,7 @@ export const getLineageDataByFQN = async ({
   entityType: string;
   config?: LineageConfig;
   queryFilter?: string;
+  columnFilter?: string;
   from?: number;
   direction?: LineageDirection;
 }) => {
@@ -85,6 +87,7 @@ export const getLineageDataByFQN = async ({
       upstreamDepth: upstreamDepth === 0 ? 0 : upstreamDepth,
       downstreamDepth,
       query_filter: queryFilter,
+      column_filter: columnFilter,
       includeDeleted: false,
       size: config?.nodesPerLayer,
       from,
@@ -143,19 +146,38 @@ export const getDataQualityLineage = async (
 
 export const getLineageByEntityCount = async (params: {
   fqn: string;
-  type: EntityType;
+  type?: EntityType;
+  entityType?: EntityType;
   direction: LineageDirection;
   nodeDepth: number;
+  maxDepth?: number;
+  upstreamDepth?: number;
+  downstreamDepth?: number;
   from: number;
   size: number;
   query_filter?: string;
+  column_filter?: string;
+  include_pagination_info?: boolean;
 }) => {
   const response = await APIClient.get<{
     nodes: Record<string, LineageNodeData>;
     upstreamEdges: Record<string, EdgeDetails>;
     downstreamEdges: Record<string, EdgeDetails>;
+    paginationInfo?: {
+      downstreamDepthInfo: { depth: number; entityCount: number }[];
+      upstreamDepthInfo: { depth: number; entityCount: number }[];
+      maxDownstreamDepth: number;
+      maxUpstreamDepth: number;
+      totalDownstreamEntities: number;
+      totalUpstreamEntities: number;
+    };
   }>(`lineage/getLineageByEntityCount`, {
-    params,
+    params: {
+      ...params,
+      entityType: params.entityType ?? params.type,
+      maxDepth: params.maxDepth ?? params.nodeDepth,
+      type: undefined,
+    },
   });
 
   return response.data;
@@ -163,9 +185,11 @@ export const getLineageByEntityCount = async (params: {
 
 export const exportLineageByEntityCountAsync = async (params: {
   fqn: string;
-  type: EntityType;
+  type?: EntityType;
+  entityType?: EntityType;
   direction: LineageDirection;
   nodeDepth: number;
+  maxDepth?: number;
   from?: number;
   size?: number;
   query_filter?: string;
@@ -173,7 +197,12 @@ export const exportLineageByEntityCountAsync = async (params: {
   const response = await APIClient.get<CSVExportResponse>(
     `lineage/exportByEntityCountAsync`,
     {
-      params,
+      params: {
+        ...params,
+        entityType: params.entityType ?? params.type,
+        maxDepth: params.maxDepth ?? params.nodeDepth,
+        type: undefined,
+      },
     }
   );
 
@@ -182,13 +211,20 @@ export const exportLineageByEntityCountAsync = async (params: {
 
 export const getLineagePagingData = async (params: {
   fqn: string;
+  upstreamDepth?: number;
+  downstreamDepth?: number;
   type?: EntityType;
+  entityType?: EntityType;
   query_filter?: string;
 }) => {
   const response = await APIClient.get<LineagePagingInfo>(
     `lineage/getPaginationInfo`,
     {
-      params,
+      params: {
+        ...params,
+        entityType: params.entityType ?? params.type,
+        type: undefined,
+      },
     }
   );
 

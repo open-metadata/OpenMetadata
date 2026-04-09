@@ -23,6 +23,7 @@ import {
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
   buildDataQualityDashboardFilters,
+  buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
   buildTestCaseParams,
@@ -585,6 +586,35 @@ describe('DataQualityUtils', () => {
           },
         },
       ]);
+    });
+
+    it('should include data product filters when dataProductFqns are provided', () => {
+      const fqns = ['domain.dp1', 'domain.dp2'];
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          dataProductFqns: fqns,
+        },
+      });
+
+      expect(result).toEqual([
+        buildMustEsFilterForDataProducts(fqns),
+        {
+          term: {
+            deleted: false,
+          },
+        },
+      ]);
+    });
+
+    it('should prefix data product field for nested test case documents', () => {
+      expect(buildMustEsFilterForDataProducts(['a.b'], 'testCase.')).toEqual({
+        bool: {
+          should: [
+            { term: { 'testCase.dataProducts.fullyQualifiedName': 'a.b' } },
+          ],
+          minimum_should_match: 1,
+        },
+      });
     });
   });
 
