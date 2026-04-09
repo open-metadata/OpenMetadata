@@ -36,23 +36,13 @@ jest.mock('../../../utils/AuthProvider.util', () => ({
   })),
 }));
 
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
-
-jest.mock('../../../utils/CommonUtils', () => ({
-  Transi18next: jest.fn(() => null),
-}));
-
-jest.mock('../../../utils/BrowserUtils', () => ({
-  getPopupSettingLink: jest.fn(() => 'https://example.com/popup-settings'),
-}));
-
 const mockInstance = {
   loginPopup: jest.fn(),
   loginRedirect: jest.fn(),
   handleRedirectPromise: jest.fn(),
   acquireTokenSilent: jest.fn(),
+  acquireTokenPopup: jest.fn(),
+  acquireTokenRedirect: jest.fn(),
   logout: jest.fn(),
 };
 
@@ -155,7 +145,7 @@ describe('MsalAuthenticator', () => {
     expect(mockHandleSuccessfulLogout).toHaveBeenCalled();
   });
 
-  it('should handle renewIdToken successfully', async () => {
+  it('should handle renewIdToken successfully with forceRefresh', async () => {
     mockInstance.acquireTokenSilent.mockResolvedValueOnce({
       account: { username: 'test@example.com' },
       idToken: 'new-token',
@@ -170,16 +160,18 @@ describe('MsalAuthenticator', () => {
 
     const result = await authenticatorRef?.renewIdToken();
 
-    expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
+    expect(mockInstance.acquireTokenSilent).toHaveBeenCalledWith(
+      expect.objectContaining({ forceRefresh: true })
+    );
     expect(result).toBe('mock-id-token');
   });
 
-  it('should fall back to loginPopup when renewIdToken encounters InteractionRequiredAuthError', async () => {
+  it('should fall back to acquireTokenPopup when renewIdToken encounters InteractionRequiredAuthError', async () => {
     const interactionError = new InteractionRequiredAuthError(
       'interaction_required'
     );
     mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
-    mockInstance.loginPopup.mockResolvedValueOnce({
+    mockInstance.acquireTokenPopup.mockResolvedValueOnce({
       account: { username: 'test@example.com' },
       idToken: 'popup-token',
     });
@@ -194,17 +186,18 @@ describe('MsalAuthenticator', () => {
     const result = await authenticatorRef?.renewIdToken();
 
     expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
-    expect(mockInstance.loginPopup).toHaveBeenCalled();
+    expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
     expect(result).toBe('mock-id-token');
   });
 
-  it('should throw when renewIdToken popup fallback also fails', async () => {
+  it('should fall back to acquireTokenRedirect when popup also fails', async () => {
     const interactionError = new InteractionRequiredAuthError(
       'interaction_required'
     );
     const popupError = new Error('popup_window_error');
     mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
-    mockInstance.loginPopup.mockRejectedValueOnce(popupError);
+    mockInstance.acquireTokenPopup.mockRejectedValueOnce(popupError);
+    mockInstance.acquireTokenRedirect.mockResolvedValueOnce(undefined);
 
     render(
       <MsalAuthenticator
@@ -217,7 +210,8 @@ describe('MsalAuthenticator', () => {
       'popup_window_error'
     );
     expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
-    expect(mockInstance.loginPopup).toHaveBeenCalled();
+    expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
+    expect(mockInstance.acquireTokenRedirect).toHaveBeenCalled();
   });
 
   it('should show loader when interaction is in progress', () => {

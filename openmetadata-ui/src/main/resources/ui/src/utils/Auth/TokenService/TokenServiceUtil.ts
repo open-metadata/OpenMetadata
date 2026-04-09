@@ -125,20 +125,18 @@ class TokenService {
       try {
         response = await this.renewToken();
       } catch (error) {
-        // Silent Frame window timeout error since it doesn't affect refresh token process
-        if ((error as AxiosError).message !== 'Frame window timed out') {
-          // Perform logout for any error
-          this.clearRefreshInProgress();
+        this.clearRefreshInProgress();
 
-          throw new Error(
-            `Failed to refresh token: ${(error as Error).message}`
-          );
+        // Silent Frame window timeout error since it doesn't affect refresh token process
+        if ((error as AxiosError).message === 'Frame window timed out') {
+          return null;
         }
-        // Do nothing
+
+        throw new Error(
+          `Failed to refresh token: ${(error as Error).message}`
+        );
       } finally {
-        // If response is not null then clear the refresh flag
-        // For Callback based refresh token, response will be void
-        response && this.clearRefreshInProgress();
+        this.clearRefreshInProgress();
       }
     }
 

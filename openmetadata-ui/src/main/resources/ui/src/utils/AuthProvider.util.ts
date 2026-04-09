@@ -41,8 +41,8 @@ import { setOidcToken } from './SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
-// 1 minutes for client auth approach
-export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
+// 5 minutes buffer before token expiry to allow silent renewal
+export const EXPIRY_THRESHOLD_MILLES = 5 * 60 * 1000;
 
 const subPath = getBasePath();
 
