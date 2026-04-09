@@ -40,10 +40,15 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 
 /**
- * Integration tests for the FQN prefix-based hard deletion endpoint.
+ * Integration tests for the FQN prefix-based hard deletion endpoints at each hierarchy level:
  *
- * <p>Verifies that {@code DELETE /v1/services/databaseServices/prefix/{id}} correctly removes the
- * root service and all descendant databases, schemas, and tables in a single bulk operation.
+ * <ul>
+ *   <li>{@code DELETE /v1/services/databaseServices/prefix/{id}} — deletes service + all descendants
+ *   <li>{@code DELETE /v1/databases/prefix/{id}} — deletes database + schemas + tables, leaving
+ *       sibling databases intact
+ *   <li>{@code DELETE /v1/databaseSchemas/prefix/{id}} — deletes schema + tables, leaving sibling
+ *       schemas intact
+ * </ul>
  */
 @ExtendWith(TestNamespaceExtension.class)
 public class PrefixDeletionIT {
@@ -53,8 +58,10 @@ public class PrefixDeletionIT {
     SdkClients.adminClient();
   }
 
+  // ── Service-level ────────────────────────────────────────────────────────────
+
   @Test
-  void prefixDelete_removesServiceAndAllDescendants(TestNamespace ns) throws Exception {
+  void prefixDelete_service_removesServiceAndAllDescendants(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
     DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
@@ -65,7 +72,7 @@ public class PrefixDeletionIT {
       tableIds.add(table.getId());
     }
 
-    prefixDeleteService(service.getId());
+    prefixDelete("/v1/services/databaseServices/prefix/", service.getId());
 
     assertEntityGone(() -> SdkClients.adminClient().databaseServices().get(service.getId().toString()), "service");
     assertEntityGone(() -> SdkClients.adminClient().databases().get(database.getId().toString()), "database");
@@ -76,7 +83,7 @@ public class PrefixDeletionIT {
   }
 
   @Test
-  void prefixDelete_serviceWithMultipleDatabasesAndSchemas(TestNamespace ns) throws Exception {
+  void prefixDelete_service_withMultipleDatabasesAndSchemas(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     List<UUID> allDescendantIds = new ArrayList<>();
@@ -93,7 +100,7 @@ public class PrefixDeletionIT {
       }
     }
 
-    prefixDeleteService(service.getId());
+    prefixDelete("/v1/services/databaseServices/prefix/", service.getId());
 
     assertEntityGone(() -> SdkClients.adminClient().databaseServices().get(service.getId().toString()), "service");
     for (UUID id : allDescendantIds) {
@@ -102,18 +109,66 @@ public class PrefixDeletionIT {
     }
   }
 
+  // ── Database-level ────────────────────────────────────────────────────────────
+
   @Test
-  void prefixDelete_emptyService_deletesJustService(TestNamespace ns) throws Exception {
+  void prefixDelete_database_removesDatabaseAndDescendantsLeavingSiblingDatabaseIntact(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    assertNotNull(service.getId());
 
-    prefixDeleteService(service.getId());
+    Database targetDb = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    DatabaseSchema targetSchema = DatabaseSchemaTestFactory.create(ns, targetDb.getFullyQualifiedName());
+    Table targetTable = TableTestFactory.createWithName(ns, targetSchema.getFullyQualifiedName(), "tgt");
 
-    assertEntityGone(() -> SdkClients.adminClient().databaseServices().get(service.getId().toString()), "service");
+    Database siblingDb = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    DatabaseSchema siblingSchema = DatabaseSchemaTestFactory.create(ns, siblingDb.getFullyQualifiedName());
+    Table siblingTable = TableTestFactory.createWithName(ns, siblingSchema.getFullyQualifiedName(), "sib");
+
+    prefixDelete("/v1/databases/prefix/", targetDb.getId());
+
+    assertEntityGone(() -> SdkClients.adminClient().databases().get(targetDb.getId().toString()), "target database");
+    assertEntityGone(() -> SdkClients.adminClient().databaseSchemas().get(targetSchema.getId().toString()), "target schema");
+    assertEntityGone(() -> SdkClients.adminClient().tables().get(targetTable.getId().toString()), "target table");
+
+    assertNotNull(SdkClients.adminClient().databases().get(siblingDb.getId().toString()), "sibling database should survive");
+    assertNotNull(SdkClients.adminClient().databaseSchemas().get(siblingSchema.getId().toString()), "sibling schema should survive");
+    assertNotNull(SdkClients.adminClient().tables().get(siblingTable.getId().toString()), "sibling table should survive");
+    assertNotNull(SdkClients.adminClient().databaseServices().get(service.getId().toString()), "service should survive");
   }
 
-  private void prefixDeleteService(UUID serviceId) throws Exception {
-    String url = SdkClients.getServerUrl() + "/v1/services/databaseServices/prefix/" + serviceId;
+  // ── Schema-level ─────────────────────────────────────────────────────────────
+
+  @Test
+  void prefixDelete_schema_removesSchemaAndTablesLeavingSiblingSchemaIntact(TestNamespace ns) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+
+    DatabaseSchema targetSchema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+    List<UUID> targetTableIds = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      Table table = TableTestFactory.createWithName(ns, targetSchema.getFullyQualifiedName(), "tgt" + i);
+      targetTableIds.add(table.getId());
+    }
+
+    DatabaseSchema siblingSchema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+    Table siblingTable = TableTestFactory.createWithName(ns, siblingSchema.getFullyQualifiedName(), "sib");
+
+    prefixDelete("/v1/databaseSchemas/prefix/", targetSchema.getId());
+
+    assertEntityGone(() -> SdkClients.adminClient().databaseSchemas().get(targetSchema.getId().toString()), "target schema");
+    for (UUID tableId : targetTableIds) {
+      assertEntityGone(() -> SdkClients.adminClient().tables().get(tableId.toString()), "target table");
+    }
+
+    assertNotNull(SdkClients.adminClient().databaseSchemas().get(siblingSchema.getId().toString()), "sibling schema should survive");
+    assertNotNull(SdkClients.adminClient().tables().get(siblingTable.getId().toString()), "sibling table should survive");
+    assertNotNull(SdkClients.adminClient().databases().get(database.getId().toString()), "database should survive");
+    assertNotNull(SdkClients.adminClient().databaseServices().get(service.getId().toString()), "service should survive");
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+
+  private void prefixDelete(String path, UUID id) throws Exception {
+    String url = SdkClients.getServerUrl() + path + id;
     HttpRequest request = HttpRequest.newBuilder()
         .uri(URI.create(url))
         .header("Authorization", "Bearer " + SdkClients.getAdminToken())
@@ -122,7 +177,8 @@ public class PrefixDeletionIT {
 
     HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
     assertEquals(202, response.statusCode(),
-        "Expected 202 Accepted from prefix delete, got " + response.statusCode() + ": " + response.body());
+        "Expected 202 Accepted from prefix delete " + path + id
+            + ", got " + response.statusCode() + ": " + response.body());
   }
 
   private void assertEntityGone(ThrowingRunnable action, String entityType) {
