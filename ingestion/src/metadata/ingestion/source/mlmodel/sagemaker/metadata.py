@@ -13,7 +13,7 @@
 import traceback
 from typing import Iterable, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
@@ -53,10 +53,6 @@ logger = ingestion_logger()
 
 
 class SageMakerModel(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-
     name: str = Field(..., description="Model name", title="Model Name")
     arn: str = Field(..., description="Model ARN in AWS account", title="Model ARN")
     creation_timestamp: str = Field(
