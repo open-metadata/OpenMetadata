@@ -18,8 +18,6 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
-import org.flowable.bpmn.model.BpmnModel;
-import org.flowable.bpmn.model.Message;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
 import org.flowable.engine.HistoryService;
@@ -1027,115 +1025,42 @@ public class WorkflowHandler {
               .processVariableValueEquals("customTaskId", customTaskId.toString())
               .list();
       for (Task task : tasks) {
-        // Find the correct termination message for this task
-        String terminationMessageName = findTerminationMessageName(runtimeService, task);
-        if (terminationMessageName != null) {
-          Execution execution =
-              runtimeService
-                  .createExecutionQuery()
-                  .processInstanceId(task.getProcessInstanceId())
-                  .messageEventSubscriptionName(terminationMessageName)
-                  .singleResult();
-          if (execution != null) {
-            runtimeService.messageEventReceived(terminationMessageName, execution.getId());
-            LOG.debug(
-                "Terminated task {} using message '{}'", customTaskId, terminationMessageName);
-          } else {
-            LOG.warn(
-                "No execution found for termination message '{}' for task {}",
-                terminationMessageName,
-                customTaskId);
-          }
-        } else {
-          LOG.warn("No termination message found for task {}", customTaskId);
-        }
+        terminateTask(runtimeService, task, customTaskId);
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug("Flowable Task for Task ID {} not found.", customTaskId);
     }
   }
 
-  /**
-   * Find the termination message name for a task.
-   * Uses deterministic message names based on the subprocess ID.
-   */
-  private String findTerminationMessageName(RuntimeService runtimeService, Task task) {
+  private void terminateTask(RuntimeService runtimeService, Task task, UUID customTaskId) {
     try {
       String taskDefinitionKey = task.getTaskDefinitionKey();
-      LOG.debug(
-          "Finding termination message for task {} with definition key '{}'",
-          task.getId(),
-          taskDefinitionKey);
-
-      // List all message event subscriptions for this process instance
-      List<Execution> allMessageExecutions =
+      int lastDot = taskDefinitionKey.lastIndexOf('.');
+      if (lastDot < 0) {
+        LOG.warn(
+            "Task definition key '{}' has no '.' separator; cannot derive termination message",
+            taskDefinitionKey);
+        return;
+      }
+      String messageName = taskDefinitionKey.substring(0, lastDot) + ".terminateProcess";
+      Execution execution =
           runtimeService
               .createExecutionQuery()
               .processInstanceId(task.getProcessInstanceId())
-              .list();
-
-      LOG.debug(
-          "Found {} executions for process {}",
-          allMessageExecutions.size(),
-          task.getProcessInstanceId());
-
-      for (Execution exec : allMessageExecutions) {
-        if (exec.getActivityId() != null) {
-          LOG.debug("Execution {} has activity ID: {}", exec.getId(), exec.getActivityId());
-        }
+              .messageEventSubscriptionName(messageName)
+              .singleResult();
+      if (execution != null) {
+        runtimeService.messageEventReceived(messageName, execution.getId());
+        LOG.debug("Terminated task {} using message '{}'", customTaskId, messageName);
+      } else {
+        LOG.warn(
+            "No termination message subscription '{}' found for task {} (definition key '{}')",
+            messageName,
+            task.getId(),
+            taskDefinitionKey);
       }
-
-      // Get the BpmnModel to see what messages are available
-      BpmnModel model =
-          processEngine.getRepositoryService().getBpmnModel(task.getProcessDefinitionId());
-
-      LOG.debug("Available messages in model:");
-      for (Message msg : model.getMessages()) {
-        LOG.debug("  - Message ID: {}, Name: {}", msg.getId(), msg.getName());
-      }
-
-      // Extract the subprocess ID from the task definition key
-      // E.g., "ApproveGlossaryTerm_approvalTask" -> "ApproveGlossaryTerm"
-      String subProcessId =
-          taskDefinitionKey.contains("_")
-              ? taskDefinitionKey.substring(0, taskDefinitionKey.lastIndexOf("_"))
-              : taskDefinitionKey;
-
-      LOG.debug(
-          "Extracted subprocess ID: '{}' from task key '{}'", subProcessId, taskDefinitionKey);
-
-      // Try both possible termination message patterns
-      // UserApprovalTask uses: subProcessId_terminateProcess
-      // ChangeReviewTask uses: subProcessId_terminateChangeReviewProcess
-      String[] messagePatterns = {
-        subProcessId + "_terminateProcess", subProcessId + "_terminateChangeReviewProcess"
-      };
-
-      for (String messageName : messagePatterns) {
-        LOG.debug("Checking for message subscription: {}", messageName);
-        List<Execution> executions =
-            runtimeService
-                .createExecutionQuery()
-                .processInstanceId(task.getProcessInstanceId())
-                .messageEventSubscriptionName(messageName)
-                .list();
-        if (!executions.isEmpty()) {
-          LOG.debug(
-              "Found {} executions with message subscription '{}'", executions.size(), messageName);
-          return messageName;
-        } else {
-          LOG.debug("No executions found for message: {}", messageName);
-        }
-      }
-
-      LOG.warn(
-          "No termination message found for task {} with definition key '{}'",
-          task.getId(),
-          task.getTaskDefinitionKey());
-      return null;
     } catch (Exception e) {
-      LOG.error("Error finding termination message for task {}", task.getId(), e);
-      return null;
+      LOG.error("Error terminating task {}", task.getId(), e);
     }
   }
 
@@ -1550,5 +1475,13 @@ public class WorkflowHandler {
 
   public RuntimeService getRuntimeService() {
     return processEngine.getRuntimeService();
+  }
+
+  public ManagementService getManagementService() {
+    return processEngine.getManagementService();
+  }
+
+  public RepositoryService getRepositoryService() {
+    return processEngine.getRepositoryService();
   }
 }

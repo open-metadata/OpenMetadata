@@ -99,7 +99,7 @@ const Sidebar = ({ className }: SidebarProps) => {
             />
           ) : (
             <BrandImage
-              className="tw:h-10 tw:w-auto"
+              className="tw:h-10 tw:w-auto tw:max-w-[150px]"
               dataTestId="image"
               height={40}
               width="auto"
@@ -109,14 +109,18 @@ const Sidebar = ({ className }: SidebarProps) => {
       </div>
 
       <div className="app-sidebar-link tw:flex tw:flex-col tw:flex-1 tw:overflow-y-auto">
-        <NavList activeUrl={activeUrl} items={config.items} />
+        <NavList
+          activeUrl={activeUrl}
+          className="tw:px-4"
+          items={config.items}
+        />
 
         {config.bottomItems && (
           <>
             <div className="tw:flex-1" />
             <NavList
               activeUrl={activeUrl}
-              className="tw:pb-4"
+              className="tw:px-4 tw:pb-4"
               items={config.bottomItems}
             />
           </>

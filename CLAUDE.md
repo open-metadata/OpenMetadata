@@ -95,6 +95,7 @@ yarn build                     # Production build
 ### Frontend CI Checkstyle (run before PR to match CI)
 ```bash
 cd openmetadata-ui/src/main/resources/ui
+yarn ui-checkstyle:changed         # One-shot checkstyle for changed files (excludes tsc)
 yarn organize-imports:cli <files>  # Sort and organize imports
 yarn lint:fix                      # ESLint auto-fix
 yarn pretty:base --write <files>   # Prettier formatting
