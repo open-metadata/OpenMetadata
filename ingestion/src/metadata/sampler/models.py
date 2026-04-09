@@ -171,31 +171,13 @@ class SamplerResponse(ConfigModel):
 
 
 class SampleConfig(ConfigModel):
-    """Profile Sample Config — resolved from profileSampleConfig"""
+    """Profile Sample Config"""
 
     profileSampleConfig: Optional[ProfileSampleConfig] = None
     randomizedSample: Optional[bool] = True
 
-    @property
-    def profileSample(self) -> Optional[Union[float, int]]:
-        config = self._static_config()
-        return getattr(config, "profileSample", None) if config else None
-
-    @property
-    def profileSampleType(self) -> Optional[ProfileSampleType]:
-        config = self._static_config()
-        return (
-            getattr(config, "profileSampleType", ProfileSampleType.PERCENTAGE)
-            if config
-            else ProfileSampleType.PERCENTAGE
-        )
-
-    @property
-    def samplingMethodType(self) -> Optional[SamplingMethodType]:
-        config = self._static_config()
-        return getattr(config, "samplingMethodType", None) if config else None
-
-    def _static_config(self) -> Optional[StaticSamplingConfig]:
+    def get_static_config(self) -> Optional[StaticSamplingConfig]:
+        """Extract the StaticSamplingConfig from profileSampleConfig, or None."""
         if self.profileSampleConfig and self.profileSampleConfig.config:
             cfg = self.profileSampleConfig.config
             if isinstance(cfg, StaticSamplingConfig):

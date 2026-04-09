@@ -171,8 +171,10 @@ class ProfilerInterfaceTest(TestCase):
             entity_config=None,
             default_sample_config=SampleConfig(),
         )
-        self.assertEqual(actual.profileSample, 11)
-        self.assertEqual(actual.profileSampleType, ProfileSampleType.PERCENTAGE)
+        static = actual.get_static_config()
+        self.assertIsNotNone(static)
+        self.assertEqual(static.profileSample, 11)
+        self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
 
         profiler = TableConfig(
             profileSample=11,
@@ -186,8 +188,10 @@ class ProfilerInterfaceTest(TestCase):
             entity_config=profiler,
             default_sample_config=SampleConfig(),
         )
-        self.assertEqual(actual.profileSample, 11)
-        self.assertEqual(actual.profileSampleType, ProfileSampleType.PERCENTAGE)
+        static = actual.get_static_config()
+        self.assertIsNotNone(static)
+        self.assertEqual(static.profileSample, 11)
+        self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
 
         table_copy = deepcopy(self.table)
         table_copy.tableProfilerConfig = None
@@ -198,8 +202,10 @@ class ProfilerInterfaceTest(TestCase):
             entity_config=None,
             default_sample_config=SampleConfig(),
         )
-        self.assertEqual(actual.profileSample, 22)
-        self.assertEqual(actual.profileSampleType, ProfileSampleType.PERCENTAGE)
+        static = actual.get_static_config()
+        self.assertIsNotNone(static)
+        self.assertEqual(static.profileSample, 22)
+        self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
 
     def test_get_sample_data_count_config(self):
         entity_config = TableConfig(

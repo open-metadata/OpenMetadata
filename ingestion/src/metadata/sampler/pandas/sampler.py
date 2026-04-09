@@ -107,9 +107,14 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         if self.partition_details:
             raw_dataset = self._partitioned_table()
 
-        if not self.sample_config.profileSample or (
-            self.sample_config.profileSample == 100
-            and self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
+        static = self.sample_config.get_static_config()
+        if (
+            not static
+            or not static.profileSample
+            or (
+                static.profileSample == 100
+                and static.profileSampleType == ProfileSampleType.PERCENTAGE
+            )
         ):
             return raw_dataset
         return self.get_sampled_dataframe(raw_dataset, self.sample_config)

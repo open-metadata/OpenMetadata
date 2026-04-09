@@ -81,8 +81,9 @@ class BurstIQSampler(SamplerInterface):
             return self._cached_frames
 
         chain = self.entity.name.root
-        sample = self.sample_config.profileSample
-        sample_type = self.sample_config.profileSampleType
+        static = self.sample_config.get_static_config()
+        sample = static.profileSample if static else None
+        sample_type = static.profileSampleType if static else None
 
         if sample and sample_type == ProfileSampleType.ROWS:
             total_limit: Optional[int] = int(sample)

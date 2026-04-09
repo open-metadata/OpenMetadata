@@ -63,24 +63,24 @@ class SnowflakeSampler(SQASampler):
             **kwargs,
         )
         self.sampling_method_type = func.bernoulli
-        if (
-            sample_config
-            and sample_config.samplingMethodType == SamplingMethodType.SYSTEM
-        ):
-            self.sampling_method_type = func.system
+        if sample_config:
+            static = sample_config.get_static_config()
+            if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
+                self.sampling_method_type = func.system
 
     def set_tablesample(self, selectable: Table):
         """Set the TABLESAMPLE clause for Snowflake
         Args:
             selectable (Table): _description_
         """
-        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+        static = self.sample_config.get_static_config()
+        if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(
-                self.sampling_method_type(self.sample_config.profileSample or 100)
+                self.sampling_method_type(static.profileSample or 100)
             )
 
         return selectable.tablesample(
-            func.ROW(text(f"{self.sample_config.profileSample or 100} ROWS"))
+            func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS"))
         )
 
     def get_sample_query(self, *, column=None) -> CTE:
