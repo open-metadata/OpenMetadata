@@ -1,8 +1,5 @@
 package org.openmetadata.service.migration.utils.v1130;
 
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -15,13 +12,17 @@ import org.openmetadata.service.util.EntityUtil;
 public class MigrationUtil {
   private MigrationUtil() {}
 
-  private static final int BATCH_SIZE = 1000;
   private static final String FQNHASH_COL = "fqnHash";
   private static final String NAMEHASH_COL = "nameHash";
 
   private static final String OLD_FIELD = "owners.name.keyword";
   private static final String NEW_FIELD = "ownerName";
 
+  /**
+   * Backfills fromFQNHash and toFQNHash in entity_relationship for all registered entity types.
+   * Uses a direct correlated-subquery UPDATE (one per direction per entity type) to avoid
+   * LIMIT/OFFSET pagination ordering bugs that could silently skip rows.
+   */
   public static void backfillRelationshipFqnHashes(Handle handle) {
     for (String entityType : Entity.getEntityList()) {
       try {
@@ -39,48 +40,42 @@ public class MigrationUtil {
       return;
     }
     String tableName = repo.getDao().getTableName();
-    int offset = 0;
-    int processed;
-    do {
-      processed = processEntityBatch(handle, tableName, hashCol, offset);
-      offset += processed;
-    } while (processed == BATCH_SIZE);
-    LOG.info("Backfilled FQN hashes for entity type {}: {} rows", entityType, offset);
-  }
-
-  private static int processEntityBatch(Handle handle, String tableName, String hashCol, int offset) {
-    String sql =
-        "SELECT id, "
-            + hashCol
-            + " FROM "
-            + tableName
-            + " WHERE "
-            + hashCol
-            + " IS NOT NULL LIMIT :limit OFFSET :offset";
-    List<Map<String, Object>> rows =
-        handle.createQuery(sql).bind("limit", BATCH_SIZE).bind("offset", offset).mapToMap().list();
-    for (Map<String, Object> row : rows) {
-      backfillRow(handle, row, hashCol);
+    int fromUpdated = updateFromHashes(handle, entityType, tableName, hashCol);
+    int toUpdated = updateToHashes(handle, entityType, tableName, hashCol);
+    if (fromUpdated + toUpdated > 0) {
+      LOG.info(
+          "Backfilled FQN hashes for entity type {}: {} fromFQNHash, {} toFQNHash",
+          entityType, fromUpdated, toUpdated);
     }
-    return rows.size();
   }
 
-  private static void backfillRow(Handle handle, Map<String, Object> row, String hashCol) {
-    Map<String, Object> normalized = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    normalized.putAll(row);
-    String id = String.valueOf(normalized.get("id"));
-    String fqnHash = String.valueOf(normalized.get(hashCol));
-    handle
+  private static int updateFromHashes(
+      Handle handle, String entityType, String tableName, String hashCol) {
+    return handle
         .createUpdate(
-            "UPDATE entity_relationship SET fromFQNHash = :fqnHash WHERE fromId = :id AND fromFQNHash IS NULL")
-        .bind("fqnHash", fqnHash)
-        .bind("id", id)
+            "UPDATE entity_relationship SET fromFQNHash = ("
+                + "SELECT CAST(t."
+                + hashCol
+                + " AS CHAR(768)) FROM "
+                + tableName
+                + " t WHERE CAST(t.id AS CHAR(36)) = entity_relationship.fromId"
+                + ") WHERE fromEntity = :entityType AND fromFQNHash IS NULL")
+        .bind("entityType", entityType)
         .execute();
-    handle
+  }
+
+  private static int updateToHashes(
+      Handle handle, String entityType, String tableName, String hashCol) {
+    return handle
         .createUpdate(
-            "UPDATE entity_relationship SET toFQNHash = :fqnHash WHERE toId = :id AND toFQNHash IS NULL")
-        .bind("fqnHash", fqnHash)
-        .bind("id", id)
+            "UPDATE entity_relationship SET toFQNHash = ("
+                + "SELECT CAST(t."
+                + hashCol
+                + " AS CHAR(768)) FROM "
+                + tableName
+                + " t WHERE CAST(t.id AS CHAR(36)) = entity_relationship.toId"
+                + ") WHERE toEntity = :entityType AND toFQNHash IS NULL")
+        .bind("entityType", entityType)
         .execute();
   }
 
