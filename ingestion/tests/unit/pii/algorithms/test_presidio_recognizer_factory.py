@@ -32,7 +32,9 @@ from metadata.generated.schema.type.patternRecognizer import (
 from metadata.generated.schema.type.predefinedRecognizer import (
     Name as PredefinedRecognizerName,
 )
-from metadata.generated.schema.type.predefinedRecognizer import PredefinedRecognizer
+from metadata.generated.schema.type.predefinedRecognizer import (
+    PredefinedRecognizer,
+)
 from metadata.generated.schema.type.recognizer import Recognizer, RecognizerConfig
 from metadata.generated.schema.type.recognizers.patterns import Pattern
 from metadata.generated.schema.type.recognizers.regexFlags import RegexFlags

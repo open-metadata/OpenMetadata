@@ -9,7 +9,11 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.tests.createCustomMetric import (
     CreateCustomMetricRequest,
 )
-from metadata.generated.schema.entity.data.table import Column, ConstraintType, DataType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ConstraintType,
+    DataType,
+)
 from metadata.generated.schema.entity.data.table import Table as TableEntity
 from metadata.generated.schema.entity.data.table import (
     TableConstraint,
