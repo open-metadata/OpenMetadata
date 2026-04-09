@@ -518,27 +518,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   @DELETE
-  @Path("/prefix/{id}")
-  @Operation(
-      operationId = "deleteDatabasePrefixHard",
-      summary = "Hard-delete a database and all descendants by FQN prefix",
-      description =
-          "Bulk hard-delete a database and all its schemas and tables using FQN prefix matching. "
-              + "Significantly faster than recursive delete for large hierarchies.",
-      responses = {
-        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
-        @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
-      })
-  public Response deletePrefixHard(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
-  }
-
-  @DELETE
   @Path("/async/{id}")
   @Operation(
       operationId = "deleteDatabaseAsync",
