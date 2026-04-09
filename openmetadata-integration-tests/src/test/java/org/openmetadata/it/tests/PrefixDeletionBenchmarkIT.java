@@ -18,7 +18,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -50,13 +56,14 @@ import org.slf4j.LoggerFactory;
  *   mvn verify -pl openmetadata-integration-tests \
  *     -Dgroups=benchmark \
  *     -Dit.test=PrefixDeletionBenchmarkIT \
- *     -Dtest.databases=5    # databases per service (default: 5)
- *     -Dtest.schemas=5      # schemas per database (default: 5)
- *     -Dtest.tables=400     # tables per schema    (default: 400)
+ *     -Dtest.databases=5      # databases per service (default: 5)
+ *     -Dtest.schemas=5        # schemas per database (default: 5)
+ *     -Dtest.tables=400       # tables per schema    (default: 400)
+ *     -Dtest.seedThreads=32   # parallel seed threads (default: 32)
  * </pre>
  *
- * <p>NOTE: Setup creates entities sequentially via REST — at ~50ms/call expect ~15 min of
- * data seeding per hierarchy before deletion timing begins.
+ * <p>NOTE: Setup creates entities in parallel (default 32 threads, tunable via
+ * -Dtest.seedThreads). At ~50ms/call and 32 threads, 10k tables seed in ~20 s.
  *
  * <p>Both deletions are timed end-to-end: the old delete is synchronous; the new prefix
  * delete is async (202), so we poll until the service is gone before recording elapsed time.
@@ -71,6 +78,7 @@ class PrefixDeletionBenchmarkIT {
   private static final int DATABASES_PER_SERVICE = Integer.getInteger("test.databases", 5);
   private static final int SCHEMAS_PER_DATABASE = Integer.getInteger("test.schemas", 5);
   private static final int TABLES_PER_SCHEMA = Integer.getInteger("test.tables", 400);
+  private static final int SEED_THREADS = Integer.getInteger("test.seedThreads", 32);
 
   private static final Duration DELETE_POLL_TIMEOUT = Duration.ofMinutes(10);
   private static final Duration DELETE_POLL_INTERVAL = Duration.ofSeconds(2);
@@ -103,21 +111,66 @@ class PrefixDeletionBenchmarkIT {
     LOG.info("  Speedup                   : {}x", String.format("%.2f", speedup));
   }
 
-  private DatabaseService buildHierarchy(TestNamespace ns, String tag) {
+  private DatabaseService buildHierarchy(TestNamespace ns, String tag) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    LOG.info("[{}] Seeding hierarchy under service {} ...", tag, service.getName());
+    int totalEntities = 1 + DATABASES_PER_SERVICE
+        + DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE
+        + DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE * TABLES_PER_SCHEMA;
+    LOG.info("[{}] Seeding {} entities under service {} using {} threads ...",
+        tag, totalEntities, service.getName(), SEED_THREADS);
+    long seedStart = System.currentTimeMillis();
 
-    for (int d = 0; d < DATABASES_PER_SERVICE; d++) {
-      Database database = DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), tag + "db" + d);
-      for (int s = 0; s < SCHEMAS_PER_DATABASE; s++) {
-        DatabaseSchema schema = DatabaseSchemaTestFactory.createWithName(ns, database.getFullyQualifiedName(), tag + "sc" + d + s);
-        for (int t = 0; t < TABLES_PER_SCHEMA; t++) {
-          TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), tag + "t" + d + s + t);
+    ExecutorService pool = Executors.newFixedThreadPool(SEED_THREADS);
+    try {
+      List<Future<Database>> dbFutures = new ArrayList<>();
+      for (int d = 0; d < DATABASES_PER_SERVICE; d++) {
+        final int dIdx = d;
+        dbFutures.add(pool.submit(() ->
+            DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), tag + "db" + dIdx)));
+      }
+      List<Database> databases = new ArrayList<>();
+      for (Future<Database> f : dbFutures) {
+        databases.add(f.get());
+      }
+
+      List<Future<DatabaseSchema>> schemaFutures = new ArrayList<>();
+      for (int d = 0; d < databases.size(); d++) {
+        final Database database = databases.get(d);
+        final int dIdx = d;
+        for (int s = 0; s < SCHEMAS_PER_DATABASE; s++) {
+          final int sIdx = s;
+          schemaFutures.add(pool.submit(() ->
+              DatabaseSchemaTestFactory.createWithName(ns, database.getFullyQualifiedName(), tag + "sc" + dIdx + "x" + sIdx)));
         }
       }
+      List<DatabaseSchema> schemas = new ArrayList<>();
+      for (Future<DatabaseSchema> f : schemaFutures) {
+        schemas.add(f.get());
+      }
+
+      List<Future<?>> tableFutures = new ArrayList<>();
+      for (int s = 0; s < schemas.size(); s++) {
+        final DatabaseSchema schema = schemas.get(s);
+        final int sIdx = s;
+        for (int t = 0; t < TABLES_PER_SCHEMA; t++) {
+          final int tIdx = t;
+          tableFutures.add(pool.submit(() -> {
+            TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), tag + "tbl" + sIdx + "x" + tIdx);
+            return null;
+          }));
+        }
+      }
+      for (Future<?> f : tableFutures) {
+        f.get();
+      }
+    } finally {
+      pool.shutdown();
+      pool.awaitTermination(30, TimeUnit.MINUTES);
     }
 
-    LOG.info("[{}] Hierarchy created.", tag);
+    long seedMs = System.currentTimeMillis() - seedStart;
+    LOG.info("[{}] Hierarchy seeded in {} ms ({} ms/entity avg)",
+        tag, seedMs, seedMs / Math.max(totalEntities, 1));
     return service;
   }
 
