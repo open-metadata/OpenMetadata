@@ -39,10 +39,13 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Tests verify that glossaries can be exported as RDF ontologies in various formats (Turtle,
  * RDF/XML, N-Triples, JSON-LD) with proper SKOS vocabulary mapping.
  *
- * <p>Test isolation: Uses TestNamespace for unique entity naming Parallelization: Safe for
- * concurrent execution via @Execution(ExecutionMode.CONCURRENT)
+ * <p>Test isolation: Uses TestNamespace for unique entity naming.
+ *
+ * <p>Parallelization: Runs with @Execution(ExecutionMode.SAME_THREAD) because each test
+ * blocks a server thread on synchronous Fuseki writes; concurrent execution can exhaust the
+ * server thread pool and cause request timeouts.
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class GlossaryOntologyExportIT {
 
@@ -425,7 +428,7 @@ public class GlossaryOntologyExportIT {
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
             .header("Accept", acceptHeader)
-            .timeout(Duration.ofSeconds(30))
+            .timeout(Duration.ofSeconds(60))
             .GET()
             .build();
 
