@@ -94,17 +94,10 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
           error instanceof InteractionRequiredAuthError &&
           shouldFallbackToPopup
         ) {
-          try {
-            const response = await instance.acquireTokenPopup(tokenRequest);
-            const msalResponse = await parseMSALResponse(response);
+          const response = await instance.acquireTokenPopup(tokenRequest);
+          const msalResponse = await parseMSALResponse(response);
 
-            return msalResponse;
-          } catch (popupError) {
-            // Popup blocked or failed — fall back to redirect (works on Safari)
-            await instance.acquireTokenRedirect(tokenRequest);
-
-            throw popupError;
-          }
+          return msalResponse;
         } else {
           // eslint-disable-next-line no-console
           console.error(error);
