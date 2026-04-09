@@ -17,8 +17,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.Duration;
+import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
@@ -40,17 +41,25 @@ import org.slf4j.LoggerFactory;
 /**
  * Benchmark comparing old recursive hard delete vs new FQN prefix hard delete.
  *
- * <p>Run manually against a local stack with a pre-populated database:
+ * <p>Default topology: 5 databases × 5 schemas × 400 tables = 10,000 tables per service
+ * (~10,031 total entities including service, databases, schemas).
+ *
+ * <p>Run manually against a local stack:
  *
  * <pre>
  *   mvn verify -pl openmetadata-integration-tests \
  *     -Dgroups=benchmark \
  *     -Dit.test=PrefixDeletionBenchmarkIT \
- *     -Dtest.scenario=100   # tables per schema (default: 50)
+ *     -Dtest.databases=5    # databases per service (default: 5)
+ *     -Dtest.schemas=5      # schemas per database (default: 5)
+ *     -Dtest.tables=400     # tables per schema    (default: 400)
  * </pre>
  *
- * <p>Results are printed to the log. The prefix approach should be 3-10x faster for large
- * hierarchies because it issues one bulk DELETE per table vs one round-trip per entity.
+ * <p>NOTE: Setup creates entities sequentially via REST — at ~50ms/call expect ~15 min of
+ * data seeding per hierarchy before deletion timing begins.
+ *
+ * <p>Both deletions are timed end-to-end: the old delete is synchronous; the new prefix
+ * delete is async (202), so we poll until the service is gone before recording elapsed time.
  */
 @Tag("benchmark")
 @Disabled("Manual benchmark — run explicitly against a local mysql/postgres stack")
@@ -59,10 +68,12 @@ class PrefixDeletionBenchmarkIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(PrefixDeletionBenchmarkIT.class);
 
-  private static final int DATABASES_PER_SERVICE = 2;
-  private static final int SCHEMAS_PER_DATABASE = 2;
-  private static final int TABLES_PER_SCHEMA =
-      Integer.getInteger("test.scenario", 50);
+  private static final int DATABASES_PER_SERVICE = Integer.getInteger("test.databases", 5);
+  private static final int SCHEMAS_PER_DATABASE = Integer.getInteger("test.schemas", 5);
+  private static final int TABLES_PER_SCHEMA = Integer.getInteger("test.tables", 400);
+
+  private static final Duration DELETE_POLL_TIMEOUT = Duration.ofMinutes(10);
+  private static final Duration DELETE_POLL_INTERVAL = Duration.ofSeconds(2);
 
   @BeforeAll
   static void setup() {
@@ -72,9 +83,12 @@ class PrefixDeletionBenchmarkIT {
   @Test
   void benchmark_oldRecursiveHardDelete_vs_newPrefixDelete(TestNamespace ns) throws Exception {
     int totalTables = DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE * TABLES_PER_SCHEMA;
+    int totalEntities = 1 + DATABASES_PER_SERVICE
+        + DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE
+        + totalTables;
     LOG.info(
-        "Benchmark: {} databases × {} schemas × {} tables = {} total tables per service",
-        DATABASES_PER_SERVICE, SCHEMAS_PER_DATABASE, TABLES_PER_SCHEMA, totalTables);
+        "Benchmark topology: {} databases × {} schemas × {} tables = {} tables, {} total entities per service",
+        DATABASES_PER_SERVICE, SCHEMAS_PER_DATABASE, TABLES_PER_SCHEMA, totalTables, totalEntities);
 
     DatabaseService oldService = buildHierarchy(ns, "old");
     long oldMs = timeOldDelete(oldService);
@@ -83,15 +97,15 @@ class PrefixDeletionBenchmarkIT {
     long newMs = timeNewDelete(newService);
 
     double speedup = (double) oldMs / Math.max(newMs, 1);
-    LOG.info("=== Deletion Benchmark Results ({} tables per service) ===", totalTables);
+    LOG.info("=== Deletion Benchmark Results ({} entities per service) ===", totalEntities);
     LOG.info("  Old recursive hard delete : {} ms", oldMs);
     LOG.info("  New FQN prefix hard delete: {} ms", newMs);
-    LOG.info("  Speedup                   : {:.2f}x", speedup);
+    LOG.info("  Speedup                   : {}x", String.format("%.2f", speedup));
   }
 
   private DatabaseService buildHierarchy(TestNamespace ns, String tag) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    LOG.info("[{}] Creating hierarchy under service: {}", tag, service.getName());
+    LOG.info("[{}] Seeding hierarchy under service {} ...", tag, service.getName());
 
     for (int d = 0; d < DATABASES_PER_SERVICE; d++) {
       Database database = DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), tag + "db" + d);
@@ -108,7 +122,7 @@ class PrefixDeletionBenchmarkIT {
   }
 
   private long timeOldDelete(DatabaseService service) throws Exception {
-    LOG.info("Starting OLD recursive hard delete for service {}", service.getName());
+    LOG.info("Timing OLD recursive hard delete for service {} ...", service.getName());
     long start = System.currentTimeMillis();
 
     String url = SdkClients.getServerUrl()
@@ -122,12 +136,27 @@ class PrefixDeletionBenchmarkIT {
   }
 
   private long timeNewDelete(DatabaseService service) throws Exception {
-    LOG.info("Starting NEW FQN prefix hard delete for service {}", service.getName());
+    LOG.info("Timing NEW FQN prefix hard delete for service {} ...", service.getName());
     long start = System.currentTimeMillis();
 
     String url = SdkClients.getServerUrl()
         + "/v1/services/databaseServices/prefix/" + service.getId();
     sendDelete(url);
+
+    // Prefix delete is async — poll until the service is actually gone so we measure
+    // real deletion time, not just the time to hand off the job to the executor.
+    UUID serviceId = service.getId();
+    Awaitility.await("Wait for prefix deletion of " + service.getName() + " to complete")
+        .atMost(DELETE_POLL_TIMEOUT)
+        .pollInterval(DELETE_POLL_INTERVAL)
+        .until(() -> {
+          try {
+            SdkClients.adminClient().databaseServices().get(serviceId.toString());
+            return false;
+          } catch (Exception e) {
+            return true;
+          }
+        });
 
     long elapsed = System.currentTimeMillis() - start;
     LOG.info("NEW FQN prefix hard delete completed in {} ms", elapsed);
