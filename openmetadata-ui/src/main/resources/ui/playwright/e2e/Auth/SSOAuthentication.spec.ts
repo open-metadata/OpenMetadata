@@ -226,10 +226,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
   // ---------------------------------------------------------------
 
   test.describe('Silent Token Renewal', () => {
-    test('should handle token expiry gracefully', async ({
-      page,
-      request,
-    }) => {
+    test('should handle token expiry gracefully', async ({ page, request }) => {
       // Login with default (3600s) tokens to ensure initial load works
       await performOidcLogin(page);
       await verifyAuthenticated(page);
@@ -355,7 +352,10 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       // WebKit processes page.route() 401 interceptions with different event
       // loop timing — the async logout chain doesn't complete before the page
       // settles, so the redirect to /signin doesn't happen reliably.
-      test.skip(browserName === 'webkit', 'WebKit handles route interception timing differently');
+      test.skip(
+        browserName === 'webkit',
+        'WebKit handles route interception timing differently'
+      );
 
       await performOidcLogin(page);
       await verifyAuthenticated(page);
@@ -439,7 +439,10 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
     }) => {
       // WebKit processes page.route() 401 interceptions with different event
       // loop timing — the forced logout redirect doesn't happen reliably.
-      test.skip(browserName === 'webkit', 'WebKit handles route interception timing differently');
+      test.skip(
+        browserName === 'webkit',
+        'WebKit handles route interception timing differently'
+      );
 
       await performOidcLogin(page);
       await verifyAuthenticated(page);
@@ -605,6 +608,239 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       expect(tab2TokenAfter.length).toBeGreaterThan(0);
 
       await page2.close();
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Token Persistence After Renewal
+  //
+  // These tests verify that after a token renewal, the NEW token is
+  // actually persisted to IndexedDB and used for subsequent requests.
+  // This catches the Safari bug where a fixed delay wasn't long enough
+  // for the Service Worker to persist the token before the success
+  // callback fired.
+  // ---------------------------------------------------------------
+
+  test.describe('Token Persistence After Renewal', () => {
+    test('should persist new token to IndexedDB after renewal and survive hard reload', async ({
+      page,
+      request,
+    }) => {
+      await performOidcLogin(page);
+      await verifyAuthenticated(page);
+
+      const tokenBefore = await getStoredToken(page);
+
+      expect(tokenBefore.length).toBeGreaterThan(0);
+
+      // Set very short token TTL so the next renewal issues a visibly different token
+      await setTokenExpiry(request, 5);
+      await resetMetrics(request);
+
+      // Wait for the token to expire and proactive renewal to trigger
+      await page.waitForTimeout(8000);
+
+      // Hard reload — this forces the app to read from IndexedDB (no in-memory cache)
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(3000);
+
+      const url = page.url();
+
+      // The app should still be authenticated after reload
+      expect(url).not.toContain('/signin');
+
+      // The token in IndexedDB should still be valid (non-empty)
+      const tokenAfter = await getStoredToken(page);
+
+      expect(tokenAfter.length).toBeGreaterThan(0);
+
+      // Verify the persisted token actually works for API calls
+      const status = await page.evaluate(async (authToken: string) => {
+        const resp = await fetch('/api/v1/users/loggedInUser', {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+
+        return resp.status;
+      }, tokenAfter);
+
+      expect(status).toBe(200);
+    });
+
+    test('should use renewed token in API request headers after refresh', async ({
+      page,
+      request,
+    }) => {
+      await performOidcLogin(page);
+      await verifyAuthenticated(page);
+
+      const tokenBefore = await getStoredToken(page);
+
+      expect(tokenBefore.length).toBeGreaterThan(0);
+
+      // Set short TTL and wait for renewal
+      await setTokenExpiry(request, 5);
+      await resetMetrics(request);
+
+      await page.waitForTimeout(8000);
+
+      // Observe the Authorization header on the next API call using waitForRequest
+      // (non-intercepting — works reliably in both Chromium and WebKit)
+      const requestPromise = page.waitForRequest(
+        (req) =>
+          req.url().includes('/api/v1/') &&
+          req.method() === 'GET' &&
+          !req.url().includes('/config'),
+        { timeout: 30000 }
+      );
+
+      // Navigate to trigger API calls
+      await page.goto('/');
+
+      const apiRequest = await requestPromise;
+      const authHeader = apiRequest.headers()['authorization'] || '';
+      const capturedToken = authHeader.replace('Bearer ', '');
+
+      // The token sent in the API header should be non-empty
+      expect(capturedToken.length).toBeGreaterThan(0);
+
+      // Verify this token is actually valid by calling the API with it
+      const status = await page.evaluate(async (authToken: string) => {
+        const resp = await fetch('/api/v1/users/loggedInUser', {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+
+        return resp.status;
+      }, capturedToken);
+
+      expect(status).toBe(200);
+
+      // Verify the token in IndexedDB matches what was sent in the API header
+      const storedToken = await getStoredToken(page);
+
+      expect(storedToken).toBe(capturedToken);
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Visibility Change Handler
+  //
+  // When a user returns to an idle tab, the browser fires a
+  // visibilitychange event. These tests verify that the app
+  // proactively checks token freshness and refreshes if expired,
+  // rather than waiting for a 401 on the next API call.
+  // ---------------------------------------------------------------
+
+  test.describe('Visibility Change Handler', () => {
+    test('should proactively refresh expired token when tab becomes visible', async ({
+      page,
+    }) => {
+      await performOidcLogin(page);
+      await verifyAuthenticated(page);
+      await page.waitForTimeout(2000);
+
+      // Set refreshInProgress BEFORE writing expired token to block the
+      // TOKEN_UPDATE broadcast from triggering auto-refresh
+      await page.evaluate(() =>
+        localStorage.setItem('refreshInProgress', 'true')
+      );
+
+      // Write an expired JWT through the Service Worker so getOidcToken()
+      // (which reads from SW's in-memory cache) sees an expired token.
+      await page.evaluate(() => {
+        return new Promise<void>((resolve, reject) => {
+          const toBase64Url = (obj: Record<string, unknown>) =>
+            btoa(JSON.stringify(obj))
+              .replace(/\+/g, '-')
+              .replace(/\//g, '_')
+              .replace(/=+$/, '');
+          const header = toBase64Url({ alg: 'RS256', typ: 'JWT' });
+          const payload = toBase64Url({
+            sub: 'admin',
+            email: 'admin@open-metadata.org',
+            exp: Math.floor(Date.now() / 1000) - 3600,
+          });
+          const expiredJwt = `${header}.${payload}.fakesig`;
+
+          const controller = navigator.serviceWorker.controller;
+          if (!controller) {
+            reject(new Error('No active Service Worker controller'));
+
+            return;
+          }
+
+          const readCh = new MessageChannel();
+          readCh.port1.onmessage = (event) => {
+            const state = event.data.result
+              ? JSON.parse(event.data.result)
+              : {};
+            state.primary = expiredJwt;
+
+            const writeCh = new MessageChannel();
+            writeCh.port1.onmessage = () => resolve();
+            controller.postMessage(
+              { type: 'set', key: 'app_state', value: JSON.stringify(state) },
+              [writeCh.port2]
+            );
+          };
+          controller.postMessage({ type: 'get', key: 'app_state' }, [
+            readCh.port2,
+          ]);
+        });
+      });
+
+      // Wait for TOKEN_UPDATE broadcast to be handled (blocked by flag)
+      await page.waitForTimeout(1000);
+
+      // Remove the lock so visibilitychange handler can trigger refreshToken()
+      await page.evaluate(() => localStorage.removeItem('refreshInProgress'));
+
+      // Capture console messages to verify the handler fires
+      const logs: string[] = [];
+      page.on('console', (msg) => logs.push(msg.text()));
+
+      // Simulate the tab becoming visible (user returns from idle period).
+      // The handler should detect the expired token and call refreshToken().
+      await page.evaluate(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      // Wait for the async handler to complete
+      await page.waitForTimeout(3000);
+
+      // Verify the handler detected the expired token and attempted refresh.
+      // The deployed handler logs "[VisibilityHandler] token length: X isExpired: true"
+      const handlerDetectedExpiry = logs.some(
+        (l) =>
+          l.includes('[VisibilityHandler]') && l.includes('isExpired: true')
+      );
+
+      expect(handlerDetectedExpiry).toBe(true);
+    });
+
+    test('should reschedule timer when tab becomes visible with valid token', async ({
+      page,
+    }) => {
+      await performOidcLogin(page);
+      await verifyAuthenticated(page);
+
+      const tokenBefore = await getStoredToken(page);
+
+      expect(tokenBefore.length).toBeGreaterThan(0);
+
+      // Simulate tab becoming visible with a still-valid token
+      await page.evaluate(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      await page.waitForTimeout(2000);
+
+      // App should still be authenticated (handler didn't break anything)
+      await verifyAuthenticated(page);
+
+      // Token should remain the same (no unnecessary refresh)
+      const tokenAfter = await getStoredToken(page);
+
+      expect(tokenAfter).toBe(tokenBefore);
     });
   });
 

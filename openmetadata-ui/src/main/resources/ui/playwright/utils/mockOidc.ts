@@ -13,8 +13,7 @@
 
 import { APIRequestContext } from '@playwright/test';
 
-const MOCK_OIDC_BASE_URL =
-  process.env.MOCK_OIDC_URL || 'http://localhost:9090';
+const MOCK_OIDC_BASE_URL = process.env.MOCK_OIDC_URL || 'http://localhost:9090';
 
 export interface MockOidcConfig {
   accessTokenTTL?: number;

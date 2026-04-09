@@ -98,7 +98,10 @@ class TokenService {
           // Wait for token to be persisted in SW+IndexedDB before notifying
           const persisted = await this.waitForTokenPersistence(oldToken);
           if (!persisted) {
-            console.warn('Token persistence timed out, proceeding with callback');
+            // eslint-disable-next-line no-console
+            console.warn(
+              'Token persistence timed out, proceeding with callback'
+            );
           }
           this.refreshSuccessCallback?.();
           // To update all the tabs on updating channel token
@@ -158,9 +161,7 @@ class TokenService {
     return localStorage.getItem(REFRESH_IN_PROGRESS_KEY) === 'true';
   }
 
-  private async waitForTokenPersistence(
-    oldToken: string
-  ): Promise<boolean> {
+  private async waitForTokenPersistence(oldToken: string): Promise<boolean> {
     const maxAttempts = 20;
     const delayMs = 50;
 
