@@ -21,7 +21,7 @@ import {
 import { useGraphDataBuilder } from './hooks/useGraphData';
 import { useOntologyGraph } from './hooks/useOntologyGraph';
 import {
-  getOntologyFitViewZoomRatio,
+  fitViewWithMinZoom,
   toLayoutEngineType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
@@ -124,19 +124,8 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
-          const duration = 300;
           const isDataMode = explorationMode === 'data';
-          await graph.fitView(
-            { when: 'always', direction: 'both' },
-            { duration }
-          );
-          const zoomAfterFit = getOntologyFitViewZoomRatio(
-            termCountForFit,
-            isDataMode
-          );
-          if (zoomAfterFit !== 1) {
-            await graph.zoomBy(zoomAfterFit, { duration });
-          }
+          await fitViewWithMinZoom(graph, termCountForFit, isDataMode, 300);
         },
         zoomIn: () => {
           graphRef.current?.zoomBy(1.2);
