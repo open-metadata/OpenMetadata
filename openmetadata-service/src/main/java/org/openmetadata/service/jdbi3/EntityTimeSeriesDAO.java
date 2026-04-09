@@ -534,10 +534,10 @@ public interface EntityTimeSeriesDAO {
 
   @SqlUpdate("DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash")
   void deleteAllByEntityFQN(
-      @Define("table") String table, @BindFQN("entityFQNHash") String entityFQNHash);
+      @Define("table") String table, @BindFQN("entityFQNHash") String entityFQN);
 
-  default void deleteAllByEntityFQN(String entityFQNHash) {
-    deleteAllByEntityFQN(getTimeSeriesTableName(), entityFQNHash);
+  default void deleteAllByEntityFQN(String entityFQN) {
+    deleteAllByEntityFQN(getTimeSeriesTableName(), entityFQN);
   }
 
   @SqlUpdate(
