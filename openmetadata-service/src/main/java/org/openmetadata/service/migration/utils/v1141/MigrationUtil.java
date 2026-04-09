@@ -28,10 +28,17 @@ public final class MigrationUtil {
 
   private MigrationUtil() {}
 
+  // Top-level entities (services, users, teams, etc.) use "nameHash".
+  // For them FQN == name, so nameHash == buildHash(fqn) — the same value we need.
+  // Hierarchical entities (databases, schemas, tables) use "fqnHash".
+  // Both must be backfilled into entity_relationship so prefix deletion works for all levels.
+  private static final String FQNHASH_COL = "fqnHash";
+  private static final String NAMEHASH_COL = "nameHash";
+
   /**
    * Backfills fromFQNHash and toFQNHash in entity_relationship for all existing rows where those
-   * columns are NULL. Rows are matched by fromId/toId against every entity table that uses the
-   * fqnHash naming column (i.e., all non-top-level entities).
+   * columns are NULL. Covers every registered entity type — both hierarchical entities (fqnHash
+   * column) and top-level entities (nameHash column, e.g. services, users, teams).
    */
   public static void backfillRelationshipFqnHashes(Handle handle) {
     for (String entityType : Entity.getEntityList()) {
@@ -46,37 +53,43 @@ public final class MigrationUtil {
 
   private static void backfillForEntityType(Handle handle, String entityType) {
     EntityRepository<?> repo = Entity.getEntityRepository(entityType);
-    if (!"fqnHash".equals(repo.getDao().getNameHashColumn())) {
+    String hashCol = repo.getDao().getNameHashColumn();
+    if (!FQNHASH_COL.equals(hashCol) && !NAMEHASH_COL.equals(hashCol)) {
       return;
     }
     String tableName = repo.getDao().getTableName();
     int offset = 0;
     int processed;
     do {
-      processed = processEntityBatch(handle, tableName, offset);
+      processed = processEntityBatch(handle, tableName, hashCol, offset);
       offset += processed;
     } while (processed == BATCH_SIZE);
     LOG.info("Backfilled FQN hashes for entity type {}: {} rows", entityType, offset);
   }
 
-  private static int processEntityBatch(Handle handle, String tableName, int offset) {
+  private static int processEntityBatch(
+      Handle handle, String tableName, String hashCol, int offset) {
     String sql =
-        "SELECT id, fqnHash FROM "
+        "SELECT id, "
+            + hashCol
+            + " FROM "
             + tableName
-            + " WHERE fqnHash IS NOT NULL LIMIT :limit OFFSET :offset";
+            + " WHERE "
+            + hashCol
+            + " IS NOT NULL LIMIT :limit OFFSET :offset";
     List<Map<String, Object>> rows =
         handle.createQuery(sql).bind("limit", BATCH_SIZE).bind("offset", offset).mapToMap().list();
     for (Map<String, Object> row : rows) {
-      backfillRow(handle, row);
+      backfillRow(handle, row, hashCol);
     }
     return rows.size();
   }
 
-  private static void backfillRow(Handle handle, Map<String, Object> row) {
+  private static void backfillRow(Handle handle, Map<String, Object> row, String hashCol) {
     Map<String, Object> normalized = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     normalized.putAll(row);
     String id = String.valueOf(normalized.get("id"));
-    String fqnHash = String.valueOf(normalized.get("fqnHash"));
+    String fqnHash = String.valueOf(normalized.get(hashCol));
     handle
         .createUpdate(
             "UPDATE entity_relationship SET fromFQNHash = :fqnHash WHERE fromId = :id AND fromFQNHash IS NULL")
