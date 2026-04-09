@@ -134,7 +134,6 @@ public class SearchIndexExecutor implements AutoCloseable {
   private final Map<String, AtomicInteger> entityBatchFailures = new ConcurrentHashMap<>();
   private final Set<String> promotedEntities = ConcurrentHashMap.newKeySet();
   private final Map<String, StageStatsTracker> sinkTrackers = new ConcurrentHashMap<>();
-  private final Map<String, Map<String, Object>> contextDataCache = new ConcurrentHashMap<>();
   private static final long SINK_SYNC_INTERVAL_MS = 2000;
   private final AtomicLong lastSinkSyncTime = new AtomicLong(0);
 
@@ -236,7 +235,6 @@ public class SearchIndexExecutor implements AutoCloseable {
     entityBatchFailures.clear();
     promotedEntities.clear();
     sinkTrackers.clear();
-    contextDataCache.clear();
     lastSinkSyncTime.set(0);
     initStatsManager();
   }
@@ -537,18 +535,14 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private Map<String, Object> createContextData(String entityType) {
-    return contextDataCache.computeIfAbsent(
-        entityType,
-        type -> {
-          Map<String, Object> contextData = new HashMap<>();
-          contextData.put(ENTITY_TYPE_KEY, type);
-          contextData.put(RECREATE_INDEX, config.recreateIndex());
-          contextData.put(RECREATE_CONTEXT, recreateContext);
-          contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, getSinkTracker(type));
-          getTargetIndexForEntity(type)
-              .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
-          return contextData;
-        });
+    Map<String, Object> contextData = new HashMap<>();
+    contextData.put(ENTITY_TYPE_KEY, entityType);
+    contextData.put(RECREATE_INDEX, config.recreateIndex());
+    contextData.put(RECREATE_CONTEXT, recreateContext);
+    contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, getSinkTracker(entityType));
+    getTargetIndexForEntity(entityType)
+        .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
+    return contextData;
   }
 
   private StageStatsTracker getSinkTracker(String entityType) {
