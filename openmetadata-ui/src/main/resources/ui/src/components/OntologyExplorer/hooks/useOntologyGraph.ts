@@ -1061,11 +1061,7 @@ export function useOntologyGraph({
           return;
         }
 
-        if (isDataMode) {
-          if (termFingerprintChanged || assetFingerprintChanged) {
-            await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
-          }
-        } else if (termFingerprintChanged) {
+        if (termFingerprintChanged) {
           await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
         }
       } finally {
