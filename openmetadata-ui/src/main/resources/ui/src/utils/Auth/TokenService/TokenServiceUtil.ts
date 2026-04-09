@@ -95,8 +95,11 @@ class TokenService {
         // Logic to refresh the token
         const newToken = await this.fetchNewToken();
         if (newToken) {
-          // Wait briefly for token to be persisted in SW+IndexedDB before notifying
-          await this.waitForTokenPersistence(oldToken);
+          // Wait for token to be persisted in SW+IndexedDB before notifying
+          const persisted = await this.waitForTokenPersistence(oldToken);
+          if (!persisted) {
+            console.warn('Token persistence timed out, proceeding with callback');
+          }
           this.refreshSuccessCallback?.();
           // To update all the tabs on updating channel token
           // Notify all tabs that the token has been refreshed
@@ -125,8 +128,6 @@ class TokenService {
       try {
         response = await this.renewToken();
       } catch (error) {
-        this.clearRefreshInProgress();
-
         // Silent Frame window timeout error since it doesn't affect refresh token process
         if ((error as AxiosError).message === 'Frame window timed out') {
           return null;
@@ -157,7 +158,9 @@ class TokenService {
     return localStorage.getItem(REFRESH_IN_PROGRESS_KEY) === 'true';
   }
 
-  private async waitForTokenPersistence(oldToken: string) {
+  private async waitForTokenPersistence(
+    oldToken: string
+  ): Promise<boolean> {
     const maxAttempts = 20;
     const delayMs = 50;
 
@@ -167,9 +170,11 @@ class TokenService {
       const currentToken = await getOidcToken();
 
       if (currentToken && currentToken !== oldToken) {
-        return;
+        return true;
       }
     }
+
+    return false;
   }
 }
 
