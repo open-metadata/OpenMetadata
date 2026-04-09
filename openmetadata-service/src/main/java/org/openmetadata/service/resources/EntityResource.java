@@ -707,25 +707,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response;
   }
 
-  @DELETE
-  @Path("/prefix/{id}")
-  @Operation(
-      operationId = "deletePrefixHard",
-      summary = "Hard-delete an entity and all descendants by FQN prefix",
-      description =
-          "Bulk hard-delete this entity and all descendants whose FQN starts with this entity's FQN. "
-              + "Significantly faster than recursive delete for large hierarchies and eliminates "
-              + "race conditions with concurrent ingestion.",
-      responses = {
-        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
-        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
-      })
   public Response deletePrefixHardById(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id) {
     String jobId = UUID.randomUUID().toString();
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(
