@@ -91,12 +91,15 @@ class PrefixDeletionBenchmarkIT {
   @Test
   void benchmark_oldRecursiveHardDelete_vs_newPrefixDelete(TestNamespace ns) throws Exception {
     int totalTables = DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE * TABLES_PER_SCHEMA;
-    int totalEntities = 1 + DATABASES_PER_SERVICE
-        + DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE
-        + totalTables;
+    int totalEntities =
+        1 + DATABASES_PER_SERVICE + DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE + totalTables;
     LOG.info(
         "Benchmark topology: {} databases × {} schemas × {} tables = {} tables, {} total entities per service",
-        DATABASES_PER_SERVICE, SCHEMAS_PER_DATABASE, TABLES_PER_SCHEMA, totalTables, totalEntities);
+        DATABASES_PER_SERVICE,
+        SCHEMAS_PER_DATABASE,
+        TABLES_PER_SCHEMA,
+        totalTables,
+        totalEntities);
 
     DatabaseService oldService = buildHierarchy(ns, "old");
     long oldMs = timeOldDelete(oldService);
@@ -113,11 +116,17 @@ class PrefixDeletionBenchmarkIT {
 
   private DatabaseService buildHierarchy(TestNamespace ns, String tag) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    int totalEntities = 1 + DATABASES_PER_SERVICE
-        + DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE
-        + DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE * TABLES_PER_SCHEMA;
-    LOG.info("[{}] Seeding {} entities under service {} using {} threads ...",
-        tag, totalEntities, service.getName(), SEED_THREADS);
+    int totalEntities =
+        1
+            + DATABASES_PER_SERVICE
+            + DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE
+            + DATABASES_PER_SERVICE * SCHEMAS_PER_DATABASE * TABLES_PER_SCHEMA;
+    LOG.info(
+        "[{}] Seeding {} entities under service {} using {} threads ...",
+        tag,
+        totalEntities,
+        service.getName(),
+        SEED_THREADS);
     long seedStart = System.currentTimeMillis();
 
     ExecutorService pool = Executors.newFixedThreadPool(SEED_THREADS);
@@ -125,8 +134,11 @@ class PrefixDeletionBenchmarkIT {
       List<Future<Database>> dbFutures = new ArrayList<>();
       for (int d = 0; d < DATABASES_PER_SERVICE; d++) {
         final int dIdx = d;
-        dbFutures.add(pool.submit(() ->
-            DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), tag + "db" + dIdx)));
+        dbFutures.add(
+            pool.submit(
+                () ->
+                    DatabaseTestFactory.createWithName(
+                        ns, service.getFullyQualifiedName(), tag + "db" + dIdx)));
       }
       List<Database> databases = new ArrayList<>();
       for (Future<Database> f : dbFutures) {
@@ -139,8 +151,11 @@ class PrefixDeletionBenchmarkIT {
         final int dIdx = d;
         for (int s = 0; s < SCHEMAS_PER_DATABASE; s++) {
           final int sIdx = s;
-          schemaFutures.add(pool.submit(() ->
-              DatabaseSchemaTestFactory.createWithName(ns, database.getFullyQualifiedName(), tag + "sc" + dIdx + "x" + sIdx)));
+          schemaFutures.add(
+              pool.submit(
+                  () ->
+                      DatabaseSchemaTestFactory.createWithName(
+                          ns, database.getFullyQualifiedName(), tag + "sc" + dIdx + "x" + sIdx)));
         }
       }
       List<DatabaseSchema> schemas = new ArrayList<>();
@@ -154,10 +169,13 @@ class PrefixDeletionBenchmarkIT {
         final int sIdx = s;
         for (int t = 0; t < TABLES_PER_SCHEMA; t++) {
           final int tIdx = t;
-          tableFutures.add(pool.submit(() -> {
-            TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), tag + "tbl" + sIdx + "x" + tIdx);
-            return null;
-          }));
+          tableFutures.add(
+              pool.submit(
+                  () -> {
+                    TableTestFactory.createWithName(
+                        ns, schema.getFullyQualifiedName(), tag + "tbl" + sIdx + "x" + tIdx);
+                    return null;
+                  }));
         }
       }
       for (Future<?> f : tableFutures) {
@@ -169,8 +187,11 @@ class PrefixDeletionBenchmarkIT {
     }
 
     long seedMs = System.currentTimeMillis() - seedStart;
-    LOG.info("[{}] Hierarchy seeded in {} ms ({} ms/entity avg)",
-        tag, seedMs, seedMs / Math.max(totalEntities, 1));
+    LOG.info(
+        "[{}] Hierarchy seeded in {} ms ({} ms/entity avg)",
+        tag,
+        seedMs,
+        seedMs / Math.max(totalEntities, 1));
     return service;
   }
 
@@ -178,9 +199,11 @@ class PrefixDeletionBenchmarkIT {
     LOG.info("Timing OLD recursive hard delete for service {} ...", service.getName());
     long start = System.currentTimeMillis();
 
-    String url = SdkClients.getServerUrl()
-        + "/v1/services/databaseServices/" + service.getId()
-        + "?hardDelete=true&recursive=true";
+    String url =
+        SdkClients.getServerUrl()
+            + "/v1/services/databaseServices/"
+            + service.getId()
+            + "?hardDelete=true&recursive=true";
     sendDelete(url);
 
     long elapsed = System.currentTimeMillis() - start;
@@ -192,8 +215,8 @@ class PrefixDeletionBenchmarkIT {
     LOG.info("Timing NEW FQN prefix hard delete for service {} ...", service.getName());
     long start = System.currentTimeMillis();
 
-    String url = SdkClients.getServerUrl()
-        + "/v1/services/databaseServices/prefix/" + service.getId();
+    String url =
+        SdkClients.getServerUrl() + "/v1/services/databaseServices/prefix/" + service.getId();
     sendDelete(url);
 
     // Prefix delete is async — poll until the service is actually gone so we measure
@@ -202,14 +225,15 @@ class PrefixDeletionBenchmarkIT {
     Awaitility.await("Wait for prefix deletion of " + service.getName() + " to complete")
         .atMost(DELETE_POLL_TIMEOUT)
         .pollInterval(DELETE_POLL_INTERVAL)
-        .until(() -> {
-          try {
-            SdkClients.adminClient().databaseServices().get(serviceId.toString());
-            return false;
-          } catch (Exception e) {
-            return true;
-          }
-        });
+        .until(
+            () -> {
+              try {
+                SdkClients.adminClient().databaseServices().get(serviceId.toString());
+                return false;
+              } catch (Exception e) {
+                return true;
+              }
+            });
 
     long elapsed = System.currentTimeMillis() - start;
     LOG.info("NEW FQN prefix hard delete completed in {} ms", elapsed);
@@ -217,11 +241,12 @@ class PrefixDeletionBenchmarkIT {
   }
 
   private void sendDelete(String url) throws Exception {
-    HttpRequest request = HttpRequest.newBuilder()
-        .uri(URI.create(url))
-        .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-        .DELETE()
-        .build();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .DELETE()
+            .build();
     HttpResponse<String> response =
         HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
     if (response.statusCode() >= 300) {

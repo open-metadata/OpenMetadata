@@ -616,7 +616,6 @@ public class MetadataServiceResource
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

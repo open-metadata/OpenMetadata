@@ -374,7 +374,6 @@ public class AppMarketPlaceResource
     return createOrUpdate(uriInfo, securityContext, app);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
@@ -390,7 +389,9 @@ public class AppMarketPlaceResource
   public Response deletePrefixHardById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the app marketplace definition", schema = @Schema(type = "UUID"))
+      @Parameter(
+              description = "Id of the app marketplace definition",
+              schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);

@@ -697,7 +697,6 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
@@ -713,8 +712,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Response deletePrefixHardById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);
   }

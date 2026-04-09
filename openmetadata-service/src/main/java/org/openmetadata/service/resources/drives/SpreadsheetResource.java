@@ -429,7 +429,6 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

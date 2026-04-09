@@ -529,7 +529,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

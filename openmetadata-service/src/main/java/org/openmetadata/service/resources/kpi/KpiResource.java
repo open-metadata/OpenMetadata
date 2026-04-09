@@ -379,7 +379,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return createOrUpdate(uriInfo, securityContext, kpi);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
@@ -395,8 +394,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Response deletePrefixHardById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);
   }

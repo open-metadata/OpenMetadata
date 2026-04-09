@@ -575,7 +575,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

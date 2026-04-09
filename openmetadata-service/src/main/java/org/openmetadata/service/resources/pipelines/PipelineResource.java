@@ -1218,7 +1218,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

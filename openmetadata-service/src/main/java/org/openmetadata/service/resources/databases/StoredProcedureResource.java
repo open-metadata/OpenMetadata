@@ -14,6 +14,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.*;
 import java.util.List;
 import java.util.UUID;
@@ -32,8 +34,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.PathParam;
 
 @Path("/v1/storedProcedures")
 @Tag(
@@ -567,7 +567,6 @@ public class StoredProcedureResource
           UUID id) {
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
-
 
   @DELETE
   @Path("/prefix/{id}")

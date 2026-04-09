@@ -588,7 +588,6 @@ public class DashboardDataModelResource
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

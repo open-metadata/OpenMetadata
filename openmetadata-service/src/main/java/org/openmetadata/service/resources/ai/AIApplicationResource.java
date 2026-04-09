@@ -510,7 +510,6 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

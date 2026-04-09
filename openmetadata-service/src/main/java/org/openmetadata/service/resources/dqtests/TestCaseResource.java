@@ -924,7 +924,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

@@ -435,7 +435,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
@@ -451,8 +450,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response deletePrefixHardById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);
   }

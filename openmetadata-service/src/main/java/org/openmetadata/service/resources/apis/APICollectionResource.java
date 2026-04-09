@@ -545,7 +545,6 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
         .toResponse();
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

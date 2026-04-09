@@ -591,7 +591,6 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

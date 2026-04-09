@@ -506,7 +506,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
@@ -522,8 +521,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response deletePrefixHardById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);
   }

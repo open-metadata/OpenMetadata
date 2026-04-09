@@ -477,7 +477,6 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

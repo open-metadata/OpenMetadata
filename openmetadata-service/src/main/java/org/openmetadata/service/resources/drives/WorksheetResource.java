@@ -412,7 +412,6 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

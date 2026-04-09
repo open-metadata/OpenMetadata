@@ -418,7 +418,6 @@ public class FileResource extends EntityResource<File, FileRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
@@ -434,8 +433,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
   public Response deletePrefixHardById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the file", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);
   }

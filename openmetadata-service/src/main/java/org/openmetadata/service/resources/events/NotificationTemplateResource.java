@@ -635,7 +635,6 @@ public class NotificationTemplateResource
     return super.delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

@@ -474,7 +474,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

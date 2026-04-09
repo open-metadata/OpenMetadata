@@ -28,7 +28,8 @@ public class MigrationUtil {
       try {
         backfillForEntityType(handle, entityType);
       } catch (Exception e) {
-        LOG.warn("Failed to backfill FQN hashes for entity type {}: {}", entityType, e.getMessage());
+        LOG.warn(
+            "Failed to backfill FQN hashes for entity type {}: {}", entityType, e.getMessage());
       }
     }
   }
@@ -45,7 +46,9 @@ public class MigrationUtil {
     if (fromUpdated + toUpdated > 0) {
       LOG.info(
           "Backfilled FQN hashes for entity type {}: {} fromFQNHash, {} toFQNHash",
-          entityType, fromUpdated, toUpdated);
+          entityType,
+          fromUpdated,
+          toUpdated);
     }
   }
 

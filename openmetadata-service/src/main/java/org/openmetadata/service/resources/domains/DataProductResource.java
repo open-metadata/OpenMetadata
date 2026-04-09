@@ -921,7 +921,6 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     return deleteByIdAsync(uriInfo, securityContext, id, true, true);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

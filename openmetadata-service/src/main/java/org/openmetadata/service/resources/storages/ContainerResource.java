@@ -584,7 +584,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .toResponse();
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

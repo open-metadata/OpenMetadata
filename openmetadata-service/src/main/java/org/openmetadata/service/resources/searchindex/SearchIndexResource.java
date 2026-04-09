@@ -663,7 +663,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

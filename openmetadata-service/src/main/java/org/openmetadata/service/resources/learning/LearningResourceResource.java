@@ -472,5 +472,4 @@ public class LearningResourceResource
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);
   }
-
 }

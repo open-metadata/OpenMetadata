@@ -425,7 +425,6 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

@@ -452,7 +452,6 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     return deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

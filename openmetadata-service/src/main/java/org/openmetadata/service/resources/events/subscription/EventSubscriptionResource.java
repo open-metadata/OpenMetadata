@@ -561,7 +561,6 @@ public class EventSubscriptionResource
     return deleteByIdAsync(uriInfo, securityContext, id, true, true);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

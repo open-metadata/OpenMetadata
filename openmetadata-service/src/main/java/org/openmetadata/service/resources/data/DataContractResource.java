@@ -550,7 +550,6 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

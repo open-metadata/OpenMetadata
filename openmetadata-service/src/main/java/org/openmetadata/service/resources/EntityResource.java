@@ -29,11 +29,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.json.JsonPatch;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
@@ -707,10 +705,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response;
   }
 
-  public Response deletePrefixHardById(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      UUID id) {
+  public Response deletePrefixHardById(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
     String jobId = UUID.randomUUID().toString();
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(

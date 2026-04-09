@@ -662,7 +662,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
@@ -678,8 +677,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response deletePrefixHardById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);
   }

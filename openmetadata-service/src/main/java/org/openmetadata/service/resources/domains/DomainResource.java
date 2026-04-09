@@ -496,7 +496,6 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return deleteByIdAsync(uriInfo, securityContext, id, true, true);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
@@ -512,8 +511,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public Response deletePrefixHardById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);
   }

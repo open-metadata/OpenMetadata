@@ -806,7 +806,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return repository.deleteLogicalTestSuiteAsync(securityContext, testSuite, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

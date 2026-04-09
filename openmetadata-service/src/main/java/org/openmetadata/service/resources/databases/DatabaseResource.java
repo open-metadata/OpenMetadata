@@ -715,7 +715,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         .toResponse();
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

@@ -584,7 +584,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(

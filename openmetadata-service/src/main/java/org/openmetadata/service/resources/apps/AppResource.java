@@ -921,7 +921,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return createOrUpdate(uriInfo, securityContext, app);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
@@ -937,8 +936,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public Response deletePrefixHardById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the app", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return deletePrefixHardById(uriInfo, securityContext, id);
   }

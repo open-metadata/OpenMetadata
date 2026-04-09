@@ -531,7 +531,6 @@ public class McpServerResource extends EntityResource<McpServer, McpServerReposi
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
-
   @DELETE
   @Path("/prefix/{id}")
   @Operation(
