@@ -142,31 +142,16 @@ class ProfilerSource(ProfilerSourceInterface):
         return config_copy
 
     def _build_default_sample_config(self) -> SampleConfig:
-        """Build a SampleConfig from the pipeline's profileSampleConfig.
-
-        Extracts flat profileSample/profileSampleType/samplingMethodType from
-        a STATIC config so existing hierarchy resolution still picks them up.
-        For DYNAMIC configs these stay None — resolved at runtime.
-        """
-        profile_sample = None
-        profile_sample_type = None
-        sampling_method_type = None
+        """Build a SampleConfig from the pipeline's profileSampleConfig."""
         profile_sample_config = None
-
-        raw = self.source_config.profileSampleConfig
+        raw = self.source_config.profileSampleConfig if self.source_config else None
         if raw:
             profile_sample_config = ProfileSampleConfig.model_validate(raw.model_dump())
-            if raw.sampleConfigType == "STATIC" and raw.config:
-                profile_sample = getattr(raw.config, "profileSample", None)
-                profile_sample_type = getattr(raw.config, "profileSampleType", None)
-                sampling_method_type = getattr(raw.config, "samplingMethodType", None)
-
         return SampleConfig(
-            profileSample=profile_sample,
-            profileSampleType=profile_sample_type,
-            samplingMethodType=sampling_method_type,
-            randomizedSample=self.source_config.randomizedSample,
             profileSampleConfig=profile_sample_config,
+            randomizedSample=self.source_config.randomizedSample
+            if self.source_config
+            else False,
         )
 
     @inject

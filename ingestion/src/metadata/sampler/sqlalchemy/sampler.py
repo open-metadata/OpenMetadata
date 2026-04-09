@@ -23,9 +23,9 @@ from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
-    ProfileSampleType,
     TableData,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.orm.functions.modulo import ModuloFn

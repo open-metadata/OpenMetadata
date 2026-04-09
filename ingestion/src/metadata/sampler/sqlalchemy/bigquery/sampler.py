@@ -20,11 +20,7 @@ from sqlalchemy import Table as SqaTable
 from sqlalchemy import text
 from sqlalchemy.orm import Query
 
-from metadata.generated.schema.entity.data.table import (
-    ProfileSampleType,
-    Table,
-    TableType,
-)
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
@@ -33,6 +29,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig

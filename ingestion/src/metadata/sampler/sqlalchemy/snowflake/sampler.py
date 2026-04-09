@@ -18,10 +18,6 @@ from typing import Dict, Optional, Union
 from sqlalchemy import Table, func, text
 from sqlalchemy.sql.selectable import CTE
 
-from metadata.generated.schema.entity.data.table import (
-    ProfileSampleType,
-    SamplingMethodType,
-)
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
@@ -29,6 +25,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler

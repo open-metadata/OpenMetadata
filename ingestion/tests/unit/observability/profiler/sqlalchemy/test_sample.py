@@ -32,7 +32,12 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import (
+    ProfileSampleConfig,
+    ProfileSampleConfigType,
+    SampleConfig,
+    StaticSamplingConfig,
+)
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
@@ -106,7 +111,12 @@ class SampleTest(TestCase):
                 service_connection_config=cls.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(profileSample=50.0),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
             )
         cls.dataset = cls.sampler.get_dataset()
         cls.sqa_profiler_interface = SQAProfilerInterface(
@@ -352,7 +362,12 @@ class SampleTest(TestCase):
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(profileSample=50.0),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
                 sample_query=stmt,
             )
         sample_data = sampler.fetch_sample_data()

@@ -16,9 +16,9 @@ from typing import Callable, List, Optional, cast
 
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
-    ProfileSampleType,
     TableData,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser

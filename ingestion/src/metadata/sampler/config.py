@@ -34,7 +34,9 @@ from metadata.profiler.config import (
 from metadata.sampler.models import (
     DatabaseAndSchemaConfig,
     ProfileSampleConfig,
+    ProfileSampleConfigType,
     SampleConfig,
+    StaticSamplingConfig,
     TableConfig,
 )
 
@@ -110,7 +112,8 @@ def _resolve_profile_sample_config(
 ) -> Optional[ProfileSampleConfig]:
     """Resolve profileSampleConfig through the config hierarchy.
 
-    Returns the first enabled ProfileSampleConfig found, or None.
+    Checks profileSampleConfig first, then falls back to flat profileSample
+    fields on manual config models (TableConfig, DatabaseAndSchemaConfig).
     """
     for config in (
         entity_config,
@@ -119,9 +122,31 @@ def _resolve_profile_sample_config(
         database_profiler_config,
         default_sample_config,
     ):
+        if not config:
+            continue
         try:
-            if config and config.profileSampleConfig:
-                return config.profileSampleConfig
+            psc = config.profileSampleConfig
+            if psc:
+                unwrapped = psc.root if hasattr(psc, "root") else psc
+                if isinstance(unwrapped, ProfileSampleConfig):
+                    return unwrapped
+                return ProfileSampleConfig.model_validate(
+                    unwrapped.model_dump()
+                    if hasattr(unwrapped, "model_dump")
+                    else unwrapped
+                )
+        except AttributeError:
+            pass
+        try:
+            if config.profileSample:
+                return ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=config.profileSample,
+                        profileSampleType=config.profileSampleType,
+                        samplingMethodType=config.samplingMethodType,
+                    ),
+                )
         except AttributeError:
             pass
     return None
@@ -147,25 +172,6 @@ def get_profile_sample_config(
         database_profiler_config=database_profiler_config,
         default_sample_config=default_sample_config,
     )
-
-    for config in (
-        entity_config,
-        entity.tableProfilerConfig,
-        schema_profiler_config,
-        database_profiler_config,
-        default_sample_config,
-    ):
-        try:
-            if config and config.profileSample:
-                return SampleConfig(
-                    profileSample=config.profileSample,
-                    profileSampleType=config.profileSampleType,
-                    samplingMethodType=config.samplingMethodType,
-                    randomizedSample=config.randomizedSample,
-                    profileSampleConfig=profile_sample_config,
-                )
-        except AttributeError:
-            pass
 
     return SampleConfig(profileSampleConfig=profile_sample_config)
 
