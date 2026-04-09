@@ -131,39 +131,40 @@ class TestBurstIQSamplerRawDataset:
         )
         assert sum(len(df) for df in dfs) == 50
 
-    def test_no_sample_returns_all_from_chain_metrics(self, sampler, mock_client):
+    def test_no_sample_fetches_all_via_pagination(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
-        mock_client.get_chain_metrics.return_value = {"TestChain": 10}
         mock_client.get_records_by_tql.return_value = [
             {"score": float(i)} for i in range(10)
         ]
 
         dfs = list(sampler.raw_dataset())
 
-        mock_client.get_chain_metrics.assert_called_once()
+        mock_client.get_chain_metrics.assert_not_called()
         assert sum(len(df) for df in dfs) == 10
 
     def test_empty_chain_yields_single_empty_dataframe(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
-        mock_client.get_chain_metrics.return_value = {"TestChain": 0}
+        mock_client.get_records_by_tql.return_value = []
 
         dfs = list(sampler.raw_dataset())
 
+        mock_client.get_chain_metrics.assert_not_called()
         assert len(dfs) == 1
         assert dfs[0].empty
-        mock_client.get_records_by_tql.assert_not_called()
 
     def test_pagination_splits_into_multiple_pages(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
-        total = _PAGE_SIZE * 2 + _PAGE_SIZE // 2
-        mock_client.get_chain_metrics.return_value = {"TestChain": total}
         page1 = [{"score": float(i)} for i in range(_PAGE_SIZE)]
         page2 = [{"score": float(i)} for i in range(_PAGE_SIZE, _PAGE_SIZE * 2)]
-        page3 = [{"score": float(i)} for i in range(_PAGE_SIZE * 2, total)]
+        page3 = [
+            {"score": float(i)}
+            for i in range(_PAGE_SIZE * 2, _PAGE_SIZE * 2 + _PAGE_SIZE // 2)
+        ]
         mock_client.get_records_by_tql.side_effect = [page1, page2, page3]
 
         dfs = list(sampler.raw_dataset())
 
+        mock_client.get_chain_metrics.assert_not_called()
         assert len(dfs) == 3
         assert len(dfs[0]) == _PAGE_SIZE
         assert len(dfs[1]) == _PAGE_SIZE
@@ -171,13 +172,13 @@ class TestBurstIQSamplerRawDataset:
 
     def test_stops_early_on_short_page(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
-        mock_client.get_chain_metrics.return_value = {"TestChain": 2000}
         mock_client.get_records_by_tql.return_value = [
             {"score": float(i)} for i in range(5)
         ]
 
         dfs = list(sampler.raw_dataset())
 
+        mock_client.get_chain_metrics.assert_not_called()
         assert mock_client.get_records_by_tql.call_count == 1
         assert len(dfs) == 1
         assert len(dfs[0]) == 5

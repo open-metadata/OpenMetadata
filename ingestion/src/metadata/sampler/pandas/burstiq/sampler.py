@@ -85,27 +85,27 @@ class BurstIQSampler(SamplerInterface):
         sample_type = self.sample_config.profileSampleType
 
         if sample and sample_type == ProfileSampleType.ROWS:
-            total_limit = int(sample)
+            total_limit: Optional[int] = int(sample)
         elif sample and sample_type == ProfileSampleType.PERCENTAGE:
             total = self.client.get_chain_metrics().get(chain, 0)
             total_limit = max(1, int(total * sample / 100))
         else:
-            total_limit = self.client.get_chain_metrics().get(chain, 0)
-
-        if not total_limit:
-            self._cached_frames = [pd.DataFrame()]
-            return self._cached_frames
+            total_limit = None
 
         frames = []
         skip = 0
-        while skip < total_limit:
-            page_size = min(_PAGE_SIZE, total_limit - skip)
+        while True:
+            page_size = (
+                min(_PAGE_SIZE, total_limit - skip) if total_limit else _PAGE_SIZE
+            )
             records = self.client.get_records_by_tql(chain, limit=page_size, skip=skip)
             if not records:
                 break
             frames.append(self._cast_dataframe(pd.DataFrame(records)))
             skip += len(records)
             if len(records) < page_size:
+                break
+            if total_limit and skip >= total_limit:
                 break
 
         self._cached_frames = frames if frames else [pd.DataFrame()]
