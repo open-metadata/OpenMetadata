@@ -1075,8 +1075,7 @@ export enum PartitionIntervalUnit {
  * Profile sample configuration supporting static and dynamic sampling strategies.
  */
 export interface ProfileSampleConfig {
-    config?:  ICSamplingConfiguration;
-    enabled?: boolean;
+    config?: ICSamplingConfig;
     /**
      * Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at
      * runtime based on row count thresholds.
@@ -1089,7 +1088,7 @@ export interface ProfileSampleConfig {
  *
  * Configuration for static sampling based on table row count.
  */
-export interface ICSamplingConfiguration {
+export interface ICSamplingConfig {
     /**
      * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
      * Tables below the lowest threshold are profiled at 100% (no sampling).
