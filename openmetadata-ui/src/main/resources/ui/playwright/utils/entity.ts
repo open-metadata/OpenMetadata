@@ -1965,9 +1965,18 @@ export const restoreEntity = async (page: Page) => {
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="restore-button"]');
+
+  const restoreResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/restore') &&
+      response.request().method() === 'PUT'
+  );
+
   await page.click('button:has-text("Restore")');
 
-  await toastNotification(page, /restored successfully/);
+  const response = await restoreResponse;
+
+  expect(response.status()).toBe(200);
 
   await expect(page.locator('[data-testid="deleted-badge"]')).toBeHidden();
 };
