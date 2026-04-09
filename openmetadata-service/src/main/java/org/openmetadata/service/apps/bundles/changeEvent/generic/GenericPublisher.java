@@ -131,8 +131,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      Invocation.Builder target = getTarget(client, webhook, buildTestMessageJson());
-      deliverTestWebhookMessage(this, target, buildTestMessageJson(), webhook.getHttpMethod());
+      String testJson = buildTestMessageJson();
+      Invocation.Builder target = getTarget(client, webhook, testJson);
+      deliverTestWebhookMessage(this, target, testJson, webhook.getHttpMethod());
     } catch (Exception ex) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
