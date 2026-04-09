@@ -1419,7 +1419,14 @@ public interface CollectionDAO {
     void deleteAll(@BindUUID("id") UUID id);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id IN (<ids>)")
-    void deleteAllBatch(@BindList("ids") List<String> ids);
+    void deleteAllBatchChunk(@BindList("ids") List<String> ids);
+
+    default void deleteAllBatch(List<String> ids) {
+      int chunkSize = 50_000;
+      for (int i = 0; i < ids.size(); i += chunkSize) {
+        deleteAllBatchChunk(ids.subList(i, Math.min(i + chunkSize, ids.size())));
+      }
+    }
   }
 
   class EntityVersionPair {
@@ -6211,7 +6218,14 @@ public interface CollectionDAO {
     void delete(@BindUUID("id") UUID id);
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id IN (<ids>)")
-    void deleteBatch(@BindList("ids") List<String> ids);
+    void deleteBatchChunk(@BindList("ids") List<String> ids);
+
+    default void deleteBatch(List<String> ids) {
+      int chunkSize = 50_000;
+      for (int i = 0; i < ids.size(); i += chunkSize) {
+        deleteBatchChunk(ids.subList(i, Math.min(i + chunkSize, ids.size())));
+      }
+    }
 
     /**
      * TODO: Not sure I get what the next comment means, but tests now use mysql 8 so maybe tests can be improved here
