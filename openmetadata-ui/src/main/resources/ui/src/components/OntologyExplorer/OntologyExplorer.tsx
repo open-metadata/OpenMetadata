@@ -139,8 +139,6 @@ const DEFAULT_FILTERS: GraphFilters = {
   searchQuery: '',
 };
 
-const DEFAULT_LIMIT = 500;
-
 const ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH = 576;
 
 function isTermNode(node: OntologyNode): boolean {
@@ -756,18 +754,15 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     const allMetrics: Metric[] = [];
     let after: string | undefined;
 
-    while (allMetrics.length < DEFAULT_LIMIT) {
+    do {
       const response = await getMetrics({
         fields: 'tags',
-        limit: Math.min(100, DEFAULT_LIMIT - allMetrics.length),
+        limit: 100,
         after,
       });
       allMetrics.push(...response.data);
       after = response.paging?.after;
-      if (!after) {
-        break;
-      }
-    }
+    } while (after);
 
     return allMetrics;
   }, []);
@@ -942,32 +937,56 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const fetchGraphDataFromRdf = useCallback(
     async (glossaryIdParam?: string, glossaryList?: Glossary[]) => {
+      const PAGE_SIZE = 500;
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
       try {
-        const rdfData = await getGlossaryTermGraph({
-          glossaryId: glossaryIdParam,
-          limit: DEFAULT_LIMIT,
-          includeIsolated: true,
-        });
+        const allNodes: GraphData['nodes'] = [];
+        const allEdges: GraphData['edges'] = [];
+        let offset = 0;
+        let source: string | undefined;
 
-        if (rdfData.nodes && rdfData.nodes.length > 0) {
-          // Check if labels are valid (not just UUIDs) - if too many UUID labels, fall back to database
-          const uuidRegex =
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const nodesWithBadLabels = rdfData.nodes.filter(
-            (node) => !node.label || uuidRegex.test(node.label)
-          );
+        while (true) {
+          const page = await getGlossaryTermGraph({
+            glossaryId: glossaryIdParam,
+            limit: PAGE_SIZE,
+            offset,
+            includeIsolated: true,
+          });
 
-          // If more than half the nodes have bad labels, skip RDF and use database
-          if (nodesWithBadLabels.length > rdfData.nodes.length / 2) {
-            return null;
+          if (!page.nodes || page.nodes.length === 0) {
+            break;
           }
 
-          setDataSource(rdfData.source === 'database' ? 'database' : 'rdf');
+          allNodes.push(...page.nodes);
+          allEdges.push(...(page.edges ?? []));
+          source = source ?? page.source;
 
-          return convertRdfGraphToOntologyGraph(rdfData, glossaryList ?? []);
+          if (page.nodes.length < PAGE_SIZE) {
+            break;
+          }
+          offset += PAGE_SIZE;
         }
 
-        return null;
+        if (allNodes.length === 0) {
+          return null;
+        }
+
+        const nodesWithBadLabels = allNodes.filter(
+          (node) => !node.label || uuidRegex.test(node.label)
+        );
+
+        if (nodesWithBadLabels.length > allNodes.length / 2) {
+          return null;
+        }
+
+        setDataSource(source === 'database' ? 'database' : 'rdf');
+
+        return convertRdfGraphToOntologyGraph(
+          { nodes: allNodes, edges: allEdges },
+          glossaryList ?? []
+        );
       } catch {
         return null;
       }
@@ -976,15 +995,18 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
 
   const fetchGraphDataFromDatabase = useCallback(
-    async (glossaryIdParam?: string, fetchedGlossaries?: Glossary[]) => {
-      const glossariesToUse = fetchedGlossaries ?? glossaries;
-      const allTerms: GlossaryTerm[] = [];
+    async (glossaryIdParam?: string, allGlossaries?: Glossary[]) => {
+      const glossariesToUse = allGlossaries ?? glossaries;
 
       const glossariesToFetch = glossaryIdParam
         ? glossariesToUse.filter((g) => g.id === glossaryIdParam)
         : glossariesToUse;
 
-      for (const glossary of glossariesToFetch) {
+      const CONCURRENCY = 20;
+      const fetchTermsForGlossary = async (
+        glossary: Glossary
+      ): Promise<GlossaryTerm[]> => {
+        const terms: GlossaryTerm[] = [];
         let after: string | undefined;
         do {
           try {
@@ -999,19 +1021,33 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               limit: 1000,
               after,
             });
-            allTerms.push(...termsResponse.data);
+            terms.push(...termsResponse.data);
             after = termsResponse.paging?.after;
           } catch {
-            // Continue with other glossaries if one fails
             break;
           }
         } while (after);
+
+        return terms;
+      };
+
+      const allTerms: GlossaryTerm[] = [];
+      for (let i = 0; i < glossariesToFetch.length; i += CONCURRENCY) {
+        const batch = glossariesToFetch.slice(i, i + CONCURRENCY);
+        const results = await Promise.allSettled(
+          batch.map((g) => fetchTermsForGlossary(g))
+        );
+        results.forEach((r) => {
+          if (r.status === 'fulfilled') {
+            allTerms.push(...r.value);
+          }
+        });
       }
 
       return buildGraphFromAllTerms(allTerms, glossariesToFetch);
     },
     // Note: glossaries is intentionally excluded to prevent infinite loop
-    // fetchedGlossaries parameter is always passed from fetchAllGlossaryData
+    // allGlossaries parameter is always passed from fetchAllGlossaryData
 
     [buildGraphFromAllTerms]
   );
@@ -1020,30 +1056,37 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     async (glossaryIdParam?: string) => {
       setLoading(true);
       try {
-        const [glossariesResponse, metricsResponse] = await Promise.all([
-          getGlossariesList({
-            fields: 'owners,tags',
-            limit: 100,
-          }),
+        const [allGlossaries, metricsResponse] = await Promise.all([
+          (async () => {
+            const collected = [];
+            let afterCursor: string | undefined;
+            do {
+              const glossariesResponse = await getGlossariesList({
+                fields: 'owners,tags',
+                limit: 100,
+                after: afterCursor,
+              });
+              collected.push(...glossariesResponse.data);
+              afterCursor = glossariesResponse.paging?.after;
+            } while (afterCursor);
+
+            return collected;
+          })(),
           fetchAllMetrics().catch(() => []),
         ]);
-        const fetchedGlossaries = glossariesResponse.data;
-        setGlossaries(fetchedGlossaries);
+        setGlossaries(allGlossaries);
 
         let data: OntologyGraphData | null = null;
 
         if (rdfEnabled) {
-          data = await fetchGraphDataFromRdf(
-            glossaryIdParam,
-            fetchedGlossaries
-          );
+          data = await fetchGraphDataFromRdf(glossaryIdParam, allGlossaries);
         }
 
         if (!data || data.nodes.length === 0) {
           setDataSource('database');
           data = await fetchGraphDataFromDatabase(
             glossaryIdParam,
-            fetchedGlossaries
+            allGlossaries
           );
         }
 
@@ -1181,6 +1224,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         };
         if (graphData) {
           dataModeInitialLoadUsesSpinnerRef.current = true;
+          setLoading(true);
         }
         setExplorationMode(mode);
         setFilters(nextFilters);
