@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Graph } from '@antv/g6';
 import {
   GlossaryTermRelationType,
   RelationCategory,
@@ -392,6 +393,8 @@ export const FIT_VIEW_ZOOM_OUT = 0.95;
 export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.85;
 export const ONTOLOGY_FIT_VIEW_PADDING = 40;
 export const ONTOLOGY_LARGE_GRAPH_NODE_COUNT = 1500;
+export const PRACTICAL_MIN_ZOOM = 0.15;
+export const PRACTICAL_MAX_ZOOM_INITIAL = 1.0;
 
 export function getOntologyFitViewZoomRatio(
   nodeCount: number,
@@ -403,9 +406,30 @@ export function getOntologyFitViewZoomRatio(
 
   return isDataMode ? FIT_VIEW_ZOOM_OUT_DATA_MODE : FIT_VIEW_ZOOM_OUT;
 }
+export async function fitViewWithMinZoom(
+  graph: Graph,
+  termNodeCount: number,
+  isDataMode: boolean,
+  duration = 0
+): Promise<void> {
+  await graph.fitView({ when: 'always', direction: 'both' }, { duration });
+  const zoomRatio = getOntologyFitViewZoomRatio(termNodeCount, isDataMode);
+  if (zoomRatio !== 1) {
+    await graph.zoomBy(zoomRatio, { duration: 0 });
+  }
+  const zoom = graph.getZoom();
+  if (zoom > PRACTICAL_MAX_ZOOM_INITIAL) {
+    graph.zoomTo(
+      PRACTICAL_MAX_ZOOM_INITIAL,
+      { duration: 0 },
+      graph.getCanvasCenter()
+    );
+  }
+}
 
 export const DATA_MODE_ASSET_LOAD_PAGE_SIZE = 1000;
 export const DATA_MODE_ASSET_CIRCLE_SIZE = 20;
+
 export const DATA_MODE_ASSET_LABEL_FONT_SIZE = 12;
 export const DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH = 0;
 export const DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX = 300;
