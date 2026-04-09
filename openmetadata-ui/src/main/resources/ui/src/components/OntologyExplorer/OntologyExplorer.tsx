@@ -71,6 +71,7 @@ import OntologyControlButtons from './OntologyControlButtons';
 import {
   DATA_MODE_ASSET_LOAD_PAGE_SIZE,
   GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY,
+  LayoutEngine,
   LayoutType,
   RELATION_COLORS,
   toLayoutEngineType,
@@ -236,10 +237,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     node: OntologyNode;
     position: { x: number; y: number };
   } | null>(null);
-  const [savedPositions, setSavedPositions] = useState<Record<
-    string,
-    { x: number; y: number }
-  > | null>(null);
   const [termAssetCounts, setTermAssetCounts] = useState<
     Record<string, number>
   >({});
@@ -491,6 +488,18 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return filteredGraphData;
   }, [isHierarchyView, hierarchyGraphData, filteredGraphData]);
 
+  const hierarchyBakedPositions = useMemo(() => {
+    if (!isHierarchyView || !hierarchyGraphData) {
+      return undefined;
+    }
+    const engine = toLayoutEngineType(settings.layout);
+    if (engine !== LayoutEngine.Circular && engine !== LayoutEngine.Radial) {
+      return undefined;
+    }
+
+    return computeGlossaryGroupPositions(hierarchyGraphData.nodes, engine);
+  }, [hierarchyGraphData, isHierarchyView, settings.layout]);
+
   const graphSearchHighlight = useMemo(() => {
     if (!graphDataToShow) {
       return null;
@@ -504,22 +513,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       relationTypes
     );
   }, [graphDataToShow, filters.searchQuery, glossaries, relationTypes]);
-
-  const hierarchyBakedPositions = useMemo(() => {
-    if (
-      !isHierarchyView ||
-      !hierarchyGraphData ||
-      (settings.layout !== LayoutType.Circular &&
-        settings.layout !== LayoutType.Radial)
-    ) {
-      return undefined;
-    }
-
-    return computeGlossaryGroupPositions(
-      hierarchyGraphData.nodes,
-      toLayoutEngineType(settings.layout)
-    );
-  }, [isHierarchyView, hierarchyGraphData, settings.layout]);
 
   const mergeMetricsIntoGraph = useCallback(
     (graph: OntologyGraphData | null, metricList: Metric[]) => {
@@ -1057,7 +1050,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         const mergedData = mergeMetricsIntoGraph(data, metricsResponse);
         setAssetGraphData(null);
         setTermAssetCounts({});
-        setSavedPositions(null);
         setGraphData(mergedData);
       } catch (error) {
         showErrorToast(
@@ -1259,13 +1251,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, [scope, glossaryId, fetchAllGlossaryData]);
 
   const handleSettingsChange = useCallback((nextSettings: GraphSettings) => {
-    setSettings((prev) => {
-      if (prev.layout !== nextSettings.layout) {
-        setSavedPositions(null);
-      }
-
-      return nextSettings;
-    });
+    setSettings(nextSettings);
   }, []);
 
   const handleFiltersChange = useCallback((newFilters: GraphFilters) => {
@@ -1402,6 +1388,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     <div
       className={classNames(
         'tw:flex tw:flex-col tw:overflow-hidden',
+        { 'ontology-slideout-open': Boolean(selectedNode) },
         className
       )}
       data-testid="ontology-explorer"
@@ -1593,11 +1580,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                           }))
                         : undefined
                     }
-                    nodePositions={
-                      isHierarchyView
-                        ? hierarchyBakedPositions ?? undefined
-                        : savedPositions ?? undefined
-                    }
+                    nodePositions={hierarchyBakedPositions}
                     nodes={graphDataToShow.nodes}
                     ref={graphRef}
                     selectedNodeId={

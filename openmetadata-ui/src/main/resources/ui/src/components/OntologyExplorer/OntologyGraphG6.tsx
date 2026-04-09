@@ -14,14 +14,14 @@ import {
   forwardRef,
   useCallback,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useGraphDataBuilder } from './hooks/useGraphData';
 import { useOntologyGraph } from './hooks/useOntologyGraph';
 import {
-  FIT_VIEW_ZOOM_OUT,
-  FIT_VIEW_ZOOM_OUT_DATA_MODE,
+  getOntologyFitViewZoomRatio,
   toLayoutEngineType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
@@ -36,7 +36,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       nodes: inputNodes,
       edges: inputEdges,
       settings,
-      nodePositions,
       selectedNodeId,
       expandedTermIds,
       glossaryColorMap,
@@ -49,6 +48,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      nodePositions,
     },
     ref
   ) => {
@@ -61,6 +61,16 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     }, [settings.layout]);
 
     const layoutType = getLayoutType();
+
+    const termCountForFit = useMemo(() => {
+      if (explorationMode === 'data') {
+        return inputNodes.filter(
+          (n) => n.type !== 'dataAsset' && n.type !== 'metric'
+        ).length;
+      }
+
+      return inputNodes.length;
+    }, [explorationMode, inputNodes]);
 
     const {
       graphData,
@@ -76,11 +86,11 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       selectedNodeId: selectedNodeId ?? null,
       expandedTermIds,
       clickedEdgeId,
-      nodePositions,
       glossaryColorMap,
-      layoutType,
       hierarchyCombos: hierarchyCombos ?? [],
       graphSearchHighlight,
+      layoutType,
+      nodePositions,
     });
 
     const { graphRef, extractNodePositions } = useOntologyGraph({
@@ -115,12 +125,18 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
             return;
           }
           const duration = 300;
-          const zoomAfterFit =
-            explorationMode === 'data'
-              ? FIT_VIEW_ZOOM_OUT_DATA_MODE
-              : FIT_VIEW_ZOOM_OUT;
-          await graph.fitView(undefined, { duration });
-          await graph.zoomBy(zoomAfterFit, { duration });
+          const isDataMode = explorationMode === 'data';
+          await graph.fitView(
+            { when: 'always', direction: 'both' },
+            { duration }
+          );
+          const zoomAfterFit = getOntologyFitViewZoomRatio(
+            termCountForFit,
+            isDataMode
+          );
+          if (zoomAfterFit !== 1) {
+            await graph.zoomBy(zoomAfterFit, { duration });
+          }
         },
         zoomIn: () => {
           graphRef.current?.zoomBy(1.2);
@@ -175,7 +191,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           URL.revokeObjectURL(url);
         },
       }),
-      [extractNodePositions, graphRef]
+      [explorationMode, extractNodePositions, graphRef, termCountForFit]
     );
 
     return (
