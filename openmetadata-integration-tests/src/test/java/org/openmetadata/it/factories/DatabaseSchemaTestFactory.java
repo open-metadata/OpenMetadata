@@ -50,6 +50,13 @@ public class DatabaseSchemaTestFactory {
   }
 
   /**
+   * Create a schema with a namespaced base name using fluent API.
+   */
+  public static DatabaseSchema createWithName(TestNamespace ns, String databaseFqn, String baseName) {
+    return DatabaseSchemas.create().name(ns.prefix(baseName)).in(databaseFqn).execute();
+  }
+
+  /**
    * Create a schema with a custom name using fluent API.
    * Useful for tests that need short names to avoid FQN length limits.
    */

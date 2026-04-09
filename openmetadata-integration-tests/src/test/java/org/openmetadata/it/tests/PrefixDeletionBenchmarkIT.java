@@ -94,9 +94,9 @@ class PrefixDeletionBenchmarkIT {
     LOG.info("[{}] Creating hierarchy under service: {}", tag, service.getName());
 
     for (int d = 0; d < DATABASES_PER_SERVICE; d++) {
-      Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+      Database database = DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), tag + "db" + d);
       for (int s = 0; s < SCHEMAS_PER_DATABASE; s++) {
-        DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+        DatabaseSchema schema = DatabaseSchemaTestFactory.createWithName(ns, database.getFullyQualifiedName(), tag + "sc" + d + s);
         for (int t = 0; t < TABLES_PER_SCHEMA; t++) {
           TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), tag + "t" + d + s + t);
         }

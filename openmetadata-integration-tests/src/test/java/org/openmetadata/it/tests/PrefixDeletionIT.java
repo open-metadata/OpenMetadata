@@ -70,8 +70,8 @@ public class PrefixDeletionIT {
   @Test
   void prefixDelete_service_removesServiceAndAllDescendants(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
-    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+    Database database = DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), "db");
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createWithName(ns, database.getFullyQualifiedName(), "sc");
 
     List<UUID> tableIds = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
@@ -98,10 +98,10 @@ public class PrefixDeletionIT {
     List<UUID> tableIds = new ArrayList<>();
 
     for (int d = 0; d < 2; d++) {
-      Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+      Database database = DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), "db" + d);
       dbIds.add(database.getId());
       for (int s = 0; s < 2; s++) {
-        DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+        DatabaseSchema schema = DatabaseSchemaTestFactory.createWithName(ns, database.getFullyQualifiedName(), "sc" + d + s);
         schemaIds.add(schema.getId());
         for (int t = 0; t < 3; t++) {
           Table table = TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), "t" + d + s + t);
@@ -130,13 +130,13 @@ public class PrefixDeletionIT {
   void prefixDelete_database_removesDatabaseAndDescendantsLeavingSiblingDatabaseIntact(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
-    Database targetDb = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
-    DatabaseSchema targetSchema = DatabaseSchemaTestFactory.create(ns, targetDb.getFullyQualifiedName());
-    Table targetTable = TableTestFactory.createWithName(ns, targetSchema.getFullyQualifiedName(), "tgt");
+    Database targetDb = DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), "tgtdb");
+    DatabaseSchema targetSchema = DatabaseSchemaTestFactory.createWithName(ns, targetDb.getFullyQualifiedName(), "tgtsc");
+    Table targetTable = TableTestFactory.createWithName(ns, targetSchema.getFullyQualifiedName(), "tgttbl");
 
-    Database siblingDb = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
-    DatabaseSchema siblingSchema = DatabaseSchemaTestFactory.create(ns, siblingDb.getFullyQualifiedName());
-    Table siblingTable = TableTestFactory.createWithName(ns, siblingSchema.getFullyQualifiedName(), "sib");
+    Database siblingDb = DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), "sibdb");
+    DatabaseSchema siblingSchema = DatabaseSchemaTestFactory.createWithName(ns, siblingDb.getFullyQualifiedName(), "sibsc");
+    Table siblingTable = TableTestFactory.createWithName(ns, siblingSchema.getFullyQualifiedName(), "sibtbl");
 
     prefixDelete("/v1/databases/prefix/", targetDb.getId());
 
@@ -155,17 +155,17 @@ public class PrefixDeletionIT {
   @Test
   void prefixDelete_schema_removesSchemaAndTablesLeavingSiblingSchemaIntact(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    Database database = DatabaseTestFactory.createWithName(ns, service.getFullyQualifiedName(), "db");
 
-    DatabaseSchema targetSchema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+    DatabaseSchema targetSchema = DatabaseSchemaTestFactory.createWithName(ns, database.getFullyQualifiedName(), "tgtsc");
     List<UUID> targetTableIds = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       Table table = TableTestFactory.createWithName(ns, targetSchema.getFullyQualifiedName(), "tgt" + i);
       targetTableIds.add(table.getId());
     }
 
-    DatabaseSchema siblingSchema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
-    Table siblingTable = TableTestFactory.createWithName(ns, siblingSchema.getFullyQualifiedName(), "sib");
+    DatabaseSchema siblingSchema = DatabaseSchemaTestFactory.createWithName(ns, database.getFullyQualifiedName(), "sibsc");
+    Table siblingTable = TableTestFactory.createWithName(ns, siblingSchema.getFullyQualifiedName(), "sibtbl");
 
     prefixDelete("/v1/databaseSchemas/prefix/", targetSchema.getId());
 

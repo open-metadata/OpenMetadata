@@ -29,4 +29,15 @@ public class DatabaseTestFactory {
   public static Database createWithName(String serviceFqn, String name) {
     return Databases.create().name(name).in(serviceFqn).execute();
   }
+
+  /**
+   * Create database with a namespaced base name using fluent API.
+   */
+  public static Database createWithName(TestNamespace ns, String serviceFqn, String baseName) {
+    return Databases.create()
+        .name(ns.prefix(baseName))
+        .in(serviceFqn)
+        .withDescription("Test database created by integration test")
+        .execute();
+  }
 }
