@@ -269,6 +269,7 @@ const DescriptionV1 = ({
             <div className="description-v1-metadata">
               <DescriptionSourceBadge
                 changeSummaryEntry={changeSummary?.['description']}
+                showBadge={false}
               />
             </div>
           )}

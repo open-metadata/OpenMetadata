@@ -12,6 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
+import { DOMAIN_TAGS } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
@@ -22,49 +23,38 @@ const table = new TableClass();
 
 test.describe(
   'ChangeSummary DescriptionSourceBadge',
-  { tag: ['@Features', '@Discovery'] },
+  { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
     test.beforeAll('Setup test entities', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);
 
-      const entityPatchResponse = await apiContext.patch(
-        `/api/v1/tables/name/${table.entityResponseData?.fullyQualifiedName}?changeSource=Suggested`,
-        {
-          data: [
-            {
-              op: 'add',
-              path: '/description',
-              value: 'AI-generated entity description for badge test',
-            },
-          ],
-          headers: {
-            'Content-Type': 'application/json-patch+json',
+      await table.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/description',
+            value: 'AI-generated entity description for badge test',
           },
-        }
-      );
-
-      expect(entityPatchResponse.status()).toBe(200);
+        ],
+        queryParams: { changeSource: 'Suggested' },
+      });
 
       const columnName = table.entityResponseData?.columns?.[0]?.name;
-      const columnPatchResponse = await apiContext.patch(
-        `/api/v1/tables/name/${table.entityResponseData?.fullyQualifiedName}?changeSource=Suggested`,
-        {
-          data: [
-            {
-              op: 'add',
-              path: `/columns/0/description`,
-              value: 'AI-generated column description for badge test',
-            },
-          ],
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      );
 
-      expect(columnPatchResponse.status()).toBe(200);
+      await table.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: `/columns/0/description`,
+            value: 'AI-generated column description for badge test',
+          },
+        ],
+        queryParams: { changeSource: 'Suggested' },
+      });
 
       const changeSummaryResponse = await apiContext.get(
         `/api/v1/changeSummary/table/${table.entityResponseData?.id}`
@@ -86,17 +76,9 @@ test.describe(
       await afterAction();
     });
 
-    test.afterAll('Cleanup test entities', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await table.delete(apiContext);
-      await afterAction();
-    });
-
     test('AI badge should appear on entity description with Suggested source', async ({
       page,
     }) => {
-      test.slow();
-
       await redirectToHomePage(page);
 
       await test.step('Navigate to entity page and verify AI badge', async () => {
@@ -138,8 +120,6 @@ test.describe(
     test('AI badge should appear on column description with Suggested source', async ({
       page,
     }) => {
-      test.slow();
-
       await redirectToHomePage(page);
 
       await test.step('Navigate to entity page and verify column badge', async () => {
@@ -159,12 +139,132 @@ test.describe(
       });
     });
 
+    test('Automated badge should appear on entity description with Automated source', async ({
+      browser,
+      page,
+    }) => {
+      const automatedTable = new TableClass();
+
+      await test.step('Create table with Automated description', async () => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        await automatedTable.create(apiContext);
+
+        await automatedTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/description',
+              value: 'Automated description for badge test',
+            },
+          ],
+          queryParams: { changeSource: 'Automated' },
+        });
+
+        await automatedTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/columns/0/description',
+              value: 'AI-generated column description for automated badge test',
+            },
+          ],
+          queryParams: { changeSource: 'Automated' },
+        });
+
+        await afterAction();
+      });
+
+      await test.step('Navigate and verify Automated badge on entity description', async () => {
+        await redirectToHomePage(page);
+
+        const changeSummaryResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/changeSummary/')
+        );
+
+        await automatedTable.visitEntityPage(page);
+        await changeSummaryResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        const descriptionContainer = page.getByTestId(
+          'asset-description-container'
+        );
+
+        await expect(descriptionContainer).toBeVisible();
+
+        const badge = descriptionContainer
+          .getByTestId('automated-badge')
+          .first();
+
+        await expect(badge).toBeVisible();
+      });
+
+      await test.step('Verify AI badge on column description with Suggested source', async () => {
+        const columnBadge = page
+          .getByTestId('description')
+          .getByTestId('automated-badge');
+
+        await expect(columnBadge.first()).toBeVisible();
+      });
+    });
+
+    test('Propagated badge should appear on entity description with Propagated source', async ({
+      browser,
+      page,
+    }) => {
+      const propagatedTable = new TableClass();
+
+      await test.step('Create table with Propagated description', async () => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        await propagatedTable.create(apiContext);
+
+        await propagatedTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/description',
+              value: 'Propagated description for badge test',
+            },
+          ],
+          queryParams: { changeSource: 'Propagated' },
+        });
+
+        await afterAction();
+      });
+
+      await test.step('Navigate and verify Propagated badge', async () => {
+        await redirectToHomePage(page);
+
+        const changeSummaryResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/changeSummary/')
+        );
+
+        await propagatedTable.visitEntityPage(page);
+        await changeSummaryResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        const descriptionContainer = page.getByTestId(
+          'asset-description-container'
+        );
+
+        await expect(descriptionContainer).toBeVisible();
+
+        const badge = descriptionContainer
+          .getByTestId('propagated-badge')
+          .first();
+
+        await expect(badge).toBeVisible();
+      });
+    });
+
     test('AI badge should NOT appear for manually-edited descriptions', async ({
       browser,
       page,
     }) => {
-      test.slow();
-
       const manualTable = new TableClass();
 
       await test.step('Create table with manual description', async () => {
@@ -172,23 +272,16 @@ test.describe(
 
         await manualTable.create(apiContext);
 
-        const patchResponse = await apiContext.patch(
-          `/api/v1/tables/name/${manualTable.entityResponseData?.fullyQualifiedName}`,
-          {
-            data: [
-              {
-                op: 'add',
-                path: '/description',
-                value: 'Manually written description',
-              },
-            ],
-            headers: {
-              'Content-Type': 'application/json-patch+json',
+        await manualTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/description',
+              value: 'Manually written description',
             },
-          }
-        );
-
-        expect(patchResponse.status()).toBe(200);
+          ],
+        });
         await afterAction();
       });
 
@@ -212,12 +305,6 @@ test.describe(
         const badge = descriptionContainer.getByTestId('ai-suggested-badge');
 
         await expect(badge).not.toBeVisible();
-      });
-
-      await test.step('Cleanup manual table', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        await manualTable.delete(apiContext);
-        await afterAction();
       });
     });
   }
