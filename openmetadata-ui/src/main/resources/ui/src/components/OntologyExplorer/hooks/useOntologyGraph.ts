@@ -15,6 +15,7 @@ import {
   ComboData,
   Graph,
   GraphData,
+  GraphEvent,
   IElementEvent,
   NodeData,
   NodeEvent,
@@ -24,6 +25,8 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   BRAND_BLUE_FALLBACK,
   COMBO_COLOR_FALLBACK,
+  COMBO_INTERIOR_PADDING_SIDES,
+  COMBO_INTERIOR_PADDING_TOP,
   DATA_MODE_LOAD_MORE_BADGE_BG,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
@@ -37,7 +40,7 @@ import {
   EDGE_LINE_WIDTH_DEFAULT,
   EDGE_LINE_WIDTH_HIGHLIGHTED,
   EDGE_STROKE_COLOR,
-  getOntologyFitViewZoomRatio,
+  fitViewWithMinZoom,
   HIERARCHY_BADGE_OFFSET_Y,
   HIERARCHY_BADGE_TEXT_INSET,
   LayoutEngine,
@@ -54,11 +57,12 @@ import {
   NODE_SELECTED_LINE_WIDTH,
   NODE_SELECTED_STROKE,
   ONTOLOGY_FIT_VIEW_PADDING,
+  PRACTICAL_MIN_ZOOM,
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
 import { getEntityIconUrl } from '../utils/entityIconUrls';
-import { getLayoutConfig } from '../utils/graphConfig';
+import { getLayoutConfig, NODE_HEIGHT, NODE_WIDTH } from '../utils/graphConfig';
 import {
   buildComboStyle,
   buildDataModeAssetNodeStyle,
@@ -68,6 +72,28 @@ import {
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
 import { computeAssetRingPositions } from '../utils/layoutCalculations';
+
+/**
+ * Starts a G6 layout and waits for it to actually finish.
+ *
+ * graph.layout() returns a Promise, but when enableWorker:true the promise
+ * resolves when the worker *starts*, not when positions are ready. Listening
+ * to the 'afterlayout' event is the only reliable way to know the worker has
+ * written positions back to all nodes.
+ */
+const LAYOUT_TIMEOUT_MS = 15_000;
+
+function runLayout(graph: Graph): Promise<void> {
+  const layoutDone = new Promise<void>((resolve, reject) => {
+    graph.once(GraphEvent.AFTER_LAYOUT, () => resolve());
+    graph.layout().catch(reject);
+  });
+  const timeout = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error('layout timeout')), LAYOUT_TIMEOUT_MS)
+  );
+
+  return Promise.race([layoutDone, timeout]);
+}
 
 const toIdSet = <T extends { id?: string }>(elements: readonly T[]) =>
   new Set(
@@ -303,6 +329,97 @@ export function useOntologyGraph({
       } catch {
         // Term not yet in graph.
       }
+    });
+
+    if (updates.length > 0) {
+      graph.updateNodeData(updates);
+    }
+  }, []);
+
+  /**
+   * Positions every node in model-view into a deterministic grid that
+   * guarantees no overlapping — regardless of how many combos exist.
+   *
+   * Each combo's nodes are arranged in a small square grid inside their
+   * glossary box. The combo boxes are then arranged in a larger square grid
+   * across the canvas. No layout algorithm is needed, so there is no risk of
+   * antv-dagre placing combos on top of each other.
+   */
+  const positionModelModeNodes = useCallback((graph: Graph) => {
+    const combos = graph.getComboData();
+    if (combos.length === 0) {
+      return;
+    }
+
+    const NODE_H_SEP = 80;
+    const NODE_V_SEP = 60;
+    const COMBO_GAP = 500;
+    const GRID_COLS = Math.ceil(Math.sqrt(combos.length));
+
+    const nodesByCombo = new Map<string, NodeData[]>();
+    graph.getNodeData().forEach((node) => {
+      const comboId =
+        typeof node.combo === 'string' ? node.combo : String(node.combo ?? '');
+      if (!comboId) {
+        return;
+      }
+      if (!nodesByCombo.has(comboId)) {
+        nodesByCombo.set(comboId, []);
+      }
+      nodesByCombo.get(comboId)!.push(node);
+    });
+
+    const updates: NodeData[] = [];
+    let curX = 0;
+    let curY = 0;
+    let rowMaxH = 0;
+
+    combos.forEach((combo, idx) => {
+      const col = idx % GRID_COLS;
+      if (col === 0 && idx > 0) {
+        curX = 0;
+        curY += rowMaxH + COMBO_GAP;
+        rowMaxH = 0;
+      }
+
+      const nodes = nodesByCombo.get(String(combo.id)) ?? [];
+      const k = Math.max(1, nodes.length);
+      const innerCols = Math.ceil(Math.sqrt(k));
+
+      nodes.forEach((node, i) => {
+        const nc = i % innerCols;
+        const nr = Math.floor(i / innerCols);
+        updates.push({
+          id: node.id,
+          style: {
+            ...(node.style ?? {}),
+            x:
+              curX +
+              COMBO_INTERIOR_PADDING_SIDES +
+              nc * (NODE_WIDTH + NODE_H_SEP) +
+              NODE_WIDTH / 2,
+            y:
+              curY +
+              COMBO_INTERIOR_PADDING_TOP +
+              nr * (NODE_HEIGHT + NODE_V_SEP) +
+              NODE_HEIGHT / 2,
+          },
+        });
+      });
+
+      const innerRows = Math.ceil(k / innerCols);
+      const comboW =
+        innerCols * NODE_WIDTH +
+        (innerCols - 1) * NODE_H_SEP +
+        COMBO_INTERIOR_PADDING_SIDES * 2;
+      const comboH =
+        innerRows * NODE_HEIGHT +
+        (innerRows - 1) * NODE_V_SEP +
+        COMBO_INTERIOR_PADDING_TOP +
+        COMBO_INTERIOR_PADDING_SIDES;
+
+      curX += comboW + COMBO_GAP;
+      rowMaxH = Math.max(rowMaxH, comboH);
     });
 
     if (updates.length > 0) {
@@ -743,24 +860,50 @@ export function useOntologyGraph({
     };
     graph.on('edge:click', handleEdgeClick);
 
-    const runRender = async () => {
-      if (hasBakedPositions) {
-        await graph.draw();
-        if (isDataMode) {
-          positionAssetNodes(graph);
-          graph.draw();
-        }
-      } else {
-        await graph.render();
+    const fitAndClampZoom = async () => {
+      await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
+      const zoom = graph.getZoom();
+      if (zoom < PRACTICAL_MIN_ZOOM) {
+        graph.zoomTo(
+          PRACTICAL_MIN_ZOOM,
+          { duration: 0 },
+          graph.getCanvasCenter()
+        );
       }
-      const duration = 0;
-      await graph.fitView({ when: 'always', direction: 'both' }, { duration });
-      const zoomAfterFit = getOntologyFitViewZoomRatio(
-        termNodeCount,
-        isDataMode
-      );
-      if (zoomAfterFit !== 1) {
-        await graph.zoomBy(zoomAfterFit, { duration });
+    };
+
+    let renderCancelled = false;
+    const runRender = async () => {
+      try {
+        if (hasBakedPositions) {
+          await graph.draw();
+          if (isDataMode) {
+            positionAssetNodes(graph);
+            graph.draw();
+          }
+        } else if (isModelView && hasCombos) {
+          positionModelModeNodes(graph);
+          await graph.draw();
+        } else {
+          await runLayout(graph);
+          if (renderCancelled) {
+            return;
+          }
+          await graph.draw();
+        }
+        if (renderCancelled) {
+          return;
+        }
+        await fitAndClampZoom();
+      } catch {
+        // Layout or draw failed — attempt a bare draw so at least something
+        // renders, then still try to fit the view.
+        try {
+          await graph.draw();
+          await fitAndClampZoom();
+        } catch {
+          // Graph may have been destroyed; ignore.
+        }
       }
     };
 
@@ -777,6 +920,7 @@ export function useOntologyGraph({
     resizeObserver.observe(container);
 
     return () => {
+      renderCancelled = true;
       if (cancelPendingUpdateRef.current) {
         cancelPendingUpdateRef.current();
         cancelPendingUpdateRef.current = null;
@@ -901,9 +1045,11 @@ export function useOntologyGraph({
         setClickedEdgeIdRef.current(null);
         graph.setData(graphData);
 
-        if (!hasBakedPositions) {
+        if (isModelViewLocal && hasCombos) {
+          positionModelModeNodes(graph);
+        } else if (!hasBakedPositions) {
           graph.setLayout(layoutOptions);
-          await graph.layout();
+          await runLayout(graph);
         }
         if (cancelled) {
           return;
@@ -918,29 +1064,8 @@ export function useOntologyGraph({
           return;
         }
 
-        const fitOpts = { when: 'always' as const, direction: 'both' as const };
-        const zoomRatio = getOntologyFitViewZoomRatio(
-          termNodeCount,
-          isDataMode
-        );
-
-        if (isDataMode) {
-          if (termFingerprintChanged || assetFingerprintChanged) {
-            await graph.fitView(fitOpts, { duration: 0 });
-            if (zoomRatio !== 1) {
-              await graph.zoomBy(zoomRatio, { duration: 0 });
-            }
-          }
-        } else if (inputNodes.length === 1) {
-          await graph.fitCenter({ duration: 0 });
-          if (zoomRatio !== 1) {
-            await graph.zoomBy(zoomRatio, { duration: 0 });
-          }
-        } else {
-          await graph.fitView(fitOpts, { duration: 0 });
-          if (zoomRatio !== 1) {
-            await graph.zoomBy(zoomRatio, { duration: 0 });
-          }
+        if (termFingerprintChanged) {
+          await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
         }
       } finally {
         if (!cancelled) {
@@ -965,6 +1090,7 @@ export function useOntologyGraph({
     expandedTermIds,
     hasBakedPositions,
     positionAssetNodes,
+    positionModelModeNodes,
   ]);
 
   return { graphRef, extractNodePositions };
