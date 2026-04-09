@@ -538,16 +538,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .locator('[data-testid="selectable-list"]')
             .waitFor({ state: 'visible' });
 
-          const searchTagCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag*'
-          );
-          await page
-            .locator('[data-testid="tag-select-search-bar"]')
-            .fill('PersonalData.SpecialCategory');
-          await searchTagCleanup;
-          await waitForAllLoadersToDisappear(page);
-
-          await page.getByTitle('SpecialCategory', { exact: true }).click();
+          await page.getByTestId('clear-all-button').click();
           const removeResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
