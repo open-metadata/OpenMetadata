@@ -132,9 +132,7 @@ class TokenService {
           return null;
         }
 
-        throw new Error(
-          `Failed to refresh token: ${(error as Error).message}`
-        );
+        throw new Error(`Failed to refresh token: ${(error as Error).message}`);
       } finally {
         this.clearRefreshInProgress();
       }
