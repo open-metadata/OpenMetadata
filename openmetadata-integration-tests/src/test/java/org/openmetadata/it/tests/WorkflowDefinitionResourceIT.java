@@ -31,6 +31,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.awaitility.core.ConditionTimeoutException;
+import org.flowable.engine.ManagementService;
+import org.flowable.engine.RepositoryService;
+import org.flowable.engine.repository.ProcessDefinition;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -122,6 +126,8 @@ import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1898,6 +1904,8 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);
 
+      waitForWorkflowIdle(wd.getFullyQualifiedName());
+
       // Force delete with hardDelete=true and recursive=true to clean up properly
       executeWithDeadlockRetryVoid(
           () -> {
@@ -1947,6 +1955,48 @@ public class WorkflowDefinitionResourceIT {
             }
           },
           "fallback-delete-workflow-" + workflowName);
+    }
+  }
+
+  /**
+   * Waits until any async-after jobs left by PeriodicBatchEntityTrigger's fetch task have been
+   * picked up and executed. These jobs are ephemeral (complete in &lt;100ms) but if the deployment
+   * is deleted while one is in flight the Flowable job executor NPEs when it tries to resolve the
+   * process definition. Returns immediately for event-based workflows that have no
+   * "&lt;name&gt;Trigger%" process definitions deployed, or for periodic-batch workflows whose
+   * trigger PDs currently have no pending jobs.
+   */
+  private void waitForWorkflowIdle(String workflowFqn) {
+    RepositoryService repositoryService = WorkflowHandler.getInstance().getRepositoryService();
+    String triggerWorkflowId = TriggerFactory.getTriggerWorkflowId(workflowFqn);
+    List<ProcessDefinition> triggerPDs =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKeyLike(triggerWorkflowId + "%")
+            .list()
+            .stream()
+            .filter(pd -> pd.getKey() != null && pd.getKey().startsWith(triggerWorkflowId))
+            .toList();
+    if (triggerPDs.isEmpty()) {
+      return;
+    }
+    ManagementService managementService = WorkflowHandler.getInstance().getManagementService();
+    List<String> triggerPDIds = triggerPDs.stream().map(ProcessDefinition::getId).toList();
+    try {
+      await("async-after jobs for " + workflowFqn + " trigger PDs to drain")
+          .atMost(Duration.ofSeconds(10))
+          .pollInterval(Duration.ofMillis(100))
+          .pollDelay(Duration.ZERO)
+          .ignoreExceptions()
+          .until(
+              () ->
+                  triggerPDIds.stream()
+                      .allMatch(
+                          pdId ->
+                              managementService.createJobQuery().processDefinitionId(pdId).count()
+                                  == 0));
+    } catch (ConditionTimeoutException timeout) {
+      LOG.warn("waitForWorkflowIdle({}) timed out after 10s; proceeding with delete", workflowFqn);
     }
   }
 
@@ -2500,6 +2550,7 @@ public class WorkflowDefinitionResourceIT {
       // Cleanup - Use hardDelete to prevent duplicate key violations on retries
       if (workflowId != null) {
         try {
+          waitForWorkflowIdle(workflowName);
           Map<String, String> params = new HashMap<>();
           params.put("hardDelete", "true");
           client.workflowDefinitions().delete(workflowId, params);
@@ -2943,6 +2994,7 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName("MultiEntityPeriodicQuery", null);
+      waitForWorkflowIdle(wd.getFullyQualifiedName());
       executeWithDeadlockRetryVoid(
           () -> {
             try {

@@ -343,6 +343,17 @@ class MssqlUnitTest(TestCase):
 class TestUpdateMssqlIschemaNames:
     """Verify update_mssql_ischema_names mutates the dict in-place and returns None."""
 
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+    )
+    def setup_method(self, _method, test_connection):
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
+        self.mssql = MssqlSource.create(
+            mock_mssql_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
     EXPECTED_MSSQL_TYPES = [
         "nvarchar",
         "nchar",
