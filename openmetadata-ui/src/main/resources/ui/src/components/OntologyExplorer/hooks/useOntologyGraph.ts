@@ -25,6 +25,8 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   BRAND_BLUE_FALLBACK,
   COMBO_COLOR_FALLBACK,
+  COMBO_INTERIOR_PADDING_SIDES,
+  COMBO_INTERIOR_PADDING_TOP,
   DATA_MODE_LOAD_MORE_BADGE_BG,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
@@ -54,8 +56,6 @@ import {
   NODE_SELECTED_HALO_LINE_WIDTH,
   NODE_SELECTED_LINE_WIDTH,
   NODE_SELECTED_STROKE,
-  COMBO_INTERIOR_PADDING_SIDES,
-  COMBO_INTERIOR_PADDING_TOP,
   ONTOLOGY_FIT_VIEW_PADDING,
   PRACTICAL_MIN_ZOOM,
   type LayoutEngineType,
@@ -886,7 +886,11 @@ export function useOntologyGraph({
         await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
         const initialZoom = graph.getZoom();
         if (initialZoom < PRACTICAL_MIN_ZOOM) {
-          graph.zoomTo(PRACTICAL_MIN_ZOOM, { duration: 0 }, graph.getCanvasCenter());
+          graph.zoomTo(
+            PRACTICAL_MIN_ZOOM,
+            { duration: 0 },
+            graph.getCanvasCenter()
+          );
         }
       } catch {
         // Layout or draw failed — attempt a bare draw so at least something
@@ -896,7 +900,11 @@ export function useOntologyGraph({
           await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
           const initialZoom = graph.getZoom();
           if (initialZoom < PRACTICAL_MIN_ZOOM) {
-            graph.zoomTo(PRACTICAL_MIN_ZOOM, { duration: 0 }, graph.getCanvasCenter());
+            graph.zoomTo(
+              PRACTICAL_MIN_ZOOM,
+              { duration: 0 },
+              graph.getCanvasCenter()
+            );
           }
         } catch {
           // Graph may have been destroyed; ignore.
