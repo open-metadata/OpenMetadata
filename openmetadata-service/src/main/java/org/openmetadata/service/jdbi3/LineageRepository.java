@@ -230,15 +230,59 @@ public class LineageRepository {
     if (!shouldAddServiceLineage(fromEntity, toEntity)) {
       return;
     }
-    // Add Service Level Lineage
     EntityReference fromService = fromEntity.getService();
     EntityReference toService = toEntity.getService();
     if (!fromService.getId().equals(toService.getId())) {
       LineageDetails serviceLineageDetails =
           getOrCreateLineageDetails(
-              fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists);
+                  fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists)
+              .withPipeline(null);
       insertLineage(fromService, toService, serviceLineageDetails);
     }
+    addPipelineServiceEdges(fromService, toService, entityLineageDetails, childRelationExists);
+  }
+
+  private void addPipelineServiceEdges(
+      EntityReference fromService,
+      EntityReference toService,
+      LineageDetails entityLineageDetails,
+      boolean childRelationExists) {
+    EntityReference pipelineService = getPipelineService(entityLineageDetails);
+    if (pipelineService == null) {
+      return;
+    }
+    insertServiceEdgeIfDistinct(
+        fromService, pipelineService, entityLineageDetails, childRelationExists);
+    insertServiceEdgeIfDistinct(
+        pipelineService, toService, entityLineageDetails, childRelationExists);
+  }
+
+  private EntityReference getPipelineService(LineageDetails entityLineageDetails) {
+    if (nullOrEmpty(entityLineageDetails.getPipeline())) {
+      return null;
+    }
+    EntityReference pipelineRef = entityLineageDetails.getPipeline();
+    if (!Entity.entityHasField(pipelineRef.getType(), FIELD_SERVICE)) {
+      return null;
+    }
+    EntityInterface pipelineEntity =
+        Entity.getEntity(pipelineRef.getType(), pipelineRef.getId(), FIELD_SERVICE, Include.ALL);
+    return pipelineEntity.getService();
+  }
+
+  private void insertServiceEdgeIfDistinct(
+      EntityReference fromService,
+      EntityReference toService,
+      LineageDetails entityLineageDetails,
+      boolean childRelationExists) {
+    if (fromService.getId().equals(toService.getId())) {
+      return;
+    }
+    LineageDetails serviceDetails =
+        getOrCreateLineageDetails(
+                fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists)
+            .withPipeline(null);
+    insertLineage(fromService, toService, serviceDetails);
   }
 
   private void addDomainLineage(
@@ -259,7 +303,11 @@ public class LineageRepository {
         if (!fromDomain.getId().equals(toDomain.getId())) {
           LineageDetails domainLineageDetails =
               getOrCreateLineageDetails(
-                  fromDomain.getId(), toDomain.getId(), entityLineageDetails, childRelationExists);
+                      fromDomain.getId(),
+                      toDomain.getId(),
+                      entityLineageDetails,
+                      childRelationExists)
+                  .withPipeline(null);
           insertLineage(fromDomain, toDomain, domainLineageDetails);
         }
       }
@@ -281,11 +329,11 @@ public class LineageRepository {
         if (!fromEntityRef.getId().equals(toEntityRef.getId())) {
           LineageDetails dataProductsLineageDetails =
               getOrCreateLineageDetails(
-                  fromEntityRef.getId(),
-                  toEntityRef.getId(),
-                  entityLineageDetails,
-                  childRelationExists);
-
+                      fromEntityRef.getId(),
+                      toEntityRef.getId(),
+                      entityLineageDetails,
+                      childRelationExists)
+                  .withPipeline(null);
           insertLineage(fromEntityRef, toEntityRef, dataProductsLineageDetails);
         }
       }

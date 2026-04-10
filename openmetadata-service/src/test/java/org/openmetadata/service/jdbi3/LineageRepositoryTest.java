@@ -466,6 +466,35 @@ class LineageRepositoryTest {
   }
 
   @Test
+  void testBuildEntityLineageData_NullPipeline_ProducesNoPipelineInEsData() {
+    EntityReference from =
+        new EntityReference().withId(UUID.randomUUID()).withFullyQualifiedName("db_service");
+    EntityReference to =
+        new EntityReference().withId(UUID.randomUUID()).withFullyQualifiedName("kafka_service");
+    LineageDetails details = new LineageDetails().withPipeline(null);
+
+    var esData = LineageRepository.buildEntityLineageData(from, to, details);
+
+    assertNull(esData.getPipeline(), "Service-level lineage must not inherit pipeline annotation");
+  }
+
+  @Test
+  void testLineageDetails_WithPipelineNull_PipelineFieldIsNull() {
+    EntityReference pipelineRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("pipeline")
+            .withFullyQualifiedName("Flink.my_pipeline");
+    LineageDetails details = new LineageDetails().withPipeline(pipelineRef);
+
+    LineageDetails stripped = details.withPipeline(null);
+
+    assertNull(
+        stripped.getPipeline(),
+        "After withPipeline(null), service-level lineage must have no pipeline");
+  }
+
+  @Test
   void testDeleteLineageBySource_OpenLineage_UsesPipelinePath() {
     CollectionDAO dao = mock(CollectionDAO.class);
     CollectionDAO.EntityRelationshipDAO relationshipDAO =
