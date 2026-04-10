@@ -1714,6 +1714,12 @@ class DbtSource(DbtServiceSource):
                     )
                     return
 
+                if dbt_test_result.failures is None and not dbt_test_result.message:
+                    logger.info(
+                        f"Skipping compiled-only test result for node: {manifest_node.name}"
+                    )
+                    return
+
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
                 if dbt_test_result.status.value in [
