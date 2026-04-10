@@ -38,13 +38,18 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
+import org.openmetadata.service.util.branding.MessageBrandingResolver;
 
 @Slf4j
 public class GenericPublisher implements Destination<ChangeEvent> {
   private final Client client;
   private final Webhook webhook;
-  private static final String TEST_MESSAGE_JSON =
-      "{\"message\": \"This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.\"}";
+
+  private static String buildTestMessageJson() {
+    return "{\"message\": \"This is a test message from "
+        + MessageBrandingResolver.get().getProductName()
+        + " to confirm your webhook destination is configured correctly.\"}";
+  }
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -112,8 +117,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      Invocation.Builder target = getTarget(client, webhook, TEST_MESSAGE_JSON);
-      deliverTestWebhookMessage(this, target, TEST_MESSAGE_JSON, webhook.getHttpMethod());
+      String testJson = buildTestMessageJson();
+      Invocation.Builder target = getTarget(client, webhook, testJson);
+      deliverTestWebhookMessage(this, target, testJson, webhook.getHttpMethod());
     } catch (Exception ex) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
