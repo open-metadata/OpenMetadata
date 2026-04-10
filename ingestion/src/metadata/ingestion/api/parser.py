@@ -518,8 +518,8 @@ def _preprocess_auto_classification_config(config_dict: dict) -> None:
 
             config_dict["source"]["sourceConfig"]["config"] = validated_config
 
-    except (KeyError, AttributeError):
-        pass
+    except (KeyError, AttributeError) as exc:
+        logger.debug(f"Could not preprocess auto-classification config: {exc}")
 
 
 def parse_workflow_config_gracefully(
