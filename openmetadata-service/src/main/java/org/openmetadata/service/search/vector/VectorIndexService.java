@@ -24,11 +24,6 @@ public interface VectorIndexService {
 
   String executeGenericRequest(String method, String endpoint, String body);
 
-  default boolean copyExistingVectorDocuments(
-      String sourceIndex, String targetIndex, String parentId, String fingerprint) {
-    return false;
-  }
-
   default String getIndexAlias() {
     try {
       String clusterAlias = Entity.getSearchRepository().getClusterAlias();
