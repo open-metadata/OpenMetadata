@@ -869,9 +869,7 @@ export const verifyColumnLineageInCSV = async (
 export const verifyLineageConfig = async (page: Page) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.locator('.ant-modal-content').first().waitFor({
-    state: 'visible',
-  });
+  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
 
   await page.getByTestId('field-upstream').fill('-1');
   await page.getByTestId('field-downstream').fill('-1');
@@ -941,9 +939,7 @@ export const updateLineageConfigFromModal = async (
 ) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.locator('.ant-modal-content').first().waitFor({
-    state: 'visible',
-  });
+  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
 
   await page
     .getByTestId('field-upstream')
@@ -954,6 +950,33 @@ export const updateLineageConfigFromModal = async (
 
   await page.getByText('OK').click();
   await page.getByRole('dialog').waitFor({ state: 'hidden' });
+};
+
+export const setLineageDepthAndVerify = async (
+  page: Page,
+  upstreamDepth: number,
+  downstreamDepth: number
+) => {
+  await page.getByTestId('lineage-config').click();
+
+  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
+
+  await page.getByTestId('field-upstream').fill(upstreamDepth.toString());
+  await page.getByTestId('field-downstream').fill(downstreamDepth.toString());
+
+  const lineageRes = page.waitForResponse((response) => {
+    const url = response.url();
+
+    return (
+      url.includes('/api/v1/lineage/getLineage') &&
+      url.includes(`upstreamDepth=${upstreamDepth}`) &&
+      url.includes(`downstreamDepth=${downstreamDepth}`)
+    );
+  });
+
+  await page.getByText('OK').click();
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  await lineageRes;
 };
 
 export const verifyPlatformLineageForEntity = async (

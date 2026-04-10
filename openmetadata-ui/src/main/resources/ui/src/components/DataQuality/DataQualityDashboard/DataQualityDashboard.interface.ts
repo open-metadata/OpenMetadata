@@ -15,6 +15,7 @@ export type DqDashboardChartFilters = {
   glossaryTerms?: string[];
   tags?: string[];
   tier?: string[];
+  dataProductFqns?: string[];
   startTs?: number;
   endTs?: number;
   entityFQN?: string;

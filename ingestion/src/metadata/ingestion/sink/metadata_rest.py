@@ -496,7 +496,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             if (
                 add_lineage.lineage_request.edge.lineageDetails.pipeline
                 and add_lineage.lineage_request.edge.lineageDetails.source
-                == LineageSource.PipelineLineage
+                in (LineageSource.PipelineLineage, LineageSource.OpenLineage)
             ):
                 self.metadata.delete_lineage_by_source(
                     entity_type="pipeline",
