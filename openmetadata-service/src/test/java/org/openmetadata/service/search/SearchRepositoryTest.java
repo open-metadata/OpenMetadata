@@ -72,6 +72,11 @@ class SearchRepositoryTest {
     lenient().when(mockOsNewClient._transport()).thenReturn(mockOsTransport);
     lenient().when(openSearchClient.getNewClient()).thenReturn(mockOsNewClient);
     lenient().when(openSearchClient.isClientAvailable()).thenReturn(true);
+    
+    // IMPORTANT: Mock the searchForExport method
+    lenient()
+        .when(elasticSearchClient.searchForExport(any(), any()))
+        .thenReturn(null); // Will be overridden in individual tests
 
     // Enable calling real methods for the methods we want to test
     lenient().when(searchRepository.createBulkSink(10, 2, 1000000L)).thenCallRealMethod();
@@ -338,24 +343,21 @@ class SearchRepositoryTest {
   @Test
   void testWriteCsvBatchesPaginationBreak() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
-    // Needed to stub the protected/private calls if any, but writeCsvBatches is private.
-    // wait, we can't test private methods easily in Java unless we use reflection.
-    // However, we can call exportSearchResults() which is public, but that's in SearchResource.
-    // Wait, streamSearchResults is public!
+    
     doCallRealMethod()
         .when(realSearchRepository)
         .exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
-    // writeCsvBatches is private, but it's called by streamSearchResults
+    
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
 
     org.openmetadata.schema.search.SearchRequest baseRequest =
         new org.openmetadata.schema.search.SearchRequest().withIndex("table_search_index");
 
-    // First batch returns 1 result but no sort values --> this should cause an early break
     List<Map<String, Object>> batchResults =
         List.of(Map.of("id", "123", "name", "table1", "entityType", "table"));
     SearchResultListMapper batchMapper = new SearchResultListMapper(batchResults, 10, null);
 
+    // Ensure searchForExport is properly mocked
     when(elasticSearchClient.searchForExport(any(), any())).thenReturn(batchMapper);
 
     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
@@ -365,9 +367,7 @@ class SearchRepositoryTest {
     realSearchRepository.exportSearchResultsCsvStream(baseRequest, context, 10, 0, out);
 
     String csv = out.toString();
-    // Header should be present, plus 1 line of data
     assertEquals(2, csv.split("\n").length);
-    // verify searchForExport was only called once because sort values were null
     verify(elasticSearchClient, times(1)).searchForExport(any(), any());
   }
 
@@ -375,6 +375,7 @@ class SearchRepositoryTest {
   void testWriteCsvBatchesNormalPagination() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    
     doCallRealMethod()
         .when(realSearchRepository)
         .exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
@@ -382,7 +383,6 @@ class SearchRepositoryTest {
     org.openmetadata.schema.search.SearchRequest baseRequest =
         new org.openmetadata.schema.search.SearchRequest().withIndex("table_search_index");
 
-    // First batch returns sort values
     List<Map<String, Object>> batch1Results = new ArrayList<>();
     for (int i = 0; i < SearchResultCsvExporter.BATCH_SIZE; i++) {
       batch1Results.add(Map.of("id", "id" + i, "name", "table" + i, "entityType", "table"));
@@ -390,13 +390,13 @@ class SearchRepositoryTest {
     SearchResultListMapper batch1Mapper =
         new SearchResultListMapper(batch1Results, 1500, new Object[] {"sort1"});
 
-    // Second batch returns the rest
     List<Map<String, Object>> batch2Results = new ArrayList<>();
     for (int i = 0; i < 500; i++) {
       batch2Results.add(Map.of("id", "id_b2_" + i, "name", "table_b2_" + i, "entityType", "table"));
     }
     SearchResultListMapper batch2Mapper = new SearchResultListMapper(batch2Results, 1500, null);
 
+    // Ensure the mock returns the mappers in sequence
     when(elasticSearchClient.searchForExport(any(), any()))
         .thenReturn(batch1Mapper)
         .thenReturn(batch2Mapper);
@@ -408,7 +408,6 @@ class SearchRepositoryTest {
     realSearchRepository.exportSearchResultsCsvStream(baseRequest, context, 1500, 0, out);
 
     String csv = out.toString();
-    // Header (1) + Batch 1 (1000) + Batch 2 (500) = 1501 lines
     assertEquals(1501, csv.split("\n").length);
     verify(elasticSearchClient, times(2)).searchForExport(any(), any());
   }
