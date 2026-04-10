@@ -35,8 +35,16 @@ jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
   fetchTotalEntityCount: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
-jest.mock('../../../../utils/RouterUtils', () => ({
-  getDataQualityPagePath: jest.fn((tab: string) => `/data-quality/${tab}`),
+const mockGetDataQualityPagePath = jest.fn(
+  (tab: string) => `/data-quality/${tab}`
+);
+
+jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getDataQualityPagePath: (...args: unknown[]) =>
+      mockGetDataQualityPagePath(...args),
+  },
 }));
 
 jest.mock('../../../Visualisations/Chart/CustomPieChart.component', () =>
@@ -107,9 +115,6 @@ describe('DataAssetsCoveragePieChartWidget', () => {
   });
 
   it('should pass onSegmentClick to CustomPieChart and navigate to Test Suites on Covered click', async () => {
-    const { getDataQualityPagePath } = jest.requireMock(
-      '../../../../utils/RouterUtils'
-    ) as { getDataQualityPagePath: jest.Mock };
     const mockNavigate = (
       jest.requireMock('react-router-dom') as {
         __getMockNavigate: () => jest.Mock;
@@ -134,7 +139,7 @@ describe('DataAssetsCoveragePieChartWidget', () => {
       segmentCovered.click();
     });
 
-    expect(getDataQualityPagePath).toHaveBeenCalledWith('test-suites');
+    expect(mockGetDataQualityPagePath).toHaveBeenCalledWith('test-suites');
     expect(mockNavigate).toHaveBeenCalledWith('/data-quality/test-suites');
   });
 
