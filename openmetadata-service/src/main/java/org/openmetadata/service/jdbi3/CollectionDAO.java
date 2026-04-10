@@ -3242,7 +3242,17 @@ public interface CollectionDAO {
     List<String> findByEntityId(@Bind("entityId") String entityId);
 
     @SqlQuery("SELECT id FROM thread_entity WHERE entityId IN (<entityIds>)")
-    List<String> findByEntityIds(@BindList("entityIds") List<String> entityIds);
+    List<String> findByEntityIdsChunk(@BindList("entityIds") List<String> entityIds);
+
+    default List<String> findByEntityIds(List<String> entityIds) {
+      int chunkSize = 50_000;
+      List<String> result = new ArrayList<>();
+      for (int i = 0; i < entityIds.size(); i += chunkSize) {
+        result.addAll(
+            findByEntityIdsChunk(entityIds.subList(i, Math.min(i + chunkSize, entityIds.size()))));
+      }
+      return result;
+    }
 
     @ConnectionAwareSqlUpdate(
         value =
