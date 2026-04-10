@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { useOktaAuth } from '@okta/okta-react';
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import OktaAuthenticator from './OktaAuthenticator';
