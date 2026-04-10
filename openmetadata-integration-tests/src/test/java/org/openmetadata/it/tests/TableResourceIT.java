@@ -1892,6 +1892,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     client.tables().delete(table.getId());
     client.tables().restore(table.getId());
 
+    // Keep the fields parameter aligned with the #26513 reproducer. The list response still carries
+    // changeDescription, and that payload is where generated OpenAPI clients failed on boolean
+    // oldValue/newValue parsing.
     ListResponse<Table> response =
         client
             .tables()
@@ -1901,6 +1904,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                     .setFields("fullyQualifiedName")
                     .setLimit(10));
     assertEquals(1, response.getData().size());
+    assertNotNull(response.getData().get(0).getChangeDescription());
 
     String rawResponse =
         client
@@ -1916,6 +1920,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode root = mapper.readTree(rawResponse);
     JsonNode listedTable = root.path("data").get(0);
+    assertTrue(listedTable.has("changeDescription"));
     JsonNode deletedFieldChange =
         StreamSupport.stream(
                 listedTable.path("changeDescription").path("fieldsUpdated").spliterator(), false)

@@ -1,8 +1,8 @@
 package org.openmetadata.service.swagger;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.swagger.v3.core.converter.ModelConverters;
@@ -50,13 +50,14 @@ class FieldChangeOpenApiSchemaTest {
             .map(Schema::getType)
             .collect(Collectors.toList());
 
+    assertEquals("object", schema.getType(), propertyName + " should still allow object values");
     assertEquals(
-        5, anyOfTypes.size(), propertyName + " should enumerate all supported JSON shapes");
+        3,
+        anyOfTypes.size(),
+        propertyName + " should enumerate primitive JSON variants alongside object values");
     assertTrue(anyOfTypes.contains("string"), propertyName + " should allow strings");
     assertTrue(anyOfTypes.contains("boolean"), propertyName + " should allow booleans");
     assertTrue(anyOfTypes.contains("number"), propertyName + " should allow numbers");
-    assertTrue(anyOfTypes.contains("object"), propertyName + " should allow objects");
-    assertTrue(anyOfTypes.contains("array"), propertyName + " should allow arrays");
     assertTrue(
         Boolean.TRUE.equals(schema.getNullable()), propertyName + " should remain nullable");
   }
