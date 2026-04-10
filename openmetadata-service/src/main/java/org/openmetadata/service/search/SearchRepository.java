@@ -2596,7 +2596,9 @@ public class SearchRepository {
         LOG.warn(
             "Export pagination ended early: lastHitSortValues is null after exporting {} of {} rows. "
                 + "This likely means the sort field '{}' did not produce sort values.",
-            exported, totalHits, sortField);
+            exported,
+            totalHits,
+            sortField);
         break;
       }
     }

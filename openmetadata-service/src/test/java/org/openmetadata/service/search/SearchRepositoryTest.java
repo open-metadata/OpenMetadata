@@ -342,24 +342,28 @@ class SearchRepositoryTest {
     // wait, we can't test private methods easily in Java unless we use reflection.
     // However, we can call exportSearchResults() which is public, but that's in SearchResource.
     // Wait, streamSearchResults is public!
-    doCallRealMethod().when(realSearchRepository).exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
+    doCallRealMethod()
+        .when(realSearchRepository)
+        .exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
     // writeCsvBatches is private, but it's called by streamSearchResults
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
-    
+
     org.openmetadata.schema.search.SearchRequest baseRequest =
         new org.openmetadata.schema.search.SearchRequest().withIndex("table_search_index");
 
     // First batch returns 1 result but no sort values --> this should cause an early break
-    List<Map<String, Object>> batchResults = List.of(Map.of("id", "123", "name", "table1", "entityType", "table"));
+    List<Map<String, Object>> batchResults =
+        List.of(Map.of("id", "123", "name", "table1", "entityType", "table"));
     SearchResultListMapper batchMapper = new SearchResultListMapper(batchResults, 10, null);
 
     when(elasticSearchClient.searchForExport(any(), any())).thenReturn(batchMapper);
 
     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-    org.openmetadata.service.security.policyevaluator.SubjectContext context = mock(org.openmetadata.service.security.policyevaluator.SubjectContext.class);
-    
+    org.openmetadata.service.security.policyevaluator.SubjectContext context =
+        mock(org.openmetadata.service.security.policyevaluator.SubjectContext.class);
+
     realSearchRepository.exportSearchResultsCsvStream(baseRequest, context, 10, 0, out);
-    
+
     String csv = out.toString();
     // Header should be present, plus 1 line of data
     assertEquals(2, csv.split("\n").length);
@@ -371,7 +375,9 @@ class SearchRepositoryTest {
   void testWriteCsvBatchesNormalPagination() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
-    doCallRealMethod().when(realSearchRepository).exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
+    doCallRealMethod()
+        .when(realSearchRepository)
+        .exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
 
     org.openmetadata.schema.search.SearchRequest baseRequest =
         new org.openmetadata.schema.search.SearchRequest().withIndex("table_search_index");
@@ -379,14 +385,15 @@ class SearchRepositoryTest {
     // First batch returns sort values
     List<Map<String, Object>> batch1Results = new ArrayList<>();
     for (int i = 0; i < SearchResultCsvExporter.BATCH_SIZE; i++) {
-        batch1Results.add(Map.of("id", "id" + i, "name", "table" + i, "entityType", "table"));
+      batch1Results.add(Map.of("id", "id" + i, "name", "table" + i, "entityType", "table"));
     }
-    SearchResultListMapper batch1Mapper = new SearchResultListMapper(batch1Results, 1500, new Object[]{"sort1"});
+    SearchResultListMapper batch1Mapper =
+        new SearchResultListMapper(batch1Results, 1500, new Object[] {"sort1"});
 
     // Second batch returns the rest
     List<Map<String, Object>> batch2Results = new ArrayList<>();
     for (int i = 0; i < 500; i++) {
-        batch2Results.add(Map.of("id", "id_b2_" + i, "name", "table_b2_" + i, "entityType", "table"));
+      batch2Results.add(Map.of("id", "id_b2_" + i, "name", "table_b2_" + i, "entityType", "table"));
     }
     SearchResultListMapper batch2Mapper = new SearchResultListMapper(batch2Results, 1500, null);
 
@@ -395,7 +402,8 @@ class SearchRepositoryTest {
         .thenReturn(batch2Mapper);
 
     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-    org.openmetadata.service.security.policyevaluator.SubjectContext context = mock(org.openmetadata.service.security.policyevaluator.SubjectContext.class);
+    org.openmetadata.service.security.policyevaluator.SubjectContext context =
+        mock(org.openmetadata.service.security.policyevaluator.SubjectContext.class);
 
     realSearchRepository.exportSearchResultsCsvStream(baseRequest, context, 1500, 0, out);
 
