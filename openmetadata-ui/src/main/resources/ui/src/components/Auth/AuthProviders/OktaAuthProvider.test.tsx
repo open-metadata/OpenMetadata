@@ -406,10 +406,10 @@ describe('OktaAuthProvider', () => {
         mockCustomStorage
       );
       expect(oktaConfig.storageManager.transaction).toMatchObject({
-        storageType: 'localStorage',
+        storageTypes: ['localStorage'],
       });
       expect(oktaConfig.storageManager.cache).toMatchObject({
-        storageType: 'localStorage',
+        storageTypes: ['localStorage'],
       });
     });
 

@@ -68,16 +68,15 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         renewOnTabActivation: true,
       },
 
-      // ✅ Explicit storage separation (critical fix)
       storageManager: {
         token: {
-          storageProvider: customStorage, // IndexedDB (your existing secure storage)
+          storageProvider: customStorage,
         },
         transaction: {
-          storageType: 'localStorage', // PKCE + state (must survive redirect)
+          storageTypes: ['localStorage'], // PKCE + state (must survive redirect)
         },
         cache: {
-          storageType: 'localStorage', // optional but recommended for consistency
+          storageTypes: ['localStorage'], // optional but recommended for consistency
         },
       },
     };
