@@ -954,6 +954,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Running the Native Migrations.");
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("create indexes.");
       searchRepository.createIndexes();
       searchRepository.createOrUpdateIndexTemplates();

@@ -81,6 +81,7 @@ final class IdempotentDdlStatement implements Statement {
   }
 
   private boolean shouldSkip(String sql) throws SQLException {
+    if (sql == null) return false;
     DatabaseMetaData meta = connection.getMetaData();
 
     Matcher indexMatcher = CREATE_INDEX_PATTERN.matcher(sql);

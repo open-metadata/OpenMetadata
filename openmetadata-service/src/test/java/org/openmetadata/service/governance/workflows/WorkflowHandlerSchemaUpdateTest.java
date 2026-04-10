@@ -106,8 +106,7 @@ class WorkflowHandlerSchemaUpdateTest {
 
       WorkflowHandler.initialize(buildMockConfig(), true);
 
-      // Index 1 is the config created inside initializeNewProcessEngine
-      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().get(1);
+      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
       verify(engineConfig)
           .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
     }
@@ -134,7 +133,7 @@ class WorkflowHandlerSchemaUpdateTest {
       assertThrows(
           IllegalStateException.class, () -> WorkflowHandler.initialize(buildMockConfig(), false));
 
-      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().get(1);
+      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
       verify(engineConfig)
           .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
     }
