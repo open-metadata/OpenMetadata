@@ -802,11 +802,21 @@ class FivetranUnitTest(TestCase):
 
         rows = [
             ("sync-1", "sync_start", None, ts_start),
-            ("sync-1", "extract_summary", '{"status":"SUCCESS","total_rows":100}', ts_extract),
+            (
+                "sync-1",
+                "extract_summary",
+                '{"status":"SUCCESS","total_rows":100}',
+                ts_extract,
+            ),
             ("sync-1", "write_to_table_start", '{"table":"Album"}', ts_write_start),
             ("sync-1", "write_to_table_end", '{"table":"Album"}', ts_write_end),
             ("sync-1", "sync_end", '{"status":"SUCCESSFUL"}', ts_sync_end),
-            ("sync-1", "sync_stats", '{"extract_time_s":10,"process_time_s":6,"load_time_s":5,"total_time_s":21}', ts_sync_end),
+            (
+                "sync-1",
+                "sync_stats",
+                '{"extract_time_s":10,"process_time_s":6,"load_time_s":5,"total_time_s":21}',
+                ts_sync_end,
+            ),
         ]
         syncs = FivetranSource._parse_sync_events(rows)
         sync = syncs["sync-1"]
@@ -852,7 +862,12 @@ class FivetranUnitTest(TestCase):
         rows = [
             ("sync-1", "sync_start", None, ts_start),
             ("sync-1", "sync_end", '{"status":"SUCCESSFUL"}', ts_sync_end),
-            ("sync-1", "sync_stats", '{"extract_time_s":10,"process_time_s":6,"load_time_s":5,"total_time_s":21}', ts_sync_end),
+            (
+                "sync-1",
+                "sync_stats",
+                '{"extract_time_s":10,"process_time_s":6,"load_time_s":5,"total_time_s":21}',
+                ts_sync_end,
+            ),
         ]
         syncs = FivetranSource._parse_sync_events(rows)
         sync = syncs["sync-1"]
