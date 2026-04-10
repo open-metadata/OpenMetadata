@@ -8,8 +8,14 @@ import re
 # Patterns for column name matching
 INDIA_COLUMN_PATTERNS = {
     "aadhaar": re.compile(r".*aadhaar.*|.*aadhar.*|.*uidai.*", re.IGNORECASE),
-    "pan": re.compile(r".*pan.*|.*permanent_account.*", re.IGNORECASE),
-    "upi": re.compile(r".*upi.*|.*vpa.*", re.IGNORECASE),
+    "pan": re.compile(
+        r".*\bpan_?(card|number|no|num)\b.*|.*permanent_account.*",
+        re.IGNORECASE,
+    ),
+    "upi": re.compile(
+        r".*\bupi_?(id|address|vpa)\b.*|.*\bvpa\b.*",
+        re.IGNORECASE,
+    ),
 }
 
 # Verhoeff algorithm for Aadhaar validation
@@ -46,6 +52,10 @@ def validate_aadhaar(number: str) -> bool:
     if not number or len(number)!= 12 or not number.isdigit():
         return False
 
+    # UIDAI rule: Aadhaar cannot start with 0 or 1
+    if number[0] in ('0', '1'):
+        return False
+
     c = 0
     for i, digit in enumerate(reversed(number)):
         c = _VERHOEFF_D[c][_VERHOEFF_P[i % 8][int(digit)]]
@@ -54,11 +64,16 @@ def validate_aadhaar(number: str) -> bool:
 def validate_pan(number: str) -> bool:
     """
     Validate PAN format: 5 uppercase letters, 4 digits, 1 uppercase letter.
-    Example: ABCDE1234F
+    4th character must be one of: A,B,C,F,G,H,J,L,P,T
     """
     if not number:
         return False
-    return bool(re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', number))
+    if not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', number):
+        return False
+
+    # Check 4th character (index 3) is valid holder type
+    valid_types = {'A', 'B', 'C', 'F', 'G', 'H', 'J', 'L', 'P', 'T'}
+    return number[3] in valid_types
 
 def is_india_pii_column(column_name: str) -> str | None:
     """

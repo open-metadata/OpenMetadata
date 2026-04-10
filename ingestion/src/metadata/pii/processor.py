@@ -55,6 +55,11 @@ from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.pii.constants import PII
 from metadata.utils import fqn
 from metadata.utils.logger import profiler_logger
+from metadata.pii.india_patterns import (
+    is_india_pii_column,
+    validate_aadhaar,
+    validate_pan,
+)
 
 logger = profiler_logger()
 
@@ -104,6 +109,16 @@ class PIIProcessor(AutoClassificationProcessor):
         for tag in column.tags or []:
             if PII in tag.tagFQN.root:
                 return []
+
+        # Check India PII patterns
+        india_pii = is_india_pii_column(column.name.root)
+        sample_value = str(sample_data[0]) if sample_data else ""
+        if india_pii == "Aadhaar" and validate_aadhaar(sample_value):
+            return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India Aadhaar detected")]
+        if india_pii == "PAN" and validate_pan(sample_value):
+            return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India PAN detected")]
+        if india_pii == "UPI":
+            return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India UPI detected")]
 
         # Build classifier with the results capturing patcher
         result_capturer = ResultCapturingPatcher()
