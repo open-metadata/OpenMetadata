@@ -47,8 +47,11 @@ from metadata.ingestion.source.database.common_pg_mappings import (
 )
 from metadata.ingestion.source.database.greenplum.queries import (
     GREENPLUM_GET_DB_NAMES,
-    GREENPLUM_GET_TABLE_NAMES,
-    GREENPLUM_PARTITION_DETAILS,
+    GREENPLUM_GET_SERVER_VERSION,
+    GREENPLUM_GET_TABLE_NAMES_GP6,
+    GREENPLUM_GET_TABLE_NAMES_GP7,
+    GREENPLUM_PARTITION_DETAILS_GP6,
+    GREENPLUM_PARTITION_DETAILS_GP7,
 )
 from metadata.ingestion.source.database.greenplum.utils import (
     get_column_info,
@@ -91,6 +94,9 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     Database metadata from Greenplum Source
     """
 
+    # PostgreSQL major version >= 12 indicates Greenplum 7.x
+    GREENPLUM_V7_PG_VERSION = 12
+
     @classmethod
     def create(
         cls,
@@ -106,15 +112,48 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
             )
         return cls(config, metadata)
 
+    def _is_gp7(self) -> bool:
+        """
+        Detect if the connected Greenplum instance is version 7.x.
+        Greenplum 7 is based on PostgreSQL 12+, while Greenplum 6
+        uses PostgreSQL 9.4.
+        Returns True if GP7 (PostgreSQL >= 12), False otherwise.
+        Result is cached to avoid repeated DB calls.
+        """
+        if not hasattr(self, "_gp7_cache"):
+            try:
+                with self.engine.connect() as conn:
+                    result = conn.execute(
+                        text(GREENPLUM_GET_SERVER_VERSION)
+                    ).fetchone()
+                # server_version returns e.g. "12.12" or "9.4.26"
+                version_str = result[0] if result else "9"
+                major_version = int(version_str.split(".")[0])
+                self._gp7_cache = major_version >= self.GREENPLUM_V7_PG_VERSION
+            except Exception:
+                # Default to GP6 behavior if version detection fails
+                logger.warning(
+                    "Could not detect Greenplum version, "
+                    "defaulting to GP6 query set"
+                )
+                self._gp7_cache = False
+        return self._gp7_cache
+
     def query_table_names_and_types(
         self, schema_name: str
     ) -> Iterable[TableNameAndType]:
         """
         Overwrite the inspector implementation to handle partitioned
-        and foreign types
+        and foreign types. Selects the appropriate query based on
+        Greenplum version to handle GP7's removal of pg_partition_rule.
         """
+        query = (
+            GREENPLUM_GET_TABLE_NAMES_GP7
+            if self._is_gp7()
+            else GREENPLUM_GET_TABLE_NAMES_GP6
+        )
         result = self.connection.execute(
-            sql.text(GREENPLUM_GET_TABLE_NAMES),
+            sql.text(query),
             {"schema": schema_name},
         )
 
@@ -168,14 +207,26 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
+        """
+        Returns partition details for the given table.
+        Uses GP7-compatible query (pg_partitioned_table) for Greenplum 7.x
+        and legacy query (pg_partition) for Greenplum 6.x.
+        """
         with self.engine.connect() as conn:
-            result = conn.execute(
-                text(
-                    GREENPLUM_PARTITION_DETAILS.format(
-                        table_name=table_name, schema_name=schema_name
+            if self._is_gp7():
+                result = conn.execute(
+                    text(GREENPLUM_PARTITION_DETAILS_GP7),
+                    {"table_name": table_name, "schema_name": schema_name},
+                ).all()
+            else:
+                result = conn.execute(
+                    text(
+                        GREENPLUM_PARTITION_DETAILS_GP6.format(
+                            table_name=table_name,
+                            schema_name=schema_name,
+                        )
                     )
-                )
-            ).all()
+                ).all()
 
         if result:
             partition_details = TablePartition(

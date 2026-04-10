@@ -16,7 +16,9 @@ import textwrap
 
 # https://www.postgresql.org/docs/current/catalog-pg-class.html
 # r = ordinary table, v = view, m = materialized view, c = composite type, f = foreign table, p = partitioned table,
-GREENPLUM_GET_TABLE_NAMES = """
+
+# Greenplum 6.x (PostgreSQL 9.4) — uses pg_partition_rule to exclude child partitions
+GREENPLUM_GET_TABLE_NAMES_GP6 = """
     select c.relname, c.relkind
     from pg_catalog.pg_class c
         left outer join pg_catalog.pg_partition_rule pr on c.oid = pr.parchildrelid
@@ -26,7 +28,18 @@ GREENPLUM_GET_TABLE_NAMES = """
         and n.nspname = :schema
 """
 
-GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
+# Greenplum 7.x (PostgreSQL 12+) — pg_partition_rule removed; use relispartition instead
+GREENPLUM_GET_TABLE_NAMES_GP7 = """
+    select c.relname, c.relkind
+    from pg_catalog.pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+    where c.relkind in ('r', 'p', 'f')
+        and c.relispartition = false
+        and n.nspname = :schema
+"""
+
+# Greenplum 6.x (PostgreSQL 9.4) — uses pg_partition catalog
+GREENPLUM_PARTITION_DETAILS_GP6 = textwrap.dedent(
     """
     select
         ns.nspname as schema,
@@ -57,6 +70,40 @@ GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
         and col.table_name = par.relname
         and ordinal_position = pt.column_index
     where par.relname='{table_name}' and  ns.nspname='{schema_name}'
+    """
+)
+
+# Greenplum 7.x (PostgreSQL 12+) — pg_partition removed; use pg_partitioned_table instead
+GREENPLUM_PARTITION_DETAILS_GP7 = textwrap.dedent(
+    """
+    select
+        par.relnamespace::regnamespace::text as schema,
+        par.relname as table_name,
+        partition_strategy,
+        col.column_name
+    from
+        (select
+             partrelid,
+             partnatts,
+             case partstrat
+                  when 'l' then 'list'
+                  when 'h' then 'hash'
+                  when 'r' then 'range' end as partition_strategy,
+             unnest(partattrs::int[]) column_index
+         from
+             pg_partitioned_table) pt
+    join
+        pg_class par
+    on
+        par.oid = pt.partrelid
+    left join
+        information_schema.columns col
+    on
+        col.table_schema = par.relnamespace::regnamespace::text
+        and col.table_name = par.relname
+        and ordinal_position = pt.column_index
+    where par.relname= :table_name
+        and par.relnamespace::regnamespace::text = :schema_name
     """
 )
 
