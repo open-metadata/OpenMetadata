@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -56,6 +57,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   private static final Logger LOG = LoggerFactory.getLogger(ContainerRepository.class);
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
   private static final String CONTAINER_PATCH_FIELDS = "dataModel";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("dataModel.columns.description");
   public static final String CONTAINER_SAMPLE_DATA_EXTENSION = "container.sampleData";
 
   public ContainerRepository() {
@@ -65,7 +67,8 @@ public class ContainerRepository extends EntityRepository<Container> {
         Container.class,
         Entity.getCollectionDAO().containerDAO(),
         CONTAINER_PATCH_FIELDS,
-        CONTAINER_UPDATE_FIELDS);
+        CONTAINER_UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
