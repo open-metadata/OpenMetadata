@@ -65,6 +65,7 @@ from metadata.ingestion.models.topology import (
     TopologyContextManager,
     TopologyNode,
 )
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -360,7 +361,7 @@ class DatabaseServiceSource(
             return table_constraints or []
         column_name_map = {}
         for col in columns:
-            col_name = col.name.root if hasattr(col.name, "root") else str(col.name)
+            col_name = model_str(col.name)
             if col_name:
                 column_name_map[col_name.lower()] = col_name
         for constraint in table_constraints:
