@@ -3109,6 +3109,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(tagPayload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()

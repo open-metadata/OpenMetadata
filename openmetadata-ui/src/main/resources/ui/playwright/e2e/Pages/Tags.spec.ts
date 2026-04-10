@@ -391,8 +391,7 @@ test('Classification Page', async ({ page }) => {
     await page.keyboard.type(tag);
     await suggestTag;
     await page.click('[data-testid="tag-PersonalData.Personal"]');
-
-    await page.click('[data-testid="tags-label"]');
+    await clickOutside(page);
     const taskCreated = waitForTaskCreateResponse(page);
     await page.click('[data-testid="submit-tag-request"]');
     await taskCreated;

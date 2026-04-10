@@ -50,6 +50,7 @@ import { sidebarClick } from './sidebar';
 import {
   TaskDetails,
   waitForTaskListResponse,
+  waitForTaskResolveResponse,
 } from './task';
 import { openTaskEditModal, saveTaskEditModal } from './taskWorkflow';
 

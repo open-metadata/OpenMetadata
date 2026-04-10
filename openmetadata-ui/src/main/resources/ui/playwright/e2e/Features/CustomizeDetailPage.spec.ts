@@ -59,12 +59,10 @@ const test = base.extend<{
   userPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const context = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
-    const adminPage = await context.newPage();
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
     await use(adminPage);
-    await context.close();
+    await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
     const context = await browser.newContext();
