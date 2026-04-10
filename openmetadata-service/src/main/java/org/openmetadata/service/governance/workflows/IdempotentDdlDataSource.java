@@ -14,11 +14,10 @@
 package org.openmetadata.service.governance.workflows;
 
 import java.io.PrintWriter;
-import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
@@ -26,33 +25,27 @@ import java.util.logging.Logger;
 import javax.sql.DataSource;
 
 /**
- * A {@link DataSource} that wraps each {@link Connection} in a proxy so that
- * {@link Connection#createStatement()} returns an {@link IdempotentDdlStatement}.
- * Only used in migration context so Flowable upgrade scripts skip already-existing
- * DDL objects instead of failing.
+ * A {@link DataSource} wrapper that intercepts every {@link Connection} it vends and ensures
+ * that all {@link Statement} variants created from that connection go through
+ * {@link IdempotentDdlStatement}. Only used in migration context so Flowable upgrade scripts
+ * skip already-existing DDL objects instead of failing.
  */
 final class IdempotentDdlDataSource implements DataSource {
 
-  private final String url;
-  private final String user;
-  private final String password;
-  private PrintWriter logWriter;
-  private int loginTimeout;
+  private final DataSource delegate;
 
-  IdempotentDdlDataSource(String url, String user, String password) {
-    this.url = url;
-    this.user = user;
-    this.password = password;
+  IdempotentDdlDataSource(DataSource delegate) {
+    this.delegate = delegate;
   }
 
   @Override
   public Connection getConnection() throws SQLException {
-    return wrapConnection(DriverManager.getConnection(url, user, password));
+    return wrapConnection(delegate.getConnection());
   }
 
   @Override
   public Connection getConnection(String username, String password) throws SQLException {
-    return wrapConnection(DriverManager.getConnection(url, username, password));
+    return wrapConnection(delegate.getConnection(username, password));
   }
 
   private Connection wrapConnection(Connection real) {
@@ -60,58 +53,60 @@ final class IdempotentDdlDataSource implements DataSource {
         Proxy.newProxyInstance(
             real.getClass().getClassLoader(),
             new Class<?>[] {Connection.class},
-            new ConnectionHandler(real));
+            (proxy, method, args) -> {
+              if ("createStatement".equals(method.getName())) {
+                Statement stmt = (Statement) invokeDelegate(method, real, args);
+                return new IdempotentDdlStatement(stmt, real);
+              }
+              return invokeDelegate(method, real, args);
+            });
   }
 
-  private static final class ConnectionHandler implements InvocationHandler {
-    private final Connection real;
-
-    ConnectionHandler(Connection real) {
-      this.real = real;
+  /**
+   * Invokes a method on the real connection, unwrapping any {@link InvocationTargetException}
+   * so callers receive the original exception type (e.g. {@link SQLException}).
+   */
+  private static Object invokeDelegate(Method method, Object target, Object[] args)
+      throws Throwable {
+    try {
+      return method.invoke(target, args);
+    } catch (InvocationTargetException e) {
+      throw e.getCause();
     }
-
-    @Override
-    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-      if ("createStatement".equals(method.getName()) && (args == null || args.length == 0)) {
-        Statement delegate = real.createStatement();
-        return new IdempotentDdlStatement(delegate, real);
-      }
-      return method.invoke(real, args);
-    }
   }
 
   @Override
-  public PrintWriter getLogWriter() {
-    return logWriter;
+  public PrintWriter getLogWriter() throws SQLException {
+    return delegate.getLogWriter();
   }
 
   @Override
-  public void setLogWriter(PrintWriter out) {
-    this.logWriter = out;
+  public void setLogWriter(PrintWriter out) throws SQLException {
+    delegate.setLogWriter(out);
   }
 
   @Override
-  public void setLoginTimeout(int seconds) {
-    this.loginTimeout = seconds;
+  public void setLoginTimeout(int seconds) throws SQLException {
+    delegate.setLoginTimeout(seconds);
   }
 
   @Override
-  public int getLoginTimeout() {
-    return loginTimeout;
+  public int getLoginTimeout() throws SQLException {
+    return delegate.getLoginTimeout();
   }
 
   @Override
   public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-    throw new SQLFeatureNotSupportedException();
+    return delegate.getParentLogger();
   }
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    throw new SQLException("Not a wrapper for " + iface);
+    return delegate.unwrap(iface);
   }
 
   @Override
-  public boolean isWrapperFor(Class<?> iface) {
-    return false;
+  public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    return delegate.isWrapperFor(iface);
   }
 }

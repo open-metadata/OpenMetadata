@@ -3,6 +3,8 @@ package org.openmetadata.service.governance.workflows;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
@@ -104,6 +107,57 @@ public class WorkflowHandler {
             config.getPipelineServiceClientConfiguration()));
   }
 
+  private static DataSource migrationDataSource(ProcessEngineConfiguration config) {
+    if (config.getDataSource() != null) {
+      return config.getDataSource();
+    }
+    String url = config.getJdbcUrl();
+    String user = config.getJdbcUsername();
+    String password = config.getJdbcPassword();
+    return new DataSource() {
+      @Override
+      public java.io.PrintWriter getLogWriter() {
+        return null;
+      }
+
+      @Override
+      public void setLogWriter(java.io.PrintWriter out) {}
+
+      @Override
+      public void setLoginTimeout(int seconds) {}
+
+      @Override
+      public int getLoginTimeout() {
+        return 0;
+      }
+
+      @Override
+      public java.util.logging.Logger getParentLogger() {
+        return java.util.logging.Logger.getLogger("migration");
+      }
+
+      @Override
+      public <T> T unwrap(Class<T> iface) throws SQLException {
+        throw new SQLException("Not a wrapper");
+      }
+
+      @Override
+      public boolean isWrapperFor(Class<?> iface) {
+        return false;
+      }
+
+      @Override
+      public java.sql.Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(url, user, password);
+      }
+
+      @Override
+      public java.sql.Connection getConnection(String u, String p) throws SQLException {
+        return DriverManager.getConnection(url, u, p);
+      }
+    };
+  }
+
   public void initializeNewProcessEngine(
       ProcessEngineConfiguration currentProcessEngineConfiguration) {
     ProcessEngines.destroy();
@@ -115,10 +169,7 @@ public class WorkflowHandler {
 
     if (isMigrationContext) {
       processEngineConfiguration.setDataSource(
-          new IdempotentDdlDataSource(
-              currentProcessEngineConfiguration.getJdbcUrl(),
-              currentProcessEngineConfiguration.getJdbcUsername(),
-              currentProcessEngineConfiguration.getJdbcPassword()));
+          new IdempotentDdlDataSource(migrationDataSource(currentProcessEngineConfiguration)));
     } else {
       processEngineConfiguration.setJdbcUrl(currentProcessEngineConfiguration.getJdbcUrl());
       processEngineConfiguration.setJdbcUsername(
@@ -164,10 +215,12 @@ public class WorkflowHandler {
     try {
       this.processEngine = processEngineConfiguration.buildProcessEngine();
     } catch (FlowableWrongDbException e) {
-      throw new IllegalStateException(
-          "Flowable schema is not initialized or is at an unexpected version. "
-              + "Run `openmetadata-ops.sh migrate` before starting the server.",
-          e);
+      String hint =
+          isMigrationContext
+              ? "Flowable schema is at an unexpected version. The migration could not proceed."
+              : "Flowable schema is not initialized or is at an unexpected version. "
+                  + "Run `openmetadata-ops.sh migrate` before starting the server.";
+      throw new IllegalStateException(hint, e);
     }
 
     // Add SqlMapper
