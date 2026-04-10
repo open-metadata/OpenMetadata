@@ -24,11 +24,25 @@
           "description": "Name of the entity field that changed.",
           "$ref": "#/definitions/fieldName"
         },
-        "oldValue": {
-          "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+         "oldValue": {
+          "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it.",
+          "anyOf": [
+            { "type": "object" },
+            { "type": "boolean" },
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "null" }
+          ]
         },
         "newValue": {
-          "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+          "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it.",
+          "anyOf": [
+            { "type": "object" },
+            { "type": "boolean" },
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "null" }
+          ]
         }
       },
       "additionalProperties": false
