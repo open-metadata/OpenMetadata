@@ -211,8 +211,7 @@ function IngestionListTable({
           };
         }, {});
         setIngestionPipelinePermissions(permissionData);
-      })
-      .catch((error) => showErrorToast(error as AxiosError));
+      });
 
     Promise.allSettled(recentRunStatusPromises)
       .then((recentRunStatusResponse) => {
@@ -238,7 +237,6 @@ function IngestionListTable({
         );
         setRecentRunStatuses(recentRunStatusData);
       })
-      .catch((error) => showErrorToast(error as AxiosError))
       .finally(() => setIsIngestionRunsLoading(false));
   }, [ingestionData]);
 
