@@ -109,6 +109,11 @@
       "description": "Include aggregations in the search response. Defaults to true. Set to false to skip aggregations for faster response times when only search results are needed.",
       "type": "boolean",
       "default": true
+    },
+    "semanticSearch": {
+      "description": "If true, use semantic (vector) search instead of keyword search.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

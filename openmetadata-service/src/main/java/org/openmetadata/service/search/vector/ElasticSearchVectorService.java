@@ -29,6 +29,7 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
@@ -92,15 +93,20 @@ public class ElasticSearchVectorService implements VectorIndexService {
   @Override
   @SuppressWarnings("unchecked")
   public VectorSearchResponse search(
-      String query, Map<String, List<String>> filters, int size, int k, double threshold) {
+      String query,
+      Map<String, List<String>> filters,
+      int size,
+      int from,
+      int k,
+      double threshold) {
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embed(query);
       int overFetchSize = size * OVER_FETCH_MULTIPLIER;
 
       String queryJson =
-          VectorSearchQueryBuilder.buildNativeESQuery(queryVector, overFetchSize, k, filters);
-      String indexName = getClusteredIndexName();
+          VectorSearchQueryBuilder.buildNativeESQuery(queryVector, overFetchSize, from, k, filters);
+      String indexName = getIndexAlias();
       String responseBody = executeGenericRequest("POST", "/" + indexName + "/_search", queryJson);
 
       JsonNode root = MAPPER.readTree(responseBody);
@@ -140,7 +146,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  String executeGenericRequest(String method, String endpoint, String body) {
+  @Override
+  public String executeGenericRequest(String method, String endpoint, String body) {
     try {
       Request request = new Request(method, endpoint);
       if (body != null) {
@@ -157,6 +164,15 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   @Override
+  public Map<String, Object> generateEmbeddingFields(EntityInterface entity) {
+    return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
+  }
+
+  @Override
+  public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
+    updateVectorEmbeddings(entity, entityIndexName);
+  }
+
   public void updateVectorEmbeddings(EntityInterface entity, String targetIndex) {
     try {
       String parentId = entity.getId().toString();
@@ -180,7 +196,6 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  @Override
   public void updateVectorEmbeddingsWithMigration(
       EntityInterface entity, String targetIndex, String sourceIndex) {
     try {
@@ -284,7 +299,6 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  @Override
   @SuppressWarnings("unchecked")
   public boolean copyExistingVectorDocuments(
       String sourceIndex, String targetIndex, String parentId, String fingerprint) {
@@ -321,11 +335,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  @Override
   public void softDeleteEmbeddings(EntityInterface entity) {
     try {
       String parentId = entity.getId().toString();
-      String indexName = getClusteredIndexName();
+      String indexName = getIndexAlias();
       String script =
           "{\"script\":{\"source\":\"ctx._source.deleted = true\"},"
               + "\"query\":{\"term\":{\"parent_id\":\""
@@ -338,11 +351,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  @Override
   public void hardDeleteEmbeddings(EntityInterface entity) {
     try {
       String parentId = entity.getId().toString();
-      String indexName = getClusteredIndexName();
+      String indexName = getIndexAlias();
       deleteByParentId(indexName, parentId);
     } catch (Exception e) {
       LOG.error(
@@ -350,11 +362,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  @Override
   public void restoreEmbeddings(EntityInterface entity) {
     try {
       String parentId = entity.getId().toString();
-      String indexName = getClusteredIndexName();
+      String indexName = getIndexAlias();
       String script =
           "{\"script\":{\"source\":\"ctx._source.deleted = false\"},"
               + "\"query\":{\"term\":{\"parent_id\":\""
@@ -384,15 +395,11 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  private static String getClusteredIndexName() {
-    return VectorIndexService.getClusteredIndexName();
-  }
 
-  @Override
   public void createOrUpdateIndex(int dimension) {
     try {
       if (indexExists()) {
-        LOG.info("Vector index {} already exists", VECTOR_INDEX_NAME);
+        LOG.info("Vector index {} already exists", getIndexAlias());
         return;
       }
 
@@ -404,7 +411,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
       CreateIndexRequest request =
           CreateIndexRequest.of(
               builder -> {
-                builder.index(getClusteredIndexName());
+                builder.index(getIndexAlias());
 
                 if (mappingsNode != null && !mappingsNode.isNull()) {
                   TypeMapping typeMapping = parseTypeMapping(mappingsNode);
@@ -420,16 +427,15 @@ public class ElasticSearchVectorService implements VectorIndexService {
               });
       client.indices().create(request);
 
-      LOG.info("Created vector index {} with dimension {}", getClusteredIndexName(), dimension);
+      LOG.info("Created vector index {} with dimension {}", getIndexAlias(), dimension);
     } catch (Exception e) {
       LOG.error("Failed to create vector index: {}", e.getMessage(), e);
     }
   }
 
-  @Override
   public boolean indexExists() {
     try {
-      ExistsRequest request = ExistsRequest.of(b -> b.index(getClusteredIndexName()));
+      ExistsRequest request = ExistsRequest.of(b -> b.index(getIndexAlias()));
       return client.indices().exists(request).value();
     } catch (Exception e) {
       LOG.error("Failed to check if vector index exists: {}", e.getMessage(), e);
@@ -437,12 +443,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  @Override
   public String getIndexName() {
-    return getClusteredIndexName();
+    return getIndexAlias();
   }
 
-  @Override
   @SuppressWarnings("unchecked")
   public void bulkIndex(List<Map<String, Object>> documents, String targetIndex) {
     if (documents == null || documents.isEmpty()) {

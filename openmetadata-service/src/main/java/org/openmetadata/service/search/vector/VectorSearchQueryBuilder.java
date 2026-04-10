@@ -73,12 +73,14 @@ public class VectorSearchQueryBuilder {
   }
 
   public static String buildNativeESQuery(
-      float[] vector, int size, int k, Map<String, List<String>> filters) {
+      float[] vector, int size, int from, int k, Map<String, List<String>> filters) {
     int numCandidates = Math.max(k, 100);
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")
             .append(size)
+            .append(",\"from\":")
+            .append(from)
             .append(",\"_source\":{\"excludes\":[\"embedding\"]}")
             .append(",\"knn\":{")
             .append("\"field\":\"embedding\"")
@@ -90,7 +92,7 @@ public class VectorSearchQueryBuilder {
             .append(numCandidates);
 
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
-    appendFilterMustClauses(sb, filters);
+    appendFilterMustClauses(sb, filters, true);
     sb.append("]}}"); // close must array and bool
 
     sb.append("}}"); // close knn object
@@ -98,16 +100,21 @@ public class VectorSearchQueryBuilder {
   }
 
   private static void appendFilterMustClauses(StringBuilder sb, Map<String, List<String>> filters) {
-    // Only include documents where deleted=false
+    appendFilterMustClauses(sb, filters, false);
+  }
+
+  /**
+   * @param nestedTags when true, emits a nested query for "tags" (required by the ES-native vector
+   *     index where tags is mapped as nested); when false, emits a flat terms query (used by
+   *     OpenSearch, which queries the regular entity indices where tags is a plain object).
+   */
+  private static void appendFilterMustClauses(
+      StringBuilder sb, Map<String, List<String>> filters, boolean nestedTags) {
     sb.append("{\"term\":{\"deleted\":false}}");
-    
-    // Then add user-specified filters
     for (var e : filters.entrySet()) {
       String field = e.getKey();
       List<String> values = e.getValue();
       if (values == null || values.isEmpty()) continue;
-
-      // Handle custom properties that will come with "customProperties.<name>"
       if (field.startsWith("customProperties.")) {
         sb.append(',');
         appendCustomPropertiesFilter(sb, field, values);
@@ -119,7 +126,11 @@ public class VectorSearchQueryBuilder {
           }
           case "tags" -> {
             sb.append(',');
-            appendFlat(sb, "tags.tagFQN", values);
+            if (nestedTags) {
+              appendNested(sb, "tags", "tags.tagFQN", values);
+            } else {
+              appendFlat(sb, "tags.tagFQN", values);
+            }
           }
           case "domains" -> {
             sb.append(',');

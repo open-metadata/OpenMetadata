@@ -198,7 +198,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         overFetchSize = Math.min(overFetchSize, k);
       }
 
-      String aliasName = getSearchAlias();
+      String aliasName = getIndexAlias();
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
@@ -280,6 +280,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     return -1L;
   }
 
+  @Override
   public String getExistingFingerprint(String indexName, String entityId) {
     try {
       String query =
@@ -303,6 +304,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     return null;
   }
 
+  @Override
   public Map<String, String> getExistingFingerprintsBatch(
       String indexName, List<String> entityIds) {
     if (entityIds == null || entityIds.isEmpty()) {
@@ -359,7 +361,8 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  String executeGenericRequest(String method, String endpoint, String body) {
+  @Override
+  public String executeGenericRequest(String method, String endpoint, String body) {
     try {
       OpenSearchGenericClient genericClient = client.generic();
       var request = Requests.builder().endpoint(endpoint).method(method).json(body).build();
@@ -387,15 +390,4 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  private String getSearchAlias() {
-    try {
-      String clusterAlias = Entity.getSearchRepository().getClusterAlias();
-      if (clusterAlias == null || clusterAlias.isEmpty()) {
-        return VECTOR_EMBEDDING_ALIAS;
-      }
-      return clusterAlias + "_" + VECTOR_EMBEDDING_ALIAS;
-    } catch (Exception ex) {
-      return VECTOR_EMBEDDING_ALIAS;
-    }
-  }
 }
