@@ -430,7 +430,7 @@ public class WorksheetResource extends EntityResource<Worksheet, WorksheetReposi
       @Parameter(description = "Id of the worksheet", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

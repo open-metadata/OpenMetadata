@@ -591,7 +591,7 @@ public class DashboardServiceResource
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

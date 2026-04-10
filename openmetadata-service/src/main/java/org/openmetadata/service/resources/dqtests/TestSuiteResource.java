@@ -824,7 +824,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

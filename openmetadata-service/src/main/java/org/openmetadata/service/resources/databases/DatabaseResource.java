@@ -733,7 +733,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

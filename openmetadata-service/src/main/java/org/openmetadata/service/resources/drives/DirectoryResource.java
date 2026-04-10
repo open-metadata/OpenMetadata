@@ -443,7 +443,7 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
       @Parameter(description = "Id of the directory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

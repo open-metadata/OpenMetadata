@@ -602,7 +602,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Parameter(description = "Id of the ML model", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

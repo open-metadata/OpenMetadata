@@ -434,7 +434,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Parameter(description = "Id of the persona", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

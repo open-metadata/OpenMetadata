@@ -547,7 +547,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

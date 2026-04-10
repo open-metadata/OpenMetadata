@@ -246,6 +246,6 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 }

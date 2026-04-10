@@ -502,7 +502,7 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Id of the workflow definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

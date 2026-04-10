@@ -472,7 +472,7 @@ public class DataInsightChartResource
       @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

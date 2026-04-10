@@ -470,6 +470,6 @@ public class LearningResourceResource
       @Parameter(description = "Id of the learning resource", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 }

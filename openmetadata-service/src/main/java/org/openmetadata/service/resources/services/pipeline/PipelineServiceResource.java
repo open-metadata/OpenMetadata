@@ -607,7 +607,7 @@ public class PipelineServiceResource
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

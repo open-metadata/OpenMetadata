@@ -679,7 +679,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

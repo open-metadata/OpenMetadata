@@ -563,7 +563,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Parameter(description = "Id of the API collection", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

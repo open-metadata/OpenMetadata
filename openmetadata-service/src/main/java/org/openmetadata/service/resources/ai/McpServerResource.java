@@ -549,7 +549,7 @@ public class McpServerResource extends EntityResource<McpServer, McpServerReposi
       @Parameter(description = "Id of the MCP server", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

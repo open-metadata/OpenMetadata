@@ -435,7 +435,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

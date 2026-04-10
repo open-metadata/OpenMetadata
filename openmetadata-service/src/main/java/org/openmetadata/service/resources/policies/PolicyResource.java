@@ -523,7 +523,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

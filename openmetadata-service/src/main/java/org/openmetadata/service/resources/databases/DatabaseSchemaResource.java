@@ -796,7 +796,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Id of the database schema", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deletePrefixHardById(uriInfo, securityContext, id);
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE
