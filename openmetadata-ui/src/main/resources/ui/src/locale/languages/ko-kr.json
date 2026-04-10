@@ -2592,6 +2592,7 @@
     "expected-schema-structure-of-this-asset": "이 자산의 예상 스키마 구조",
     "explore-our-guide-here": "여기에서 우리의 가이드를 탐색하세요.",
     "export-all-matching-assets-description": "모든 자산을 자산 유형별로 이 검색과 일치하는 것을 내보냅니다",
+    "export-assets-limit-exceeded": "내보내기는 {{limit}} 자산까지 제한됩니다. 필터를 조정하거나 표시 가능한 결과를 선택하세요.",
     "export-audit-logs-description": "감사 로그를 내보냅니다. 날짜 범위를 선택하여 이벤트를 필터링하세요. 내보내기 파일은 100,000개 항목으로 제한됩니다.",
     "export-count-successful": "{{count}}개의 용어집을 성공적으로 내보냈습니다!",
     "export-entity-help": "모든 {{entity}}을(를) CSV 파일로 다운로드하여 팀과 공유하세요.",

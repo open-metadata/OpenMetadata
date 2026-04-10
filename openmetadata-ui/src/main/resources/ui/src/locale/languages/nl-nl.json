@@ -2592,6 +2592,7 @@
     "expected-schema-structure-of-this-asset": "Verwachte schemastructuur van dit asset",
     "explore-our-guide-here": "bekijk onze handleiding hier.",
     "export-all-matching-assets-description": "Exporteer alle activa die overeenkomen met deze zoekopdracht over activa typen",
+    "export-assets-limit-exceeded": "Export is beperkt tot {{limit}} activa. Please refine your filters or choose visible results.",
     "export-audit-logs-description": "Exporteer auditlogs. Selecteer een datumbereik om gebeurtenissen te filteren. Het exportbestand is beperkt tot 100.000 items.",
     "export-count-successful": "{{count}} glossaria succesvol geëxporteerd!",
     "export-entity-help": "Download al je {{entity}} als een CSV-bestand en deel het met je team.",

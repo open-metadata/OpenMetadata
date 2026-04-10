@@ -2592,6 +2592,7 @@
     "expected-schema-structure-of-this-asset": "このアセットの予想されるスキーマ構造",
     "explore-our-guide-here": "ガイドを見る",
     "export-all-matching-assets-description": "Export all assets matching this search across asset types",
+    "export-assets-limit-exceeded": "エクスポートは {{limit}} アセットまで制限されています。フィルターを調整するか、表示可能な結果を選択してください。",
     "export-audit-logs-description": "監査ログをエクスポートします。日付範囲を選択してイベントをフィルタリングしてください。エクスポートファイルは100,000件に制限されます。",
     "export-count-successful": "{{count}}件の用語集のエクスポートに成功しました！",
     "export-entity-help": "{{entity}} をすべて CSV ファイルとしてダウンロードし、チームと共有できます。",
