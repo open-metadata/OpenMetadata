@@ -30,12 +30,12 @@ import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
   DATA_MODE_ASSET_LABEL_LAYOUT_STACK,
   DATA_MODE_LOAD_MORE_BADGE_BG,
-  DATA_MODE_TERM_H_SPACING,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN,
+  DATA_MODE_TERM_H_SPACING,
   DATA_MODE_TERM_TO_FIRST_RING_GAP,
   DEFAULT_ZOOM,
   DIMMED_EDGE_OPACITY,
@@ -530,9 +530,15 @@ export function useOntologyGraph({
               workingPos.set(idA, [posA[0] - ux * half, posA[1] - uy * half]);
               workingPos.set(idB, [posB[0] + ux * half, posB[1] + uy * half]);
             } else if (!aIsAnchor) {
-              workingPos.set(idA, [posA[0] - ux * overlap, posA[1] - uy * overlap]);
+              workingPos.set(idA, [
+                posA[0] - ux * overlap,
+                posA[1] - uy * overlap,
+              ]);
             } else if (!bIsAnchor) {
-              workingPos.set(idB, [posB[0] + ux * overlap, posB[1] + uy * overlap]);
+              workingPos.set(idB, [
+                posB[0] + ux * overlap,
+                posB[1] + uy * overlap,
+              ]);
             }
           }
         }
@@ -546,7 +552,10 @@ export function useOntologyGraph({
     const updates: NodeData[] = [];
     workingPos.forEach(([nx, ny], id) => {
       const orig = initialPos.get(id);
-      if (!orig || (Math.abs(nx - orig[0]) < 0.5 && Math.abs(ny - orig[1]) < 0.5)) {
+      if (
+        !orig ||
+        (Math.abs(nx - orig[0]) < 0.5 && Math.abs(ny - orig[1]) < 0.5)
+      ) {
         return;
       }
       const node = graph.getNodeData(id);
@@ -1277,7 +1286,11 @@ export function useOntologyGraph({
             return;
           }
           const [termX, termY] = termPos;
-          const ringPositions = computeAssetRingPositions(termX, termY, assetIds);
+          const ringPositions = computeAssetRingPositions(
+            termX,
+            termY,
+            assetIds
+          );
           Object.entries(ringPositions).forEach(([assetId, pos]) => {
             precomputedAssetPositions[assetId] = [pos.x, pos.y];
           });

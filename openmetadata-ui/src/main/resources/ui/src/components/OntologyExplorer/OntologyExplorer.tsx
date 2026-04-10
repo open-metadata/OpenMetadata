@@ -1414,8 +1414,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       : undefined;
 
   const exportableGlossaryName = exportableGlossaryId
-    ? (glossaries.find((g) => g.id === exportableGlossaryId)?.name ??
-      exportableGlossaryId)
+    ? glossaries.find((g) => g.id === exportableGlossaryId)?.name ??
+      exportableGlossaryId
     : undefined;
 
   const handleOntologyExportError = useCallback(
