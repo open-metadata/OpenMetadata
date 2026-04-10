@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,24 +11,11 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../../styles/variables.less';
+import { ChangeSummaryEntry } from '../../../rest/changeSummaryAPI';
 
-.ant-card.new-description-card {
-  border-radius: 10px;
-  border: 0.5px solid @grey-100;
-  background: @grey-50;
-  height: calc(100% - 20px);
-  overflow-y: auto;
-}
-
-.description-v1-title-row {
-  flex-wrap: wrap;
-
-  .ant-space-item {
-    display: flex;
-  }
-}
-
-.description-v1-metadata {
-  margin-top: 12px;
+export interface DescriptionSourceBadgeProps {
+  changeSummaryEntry?: ChangeSummaryEntry;
+  showAcceptedBy?: boolean;
+  showBadge?: boolean;
+  showTimestamp?: boolean;
 }
