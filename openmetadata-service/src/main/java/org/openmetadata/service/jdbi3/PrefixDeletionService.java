@@ -132,6 +132,7 @@ public final class PrefixDeletionService {
     dao.relationshipDAO().deleteAllByFqnHashPrefix(fqnHashPrefix);
     dao.fieldRelationshipDAO().deleteAllByPrefix(rootFqn);
     dao.entityExtensionDAO().deleteAllBatch(allIds);
+    dao.entityExtensionTimeSeriesDao().deleteByFqnHashPrefix(fqnHashPrefix);
     dao.tagUsageDAO().deleteTagLabelsByTargetPrefix(rootFqn);
     dao.usageDAO().deleteBatch(allIds);
     List<UUID> allUuids = allIds.stream().map(UUID::fromString).toList();

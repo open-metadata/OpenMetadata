@@ -4,8 +4,11 @@ import static org.openmetadata.service.Entity.WORKFLOW;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.automations.WorkflowResource;
@@ -14,6 +17,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
+@Slf4j
 public class WorkflowRepository extends EntityRepository<Workflow> {
   private static final String PATCH_FIELDS = "status,response";
 
@@ -78,6 +82,19 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     }
 
     dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+  }
+
+  @Override
+  protected void preDeleteByFqnHashPrefix(String fqnHashPrefix, String deletedBy) {
+    List<UUID> ids = getDao().findIdsByFqnHashPrefix(fqnHashPrefix);
+    for (UUID id : ids) {
+      try {
+        Workflow workflow = find(id, Include.ALL);
+        SecretsManagerFactory.getSecretsManager().deleteSecretsFromWorkflow(workflow);
+      } catch (Exception e) {
+        LOG.warn("Failed to delete secrets for workflow {}: {}", id, e.getMessage());
+      }
+    }
   }
 
   /** Remove the secrets from the secret manager */
