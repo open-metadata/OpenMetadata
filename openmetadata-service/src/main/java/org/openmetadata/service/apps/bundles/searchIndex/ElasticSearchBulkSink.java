@@ -54,6 +54,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
@@ -724,7 +725,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       return;
     }
 
-    String canonicalIndex = VectorIndexService.getClusteredIndexName();
+    String canonicalIndex = vectorService.getIndexAlias();
     String finalTargetIndex = canonicalIndex;
     String finalSourceIndex = null;
 
@@ -774,7 +775,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       EntityInterface entity,
       StageStatsTracker tracker) {
     try {
-      if (vectorService.copyExistingVectorDocuments(
+      if (((ElasticSearchVectorService) vectorService).copyExistingVectorDocuments(
           sourceIndex, targetIndex, parentId, fingerprint)) {
         vectorSuccess.incrementAndGet();
         if (tracker != null) {
@@ -798,7 +799,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       String targetIndex,
       StageStatsTracker tracker) {
     try {
-      vectorService.updateVectorEmbeddings(entity, targetIndex);
+      vectorService.updateEntityEmbedding(entity, targetIndex);
       vectorSuccess.incrementAndGet();
       if (tracker != null) {
         tracker.recordVector(StatsResult.SUCCESS);

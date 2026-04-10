@@ -142,7 +142,7 @@ public class VectorSearchResource {
     }
 
     try {
-      String indexName = vectorService.getIndexName();
+      String indexName = vectorService.getIndexAlias();
       String fingerprint = vectorService.getExistingFingerprint(indexName, parentId);
       FingerprintResponse response =
           new FingerprintResponse(

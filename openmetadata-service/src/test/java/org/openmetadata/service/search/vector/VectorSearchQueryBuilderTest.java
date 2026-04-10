@@ -714,7 +714,8 @@ class VectorSearchQueryBuilderTest {
     int size = 10;
     int k = 100;
 
-    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, size, k, Map.of());
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, size, 0, k, Map.of());
 
     JsonNode root = MAPPER.readTree(query);
     assertEquals(size, root.get("size").asInt());
@@ -736,12 +737,12 @@ class VectorSearchQueryBuilderTest {
     float[] vector = {0.1f};
 
     // k < 100 → num_candidates should be 100
-    String query1 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 50, Map.of());
+    String query1 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 50, Map.of());
     JsonNode root1 = MAPPER.readTree(query1);
     assertEquals(100, root1.get("knn").get("num_candidates").asInt());
 
     // k > 100 → num_candidates should equal k
-    String query2 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 200, Map.of());
+    String query2 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 200, Map.of());
     JsonNode root2 = MAPPER.readTree(query2);
     assertEquals(200, root2.get("knn").get("num_candidates").asInt());
   }
@@ -750,7 +751,7 @@ class VectorSearchQueryBuilderTest {
   void testNativeESQueryAlwaysHasDeletedFilter() throws Exception {
     float[] vector = {0.1f, 0.2f};
 
-    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, Map.of());
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of());
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
@@ -766,7 +767,7 @@ class VectorSearchQueryBuilderTest {
     float[] vector = {0.5f};
     Map<String, List<String>> filters = Map.of("entityType", List.of("table", "dashboard"));
 
-    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 5, 50, filters);
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 5, 0, 50, filters);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
@@ -785,7 +786,7 @@ class VectorSearchQueryBuilderTest {
     float[] vector = {0.1f};
     Map<String, List<String>> filters = Map.of("owners", List.of("user1", "team2"));
 
-    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, filters);
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
@@ -807,7 +808,7 @@ class VectorSearchQueryBuilderTest {
     float[] vector = {0.1f, 0.2f};
     Map<String, List<String>> filters = Map.of("tags", List.of("PII.Sensitive"));
 
-    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, filters);
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
@@ -827,7 +828,7 @@ class VectorSearchQueryBuilderTest {
             "tier", List.of("Tier.Tier1"),
             "serviceType", List.of("BigQuery"));
 
-    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, filters);
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
@@ -843,7 +844,7 @@ class VectorSearchQueryBuilderTest {
   void testNativeESQuerySourceExcludesEmbedding() throws Exception {
     float[] vector = {0.1f};
 
-    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, Map.of());
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of());
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode excludes = root.get("_source").get("excludes");
@@ -862,7 +863,7 @@ class VectorSearchQueryBuilderTest {
             "tier", List.of("Tier.Gold"));
 
     String osQuery = VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0);
-    String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 100, filters);
+    String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters);
 
     JsonNode osFilters =
         MAPPER

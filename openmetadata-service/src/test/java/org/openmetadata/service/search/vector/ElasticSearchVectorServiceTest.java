@@ -89,7 +89,7 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 100, 0.5);
+    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.5);
 
     assertNotNull(results);
     assertEquals(2, results.hits.size(), "Should return 2 results (scores 0.9 and 0.7)");
@@ -122,7 +122,7 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 100, 0.0);
+    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertEquals(1, results.hits.size());
     assertTrue(results.hits.get(0).containsKey("_score"), "Result should contain _score field");
@@ -152,7 +152,7 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 2, 100, 0.0);
+    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 2, 0, 100, 0.0);
 
     assertEquals(5, results.hits.size(), "Should return all chunks from first 2 parents (3+2=5)");
     long distinctParents = results.hits.stream().map(r -> r.get("parent_id")).distinct().count();
@@ -177,7 +177,7 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 100, 0.0);
+    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertEquals(3, results.hits.size(), "With threshold 0.0, should return all 3 results");
   }
@@ -200,7 +200,7 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 100, 0.9);
+    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.9);
 
     assertEquals(0, results.hits.size(), "With threshold 0.9, all results should be filtered out");
   }
@@ -223,7 +223,7 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 100, 0.0);
+    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertEquals(2, results.hits.size(), "Chunks without parent_id should be skipped");
   }
@@ -253,7 +253,7 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 3, 100, 0.0);
+    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 3, 0, 100, 0.0);
 
     assertEquals(3, results.hits.size(), "Should limit to 3 distinct parents");
     long distinctParents = results.hits.stream().map(r -> r.get("parent_id")).distinct().count();
@@ -274,7 +274,7 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 100, 0.0);
+    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertNotNull(results);
     assertTrue(results.hits.isEmpty(), "Empty hits should return empty list");
