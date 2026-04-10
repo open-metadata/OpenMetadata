@@ -112,13 +112,24 @@ class PIIProcessor(AutoClassificationProcessor):
 
         # Check India PII patterns
         india_pii = is_india_pii_column(column.name.root)
-        sample_value = str(sample_data[0]) if sample_data else ""
-        if india_pii == "Aadhaar" and validate_aadhaar(sample_value):
-            return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India Aadhaar detected")]
-        if india_pii == "PAN" and validate_pan(sample_value):
-            return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India PAN detected")]
-        if india_pii == "UPI":
-            return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India UPI detected")]
+        # India PII validation - check majority of samples like existing classifier
+        sample_values = [str(v) for v in sample_data if v] if sample_data else []
+
+        if india_pii == "Aadhaar" and sample_values:
+            valid_count = sum(1 for v in sample_values if validate_aadhaar(v))
+            if valid_count > len(sample_values) * 0.5:
+                return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India Aadhaar detected")]
+
+        if india_pii == "PAN" and sample_values:
+            valid_count = sum(1 for v in sample_values if validate_pan(v))
+            if valid_count > len(sample_values) * 0.5:
+                return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India PAN detected")]
+
+        if india_pii == "UPI" and sample_values:
+            # UPI validation is simpler - check for @ symbol in majority
+            valid_count = sum(1 for v in sample_values if "@" in v and len(v) > 5)
+            if valid_count > len(sample_values) * 0.5:
+                return [self.build_tag_label(PIISensitivityTag.SENSITIVE, "India UPI detected")]
 
         # Build classifier with the results capturing patcher
         result_capturer = ResultCapturingPatcher()
