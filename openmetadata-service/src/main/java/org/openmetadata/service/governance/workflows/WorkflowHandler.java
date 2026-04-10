@@ -217,9 +217,14 @@ public class WorkflowHandler {
     } catch (FlowableWrongDbException e) {
       String hint =
           isMigrationContext
-              ? "Flowable schema is at an unexpected version. The migration could not proceed."
-              : "Flowable schema is not initialized or is at an unexpected version. "
-                  + "Run `openmetadata-ops.sh migrate` before starting the server.";
+              ? String.format(
+                  "Flowable schema version mismatch during migration: DB has '%s', library expects '%s'. "
+                      + "Re-running migrate should auto-heal any partial upgrade.",
+                  e.getDbVersion(), e.getLibraryVersion())
+              : String.format(
+                  "Flowable schema not initialized or at unexpected version (DB: '%s', expected: '%s'). "
+                      + "Run `openmetadata-ops.sh migrate` before starting the server.",
+                  e.getDbVersion(), e.getLibraryVersion());
       throw new IllegalStateException(hint, e);
     }
 
