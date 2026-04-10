@@ -106,12 +106,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 type CustomPropertyEntity =
   (typeof CUSTOM_PROPERTIES_ENTITIES)[keyof typeof CUSTOM_PROPERTIES_ENTITIES];
 
-type CRUDEntity = {
-  key: keyof typeof CUSTOM_PROPERTIES_ENTITIES;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  makeInstance: (() => any) | null;
-};
-
 type AssetTypes =
   | TableClass
   | ContainerClass
@@ -130,6 +124,11 @@ type AssetTypes =
   | ApiEndpointClass;
 
 type OtherTypes = GlossaryTerm | Domain | DataProduct;
+
+type CRUDEntity = {
+  key: keyof typeof CUSTOM_PROPERTIES_ENTITIES;
+  makeInstance: (() => AssetTypes | OtherTypes) | null;
+};
 
 const BASIC_PROPERTIES = [
   'Integer',
@@ -306,6 +305,17 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       } else if (tableForColumnTest !== null) {
         await tableForColumnTest.delete(apiContext);
       }
+      if (users.length) {
+        for (const user of users) {
+          await user.delete(apiContext);
+        }
+      }
+      if (dashboardTopic1) {
+        await dashboardTopic1.delete(apiContext);
+      }
+      if (dashboardTopic2) {
+        await dashboardTopic2.delete(apiContext);
+      }
 
       await afterAction();
     });
@@ -437,10 +447,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await test.step('Update all CP types in Right Panel', async () => {
           test.slow();
           for (const [index, type] of properties.entries()) {
-            console.log(
-              'Tab value',
-              ENDPOINT_TO_EXPLORE_TAB_MAP[mainEntity.endpoint]
-            );
             await updateCustomPropertyInRightPanel({
               page,
               entityName: responseData['displayName'] ?? responseData['name'],
@@ -2797,7 +2803,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
-          page
+          await page
             .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
             .waitFor({ state: 'visible' });
           await page

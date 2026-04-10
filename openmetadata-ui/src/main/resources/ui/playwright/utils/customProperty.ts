@@ -18,8 +18,8 @@ import {
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
@@ -879,27 +879,6 @@ export const editCreatedProperty = async (
       )
     ).toContainText('["user","team","metric","table"]');
   }
-};
-
-export const deleteCustomPropertyByNameViaApi = async (
-  apiContext: APIRequestContext,
-  typeName: string,
-  propertyName: string
-) => {
-  const schemaResp = await apiContext.get(
-    `/api/v1/metadata/types/name/${typeName}?fields=customProperties`
-  );
-  const schema = await schemaResp.json();
-  const index = (schema.customProperties ?? []).findIndex(
-    (cp: { name: string }) => cp.name === propertyName
-  );
-  if (index === -1) {
-    return;
-  }
-  await apiContext.patch(`/api/v1/metadata/types/${schema.id}`, {
-    data: [{ op: 'remove', path: `/customProperties/${index}` }],
-    headers: { 'Content-Type': 'application/json-patch+json' },
-  });
 };
 
 export const deleteCreatedProperty = async (

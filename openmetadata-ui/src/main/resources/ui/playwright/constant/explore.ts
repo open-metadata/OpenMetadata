@@ -1,5 +1,3 @@
-import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +10,8 @@ import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+
 export const EXPECTED_BUCKETS = [
   'table',
   'tableColumn',

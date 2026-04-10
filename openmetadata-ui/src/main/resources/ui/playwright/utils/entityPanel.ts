@@ -28,25 +28,26 @@ export const getEntityFqn = (
 const findOptionByScrolling = async (page: Page, endpoint: string) => {
   let tries = 0;
   const maxTries = 5; // Limit the number of scroll attempts to prevent infinite loops
-
+  const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
+  const dropdown = page.getByTestId('global-search-select-dropdown');
+  const option = page.getByTestId(`global-search-select-option-${filterName}`);
   while (tries < maxTries) {
-    const option = page.getByTestId(
-      `global-search-select-option-${ENDPOINT_TO_FILTER_MAP[endpoint]}`
-    );
     if (await option.isVisible()) {
       await option.click();
       return;
     }
-
     // Scroll the dropdown to load more options
-    await page
-      .getByTestId('global-search-select-dropdown')
-      .evaluate((dropdown) => {
-        dropdown.scrollBy(0, 100); // Adjust scroll amount as needed
-      });
-
+    await dropdown.evaluate((element) => {
+      element.scrollBy(0, 100); // Adjust scroll amount as needed
+    });
     tries++;
   }
+  await dropdown.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  throw new Error(
+    `Unable to find global search filter option "${filterName}" for endpoint "${endpoint}" after ${maxTries} scroll attempts.`
+  );
 };
 
 export const openEntitySummaryPanel = async ({
