@@ -48,6 +48,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      onScrollNearEdge,
       nodePositions,
     },
     ref
@@ -109,6 +110,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      onScrollNearEdge,
       setClickedEdgeId,
       neighborSet,
       glossaryColorMap,

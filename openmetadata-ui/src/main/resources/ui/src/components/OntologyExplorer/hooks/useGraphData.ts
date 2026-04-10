@@ -16,8 +16,9 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
   DATA_MODE_ASSET_EDGE_STROKE_COLOR,
-  DATA_MODE_TERM_MIN_CENTER_SPACING,
+  DATA_MODE_TERM_H_SPACING,
   DATA_MODE_TERM_NODE_SIZE,
+  DATA_MODE_TERM_V_SPACING,
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_STROKE_COLOR,
@@ -310,7 +311,8 @@ export function useGraphDataBuilder({
               (n) => n.type !== 'dataAsset' && n.type !== 'metric'
             ),
             LayoutEngine.Dagre,
-            DATA_MODE_TERM_MIN_CENTER_SPACING
+            DATA_MODE_TERM_H_SPACING,
+            DATA_MODE_TERM_V_SPACING
           )
         : {};
 
