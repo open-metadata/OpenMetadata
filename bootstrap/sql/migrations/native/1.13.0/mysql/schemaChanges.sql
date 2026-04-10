@@ -133,9 +133,28 @@ WHERE ue.name = 'mcpapplicationbot'
 -- Add FQN hash columns to entity_relationship to enable fast prefix-based bulk deletion.
 -- This allows deleting all relationships for an entire entity subtree in a single indexed query
 -- instead of walking the tree entity-by-entity.
-ALTER TABLE entity_relationship
-    ADD COLUMN IF NOT EXISTS fromFQNHash VARCHAR(768) DEFAULT NULL,
-    ADD COLUMN IF NOT EXISTS toFQNHash   VARCHAR(768) DEFAULT NULL;
+-- MySQL does not support ADD COLUMN IF NOT EXISTS, so we use information_schema checks.
+SET @add_from_fqn_hash := (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE entity_relationship ADD COLUMN fromFQNHash VARCHAR(768) DEFAULT NULL',
+        'SELECT 1')
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'entity_relationship' AND column_name = 'fromFQNHash'
+);
+PREPARE add_from_fqn_hash_stmt FROM @add_from_fqn_hash;
+EXECUTE add_from_fqn_hash_stmt;
+DEALLOCATE PREPARE add_from_fqn_hash_stmt;
+
+SET @add_to_fqn_hash := (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE entity_relationship ADD COLUMN toFQNHash VARCHAR(768) DEFAULT NULL',
+        'SELECT 1')
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'entity_relationship' AND column_name = 'toFQNHash'
+);
+PREPARE add_to_fqn_hash_stmt FROM @add_to_fqn_hash;
+EXECUTE add_to_fqn_hash_stmt;
+DEALLOCATE PREPARE add_to_fqn_hash_stmt;
 
 CREATE INDEX IF NOT EXISTS idx_er_from_fqn_hash ON entity_relationship (fromFQNHash(768));
 CREATE INDEX IF NOT EXISTS idx_er_to_fqn_hash   ON entity_relationship (toFQNHash(768));
