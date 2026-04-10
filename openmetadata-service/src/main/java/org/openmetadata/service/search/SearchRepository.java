@@ -2593,6 +2593,10 @@ public class SearchRepository {
       if (batch.getLastHitSortValues() != null) {
         searchAfter = Arrays.asList(batch.getLastHitSortValues());
       } else {
+        LOG.warn(
+            "Export pagination ended early: lastHitSortValues is null after exporting {} of {} rows. "
+                + "This likely means the sort field '{}' did not produce sort values.",
+            exported, totalHits, sortField);
         break;
       }
     }

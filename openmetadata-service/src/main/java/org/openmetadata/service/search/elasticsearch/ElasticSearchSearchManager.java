@@ -975,7 +975,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, false);
 
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
@@ -1017,7 +1017,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
@@ -1060,7 +1060,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias)
+      String clusterAlias,
+      boolean isExport)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -1204,6 +1205,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       if (sortField.equalsIgnoreCase("_score")) {
         requestBuilder.sort("name.keyword", SortOrder.Asc, "keyword");
       }
+    }
+
+    // Add tiebreaker sort for stable search_after pagination in export
+    if (isExport) {
+      requestBuilder.sort("_id", SortOrder.Asc, null);
     }
 
     // Build hierarchy query if needed
