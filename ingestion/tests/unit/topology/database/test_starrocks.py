@@ -26,6 +26,7 @@ from metadata.ingestion.source.database.starrocks.metadata import (
     StarRocksSource,
     _get_sqlalchemy_type,
 )
+from metadata.ingestion.source.database.starrocks.utils import get_table_comment
 
 mock_starrocks_config = {
     "source": {
@@ -232,3 +233,29 @@ class TestStarRocksGetTableDescription(TestCase):
             inspector=MagicMock(),
         )
         assert description is None
+
+
+class TestGetTableComment(TestCase):
+    """Tests for utils.get_table_comment row parsing"""
+
+    def _make_connection(self, rows):
+        connection = MagicMock()
+        result = MagicMock()
+        result.mappings.return_value = iter(rows)
+        connection.execute.return_value = result
+        return connection
+
+    def test_returns_comment_from_row(self):
+        row = {"TABLE_COMMENT": "审计日志表"}
+        connection = self._make_connection([row])
+
+        result = get_table_comment(None, connection, "audit_tbl", schema="test_db")
+
+        assert result == {"text": "审计日志表"}
+
+    def test_returns_none_when_no_rows(self):
+        connection = self._make_connection([])
+
+        result = get_table_comment(None, connection, "missing_tbl", schema="test_db")
+
+        assert result == {"text": None}

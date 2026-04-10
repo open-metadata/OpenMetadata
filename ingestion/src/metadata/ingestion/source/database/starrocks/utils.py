@@ -42,7 +42,7 @@ def get_table_comment(_, connection, table_name, schema=None, **kw):
         {"table_name": table_name, "schema": schema},
         **kw,
     )
-    for table_comment in rows:
-        comment = table_comment[0]
+    for table_comment in rows.mappings():
+        comment = table_comment["TABLE_COMMENT"]
         break
     return {"text": comment}
