@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
@@ -524,14 +525,26 @@ public class ElasticSearchVectorService implements VectorIndexService {
         throw new IllegalStateException("Could not find " + resourcePath + " in classpath");
       }
       String template = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-      String result = template.replace("\"dims\": 512", "\"dims\": " + dimension);
-      if (result.equals(template) && dimension != 512) {
-        throw new IllegalStateException(
-            "Failed to replace dimension placeholder in vector index mapping template");
-      }
-      return result;
+      return patchDimension(template, dimension);
     } catch (Exception e) {
       throw new RuntimeException("Failed to load vector search index mapping", e);
+    }
+  }
+
+  static String patchDimension(String mappingJson, int dimension) {
+    try {
+      JsonNode root = MAPPER.readTree(mappingJson);
+      JsonNode properties = root.path("mappings").path("properties");
+      if (!properties.isMissingNode() && properties.has("embedding")) {
+        ObjectNode embeddingNode = (ObjectNode) properties.get("embedding");
+        if (embeddingNode.has("dims")) {
+          embeddingNode.put("dims", dimension);
+        }
+      }
+      return MAPPER.writeValueAsString(root);
+    } catch (Exception e) {
+      throw new IllegalStateException(
+          "Failed to patch dimension in vector index mapping template", e);
     }
   }
 

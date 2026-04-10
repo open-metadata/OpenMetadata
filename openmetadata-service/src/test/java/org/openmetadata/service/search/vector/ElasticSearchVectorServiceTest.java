@@ -328,6 +328,47 @@ class ElasticSearchVectorServiceTest {
     assertTrue(result.isEmpty());
   }
 
+  @Test
+  void testPatchDimensionReplacesDims() throws Exception {
+    String mapping =
+        """
+        {"mappings":{"properties":{"embedding":{"type":"dense_vector","dims":512}}}}
+        """;
+    String patched = ElasticSearchVectorService.patchDimension(mapping, 1536);
+    com.fasterxml.jackson.databind.JsonNode root =
+        new com.fasterxml.jackson.databind.ObjectMapper().readTree(patched);
+    int dims = root.path("mappings").path("properties").path("embedding").path("dims").asInt();
+    assertEquals(1536, dims);
+  }
+
+  @Test
+  void testPatchDimensionLeavesOtherFieldsUntouched() throws Exception {
+    String mapping =
+        """
+        {"mappings":{"properties":{"embedding":{"type":"dense_vector","dims":512,"similarity":"cosine"}}}}
+        """;
+    String patched = ElasticSearchVectorService.patchDimension(mapping, 768);
+    com.fasterxml.jackson.databind.JsonNode root =
+        new com.fasterxml.jackson.databind.ObjectMapper().readTree(patched);
+    com.fasterxml.jackson.databind.JsonNode embedding =
+        root.path("mappings").path("properties").path("embedding");
+    assertEquals(768, embedding.path("dims").asInt());
+    assertEquals("dense_vector", embedding.path("type").asText());
+    assertEquals("cosine", embedding.path("similarity").asText());
+  }
+
+  @Test
+  void testPatchDimensionHandlesNoSpaceVariant() throws Exception {
+    String mapping =
+        """
+        {"mappings":{"properties":{"embedding":{"type":"dense_vector","dims":512}}}}
+        """;
+    String patched = ElasticSearchVectorService.patchDimension(mapping, 384);
+    com.fasterxml.jackson.databind.JsonNode root =
+        new com.fasterxml.jackson.databind.ObjectMapper().readTree(patched);
+    assertEquals(384, root.path("mappings").path("properties").path("embedding").path("dims").asInt());
+  }
+
   private void mockRestClientResponse(String responseJson) throws Exception {
     Response mockResponse = mock(Response.class);
     HttpEntity mockEntity = mock(HttpEntity.class);
