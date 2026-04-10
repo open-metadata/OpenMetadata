@@ -273,12 +273,21 @@ public class SuggestionRepository {
     // Patch the entity with the updated suggestions
     JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
 
-    OperationContext operationContext = new OperationContext(entityLink.getEntityType(), patch);
-    authorizer.authorize(
-        securityContext,
-        operationContext,
-        new ResourceContext<>(entityLink.getEntityType(), entity.getId(), null));
-    repository.patch(null, entity.getId(), user, patch, ChangeSource.SUGGESTED);
+    if (!patch.toJsonArray().isEmpty()) {
+      OperationContext operationContext = new OperationContext(entityLink.getEntityType(), patch);
+      authorizer.authorize(
+          securityContext,
+          operationContext,
+          new ResourceContext<>(entityLink.getEntityType(), entity.getId(), null));
+      repository.patch(null, entity.getId(), user, patch, ChangeSource.SUGGESTED);
+    } else {
+      // The suggestion sets the same value already present — update changeSummary only
+      String changeSummaryField = resolveChangeSummaryField(suggestion, entityLink);
+      if (changeSummaryField != null) {
+        repository.patchChangeSummary(
+            entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
+      }
+    }
     suggestion.setStatus(SuggestionStatus.Accepted);
     update(suggestion, user);
   }
@@ -293,6 +302,7 @@ public class SuggestionRepository {
     EntityRepository<?> repository = null;
     String origJson = null;
     SuggestionWorkflow suggestionWorkflow = null;
+    List<Suggestion> noOpSuggestions = new ArrayList<>();
 
     for (Suggestion suggestion : suggestions) {
       MessageParser.EntityLink entityLink =
@@ -309,26 +319,63 @@ public class SuggestionRepository {
       } else if (!entity.getFullyQualifiedName().equals(entityLink.getEntityFQN())) {
         throw new SuggestionException("All suggestions must be for the same entity");
       }
-      // update entity with the suggestion
+      // Track whether this suggestion changes anything
+      String beforeJson = JsonUtils.pojoToJson(entity);
       entity = suggestionWorkflow.acceptSuggestion(suggestion, entity);
+      String afterJson = JsonUtils.pojoToJson(entity);
+      if (beforeJson.equals(afterJson)) {
+        noOpSuggestions.add(suggestion);
+      }
     }
 
     // Patch the entity with the updated suggestions
     String updatedEntityJson = JsonUtils.pojoToJson(entity);
     JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
 
-    OperationContext operationContext = new OperationContext(repository.getEntityType(), patch);
-    authorizer.authorize(
-        securityContext,
-        operationContext,
-        new ResourceContext<>(repository.getEntityType(), entity.getId(), null));
-    repository.patch(null, entity.getId(), user, patch, ChangeSource.SUGGESTED);
+    if (!patch.toJsonArray().isEmpty()) {
+      OperationContext operationContext = new OperationContext(repository.getEntityType(), patch);
+      authorizer.authorize(
+          securityContext,
+          operationContext,
+          new ResourceContext<>(repository.getEntityType(), entity.getId(), null));
+      repository.patch(null, entity.getId(), user, patch, ChangeSource.SUGGESTED);
+    }
+
+    // Record changeSummary for no-op suggestions (value already present on entity)
+    for (Suggestion suggestion : noOpSuggestions) {
+      MessageParser.EntityLink link = MessageParser.EntityLink.parse(suggestion.getEntityLink());
+      String changeSummaryField = resolveChangeSummaryField(suggestion, link);
+      if (changeSummaryField != null) {
+        repository.patchChangeSummary(
+            entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
+      }
+    }
 
     // Only mark the suggestions as accepted after the entity has been successfully updated
     for (Suggestion suggestion : suggestions) {
       suggestion.setStatus(SuggestionStatus.Accepted);
       update(suggestion, user);
     }
+  }
+
+  /**
+   * Determine the changeSummary field name for a suggestion based on its type and entity link.
+   * Returns null if the suggestion type does not map to a tracked changeSummary field.
+   */
+  private static String resolveChangeSummaryField(
+      Suggestion suggestion, MessageParser.EntityLink entityLink) {
+    if (suggestion.getType() != SuggestionType.SuggestDescription) {
+      return null;
+    }
+    if (entityLink.getFieldName() == null) {
+      return "description";
+    }
+    // Column-level: "columns.columnName.description"
+    if (entityLink.getArrayFieldName() != null) {
+      return FullyQualifiedName.build(
+          entityLink.getFieldName(), entityLink.getArrayFieldName(), "description");
+    }
+    return "description";
   }
 
   public RestUtil.PutResponse<Suggestion> rejectSuggestion(
