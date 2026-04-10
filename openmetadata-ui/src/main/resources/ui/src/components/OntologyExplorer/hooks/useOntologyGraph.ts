@@ -280,6 +280,23 @@ export function useOntologyGraph({
   const onScrollNearEdgeRef = useRef(onScrollNearEdge);
   onScrollNearEdgeRef.current = onScrollNearEdge;
 
+  // Suppresses the edge-proximity API call during programmatic transforms
+  // (zoom buttons, fit-to-screen). Only user-initiated pan/scroll should
+  // trigger data fetching.
+  const isProgrammaticTransformRef = useRef(false);
+  const suppressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const suppressEdgeCheck = useCallback((durationMs = 600) => {
+    if (suppressTimeoutRef.current !== null) {
+      clearTimeout(suppressTimeoutRef.current);
+    }
+    isProgrammaticTransformRef.current = true;
+    suppressTimeoutRef.current = setTimeout(() => {
+      isProgrammaticTransformRef.current = false;
+      suppressTimeoutRef.current = null;
+    }, durationMs);
+  }, []);
+
   const applyViewportCulling = useCallback(() => {}, []);
 
   const extractNodePositions = useCallback((): Record<
@@ -1007,7 +1024,12 @@ export function useOntologyGraph({
     const checkEdgeProximity = () => {
       const g = graphRef.current;
       const c = containerRef.current;
-      if (!g || !c || !onScrollNearEdgeRef.current) {
+      if (
+        !g ||
+        !c ||
+        !onScrollNearEdgeRef.current ||
+        isProgrammaticTransformRef.current
+      ) {
         return;
       }
 
@@ -1052,15 +1074,25 @@ export function useOntologyGraph({
       }
     };
 
-    // RAF-throttled: culling + edge-proximity check on every pan/zoom transform
+    // RAF-throttled: edge-proximity check on pan only (skip zoom changes)
     let transformRafId: number | null = null;
+    let prevZoom = DEFAULT_ZOOM;
     const scheduleTransformWork = () => {
       if (transformRafId !== null) {
         return;
       }
       transformRafId = requestAnimationFrame(() => {
         transformRafId = null;
-        checkEdgeProximity();
+        const liveGraph = graphRef.current;
+        if (!liveGraph) {
+          return;
+        }
+        const currentZoom = liveGraph.getZoom();
+        const isZoomChange = Math.abs(currentZoom - prevZoom) > 0.001;
+        prevZoom = currentZoom;
+        if (!isZoomChange) {
+          checkEdgeProximity();
+        }
       });
     };
     graph.on(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);
@@ -1448,5 +1480,5 @@ export function useOntologyGraph({
     applyViewportCulling,
   ]);
 
-  return { graphRef, extractNodePositions };
+  return { graphRef, extractNodePositions, suppressEdgeCheck };
 }

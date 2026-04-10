@@ -94,29 +94,30 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       nodePositions,
     });
 
-    const { graphRef, extractNodePositions } = useOntologyGraph({
-      containerRef,
-      graphData,
-      inputNodes,
-      mergedEdgesList,
-      explorationMode,
-      settings,
-      layoutType,
-      focusNodeId,
-      selectedNodeId,
-      expandedTermIds,
-      dataSignature,
-      onNodeClick,
-      onNodeDoubleClick,
-      onNodeContextMenu,
-      onPaneClick,
-      onScrollNearEdge,
-      setClickedEdgeId,
-      neighborSet,
-      glossaryColorMap,
-      computeNodeColor,
-      assetToTermMap,
-    });
+    const { graphRef, extractNodePositions, suppressEdgeCheck } =
+      useOntologyGraph({
+        containerRef,
+        graphData,
+        inputNodes,
+        mergedEdgesList,
+        explorationMode,
+        settings,
+        layoutType,
+        focusNodeId,
+        selectedNodeId,
+        expandedTermIds,
+        dataSignature,
+        onNodeClick,
+        onNodeDoubleClick,
+        onNodeContextMenu,
+        onPaneClick,
+        onScrollNearEdge,
+        setClickedEdgeId,
+        neighborSet,
+        glossaryColorMap,
+        computeNodeColor,
+        assetToTermMap,
+      });
 
     useImperativeHandle(
       ref,
@@ -126,13 +127,16 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
+          suppressEdgeCheck(800);
           const isDataMode = explorationMode === 'data';
           await fitViewWithMinZoom(graph, termCountForFit, isDataMode, 300);
         },
         zoomIn: () => {
+          suppressEdgeCheck();
           graphRef.current?.zoomBy(1.2);
         },
         zoomOut: () => {
+          suppressEdgeCheck();
           graphRef.current?.zoomBy(0.8);
         },
         runLayout: () => {
@@ -182,7 +186,13 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           URL.revokeObjectURL(url);
         },
       }),
-      [explorationMode, extractNodePositions, graphRef, termCountForFit]
+      [
+        explorationMode,
+        extractNodePositions,
+        graphRef,
+        suppressEdgeCheck,
+        termCountForFit,
+      ]
     );
 
     return (
