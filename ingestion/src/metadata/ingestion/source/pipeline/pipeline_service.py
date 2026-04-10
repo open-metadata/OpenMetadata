@@ -475,7 +475,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         Get the list of db service names
         """
         return (
-            self.source_config.lineageInformation.dbServiceNames or []
+            (self.source_config.lineageInformation.dbServiceNames or [])
             if self.source_config.lineageInformation
             else []
         )
@@ -485,7 +485,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         Get the list of storage service names
         """
         return (
-            self.source_config.lineageInformation.storageServiceNames or []
+            (self.source_config.lineageInformation.storageServiceNames or [])
             if self.source_config.lineageInformation
             else []
         )

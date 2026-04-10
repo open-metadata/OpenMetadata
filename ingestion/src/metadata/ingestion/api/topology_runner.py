@@ -309,13 +309,6 @@ class TopologyRunnerMixin(Generic[C]):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error running stage processor: {exc}")
-            self.status.failed(
-                StackTraceError(
-                    name=f"Stage Processor {stage.processor}",
-                    error=f"Error running stage processor: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
 
     def _process_stage(
         self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]

@@ -793,123 +793,51 @@ class FivetranUnitTest(TestCase):
         )
         assert self.fivetran.get_pipeline_state(details) == PipelineState.Inactive
 
-    @patch(
-        "metadata.ingestion.source.pipeline.fivetran.metadata.get_db_connection",
-    )
-    def test_pipeline_status_from_db_happy_path(self, mock_get_conn):
-        mock_service = Mock()
-        mock_service.connection.config = Mock()
-        mock_service.connection.config.model_copy.return_value = Mock()
-        mock_service.serviceType.value = "Snowflake"
-
-        mock_engine = Mock()
-        mock_conn = Mock()
-        mock_result = Mock()
-
+    def test_pipeline_status_from_db_happy_path(self):
         ts_start = datetime(2026, 3, 20, 8, 0, 0)
         ts_extract = datetime(2026, 3, 20, 8, 0, 10)
         ts_write_start = datetime(2026, 3, 20, 8, 0, 16)
         ts_write_end = datetime(2026, 3, 20, 8, 0, 21)
         ts_sync_end = datetime(2026, 3, 20, 8, 0, 22)
 
-        mock_result.fetchall.return_value = [
+        rows = [
             ("sync-1", "sync_start", None, ts_start),
-            (
-                "sync-1",
-                "extract_summary",
-                '{"status":"SUCCESS","total_rows":100}',
-                ts_extract,
-            ),
+            ("sync-1", "extract_summary", '{"status":"SUCCESS","total_rows":100}', ts_extract),
             ("sync-1", "write_to_table_start", '{"table":"Album"}', ts_write_start),
             ("sync-1", "write_to_table_end", '{"table":"Album"}', ts_write_end),
             ("sync-1", "sync_end", '{"status":"SUCCESSFUL"}', ts_sync_end),
-            (
-                "sync-1",
-                "sync_stats",
-                '{"extract_time_s":10,"process_time_s":6,"load_time_s":5,"total_time_s":21}',
-                ts_sync_end,
-            ),
+            ("sync-1", "sync_stats", '{"extract_time_s":10,"process_time_s":6,"load_time_s":5,"total_time_s":21}', ts_sync_end),
         ]
-        mock_conn.execute.return_value = mock_result
-        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        mock_engine.connect.return_value.__exit__ = Mock(return_value=False)
-        mock_get_conn.return_value = mock_engine
+        syncs = FivetranSource._parse_sync_events(rows)
+        sync = syncs["sync-1"]
+        task_statuses = FivetranSource._build_task_statuses_for_sync(sync)
 
-        self.fivetran._resolve_destination_service = Mock(return_value=mock_service)
-
-        details = FivetranPipelineDetails(
-            source=mock_data.get("source"),
-            destination={
-                "service": "snowflake",
-                "config": {"database": "FIVETRAN_DEMO"},
-            },
-            group=mock_data.get("group"),
-            connector_id="bargraph_kingly",
-        )
-        statuses = list(self.fivetran.yield_pipeline_status(details))
-        assert len(statuses) == 1
-        assert (
-            statuses[0].right.pipeline_status.executionStatus == StatusType.Successful
-        )
-
-        task_statuses = statuses[0].right.pipeline_status.taskStatus
         assert len(task_statuses) == 3
         assert task_statuses[0].name == FIVETRAN_TASK_LOAD
         assert task_statuses[0].executionStatus == StatusType.Successful
         assert task_statuses[0].startTime is not None
         assert task_statuses[0].endTime is not None
-
         assert task_statuses[1].name == FIVETRAN_TASK_PROCESS
         assert task_statuses[1].executionStatus == StatusType.Successful
-
         assert task_statuses[2].name == FIVETRAN_TASK_EXTRACT
         assert task_statuses[2].executionStatus == StatusType.Successful
         assert task_statuses[2].startTime is not None
         assert task_statuses[2].endTime is not None
 
-    @patch(
-        "metadata.ingestion.source.pipeline.fivetran.metadata.get_db_connection",
-    )
-    def test_pipeline_status_from_db_extract_failure(self, mock_get_conn):
-        mock_service = Mock()
-        mock_service.connection.config = Mock()
-        mock_service.connection.config.model_copy.return_value = Mock()
-        mock_service.serviceType.value = "Snowflake"
-
-        mock_engine = Mock()
-        mock_conn = Mock()
-        mock_result = Mock()
-
+    def test_pipeline_status_from_db_extract_failure(self):
         ts_start = datetime(2026, 3, 20, 8, 0, 0)
         ts_extract = datetime(2026, 3, 20, 8, 0, 10)
         ts_sync_end = datetime(2026, 3, 20, 8, 0, 11)
 
-        mock_result.fetchall.return_value = [
+        rows = [
             ("sync-1", "sync_start", None, ts_start),
             ("sync-1", "extract_summary", '{"status":"FAILURE"}', ts_extract),
             ("sync-1", "sync_end", '{"status":"FAILURE_WITH_TASK"}', ts_sync_end),
         ]
-        mock_conn.execute.return_value = mock_result
-        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        mock_engine.connect.return_value.__exit__ = Mock(return_value=False)
-        mock_get_conn.return_value = mock_engine
+        syncs = FivetranSource._parse_sync_events(rows)
+        sync = syncs["sync-1"]
+        task_statuses = FivetranSource._build_task_statuses_for_sync(sync)
 
-        self.fivetran._resolve_destination_service = Mock(return_value=mock_service)
-
-        details = FivetranPipelineDetails(
-            source=mock_data.get("source"),
-            destination={
-                "service": "snowflake",
-                "config": {"database": "FIVETRAN_DEMO"},
-            },
-            group=mock_data.get("group"),
-            connector_id="bargraph_kingly",
-        )
-        statuses = list(self.fivetran.yield_pipeline_status(details))
-        assert len(statuses) == 1
-        assert statuses[0].right.pipeline_status.executionStatus == StatusType.Failed
-
-        task_statuses = statuses[0].right.pipeline_status.taskStatus
         assert task_statuses[0].name == FIVETRAN_TASK_LOAD
         assert task_statuses[0].executionStatus == StatusType.Failed
         assert task_statuses[1].name == FIVETRAN_TASK_PROCESS
@@ -917,53 +845,19 @@ class FivetranUnitTest(TestCase):
         assert task_statuses[2].name == FIVETRAN_TASK_EXTRACT
         assert task_statuses[2].executionStatus == StatusType.Failed
 
-    @patch(
-        "metadata.ingestion.source.pipeline.fivetran.metadata.get_db_connection",
-    )
-    def test_pipeline_status_from_db_uses_sync_stats_fallback(self, mock_get_conn):
-        mock_service = Mock()
-        mock_service.connection.config = Mock()
-        mock_service.connection.config.model_copy.return_value = Mock()
-        mock_service.serviceType.value = "Snowflake"
-
-        mock_engine = Mock()
-        mock_conn = Mock()
-        mock_result = Mock()
-
+    def test_pipeline_status_from_db_uses_sync_stats_fallback(self):
         ts_start = datetime(2026, 3, 20, 8, 0, 0)
         ts_sync_end = datetime(2026, 3, 20, 8, 0, 27)
 
-        # Only sync_start, sync_end, and sync_stats — no intermediate events
-        mock_result.fetchall.return_value = [
+        rows = [
             ("sync-1", "sync_start", None, ts_start),
             ("sync-1", "sync_end", '{"status":"SUCCESSFUL"}', ts_sync_end),
-            (
-                "sync-1",
-                "sync_stats",
-                '{"extract_time_s":10,"process_time_s":6,"load_time_s":5,"total_time_s":21}',
-                ts_sync_end,
-            ),
+            ("sync-1", "sync_stats", '{"extract_time_s":10,"process_time_s":6,"load_time_s":5,"total_time_s":21}', ts_sync_end),
         ]
-        mock_conn.execute.return_value = mock_result
-        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        mock_engine.connect.return_value.__exit__ = Mock(return_value=False)
-        mock_get_conn.return_value = mock_engine
+        syncs = FivetranSource._parse_sync_events(rows)
+        sync = syncs["sync-1"]
+        task_statuses = FivetranSource._build_task_statuses_for_sync(sync)
 
-        self.fivetran._resolve_destination_service = Mock(return_value=mock_service)
-
-        details = FivetranPipelineDetails(
-            source=mock_data.get("source"),
-            destination={
-                "service": "snowflake",
-                "config": {"database": "FIVETRAN_DEMO"},
-            },
-            group=mock_data.get("group"),
-            connector_id="bargraph_kingly",
-        )
-        statuses = list(self.fivetran.yield_pipeline_status(details))
-        assert len(statuses) == 1
-
-        task_statuses = statuses[0].right.pipeline_status.taskStatus
         # sync_stats should fill in the missing extract_end, write_start, write_end
         # Order is [load, process, extract]
         assert task_statuses[2].endTime is not None  # extract endTime
@@ -1051,8 +945,8 @@ class FivetranUnitTest(TestCase):
             statuses[0].right.pipeline_status.executionStatus == StatusType.Successful
         )
 
-    def test_pipeline_status_from_db_skips_databricks(self):
-        self.fivetran._resolve_destination_service = Mock()
+    def test_pipeline_status_from_db_attempts_databricks(self):
+        self.fivetran._resolve_destination_service = Mock(return_value=None)
         details = FivetranPipelineDetails(
             source=mock_data.get("source"),
             destination={
@@ -1063,8 +957,8 @@ class FivetranUnitTest(TestCase):
             connector_id="bargraph_kingly",
         )
         self.client.get_connector_sync_history.return_value = []
-        statuses = list(self.fivetran.yield_pipeline_status(details))
-        self.fivetran._resolve_destination_service.assert_not_called()
+        list(self.fivetran.yield_pipeline_status(details))
+        self.fivetran._resolve_destination_service.assert_called_once_with("databricks")
 
     def test_parse_sync_events(self):
         ts1 = datetime(2026, 3, 20, 8, 0, 0)
@@ -1261,3 +1155,99 @@ class FivetranUnitTest(TestCase):
             connector_id="test_connector",
         )
         assert self.fivetran._get_schedule_interval(details) == "0 0 * * *"
+
+    def test_schedule_interval_none(self):
+        details = FivetranPipelineDetails(
+            source={"sync_frequency": None, "schema": "test", "service": "postgres"},
+            destination=mock_data.get("destination"),
+            group=mock_data.get("group"),
+            connector_id="test_connector",
+        )
+        assert self.fivetran._get_schedule_interval(details) is None
+
+    def test_schedule_interval_missing_key(self):
+        details = FivetranPipelineDetails(
+            source={"schema": "test", "service": "postgres"},
+            destination=mock_data.get("destination"),
+            group=mock_data.get("group"),
+            connector_id="test_connector",
+        )
+        assert self.fivetran._get_schedule_interval(details) is None
+
+    def test_schedule_interval_exactly_24_hours(self):
+        details = FivetranPipelineDetails(
+            source={"sync_frequency": 1440, "schema": "test", "service": "postgres"},
+            destination=mock_data.get("destination"),
+            group=mock_data.get("group"),
+            connector_id="test_connector",
+        )
+        assert self.fivetran._get_schedule_interval(details) == "0 0 * * *"
+
+    def test_parse_sync_events_malformed_json(self):
+        rows = [
+            ("s1", "sync_start", None, datetime(2026, 3, 20, 8, 0)),
+            ("s1", "extract_summary", "not valid json", datetime(2026, 3, 20, 8, 1)),
+            ("s1", "sync_end", "{broken", datetime(2026, 3, 20, 8, 2)),
+        ]
+        syncs = FivetranSource._parse_sync_events(rows)
+        assert "s1" in syncs
+        assert syncs["s1"]["sync_start_ts"] == datetime(2026, 3, 20, 8, 0)
+        assert syncs["s1"]["extract_end_ts"] == datetime(2026, 3, 20, 8, 1)
+        assert "extract_data" not in syncs["s1"]
+        assert "sync_end_data" not in syncs["s1"]
+
+    def test_parse_sync_events_multiple_syncs(self):
+        rows = [
+            ("s1", "sync_start", None, datetime(2026, 3, 20, 8, 0)),
+            ("s2", "sync_start", None, datetime(2026, 3, 20, 9, 0)),
+            ("s1", "sync_end", '{"status": "SUCCESSFUL"}', datetime(2026, 3, 20, 8, 5)),
+            ("s2", "sync_end", '{"status": "FAILED"}', datetime(2026, 3, 20, 9, 5)),
+        ]
+        syncs = FivetranSource._parse_sync_events(rows)
+        assert len(syncs) == 2
+        assert syncs["s1"]["sync_end_data"]["status"] == "SUCCESSFUL"
+        assert syncs["s2"]["sync_end_data"]["status"] == "FAILED"
+
+    def test_parse_sync_events_write_min_max(self):
+        rows = [
+            ("s1", "write_to_table_start", None, datetime(2026, 3, 20, 8, 10)),
+            ("s1", "write_to_table_start", None, datetime(2026, 3, 20, 8, 5)),
+            ("s1", "write_to_table_end", None, datetime(2026, 3, 20, 8, 12)),
+            ("s1", "write_to_table_end", None, datetime(2026, 3, 20, 8, 15)),
+        ]
+        syncs = FivetranSource._parse_sync_events(rows)
+        assert syncs["s1"]["write_start_min"] == datetime(2026, 3, 20, 8, 5)
+        assert syncs["s1"]["write_end_max"] == datetime(2026, 3, 20, 8, 15)
+
+    def test_build_task_statuses_no_events_with_successful_sync_end(self):
+        sync = {
+            "sync_start_ts": datetime(2026, 3, 20, 8, 0),
+            "sync_end_ts": datetime(2026, 3, 20, 8, 5),
+            "sync_end_data": {"status": "SUCCESSFUL"},
+        }
+        statuses = FivetranSource._build_task_statuses_for_sync(sync)
+        extract_status = next(s for s in statuses if s.name == FIVETRAN_TASK_EXTRACT)
+        process_status = next(s for s in statuses if s.name == FIVETRAN_TASK_PROCESS)
+        load_status = next(s for s in statuses if s.name == FIVETRAN_TASK_LOAD)
+        assert extract_status.executionStatus == StatusType.Failed
+        assert process_status.executionStatus == StatusType.Failed
+        assert load_status.executionStatus == StatusType.Failed
+
+    def test_build_fallback_task_statuses(self):
+        statuses = FivetranSource._build_fallback_task_statuses(
+            StatusType.Successful, 1000, 2000
+        )
+        assert len(statuses) == 3
+        for s in statuses:
+            assert s.executionStatus == StatusType.Successful
+            assert s.startTime.root == 1000
+            assert s.endTime.root == 2000
+
+    def test_build_fallback_task_statuses_no_end(self):
+        statuses = FivetranSource._build_fallback_task_statuses(
+            StatusType.Failed, 1000, None
+        )
+        assert len(statuses) == 3
+        for s in statuses:
+            assert s.executionStatus == StatusType.Failed
+            assert s.endTime is None

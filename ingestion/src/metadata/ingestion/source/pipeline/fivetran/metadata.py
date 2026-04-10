@@ -17,8 +17,7 @@ import traceback
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, List, Optional, cast
 
-import sqlglot
-from sqlalchemy import text
+from sqlalchemy import MetaData as SaMetaData, asc, select
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -69,8 +68,6 @@ logger = ingestion_logger()
 
 MESSAGING_CONNECTOR_TYPES = {"confluent_cloud", "kafka"}
 MAX_SYNC_RUNS = 100
-# TODO: Add Databricks support once delta table query path is implemented
-UNSUPPORTED_DESTINATION_TYPES = {"databricks"}
 
 FIVETRAN_TASK_EXTRACT = "extract"
 FIVETRAN_TASK_PROCESS = "process"
@@ -78,22 +75,25 @@ FIVETRAN_TASK_LOAD = "load"
 
 LOG_RETENTION_DAYS = 90
 
-FIVETRAN_LOG_QUERY = """\
-SELECT
-    sync_id,
-    message_event,
-    message_data,
-    time_stamp
-FROM {table}
-WHERE connection_id = :connector_id
-AND sync_id IS NOT NULL
-AND time_stamp >= :cutoff
-AND message_event IN (
-    'sync_start', 'extract_summary', 'write_to_table_start',
-    'write_to_table_end', 'sync_end', 'sync_stats'
-)
-ORDER BY time_stamp ASC
-"""
+FIVETRAN_MESSAGE_EVENTS = [
+    "sync_start",
+    "extract_summary",
+    "write_to_table_start",
+    "write_to_table_end",
+    "sync_end",
+    "sync_stats",
+]
+
+FIVETRAN_STATUS_MAP = {
+    "COMPLETED": StatusType.Successful,
+    "FAILURE_WITH_TASK": StatusType.Failed,
+    "CANCELED": StatusType.Failed,
+}
+
+HISTORICAL_SYNC_FIELDS = [
+    ("succeeded_at", StatusType.Successful),
+    ("failed_at", StatusType.Failed),
+]
 
 
 class FivetranSource(PipelineServiceSource):
@@ -188,17 +188,6 @@ class FivetranSource(PipelineServiceSource):
             return PipelineState.Inactive
         return PipelineState.Active
 
-    FIVETRAN_STATUS_MAP = {
-        "COMPLETED": StatusType.Successful,
-        "FAILURE_WITH_TASK": StatusType.Failed,
-        "CANCELED": StatusType.Failed,
-    }
-
-    HISTORICAL_SYNC_FIELDS = [
-        ("succeeded_at", StatusType.Successful),
-        ("failed_at", StatusType.Failed),
-    ]
-
     def _resolve_destination_service(
         self, dest_service_type: str = ""
     ) -> Optional[DatabaseService]:
@@ -223,28 +212,29 @@ class FivetranSource(PipelineServiceSource):
         return None
 
     @staticmethod
+    def _try_parse_json(data_str: Optional[str]) -> Optional[dict]:
+        if not data_str:
+            return None
+        try:
+            return json.loads(data_str)
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+    @staticmethod
     def _parse_sync_events(rows) -> dict:
         """Group LOG rows by sync_id into per-sync event dictionaries."""
         syncs: dict = {}
         for row in rows:
-            sync_id = row[0]
-            event = row[1]
-            data_str = row[2]
-            ts = row[3]
-
-            if sync_id not in syncs:
-                syncs[sync_id] = {}
-            sync = syncs[sync_id]
+            sync_id, event, data_str, ts = row[0], row[1], row[2], row[3]
+            sync = syncs.setdefault(sync_id, {})
 
             if event == "sync_start":
                 sync["sync_start_ts"] = ts
             elif event == "extract_summary":
                 sync["extract_end_ts"] = ts
-                if data_str:
-                    try:
-                        sync["extract_data"] = json.loads(data_str)
-                    except (json.JSONDecodeError, TypeError):
-                        pass
+                parsed = FivetranSource._try_parse_json(data_str)
+                if parsed:
+                    sync["extract_data"] = parsed
             elif event == "write_to_table_start":
                 if "write_start_min" not in sync or ts < sync["write_start_min"]:
                     sync["write_start_min"] = ts
@@ -253,17 +243,13 @@ class FivetranSource(PipelineServiceSource):
                     sync["write_end_max"] = ts
             elif event == "sync_end":
                 sync["sync_end_ts"] = ts
-                if data_str:
-                    try:
-                        sync["sync_end_data"] = json.loads(data_str)
-                    except (json.JSONDecodeError, TypeError):
-                        pass
+                parsed = FivetranSource._try_parse_json(data_str)
+                if parsed:
+                    sync["sync_end_data"] = parsed
             elif event == "sync_stats":
-                if data_str:
-                    try:
-                        sync["sync_stats"] = json.loads(data_str)
-                    except (json.JSONDecodeError, TypeError):
-                        pass
+                parsed = FivetranSource._try_parse_json(data_str)
+                if parsed:
+                    sync["sync_stats"] = parsed
 
         return syncs
 
@@ -368,12 +354,6 @@ class FivetranSource(PipelineServiceSource):
             return None
 
         dest_service_type = pipeline_details.destination.get("service", "")
-        if dest_service_type.lower() in UNSUPPORTED_DESTINATION_TYPES:
-            logger.debug(
-                f"Destination type [{dest_service_type}] not supported for DB log query"
-            )
-            return None
-
         service = self._resolve_destination_service(dest_service_type)
         if not service:
             return None
@@ -386,32 +366,29 @@ class FivetranSource(PipelineServiceSource):
             )
             engine = get_db_connection(modified_config)
 
-            dialect = service.serviceType.value.lower()
-            uses_upper = dialect == "snowflake"
-            catalog = dest_database.upper() if uses_upper else dest_database
-            schema = "FIVETRAN_METADATA" if uses_upper else "fivetran_metadata"
-            table = "LOG" if uses_upper else "log"
-            table_ref = sqlglot.table(table, db=schema, catalog=catalog).sql(
-                dialect=dialect, identify=True
-            )
-
-            query = FIVETRAN_LOG_QUERY.format(table=table_ref)
-
             cutoff = datetime.now(timezone.utc) - timedelta(days=LOG_RETENTION_DAYS)
 
             with engine.connect() as conn:
-                result = conn.execute(
-                    text(query),
-                    {
-                        "connector_id": pipeline_details.connector_id,
-                        "cutoff": cutoff,
-                    },
+                sa_metadata = SaMetaData(schema="fivetran_metadata")
+                sa_metadata.reflect(conn, only=["log"])
+                log_table = sa_metadata.tables["fivetran_metadata.log"]
+                c = log_table.c
+
+                query = (
+                    select(c.sync_id, c.message_event, c.message_data, c.time_stamp)
+                    .where(c.connection_id == pipeline_details.connector_id)
+                    .where(c.sync_id.isnot(None))
+                    .where(c.time_stamp >= cutoff)
+                    .where(c.message_event.in_(FIVETRAN_MESSAGE_EVENTS))
+                    .order_by(asc(c.time_stamp))
                 )
-                rows = result.fetchall()
 
-            syncs = self._parse_sync_events(rows)
+                rows = conn.execute(query).yield_per(100)
+                syncs = self._parse_sync_events(rows)
 
-            # Sort by sync_start descending and limit
+            # Sort by sync_start descending and limit. Sorting must happen in
+            # Python because DB rows are individual events that get grouped by
+            # sync_id in _parse_sync_events before we can sort by sync.
             sorted_syncs = sorted(
                 syncs.items(),
                 key=lambda x: x[1].get(
@@ -440,7 +417,7 @@ class FivetranSource(PipelineServiceSource):
                     OMetaPipelineStatus(
                         pipeline_fqn=pipeline_fqn,
                         pipeline_status=PipelineStatus(
-                            executionStatus=overall_status.value,
+                            executionStatus=overall_status,
                             taskStatus=task_statuses,
                             timestamp=Timestamp(start_ms),
                         ),
@@ -495,14 +472,14 @@ class FivetranSource(PipelineServiceSource):
                     end_dt = datetime.fromisoformat(sync["end"].replace("Z", "+00:00"))
                     end_ms = datetime_to_ts(end_dt)
 
-                status_type = self.FIVETRAN_STATUS_MAP.get(
+                status_type = FIVETRAN_STATUS_MAP.get(
                     sync.get("status", ""), StatusType.Pending
                 )
                 task_status = self._build_fallback_task_statuses(
                     status_type, start_ms, end_ms
                 )
                 pipeline_status = PipelineStatus(
-                    executionStatus=status_type.value,
+                    executionStatus=status_type,
                     taskStatus=task_status,
                     timestamp=Timestamp(start_ms),
                 )
@@ -519,7 +496,7 @@ class FivetranSource(PipelineServiceSource):
                     f" [{self.get_pipeline_name(pipeline_details)}]: {exc}"
                 )
 
-        for field_name, status_type in self.HISTORICAL_SYNC_FIELDS:
+        for field_name, status_type in HISTORICAL_SYNC_FIELDS:
             try:
                 timestamp_str = pipeline_details.source.get(field_name)
                 if not timestamp_str:
@@ -532,7 +509,7 @@ class FivetranSource(PipelineServiceSource):
                     status_type, ts_ms, None
                 )
                 pipeline_status = PipelineStatus(
-                    executionStatus=status_type.value,
+                    executionStatus=status_type,
                     taskStatus=task_status,
                     timestamp=Timestamp(ts_ms),
                 )
@@ -559,19 +536,19 @@ class FivetranSource(PipelineServiceSource):
         return [
             TaskStatus(
                 name=FIVETRAN_TASK_LOAD,
-                executionStatus=status_type.value,
+                executionStatus=status_type,
                 startTime=Timestamp(start_ms),
                 endTime=Timestamp(end_ms) if end_ms else None,
             ),
             TaskStatus(
                 name=FIVETRAN_TASK_PROCESS,
-                executionStatus=status_type.value,
+                executionStatus=status_type,
                 startTime=Timestamp(start_ms),
                 endTime=Timestamp(end_ms) if end_ms else None,
             ),
             TaskStatus(
                 name=FIVETRAN_TASK_EXTRACT,
-                executionStatus=status_type.value,
+                executionStatus=status_type,
                 startTime=Timestamp(start_ms),
                 endTime=Timestamp(end_ms) if end_ms else None,
             ),
