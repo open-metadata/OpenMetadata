@@ -14,6 +14,7 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -89,7 +90,7 @@ class IdempotentDdlDataSourceTest {
     Connection proxied = dataSource.getConnection();
 
     SQLException actual = assertThrows(SQLException.class, proxied::createStatement);
-    assertInstanceOf(SQLException.class, actual);
+    assertSame(expected, actual);
   }
 
   @Test
@@ -99,6 +100,7 @@ class IdempotentDdlDataSourceTest {
 
     Connection proxied = dataSource.getConnection();
 
-    assertThrows(SQLException.class, proxied::getAutoCommit);
+    SQLException actual = assertThrows(SQLException.class, proxied::getAutoCommit);
+    assertSame(expected, actual);
   }
 }
