@@ -57,7 +57,6 @@ test.describe(
     test('Logs page shows breadcrumb, summary, and log viewer or empty state after opening from bundle suite pipeline tab', async ({
       page,
     }) => {
-      test.slow();
       // 6 minutes
       test.setTimeout(6 * 60 * 1000);
 
