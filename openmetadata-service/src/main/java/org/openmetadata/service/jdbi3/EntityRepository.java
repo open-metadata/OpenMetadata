@@ -3447,6 +3447,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Called once per entity type before prefix deletion removes entities from the DB.
+   * Override for bulk-efficient cleanup (e.g. calling an external system like Airflow).
+   * Entities matching the prefix are still in the DB when this runs.
+   */
+  protected void preDeleteByFqnHashPrefix(String fqnHashPrefix, String deletedBy) {}
+
+  /**
+   * Called once per entity type after prefix deletion has removed entities from the DB.
+   * Override for post-deletion metadata updates that do not require loading the deleted entities.
+   */
+  protected void postDeleteByFqnHashPrefix(String fqnHashPrefix) {}
+
   public final void deleteFromSearch(T entity, boolean hardDelete) {
     try (var ignored = phase("lifecycleDispatch")) {
       if (hardDelete) {

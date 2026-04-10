@@ -77,6 +77,7 @@ public final class PrefixDeletionService {
       deleteDependencyTables(rootFqn, fqnHashPrefix, allIds);
       runEntityHooks(rootEntity, deletedBy, fqnHashPrefix);
       deleteEntityTables(descendantsByType, rootEntity);
+      runPostEntityHooks(fqnHashPrefix);
       cleanSearchIndex(rootEntity, descendantsByType.keySet());
       emitDeleteEvent(rootEntity);
     } finally {
@@ -150,6 +151,21 @@ public final class PrefixDeletionService {
         Entity.getEntityRepository(entityType).deleteTimeSeriesByFqnPrefix(fqnHashPrefix);
       } catch (Exception e) {
         LOG.debug("deleteTimeSeriesByFqnPrefix failed for type {}: {}", entityType, e.getMessage());
+      }
+      try {
+        Entity.getEntityRepository(entityType).preDeleteByFqnHashPrefix(fqnHashPrefix, deletedBy);
+      } catch (Exception e) {
+        LOG.debug("preDeleteByFqnHashPrefix failed for type {}: {}", entityType, e.getMessage());
+      }
+    }
+  }
+
+  private void runPostEntityHooks(String fqnHashPrefix) {
+    for (String entityType : Entity.getEntityList()) {
+      try {
+        Entity.getEntityRepository(entityType).postDeleteByFqnHashPrefix(fqnHashPrefix);
+      } catch (Exception e) {
+        LOG.debug("postDeleteByFqnHashPrefix failed for type {}: {}", entityType, e.getMessage());
       }
     }
   }
