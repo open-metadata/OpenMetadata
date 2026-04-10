@@ -14,7 +14,6 @@ import {
   forwardRef,
   useCallback,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -62,16 +61,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     }, [settings.layout]);
 
     const layoutType = getLayoutType();
-
-    const termCountForFit = useMemo(() => {
-      if (explorationMode === 'data') {
-        return inputNodes.filter(
-          (n) => n.type !== 'dataAsset' && n.type !== 'metric'
-        ).length;
-      }
-
-      return inputNodes.length;
-    }, [explorationMode, inputNodes]);
 
     const {
       graphData,
@@ -128,8 +117,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
             return;
           }
           suppressEdgeCheck(800);
-          const isDataMode = explorationMode === 'data';
-          await fitViewWithMinZoom(graph, termCountForFit, isDataMode, 300);
+          await fitViewWithMinZoom(graph, 300);
         },
         zoomIn: () => {
           suppressEdgeCheck();
@@ -186,13 +174,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           URL.revokeObjectURL(url);
         },
       }),
-      [
-        explorationMode,
-        extractNodePositions,
-        graphRef,
-        suppressEdgeCheck,
-        termCountForFit,
-      ]
+      [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
 
     return (

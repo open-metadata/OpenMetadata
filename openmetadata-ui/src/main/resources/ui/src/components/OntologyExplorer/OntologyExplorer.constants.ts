@@ -400,11 +400,17 @@ export const PRACTICAL_MAX_ZOOM_INITIAL = 1;
 
 export async function fitViewWithMinZoom(
   graph: Graph,
-  _termNodeCount: number,
-  _isDataMode: boolean,
   duration = 0
 ): Promise<void> {
   await graph.fitView({ when: 'always', direction: 'both' }, { duration });
+  const zoom = graph.getZoom();
+  if (zoom > PRACTICAL_MAX_ZOOM_INITIAL) {
+    graph.zoomTo(
+      PRACTICAL_MAX_ZOOM_INITIAL,
+      { duration: 0 },
+      graph.getCanvasCenter()
+    );
+  }
 }
 
 export const DATA_MODE_ASSET_LOAD_PAGE_SIZE = 1000;

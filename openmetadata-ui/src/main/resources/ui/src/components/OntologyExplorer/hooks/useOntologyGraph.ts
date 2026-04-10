@@ -280,6 +280,35 @@ export function useOntologyGraph({
   const onScrollNearEdgeRef = useRef(onScrollNearEdge);
   onScrollNearEdgeRef.current = onScrollNearEdge;
 
+  // Cached graph bounds — recomputed only when node data changes, not on every
+  // pan/zoom transform. Updated by recomputeGraphBounds() after data updates.
+  const graphBoundsRef = useRef<{ maxX: number; maxY: number } | null>(null);
+
+  const recomputeGraphBounds = useCallback(() => {
+    const g = graphRef.current;
+    if (!g) {
+      return;
+    }
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    g.getNodeData().forEach((node) => {
+      try {
+        const pos = g.getElementPosition(String(node.id));
+        if (pos) {
+          if (pos[0] > maxX) {
+            maxX = pos[0];
+          }
+          if (pos[1] > maxY) {
+            maxY = pos[1];
+          }
+        }
+      } catch {
+        // Node not yet positioned
+      }
+    });
+    graphBoundsRef.current = maxX === -Infinity ? null : { maxX, maxY };
+  }, []);
+
   // Suppresses the edge-proximity API call during programmatic transforms
   // (zoom buttons, fit-to-screen). Only user-initiated pan/scroll should
   // trigger data fetching.
@@ -296,8 +325,6 @@ export function useOntologyGraph({
       suppressTimeoutRef.current = null;
     }, durationMs);
   }, []);
-
-  const applyViewportCulling = useCallback(() => {}, []);
 
   const extractNodePositions = useCallback((): Record<
     string,
@@ -1028,14 +1055,14 @@ export function useOntologyGraph({
         !g ||
         !c ||
         !onScrollNearEdgeRef.current ||
-        isProgrammaticTransformRef.current
+        isProgrammaticTransformRef.current ||
+        !graphBoundsRef.current
       ) {
         return;
       }
 
       const W = c.offsetWidth;
       const H = c.offsetHeight;
-
       const canvasBottomRight = g.getCanvasByViewport([W, H]);
       const cvpRight = Array.isArray(canvasBottomRight)
         ? canvasBottomRight[0]
@@ -1044,28 +1071,7 @@ export function useOntologyGraph({
         ? canvasBottomRight[1]
         : (canvasBottomRight as unknown as ArrayLike<number>)[1];
 
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-      g.getNodeData().forEach((node) => {
-        try {
-          const pos = g.getElementPosition(String(node.id));
-          if (pos) {
-            if (pos[0] > maxX) {
-              maxX = pos[0];
-            }
-            if (pos[1] > maxY) {
-              maxY = pos[1];
-            }
-          }
-        } catch {
-          // Node not yet positioned
-        }
-      });
-
-      if (maxX === -Infinity) {
-        return;
-      }
-
+      const { maxX, maxY } = graphBoundsRef.current;
       const nearRight = cvpRight >= maxX - EDGE_TRIGGER_PX;
       const nearBottom = cvpBottom >= maxY - EDGE_TRIGGER_PX;
 
@@ -1074,23 +1080,31 @@ export function useOntologyGraph({
       }
     };
 
-    // RAF-throttled: edge-proximity check on pan only (skip zoom changes)
+    // Use a wheel-event flag to distinguish zoom (wheel/pinch) from pan (drag).
+    // AFTER_TRANSFORM fires for both — the wheel flag tells us which triggered it.
+    let isZooming = false;
+    let zoomClearTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleWheelEvent = () => {
+      isZooming = true;
+      if (zoomClearTimer !== null) {
+        clearTimeout(zoomClearTimer);
+      }
+      zoomClearTimer = setTimeout(() => {
+        isZooming = false;
+        zoomClearTimer = null;
+      }, 150);
+    };
+    container.addEventListener('wheel', handleWheelEvent, { passive: true });
+
+    // RAF-throttled: edge-proximity check on pan only (skip zoom)
     let transformRafId: number | null = null;
-    let prevZoom = DEFAULT_ZOOM;
     const scheduleTransformWork = () => {
       if (transformRafId !== null) {
         return;
       }
       transformRafId = requestAnimationFrame(() => {
         transformRafId = null;
-        const liveGraph = graphRef.current;
-        if (!liveGraph) {
-          return;
-        }
-        const currentZoom = liveGraph.getZoom();
-        const isZoomChange = Math.abs(currentZoom - prevZoom) > 0.001;
-        prevZoom = currentZoom;
-        if (!isZoomChange) {
+        if (!isZooming && !isProgrammaticTransformRef.current) {
           checkEdgeProximity();
         }
       });
@@ -1098,7 +1112,7 @@ export function useOntologyGraph({
     graph.on(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);
 
     const fitAndClampZoom = async () => {
-      await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
+      await fitViewWithMinZoom(graph);
       const zoom = graph.getZoom();
       if (zoom < PRACTICAL_MIN_ZOOM) {
         graph.zoomTo(
@@ -1135,12 +1149,19 @@ export function useOntologyGraph({
           return;
         }
         await fitAndClampZoom();
+        recomputeGraphBounds();
       } catch {
+        if (renderCancelled) {
+          return;
+        }
         // Layout or draw failed — attempt a bare draw so at least something
         // renders, then still try to fit the view.
         try {
           await graph.draw();
-          await fitAndClampZoom();
+          if (!renderCancelled) {
+            await fitAndClampZoom();
+            recomputeGraphBounds();
+          }
         } catch {
           // Graph may have been destroyed; ignore.
         }
@@ -1165,6 +1186,10 @@ export function useOntologyGraph({
       if (transformRafId !== null) {
         cancelAnimationFrame(transformRafId);
       }
+      if (zoomClearTimer !== null) {
+        clearTimeout(zoomClearTimer);
+      }
+      container.removeEventListener('wheel', handleWheelEvent);
       if (cancelPendingUpdateRef.current) {
         cancelPendingUpdateRef.current();
         cancelPendingUpdateRef.current = null;
@@ -1184,7 +1209,7 @@ export function useOntologyGraph({
     explorationMode,
     hasBakedPositions,
     layoutType,
-    applyViewportCulling,
+    recomputeGraphBounds,
   ]);
 
   useEffect(() => {
@@ -1450,8 +1475,9 @@ export function useOntologyGraph({
         }
 
         if (termFingerprintChanged) {
-          await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
+          await fitViewWithMinZoom(graph);
         }
+        recomputeGraphBounds();
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;
@@ -1477,7 +1503,7 @@ export function useOntologyGraph({
     positionAssetNodes,
     positionModelModeNodes,
     shiftTermsFromExpandedRing,
-    applyViewportCulling,
+    recomputeGraphBounds,
   ]);
 
   return { graphRef, extractNodePositions, suppressEdgeCheck };
