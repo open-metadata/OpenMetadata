@@ -24,6 +24,15 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
 }));
 
+jest.mock('../../../utils/OktaCustomStorage', () => ({
+  OktaCustomStorage: jest.fn().mockImplementation(() => ({
+    waitForInit: jest.fn().mockResolvedValue(undefined),
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+  })),
+}));
+
 const mockHandleSuccessfulLogout = jest.fn();
 
 jest.mock('../AuthProviders/AuthProvider', () => ({
