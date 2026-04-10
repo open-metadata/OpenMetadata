@@ -22,7 +22,7 @@ import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
 
 import {
-  PAGE_SIZE_LARGE,
+  ROLES_PAGE_SIZE,
   TERM_ADMIN,
 } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -76,7 +76,7 @@ const UserProfileRoles = ({
         undefined,
         undefined,
         false,
-        PAGE_SIZE_LARGE
+        ROLES_PAGE_SIZE
       );
       setRoles(response.data);
     } catch (err) {

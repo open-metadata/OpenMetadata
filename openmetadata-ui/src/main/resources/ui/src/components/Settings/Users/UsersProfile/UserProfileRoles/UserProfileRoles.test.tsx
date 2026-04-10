@@ -164,7 +164,7 @@ describe('Test User Profile Roles Component', () => {
 
     fireEvent.click(editButton);
 
-    expect(getRoles).toHaveBeenCalledWith('', undefined, undefined, false, 50);
+    expect(getRoles).toHaveBeenCalledWith('', undefined, undefined, false, 500);
 
     expect(screen.getByTestId('user-profile-edit-popover')).toBeInTheDocument();
   });
