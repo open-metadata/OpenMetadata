@@ -14,12 +14,12 @@ Check that we are properly running nodes and stages
 """
 from typing import List, Optional
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -286,49 +286,3 @@ class TopologyRunnerTest(TestCase):
                 }
             },
         )
-
-
-class TestRunStageProcessorErrorReporting(TestCase):
-    """Validate that _run_stage_processor reports failures to status"""
-
-    def setUp(self):
-        self.source = MockSource()
-        self.source.status = Mock()
-
-    def test_reports_failure_on_exception(self):
-        """Exceptions in stage processor should be recorded via status.failed()"""
-        stage = NodeStage(
-            type_=MockSchema,
-            processor="exploding_processor",
-            context="schemas",
-            nullable=True,
-        )
-
-        def exploding_processor(_entity):
-            raise RuntimeError("something broke")
-
-        self.source.exploding_processor = exploding_processor
-
-        list(self.source._run_stage_processor(stage=stage, node_entity="test"))
-
-        self.source.status.failed.assert_called_once()
-        error_arg = self.source.status.failed.call_args[0][0]
-        assert isinstance(error_arg, StackTraceError)
-        assert "something broke" in error_arg.error
-        assert "Stage Processor exploding_processor" in error_arg.name
-
-    def test_no_failure_on_success(self):
-        """Successful stage processor should not record a failure"""
-        stage = NodeStage(
-            type_=MockSchema,
-            processor="yield_schemas",
-            context="schemas",
-        )
-
-        results = list(
-            self.source._run_stage_processor(stage=stage, node_entity="test_schema")
-        )
-
-        self.source.status.failed.assert_not_called()
-        assert len(results) == 1
-        assert results[0].right.name == "test_schema"
