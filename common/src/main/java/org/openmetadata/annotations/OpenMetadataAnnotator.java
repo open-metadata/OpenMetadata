@@ -23,6 +23,7 @@ public class OpenMetadataAnnotator extends CompositeAnnotator {
         new ExposedAnnotator(),
         new MaskedAnnotator(),
         new PasswordAnnotator(),
-        new DeprecatedAnnotator());
+        new DeprecatedAnnotator(),
+        new OpenApiSchemaAnnotator());
   }
 }

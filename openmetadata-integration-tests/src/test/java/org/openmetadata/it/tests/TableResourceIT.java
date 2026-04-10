@@ -94,6 +94,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
@@ -1872,6 +1873,61 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         SdkClients.adminClient().tables().getColumns(table.getId(), null, null, null, "all");
     assertEquals(5, softDeletedResponse.getData().size());
     assertEquals(5, softDeletedResponse.getPaging().getTotal());
+  }
+
+  @Test
+  void test_listTablesAfterRestore_containsBooleanChangeDescriptionValues(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("restored_table"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+
+    Table table = client.tables().create(createRequest);
+    client.tables().delete(table.getId());
+    client.tables().restore(table.getId());
+
+    ListResponse<Table> response =
+        client
+            .tables()
+            .list(
+                new ListParams()
+                    .setDatabaseSchema(schema.getFullyQualifiedName())
+                    .setFields("fullyQualifiedName")
+                    .setLimit(10));
+    assertEquals(1, response.getData().size());
+
+    String rawResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                getResourcePath()
+                    + "?databaseSchema="
+                    + schema.getFullyQualifiedName()
+                    + "&fields=fullyQualifiedName&limit=10",
+                null);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode root = mapper.readTree(rawResponse);
+    JsonNode listedTable = root.path("data").get(0);
+    JsonNode deletedFieldChange =
+        StreamSupport.stream(
+                listedTable.path("changeDescription").path("fieldsUpdated").spliterator(), false)
+            .filter(fieldChange -> "deleted".equals(fieldChange.path("name").asText()))
+            .findFirst()
+            .orElseThrow(
+                () -> new AssertionError("Expected deleted field change in table list response"));
+
+    assertTrue(deletedFieldChange.path("oldValue").isBoolean());
+    assertTrue(deletedFieldChange.path("newValue").isBoolean());
+    assertTrue(deletedFieldChange.path("oldValue").asBoolean());
+    assertFalse(deletedFieldChange.path("newValue").asBoolean());
   }
 
   @Test
