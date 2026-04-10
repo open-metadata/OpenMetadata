@@ -82,7 +82,6 @@ const validateProfilerAccessForRole = async (
       name: 'Column Profile',
     })
     .click();
-  await listColumnApiCall;
   const listColumnResponse = await listColumnApiCall;
 
   expect(listColumnResponse.status()).toBe(200);
@@ -96,7 +95,6 @@ const validateProfilerAccessForRole = async (
     )
     .getByText(tableInstance.entity.columns[1].name)
     .click();
-  await getProfilerInfo;
   const getProfilerInfoResponse = await getProfilerInfo;
 
   expect(getProfilerInfoResponse.status()).toBe(200);
