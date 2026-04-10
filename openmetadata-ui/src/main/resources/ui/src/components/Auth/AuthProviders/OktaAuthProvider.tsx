@@ -53,9 +53,9 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
       redirectUri,
       scopes,
       pkce,
+
       tokenManager: {
         autoRenew: true,
-        storage: customStorage,
         syncStorage: true,
         secure: true,
       },
@@ -66,6 +66,18 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
       services: {
         autoRenew: true,
         renewOnTabActivation: true,
+      },
+
+      storageManager: {
+        token: {
+          storageProvider: customStorage,
+        },
+        transaction: {
+          storageTypes: ['localStorage'], // PKCE + state (must survive redirect)
+        },
+        cache: {
+          storageTypes: ['localStorage'], // optional but recommended for consistency
+        },
       },
     };
 
