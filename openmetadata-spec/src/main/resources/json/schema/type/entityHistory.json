@@ -24,7 +24,7 @@
           "description": "Name of the entity field that changed.",
           "$ref": "#/definitions/fieldName"
         },
-         "oldValue": {
+        "oldValue": {
           "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it.",
           "anyOf": [
             { "type": "object" },
