@@ -471,12 +471,13 @@ test.describe.serial(
     }) => {
       test.slow();
 
-      // Mock the pipelineStatus endpoint to simulate high latency
       await page.route(
         `**/api/v1/services/ingestionPipelines/${encodeURIComponent(
           slowTestPipeline.fullyQualifiedName
         )}/pipelineStatus**`,
         async (route) => {
+          // Mock the pipelineStatus endpoint to simulate high latency
+          // eslint-disable-next-line playwright/no-wait-for-timeout
           await page.waitForTimeout(8000);
           await route.continue();
         }
@@ -504,27 +505,23 @@ test.describe.serial(
         `[data-row-key*="${slowTestPipeline.name}"]`
       );
 
-      await expect(pipelineRow).toBeVisible({ timeout: 15000 });
+      await expect(pipelineRow).toBeVisible();
+
+      // skeleton while the slow pipelineStatus API is still in-flight —
+      // confirming the UI reflects the pending state in both columns
+      await expect(pipelineRow.locator('.ant-skeleton-input')).toHaveCount(2);
 
       // Action buttons must be visible immediately — before the slow pipelineStatus
       // API resolves — verifying permissions don't wait on run history
-      await expect(pipelineRow.getByTestId('pause-button')).toBeVisible({
-        timeout: 5000,
-      });
+      await expect(pipelineRow.getByTestId('pause-button')).toBeVisible();
 
-      await expect(pipelineRow.getByTestId('logs-button')).toBeVisible({
-        timeout: 5000,
-      });
+      await expect(pipelineRow.getByTestId('logs-button')).toBeVisible();
 
-      await expect(pipelineRow.getByTestId('more-actions')).toBeVisible({
-        timeout: 5000,
-      });
+      await expect(pipelineRow.getByTestId('more-actions')).toBeVisible();
 
       // Open the more-actions dropdown and verify the run button is present
       await pipelineRow.getByTestId('more-actions').click();
-      await expect(page.getByTestId('run-button')).toBeVisible({
-        timeout: 5000,
-      });
+      await expect(page.getByTestId('run-button')).toBeVisible();
 
       // Trigger a pipeline run via the run button
       const triggerResponse = page.waitForResponse(
@@ -538,7 +535,7 @@ test.describe.serial(
       // Verify the run was triggered by checking the pipeline row shows a running state
       await expect(
         pipelineRow.getByTestId('pipeline-status').first()
-      ).toBeVisible({ timeout: 15000 });
+      ).toBeVisible();
     });
   }
 );
