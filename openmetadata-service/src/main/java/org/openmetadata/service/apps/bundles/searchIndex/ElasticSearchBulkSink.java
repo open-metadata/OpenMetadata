@@ -55,7 +55,6 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
-import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
@@ -854,7 +853,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       EntityInterface entity,
       StageStatsTracker tracker) {
     try {
-      if (((ElasticSearchVectorService) vectorService).copyExistingVectorDocuments(
+      if (vectorService.copyExistingVectorDocuments(
           sourceIndex, targetIndex, parentId, fingerprint)) {
         vectorSuccess.incrementAndGet();
         if (tracker != null) {
