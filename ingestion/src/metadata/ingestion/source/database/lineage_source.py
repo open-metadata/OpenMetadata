@@ -525,7 +525,6 @@ class LineageSource(QueryParserSource, ABC):
         """
         By default cross database lineage is not supported.
         """
-        pass
 
     def _iter(
         self, *_, **__
