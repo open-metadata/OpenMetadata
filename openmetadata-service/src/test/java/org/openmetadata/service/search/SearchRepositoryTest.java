@@ -72,7 +72,7 @@ class SearchRepositoryTest {
     lenient().when(mockOsNewClient._transport()).thenReturn(mockOsTransport);
     lenient().when(openSearchClient.getNewClient()).thenReturn(mockOsNewClient);
     lenient().when(openSearchClient.isClientAvailable()).thenReturn(true);
-    
+
     // IMPORTANT: Mock the searchForExport method
     lenient()
         .when(elasticSearchClient.searchForExport(any(), any()))
@@ -343,11 +343,11 @@ class SearchRepositoryTest {
   @Test
   void testWriteCsvBatchesPaginationBreak() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
-    
+
     doCallRealMethod()
         .when(realSearchRepository)
         .exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
-    
+
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
 
     org.openmetadata.schema.search.SearchRequest baseRequest =
@@ -375,7 +375,7 @@ class SearchRepositoryTest {
   void testWriteCsvBatchesNormalPagination() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
-    
+
     doCallRealMethod()
         .when(realSearchRepository)
         .exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
