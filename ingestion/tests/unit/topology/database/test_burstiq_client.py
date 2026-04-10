@@ -108,7 +108,7 @@ class TestBurstIQClient(TestCase):
                     {"name": "id", "datatype": "STRING", "required": True},
                     {"name": "age", "datatype": "INTEGER", "required": False},
                 ],
-                "indexes": [{"name": "pk", "type": "PRIMARY", "attributes": ["id"]}],
+                "indexes": [{"type": "PRIMARY", "attributes": ["id"]}],
             },
             {
                 "name": "provider",
@@ -125,8 +125,8 @@ class TestBurstIQClient(TestCase):
 
         # Verify results
         self.assertEqual(len(dictionaries), 2)
-        self.assertEqual(dictionaries[0]["name"], "patient")
-        self.assertEqual(dictionaries[1]["name"], "provider")
+        self.assertEqual(dictionaries[0].name, "patient")
+        self.assertEqual(dictionaries[1].name, "provider")
 
         # Verify API call
         mock_request.assert_called_once()
@@ -147,7 +147,7 @@ class TestBurstIQClient(TestCase):
         # Mock get dictionaries response
         mock_dict_response = Mock()
         mock_dict_response.json.return_value = [
-            {"name": "patient", "attributes": [], "indexes": []}
+            {"name": "patient", "attributes": [], "indexes": [], "description": None}
         ]
         mock_dict_response.raise_for_status = Mock()
         mock_request.return_value = mock_dict_response
@@ -173,14 +173,12 @@ class TestBurstIQClient(TestCase):
         mock_edges_response = Mock()
         mock_edges_response.json.return_value = [
             {
-                "id": "edge_1",
                 "name": "patient_to_visit",
                 "fromDictionary": "patient",
                 "toDictionary": "visit",
                 "condition": [{"fromCol": "id", "toCol": "patient_id"}],
             },
             {
-                "id": "edge_2",
                 "name": "visit_to_diagnosis",
                 "fromDictionary": "visit",
                 "toDictionary": "diagnosis",
@@ -195,9 +193,9 @@ class TestBurstIQClient(TestCase):
 
         # Verify results
         self.assertEqual(len(edges), 2)
-        self.assertEqual(edges[0]["name"], "patient_to_visit")
-        self.assertEqual(edges[0]["fromDictionary"], "patient")
-        self.assertEqual(edges[0]["toDictionary"], "visit")
+        self.assertEqual(edges[0].name, "patient_to_visit")
+        self.assertEqual(edges[0].fromDictionary, "patient")
+        self.assertEqual(edges[0].toDictionary, "visit")
 
         # Verify API call
         mock_request.assert_called_once()
@@ -338,7 +336,7 @@ class TestBurstIQClient(TestCase):
 
         # Verify result
         self.assertIsNotNone(dictionary)
-        self.assertEqual(dictionary["name"], "patient")
+        self.assertEqual(dictionary.name, "patient")
 
         # Verify API call
         call_args = mock_request.call_args
