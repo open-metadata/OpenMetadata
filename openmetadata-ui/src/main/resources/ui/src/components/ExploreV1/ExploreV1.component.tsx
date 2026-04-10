@@ -58,7 +58,7 @@ import {
   searchQuery,
 } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
-import { isBlobLikeResponse } from '../../utils/APIUtils';
+import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
@@ -228,24 +228,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
       URL.revokeObjectURL(url);
       setShowExportScopeModal(false);
     } catch (error) {
-      const axiosError = error as AxiosError<Blob | { message?: string }>;
-      const responseData = axiosError.response?.data;
-
-      if (isBlobLikeResponse(responseData)) {
-        const text = await (responseData as Blob).text();
-        try {
-          const json = JSON.parse(text) as { message?: string };
-          setExportError(
-            json?.message ?? (text || t('server.unexpected-error'))
-          );
-        } catch {
-          setExportError(text || t('server.unexpected-error'));
-        }
-      } else if (isString(responseData)) {
-        setExportError(responseData || t('server.unexpected-error'));
-      } else {
-        setExportError(responseData?.message ?? t('server.unexpected-error'));
-      }
+      const message = await parseExportErrorMessage(
+        error as AxiosError<Blob | { message?: string }>,
+        t('server.unexpected-error')
+      );
+      setExportError(message);
     } finally {
       setIsExporting(false);
     }

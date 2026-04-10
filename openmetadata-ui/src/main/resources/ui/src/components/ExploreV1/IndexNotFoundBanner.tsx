@@ -12,13 +12,13 @@
  */
 import { Alert, Typography } from 'antd';
 
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { SEARCH_INDEXING_APPLICATION } from '../../constants/explore.constants';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
 
 export const IndexNotFoundBanner = () => {
   const { theme } = useApplicationStore();
