@@ -53,12 +53,41 @@ final class IdempotentDdlStatement implements Statement {
     this.connection = connection;
   }
 
+  private String stripIdentifierQuotes(String identifier) {
+    String trimmed = identifier.trim();
+    if (trimmed.length() >= 2) {
+      char first = trimmed.charAt(0);
+      char last = trimmed.charAt(trimmed.length() - 1);
+      if ((first == '`' && last == '`')
+          || (first == '"' && last == '"')
+          || (first == '[' && last == ']')) {
+        return trimmed.substring(1, trimmed.length() - 1);
+      }
+    }
+    return trimmed;
+  }
+
+  private String extractObjectName(String identifier) {
+    String unquoted = stripIdentifierQuotes(identifier);
+    int dot = unquoted.lastIndexOf('.');
+    return dot >= 0 ? stripIdentifierQuotes(unquoted.substring(dot + 1)) : unquoted;
+  }
+
+  private String normalizeIdentifier(DatabaseMetaData meta, String identifier) throws SQLException {
+    String name = extractObjectName(identifier);
+    if (meta.storesLowerCaseIdentifiers()) return name.toLowerCase(Locale.ROOT);
+    if (meta.storesUpperCaseIdentifiers()) return name.toUpperCase(Locale.ROOT);
+    return name;
+  }
+
   private boolean shouldSkip(String sql) throws SQLException {
+    DatabaseMetaData meta = connection.getMetaData();
+
     Matcher indexMatcher = CREATE_INDEX_PATTERN.matcher(sql);
     if (indexMatcher.find()) {
-      String indexName = indexMatcher.group(1).toLowerCase(Locale.ROOT);
-      String tableName = indexMatcher.group(2).toLowerCase(Locale.ROOT);
-      if (indexExists(indexName, tableName)) {
+      String indexName = normalizeIdentifier(meta, indexMatcher.group(1));
+      String tableName = normalizeIdentifier(meta, indexMatcher.group(2));
+      if (indexExists(meta, indexName, tableName)) {
         LOG.info("Skipping already-existing index: {} on {}", indexName, tableName);
         return true;
       }
@@ -66,8 +95,8 @@ final class IdempotentDdlStatement implements Statement {
     }
     Matcher tableMatcher = CREATE_TABLE_PATTERN.matcher(sql);
     if (tableMatcher.find()) {
-      String tableName = tableMatcher.group(1).toLowerCase(Locale.ROOT);
-      if (tableExists(tableName)) {
+      String tableName = normalizeIdentifier(meta, tableMatcher.group(1));
+      if (tableExists(meta, tableName)) {
         LOG.info("Skipping already-existing table: {}", tableName);
         return true;
       }
@@ -75,9 +104,9 @@ final class IdempotentDdlStatement implements Statement {
     }
     Matcher alterMatcher = ALTER_TABLE_ADD_COLUMN_PATTERN.matcher(sql);
     if (alterMatcher.find()) {
-      String tableName = alterMatcher.group(1).toLowerCase(Locale.ROOT);
-      String columnName = alterMatcher.group(2).toLowerCase(Locale.ROOT);
-      if (columnExists(tableName, columnName)) {
+      String tableName = normalizeIdentifier(meta, alterMatcher.group(1));
+      String columnName = normalizeIdentifier(meta, alterMatcher.group(2));
+      if (columnExists(meta, tableName, columnName)) {
         LOG.info("Skipping already-existing column: {}.{}", tableName, columnName);
         return true;
       }
@@ -109,11 +138,13 @@ final class IdempotentDdlStatement implements Statement {
     return delegate.execute(sql, columnNames);
   }
 
-  private boolean indexExists(String indexName, String tableName) throws SQLException {
-    DatabaseMetaData meta = connection.getMetaData();
-    try (ResultSet rs = meta.getIndexInfo(null, null, tableName, false, false)) {
+  private boolean indexExists(DatabaseMetaData meta, String indexName, String tableName)
+      throws SQLException {
+    String catalog = connection.getCatalog();
+    try (ResultSet rs = meta.getIndexInfo(catalog, null, tableName, false, false)) {
       while (rs.next()) {
-        if (indexName.equalsIgnoreCase(rs.getString("INDEX_NAME"))) {
+        String existing = rs.getString("INDEX_NAME");
+        if (existing != null && normalizeIdentifier(meta, existing).equals(indexName)) {
           return true;
         }
       }
@@ -121,18 +152,25 @@ final class IdempotentDdlStatement implements Statement {
     return false;
   }
 
-  private boolean tableExists(String tableName) throws SQLException {
-    DatabaseMetaData meta = connection.getMetaData();
-    try (ResultSet rs = meta.getTables(null, null, tableName, null)) {
+  private boolean tableExists(DatabaseMetaData meta, String tableName) throws SQLException {
+    String catalog = connection.getCatalog();
+    try (ResultSet rs = meta.getTables(catalog, null, tableName, null)) {
       return rs.next();
     }
   }
 
-  private boolean columnExists(String tableName, String columnName) throws SQLException {
-    DatabaseMetaData meta = connection.getMetaData();
-    try (ResultSet rs = meta.getColumns(null, null, tableName, columnName)) {
-      return rs.next();
+  private boolean columnExists(DatabaseMetaData meta, String tableName, String columnName)
+      throws SQLException {
+    String catalog = connection.getCatalog();
+    try (ResultSet rs = meta.getColumns(catalog, null, tableName, null)) {
+      while (rs.next()) {
+        String existing = rs.getString("COLUMN_NAME");
+        if (existing != null && normalizeIdentifier(meta, existing).equals(columnName)) {
+          return true;
+        }
+      }
     }
+    return false;
   }
 
   // All remaining Statement methods delegate to the underlying statement.

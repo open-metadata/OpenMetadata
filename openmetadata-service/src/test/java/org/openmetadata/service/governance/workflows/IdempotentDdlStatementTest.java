@@ -44,6 +44,10 @@ class IdempotentDdlStatementTest {
     connection = mock(Connection.class);
     meta = mock(DatabaseMetaData.class);
     when(connection.getMetaData()).thenReturn(meta);
+    when(connection.getCatalog()).thenReturn("openmetadata");
+    // Default: DB stores lowercase (PostgreSQL behaviour)
+    when(meta.storesLowerCaseIdentifiers()).thenReturn(true);
+    when(meta.storesUpperCaseIdentifiers()).thenReturn(false);
     stmt = new IdempotentDdlStatement(delegate, connection);
   }
 
@@ -52,7 +56,8 @@ class IdempotentDdlStatementTest {
   @Test
   void skipsCreateIndexWhenIndexExists() throws Exception {
     ResultSet rs = mockResultSetWithIndexName("ACT_IDX_BYTEAR_DEPL");
-    when(meta.getIndexInfo(isNull(), isNull(), eq("act_ge_bytearray"), anyBoolean(), anyBoolean()))
+    when(meta.getIndexInfo(
+            eq("openmetadata"), isNull(), eq("act_ge_bytearray"), anyBoolean(), anyBoolean()))
         .thenReturn(rs);
 
     boolean result =
@@ -65,7 +70,8 @@ class IdempotentDdlStatementTest {
   @Test
   void executesCreateIndexWhenIndexAbsent() throws Exception {
     ResultSet rs = emptyResultSet();
-    when(meta.getIndexInfo(isNull(), isNull(), eq("act_ge_bytearray"), anyBoolean(), anyBoolean()))
+    when(meta.getIndexInfo(
+            eq("openmetadata"), isNull(), eq("act_ge_bytearray"), anyBoolean(), anyBoolean()))
         .thenReturn(rs);
     when(delegate.execute(anyString())).thenReturn(false);
 
@@ -78,7 +84,8 @@ class IdempotentDdlStatementTest {
   @Test
   void skipsCreateUniqueIndex() throws Exception {
     ResultSet rs = mockResultSetWithIndexName("ACT_UNIQ_MEMB");
-    when(meta.getIndexInfo(isNull(), isNull(), eq("act_id_membership"), anyBoolean(), anyBoolean()))
+    when(meta.getIndexInfo(
+            eq("openmetadata"), isNull(), eq("act_id_membership"), anyBoolean(), anyBoolean()))
         .thenReturn(rs);
 
     boolean result =
@@ -94,7 +101,8 @@ class IdempotentDdlStatementTest {
   @Test
   void skipsCreateTableWhenTableExists() throws Exception {
     ResultSet rs = singleRowResultSet();
-    when(meta.getTables(isNull(), isNull(), eq("act_ru_actinst"), isNull())).thenReturn(rs);
+    when(meta.getTables(eq("openmetadata"), isNull(), eq("act_ru_actinst"), isNull()))
+        .thenReturn(rs);
 
     boolean result = stmt.execute("CREATE TABLE ACT_RU_ACTINST (ID_ varchar(64) NOT NULL)");
 
@@ -105,7 +113,8 @@ class IdempotentDdlStatementTest {
   @Test
   void executesCreateTableWhenTableAbsent() throws Exception {
     ResultSet rs = emptyResultSet();
-    when(meta.getTables(isNull(), isNull(), eq("act_ru_actinst"), isNull())).thenReturn(rs);
+    when(meta.getTables(eq("openmetadata"), isNull(), eq("act_ru_actinst"), isNull()))
+        .thenReturn(rs);
     when(delegate.execute(anyString())).thenReturn(false);
 
     stmt.execute("CREATE TABLE ACT_RU_ACTINST (ID_ varchar(64) NOT NULL)");
@@ -117,8 +126,8 @@ class IdempotentDdlStatementTest {
 
   @Test
   void skipsAlterTableAddColumnWhenColumnExists() throws Exception {
-    ResultSet rs = singleRowResultSet();
-    when(meta.getColumns(isNull(), isNull(), eq("act_ru_actinst"), eq("completed_by_")))
+    ResultSet rs = mockResultSetWithColumnName("completed_by_");
+    when(meta.getColumns(eq("openmetadata"), isNull(), eq("act_ru_actinst"), isNull()))
         .thenReturn(rs);
 
     boolean result =
@@ -131,7 +140,7 @@ class IdempotentDdlStatementTest {
   @Test
   void executesAlterTableAddColumnWhenColumnAbsent() throws Exception {
     ResultSet rs = emptyResultSet();
-    when(meta.getColumns(isNull(), isNull(), eq("act_ru_actinst"), eq("completed_by_")))
+    when(meta.getColumns(eq("openmetadata"), isNull(), eq("act_ru_actinst"), isNull()))
         .thenReturn(rs);
     when(delegate.execute(anyString())).thenReturn(false);
 
@@ -165,7 +174,8 @@ class IdempotentDdlStatementTest {
   @Test
   void skipsExecuteUpdateForExistingIndex() throws Exception {
     ResultSet rs = mockResultSetWithIndexName("ACT_IDX_BYTEAR_DEPL");
-    when(meta.getIndexInfo(isNull(), isNull(), eq("act_ge_bytearray"), anyBoolean(), anyBoolean()))
+    when(meta.getIndexInfo(
+            eq("openmetadata"), isNull(), eq("act_ge_bytearray"), anyBoolean(), anyBoolean()))
         .thenReturn(rs);
 
     int result =
@@ -187,12 +197,37 @@ class IdempotentDdlStatementTest {
     verify(delegate).execute(sql);
   }
 
+  @Test
+  void skipsCreateIndexOnMysqlWithUpperCaseStoredIdentifiers() throws Exception {
+    // MySQL lower_case_table_names=0: identifiers stored as-is (uppercase)
+    when(meta.storesLowerCaseIdentifiers()).thenReturn(false);
+    when(meta.storesUpperCaseIdentifiers()).thenReturn(true);
+
+    ResultSet rs = mockResultSetWithIndexName("ACT_IDX_BYTEAR_DEPL");
+    when(meta.getIndexInfo(
+            eq("openmetadata"), isNull(), eq("ACT_GE_BYTEARRAY"), anyBoolean(), anyBoolean()))
+        .thenReturn(rs);
+
+    boolean result =
+        stmt.execute("CREATE INDEX ACT_IDX_BYTEAR_DEPL ON ACT_GE_BYTEARRAY (DEPLOYMENT_ID_)");
+
+    assertFalse(result);
+    verify(delegate, never()).execute(anyString());
+  }
+
   // --- Helpers ---
 
   private ResultSet mockResultSetWithIndexName(String name) throws Exception {
     ResultSet rs = mock(ResultSet.class);
     when(rs.next()).thenReturn(true, false);
     when(rs.getString("INDEX_NAME")).thenReturn(name);
+    return rs;
+  }
+
+  private ResultSet mockResultSetWithColumnName(String name) throws Exception {
+    ResultSet rs = mock(ResultSet.class);
+    when(rs.next()).thenReturn(true, false);
+    when(rs.getString("COLUMN_NAME")).thenReturn(name);
     return rs;
   }
 
