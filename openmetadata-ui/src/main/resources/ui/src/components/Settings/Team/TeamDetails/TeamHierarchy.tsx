@@ -20,19 +20,13 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
 import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
-import {
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
-import { getTeamsWithFqnPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringsUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../utils/TeamUtils';
@@ -42,6 +36,7 @@ import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterT
 import Table from '../../../common/Table/Table';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
+import { TeamHierarchyNameCell } from './TeamsHeaderSection/TeamHierarchyNameCell';
 
 const TeamHierarchy: FC<TeamHierarchyProps> = ({
   currentTeam,
@@ -82,17 +77,11 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.team-plural'),
         dataIndex: 'teams',
-        className: 'whitespace-nowrap',
+        className: 'teams-hierarchy-name-column',
         key: 'teams',
+        width: '32%',
         render: (_, record) => (
-          <Link
-            className="link-hover"
-            data-testid={`team-name-${record.name}`}
-            to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
-            {stringToHTML(
-              highlightSearchText(getEntityName(record), searchTerm)
-            )}
-          </Link>
+          <TeamHierarchyNameCell record={record} searchTerm={searchTerm} />
         ),
       },
       {
@@ -152,7 +141,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       },
       ...descriptionTableObject<Team>({ width: 300 }),
     ];
-  }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand, teamAssetCounts]);
+  }, [isFetchingAllTeamAdvancedDetails, searchTerm, t, teamAssetCounts]);
 
   const handleTableHover = useCallback(
     (value: boolean) => setIsTableHovered(value),

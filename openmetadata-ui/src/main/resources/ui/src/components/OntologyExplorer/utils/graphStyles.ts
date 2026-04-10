@@ -21,12 +21,13 @@ import {
 import {
   COMBO_FILL_DEFAULT,
   COMBO_HEADER_HEIGHT,
+  COMBO_INTERIOR_PADDING_SIDES,
+  COMBO_INTERIOR_PADDING_TOP,
   COMBO_LABEL_FONT_SIZE,
   COMBO_LABEL_FONT_WEIGHT,
   COMBO_LABEL_PADDING_LEFT,
   COMBO_LABEL_PADDING_TOP_BOTTOM,
   COMBO_LINE_WIDTH,
-  COMBO_PADDING,
   COMBO_RADIUS,
   DATA_MODE_ASSET_BADGE_Z_INDEX,
   DATA_MODE_ASSET_CARD_CLEAR_BELOW_CIRCLE,
@@ -93,6 +94,7 @@ import {
   RELATION_META,
   TERM_LABEL_BG_PADDING,
 } from '../OntologyExplorer.constants';
+import './ontologyComboAwarePolylineEdge';
 
 const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
@@ -846,7 +848,12 @@ export function buildComboStyle(
     stroke: color,
     lineWidth: COMBO_LINE_WIDTH,
     radius: COMBO_RADIUS,
-    padding: COMBO_PADDING,
+    padding: [
+      COMBO_INTERIOR_PADDING_TOP,
+      COMBO_INTERIOR_PADDING_SIDES,
+      COMBO_INTERIOR_PADDING_SIDES,
+      COMBO_INTERIOR_PADDING_SIDES,
+    ],
     label: true,
     labelText,
     labelFill: color,
