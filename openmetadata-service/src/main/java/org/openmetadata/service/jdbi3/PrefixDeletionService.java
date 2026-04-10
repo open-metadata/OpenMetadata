@@ -17,12 +17,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.lock.HierarchicalLockManager;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -75,6 +77,7 @@ public final class PrefixDeletionService {
       deleteDependencyTables(rootFqn, fqnHashPrefix, allIds);
       runEntityHooks(rootEntity, deletedBy, fqnHashPrefix);
       deleteEntityTables(descendantsByType, rootEntity);
+      cleanSearchIndex(rootEntity, descendantsByType.keySet());
       emitDeleteEvent(rootEntity);
     } finally {
       releaseLock(lock, rootEntity);
@@ -167,6 +170,19 @@ public final class PrefixDeletionService {
     EntityRepository<?> rootRepo = Entity.getEntityRepository(rootType);
     rootRepo.getDao().delete(rootEntity.getId());
     rootRepo.invalidateEntity(rootEntity);
+  }
+
+  private void cleanSearchIndex(EntityInterface rootEntity, Set<String> descendantTypes) {
+    SearchRepository searchRepo = Entity.getSearchRepository();
+    if (searchRepo == null) {
+      return;
+    }
+    String rootFqn = rootEntity.getFullyQualifiedName();
+    String rootType = rootEntity.getEntityReference().getType();
+    searchRepo.deleteByEntityTypeFqnPrefix(rootType, rootFqn);
+    for (String entityType : descendantTypes) {
+      searchRepo.deleteByEntityTypeFqnPrefix(entityType, rootFqn);
+    }
   }
 
   private void emitDeleteEvent(EntityInterface rootEntity) {
