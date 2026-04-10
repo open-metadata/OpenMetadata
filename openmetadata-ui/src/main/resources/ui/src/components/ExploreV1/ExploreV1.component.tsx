@@ -12,20 +12,18 @@
  */
 
 import {
-  ExclamationCircleOutlined,
   FilterOutlined,
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
 import {
-  Alert as CoreAlert,
+  Alert,
   Button,
   Card as CoreCard,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import { Download01 } from '@untitledui/icons';
 import {
-  Alert,
   Button as AntdButton,
   Card,
   Col,
@@ -42,7 +40,6 @@ import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -50,13 +47,11 @@ import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import {
   entitySortingFields,
-  SEARCH_INDEXING_APPLICATION,
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
   exportSearchResultsCsvStream,
@@ -64,14 +59,12 @@ import {
 } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { isBlobLikeResponse } from '../../utils/APIUtils';
-import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   getExploreQueryFilterMust,
   getSelectedValuesFromQuickFilter,
 } from '../../utils/ExploreUtils';
-import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
@@ -85,49 +78,9 @@ import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
+import { IndexNotFoundBanner } from './IndexNotFoundBanner';
 
 const EXPORT_ALL_ASSETS_LIMIT = 200000;
-
-const IndexNotFoundBanner = () => {
-  const { theme } = useApplicationStore();
-  const { t } = useTranslation();
-
-  return (
-    <Alert
-      closable
-      description={
-        <div className="d-flex items-start gap-3">
-          <ExclamationCircleOutlined
-            style={{
-              color: theme.errorColor,
-              fontSize: '16px',
-            }}
-          />
-          <div className="d-flex flex-col gap-2">
-            <Typography.Text className="font-semibold text-xs">
-              {t('server.indexing-error')}
-            </Typography.Text>
-            <Typography.Paragraph className="m-b-0 text-xs">
-              <Transi18next
-                i18nKey="message.configure-search-re-index"
-                renderElement={
-                  <Link
-                    className="alert-link"
-                    to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
-                  />
-                }
-                values={{
-                  settings: t('label.search-index-setting-plural'),
-                }}
-              />
-            </Typography.Paragraph>
-          </div>
-        </div>
-      }
-      type="error"
-    />
-  );
-};
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
@@ -701,7 +654,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         }}
         onOk={handleExportScopeConfirm}>
         {isAllAssetsLimitExceeded && (
-          <CoreAlert
+          <Alert
             className="m-b-sm"
             title={t('message.export-assets-limit-exceeded', {
               limit: EXPORT_ALL_ASSETS_LIMIT,
@@ -710,7 +663,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           />
         )}
         {exportError && (
-          <CoreAlert className="m-b-sm" title={exportError} variant="error" />
+          <Alert className="m-b-sm" title={exportError} variant="error" />
         )}
         <CoreTypography
           className="tw:text-secondary"
