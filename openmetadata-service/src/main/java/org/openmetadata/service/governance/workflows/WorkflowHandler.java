@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.api.FlowableWrongDbException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
@@ -74,13 +75,16 @@ public class WorkflowHandler {
 
   private WorkflowHandler(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
     this.isMigrationContext = isMigrationContext;
-    ProcessEngineConfiguration processEngineConfiguration =
-        new StandaloneProcessEngineConfiguration()
-            .setJdbcUrl(config.getDataSourceFactory().getUrl())
-            .setJdbcUsername(config.getDataSourceFactory().getUser())
-            .setJdbcPassword(config.getDataSourceFactory().getPassword())
-            .setJdbcDriver(config.getDataSourceFactory().getDriverClass())
-            .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
+    StandaloneProcessEngineConfiguration processEngineConfiguration =
+        new StandaloneProcessEngineConfiguration();
+    processEngineConfiguration.setJdbcUrl(config.getDataSourceFactory().getUrl());
+    processEngineConfiguration.setJdbcUsername(config.getDataSourceFactory().getUser());
+    processEngineConfiguration.setJdbcPassword(config.getDataSourceFactory().getPassword());
+    processEngineConfiguration.setJdbcDriver(config.getDataSourceFactory().getDriverClass());
+    processEngineConfiguration.setDatabaseSchemaUpdate(
+        isMigrationContext
+            ? ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE
+            : ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
 
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_MYSQL);
@@ -109,40 +113,47 @@ public class WorkflowHandler {
     StandaloneProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration();
 
-    // Setting Database Configuration
-    processEngineConfiguration
-        .setJdbcUrl(currentProcessEngineConfiguration.getJdbcUrl())
-        .setJdbcUsername(currentProcessEngineConfiguration.getJdbcUsername())
-        .setJdbcPassword(currentProcessEngineConfiguration.getJdbcPassword())
-        .setJdbcDriver(currentProcessEngineConfiguration.getJdbcDriver())
-        .setDatabaseType(currentProcessEngineConfiguration.getDatabaseType())
-        .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
-
-    // Setting Async Executor Configuration
-    processEngineConfiguration
-        .setAsyncExecutorActivate(!isMigrationContext)
-        .setAsyncExecutorCorePoolSize(workflowSettings.getExecutorConfiguration().getCorePoolSize())
-        .setAsyncExecutorMaxPoolSize(workflowSettings.getExecutorConfiguration().getMaxPoolSize())
-        .setAsyncExecutorThreadPoolQueueSize(
-            workflowSettings.getExecutorConfiguration().getQueueSize())
-        .setAsyncExecutorAsyncJobLockTimeInMillis(
-            workflowSettings.getExecutorConfiguration().getJobLockTimeInMillis())
-        .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(
-            workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition())
-        .setAsyncExecutorDefaultAsyncJobAcquireWaitTime(
-            workflowSettings.getExecutorConfiguration().getAsyncJobAcquisitionInterval())
-        .setAsyncExecutorDefaultTimerJobAcquireWaitTime(
-            workflowSettings.getExecutorConfiguration().getTimerJobAcquisitionInterval());
-
-    // Setting History CleanUp - disable during migration to prevent race conditions
-    processEngineConfiguration
-        .setAsyncHistoryEnabled(true)
-        .setEnableHistoryCleaning(!isMigrationContext)
-        .setCleanInstancesEndedAfter(
-            Duration.ofDays(
-                workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()))
-        .setHistoryCleaningTimeCycleConfig(
-            workflowSettings.getHistoryCleanUpConfiguration().getTimeCycleConfig());
+    if (isMigrationContext) {
+      processEngineConfiguration.setDataSource(
+          new IdempotentDdlDataSource(
+              currentProcessEngineConfiguration.getJdbcUrl(),
+              currentProcessEngineConfiguration.getJdbcUsername(),
+              currentProcessEngineConfiguration.getJdbcPassword()));
+    } else {
+      processEngineConfiguration.setJdbcUrl(currentProcessEngineConfiguration.getJdbcUrl());
+      processEngineConfiguration.setJdbcUsername(
+          currentProcessEngineConfiguration.getJdbcUsername());
+      processEngineConfiguration.setJdbcPassword(
+          currentProcessEngineConfiguration.getJdbcPassword());
+      processEngineConfiguration.setJdbcDriver(currentProcessEngineConfiguration.getJdbcDriver());
+    }
+    processEngineConfiguration.setDatabaseType(currentProcessEngineConfiguration.getDatabaseType());
+    processEngineConfiguration.setDatabaseSchemaUpdate(
+        isMigrationContext
+            ? ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE
+            : ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
+    processEngineConfiguration.setAsyncExecutorActivate(!isMigrationContext);
+    processEngineConfiguration.setAsyncExecutorCorePoolSize(
+        workflowSettings.getExecutorConfiguration().getCorePoolSize());
+    processEngineConfiguration.setAsyncExecutorMaxPoolSize(
+        workflowSettings.getExecutorConfiguration().getMaxPoolSize());
+    processEngineConfiguration.setAsyncExecutorThreadPoolQueueSize(
+        workflowSettings.getExecutorConfiguration().getQueueSize());
+    processEngineConfiguration.setAsyncExecutorAsyncJobLockTimeInMillis(
+        workflowSettings.getExecutorConfiguration().getJobLockTimeInMillis());
+    processEngineConfiguration.setAsyncExecutorMaxAsyncJobsDuePerAcquisition(
+        workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+    processEngineConfiguration.setAsyncExecutorDefaultAsyncJobAcquireWaitTime(
+        workflowSettings.getExecutorConfiguration().getAsyncJobAcquisitionInterval());
+    processEngineConfiguration.setAsyncExecutorDefaultTimerJobAcquireWaitTime(
+        workflowSettings.getExecutorConfiguration().getTimerJobAcquisitionInterval());
+    processEngineConfiguration.setAsyncHistoryEnabled(true);
+    processEngineConfiguration.setEnableHistoryCleaning(!isMigrationContext);
+    processEngineConfiguration.setCleanInstancesEndedAfter(
+        Duration.ofDays(
+            workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()));
+    processEngineConfiguration.setHistoryCleaningTimeCycleConfig(
+        workflowSettings.getHistoryCleanUpConfiguration().getTimeCycleConfig());
 
     // Add Expression Manager
     processEngineConfiguration.setExpressionManager(new DefaultExpressionManager(expressionMap));
@@ -150,7 +161,14 @@ public class WorkflowHandler {
     // Add Global Failure Listener
     processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
 
-    this.processEngine = processEngineConfiguration.buildProcessEngine();
+    try {
+      this.processEngine = processEngineConfiguration.buildProcessEngine();
+    } catch (FlowableWrongDbException e) {
+      throw new IllegalStateException(
+          "Flowable schema is not initialized or is at an unexpected version. "
+              + "Run `openmetadata-ops.sh migrate` before starting the server.",
+          e);
+    }
 
     // Add SqlMapper
     processEngine

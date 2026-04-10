@@ -1035,6 +1035,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Migrating the OpenMetadata Schema.");
       parseConfig();
       validateAndRunSystemDataMigrations(force);
+      LOG.info("Running Flowable schema upgrade.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
       LOG.info("Update Index Templates.");
