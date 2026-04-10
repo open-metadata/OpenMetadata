@@ -28,6 +28,7 @@
           "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it.",
           "anyOf": [
             { "type": "object" },
+            { "type": "array" },
             { "type": "boolean" },
             { "type": "string" },
             { "type": "number" },
@@ -38,6 +39,7 @@
           "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it.",
           "anyOf": [
             { "type": "object" },
+            { "type": "array" },
             { "type": "boolean" },
             { "type": "string" },
             { "type": "number" },
