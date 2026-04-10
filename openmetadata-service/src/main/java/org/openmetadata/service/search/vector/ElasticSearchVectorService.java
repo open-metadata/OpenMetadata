@@ -69,8 +69,9 @@ public class ElasticSearchVectorService implements VectorIndexService {
     if (instance != null) {
       LOG.warn("ElasticSearchVectorService already initialized, reinitializing");
     }
-    instance = new ElasticSearchVectorService(client, embeddingClient, language);
-    instance.registerVectorEmbeddingHandler();
+    ElasticSearchVectorService svc = new ElasticSearchVectorService(client, embeddingClient, language);
+    svc.registerVectorEmbeddingHandler();
+    instance = svc;
     LOG.info(
         "ElasticSearchVectorService initialized with model={}, dimension={}",
         embeddingClient.getModelId(),
