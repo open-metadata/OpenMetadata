@@ -24,9 +24,7 @@ class TestBurstIQLineage(TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
-        # Sample edge data
         self.sample_edge = {
-            "id": "edge_1",
             "name": "patient_to_visit",
             "fromDictionary": "patient",
             "toDictionary": "visit",
@@ -36,9 +34,7 @@ class TestBurstIQLineage(TestCase):
             ],
         }
 
-        # Sample edge without column mapping
         self.sample_edge_no_columns = {
-            "id": "edge_2",
             "name": "visit_to_diagnosis",
             "fromDictionary": "visit",
             "toDictionary": "diagnosis",
@@ -177,7 +173,7 @@ class TestBurstIQLineage(TestCase):
             source.metadata = mock_metadata
 
             # Process edge - should return None when tables not found
-            result = source._process_edge(self.sample_edge)
+            result = source._process_edge(BurstIQEdge.model_validate(self.sample_edge))
 
             # Verify no lineage was created
             self.assertIsNone(result)
@@ -228,10 +224,8 @@ class TestBurstIQLineage(TestCase):
             source = BurstiqLineageSource.create(config_dict, mock_metadata)
             source.metadata = mock_metadata
 
-            # Iterate lineage
-            results = list(source._iter())
+            list(source._iter())
 
-            # Verify edges were fetched
             mock_request.assert_called_once()
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
