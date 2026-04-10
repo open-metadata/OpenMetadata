@@ -69,7 +69,7 @@ GREENPLUM_PARTITION_DETAILS_GP6 = textwrap.dedent(
         col.table_schema = ns.nspname
         and col.table_name = par.relname
         and ordinal_position = pt.column_index
-    where par.relname='{table_name}' and  ns.nspname='{schema_name}'
+    where par.relname= :table_name and ns.nspname= :schema_name
     """
 )
 
@@ -185,4 +185,8 @@ GREENPLUM_SQL_COLUMNS = """
 
 GREENPLUM_GET_SERVER_VERSION = """
 show server_version
+"""
+
+GREENPLUM_GET_SERVER_VERSION_NUM = """
+show server_version_num
 """

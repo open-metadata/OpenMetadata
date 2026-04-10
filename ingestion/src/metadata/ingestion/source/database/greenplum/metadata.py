@@ -47,7 +47,7 @@ from metadata.ingestion.source.database.common_pg_mappings import (
 )
 from metadata.ingestion.source.database.greenplum.queries import (
     GREENPLUM_GET_DB_NAMES,
-    GREENPLUM_GET_SERVER_VERSION,
+    GREENPLUM_GET_SERVER_VERSION_NUM,
     GREENPLUM_GET_TABLE_NAMES_GP6,
     GREENPLUM_GET_TABLE_NAMES_GP7,
     GREENPLUM_PARTITION_DETAILS_GP6,
@@ -94,8 +94,10 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     Database metadata from Greenplum Source
     """
 
-    # PostgreSQL major version >= 12 indicates Greenplum 7.x
-    GREENPLUM_V7_PG_VERSION = 12
+    # server_version_num >= 120000 indicates PostgreSQL 12+ (Greenplum 7.x)
+    GREENPLUM_V7_MIN_VERSION_NUM = 120000
+
+    _gp7_cache: Optional[bool] = None
 
     @classmethod
     def create(
@@ -120,23 +122,24 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         Returns True if GP7 (PostgreSQL >= 12), False otherwise.
         Result is cached to avoid repeated DB calls.
         """
-        if not hasattr(self, "_gp7_cache"):
-            try:
-                with self.engine.connect() as conn:
-                    result = conn.execute(
-                        text(GREENPLUM_GET_SERVER_VERSION)
-                    ).fetchone()
-                # server_version returns e.g. "12.12" or "9.4.26"
-                version_str = result[0] if result else "9"
-                major_version = int(version_str.split(".")[0])
-                self._gp7_cache = major_version >= self.GREENPLUM_V7_PG_VERSION
-            except Exception:
-                # Default to GP6 behavior if version detection fails
-                logger.warning(
-                    "Could not detect Greenplum version, "
-                    "defaulting to GP6 query set"
-                )
-                self._gp7_cache = False
+        if self._gp7_cache is not None:
+            return self._gp7_cache
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(
+                    text(GREENPLUM_GET_SERVER_VERSION_NUM)
+                ).fetchone()
+            # server_version_num returns integer e.g. 120012 for PG12
+            # GP7 = PostgreSQL 12+ = server_version_num >= 120000
+            version_num = int(result[0]) if result else 0
+            self._gp7_cache = version_num >= self.GREENPLUM_V7_MIN_VERSION_NUM
+        except Exception:
+            # Default to GP6 behavior if version detection fails
+            logger.warning(
+                "Could not detect Greenplum version, "
+                "defaulting to GP6 query set"
+            )
+            self._gp7_cache = False
         return self._gp7_cache
 
     def query_table_names_and_types(
@@ -220,12 +223,8 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
                 ).all()
             else:
                 result = conn.execute(
-                    text(
-                        GREENPLUM_PARTITION_DETAILS_GP6.format(
-                            table_name=table_name,
-                            schema_name=schema_name,
-                        )
-                    )
+                    text(GREENPLUM_PARTITION_DETAILS_GP6),
+                    {"table_name": table_name, "schema_name": schema_name},
                 ).all()
 
         if result:
