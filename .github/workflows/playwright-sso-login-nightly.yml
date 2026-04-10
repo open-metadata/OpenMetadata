@@ -23,6 +23,7 @@ on:
         type: choice
         options:
           - okta
+          - azure-saml
           - all
 
 permissions:
@@ -48,7 +49,7 @@ jobs:
       matrix:
         provider:
           ${{ (github.event_name == 'schedule' || github.event.inputs.sso_provider == 'all')
-              && fromJSON('["okta"]')
+              && fromJSON('["okta","azure-saml"]')
               || fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) }}
     steps:
       - name: Free Disk Space (Ubuntu)

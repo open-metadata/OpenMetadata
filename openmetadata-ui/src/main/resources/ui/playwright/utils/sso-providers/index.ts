@@ -12,6 +12,7 @@
  */
 import { Page } from '@playwright/test';
 import { ProviderConfigOverride, ProviderCredentials } from '../ssoAuth';
+import { azureSamlProviderHelper } from './azure-saml';
 import { oktaProviderHelper } from './okta';
 
 export interface ProviderHelper {
@@ -28,10 +29,12 @@ export const getProviderHelper = (providerType: string): ProviderHelper => {
   switch (providerType) {
     case 'okta':
       return oktaProviderHelper;
+    case 'azure-saml':
+      return azureSamlProviderHelper;
     default:
       throw new Error(
         `No SSO provider helper registered for "${providerType}". ` +
-          `Supported providers: okta`
+          `Supported providers: okta, azure-saml`
       );
   }
 };
