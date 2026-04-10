@@ -538,7 +538,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String after,
       @Parameter(
               description =
-                  "Pipeline run ID (Argo workflow UID) to fetch logs for a specific run. "
+                  "Pipeline run ID to fetch logs for a specific run. "
                       + "If not provided, returns logs for the latest run.",
               schema = @Schema(type = "string"))
           @QueryParam("runId")
@@ -1244,7 +1244,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name,
       @Parameter(
-              description = "Pipeline run ID (Argo workflow UID) to stop a specific run",
+              description = "Pipeline run ID to stop a specific run",
               schema = @Schema(type = "string"))
           @QueryParam("runId")
           String runId) {
@@ -1271,7 +1271,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         if (runId != null && !runId.isBlank()) {
           return stopSpecificRun(uriInfo, ingestionPipeline, runId);
         } else {
-          return stopAllRuns(uriInfo, app, ingestionPipeline);
+          return stopAllRuns(app, ingestionPipeline);
         }
       }
     }
@@ -1301,13 +1301,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return toStopResponse(killResponse);
   }
 
-  private Response stopAllRuns(UriInfo uriInfo, App app, IngestionPipeline ingestionPipeline) {
+  private Response stopAllRuns(App app, IngestionPipeline ingestionPipeline) {
     Long runStartTime =
         repository
             .getLatestAppRunsOptional(app, ingestionPipeline.getService().getId())
             .map(AppRunRecord::getStartTime)
             .orElse(null);
-    markLatestPipelineStatusAsStopped(uriInfo, ingestionPipeline, runStartTime);
+    markLatestPipelineStatusAsStopped(ingestionPipeline, runStartTime);
     PipelineServiceClientResponse killResponse;
     try {
       killResponse = pipelineServiceClient.killIngestion(ingestionPipeline);
@@ -1360,7 +1360,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private void markLatestPipelineStatusAsStopped(
-      UriInfo uriInfo, IngestionPipeline ingestionPipeline, Long runStartTime) {
+      IngestionPipeline ingestionPipeline, Long runStartTime) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     long now = System.currentTimeMillis();
@@ -1382,18 +1382,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         continue;
       }
       if (!PipelineStatusUtils.isTerminalState(status.getPipelineState())) {
-        try {
-          status.setPipelineState(PipelineStatusType.STOPPED);
-          status.setEndDate(now);
-          ingestionPipelineRepository.addPipelineStatus(
-              uriInfo, ingestionPipeline.getFullyQualifiedName(), status);
-        } catch (Exception e) {
-          LOG.error(
-              "Failed to mark run [{}] as STOPPED for pipeline [{}]. Kill will proceed but this run's DB status remains inconsistent.",
-              status.getRunId(),
-              ingestionPipeline.getFullyQualifiedName(),
-              e);
-        }
+        markPipelineStatusAsStopped(ingestionPipeline, status.getRunId());
       }
     }
   }

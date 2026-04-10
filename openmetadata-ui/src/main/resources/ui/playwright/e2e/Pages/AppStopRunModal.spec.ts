@@ -90,6 +90,8 @@ test.describe('App Stop Run Modal', () => {
       `[data-testid="data-insights-application-card"] [data-testid="config-btn"]`
     );
 
+    await page.getByRole('tab', { name: 'Recent Runs' }).click();
+
     await expect(page.getByTestId('stop-button')).toBeVisible();
   });
 
@@ -148,6 +150,8 @@ test.describe('App Stop Run Modal', () => {
       `[data-testid="data-insights-application-card"] [data-testid="config-btn"]`
     );
 
+    await page.getByRole('tab', { name: 'Recent Runs' }).click();
+
     await page.click('[data-testid="stop-button"]');
 
     await expect(page.getByTestId('stop-modal')).toBeVisible();
@@ -199,6 +203,8 @@ test.describe('App Stop Run Modal', () => {
     await page.click(
       `[data-testid="data-insights-application-card"] [data-testid="config-btn"]`
     );
+
+    await page.getByRole('tab', { name: 'Recent Runs' }).click();
 
     await page.click('[data-testid="stop-button"]');
 
