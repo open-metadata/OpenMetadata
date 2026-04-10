@@ -342,7 +342,7 @@ class SearchRepositoryTest {
     // wait, we can't test private methods easily in Java unless we use reflection.
     // However, we can call exportSearchResults() which is public, but that's in SearchResource.
     // Wait, streamSearchResults is public!
-    doCallRealMethod().when(realSearchRepository).streamSearchResults(any(), any(), anyInt(), anyInt(), any());
+    doCallRealMethod().when(realSearchRepository).exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
     // writeCsvBatches is private, but it's called by streamSearchResults
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
     
@@ -356,9 +356,9 @@ class SearchRepositoryTest {
     when(elasticSearchClient.searchForExport(any(), any())).thenReturn(batchMapper);
 
     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-    org.openmetadata.schema.system.ui.SubjectContext context = new org.openmetadata.schema.system.ui.SubjectContext();
+    org.openmetadata.service.security.policyevaluator.SubjectContext context = mock(org.openmetadata.service.security.policyevaluator.SubjectContext.class);
     
-    realSearchRepository.streamSearchResults(baseRequest, context, 10, 0, out);
+    realSearchRepository.exportSearchResultsCsvStream(baseRequest, context, 10, 0, out);
     
     String csv = out.toString();
     // Header should be present, plus 1 line of data
@@ -371,7 +371,7 @@ class SearchRepositoryTest {
   void testWriteCsvBatchesNormalPagination() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
-    doCallRealMethod().when(realSearchRepository).streamSearchResults(any(), any(), anyInt(), anyInt(), any());
+    doCallRealMethod().when(realSearchRepository).exportSearchResultsCsvStream(any(), any(), anyInt(), anyInt(), any());
 
     org.openmetadata.schema.search.SearchRequest baseRequest =
         new org.openmetadata.schema.search.SearchRequest().withIndex("table_search_index");
@@ -395,9 +395,9 @@ class SearchRepositoryTest {
         .thenReturn(batch2Mapper);
 
     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-    org.openmetadata.schema.system.ui.SubjectContext context = new org.openmetadata.schema.system.ui.SubjectContext();
+    org.openmetadata.service.security.policyevaluator.SubjectContext context = mock(org.openmetadata.service.security.policyevaluator.SubjectContext.class);
 
-    realSearchRepository.streamSearchResults(baseRequest, context, 1500, 0, out);
+    realSearchRepository.exportSearchResultsCsvStream(baseRequest, context, 1500, 0, out);
 
     String csv = out.toString();
     // Header (1) + Batch 1 (1000) + Batch 2 (500) = 1501 lines
