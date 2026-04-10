@@ -41,51 +41,50 @@ import {
   waitForTestCaseListResponse,
 } from '../../../utils/testCases';
 
-// --- Objects ---
-const createPolicy = new PolicyClass();
-const createRole = new RolesClass();
-const createUser = new UserClass();
+let createPolicy: PolicyClass;
+let createRole: RolesClass;
+let createUser: UserClass;
 
-const deletePolicy = new PolicyClass();
-const deleteRole = new RolesClass();
-const deleteUser = new UserClass();
+let deletePolicy: PolicyClass;
+let deleteRole: RolesClass;
+let deleteUser: UserClass;
 
-const suitePolicy = new PolicyClass();
-const suiteRole = new RolesClass();
-const suiteUser = new UserClass();
+let suitePolicy: PolicyClass;
+let suiteRole: RolesClass;
+let suiteUser: UserClass;
 
-const viewBasicPolicy = new PolicyClass();
-const viewBasicRole = new RolesClass();
-const viewBasicUser = new UserClass();
+let viewBasicPolicy: PolicyClass;
+let viewBasicRole: RolesClass;
+let viewBasicUser: UserClass;
 
-const tableCreateTestsPolicy = new PolicyClass();
-const tableCreateTestsRole = new RolesClass();
-const tableCreateTestsUser = new UserClass();
+let tableCreateTestsPolicy: PolicyClass;
+let tableCreateTestsRole: RolesClass;
+let tableCreateTestsUser: UserClass;
 
-const editTestCasePolicy = new PolicyClass();
-const editTestCaseRole = new RolesClass();
-const editTestCaseUser = new UserClass();
+let editTestCasePolicy: PolicyClass;
+let editTestCaseRole: RolesClass;
+let editTestCaseUser: UserClass;
 
-const tableEditTestsPolicy = new PolicyClass();
-const tableEditTestsRole = new RolesClass();
-const tableEditTestsUser = new UserClass();
+let tableEditTestsPolicy: PolicyClass;
+let tableEditTestsRole: RolesClass;
+let tableEditTestsUser: UserClass;
 
-const editTestsOnTcPolicy = new PolicyClass();
-const editTestsOnTcRole = new RolesClass();
-const editTestsOnTcUser = new UserClass();
+let editTestsOnTcPolicy: PolicyClass;
+let editTestsOnTcRole: RolesClass;
+let editTestsOnTcUser: UserClass;
 
-const viewAllTcPolicy = new PolicyClass();
-const viewAllTcRole = new RolesClass();
-const viewAllTcUser = new UserClass();
+let viewAllTcPolicy: PolicyClass;
+let viewAllTcRole: RolesClass;
+let viewAllTcUser: UserClass;
 
-const suiteEditOnlyPolicy = new PolicyClass();
-const suiteEditOnlyRole = new RolesClass();
-const suiteEditOnlyUser = new UserClass();
+let suiteEditOnlyPolicy: PolicyClass;
+let suiteEditOnlyRole: RolesClass;
+let suiteEditOnlyUser: UserClass;
 
-const dataConsumerUser = new UserClass();
-const dataStewardUser = new UserClass();
+let dataConsumerUser: UserClass;
+let dataStewardUser: UserClass;
 
-const table = new TableClass();
+let table: TableClass;
 
 // --- Fixtures ---
 const test = base.extend<{
@@ -190,6 +189,40 @@ test.describe(
 
     test.beforeAll(async ({ browser }) => {
       test.slow();
+      createPolicy = new PolicyClass();
+      createRole = new RolesClass();
+      createUser = new UserClass();
+      deletePolicy = new PolicyClass();
+      deleteRole = new RolesClass();
+      deleteUser = new UserClass();
+      suitePolicy = new PolicyClass();
+      suiteRole = new RolesClass();
+      suiteUser = new UserClass();
+      viewBasicPolicy = new PolicyClass();
+      viewBasicRole = new RolesClass();
+      viewBasicUser = new UserClass();
+      tableCreateTestsPolicy = new PolicyClass();
+      tableCreateTestsRole = new RolesClass();
+      tableCreateTestsUser = new UserClass();
+      editTestCasePolicy = new PolicyClass();
+      editTestCaseRole = new RolesClass();
+      editTestCaseUser = new UserClass();
+      tableEditTestsPolicy = new PolicyClass();
+      tableEditTestsRole = new RolesClass();
+      tableEditTestsUser = new UserClass();
+      editTestsOnTcPolicy = new PolicyClass();
+      editTestsOnTcRole = new RolesClass();
+      editTestsOnTcUser = new UserClass();
+      viewAllTcPolicy = new PolicyClass();
+      viewAllTcRole = new RolesClass();
+      viewAllTcUser = new UserClass();
+      suiteEditOnlyPolicy = new PolicyClass();
+      suiteEditOnlyRole = new RolesClass();
+      suiteEditOnlyUser = new UserClass();
+      dataConsumerUser = new UserClass();
+      dataStewardUser = new UserClass();
+      table = new TableClass();
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);
