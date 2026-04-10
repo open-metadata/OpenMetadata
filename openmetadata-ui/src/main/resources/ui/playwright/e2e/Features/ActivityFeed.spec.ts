@@ -401,15 +401,6 @@ test.describe('Mention notifications in Notification Box', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup entities and users', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await user1.delete(apiContext);
-    await adminUser.delete(apiContext);
-    await entity.delete(apiContext);
-    await afterAction();
-  });
-
   test('Mention notification shows correct user details in Notification box', async ({
     adminPage,
     user1Page,
