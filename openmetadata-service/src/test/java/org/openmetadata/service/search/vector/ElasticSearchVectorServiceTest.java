@@ -9,6 +9,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import es.co.elastic.clients.elasticsearch.core.BulkRequest;
+import es.co.elastic.clients.elasticsearch.core.BulkResponse;
+import java.util.HashMap;
+import java.util.List;
+import org.mockito.ArgumentCaptor;
+
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
@@ -30,22 +36,23 @@ class ElasticSearchVectorServiceTest {
       "{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}";
 
   private ElasticSearchVectorService vectorService;
+  private ElasticsearchClient mockEsClient;
   private Rest5Client mockRestClient;
   private EmbeddingClient mockEmbeddingClient;
 
   @BeforeEach
   void setup() throws Exception {
-    ElasticsearchClient mockClient = mock(ElasticsearchClient.class);
+    mockEsClient = mock(ElasticsearchClient.class);
     Rest5ClientTransport mockTransport = mock(Rest5ClientTransport.class);
     mockRestClient = mock(Rest5Client.class);
 
-    when(mockClient._transport()).thenReturn(mockTransport);
+    when(mockEsClient._transport()).thenReturn(mockTransport);
     when(mockTransport.restClient()).thenReturn(mockRestClient);
 
     mockEmbeddingClient = mock(EmbeddingClient.class);
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
 
-    vectorService = new ElasticSearchVectorService(mockClient, mockEmbeddingClient);
+    vectorService = new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient);
   }
 
   @Test
@@ -56,10 +63,10 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 4},
             "hits": [
-              {"_score": 0.9, "_source": {"parentId": "parent1", "chunk_index": 0, "text": "High score chunk"}},
-              {"_score": 0.7, "_source": {"parentId": "parent2", "chunk_index": 0, "text": "Medium score chunk"}},
-              {"_score": 0.4, "_source": {"parentId": "parent3", "chunk_index": 0, "text": "Low score chunk"}},
-              {"_score": 0.2, "_source": {"parentId": "parent4", "chunk_index": 0, "text": "Very low score chunk"}}
+              {"_score": 0.9, "_source": {"parentId": "parent1", "chunkIndex": 0, "text": "High score chunk"}},
+              {"_score": 0.7, "_source": {"parentId": "parent2", "chunkIndex": 0, "text": "Medium score chunk"}},
+              {"_score": 0.4, "_source": {"parentId": "parent3", "chunkIndex": 0, "text": "Low score chunk"}},
+              {"_score": 0.2, "_source": {"parentId": "parent4", "chunkIndex": 0, "text": "Very low score chunk"}}
             ]
           }
         }
@@ -85,7 +92,7 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 1},
             "hits": [
-              {"_score": 0.85, "_source": {"parentId": "parent1", "chunk_index": 0, "text": "Test chunk"}}
+              {"_score": 0.85, "_source": {"parentId": "parent1", "chunkIndex": 0, "text": "Test chunk"}}
             ]
           }
         }
@@ -109,14 +116,14 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 8},
             "hits": [
-              {"_score": 0.9,  "_source": {"parentId": "parent1", "chunk_index": 0}},
-              {"_score": 0.88, "_source": {"parentId": "parent1", "chunk_index": 1}},
-              {"_score": 0.85, "_source": {"parentId": "parent1", "chunk_index": 2}},
-              {"_score": 0.8,  "_source": {"parentId": "parent2", "chunk_index": 0}},
-              {"_score": 0.78, "_source": {"parentId": "parent2", "chunk_index": 1}},
-              {"_score": 0.7,  "_source": {"parentId": "parent3", "chunk_index": 0}},
-              {"_score": 0.68, "_source": {"parentId": "parent3", "chunk_index": 1}},
-              {"_score": 0.6,  "_source": {"parentId": "parent4", "chunk_index": 0}}
+              {"_score": 0.9,  "_source": {"parentId": "parent1", "chunkIndex": 0}},
+              {"_score": 0.88, "_source": {"parentId": "parent1", "chunkIndex": 1}},
+              {"_score": 0.85, "_source": {"parentId": "parent1", "chunkIndex": 2}},
+              {"_score": 0.8,  "_source": {"parentId": "parent2", "chunkIndex": 0}},
+              {"_score": 0.78, "_source": {"parentId": "parent2", "chunkIndex": 1}},
+              {"_score": 0.7,  "_source": {"parentId": "parent3", "chunkIndex": 0}},
+              {"_score": 0.68, "_source": {"parentId": "parent3", "chunkIndex": 1}},
+              {"_score": 0.6,  "_source": {"parentId": "parent4", "chunkIndex": 0}}
             ]
           }
         }
@@ -139,9 +146,9 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 3},
             "hits": [
-              {"_score": 0.9, "_source": {"parentId": "p1", "chunk_index": 0}},
-              {"_score": 0.5, "_source": {"parentId": "p2", "chunk_index": 0}},
-              {"_score": 0.1, "_source": {"parentId": "p3", "chunk_index": 0}}
+              {"_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}},
+              {"_score": 0.5, "_source": {"parentId": "p2", "chunkIndex": 0}},
+              {"_score": 0.1, "_source": {"parentId": "p3", "chunkIndex": 0}}
             ]
           }
         }
@@ -162,9 +169,9 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 3},
             "hits": [
-              {"_score": 0.5, "_source": {"parentId": "p1", "chunk_index": 0}},
-              {"_score": 0.3, "_source": {"parentId": "p2", "chunk_index": 0}},
-              {"_score": 0.1, "_source": {"parentId": "p3", "chunk_index": 0}}
+              {"_score": 0.5, "_source": {"parentId": "p1", "chunkIndex": 0}},
+              {"_score": 0.3, "_source": {"parentId": "p2", "chunkIndex": 0}},
+              {"_score": 0.1, "_source": {"parentId": "p3", "chunkIndex": 0}}
             ]
           }
         }
@@ -186,9 +193,9 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 3},
             "hits": [
-              {"_score": 0.9, "_source": {"parentId": "p1", "chunk_index": 0}},
-              {"_id": "orphan-123", "_score": 0.8, "_source": {"chunk_index": 0, "text": "orphan chunk"}},
-              {"_score": 0.7, "_source": {"parentId": "p2", "chunk_index": 0}}
+              {"_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}},
+              {"_id": "orphan-123", "_score": 0.8, "_source": {"chunkIndex": 0, "text": "orphan chunk"}},
+              {"_score": 0.7, "_source": {"parentId": "p2", "chunkIndex": 0}}
             ]
           }
         }
@@ -210,16 +217,16 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 10},
             "hits": [
-              {"_score": 0.9,  "_source": {"parentId": "p1",  "chunk_index": 0}},
-              {"_score": 0.8,  "_source": {"parentId": "p2",  "chunk_index": 0}},
-              {"_score": 0.7,  "_source": {"parentId": "p3",  "chunk_index": 0}},
-              {"_score": 0.6,  "_source": {"parentId": "p4",  "chunk_index": 0}},
-              {"_score": 0.5,  "_source": {"parentId": "p5",  "chunk_index": 0}},
-              {"_score": 0.4,  "_source": {"parentId": "p6",  "chunk_index": 0}},
-              {"_score": 0.3,  "_source": {"parentId": "p7",  "chunk_index": 0}},
-              {"_score": 0.2,  "_source": {"parentId": "p8",  "chunk_index": 0}},
-              {"_score": 0.15, "_source": {"parentId": "p9",  "chunk_index": 0}},
-              {"_score": 0.1,  "_source": {"parentId": "p10", "chunk_index": 0}}
+              {"_score": 0.9,  "_source": {"parentId": "p1",  "chunkIndex": 0}},
+              {"_score": 0.8,  "_source": {"parentId": "p2",  "chunkIndex": 0}},
+              {"_score": 0.7,  "_source": {"parentId": "p3",  "chunkIndex": 0}},
+              {"_score": 0.6,  "_source": {"parentId": "p4",  "chunkIndex": 0}},
+              {"_score": 0.5,  "_source": {"parentId": "p5",  "chunkIndex": 0}},
+              {"_score": 0.4,  "_source": {"parentId": "p6",  "chunkIndex": 0}},
+              {"_score": 0.3,  "_source": {"parentId": "p7",  "chunkIndex": 0}},
+              {"_score": 0.2,  "_source": {"parentId": "p8",  "chunkIndex": 0}},
+              {"_score": 0.15, "_source": {"parentId": "p9",  "chunkIndex": 0}},
+              {"_score": 0.1,  "_source": {"parentId": "p10", "chunkIndex": 0}}
             ]
           }
         }
@@ -264,10 +271,10 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 4},
             "hits": [
-              {"_score": 0.9, "_source": {"parentId": "p1", "chunk_index": 0}},
-              {"_score": 0.8, "_source": {"parentId": "p2", "chunk_index": 0}},
-              {"_score": 0.7, "_source": {"parentId": "p3", "chunk_index": 0}},
-              {"_score": 0.6, "_source": {"parentId": "p4", "chunk_index": 0}}
+              {"_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}},
+              {"_score": 0.8, "_source": {"parentId": "p2", "chunkIndex": 0}},
+              {"_score": 0.7, "_source": {"parentId": "p3", "chunkIndex": 0}},
+              {"_score": 0.6, "_source": {"parentId": "p4", "chunkIndex": 0}}
             ]
           }
         }
@@ -291,10 +298,10 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 4},
             "hits": [
-              {"_score": 0.9, "_source": {"parentId": "p1", "chunk_index": 0}},
-              {"_score": 0.8, "_source": {"parentId": "p2", "chunk_index": 0}},
-              {"_score": 0.7, "_source": {"parentId": "p3", "chunk_index": 0}},
-              {"_score": 0.6, "_source": {"parentId": "p4", "chunk_index": 0}}
+              {"_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}},
+              {"_score": 0.8, "_source": {"parentId": "p2", "chunkIndex": 0}},
+              {"_score": 0.7, "_source": {"parentId": "p3", "chunkIndex": 0}},
+              {"_score": 0.6, "_source": {"parentId": "p4", "chunkIndex": 0}}
             ]
           }
         }
@@ -317,8 +324,8 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 2},
             "hits": [
-              {"_score": 0.9, "_source": {"parentId": "p1", "chunk_index": 0}},
-              {"_score": 0.8, "_source": {"parentId": "p2", "chunk_index": 0}}
+              {"_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}},
+              {"_score": 0.8, "_source": {"parentId": "p2", "chunkIndex": 0}}
             ]
           }
         }
@@ -340,9 +347,9 @@ class ElasticSearchVectorServiceTest {
           "hits": {
             "total": {"value": 3},
             "hits": [
-              {"_score": 0.9, "_source": {"parentId": "p1", "chunk_index": 0}},
-              {"_score": 0.8, "_source": {"parentId": "p2", "chunk_index": 0}},
-              {"_score": 0.7, "_source": {"parentId": "p3", "chunk_index": 0}}
+              {"_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}},
+              {"_score": 0.8, "_source": {"parentId": "p2", "chunkIndex": 0}},
+              {"_score": 0.7, "_source": {"parentId": "p3", "chunkIndex": 0}}
             ]
           }
         }
@@ -363,7 +370,7 @@ class ElasticSearchVectorServiceTest {
         {
           "hits": {
             "hits": [
-              {"_score": 0.9, "_source": {"parentId": "p1", "chunk_index": 0}}
+              {"_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}}
             ]
           }
         }
@@ -374,6 +381,27 @@ class ElasticSearchVectorServiceTest {
     DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertNull(results.totalHits, "totalHits should be null when not present in response");
+  }
+
+  @Test
+  void testBulkIndexUsesParentIdAndChunkIndexForDocumentId() throws Exception {
+    BulkResponse mockBulkResponse = mock(BulkResponse.class);
+    when(mockBulkResponse.errors()).thenReturn(false);
+    when(mockBulkResponse.items()).thenReturn(List.of());
+    ArgumentCaptor<BulkRequest> captor = ArgumentCaptor.forClass(BulkRequest.class);
+    when(mockEsClient.bulk(captor.capture())).thenReturn(mockBulkResponse);
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("parentId", "entity-abc");
+    doc.put("chunkIndex", 3);
+    doc.put("embedding", new float[] {0.1f, 0.2f});
+
+    vectorService.bulkIndex(List.of(doc), "test-index");
+
+    BulkRequest captured = captor.getValue();
+    assertEquals(1, captured.operations().size());
+    assertEquals("entity-abc-3", captured.operations().get(0).index().id(),
+        "Doc ID must be parentId-chunkIndex using camelCase field names from VectorDocBuilder");
   }
 
   @Test

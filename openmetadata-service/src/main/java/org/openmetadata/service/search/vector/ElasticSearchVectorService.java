@@ -501,8 +501,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
       List<BulkOperation> operations = new ArrayList<>();
       for (int i = 0; i < documents.size(); i++) {
         Map<String, Object> doc = documents.get(i);
-        String parentId = (String) doc.get("parent_id");
-        int chunkIndex = doc.containsKey("chunk_index") ? (int) doc.get("chunk_index") : i;
+        String parentId = (String) doc.get("parentId");
+        int chunkIndex = doc.containsKey("chunkIndex") ? (int) doc.get("chunkIndex") : i;
         String docId = parentId + "-" + chunkIndex;
 
         operations.add(
