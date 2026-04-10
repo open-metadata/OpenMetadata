@@ -2385,7 +2385,7 @@ export const getEntityBreadcrumbs = (
 
     case EntityType.DATA_PRODUCT: {
       const data = entity as DataProduct;
-      if (!data.domains) {
+      if (!data.domains?.length) {
         return [];
       }
 
