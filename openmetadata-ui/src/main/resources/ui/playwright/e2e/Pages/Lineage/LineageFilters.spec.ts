@@ -969,7 +969,7 @@ test.describe('Lineage Filters', () => {
         await visitLineageTab(page);
         await waitForAllLoadersToDisappear(page);
         await setLineageDepthAndVerify(page, 2, 2);
-        await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+        await openImpactAnalysisTab(page);
         await waitForAllLoadersToDisappear(page);
 
         await expect(
@@ -1009,7 +1009,7 @@ test.describe('Lineage Filters', () => {
         await visitLineageTab(page);
         await waitForAllLoadersToDisappear(page);
         await setLineageDepthAndVerify(page, 2, 2);
-        await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+        await openImpactAnalysisTab(page);
 
         // Verify Dashboard is visible in Impact Analysis for Upstream
         await page.getByRole('button', { name: 'Upstream' }).click();
