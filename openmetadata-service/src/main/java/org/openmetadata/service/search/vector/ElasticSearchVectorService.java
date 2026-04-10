@@ -343,6 +343,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
+  @Override
   @SuppressWarnings("unchecked")
   public boolean copyExistingVectorDocuments(
       String sourceIndex, String targetIndex, String parentId, String fingerprint) {
