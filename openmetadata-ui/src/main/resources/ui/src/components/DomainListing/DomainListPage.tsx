@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import { Box, Card } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
+import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -25,11 +26,13 @@ import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDomains, patchDomains } from '../../rest/domainAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
+import { useDomainTableColumns } from '../common/atoms/domain/ui/useDomainTableColumns';
 import { useFormDrawerWithRef } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
@@ -38,8 +41,9 @@ import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
-import { useCardView } from '../common/atoms/table/useCardView';
-import { useDataTable } from '../common/atoms/table/useDataTable';
+import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import EntityCardView from '../common/EntityCardView/EntityCardView.component';
+import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../Domain/DomainPage.interface';
@@ -48,7 +52,7 @@ import { useDomainListingData } from './hooks/useDomainListingData';
 
 const DomainListPage = () => {
   const domainListing = useDomainListingData();
-  const theme = useTheme();
+  const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [form] = useForm();
@@ -56,14 +60,12 @@ const DomainListPage = () => {
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
-  // Use the simplified domain filters configuration
   const { quickFilters, defaultFilters } = useDomainFilters({
     aggregations: domainListing.aggregations || undefined,
     parsedFilters: domainListing.parsedFilters,
     onFilterChange: domainListing.handleFilterChange,
   });
 
-  // Use the filter selection hook for displaying selected filters
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: domainListing.urlState,
     filterConfigs: defaultFilters,
@@ -75,6 +77,7 @@ const DomainListPage = () => {
     title: t('label.add-entity', { entity: t('label.domain') }),
     width: 670,
     closeOnEscape: false,
+    className: 'tw:z-[20]',
     onCancel: () => {
       form.resetFields();
     },
@@ -84,9 +87,7 @@ const DomainListPage = () => {
         formRef={form}
         loading={isLoading}
         type={DomainFormType.DOMAIN}
-        onCancel={() => {
-          // No-op: Drawer close and form reset handled by useFormDrawerWithRef
-        }}
+        onCancel={() => {}}
         onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsLoading(true);
           try {
@@ -112,16 +113,22 @@ const DomainListPage = () => {
       />
     ),
     formRef: form,
-    onSubmit: () => {
-      // This is called by the drawer button, but actual submission
-      // happens via formRef.submit() which triggers form.onFinish
-    },
+    onSubmit: () => {},
     loading: isLoading,
   });
 
-  // Composable hooks for each UI component
   const { breadcrumbs } = useBreadcrumbs({
-    items: [{ name: t('label.domain-plural'), url: '/domain' }],
+    items: [
+      ...(isMarketplace
+        ? [
+            {
+              name: t('label.data-marketplace'),
+              url: ROUTES.DATA_MARKETPLACE,
+            },
+          ]
+        : []),
+      { name: t('label.domain-plural'), url: domainBasePath },
+    ],
   });
 
   const { pageHeader } = usePageHeader({
@@ -149,7 +156,7 @@ const DomainListPage = () => {
   const { view, viewToggle, isTreeView } = useViewToggle({
     views: ['table', 'card', 'tree'],
   });
-  const { domainCardTemplate } = useDomainCardTemplates();
+  const { renderDomainCard } = useDomainCardTemplates();
 
   useEffect(() => {
     if (isTreeView && !isEmpty(domainListing.urlState.filters)) {
@@ -157,16 +164,8 @@ const DomainListPage = () => {
     }
   }, [isTreeView]);
 
-  const { dataTable } = useDataTable({
-    listing: domainListing,
-    enableSelection: true,
-    entityLabelKey: 'label.domain',
-  });
-
-  const { cardView } = useCardView({
-    listing: domainListing,
-    cardTemplate: domainCardTemplate,
-  });
+  const { columns: domainColumns, renderCell: renderDomainCell } =
+    useDomainTableColumns();
 
   const { paginationControls } = usePaginationControls({
     currentPage: domainListing.currentPage,
@@ -184,7 +183,6 @@ const DomainListPage = () => {
     setTreeRefreshToken((prev) => prev + 1);
   }, [refetchDomainListing]);
 
-  // Map selected IDs to actual entities for the delete hook
   const selectedDomainEntities = useMemo(
     () =>
       domainListing.entities.filter((entity) =>
@@ -203,21 +201,35 @@ const DomainListPage = () => {
     },
   });
 
+  const isSearchOrFilterActive = useCallback(
+    () => hasActiveSearchOrFilter(domainListing.urlState),
+    [domainListing.urlState]
+  );
+
   const content = useMemo(() => {
     if (isTreeView) {
       return (
-        <Box sx={{ px: 6, pb: 6 }}>
+        <div className="tw:px-6 tw:pb-6">
           <DomainTreeView
             filters={domainListing.urlState.filters}
             openAddDomainDrawer={openDrawer}
             refreshToken={treeRefreshToken}
             searchQuery={domainListing.urlState.searchQuery}
           />
-        </Box>
+        </div>
       );
     }
 
     if (!domainListing.loading && isEmpty(domainListing.entities)) {
+      if (isSearchOrFilterActive()) {
+        return (
+          <ErrorPlaceHolder
+            className="border-none"
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
+        );
+      }
+
       return (
         <ErrorPlaceHolder
           buttonId="domain-add-button"
@@ -230,7 +242,7 @@ const DomainListPage = () => {
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.domain?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={openDrawer}
         />
       );
@@ -239,7 +251,17 @@ const DomainListPage = () => {
     if (view === 'table') {
       return (
         <>
-          {dataTable}
+          <EntityListingTable
+            ariaLabel={t('label.domain')}
+            columns={domainColumns}
+            entities={domainListing.entities}
+            loading={domainListing.loading}
+            renderCell={renderDomainCell}
+            selectedEntities={domainListing.selectedEntities}
+            onEntityClick={domainListing.actionHandlers.onEntityClick}
+            onSelect={domainListing.handleSelect}
+            onSelectAll={domainListing.handleSelectAll}
+          />
           {paginationControls}
         </>
       );
@@ -247,7 +269,12 @@ const DomainListPage = () => {
 
     return (
       <>
-        {cardView}
+        <EntityCardView
+          entities={domainListing.entities}
+          loading={domainListing.loading}
+          renderCard={renderDomainCard}
+          onEntityClick={domainListing.actionHandlers.onEntityClick}
+        />
         {paginationControls}
       </>
     );
@@ -255,11 +282,14 @@ const DomainListPage = () => {
     isTreeView,
     domainListing.loading,
     domainListing.entities,
+    domainListing.selectedEntities,
+    domainListing.actionHandlers,
     domainListing.urlState.filters,
     domainListing.urlState.searchQuery,
+    isSearchOrFilterActive,
     view,
-    dataTable,
-    cardView,
+    renderDomainCell,
+    renderDomainCard,
     paginationControls,
     treeRefreshToken,
     openDrawer,
@@ -270,45 +300,34 @@ const DomainListPage = () => {
 
   return (
     <Box
-      sx={
-        isTreeView
-          ? {
-              display: 'flex',
-              flexDirection: 'column',
-              height: 'calc(100vh - 80px)',
-            }
-          : {}
-      }>
+      direction="col"
+      style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
       {breadcrumbs}
       {pageHeader}
 
-      <TableContainer component={Paper} sx={{ mb: 5 }}>
+      <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            px: 6,
-            py: 4,
-            borderBottom: `1px solid`,
-            borderColor: theme.palette.allShades?.gray?.[200],
-          }}>
-          <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
+          direction="col"
+          gap={4}>
+          <Box align="center" direction="row" gap={5}>
             {titleAndCount}
             {search}
             {!isTreeView && quickFilters}
-            <Box ml="auto" />
+            <Box className="tw:ml-auto" />
             {viewToggle}
             {deleteIconButton}
           </Box>
           {!isTreeView && filterSelectionDisplay}
         </Box>
         {content}
-      </TableContainer>
+      </Card>
       {deleteModal}
       {formDrawer}
     </Box>
   );
 };
+
+export { DomainListPage };
 
 export default withPageLayout(DomainListPage);

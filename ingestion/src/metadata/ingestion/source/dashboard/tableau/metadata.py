@@ -264,7 +264,8 @@ class TableauSource(DashboardServiceSource):
                 ),
                 sql=self._get_datamodel_sql_query(data_model=data_model),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
-                project=self.get_project_name(dashboard_details=dashboard_details),
+                project=data_model.projectName
+                or self.get_project_name(dashboard_details=dashboard_details),
             )
             yield Either(right=data_model_request)
             self.register_record_datamodel(datamodel_request=data_model_request)
@@ -1144,12 +1145,20 @@ class TableauSource(DashboardServiceSource):
         datasource_columns = []
         for field in data_source.fields or []:
             try:
+                description = field.description or ""
+                if field.formula:
+                    formula_text = f"**Formula:** `{field.formula}`"
+                    description = (
+                        f"{description}\n\n{formula_text}"
+                        if description
+                        else formula_text
+                    )
                 parsed_fields = {
                     "dataTypeDisplay": "Tableau Field",
                     "dataType": DataType.RECORD,
                     "name": truncate_column_name(field.id),
                     "displayName": field.name if field.name else field.id,
-                    "description": field.description,
+                    "description": description or None,
                 }
                 child_columns = self.get_child_columns(field=field)
                 if child_columns:

@@ -122,6 +122,7 @@ class PowerbiSource(DashboardServiceSource):
         self.workspace_data = []
         self.datamodel_file_mappings = []
         self.dataflow_exports: dict = {}
+        self.dashboard_charts: dict = {}
 
     def close(self):
         self.metadata.close()
@@ -446,6 +447,9 @@ class PowerbiSource(DashboardServiceSource):
             for dashboard in self.filtered_dashboards or []:
                 dashboard_details = self.get_dashboard_details(dashboard)
                 if isinstance(dashboard_details, PowerBIDashboard):
+                    dashboard_chart_ids = self.dashboard_charts.get(
+                        dashboard_details.id, []
+                    )
                     dashboard_request = CreateDashboardRequest(
                         name=EntityName(dashboard_details.id),
                         sourceUrl=SourceUrl(
@@ -466,7 +470,7 @@ class PowerbiSource(DashboardServiceSource):
                                     chart_name=chart,
                                 )
                             )
-                            for chart in self.context.get().charts or []
+                            for chart in dashboard_chart_ids
                         ],
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
@@ -514,9 +518,11 @@ class PowerbiSource(DashboardServiceSource):
         Returns:
             Iterable[Chart]
         """
+        self.dashboard_charts = {}
         for dashboard in self.filtered_dashboards or []:
             dashboard_details = self.get_dashboard_details(dashboard)
             if isinstance(dashboard_details, PowerBIDashboard):
+                self.dashboard_charts[dashboard_details.id] = []
                 charts = dashboard_details.tiles
                 for chart in charts or []:
                     try:
@@ -529,6 +535,7 @@ class PowerbiSource(DashboardServiceSource):
                                 chart_display_name, "Chart Pattern not Allowed"
                             )
                             continue
+                        self.dashboard_charts[dashboard_details.id].append(chart.id)
                         yield Either(
                             right=CreateChartRequest(
                                 name=EntityName(chart.id),

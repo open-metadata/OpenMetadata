@@ -1742,4 +1742,57 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         schemaAfterTagDelete.getCertification(),
         "Schema must not have a certification after the certification tag is deleted");
   }
+
+  @Test
+  void test_ownerPropagationFromClassificationToTagSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Classification classification = createClassification(ns);
+    Tag tag =
+        createEntity(
+            new CreateTag()
+                .withName(ns.shortPrefix("owner_prop_tag"))
+                .withClassification(classification.getFullyQualifiedName())
+                .withDescription("Tag for owner propagation test"));
+
+    Classification fetched =
+        client.classifications().get(classification.getId().toString(), "owners");
+    fetched.setOwners(List.of(testUser1Ref()));
+    client.classifications().update(fetched.getId().toString(), fetched);
+
+    UUID tagId = tag.getId();
+    Awaitility.await("Tag search index should reflect inherited owner from classification")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollDelay(java.time.Duration.ofMillis(500))
+        .pollInterval(java.time.Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client.search().query("id:" + tagId).index("tag_search_index").size(1).execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Tag should be in tag_search_index");
+
+              JsonNode source = null;
+              for (JsonNode hit : hits) {
+                if (tagId.toString().equals(hit.path("_id").asText())
+                    || tagId.toString().equals(hit.path("_source").path("id").asText())) {
+                  source = hit.path("_source");
+                  break;
+                }
+              }
+              assertNotNull(source, "Tag document not found in search hits");
+
+              JsonNode owners = source.path("owners");
+              assertTrue(
+                  owners.isArray() && !owners.isEmpty(),
+                  "Owners should be propagated to tag search index");
+              assertTrue(
+                  StreamSupport.stream(owners.spliterator(), false)
+                      .anyMatch(o -> testUser1().getId().toString().equals(o.path("id").asText())),
+                  "Owner should match the user set on the classification");
+            });
+  }
 }

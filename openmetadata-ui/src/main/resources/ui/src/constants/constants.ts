@@ -216,6 +216,9 @@ export const ROUTES = {
   MARKETPLACE_APP_DETAILS: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}`,
   MARKETPLACE_APP_INSTALL: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}/install`,
 
+  DATA_MARKETPLACE_SECTION: '/data-marketplace-section',
+  DATA_MARKETPLACE: '/data-marketplace',
+
   APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
   APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 

@@ -1384,7 +1384,6 @@ export enum DatabaseServiceType {
     Glue = "Glue",
     Greenplum = "Greenplum",
     Hive = "Hive",
-    Iceberg = "Iceberg",
     Impala = "Impala",
     Informix = "Informix",
     MariaDB = "MariaDB",

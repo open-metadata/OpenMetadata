@@ -1912,6 +1912,26 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), 'relatedTo') as relationType, "
+                + "COUNT(*) as cnt FROM entity_relationship "
+                + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
+                + "GROUP BY relationType",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COALESCE(json->>'relationType', 'relatedTo') as relationType, "
+                + "COUNT(*) as cnt FROM entity_relationship "
+                + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
+                + "GROUP BY relationType",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(RelationTypeCountMapper.class)
+    List<List<String>> countByRelationType(
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
     @SqlQuery(
         "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation IN (<relation>)")
@@ -2200,13 +2220,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
+                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
+                + "WHERE (json->'pipeline'->>'id' =:toId OR toId = :toId) AND relation = :relation "
                 + "AND json->>'source' = :source ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipObjectMapper.class)
@@ -2422,13 +2442,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
+                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
+                + "WHERE (json->'pipeline'->>'id' =:toId OR toId = :toId) AND relation = :relation "
                 + "AND json->>'source' = :source",
         connectionType = POSTGRES)
     void deleteLineageBySourcePipeline(
@@ -2463,6 +2483,13 @@ public interface CollectionDAO {
             .id(UUID.fromString(rs.getString(1)))
             .count(rs.getInt(2))
             .build();
+      }
+    }
+
+    class RelationTypeCountMapper implements RowMapper<List<String>> {
+      @Override
+      public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Arrays.asList(rs.getString("relationType"), rs.getString("cnt"));
       }
     }
 
@@ -9425,6 +9452,12 @@ public interface CollectionDAO {
                 + "WHERE workflowInstanceId = :workflowInstanceId AND stage = :stage ORDER BY timestamp DESC")
     List<String> listWorkflowInstanceStateForStage(
         @Bind("workflowInstanceId") String workflowInstanceId, @Bind("stage") String stage);
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM workflow_instance_state_time_series "
+                + "WHERE workflowInstanceId = :workflowInstanceId ORDER BY timestamp ASC")
+    List<String> listAllStatesForInstance(@Bind("workflowInstanceId") String workflowInstanceId);
   }
 
   interface RecognizerFeedbackDAO {
