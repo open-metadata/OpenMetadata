@@ -556,6 +556,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     ListParams paramsTagsOnly = new ListParams();
     paramsTagsOnly.setFields("tags");
     paramsTagsOnly.setLimit(50);
+    paramsTagsOnly.addQueryParam("apiCollection", collection.getFullyQualifiedName());
     ListResponse<APIEndpoint> listWithTagsOnly = client.apiEndpoints().list(paramsTagsOnly);
     assertNotNull(listWithTagsOnly.getData());
 
@@ -593,6 +594,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     ListParams paramsWithSchemas = new ListParams();
     paramsWithSchemas.setFields("requestSchema,responseSchema,tags");
     paramsWithSchemas.setLimit(50);
+    paramsWithSchemas.addQueryParam("apiCollection", collection.getFullyQualifiedName());
     ListResponse<APIEndpoint> listWithSchemas = client.apiEndpoints().list(paramsWithSchemas);
     assertNotNull(listWithSchemas.getData());
 

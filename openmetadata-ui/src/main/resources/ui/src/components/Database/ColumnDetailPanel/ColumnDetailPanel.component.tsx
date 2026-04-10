@@ -41,6 +41,7 @@ import {
 } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
+import EntityLink from '../../../utils/EntityLink';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getErrorText, stringToHTML } from '../../../utils/StringsUtils';
@@ -56,6 +57,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
+import { DataQualityTest } from '../../common/DataQualitySection/DataQualitySection.interface';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
@@ -79,7 +81,6 @@ import {
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
 import { NestedColumnsSection } from './NestedColumnsSection';
-import { DataQualityTest } from '../../common/DataQualitySection/DataQualitySection.interface';
 
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
@@ -100,7 +101,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { permissions } = useGenericContext();
+  const { permissions, changeSummary } = useGenericContext();
 
   const previousFqnRef = useRef<string | undefined>();
   const fetchedColumnFqnRef = useRef<string | undefined>();
@@ -689,6 +690,14 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           </div>
         ) : (
           <DescriptionSection
+            changeSummaryEntry={
+              changeSummary?.[
+                `columns.${EntityLink.getTableColumnNameFromColumnFqn(
+                  activeColumn?.fullyQualifiedName ?? '',
+                  false
+                )}.description`
+              ]
+            }
             description={activeColumn?.description}
             entityFqn={activeColumn?.fullyQualifiedName}
             entityType={entityType}

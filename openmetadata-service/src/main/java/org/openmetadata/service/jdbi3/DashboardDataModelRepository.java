@@ -55,6 +55,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
+
   public DashboardDataModelRepository() {
     super(
         DashboardDataModelResource.COLLECTION_PATH,
@@ -62,7 +64,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         DashboardDataModel.class,
         Entity.getCollectionDAO().dashboardDataModelDAO(),
         "",
-        "");
+        "",
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations

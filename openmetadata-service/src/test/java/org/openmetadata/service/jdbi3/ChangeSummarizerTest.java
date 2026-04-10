@@ -8,6 +8,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -73,6 +74,21 @@ public class ChangeSummarizerTest {
     Map<String, ChangeSummary> result =
         changeSummarizer.summarizeChanges(Map.of(), changes, changeSource, updatedBy, updatedAt);
     assert result.size() == 1;
+    Assertions.assertTrue(result.containsKey(fieldName));
+  }
+
+  @Test
+  public void test_multiLevelNestedDescription() {
+    ChangeSummarizer<Container> containerChangeSummarizer =
+        new ChangeSummarizer<>(Container.class, Set.of("dataModel.columns.description"));
+    String fieldName = "dataModel.columns.column1.description";
+    List<FieldChange> changes = List.of(new FieldChange().withName(fieldName));
+
+    Map<String, ChangeSummary> result =
+        containerChangeSummarizer.summarizeChanges(
+            Map.of(), changes, ChangeSource.MANUAL, "testUser", System.currentTimeMillis());
+
+    assertEquals(1, result.size());
     Assertions.assertTrue(result.containsKey(fieldName));
   }
 

@@ -40,6 +40,7 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
@@ -171,6 +172,11 @@ export const DataAssetSummaryPanelV1 = ({
     () => hasLineageTab(entityType),
     [entityType]
   );
+
+  const { changeSummary } = useChangeSummary(entityType, dataAsset.id ?? '', {
+    fieldPrefix: 'description',
+    limit: 1,
+  });
 
   const fetchIncidentCount = useCallback(async () => {
     if (
@@ -335,6 +341,8 @@ export const DataAssetSummaryPanelV1 = ({
   }, [entityPermissions, dataAsset?.fullyQualifiedName]);
 
   const commonEntitySummaryInfo = useMemo(() => {
+    const descriptionChangeSummaryEntry = changeSummary?.description;
+
     switch (entityType) {
       case EntityType.API_COLLECTION:
       case EntityType.API_ENDPOINT:
@@ -426,6 +434,7 @@ export const DataAssetSummaryPanelV1 = ({
               />
             )}
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -544,6 +553,7 @@ export const DataAssetSummaryPanelV1 = ({
           <>
             <span className="d-none" data-testid="KnowledgePageSummary" />
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -593,6 +603,7 @@ export const DataAssetSummaryPanelV1 = ({
         return (
           <>
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -681,6 +692,7 @@ export const DataAssetSummaryPanelV1 = ({
         return (
           <>
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -735,6 +747,7 @@ export const DataAssetSummaryPanelV1 = ({
     componentType,
     statusCounts,
     entityPermissions,
+    changeSummary,
   ]);
 
   useEffect(() => {

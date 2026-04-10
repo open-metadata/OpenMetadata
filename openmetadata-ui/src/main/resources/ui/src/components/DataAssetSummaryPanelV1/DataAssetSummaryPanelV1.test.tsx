@@ -26,6 +26,7 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { patchDashboardDetails } from '../../rest/dashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { patchTableDetails } from '../../rest/tableAPI';
@@ -69,6 +70,10 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 
 jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn(),
+}));
+
+jest.mock('../../hooks/useChangeSummary', () => ({
+  useChangeSummary: jest.fn(),
 }));
 
 jest.mock('../../rest/incidentManagerAPI', () => ({
@@ -419,6 +424,13 @@ describe('DataAssetSummaryPanelV1', () => {
     });
     (useTourProvider as jest.Mock).mockReturnValue({
       isTourPage: false,
+    });
+    (useChangeSummary as jest.Mock).mockReturnValue({
+      changeSummary: {},
+      totalEntries: 0,
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
     });
 
     // Setup API mocks with fresh instances
