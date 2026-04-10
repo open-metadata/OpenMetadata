@@ -1236,6 +1236,16 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
     }
+    try {
+      // Task cleanup must complete before delete returns so callers do not observe orphaned tasks.
+      daoCollection
+          .taskDAO()
+          .deleteByCreatorAndCategory(
+              entity.getId().toString(), TaskCategory.MetadataUpdate.value());
+    } catch (Exception ex) {
+      LOG.error("Error deleting suggestion tasks for user: ", ex);
+    }
+
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
@@ -1243,14 +1253,6 @@ public class UserRepository extends EntityRepository<User> {
             updateIncidentAssignee(entity);
           } catch (Exception ex) {
             LOG.error("Error updating test case incident assignee: ", ex);
-          }
-          try {
-            daoCollection
-                .taskDAO()
-                .deleteByCreatorAndCategory(
-                    entity.getId().toString(), TaskCategory.MetadataUpdate.value());
-          } catch (Exception ex) {
-            LOG.error("Error deleting suggestion tasks for user: ", ex);
           }
         });
   }

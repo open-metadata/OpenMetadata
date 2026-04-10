@@ -81,22 +81,15 @@ export const visitEntityPage = async (data: {
     await page.getByTestId('welcome-screen-close-btn').click();
   }
 
-  const searchResponse = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=dataAsset') &&
-        response.url().includes('exclude_source_fields'),
-      { timeout: 5000 }
-    )
-    .catch(() => undefined);
-
   await page.getByTestId('searchBox').fill(searchTerm);
-  await searchResponse;
+  await page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=dataAsset') &&
+      response.url().includes('exclude_source_fields')
+  );
 
-  const targetResult = page.getByTestId(dataTestId);
-  await targetResult.waitFor({ state: 'visible', timeout: 30000 });
-  await targetResult.getByTestId('data-name').click();
+  await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('searchBox').clear();
 };
