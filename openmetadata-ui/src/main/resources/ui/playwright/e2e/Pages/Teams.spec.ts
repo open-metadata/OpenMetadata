@@ -30,6 +30,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { getDefaultAdminAPIContext } from '../../utils/common';
 import {
   descriptionBox,
   descriptionBoxReadOnly,
@@ -138,6 +139,14 @@ test.describe('Teams Page', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    await user.delete(apiContext);
     await afterAction();
   });
 
@@ -881,6 +890,20 @@ test.describe('Teams Page with EditUser Permission', () => {
     await afterAction();
   });
 
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    await user.delete(apiContext);
+    await user2.delete(apiContext);
+    await team2.delete(apiContext);
+    await team.delete(apiContext);
+    await role.delete(apiContext);
+    await policy.delete(apiContext);
+    await editOnlyUser.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach('Visit Home Page', async ({ editOnlyUserPage }) => {
     await redirectToHomePage(editOnlyUserPage);
     await team2.visitTeamPage(editOnlyUserPage);
@@ -1028,6 +1051,19 @@ test.describe('Teams Page with Data Consumer User', () => {
 
     await expect(dataConsumerPage.getByTestId('add-policy')).not.toBeVisible();
   });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    await user.delete(apiContext);
+    await team2.delete(apiContext);
+    await team.delete(apiContext);
+    await role.delete(apiContext);
+    await policy.delete(apiContext);
+    await dataConsumerUser.delete(apiContext);
+    await afterAction();
+  });
 });
 
 test.describe('Teams Page action as Owner of Team', () => {
@@ -1167,5 +1203,23 @@ test.describe('Teams Page action as Owner of Team', () => {
       user,
       userName,
     });
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    await user.delete(apiContext);
+    await dataProduct.delete(apiContext);
+    await domain.delete(apiContext);
+    await teamNoOwner.delete(apiContext);
+    await team4.delete(apiContext);
+    await team3.delete(apiContext);
+    await team2.delete(apiContext);
+    await team.delete(apiContext);
+    await role.delete(apiContext);
+    await policy.delete(apiContext);
+    await ownerUser.delete(apiContext);
+    await afterAction();
   });
 });
