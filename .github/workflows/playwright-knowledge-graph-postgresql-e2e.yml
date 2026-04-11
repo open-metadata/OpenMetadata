@@ -127,11 +127,19 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Prepare temporary directory for Maven build artifact
+        run: mkdir -p "${{ runner.temp }}/openmetadata-build-artifact"
+
       - name: Download Maven build artifact
         uses: actions/download-artifact@v4
         with:
           name: openmetadata-build
-          path: openmetadata-dist/target
+          path: ${{ runner.temp }}/openmetadata-build-artifact
+
+      - name: Copy Maven build artifact into workspace
+        run: |
+          mkdir -p openmetadata-dist/target
+          cp -a "${{ runner.temp }}/openmetadata-build-artifact/." openmetadata-dist/target/
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
