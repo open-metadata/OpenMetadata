@@ -30,11 +30,11 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getDefaultAdminAPIContext } from '../../utils/common';
 import {
   descriptionBox,
   descriptionBoxReadOnly,
   getApiContext,
+  getDefaultAdminAPIContext,
   redirectToHomePage,
   toastNotification,
   uuid,
