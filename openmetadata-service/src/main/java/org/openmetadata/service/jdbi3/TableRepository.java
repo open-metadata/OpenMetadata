@@ -1419,8 +1419,8 @@ public class TableRepository extends EntityRepository<Table> {
     List<TagLabel> mergedTableTags =
         mergeTagsWithIncomingPrecedence(table.getTags(), dataModel.getTags());
     if (table.getTags() != null && dataModel.getTags() != null) {
-      List<String> incomingTags =
-          dataModel.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+      Set<String> incomingTags =
+          dataModel.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
       mergedTableTags.removeIf(
           t ->
               t.getLabelType() == TagLabel.LabelType.AUTOMATED
@@ -1444,8 +1444,8 @@ public class TableRepository extends EntityRepository<Table> {
       List<TagLabel> mergedColumnTags =
           mergeTagsWithIncomingPrecedence(stored.getTags(), modelColumn.getTags());
       if (stored.getTags() != null && modelColumn.getTags() != null) {
-        List<String> incomingColTags =
-            modelColumn.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+        Set<String> incomingColTags =
+            modelColumn.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
         mergedColumnTags.removeIf(
             t ->
                 t.getLabelType() == TagLabel.LabelType.AUTOMATED
