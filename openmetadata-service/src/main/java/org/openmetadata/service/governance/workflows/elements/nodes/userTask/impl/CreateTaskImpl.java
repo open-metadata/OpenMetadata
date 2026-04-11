@@ -29,9 +29,12 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.engine.RuntimeService;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
+import org.flowable.engine.runtime.Execution;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
@@ -127,6 +130,10 @@ public class CreateTaskImpl implements TaskListener {
               approvalThreshold,
               rejectionThreshold,
               payload);
+
+      if (task == null) {
+        return;
+      }
 
       // Register with WorkflowHandler for resolution
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
@@ -370,6 +377,7 @@ public class CreateTaskImpl implements TaskListener {
     String workflowDefinitionId = stringVariable(delegateTask, "workflowDefinitionId");
     UUID resolvedWorkflowDefinitionId =
         resolveWorkflowDefinitionId(delegateTask, workflowDefinitionId);
+    boolean workflowManagedDraftTask = booleanVariable(delegateTask, "taskWorkflowManaged");
     String taskFormSchemaId = stringVariable(delegateTask, "taskFormSchemaId");
     Double taskFormSchemaVersion = doubleVariable(delegateTask, "taskFormSchemaVersion");
     String workflowStageId = stringExpression(stageIdExpr, delegateTask);
@@ -400,9 +408,15 @@ public class CreateTaskImpl implements TaskListener {
         existingTask = taskRepository.find(requestedTaskId, Include.ALL);
       } catch (EntityNotFoundException ignored) {
         LOG.debug(
-            "[CreateTaskImpl] No existing task entity found for requested task id '{}'; creating workflow-managed task row",
+            "[CreateTaskImpl] No existing task entity found for requested task id '{}'; "
+                + "creating workflow-managed task row",
             requestedTaskId);
       }
+    }
+    if (shouldSkipDeletedWorkflowManagedDraftTask(
+        requestedTaskId, workflowManagedDraftTask, existingTask)) {
+      terminateDeletedWorkflowManagedDraftTask(delegateTask, requestedTaskId);
+      return null;
     }
     if (existingTask != null) {
       Task currentTask =
@@ -579,6 +593,11 @@ public class CreateTaskImpl implements TaskListener {
     return existingAssignees;
   }
 
+  static boolean shouldSkipDeletedWorkflowManagedDraftTask(
+      UUID requestedTaskId, boolean workflowManagedDraftTask, Task existingTask) {
+    return workflowManagedDraftTask && requestedTaskId != null && existingTask == null;
+  }
+
   private UUID resolveRequestedTaskId(DelegateTask delegateTask) {
     String taskId = stringVariable(delegateTask, "taskEntityId");
     if (taskId != null && !taskId.isBlank()) {
@@ -668,6 +687,17 @@ public class CreateTaskImpl implements TaskListener {
 
   private Object variable(DelegateTask delegateTask, String variableName) {
     return delegateTask.getVariable(variableName);
+  }
+
+  private boolean booleanVariable(DelegateTask delegateTask, String variableName) {
+    Object value = variable(delegateTask, variableName);
+    if (value instanceof Boolean booleanValue) {
+      return booleanValue;
+    }
+    if (value instanceof String stringValue && !stringValue.isBlank()) {
+      return Boolean.parseBoolean(stringValue);
+    }
+    return false;
   }
 
   private String stringVariable(DelegateTask delegateTask, String variableName) {
@@ -797,6 +827,61 @@ public class CreateTaskImpl implements TaskListener {
       LOG.warn("Failed to build recognizer feedback payload for task: {}", e.getMessage());
       return null;
     }
+  }
+
+  private void terminateDeletedWorkflowManagedDraftTask(
+      DelegateTask delegateTask, UUID requestedTaskId) {
+    String processInstanceId = delegateTask.getProcessInstanceId();
+    RuntimeService runtimeService = WorkflowHandler.getInstance().getRuntimeService();
+    String terminationReason =
+        String.format(
+            "Workflow-managed draft task %s was deleted before workflow materialization",
+            requestedTaskId);
+
+    try {
+      String terminationMessageName =
+          deriveTerminationMessageName(delegateTask.getTaskDefinitionKey());
+      if (terminationMessageName != null) {
+        Execution execution =
+            runtimeService
+                .createExecutionQuery()
+                .processInstanceId(processInstanceId)
+                .messageEventSubscriptionName(terminationMessageName)
+                .singleResult();
+        if (execution != null) {
+          LOG.info(
+              "[CreateTaskImpl] Draft task '{}' was deleted before materialization; "
+                  + "terminating workflow instance '{}' via message '{}'",
+              requestedTaskId,
+              processInstanceId,
+              terminationMessageName);
+          runtimeService.messageEventReceived(terminationMessageName, execution.getId());
+          return;
+        }
+      }
+
+      LOG.info(
+          "[CreateTaskImpl] Draft task '{}' was deleted before materialization; deleting workflow instance '{}'",
+          requestedTaskId,
+          processInstanceId);
+      runtimeService.deleteProcessInstance(processInstanceId, terminationReason);
+    } catch (FlowableObjectNotFoundException e) {
+      LOG.debug(
+          "[CreateTaskImpl] Workflow instance '{}' already ended while handling deleted draft task '{}'",
+          processInstanceId,
+          requestedTaskId);
+    }
+  }
+
+  private String deriveTerminationMessageName(String taskDefinitionKey) {
+    if (taskDefinitionKey == null || taskDefinitionKey.isBlank()) {
+      return null;
+    }
+    int lastDot = taskDefinitionKey.lastIndexOf('.');
+    if (lastDot < 0) {
+      return null;
+    }
+    return taskDefinitionKey.substring(0, lastDot) + ".terminateProcess";
   }
 
   private TagLabelRecognizerMetadata resolveRecognizerMetadata(RecognizerFeedback feedback) {

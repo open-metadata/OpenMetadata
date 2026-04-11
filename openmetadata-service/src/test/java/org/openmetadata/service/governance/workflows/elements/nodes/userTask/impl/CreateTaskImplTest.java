@@ -15,7 +15,9 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
@@ -79,5 +81,23 @@ class CreateTaskImplTest {
             existingTask, List.of(workflowAssignee), List.of(workflowAssignee));
 
     assertEquals(List.of(workflowAssignee), resolved);
+  }
+
+  @Test
+  void testShouldSkipDeletedWorkflowManagedDraftTaskWhenPendingDraftWasRemoved() {
+    assertTrue(
+        CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(UUID.randomUUID(), true, null));
+  }
+
+  @Test
+  void testShouldNotSkipTaskMaterializationForWorkflowNativeOrExistingTasks() {
+    Task existingTask = new Task().withId(UUID.randomUUID());
+
+    assertFalse(
+        CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(UUID.randomUUID(), false, null));
+    assertFalse(CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(null, true, null));
+    assertFalse(
+        CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(
+            UUID.randomUUID(), true, existingTask));
   }
 }
