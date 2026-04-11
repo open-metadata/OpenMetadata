@@ -48,18 +48,9 @@ export const waitForAllLoadersToDisappear = async (
   dataTestId = 'loader',
   timeout = 30000
 ) => {
-  const loaders = page.locator(`[data-testid="${dataTestId}"]:visible`);
+  const loaders = page.locator(`[data-testid="${dataTestId}"]`);
 
-  // Some shells keep hidden loader nodes mounted; only visible loaders block progress.
-  await expect(loaders).toHaveCount(0, { timeout });
-};
-
-export const waitForLoadersInContainerToDisappear = async (
-  container: Locator,
-  timeout = 30000
-) => {
-  const loaders = container.locator('[data-testid="loader"]:visible');
-
+  // Wait for the loader elements count to become 0
   await expect(loaders).toHaveCount(0, { timeout });
 };
 
@@ -94,51 +85,9 @@ export const visitEntityPage = async (data: {
   await page.getByTestId('searchBox').clear();
 };
 
-export const visitEntityPageByUrl = async (data: {
-  page: Page;
-  entityType: string;
-  fqn: string;
-}) => {
-  const { page, entityType, fqn } = data;
-
-  if (!fqn) {
-    throw new Error(
-      `Cannot navigate to entity page: FQN is empty for entityType "${entityType}". ` +
-        'Ensure entity data is properly loaded from EntityDataClass.'
-    );
-  }
-
-  const encodedFqn = encodeURIComponent(fqn);
-  const url = `/${entityType}/${encodedFqn}`;
-
-  await page.goto(url);
-
-  // Wait for URL to contain the entity type to ensure navigation completed
-  await page.waitForURL(`**/${entityType}/**`, { timeout: 30000 }).catch(() => {
-    const currentUrl = page.url();
-    throw new Error(
-      `Navigation to entity page failed. Expected URL to contain "/${entityType}/", ` +
-        `but got "${currentUrl}". Entity FQN: "${fqn}"`
-    );
-  });
-
-  await waitForAllLoadersToDisappear(page);
-
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible()
-    .catch(() => false);
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-    await waitForAllLoadersToDisappear(page);
-  }
-};
-
 export const addOwner = async ({
   page,
   owner,
-  expectedOwnerText,
   endpoint,
   type = 'Users',
   dataTestId,
@@ -146,7 +95,6 @@ export const addOwner = async ({
 }: {
   page: Page;
   owner: string;
-  expectedOwnerText?: string;
   endpoint: EntityTypeEndpoint;
   type?: 'Teams' | 'Users';
   dataTestId?: string;
@@ -154,13 +102,11 @@ export const addOwner = async ({
 }) => {
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
-    const usersTab = page.getByRole('tab', { name: type });
-    const isTabAlreadySelected =
-      (await usersTab.getAttribute('aria-selected')) === 'true';
-
-    if (!isTabAlreadySelected) {
-      await usersTab.click();
-    }
+    const userListResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*&index=user&*'
+    );
+    await page.getByRole('tab', { name: type }).click();
+    await userListResponse;
   }
   await waitForAllLoadersToDisappear(page);
 
@@ -188,77 +134,38 @@ export const addOwner = async ({
     .toBe(true);
   await ownerSearchInput.scrollIntoViewIfNeeded();
 
+  const searchUser = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
+  await ownerSearchInput.fill(owner);
+  await searchUser;
+
   if (type === 'Teams') {
-    await ownerSearchInput.fill(owner);
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByRole('listitem', { name: owner }).click();
     await patchRequest;
   } else {
-    const ownerItemByRole = page.getByRole('listitem', {
-      name: owner,
-      exact: true,
-    });
-    const ownerItemBySelectableClass = page
-      .locator('.selectable-list-item')
-      .filter({ hasText: owner })
-      .first();
-    const ownerItemByAntListClass = page
-      .locator('.ant-list-item')
-      .filter({ hasText: owner })
-      .first();
-
-    const getVisibleOwnerItem = async () => {
-      if (
-        await ownerItemByRole
-          .first()
-          .isVisible()
-          .catch(() => false)
-      ) {
-        return ownerItemByRole.first();
-      }
-
-      if (
-        await ownerItemByAntListClass
-          .first()
-          .isVisible()
-          .catch(() => false)
-      ) {
-        return ownerItemByAntListClass.first();
-      }
-
-      if (
-        await ownerItemBySelectableClass
-          .first()
-          .isVisible()
-          .catch(() => false)
-      ) {
-        return ownerItemBySelectableClass.first();
-      }
-
-      return undefined;
-    };
+    const ownerItem = page.getByRole('listitem', { name: owner });
 
     await expect
       .poll(
         async () => {
-          if (await getVisibleOwnerItem()) {
+          const visible = await ownerItem.isVisible().catch(() => false);
+          if (visible) {
             return true;
           }
 
+          const searchRetry = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.url().includes('user_search_index')
+          );
           await ownerSearchInput.fill('');
           await ownerSearchInput.fill(owner);
-          await page
-            .waitForResponse(
-              (response) =>
-                response.request().method() === 'GET' &&
-                response.url().includes('/api/v1/search/query') &&
-                response.url().includes('user_search_index'),
-              { timeout: 5000 }
-            )
-            .catch(() => undefined);
+          await searchRetry;
           await waitForAllLoadersToDisappear(page);
 
-          return Boolean(await getVisibleOwnerItem());
+          return await ownerItem.isVisible().catch(() => false);
         },
         {
           timeout: 60000,
@@ -267,41 +174,15 @@ export const addOwner = async ({
         }
       )
       .toBe(true);
-    const visibleOwnerItem = await getVisibleOwnerItem();
-    expect(visibleOwnerItem).toBeDefined();
-    await visibleOwnerItem?.click();
+    await ownerItem.click();
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
     await patchRequest;
   }
 
-  const ownerLabel = expectedOwnerText ?? owner;
-  const exactOwnerLink = page
-    .getByTestId(dataTestId ?? 'owner-link')
-    .filter({ hasText: ownerLabel })
-    .first();
-  const anyOwnerLink = page.getByTestId(dataTestId ?? 'owner-link').first();
-  const ownerAvatar = page.locator(`[data-testid="${ownerLabel}"]`).first();
-
-  await expect
-    .poll(
-      async () => {
-        if (await exactOwnerLink.isVisible().catch(() => false)) {
-          return true;
-        }
-
-        if (await ownerAvatar.isVisible().catch(() => false)) {
-          return true;
-        }
-
-        return await anyOwnerLink.isVisible().catch(() => false);
-      },
-      {
-        timeout: 15000,
-        intervals: [1000, 2000, 5000],
-      }
-    )
-    .toBe(true);
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
+  ).toBeVisible();
 };
 
 export const addOwnerWithoutValidation = async ({
@@ -344,32 +225,19 @@ export const addOwnerWithoutValidation = async ({
   if (!ownerSearchBar) {
     await page.getByRole('tab', { name: type }).click();
   }
-  const ownerSearchInput = page.getByTestId(
-    `owner-select-${lowerCase(type)}-search-bar`
+
+  const searchUser = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
-  const ownerItem = page.getByRole('listitem', { name: owner });
-
-  await expect
-    .poll(
-      async () => {
-        await ownerSearchInput.fill('');
-        await ownerSearchInput.fill(owner);
-        await waitForAllLoadersToDisappear(page);
-
-        return await ownerItem.isVisible().catch(() => false);
-      },
-      {
-        timeout: 60000,
-        intervals: [2000, 3000, 5000],
-        message: `Timed out waiting for owner ${owner} to appear`,
-      }
-    )
-    .toBe(true);
+  await page
+    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
+    .fill(owner);
+  await searchUser;
 
   if (type === 'Teams') {
     await page.getByRole('listitem', { name: owner }).click();
   } else {
-    await ownerItem.click();
+    await page.getByRole('listitem', { name: owner }).click();
     await page.getByTestId('selectable-list-update-btn').click();
   }
 };
@@ -390,31 +258,18 @@ export const updateOwner = async ({
   await page.getByTestId('edit-owner').click();
   await page.getByRole('tab', { name: type }).click();
   await waitForAllLoadersToDisappear(page);
-  const ownerSearchInput = page.getByTestId(
-    `owner-select-${lowerCase(type)}-search-bar`
+
+  const searchUser = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
-  const ownerItem = page.getByRole('listitem', { name: owner });
-
-  await expect
-    .poll(
-      async () => {
-        await ownerSearchInput.fill('');
-        await ownerSearchInput.fill(owner);
-        await waitForAllLoadersToDisappear(page);
-
-        return await ownerItem.isVisible().catch(() => false);
-      },
-      {
-        timeout: 60000,
-        intervals: [2000, 3000, 5000],
-        message: `Timed out waiting for owner ${owner} to appear`,
-      }
-    )
-    .toBe(true);
+  await page
+    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
+    .fill(owner);
+  await searchUser;
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await ownerItem.click();
+    await page.getByRole('listitem', { name: owner }).click();
     await patchRequest;
   } else {
     await page.getByRole('listitem', { name: owner }).click();
@@ -1533,72 +1388,28 @@ const announcementForm = async (
   },
   hideAlert = true
 ) => {
-  const announcementModal = page.getByTestId('add-announcement');
-  const startTimeInput = announcementModal.locator('#startTime');
-  const endTimeInput = announcementModal.locator('#endTime');
-  const submitButton = announcementModal.locator('#announcement-submit');
-  const announcementForm = announcementModal.getByTestId('announcement-form');
+  await page.fill('#title', data.title);
 
-  await announcementModal.locator('#title').fill(data.title);
+  await page.click('#startTime');
+  await page.fill('#startTime', `${data.startDate}`);
+  await page.press('#startTime', 'Enter');
 
-  // eslint-disable-next-line playwright/no-force-option -- ant date input is covered by the drawer layout in announcement flows
-  await startTimeInput.click({ force: true });
-  await startTimeInput.fill(`${data.startDate}`);
-  await startTimeInput.press('Enter');
+  await page.click('#endTime');
+  await page.fill('#endTime', `${data.endDate}`);
+  await page.press('#startTime', 'Enter');
 
-  // eslint-disable-next-line playwright/no-force-option -- ant date input is covered by the drawer layout in announcement flows
-  await endTimeInput.click({ force: true });
-  await endTimeInput.fill(`${data.endDate}`);
-  await endTimeInput.press('Enter');
+  await page.locator(descriptionBox).fill(data.description);
 
-  await announcementModal.locator(descriptionBox).fill(data.description);
-
-  await submitButton.scrollIntoViewIfNeeded();
+  await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/announcements') &&
-      response.request().method() === 'POST'
+    '/api/v1/feed?entityLink=*type=Announcement*'
   );
-  await announcementForm.evaluate((form) =>
-    (form as HTMLFormElement).requestSubmit()
-  );
+  await page.click('#announcement-submit');
   await announcementSubmit;
-  // eslint-disable-next-line playwright/no-force-option -- close icon sits inside the drawer header and is flaky without a forced click
-  await page.getByTestId('announcement-close').click({ force: true });
+  await page.click('[data-testid="announcement-close"]');
   if (hideAlert) {
     await page.click('[data-testid="alert-icon-close"]');
   }
-};
-
-const openAnnouncementDrawer = async (page: Page) => {
-  const announcementDrawer = page.getByTestId('announcement-drawer');
-  const isDrawerVisible = await announcementDrawer
-    .isVisible()
-    .catch(() => false);
-  if (isDrawerVisible) {
-    await expect(announcementDrawer).toBeVisible();
-
-    return;
-  }
-  const announcementSummaryCard = page
-    .locator(':scope > [data-testid="announcement-card"]')
-    .or(page.getByTestId('announcement-card').first());
-
-  const isSummaryVisible = await announcementSummaryCard
-    .isVisible()
-    .catch(() => false);
-
-  if (isSummaryVisible) {
-    await announcementSummaryCard.click();
-    await expect(announcementDrawer).toBeVisible();
-
-    return;
-  }
-
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('announcement-button').click();
-
-  await expect(announcementDrawer).toBeVisible();
 };
 
 export const createAnnouncement = async (
@@ -1606,7 +1417,8 @@ export const createAnnouncement = async (
   data: { title: string; description: string },
   hideAlert?: boolean
 ) => {
-  await openAnnouncementDrawer(page);
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
   const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
   const endDate = customFormatDateTime(
     getEpochMillisForFutureDays(5),
@@ -1636,48 +1448,80 @@ export const createAnnouncement = async (
 };
 
 export const replyAnnouncement = async (page: Page) => {
-  await openAnnouncementDrawer(page);
-  await expect(page.getByTestId('announcement-drawer')).toBeVisible();
-  await expect(page.getByTestId('add-reply')).toHaveCount(0);
+  await page.click('[data-testid="announcement-card"]');
+
+  await page.hover(
+    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
+  );
+
+  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
+
+  await expect(page.getByTestId('add-reply')).toBeVisible();
+
+  await page.getByTestId('add-reply').click();
+
+  await expect(page.locator('.ql-editor')).toBeVisible();
+
+  await expect(page.locator('[data-testid="send-button"]')).toBeDisabled();
+
+  await page.fill('[data-testid="editor-wrapper"] .ql-editor', 'Reply message');
+  await page.click('[data-testid="send-button"]');
+
+  await expect(
+    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
+  ).toHaveText('Reply message');
+  await expect(page.locator('[data-testid="show-reply-thread"]')).toHaveText(
+    '1 replies'
+  );
+
+  await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
+  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
+  await page.click('[data-testid="edit-message"]');
+
+  await page.fill(
+    '[data-testid="editor-wrapper"] .ql-editor',
+    'Reply message edited'
+  );
+
+  await page.click('[data-testid="save-button"]');
+
+  await expect(
+    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
+  ).toHaveText('Reply message edited');
+
+  await page.reload();
 };
 
 export const deleteAnnouncement = async (page: Page) => {
-  await openAnnouncementDrawer(page);
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
 
-  const drawerAnnouncementCard = page
-    .getByTestId('announcement-drawer')
-    .getByTestId('announcement-card')
-    .first();
-  const actionButton = drawerAnnouncementCard
-    .getByTestId('announcement-actions')
-    .first();
-  await expect(drawerAnnouncementCard).toBeVisible();
-  await drawerAnnouncementCard.scrollIntoViewIfNeeded();
-  await actionButton.scrollIntoViewIfNeeded();
-  await actionButton.evaluate((element) => (element as HTMLElement).click());
   await page
-    .getByTestId('announcement-delete-action')
-    .evaluate((element) => (element as HTMLElement).click());
+    .locator(
+      '[data-testid="announcement-thread-body"] [data-testid="announcement-card"]'
+    )
+    .isVisible();
+
+  await page.hover(
+    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
+  );
+
+  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
+
+  await page.click('[data-testid="delete-message"]');
   const modalText = await page.textContent('.ant-modal-body');
 
   expect(modalText).toContain(
     'Are you sure you want to permanently delete this message?'
   );
-  const confirmDeleteButton = page.getByTestId('save-button');
-  await expect(confirmDeleteButton).toBeVisible();
 
-  const deleteAnnouncementResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/announcements/') &&
-      response.request().method() === 'DELETE'
-  );
-  await confirmDeleteButton.evaluate((element) =>
-    (element as HTMLElement).click()
-  );
-  await deleteAnnouncementResponse;
+  const getFeed = page.waitForResponse('/api/v1/feed/*');
+  await page.click('[data-testid="save-button"]');
+  await getFeed;
 
   await page.reload();
-  await openAnnouncementDrawer(page);
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
 
   await expect(page.getByTestId('announcement-error')).toContainText(
     'No Announcements, Click on add announcement to add one.'
@@ -1688,23 +1532,28 @@ export const editAnnouncement = async (
   page: Page,
   data: { title: string; description: string }
 ) => {
-  await openAnnouncementDrawer(page);
+  // Open announcement drawer via manage button
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
 
-  const drawerAnnouncementCard = page
-    .getByTestId('announcement-drawer')
-    .getByTestId('announcement-card')
-    .first();
-  const actionButton = drawerAnnouncementCard
-    .getByTestId('announcement-actions')
-    .first();
+  // Wait for drawer to open and announcement cards to be visible
+  await expect(page.getByTestId('announcement-drawer')).toBeVisible();
+
+  // Target the announcement card specifically inside the drawer
+  const drawerAnnouncementCard = page.locator(
+    '[data-testid="announcement-drawer"] [data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
+  );
 
   await expect(drawerAnnouncementCard).toBeVisible();
-  await drawerAnnouncementCard.scrollIntoViewIfNeeded();
-  await actionButton.scrollIntoViewIfNeeded();
-  await actionButton.evaluate((element) => (element as HTMLElement).click());
-  await page
-    .getByTestId('announcement-edit-action')
-    .evaluate((element) => (element as HTMLElement).click());
+
+  // Hover over the announcement card inside the drawer to show the edit options popover
+  await drawerAnnouncementCard.hover();
+
+  // Wait for the popover to become visible
+  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
+
+  // Click the edit message button in the popover
+  await page.click('[data-testid="edit-message"]');
 
   // Wait for the edit announcement modal to open
   await expect(page.locator('.ant-modal-header')).toContainText(
@@ -1726,11 +1575,7 @@ export const editAnnouncement = async (
     .fill(data.description);
 
   // Save the changes and wait for the API response
-  const updateResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/announcements/') &&
-      response.request().method() === 'PATCH'
-  );
+  const updateResponse = page.waitForResponse('/api/v1/feed/*');
   await page
     .locator(
       '[data-testid="edit-announcement"] .ant-modal-footer .ant-btn-primary'
@@ -1748,9 +1593,7 @@ export const editAnnouncement = async (
   await expect(drawerAnnouncementCard).toContainText(data.description);
 
   // Close the announcement drawer
-  await page
-    .getByTestId('announcement-close')
-    .evaluate((element) => (element as HTMLElement).click());
+  await page.locator('[data-testid="announcement-close"]').click();
 
   await expect(page.getByTestId('announcement-drawer')).not.toBeVisible();
 };
@@ -1760,7 +1603,8 @@ export const createInactiveAnnouncement = async (
   data: { title: string; description: string },
   hideAlert?: boolean
 ) => {
-  await openAnnouncementDrawer(page);
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
   const startDate = customFormatDateTime(
     getEpochMillisForFutureDays(6),
     'yyyy-MM-dd'
@@ -1777,8 +1621,7 @@ export const createInactiveAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await openAnnouncementDrawer(page);
-  await expect(page.getByTestId('inActive-announcements')).toBeVisible();
+  await page.getByTestId('inActive-announcements').isVisible();
   await page.reload();
 };
 
