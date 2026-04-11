@@ -156,5 +156,5 @@ PREPARE add_to_fqn_hash_stmt FROM @add_to_fqn_hash;
 EXECUTE add_to_fqn_hash_stmt;
 DEALLOCATE PREPARE add_to_fqn_hash_stmt;
 
-CREATE INDEX IF NOT EXISTS idx_er_from_fqn_hash ON entity_relationship (fromFQNHash(768));
-CREATE INDEX IF NOT EXISTS idx_er_to_fqn_hash   ON entity_relationship (toFQNHash(768));
+CREATE INDEX idx_er_from_fqn_hash ON entity_relationship (fromFQNHash(768));
+CREATE INDEX idx_er_to_fqn_hash   ON entity_relationship (toFQNHash(768));
