@@ -84,10 +84,11 @@ export const submitTestCaseForm = async (page: Page) => {
 
   expect(response.status()).toBe(201);
 
-  // Wait for the drawer to close — this is the definitive signal that the
-  // entire submit flow (test case + pipeline + deploy) completed successfully.
-  // Unlike waiting for toast or specific API responses (which may or may not
-  // fire, or may be slow), the drawer only closes after all chained calls finish.
+  // Wait for the drawer to close — this is the definitive signal that test
+  // case creation and any subsequent pipeline/deploy actions triggered by the
+  // form have finished. Unlike waiting for toast or specific API responses
+  // (which may or may not fire, or may be slow), the drawer closes only after
+  // the applicable submit flow completes.
   await page.getByTestId('test-case-form-v1').waitFor({ state: 'detached' });
 
   return response;
