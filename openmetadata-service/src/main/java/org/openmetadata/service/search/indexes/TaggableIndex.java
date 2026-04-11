@@ -17,8 +17,8 @@ import org.openmetadata.service.search.ParseTags;
  * classes.
  *
  * <p>For entities whose children also carry tags (e.g., Table columns, Topic schema fields),
- * override {@link #collectChildTags()} to return the child tag sets — they will be automatically
- * merged with entity-level tags.
+ * call {@link #mergeChildTags(Map, Set)} from {@code buildSearchIndexDocInternal} to merge
+ * child tag sets with entity-level tags.
  *
  * <p>This method is called automatically by {@link SearchIndex#buildSearchIndexDoc()}. Individual
  * index classes should NOT call it directly.

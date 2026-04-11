@@ -10,7 +10,8 @@ package org.openmetadata.service.search.indexes;
  * SearchIndex#buildSearchIndexDoc()}. Implementations only need to add entity-specific fields in
  * {@link SearchIndex#buildSearchIndexDocInternal(java.util.Map)}.
  *
- * <p>For entities with child tags (columns, schema fields), override {@link
- * TaggableIndex#collectChildTags()}.
+ * <p>For entities with child tags (columns, schema fields), call {@link
+ * TaggableIndex#mergeChildTags(java.util.Map, java.util.Set)} from {@code
+ * buildSearchIndexDocInternal}.
  */
 public interface DataAssetIndex extends TaggableIndex, ServiceBackedIndex, LineageIndex {}
