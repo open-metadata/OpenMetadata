@@ -218,6 +218,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     scope === 'term' ? contextData?.data?.glossary?.id : undefined;
 
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [graphData, setGraphData] = useState<OntologyGraphData | null>(null);
   const [assetGraphData, setAssetGraphData] =
     useState<OntologyGraphData | null>(null);
@@ -1259,8 +1260,64 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         Object.entries(counts).slice(0, DATA_MODE_MAX_RENDER_COUNT)
       );
 
+      const baseGraph = buildGraphFromCounts(termCounts);
+
+      const savedGraph = savedModelGraphRef.current;
+      if (savedGraph && savedGraph.edges.length > 0) {
+        const fqnSet = new Set(
+          baseGraph.nodes
+            .map((n) => n.fullyQualifiedName)
+            .filter((fqn): fqn is string => Boolean(fqn))
+        );
+        const uuidToFqn = new Map<string, string>();
+        savedGraph.nodes.forEach((n) => {
+          if (n.id && n.fullyQualifiedName) {
+            uuidToFqn.set(n.id, n.fullyQualifiedName);
+          }
+        });
+
+        const existingEdgeKeys = new Set(
+          baseGraph.edges.map((e) => `${e.from}-${e.to}`)
+        );
+        const termTermEdges: OntologyEdge[] = [];
+
+        savedGraph.edges.forEach((edge) => {
+          if (edge.relationType === 'parentOf') {
+            return;
+          }
+          const fromFqn = uuidToFqn.get(edge.from);
+          const toFqn = uuidToFqn.get(edge.to);
+          if (
+            !fromFqn ||
+            !toFqn ||
+            !fqnSet.has(fromFqn) ||
+            !fqnSet.has(toFqn)
+          ) {
+            return;
+          }
+          const key = `${fromFqn}-${toFqn}`;
+          if (!existingEdgeKeys.has(key)) {
+            existingEdgeKeys.add(key);
+            termTermEdges.push({
+              from: fromFqn,
+              to: toFqn,
+              label: edge.label,
+              relationType: edge.relationType,
+            });
+          }
+        });
+
+        return {
+          graphData: {
+            nodes: baseGraph.nodes,
+            edges: [...baseGraph.edges, ...termTermEdges],
+          },
+          termCounts,
+        };
+      }
+
       return {
-        graphData: buildGraphFromCounts(termCounts),
+        graphData: baseGraph,
         termCounts,
       };
     },
@@ -1421,6 +1478,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         setAssetGraphData(null);
         setTermAssetCounts({});
         setGraphData(mergedData);
+        lastLoadCompletedRef.current = Date.now();
       } catch (error) {
         showErrorToast(
           isAxiosError(error) ? error : String(error),
@@ -1539,6 +1597,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       filters.glossaryIds
     );
     setLoading(true);
+    setGraphData(null);
     setTermAssetCounts({});
     loadDataModeTerms(glossaryFilterIds)
       .then(
@@ -1829,7 +1888,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
 
     isLoadingMoreRef.current = true;
-    setLoading(true);
+    setIsLoadingMore(true);
     loadNextTermPage()
       .then((terms) => {
         const newPageData = buildGraphFromAllTerms(terms, glossaries);
@@ -1863,7 +1922,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       .finally(() => {
         lastLoadCompletedRef.current = Date.now();
         isLoadingMoreRef.current = false;
-        setLoading(false);
+        setIsLoadingMore(false);
       });
   }, [
     explorationMode,
@@ -2009,6 +2068,126 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return items;
   }, [graphDataToShow, dataSource, explorationMode, t]);
 
+  const renderGraphContent = () => {
+    if (loading && !graphDataToShow) {
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
+          data-testid="ontology-graph-loading">
+          <div
+            aria-label={t('label.loading')}
+            className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
+            role="status"
+          />
+          <Typography as="p" className="tw:mt-4 tw:text-tertiary">
+            {t('label.loading-graph')}
+          </Typography>
+        </div>
+      );
+    }
+
+    if (
+      isHierarchyView &&
+      hierarchyGraphData !== null &&
+      hierarchyGraphData.edges.length === 0
+    ) {
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
+          data-testid="ontology-graph-hierarchy-empty">
+          <Typography as="p" className="tw:text-center tw:text-tertiary">
+            {t('message.no-hierarchical-relations-found')}
+          </Typography>
+        </div>
+      );
+    }
+
+    if (!graphDataToShow || graphDataToShow.nodes.length === 0) {
+      const hasActiveFilter =
+        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
+        withoutOntologyAutocompleteAll(filters.relationTypes).length > 0;
+
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
+          data-testid="ontology-graph-empty">
+          <Typography as="p" className="tw:text-center tw:text-tertiary">
+            {hasActiveFilter
+              ? t('message.no-data-available-for-selected-filter')
+              : t('message.no-glossary-terms-found')}
+          </Typography>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {filters.searchQuery.trim() ? (
+          <div
+            aria-hidden
+            className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
+          />
+        ) : null}
+        <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
+          <OntologyGraph
+            edges={graphDataToShow.edges}
+            expandedTermIds={
+              explorationMode === 'data' ? expandedTermIds : undefined
+            }
+            explorationMode={isHierarchyView ? 'hierarchy' : explorationMode}
+            focusNodeId={
+              explorationMode === 'data'
+                ? selectedNode?.id ?? entityId
+                : entityId
+            }
+            glossaryColorMap={glossaryColorMap}
+            graphSearchHighlight={graphSearchHighlight}
+            hierarchyCombos={
+              isHierarchyView && hierarchyGraphData
+                ? hierarchyGraphData.combos.map((c) => ({
+                    id: c.id,
+                    label: c.label,
+                    glossaryId: c.glossaryId,
+                  }))
+                : undefined
+            }
+            nodePositions={hierarchyBakedPositions}
+            nodes={graphDataToShow.nodes}
+            ref={graphRef}
+            selectedNodeId={
+              explorationMode === 'data' && expandedTermIds.size > 1
+                ? null
+                : selectedNode?.id
+            }
+            settings={settings}
+            onNodeClick={handleGraphNodeClick}
+            onNodeContextMenu={handleGraphNodeContextMenu}
+            onNodeDoubleClick={handleGraphNodeDoubleClick}
+            onPaneClick={handleGraphPaneClick}
+            onScrollNearEdge={handleScrollNearEdge}
+          />
+          {isLoadingMore && (
+            <>
+              <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
+              <div className="tw:pointer-events-none tw:absolute tw:bottom-20 tw:left-1/2 tw:z-2 tw:-translate-x-1/2">
+                <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-white tw:px-4 tw:py-2 tw:shadow-md">
+                  <div
+                    aria-label={t('label.loading')}
+                    className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
+                    role="status"
+                  />
+                  <Typography size="text-sm" weight="medium">
+                    {t('label.loading-more-terms')}
+                  </Typography>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </>
+    );
+  };
+
   return (
     <div
       className={classNames(
@@ -2146,93 +2325,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               ONTOLOGY_GRAPH_BACKDROP_CLASS,
               'tw:overflow-hidden'
             )}>
-            {loading ? (
-              <div
-                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
-                data-testid="ontology-graph-loading">
-                <div
-                  aria-label={t('label.loading')}
-                  className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
-                  role="status"
-                />
-                <Typography as="p" className="tw:mt-4 tw:text-tertiary">
-                  {t('label.loading-graph')}
-                </Typography>
-              </div>
-            ) : isHierarchyView &&
-              hierarchyGraphData !== null &&
-              hierarchyGraphData.edges.length === 0 ? (
-              <div
-                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
-                data-testid="ontology-graph-hierarchy-empty">
-                <Typography as="p" className="tw:text-center tw:text-tertiary">
-                  {t('message.no-hierarchical-relations-found')}
-                </Typography>
-              </div>
-            ) : !graphDataToShow || graphDataToShow.nodes.length === 0 ? (
-              <div
-                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
-                data-testid="ontology-graph-empty">
-                <Typography as="p" className="tw:text-center tw:text-tertiary">
-                  {withoutOntologyAutocompleteAll(filters.glossaryIds).length >
-                    0 ||
-                  withoutOntologyAutocompleteAll(filters.relationTypes).length >
-                    0
-                    ? t('message.no-data-available-for-selected-filter')
-                    : t('message.no-glossary-terms-found')}
-                </Typography>
-              </div>
-            ) : (
-              <>
-                {filters.searchQuery.trim() ? (
-                  <div
-                    aria-hidden
-                    className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
-                  />
-                ) : null}
-                <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
-                  <OntologyGraph
-                    edges={graphDataToShow.edges}
-                    expandedTermIds={
-                      explorationMode === 'data' ? expandedTermIds : undefined
-                    }
-                    explorationMode={
-                      isHierarchyView ? 'hierarchy' : explorationMode
-                    }
-                    focusNodeId={
-                      explorationMode === 'data'
-                        ? selectedNode?.id ?? entityId
-                        : entityId
-                    }
-                    glossaryColorMap={glossaryColorMap}
-                    graphSearchHighlight={graphSearchHighlight}
-                    hierarchyCombos={
-                      isHierarchyView && hierarchyGraphData
-                        ? hierarchyGraphData.combos.map((c) => ({
-                            id: c.id,
-                            label: c.label,
-                            glossaryId: c.glossaryId,
-                          }))
-                        : undefined
-                    }
-                    nodePositions={hierarchyBakedPositions}
-                    nodes={graphDataToShow.nodes}
-                    ref={graphRef}
-                    selectedNodeId={
-                      explorationMode === 'data' && expandedTermIds.size > 1
-                        ? null
-                        : selectedNode?.id
-                    }
-                    settings={settings}
-                    onNodeClick={handleGraphNodeClick}
-                    onNodeContextMenu={handleGraphNodeContextMenu}
-                    onNodeDoubleClick={handleGraphNodeDoubleClick}
-                    onPaneClick={handleGraphPaneClick}
-                    onScrollNearEdge={handleScrollNearEdge}
-                  />
-                </div>
-              </>
-            )}
+            {renderGraphContent()}
           </div>
 
           {selectedNode && (

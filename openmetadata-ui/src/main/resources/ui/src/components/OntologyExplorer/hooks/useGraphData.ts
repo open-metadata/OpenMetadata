@@ -284,6 +284,23 @@ export function useGraphDataBuilder({
         }
       }
 
+      const LABEL_SPACING_GAP = 56;
+      const maxTermLabelWidth = inputNodes.reduce((max, n) => {
+        if (allAssetIds.has(n.id)) {
+          return max;
+        }
+        const rawLabel = n.originalLabel ?? n.label;
+        const w = Math.min(MODEL_NODE_MAX_WIDTH, estimateNodeWidth(rawLabel));
+
+        return Math.max(max, w);
+      }, 0);
+      if (maxTermLabelWidth > 0) {
+        termHSpacing = Math.max(
+          termHSpacing,
+          maxTermLabelWidth + LABEL_SPACING_GAP
+        );
+      }
+
       termAssetCountMap = new Map<string, number>();
       inputNodes.forEach((node) => {
         if (allTermIds.has(node.id) && typeof node.assetCount === 'number') {
@@ -378,14 +395,16 @@ export function useGraphDataBuilder({
       const height = NODE_HEIGHT;
       const rawLabel = node.originalLabel ?? node.label;
       const isInModelMode = explorationMode === 'model';
+      const isDataAsset = node.type === 'dataAsset' || node.type === 'metric';
+      const shouldTruncateLabel =
+        isInModelMode || (explorationMode === 'data' && !isDataAsset);
       const estimatedWidth = estimateNodeWidth(rawLabel);
-      const nodeWidth = isInModelMode
+      const nodeWidth = shouldTruncateLabel
         ? Math.min(MODEL_NODE_MAX_WIDTH, estimatedWidth)
         : estimatedWidth;
-      const label = isInModelMode
+      const label = shouldTruncateLabel
         ? truncateNodeLabelByWidth(rawLabel, nodeWidth)
         : rawLabel;
-      const isDataAsset = node.type === 'dataAsset' || node.type === 'metric';
       const pos =
         explorationMode === 'hierarchy'
           ? nodePositions?.[node.id]
