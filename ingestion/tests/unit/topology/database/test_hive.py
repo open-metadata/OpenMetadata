@@ -14,7 +14,7 @@ Test Hive using the topology
 
 import types
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from sqlalchemy.types import INTEGER, VARCHAR, Integer, String
 
@@ -1182,10 +1182,10 @@ class TestHivePartitionDetails(TestCase):
         Create a minimal HiveSource-like object with mocked internals.
         Do NOT call HiveSource() constructor — mock only what the method needs:
         - self.source.engine (Mock)
-        - self.source.connection_config (Mock with metastoreConnection=None)
+        - self.source.service_connection (Mock with metastoreConnection=None)
         """
         self.source = Mock()
-        self.source.connection_config.metastoreConnection = None
+        self.source.service_connection.metastoreConnection = None
         self.source.engine = Mock()
         # Bind the real method to our mock source
         self.source.get_table_partition_details = (
@@ -1196,8 +1196,8 @@ class TestHivePartitionDetails(TestCase):
         """Helper: convert list of tuples into mock row objects."""
         rows = []
         for item in data:
-            row = Mock()
-            row.__getitem__ = lambda self, i, _item=item: _item[i]
+            row = MagicMock()
+            row.__getitem__.side_effect = lambda i, _item=item: _item[i]
             rows.append(row)
         return rows
 

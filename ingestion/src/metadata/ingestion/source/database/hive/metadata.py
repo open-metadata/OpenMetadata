@@ -151,6 +151,7 @@ class HiveSource(CommonDbSourceService):
         is replaced with a MySQL/Postgres metastore engine that cannot
         execute HiveQL DESCRIBE FORMATTED statements.
         """
+        # pylint: disable=unused-argument
         # When metastore connection is configured, self.engine is a
         # MySQL/Postgres engine — DESCRIBE FORMATTED will fail against it.
         # Skip partition detection in this case.
@@ -167,11 +168,13 @@ class HiveSource(CommonDbSourceService):
         in_partition_section = False
 
         try:
+            dialect = getattr(self.engine, "dialect", None)
+            preparer = dialect.identifier_preparer
+            quoted_schema = preparer.quote(schema_name)
+            quoted_table = preparer.quote(table_name)
             with self.engine.connect() as conn:
                 rows = conn.execute(
-                    text(
-                        f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`"
-                    )
+                    text(f"DESCRIBE FORMATTED {quoted_schema}.{quoted_table}")
                 )
                 for row in rows:
                     col_name = row[0].strip() if row[0] else ""
