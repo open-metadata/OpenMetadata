@@ -37,6 +37,7 @@ from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.source.models import TableView
 from metadata.utils.db_utils import get_host_from_host_port, get_view_lineage
+from metadata.utils.host_port_utils import clean_host_port
 
 
 # Mock LineageTable class to simulate collate_sqllineage.core.models.Table
@@ -680,3 +681,84 @@ class TestDbUtils(TestCase):
                 lineage_request.edge.toEntity.id.root,
                 self.table_entity.id.root,
             )
+
+
+class TestCleanHostPort(TestCase):
+    """
+    Unit tests for host_port_utils.clean_host_port().
+    Issue #24348 — ValueError: invalid literal for int() with base 10.
+    """
+
+    # ------------------------------------------------------------------
+    # clean_host_port() tests
+    # ------------------------------------------------------------------
+
+    def test_clean_host_port_already_clean(self):
+        """Clean hostname:port passes through unchanged."""
+        self.assertEqual(clean_host_port("localhost:3306"), "localhost:3306")
+
+    def test_clean_host_port_host_only(self):
+        """Hostname without port passes through unchanged."""
+        self.assertEqual(clean_host_port("localhost"), "localhost")
+
+    def test_clean_host_port_strips_http(self):
+        """http:// prefix is stripped and hostname:port returned."""
+        self.assertEqual(
+            clean_host_port("http://localhost:3306"), "localhost:3306"
+        )
+
+    def test_clean_host_port_strips_https(self):
+        """https:// prefix is stripped and hostname:port returned."""
+        self.assertEqual(
+            clean_host_port("https://mydb.example.com:5432"),
+            "mydb.example.com:5432",
+        )
+
+    def test_clean_host_port_strips_scheme_no_port(self):
+        """URL with scheme but no port returns hostname only."""
+        self.assertEqual(
+            clean_host_port("http://localhost"), "localhost"
+        )
+
+    def test_clean_host_port_strips_trailing_slash(self):
+        """Trailing slash on clean value is removed."""
+        self.assertEqual(
+            clean_host_port("localhost:3306/"), "localhost:3306"
+        )
+
+    def test_clean_host_port_empty_string(self):
+        """Empty string passes through unchanged."""
+        self.assertEqual(clean_host_port(""), "")
+
+    def test_clean_host_port_raises_on_invalid_url(self):
+        """Scheme present but no extractable hostname raises ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            clean_host_port("http://")
+        self.assertIn("no valid hostname", str(ctx.exception))
+
+    def test_clean_host_port_jdbc_scheme(self):
+        """jdbc:// prefix is stripped correctly."""
+        self.assertEqual(
+            clean_host_port("jdbc://localhost:5432"), "localhost:5432"
+        )
+
+    # ------------------------------------------------------------------
+    # get_host_from_host_port() URL-prefix tests (issue #24348)
+    # ------------------------------------------------------------------
+
+    def test_get_host_from_host_port_clean(self):
+        """Clean host:port returns hostname."""
+        self.assertEqual(get_host_from_host_port("localhost:9000"), "localhost")
+
+    def test_get_host_from_host_port_http_prefix(self):
+        """http:// prefix is handled — returns hostname only."""
+        self.assertEqual(
+            get_host_from_host_port("http://localhost:3306"), "localhost"
+        )
+
+    def test_get_host_from_host_port_https_prefix(self):
+        """https:// prefix is handled — returns hostname only."""
+        self.assertEqual(
+            get_host_from_host_port("https://mydb.example.com:5432"),
+            "mydb.example.com",
+        )

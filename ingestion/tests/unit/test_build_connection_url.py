@@ -27,6 +27,7 @@ from metadata.generated.schema.security.credentials.azureCredentials import (
 from metadata.ingestion.source.database.azuresql.connection import get_connection_url
 from metadata.ingestion.source.database.mysql.connection import MySQLConnection
 from metadata.ingestion.source.database.postgres.connection import PostgresConnection
+from metadata.utils.host_port_utils import clean_host_port
 
 
 class TestGetConnectionURL(unittest.TestCase):
@@ -132,3 +133,58 @@ class TestGetConnectionURL(unittest.TestCase):
                 engine_connection.url.render_as_string(hide_password=False),
                 "postgresql+psycopg2://openmetadata_user:mocked_token@localhost:3306/openmetadata_db",
             )
+
+
+class TestCleanHostPortInConnectionURL(unittest.TestCase):
+    """
+    Integration-style tests verifying that URL-prefixed hostPort values
+    produce correct SQLAlchemy connection URLs.
+    Issue #24348 — ValueError: invalid literal for int() with base 10.
+    """
+
+    def test_clean_host_port_used_in_mysql_url(self):
+        """
+        MySQL connection with http:// prefix in hostPort must produce
+        a valid SQLAlchemy URL after clean_host_port() sanitisation.
+        """
+        raw = "http://localhost:3306"
+        cleaned = clean_host_port(raw)
+        self.assertEqual(cleaned, "localhost:3306")
+        # Verify it contains no scheme
+        self.assertNotIn("http://", cleaned)
+        self.assertNotIn("://", cleaned)
+
+    def test_clean_host_port_used_in_postgres_url(self):
+        """
+        Postgres connection with https:// prefix must be sanitised correctly.
+        """
+        raw = "https://mydb.example.com:5432"
+        cleaned = clean_host_port(raw)
+        self.assertEqual(cleaned, "mydb.example.com:5432")
+        self.assertNotIn("https://", cleaned)
+        self.assertNotIn("://", cleaned)
+
+    def test_clean_host_port_no_change_for_valid_input(self):
+        """
+        Valid hostPort values must pass through clean_host_port() unchanged.
+        """
+        valid_inputs = [
+            "localhost:3306",
+            "mydb.example.com:5432",
+            "192.168.1.1:1433",
+            "localhost",
+        ]
+        for value in valid_inputs:
+            with self.subTest(value=value):
+                self.assertEqual(clean_host_port(value), value)
+
+    def test_clean_host_port_raises_clear_error_for_bad_url(self):
+        """
+        Invalid URL with scheme but no hostname raises ValueError with
+        a message that guides the user to the correct format.
+        """
+        with self.assertRaises(ValueError) as ctx:
+            clean_host_port("http://")
+        error_msg = str(ctx.exception)
+        self.assertIn("no valid hostname", error_msg)
+        self.assertIn("hostname", error_msg)

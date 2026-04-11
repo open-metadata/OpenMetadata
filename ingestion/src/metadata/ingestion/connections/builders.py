@@ -35,6 +35,7 @@ from metadata.ingestion.connections.query_logger import attach_query_tracker
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.utils.constants import BUILDER_PASSWORD_ATTR
 from metadata.utils.logger import cli_logger
+from metadata.utils.host_port_utils import clean_host_port
 
 logger = cli_logger()
 
@@ -152,7 +153,15 @@ def get_password_secret(connection) -> SecretStr:
                 aws_client = AWSClient(
                     config=connection.authType.awsConfig
                 ).get_rds_client()
-                host, port = connection.hostPort.split(":")
+                _clean = clean_host_port(connection.hostPort)
+                _parts = _clean.split(":")
+                if len(_parts) != 2:
+                    raise ValueError(
+                        f"hostPort '{connection.hostPort}' must be in the "
+                        f"format 'hostname:port' for IAM authentication "
+                        f"(e.g. 'localhost:3306')."
+                    )
+                host, port = _parts
                 password = SecretStr(
                     aws_client.generate_db_auth_token(
                         DBHostname=host,
@@ -188,7 +197,7 @@ def get_connection_url_common(connection) -> str:
         url = _add_password(url, connection)
         url += "@"
 
-    url += connection.hostPort
+    url += clean_host_port(connection.hostPort)
     if hasattr(connection, "database"):
         url += f"/{connection.database}" if connection.database else ""
 

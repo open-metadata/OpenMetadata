@@ -13,6 +13,7 @@
 Helpers module for db sources
 """
 import time
+from metadata.utils.host_port_utils import get_host_from_host_port as _clean_get_host
 import traceback
 from typing import Iterable, List, Union
 
@@ -45,10 +46,14 @@ PUBLIC_SCHEMA = "public"
 
 def get_host_from_host_port(uri: str) -> str:
     """
-    if uri is like "localhost:9000"
-    then return the host "localhost"
+    Extract the hostname from a hostPort string.
+
+    Accepts both clean ``hostname:port`` strings and URL-prefixed
+    strings such as ``http://localhost:9000`` (issue #24348).
+    In the latter case a warning is logged and the scheme is stripped
+    before extracting the host.
     """
-    return uri.split(":")[0]
+    return _clean_get_host(uri)
 
 
 #  pylint: disable=too-many-locals
