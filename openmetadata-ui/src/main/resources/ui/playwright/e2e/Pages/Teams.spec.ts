@@ -99,6 +99,7 @@ const test = base.extend<{
   editOnlyUserPage: Page;
   dataConsumerPage: Page;
   ownerUserPage: Page;
+  scopedUserPage: Page;
 }>({
   editOnlyUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -118,6 +119,12 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  scopedUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await user.login(page);
+    await use(page);
+    await page.close();
+  },
   page: async ({ browser }, use) => {
     const { page, afterAction } = await performAdminLogin(browser);
     await use(page);
@@ -134,12 +141,6 @@ test.describe('Teams Page', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit Home Page', async ({ page }) => {
     await redirectToHomePage(page);
     const fetchOrganizationResponse = page.waitForResponse(
@@ -149,7 +150,7 @@ test.describe('Teams Page', () => {
     await fetchOrganizationResponse;
   });
 
-  test('Teams Page Flow', async ({ page }) => {
+  test('Teams Page Flow', async ({ page, scopedUserPage }) => {
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
 
@@ -157,7 +158,7 @@ test.describe('Teams Page', () => {
 
       await page.getByTestId('add-team').click();
 
-      const newTeamData = await createTeam(page);
+      const newTeamData = await createTeam(page, true);
 
       teamDetails = {
         ...teamDetails,
@@ -225,16 +226,28 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Join team should work properly', async () => {
-      await page.locator('[data-testid="users"]').click();
+      const teamPageResponse = scopedUserPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/teams/name/') &&
+          response.request().method() === 'GET'
+      );
+      await scopedUserPage.goto(
+        `/settings/members/teams/${encodeURIComponent(teamDetails.name ?? '')}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await teamPageResponse;
 
-      // Click on join teams button
-      await page.locator('[data-testid="join-teams"]').click();
+      // join-teams is in the page header actions, not inside the users tab
+      await expect(
+        scopedUserPage.locator('[data-testid="join-teams"]')
+      ).toBeVisible();
+      await scopedUserPage.locator('[data-testid="join-teams"]').click();
 
-      await toastNotification(page, 'Team joined successfully!');
+      await toastNotification(scopedUserPage, 'Team joined successfully!');
 
       // Verify leave team button exists
       await expect(
-        page.locator('[data-testid="leave-team-button"]')
+        scopedUserPage.locator('[data-testid="leave-team-button"]')
       ).toBeVisible();
     });
 
@@ -302,24 +315,34 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Leave team flow should work properly', async () => {
-      await expect(page.locator('[data-testid="team-heading"]')).toContainText(
-        teamDetails?.updatedName ?? ''
+      await scopedUserPage.goto(
+        `/settings/members/teams/${encodeURIComponent(teamDetails.name ?? '')}`,
+        { waitUntil: 'domcontentloaded' }
       );
+      await waitForAllLoadersToDisappear(scopedUserPage);
 
-      // Click on Leave team
-      await page.locator('[data-testid="leave-team-button"]').click();
+      await expect(
+        scopedUserPage.locator('[data-testid="team-heading"]')
+      ).toContainText(teamDetails?.updatedName ?? '');
 
-      const leaveTeamResponse = page.waitForResponse(
+      const leaveTeamResponse = scopedUserPage.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/users/') &&
           response.request().method() === 'PATCH'
       );
+      // Click on Leave team
+      await scopedUserPage.locator('[data-testid="leave-team-button"]').click();
       // Click on confirm button
-      await page.locator('.ant-modal-footer').getByText('Confirm').click();
+      await scopedUserPage
+        .locator('.ant-modal-footer')
+        .getByText('Confirm')
+        .click();
       await leaveTeamResponse;
 
       // Verify that the "Join Teams" button is now visible
-      await expect(page.locator('[data-testid="join-teams"]')).toBeVisible();
+      await expect(
+        scopedUserPage.locator('[data-testid="join-teams"]')
+      ).toBeVisible();
     });
 
     await test.step('Soft Delete Team', async () => {
@@ -863,18 +886,6 @@ test.describe('Teams Page with EditUser Permission', () => {
     await team2.visitTeamPage(editOnlyUserPage);
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await user2.delete(apiContext);
-    await team2.delete(apiContext);
-    await team.delete(apiContext);
-    await role.delete(apiContext);
-    await policy.delete(apiContext);
-    await editOnlyUser.delete(apiContext);
-    await afterAction();
-  });
-
   test('Add and Remove User for Team', async ({ editOnlyUserPage }) => {
     await test.step('Add user in Team from the placeholder', async () => {
       await addUserInTeam(editOnlyUserPage, user);
@@ -1017,17 +1028,6 @@ test.describe('Teams Page with Data Consumer User', () => {
 
     await expect(dataConsumerPage.getByTestId('add-policy')).not.toBeVisible();
   });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await team2.delete(apiContext);
-    await team.delete(apiContext);
-    await role.delete(apiContext);
-    await policy.delete(apiContext);
-    await dataConsumerUser.delete(apiContext);
-    await afterAction();
-  });
 });
 
 test.describe('Teams Page action as Owner of Team', () => {
@@ -1167,21 +1167,5 @@ test.describe('Teams Page action as Owner of Team', () => {
       user,
       userName,
     });
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await dataProduct.delete(apiContext);
-    await domain.delete(apiContext);
-    await teamNoOwner.delete(apiContext);
-    await team4.delete(apiContext);
-    await team3.delete(apiContext);
-    await team2.delete(apiContext);
-    await team.delete(apiContext);
-    await role.delete(apiContext);
-    await policy.delete(apiContext);
-    await ownerUser.delete(apiContext);
-    await afterAction();
   });
 });
