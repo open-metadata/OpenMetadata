@@ -20,14 +20,20 @@ import { useTranslation } from 'react-i18next';
 export interface ExportGraphPanelProps {
   onExportPng: () => Promise<void>;
   onExportSvg: () => Promise<void>;
+  onExportTurtle?: () => Promise<void>;
+  onExportRdfXml?: () => Promise<void>;
 }
 
 const EXPORT_PNG = 'png';
 const EXPORT_SVG = 'svg';
+const EXPORT_TURTLE = 'turtle';
+const EXPORT_RDF_XML = 'rdfxml';
 
 const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
   onExportPng,
   onExportSvg,
+  onExportTurtle,
+  onExportRdfXml,
 }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -35,6 +41,12 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
   const items = [
     { id: EXPORT_PNG, label: t('label.png-uppercase') },
     { id: EXPORT_SVG, label: t('label.svg-uppercase') },
+    ...(onExportTurtle
+      ? [{ id: EXPORT_TURTLE, label: t('label.turtle-ttl') }]
+      : []),
+    ...(onExportRdfXml
+      ? [{ id: EXPORT_RDF_XML, label: t('label.rdf-xml-rdf') }]
+      : []),
   ];
 
   const handleAction = async (key: Key) => {
@@ -43,6 +55,10 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
       await onExportPng();
     } else if (key === EXPORT_SVG) {
       await onExportSvg();
+    } else if (key === EXPORT_TURTLE) {
+      await onExportTurtle?.();
+    } else if (key === EXPORT_RDF_XML) {
+      await onExportRdfXml?.();
     }
   };
 
