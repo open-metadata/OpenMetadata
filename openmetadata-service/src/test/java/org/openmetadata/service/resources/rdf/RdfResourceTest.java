@@ -23,6 +23,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 
 class RdfResourceTest {
@@ -66,5 +67,13 @@ class RdfResourceTest {
             securityContext, UUID.randomUUID(), "table", 2, null, null, "rdfxml");
 
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  void normalizeEntityGraphExportFormatAcceptsAliases() {
+    assertEquals("TURTLE", RdfRepository.normalizeEntityGraphExportFormat("ttl"));
+    assertEquals("TURTLE", RdfRepository.normalizeEntityGraphExportFormat("turtle"));
+    assertEquals("JSON-LD", RdfRepository.normalizeEntityGraphExportFormat("jsonld"));
+    assertEquals("JSON-LD", RdfRepository.normalizeEntityGraphExportFormat("json-ld"));
   }
 }

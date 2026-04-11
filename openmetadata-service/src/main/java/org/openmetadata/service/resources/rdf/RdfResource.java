@@ -22,7 +22,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
-import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import javax.validation.constraints.NotEmpty;
@@ -315,7 +314,7 @@ public class RdfResource {
     authorizer.authorizeAdmin(securityContext);
     try {
       String validatedEntityType = validateEntityType(entityType);
-      String normalizedFormat = validateEntityGraphExportFormat(format);
+      String normalizedFormat = RdfRepository.normalizeEntityGraphExportFormat(format);
       if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
             .entity(buildErrorResponse("RDF service not enabled"))
@@ -334,7 +333,7 @@ public class RdfResource {
 
       MediaType mediaType =
           switch (normalizedFormat) {
-            case "jsonld", "json-ld" -> MediaType.valueOf(JSON_LD);
+            case "JSON-LD" -> MediaType.valueOf(JSON_LD);
             default -> MediaType.valueOf(TURTLE);
           };
 
@@ -367,18 +366,6 @@ public class RdfResource {
 
   private String buildErrorResponse(String message) {
     return String.format("{\"error\": \"%s\"}", message);
-  }
-
-  private String validateEntityGraphExportFormat(String format) {
-    if (format == null || format.isBlank()) {
-      return "turtle";
-    }
-
-    return switch (format.trim().toLowerCase(Locale.ROOT)) {
-      case "jsonld", "json-ld" -> "jsonld";
-      case "turtle", "ttl" -> "turtle";
-      default -> throw new IllegalArgumentException("Unsupported export format");
-    };
   }
 
   private Set<String> parseCsvFilter(String values) {

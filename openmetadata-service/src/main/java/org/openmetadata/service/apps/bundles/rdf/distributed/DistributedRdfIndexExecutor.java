@@ -31,6 +31,7 @@ public class DistributedRdfIndexExecutor {
   private final DistributedRdfIndexCoordinator coordinator;
   private final String serverId;
   private final AtomicBoolean stopped = new AtomicBoolean(false);
+  private final AtomicBoolean localExecutionCleaned = new AtomicBoolean(true);
   private final List<RdfPartitionWorker> activeWorkers = new CopyOnWriteArrayList<>();
 
   @Getter private volatile RdfIndexJob currentJob;
@@ -95,6 +96,7 @@ public class DistributedRdfIndexExecutor {
     }
 
     stopped.set(false);
+    localExecutionCleaned.set(false);
     COORDINATED_JOBS.add(currentJob.getId());
     coordinator.updateJobStatus(currentJob.getId(), IndexJobStatus.RUNNING, null);
     currentJob = coordinator.getJobWithAggregatedStats(currentJob.getId());
@@ -116,6 +118,7 @@ public class DistributedRdfIndexExecutor {
     currentJob = job;
     coordinatorOwnedJob = false;
     stopped.set(false);
+    localExecutionCleaned.set(false);
     runWorkers(jobConfiguration, false);
   }
 
@@ -145,9 +148,7 @@ public class DistributedRdfIndexExecutor {
       worker.stop();
     }
 
-    shutdownWorkerExecutor();
-    interruptThread(lockRefreshThread);
-    interruptThread(staleReclaimerThread);
+    cleanupLocalExecution();
   }
 
   private void runWorkers(EventPublisherJob jobConfiguration, boolean coordinatorMode)
@@ -304,8 +305,10 @@ public class DistributedRdfIndexExecutor {
     }
   }
 
-  private void cleanupCoordinatorExecution() {
-    UUID jobId = currentJob != null ? currentJob.getId() : null;
+  private void cleanupLocalExecution() {
+    if (!localExecutionCleaned.compareAndSet(false, true)) {
+      return;
+    }
 
     shutdownWorkerExecutor();
     interruptThread(lockRefreshThread);
@@ -313,6 +316,12 @@ public class DistributedRdfIndexExecutor {
     lockRefreshThread = null;
     staleReclaimerThread = null;
     activeWorkers.clear();
+  }
+
+  private void cleanupCoordinatorExecution() {
+    UUID jobId = currentJob != null ? currentJob.getId() : null;
+
+    cleanupLocalExecution();
 
     if (jobId != null && coordinatorOwnedJob) {
       try {

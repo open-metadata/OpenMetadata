@@ -714,14 +714,11 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       ).toBeVisible();
     });
 
-    await test.step('Verify export dropdown shows all four format options', async () => {
+    await test.step('Verify export dropdown shows only supported export format options', async () => {
       await page.locator('[data-testid="knowledge-graph-export"]').click();
 
       await expect(
         page.getByRole('menuitemradio', { name: 'PNG' })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('menuitemradio', { name: 'SVG (raster)' })
       ).toBeVisible();
       await expect(
         page.getByRole('menuitemradio', { name: 'JSON-LD' })
@@ -729,6 +726,9 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       await expect(
         page.getByRole('menuitemradio', { name: 'Turtle (RDF)' })
       ).toBeVisible();
+      await expect(
+        page.getByRole('menuitemradio', { name: 'SVG (raster)' })
+      ).toHaveCount(0);
 
       await page.keyboard.press('Escape');
     });

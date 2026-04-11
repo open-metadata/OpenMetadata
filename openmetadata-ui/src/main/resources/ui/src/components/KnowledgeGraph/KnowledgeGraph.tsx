@@ -261,34 +261,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     }
   }, [t]);
 
-  const handleExportSvg = useCallback(async () => {
-    if (!containerRef.current) {
-      return;
-    }
-    try {
-      const dataUrl = await toPng(containerRef.current, {
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-      });
-      const { width, height } = containerRef.current.getBoundingClientRect();
-      const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-  <image href="${dataUrl}" width="${width}" height="${height}"/>
-</svg>`;
-      const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'knowledge-graph-raster.svg';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      showErrorToast(t('server.unexpected-error'));
-    }
-  }, [t]);
-
   const getExportHandler = (format: EntityGraphExportFormat) => async () => {
     if (!entity?.id) {
-      showErrorToast(t('label.no-entity-selected', { entity: t('label.asset') }));
+      showErrorToast(
+        t('label.no-entity-selected', { entity: t('label.asset') })
+      );
 
       return;
     }
@@ -300,7 +277,9 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         entityName:
           entity.fullyQualifiedName ?? entity.name ?? 'knowledge-graph',
         depth: selectedDepth,
-        entityTypes: selectedEntityTypes.length ? selectedEntityTypes : undefined,
+        entityTypes: selectedEntityTypes.length
+          ? selectedEntityTypes
+          : undefined,
         relationshipTypes: selectedRelationshipTypes.length
           ? selectedRelationshipTypes
           : undefined,
@@ -867,8 +846,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 <Dropdown.Popover>
                   <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
                     <input
-                      aria-label={t('label.entity-type')}
                       autoFocus
+                      aria-label={t('label.entity-type')}
                       className={filterInputClassName}
                       placeholder={t('label.search')}
                       type="text"
@@ -922,8 +901,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 <Dropdown.Popover>
                   <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
                     <input
-                      aria-label={t('label.relationship-type')}
                       autoFocus
+                      aria-label={t('label.relationship-type')}
                       className={filterInputClassName}
                       placeholder={t('label.search')}
                       type="text"
@@ -979,13 +958,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 data-testid="knowledge-graph-export"
                 supportedExports={[
                   ExportFormat.PNG,
-                  ExportFormat.SVG,
                   ExportFormat.JSONLD,
                   ExportFormat.TURTLE,
                 ]}
                 onExportJsonLd={getExportHandler(ExportFormat.JSONLD)}
                 onExportPng={handleExportPng}
-                onExportSvg={handleExportSvg}
                 onExportTurtle={getExportHandler(ExportFormat.TURTLE)}
               />
             </Box>

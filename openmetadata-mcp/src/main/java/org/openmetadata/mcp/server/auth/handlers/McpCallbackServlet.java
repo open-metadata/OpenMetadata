@@ -535,7 +535,7 @@ public class McpCallbackServlet extends HttpServlet {
       statusCode = sc;
       committed = true;
       if (msg != null) {
-        getWriter().write(msg);
+        writeToBuffer(msg);
       }
     }
 
@@ -611,6 +611,16 @@ public class McpCallbackServlet extends HttpServlet {
     @Override
     public boolean isCommitted() {
       return committed;
+    }
+
+    private void writeToBuffer(String value) throws IOException {
+      if (writer != null) {
+        writer.flush();
+      }
+      buffer.write(
+          value.getBytes(
+              Charset.forName(
+                  characterEncoding != null ? characterEncoding : StandardCharsets.UTF_8.name())));
     }
   }
 

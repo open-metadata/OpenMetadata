@@ -1643,7 +1643,12 @@ public class RdfRepository {
   }
 
   private String escapeSparqlStringLiteral(String value) {
-    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    return value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t");
   }
 
   private List<EdgeInfo> parseEntityGraphEdgesFromResults(
@@ -1925,7 +1930,7 @@ public class RdfRepository {
     };
   }
 
-  private String normalizeEntityGraphExportFormat(String format) {
+  public static String normalizeEntityGraphExportFormat(String format) {
     if (format == null || format.isBlank()) {
       return "TURTLE";
     }

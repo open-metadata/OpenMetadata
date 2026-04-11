@@ -27,7 +27,7 @@ export enum ExportFormat {
 export interface ExportGraphPanelProps {
   supportedExports: ExportFormat[];
   onExportPng: () => Promise<void>;
-  onExportSvg: () => Promise<void>;
+  onExportSvg?: () => Promise<void>;
   onExportJsonLd?: () => Promise<void>;
   onExportTurtle?: () => Promise<void>;
   'data-testid'?: string;
