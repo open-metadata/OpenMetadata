@@ -23,7 +23,8 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-
+.claude/*
+.claude
 catalog-services/catalog-services.iml
 
 # local docker volume
