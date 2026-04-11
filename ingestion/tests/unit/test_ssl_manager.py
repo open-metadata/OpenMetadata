@@ -212,6 +212,104 @@ class CassandraSourceSSLTest(TestCase):
         )
 
 
+class MatillionSSLManagerTest(TestCase):
+    """
+    Tests for Matillion SSL Manager with DPC auth variant (no sslConfig)
+    """
+
+    def test_check_ssl_and_init_dpc_connection_returns_none(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MatillionConnection(
+            connection={
+                "type": "MatillionDPC",
+                "clientId": "test-client",
+                "clientSecret": "test-secret",
+                "region": "us1",
+            }
+        )
+
+        result = check_ssl_and_init(connection)
+
+        self.assertIsNone(result)
+
+    def test_setup_ssl_dpc_connection_returns_connection_unchanged(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+
+        connection = MatillionConnection(
+            connection={
+                "type": "MatillionDPC",
+                "clientId": "test-client",
+                "clientSecret": "test-secret",
+                "region": "us1",
+            }
+        )
+
+        ssl_manager = SSLManager()
+        result = ssl_manager.setup_ssl(connection)
+
+        self.assertIs(result, connection)
+
+    def test_check_ssl_and_init_etl_connection_with_ssl(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MatillionConnection(
+            connection={
+                "type": "MatillionETL",
+                "hostPort": "https://matillion.example.com",
+                "username": "admin",
+                "password": "password",
+                "sslConfig": {"caCertificate": "caCertificateData"},
+            }
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+
+        self.assertIsNotNone(ssl_manager)
+        self.assertIsNotNone(ssl_manager.ca_file_path)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_check_ssl_and_init_etl_connection_without_ssl(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MatillionConnection(
+            connection={
+                "type": "MatillionETL",
+                "hostPort": "https://matillion.example.com",
+                "username": "admin",
+                "password": "password",
+            }
+        )
+
+        result = check_ssl_and_init(connection)
+
+        self.assertIsNone(result)
+
+    def test_check_ssl_and_init_no_connection_returns_none(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+            MatillionConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MatillionConnection()
+
+        result = check_ssl_and_init(connection)
+
+        self.assertIsNone(result)
+
+
 class MssqlSSLManagerTest(TestCase):
     """
     Tests for MSSQL SSL Manager functionality

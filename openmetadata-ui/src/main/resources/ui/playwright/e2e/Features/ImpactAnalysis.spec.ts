@@ -581,7 +581,7 @@ test.describe('Impact Analysis', () => {
 
     await page.getByRole('button', { name: 'Upstream' }).click();
     await expect(
-      page.getByRole('button', { name: 'Upstream 0' })
+      page.getByRole('button', { name: 'Upstream 5' })
     ).toBeVisible();
   });
 
