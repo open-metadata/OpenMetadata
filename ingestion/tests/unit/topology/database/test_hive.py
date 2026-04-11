@@ -1172,3 +1172,121 @@ class HiveSourceMetastoreValidationTest(TestCase):
         self.hive.service_connection.metastoreConnection = invalid_dict
         result = self.hive._get_validated_metastore_connection()
         self.assertIsNone(result)
+
+
+class TestHivePartitionDetails(TestCase):
+    """Unit tests for HiveSource.get_table_partition_details"""
+
+    def setUp(self):
+        """
+        Create a minimal HiveSource-like object with mocked internals.
+        Do NOT call HiveSource() constructor — mock only what the method needs:
+        - self.source.engine (Mock)
+        - self.source.connection_config (Mock with metastoreConnection=None)
+        """
+        self.source = Mock()
+        self.source.connection_config.metastoreConnection = None
+        self.source.engine = Mock()
+        # Bind the real method to our mock source
+        self.source.get_table_partition_details = (
+            HiveSource.get_table_partition_details.__get__(self.source)
+        )
+
+    def _make_rows(self, data):
+        """Helper: convert list of tuples into mock row objects."""
+        rows = []
+        for item in data:
+            row = Mock()
+            row.__getitem__ = lambda self, i, _item=item: _item[i]
+            rows.append(row)
+        return rows
+
+    def test_partition_keys_extracted_correctly(self):
+        """Parser extracts year and country, stops before metadata rows."""
+        mock_rows = self._make_rows(
+            [
+                ("col_name", "data_type", "comment"),
+                ("id", "int", ""),
+                ("name", "string", ""),
+                ("# Partition Information", "", ""),
+                ("# col_name", "data_type", "comment"),
+                ("year", "int", ""),
+                ("country", "string", ""),
+                ("# Detailed Table Information", "", ""),
+                ("Database:", "default", ""),
+                ("Owner:", "hadoop", ""),
+            ]
+        )
+        conn_mock = Mock()
+        conn_mock.execute.return_value = mock_rows
+        self.source.engine.connect.return_value.__enter__ = Mock(
+            return_value=conn_mock
+        )
+        self.source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+        is_partitioned, partition = self.source.get_table_partition_details(
+            table_name="sales",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertIsNotNone(partition)
+        extracted = [col.columnName for col in partition.columns]
+        self.assertIn("year", extracted)
+        self.assertIn("country", extracted)
+        # Critical: metadata rows must NOT be collected
+        self.assertNotIn("Database:", extracted)
+        self.assertNotIn("Owner:", extracted)
+
+    def test_no_partition_section_returns_false(self):
+        """Tables with no partition section return (False, None)."""
+        mock_rows = self._make_rows(
+            [
+                ("col_name", "data_type", "comment"),
+                ("id", "int", ""),
+                ("name", "string", ""),
+            ]
+        )
+        conn_mock = Mock()
+        conn_mock.execute.return_value = mock_rows
+        self.source.engine.connect.return_value.__enter__ = Mock(
+            return_value=conn_mock
+        )
+        self.source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+        is_partitioned, partition = self.source.get_table_partition_details(
+            table_name="simple_table",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition)
+
+    def test_metastore_connection_skips_detection(self):
+        """When metastoreConnection is set, engine is never called."""
+        with patch.object(self.source, '_get_validated_metastore_connection', return_value=Mock()):
+            is_partitioned, partition = self.source.get_table_partition_details(
+                table_name="any_table",
+                schema_name="any_schema",
+                inspector=Mock(),
+            )
+
+            self.assertFalse(is_partitioned)
+            self.assertIsNone(partition)
+            # Engine must never be touched
+            self.source.engine.connect.assert_not_called()
+
+    def test_engine_exception_returns_false(self):
+        """Engine failure is caught gracefully, returns (False, None)."""
+        self.source.engine.connect.side_effect = Exception("connection failed")
+
+        is_partitioned, partition = self.source.get_table_partition_details(
+            table_name="broken_table",
+            schema_name="default",
+            inspector=Mock(),
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition)

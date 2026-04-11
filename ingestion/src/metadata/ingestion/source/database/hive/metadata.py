@@ -13,14 +13,19 @@ Hive source methods.
 """
 
 import traceback
-from typing import Optional, Tuple, Union  # noqa: UP035
+from typing import List, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
@@ -129,6 +134,83 @@ class HiveSource(CommonDbSourceService):
             self.engine = get_metastore_connection(metastore_conn)
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
+
+
+    def get_table_partition_details(
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> Tuple[bool, Optional[TablePartition]]:
+        """
+        Extract partition key columns from DESCRIBE FORMATTED output.
+        Returns (True, TablePartition) if partition keys are found,
+        otherwise (False, None).
+
+        Skipped when metastoreConnection is configured because self.engine
+        is replaced with a MySQL/Postgres metastore engine that cannot
+        execute HiveQL DESCRIBE FORMATTED statements.
+        """
+        # When metastore connection is configured, self.engine is a
+        # MySQL/Postgres engine — DESCRIBE FORMATTED will fail against it.
+        # Skip partition detection in this case.
+        metastore_conn = self._get_validated_metastore_connection()
+        if metastore_conn:
+            logger.debug(
+                "Skipping partition key detection for"
+                f" {schema_name}.{table_name}: metastoreConnection"
+                " replaces HiveServer2 engine."
+            )
+            return False, None
+
+        partition_keys: List[str] = []
+        in_partition_section = False
+
+        try:
+            with self.engine.connect() as conn:
+                rows = conn.execute(
+                    text(
+                        f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`"
+                    )
+                )
+                for row in rows:
+                    col_name = row[0].strip() if row[0] else ""
+                    if col_name == "# Partition Information":
+                        in_partition_section = True
+                        continue
+                    if in_partition_section:
+                        # Exit on blank line or new section header
+                        # AFTER we have already collected at least one key.
+                        # This prevents downstream metadata rows like
+                        # "Database:", "Owner:", "Location:" from being
+                        # collected as partition keys.
+                        if col_name.startswith("#") or not col_name:
+                            if partition_keys:
+                                break
+                            continue
+                        partition_keys.append(col_name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to get partition details for"
+                f" {schema_name}.{table_name}: {exc}"
+            )
+            return False, None
+
+        if not partition_keys:
+            return False, None
+
+        return True, TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName=key,
+                    intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    interval=None,
+                )
+                for key in partition_keys
+            ]
+        )
+
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
