@@ -949,3 +949,24 @@ class LookerUnitTest(TestCase):
                 result.sourceUrl.root,
                 "https://my-looker.com/dashboards/1",
             )
+
+    def test_process_view_missing_view_yields_no_error(self):
+        """
+        When a view is not found in the configured repos,
+        _process_view should log a warning but NOT yield an error.
+        """
+        from unittest.mock import MagicMock
+
+        from metadata.ingestion.source.dashboard.looker.models import ViewName
+
+        mock_parser = MagicMock()
+        mock_parser.find_view.return_value = None
+
+        explore = LookmlModelExplore(
+            model_name="test_model", project_name="test_project"
+        )
+        self.looker._repo_credentials = True
+        self.looker._project_parsers = {"test_project": mock_parser}
+
+        results = list(self.looker._process_view(ViewName("missing_view"), explore))
+        assert len(results) == 0

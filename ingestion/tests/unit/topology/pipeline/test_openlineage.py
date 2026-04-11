@@ -1735,6 +1735,364 @@ class OpenLineageUnitTest(unittest.TestCase):
             "No lineage edges should be produced when input topic cannot be resolved",
         )
 
+    def test_yield_pipeline_lineage_producer_only_no_inputs(self):
+        """When an event has only outputs (producer), the pipeline itself becomes the
+        fromEntity and each output becomes the toEntity."""
+        output_topic_id = UUID("bbbb2222-2222-2222-2222-222222222222")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_output_topic = Mock()
+        mock_output_topic.id.root = output_topic_id
+        mock_output_topic.fullyQualifiedName.root = "kafka-service.output-topic"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "producer-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "producer-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[],
+            outputs=[
+                {
+                    "name": "output-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.topic import Topic
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Topic:
+                return mock_output_topic
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name)
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(edge.toEntity.id.root, output_topic_id)
+        self.assertEqual(edge.toEntity.type, "topic")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_consumer_only_no_outputs(self):
+        """When an event has only inputs (consumer), each input becomes the
+        fromEntity and the pipeline itself becomes the toEntity."""
+        input_topic_id = UUID("aaaa1111-1111-1111-1111-111111111111")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_input_topic = Mock()
+        mock_input_topic.id.root = input_topic_id
+        mock_input_topic.fullyQualifiedName.root = "kafka-service.input-topic"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "consumer-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "consumer-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "input-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
+            outputs=[],
+        )
+
+        from metadata.generated.schema.entity.data.topic import Topic
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Topic:
+                return mock_input_topic
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name)
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, input_topic_id)
+        self.assertEqual(edge.fromEntity.type, "topic")
+        self.assertEqual(edge.toEntity.id.root, pipeline_id)
+        self.assertEqual(edge.toEntity.type, "pipeline")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_consumer_only_table_input(self):
+        """When an event has only a table input (consumer/batch job), the table
+        becomes the fromEntity and the pipeline becomes the toEntity."""
+        table_id = UUID("aaaa1111-1111-1111-1111-111111111111")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "batch-consumer-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "batch-consumer-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "public.source_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+            outputs=[],
+        )
+
+        from metadata.generated.schema.entity.data.table import Table
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table:
+                return mock_table
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        extra_patches = [
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn",
+                return_value="db-service.public.source_table",
+            ),
+            patch.object(
+                self.open_lineage_source,
+                "get_create_table_request",
+                return_value=None,
+            ),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(
+            ol_event, get_by_name, extra_patches
+        )
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, table_id)
+        self.assertEqual(edge.fromEntity.type, "table")
+        self.assertEqual(edge.toEntity.id.root, pipeline_id)
+        self.assertEqual(edge.toEntity.type, "pipeline")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_producer_only_table_output(self):
+        """When an event has only a table output (producer/batch job), the pipeline
+        becomes the fromEntity and the table becomes the toEntity."""
+        table_id = UUID("bbbb2222-2222-2222-2222-222222222222")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "batch-producer-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "batch-producer-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[],
+            outputs=[
+                {
+                    "name": "public.target_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.table import Table
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table:
+                return mock_table
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        extra_patches = [
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn",
+                return_value="db-service.public.target_table",
+            ),
+            patch.object(
+                self.open_lineage_source,
+                "get_create_table_request",
+                return_value=None,
+            ),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(
+            ol_event, get_by_name, extra_patches
+        )
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(edge.toEntity.id.root, table_id)
+        self.assertEqual(edge.toEntity.type, "table")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_cleanup_only_deletes_edges_matching_current_event_datasets(self):
+        """When a both-sided event arrives, cleanup should only remove
+        pipeline-as-node edges for the datasets in that event, not unrelated ones."""
+        pipeline_id = "cccc3333-3333-3333-3333-333333333333"
+        topic_a_id = "aaaa1111-1111-1111-1111-111111111111"
+        topic_b_id = "bbbb2222-2222-2222-2222-222222222222"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+        mock_pipeline.fullyQualifiedName.root = "ol-service.test-pipeline"
+
+        lineage_data = {
+            "upstreamEdges": [
+                {
+                    "fromEntity": topic_a_id,
+                    "toEntity": pipeline_id,
+                    "lineageDetails": {"source": "OpenLineage"},
+                },
+                {
+                    "fromEntity": topic_b_id,
+                    "toEntity": pipeline_id,
+                    "lineageDetails": {"source": "OpenLineage"},
+                },
+            ],
+            "downstreamEdges": [],
+        }
+
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
+            mock_metadata.get_lineage_by_id.return_value = lineage_data
+
+            self.open_lineage_source._cleanup_pipeline_as_node_edges(
+                mock_pipeline, event_entity_map={topic_a_id: "topic"}
+            )
+
+            mock_metadata.delete_lineage_edge.assert_called_once()
+            deleted_edge = mock_metadata.delete_lineage_edge.call_args[0][0]
+            self.assertEqual(str(deleted_edge.fromEntity.id.root), topic_a_id)
+            self.assertEqual(deleted_edge.fromEntity.type, "topic")
+            self.assertEqual(str(deleted_edge.toEntity.id.root), pipeline_id)
+
+    def test_cleanup_preserves_non_openlineage_edges(self):
+        """Cleanup should not touch edges that were not sourced from OpenLineage,
+        even if the entity ID matches the current event."""
+        pipeline_id = "cccc3333-3333-3333-3333-333333333333"
+        table_id = "aaaa1111-1111-1111-1111-111111111111"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+        mock_pipeline.fullyQualifiedName.root = "ol-service.test-pipeline"
+
+        lineage_data = {
+            "upstreamEdges": [
+                {
+                    "fromEntity": table_id,
+                    "toEntity": pipeline_id,
+                    "lineageDetails": {"source": "Manual"},
+                },
+            ],
+            "downstreamEdges": [],
+        }
+
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
+            mock_metadata.get_lineage_by_id.return_value = lineage_data
+
+            self.open_lineage_source._cleanup_pipeline_as_node_edges(
+                mock_pipeline, event_entity_map={table_id: "table"}
+            )
+
+            mock_metadata.delete_lineage_edge.assert_not_called()
+
+    def test_cleanup_handles_downstream_edges_scoped_to_event(self):
+        """Cleanup of downstream edges (pipeline → dataset) should also be
+        scoped to only the current event's datasets."""
+        pipeline_id = "cccc3333-3333-3333-3333-333333333333"
+        table_a_id = "aaaa1111-1111-1111-1111-111111111111"
+        table_b_id = "bbbb2222-2222-2222-2222-222222222222"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+        mock_pipeline.fullyQualifiedName.root = "ol-service.test-pipeline"
+
+        lineage_data = {
+            "upstreamEdges": [],
+            "downstreamEdges": [
+                {
+                    "fromEntity": pipeline_id,
+                    "toEntity": table_a_id,
+                    "lineageDetails": {"source": "OpenLineage"},
+                },
+                {
+                    "fromEntity": pipeline_id,
+                    "toEntity": table_b_id,
+                    "lineageDetails": {"source": "OpenLineage"},
+                },
+            ],
+        }
+
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
+            mock_metadata.get_lineage_by_id.return_value = lineage_data
+
+            self.open_lineage_source._cleanup_pipeline_as_node_edges(
+                mock_pipeline, event_entity_map={table_b_id: "table"}
+            )
+
+            mock_metadata.delete_lineage_edge.assert_called_once()
+            deleted_edge = mock_metadata.delete_lineage_edge.call_args[0][0]
+            self.assertEqual(str(deleted_edge.fromEntity.id.root), pipeline_id)
+            self.assertEqual(str(deleted_edge.toEntity.id.root), table_b_id)
+            self.assertEqual(deleted_edge.toEntity.type, "table")
+
 
 if __name__ == "__main__":
     unittest.main()
