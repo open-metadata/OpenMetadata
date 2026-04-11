@@ -700,7 +700,10 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     # Issue Link: https://github.com/open-metadata/OpenMetadata/issues/8874
     details: List[str] = split(table_name.replace('"', ""))
     # Pad None to the left until size of list is 3
-    full_details: List[Optional[str]] = ([None] * (3 - len(details))) + details
+    # If more than 3 parts, take only the last 3 (database, schema, table)
+    full_details: List[Optional[str]] = ([None] * max(0, 3 - len(details))) + details[
+        -3:
+    ]
 
     database, database_schema, table = full_details
     return {"database": database, "database_schema": database_schema, "table": table}

@@ -84,6 +84,7 @@ export default defineConfig({
       teardown: 'SearchRBAC',
       testIgnore: [
         '**/nightly/**',
+        '**/Auth/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',

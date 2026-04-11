@@ -514,9 +514,11 @@ export class TableClass extends EntityClass {
   async patch({
     apiContext,
     patchData,
+    queryParams,
   }: {
     apiContext: APIRequestContext;
     patchData: Operation[];
+    queryParams?: Record<string, string>;
   }) {
     if (
       !this.entityResponseData?.fullyQualifiedName &&
@@ -542,10 +544,14 @@ export class TableClass extends EntityClass {
       );
     }
 
+    const queryString = queryParams
+      ? `?${new URLSearchParams(queryParams).toString()}`
+      : '';
+
     const response = await apiContext.patch(
       tableId
-        ? `/api/v1/tables/${tableId}`
-        : `/api/v1/tables/name/${encodeURIComponent(tableFqn!)}`,
+        ? `/api/v1/tables/${tableId}${queryString}`
+        : `/api/v1/tables/name/${encodeURIComponent(tableFqn!)}${queryString}`,
       {
         data: patchData,
         headers: {

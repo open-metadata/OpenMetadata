@@ -424,6 +424,9 @@ class UnitycatalogSource(
             table_constraints = self.update_table_constraints(
                 primary_constraints, foreign_constraints, columns
             )
+            table_constraints = self.normalize_table_constraints(
+                table_constraints, columns
+            )
 
             schema_definition = self.get_schema_definition(
                 table_name=table_name, table_type=table_type, table=table
