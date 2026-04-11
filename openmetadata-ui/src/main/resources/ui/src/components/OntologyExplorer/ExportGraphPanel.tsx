@@ -16,20 +16,22 @@ import { Download01 } from '@untitledui/icons';
 import React, { useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { showErrorToast } from '../../utils/ToastUtils';
 
 export enum ExportFormat {
   PNG = 'png',
   SVG = 'svg',
   JSONLD = 'jsonld',
   TURTLE = 'turtle',
+  RDFXML = 'rdfxml',
 }
+
 export interface ExportGraphPanelProps {
-  supportedExports: ExportFormat[];
+  supportedExports?: ExportFormat[];
   onExportPng: () => Promise<void>;
   onExportSvg?: () => Promise<void>;
   onExportJsonLd?: () => Promise<void>;
   onExportTurtle?: () => Promise<void>;
+  onExportRdfXml?: () => Promise<void>;
   'data-testid'?: string;
 }
 
@@ -38,7 +40,8 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
   onExportSvg,
   onExportJsonLd,
   onExportTurtle,
-  supportedExports = [ExportFormat.PNG, ExportFormat.SVG],
+  onExportRdfXml,
+  supportedExports,
   'data-testid': testId = 'ontology-export-graph',
 }) => {
   const { t } = useTranslation();
@@ -46,27 +49,38 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
 
   const items = [
     { id: ExportFormat.PNG, label: t('label.png-uppercase') },
-    { id: ExportFormat.SVG, label: `${t('label.svg-uppercase')} (raster)` },
-    { id: ExportFormat.JSONLD, label: t('label.json-ld') },
-    { id: ExportFormat.TURTLE, label: t('label.turtle-rdf') },
+    ...(onExportSvg
+      ? [{ id: ExportFormat.SVG, label: t('label.svg-uppercase') }]
+      : []),
+    ...(onExportJsonLd
+      ? [{ id: ExportFormat.JSONLD, label: t('label.json-ld') }]
+      : []),
+    ...(onExportTurtle
+      ? [{ id: ExportFormat.TURTLE, label: t('label.turtle-ttl') }]
+      : []),
+    ...(onExportRdfXml
+      ? [{ id: ExportFormat.RDFXML, label: t('label.rdf-xml-rdf') }]
+      : []),
   ];
 
-  const menuItems = items.filter((item) => supportedExports.includes(item.id));
+  const menuItems =
+    supportedExports === undefined
+      ? items
+      : items.filter((item) => supportedExports.includes(item.id));
 
   const handleAction = async (key: Key) => {
     setOpen(false);
-    try {
-      if (key === ExportFormat.PNG) {
-        await onExportPng();
-      } else if (key === ExportFormat.SVG) {
-        await onExportSvg();
-      } else if (key === ExportFormat.JSONLD && onExportJsonLd) {
-        await onExportJsonLd();
-      } else if (key === ExportFormat.TURTLE && onExportTurtle) {
-        await onExportTurtle();
-      }
-    } catch {
-      showErrorToast(t('server.unexpected-error'));
+
+    if (key === ExportFormat.PNG) {
+      await onExportPng();
+    } else if (key === ExportFormat.SVG) {
+      await onExportSvg?.();
+    } else if (key === ExportFormat.JSONLD) {
+      await onExportJsonLd?.();
+    } else if (key === ExportFormat.TURTLE) {
+      await onExportTurtle?.();
+    } else if (key === ExportFormat.RDFXML) {
+      await onExportRdfXml?.();
     }
   };
 

@@ -296,6 +296,11 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
+    "iomete": {
+        "iomete-sqlalchemy>=1.0.22",
+        "adbc-driver-flightsql",
+        "adbc-driver-manager",
+    },
     "impala": {
         "presto-types-parser>=0.0.2",
         "impyla[kerberos]~=0.18.0",

@@ -724,10 +724,10 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
         page.getByRole('menuitemradio', { name: 'JSON-LD' })
       ).toBeVisible();
       await expect(
-        page.getByRole('menuitemradio', { name: 'Turtle (RDF)' })
+        page.getByRole('menuitemradio', { name: 'Turtle (.ttl)' })
       ).toBeVisible();
       await expect(
-        page.getByRole('menuitemradio', { name: 'SVG (raster)' })
+        page.getByRole('menuitemradio', { name: 'SVG' })
       ).toHaveCount(0);
 
       await page.keyboard.press('Escape');
@@ -756,7 +756,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       );
 
       await page.locator('[data-testid="knowledge-graph-export"]').click();
-      await page.getByRole('menuitemradio', { name: 'Turtle (RDF)' }).click();
+      await page.getByRole('menuitemradio', { name: 'Turtle (.ttl)' }).click();
 
       const request = await exportRequest;
 
