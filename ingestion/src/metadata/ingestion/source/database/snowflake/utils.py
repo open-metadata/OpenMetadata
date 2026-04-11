@@ -675,11 +675,11 @@ def _get_schema_unique_constraints(self, connection, schema, **kw):
     for row in result:
         name = self.normalize_name(row._mapping["constraint_name"])
         table_name = self.normalize_name(row._mapping["table_name"])
-        
-        # OpenMetadata Patch: Append the table_name into the uniqueness dictionary 
-        # to support DBs that allow duplicate constraint names across tables under the same schema
+
+        # OpenMetadata Patch: Append the table_name into the uniqueness dictionary
+        # to support DBs that allow duplicate constraint names across tables
         constraint_key = (name, table_name)
-        
+
         if constraint_key not in unique_constraints:
             unique_constraints[constraint_key] = {
                 "column_names": [self.normalize_name(row._mapping["column_name"])],
