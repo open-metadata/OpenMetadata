@@ -285,14 +285,15 @@ export function useGraphDataBuilder({
       }
 
       const LABEL_SPACING_GAP = 56;
-      const maxTermLabelWidth = inputNodes
-        .filter((n) => !allAssetIds.has(n.id))
-        .reduce((max, n) => {
-          const rawLabel = n.originalLabel ?? n.label;
-          const w = Math.min(MODEL_NODE_MAX_WIDTH, estimateNodeWidth(rawLabel));
+      const maxTermLabelWidth = inputNodes.reduce((max, n) => {
+        if (allAssetIds.has(n.id)) {
+          return max;
+        }
+        const rawLabel = n.originalLabel ?? n.label;
+        const w = Math.min(MODEL_NODE_MAX_WIDTH, estimateNodeWidth(rawLabel));
 
-          return Math.max(max, w);
-        }, 0);
+        return Math.max(max, w);
+      }, 0);
       if (maxTermLabelWidth > 0) {
         termHSpacing = Math.max(
           termHSpacing,
