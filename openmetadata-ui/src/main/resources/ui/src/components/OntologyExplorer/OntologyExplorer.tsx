@@ -1260,8 +1260,64 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         Object.entries(counts).slice(0, DATA_MODE_MAX_RENDER_COUNT)
       );
 
+      const baseGraph = buildGraphFromCounts(termCounts);
+
+      const savedGraph = savedModelGraphRef.current;
+      if (savedGraph && savedGraph.edges.length > 0) {
+        const fqnSet = new Set(
+          baseGraph.nodes
+            .map((n) => n.fullyQualifiedName)
+            .filter((fqn): fqn is string => Boolean(fqn))
+        );
+        const uuidToFqn = new Map<string, string>();
+        savedGraph.nodes.forEach((n) => {
+          if (n.id && n.fullyQualifiedName) {
+            uuidToFqn.set(n.id, n.fullyQualifiedName);
+          }
+        });
+
+        const existingEdgeKeys = new Set(
+          baseGraph.edges.map((e) => `${e.from}-${e.to}`)
+        );
+        const termTermEdges: OntologyEdge[] = [];
+
+        savedGraph.edges.forEach((edge) => {
+          if (edge.relationType === 'parentOf') {
+            return;
+          }
+          const fromFqn = uuidToFqn.get(edge.from);
+          const toFqn = uuidToFqn.get(edge.to);
+          if (
+            !fromFqn ||
+            !toFqn ||
+            !fqnSet.has(fromFqn) ||
+            !fqnSet.has(toFqn)
+          ) {
+            return;
+          }
+          const key = `${fromFqn}-${toFqn}`;
+          if (!existingEdgeKeys.has(key)) {
+            existingEdgeKeys.add(key);
+            termTermEdges.push({
+              from: fromFqn,
+              to: toFqn,
+              label: edge.label,
+              relationType: edge.relationType,
+            });
+          }
+        });
+
+        return {
+          graphData: {
+            nodes: baseGraph.nodes,
+            edges: [...baseGraph.edges, ...termTermEdges],
+          },
+          termCounts,
+        };
+      }
+
       return {
-        graphData: buildGraphFromCounts(termCounts),
+        graphData: baseGraph,
         termCounts,
       };
     },
