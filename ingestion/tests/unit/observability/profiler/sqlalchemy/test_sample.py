@@ -368,7 +368,7 @@ class SampleTest(TestCase):
 
     def test_full_percentage_randomized_uses_sample_query(self, sampler_mock):
         """100% PERCENTAGE + randomizedSample=True should go through
-        get_sample_query so fetch_sample_data can ORDER BY the random column."""
+        get_sample_query which adds ORDER BY on the random column."""
         with patch.object(SQASampler, "build_table_orm", return_value=User):
             sampler = SQASampler(
                 service_connection_config=self.sqlite_conn,
