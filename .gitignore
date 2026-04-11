@@ -23,7 +23,7 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-
+.maestro
 catalog-services/catalog-services.iml
 
 # local docker volume
@@ -187,9 +187,15 @@ hive-mind-prompt-*.txt
 .claude-flow/
 memory
 .claude/agents
+.claude/hooks/
 ingestion/.claude/agents
+.claustre_session_id
 
 # AI scaffold working documents — stay local, never committed
 **/CONNECTOR_CONTEXT.md
+
+# Connector audit working files — per-session, never committed
+.claude/audit-results/
+.claude/connector-audit.json
 
 test-results/

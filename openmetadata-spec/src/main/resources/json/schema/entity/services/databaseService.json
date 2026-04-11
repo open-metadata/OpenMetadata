@@ -69,7 +69,8 @@
         "Dremio",
         "MicrosoftFabric",
         "BurstIQ",
-        "Informix"
+        "Informix",
+        "Iomete"
       ],
       "javaEnums": [
         {
@@ -236,6 +237,9 @@
         },
         {
           "name": "Informix"
+        },
+        {
+          "name": "Iomete"
         }
       ]
     },
@@ -407,6 +411,9 @@
             },
             {
               "$ref": "./connections/database/informixConnection.json"
+            },
+            {
+              "$ref": "./connections/database/iometeConnection.json"
             }
           ]
         }

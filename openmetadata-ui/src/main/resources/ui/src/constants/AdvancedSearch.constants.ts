@@ -355,6 +355,17 @@ export const LINEAGE_DROPDOWN_ITEMS = [
   },
 ];
 
+export const getLineageDropdownItems = (includeGlossaryTerms = false) =>
+  includeGlossaryTerms
+    ? [
+        ...LINEAGE_DROPDOWN_ITEMS,
+        {
+          label: 'label.glossary-term-plural',
+          key: EntityFields.GLOSSARY_TERMS,
+        },
+      ]
+    : [...LINEAGE_DROPDOWN_ITEMS];
+
 export const TEXT_FIELD_OPERATORS = [
   'equal',
   'not_equal',

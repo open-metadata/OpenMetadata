@@ -23,6 +23,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TEAM;
@@ -124,7 +125,9 @@ import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -233,17 +236,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public Map<String, Integer> getRelationTypeUsageCounts() {
-    Map<String, Integer> usageCounts = new HashMap<>();
-    List<EntityRelationshipRecord> records =
+    List<List<String>> rows =
         daoCollection
             .relationshipDAO()
-            .findAllByEntityTypes(entityType, entityType, Relationship.RELATED_TO.ordinal());
+            .countByRelationType(entityType, entityType, Relationship.RELATED_TO.ordinal());
 
-    for (EntityRelationshipRecord record : records) {
-      String relationType = extractRelationType(record.getJson());
-      usageCounts.merge(relationType, 1, Integer::sum);
+    Map<String, Integer> usageCounts = new HashMap<>();
+    for (List<String> row : rows) {
+      usageCounts.put(row.get(0), Integer.parseInt(row.get(1)));
     }
-
     return usageCounts;
   }
 
@@ -385,6 +386,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected String getInheritableFields() {
     return "owners,domains,reviewers";
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    return descriptors;
   }
 
   @Override
@@ -1501,6 +1515,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     daoCollection
         .tagUsageDAO()
         .deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
+
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeFromCondition(
+                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
   }
 
   @Override
@@ -2183,6 +2202,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
 
       updateEntityLinks(oldFqn, newFqn, updated);
+
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renamePrefixInCondition(
+                  condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
       if (nameChanged) {
         recordChange("name", oldTermName, updated.getName());
