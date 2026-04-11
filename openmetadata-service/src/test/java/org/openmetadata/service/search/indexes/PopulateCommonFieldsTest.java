@@ -81,7 +81,6 @@ class PopulateCommonFieldsTest {
             .withId(UUID.randomUUID())
             .withName("fallback-name")
             .withFullyQualifiedName("svc.fallback-name");
-    // displayName is null
 
     Map<String, Object> doc = new HashMap<>();
     createIndex(d).populateCommonFields(doc, d, Entity.DASHBOARD);

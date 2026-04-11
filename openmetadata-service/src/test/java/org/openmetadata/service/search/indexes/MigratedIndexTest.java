@@ -161,36 +161,7 @@ class MigratedIndexTest {
     assertEquals(1, result.size());
   }
 
-  // ==================== Child tag merging via collectChildTags() ====================
-
-  @Test
-  void testTableIndex_collectChildTags_returnsColumnTags() {
-    TagLabel colTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.CLASSIFICATION);
-    Column col1 =
-        new Column()
-            .withName("email")
-            .withDataType(ColumnDataType.VARCHAR)
-            .withTags(List.of(colTag));
-    Column col2 = new Column().withName("id").withDataType(ColumnDataType.INT);
-
-    Table table =
-        new Table()
-            .withId(UUID.randomUUID())
-            .withName("users")
-            .withFullyQualifiedName("svc.db.schema.users")
-            .withColumns(List.of(col1, col2));
-
-    TableIndex index = new TableIndex(table);
-    var childTags = index.collectChildTags();
-
-    assertNotNull(childTags);
-    assertFalse(childTags.isEmpty());
-    assertTrue(
-        childTags.stream()
-            .flatMap(List::stream)
-            .anyMatch(t -> "PII.Sensitive".equals(t.getTagFQN())));
-  }
+  // ==================== Child tag merging via mergeChildTags() ====================
 
   @Test
   void testTableIndex_buildSearchIndexDoc_mergesChildTags() {

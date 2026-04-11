@@ -40,33 +40,23 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex, DataAs
     return worksheet.getServiceType();
   }
 
-  @Override
-  public Set<List<TagLabel>> collectChildTags() {
-    Set<List<TagLabel>> childTags = new HashSet<>();
-    if (worksheet.getColumns() != null) {
-      List<FlattenColumn> cols = new ArrayList<>();
-      parseColumns(worksheet.getColumns(), cols, null);
-      for (FlattenColumn col : cols) {
-        if (col.getTags() != null) {
-          childTags.add(col.getTags());
-        }
-      }
-    }
-    return childTags;
-  }
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (worksheet.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(worksheet.getColumns(), cols, null);
 
       List<String> columnsWithChildrenName = new ArrayList<>();
+      Set<List<TagLabel>> childTags = new HashSet<>();
       for (FlattenColumn col : cols) {
         columnsWithChildrenName.add(col.getName());
+        if (col.getTags() != null) {
+          childTags.add(col.getTags());
+        }
       }
       doc.put("columnNames", columnsWithChildrenName);
       doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
       doc.put("columnDescriptionStatus", getColumnDescriptionStatus(worksheet));
+      mergeChildTags(doc, childTags);
 
       SearchIndexUtils.transformColumnExtensions(doc, Entity.TABLE_COLUMN);
     }

@@ -37,35 +37,9 @@ public class APIEndpointIndex implements DataAssetIndex {
     return excludeAPIEndpointFields;
   }
 
-  @Override
-  public Set<List<TagLabel>> collectChildTags() {
-    Set<List<TagLabel>> childTags = new HashSet<>();
-    if (apiEndpoint.getResponseSchema() != null
-        && apiEndpoint.getResponseSchema().getSchemaFields() != null
-        && !apiEndpoint.getResponseSchema().getSchemaFields().isEmpty()) {
-      List<FlattenSchemaField> flattenFields = new ArrayList<>();
-      parseSchemaFields(apiEndpoint.getResponseSchema().getSchemaFields(), flattenFields, null);
-      for (FlattenSchemaField field : flattenFields) {
-        if (field.getTags() != null) {
-          childTags.add(field.getTags());
-        }
-      }
-    }
-    if (apiEndpoint.getRequestSchema() != null
-        && apiEndpoint.getRequestSchema().getSchemaFields() != null
-        && !apiEndpoint.getRequestSchema().getSchemaFields().isEmpty()) {
-      List<FlattenSchemaField> flattenFields = new ArrayList<>();
-      parseSchemaFields(apiEndpoint.getRequestSchema().getSchemaFields(), flattenFields, null);
-      for (FlattenSchemaField field : flattenFields) {
-        if (field.getTags() != null) {
-          childTags.add(field.getTags());
-        }
-      }
-    }
-    return childTags;
-  }
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    Set<List<TagLabel>> childTags = new HashSet<>();
+
     if (apiEndpoint.getResponseSchema() != null
         && apiEndpoint.getResponseSchema().getSchemaFields() != null
         && !apiEndpoint.getResponseSchema().getSchemaFields().isEmpty()) {
@@ -75,6 +49,9 @@ public class APIEndpointIndex implements DataAssetIndex {
       List<String> fieldsWithChildrenName = new ArrayList<>();
       for (FlattenSchemaField field : flattenFields) {
         fieldsWithChildrenName.add(field.getName());
+        if (field.getTags() != null) {
+          childTags.add(field.getTags());
+        }
       }
       doc.put("response_field_names", fieldsWithChildrenName);
       doc.put("response_field_namesFuzzy", String.join(" ", fieldsWithChildrenName));
@@ -89,10 +66,15 @@ public class APIEndpointIndex implements DataAssetIndex {
       List<String> fieldsWithChildrenName = new ArrayList<>();
       for (FlattenSchemaField field : flattenFields) {
         fieldsWithChildrenName.add(field.getName());
+        if (field.getTags() != null) {
+          childTags.add(field.getTags());
+        }
       }
       doc.put("request_field_names", fieldsWithChildrenName);
       doc.put("request_field_namesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
+
+    mergeChildTags(doc, childTags);
 
     doc.put(
         "requestSchema",

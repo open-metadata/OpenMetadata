@@ -29,32 +29,22 @@ public record ContainerIndex(Container container) implements ColumnIndex, DataAs
     return container.getServiceType();
   }
 
-  @Override
-  public Set<List<TagLabel>> collectChildTags() {
-    Set<List<TagLabel>> childTags = new HashSet<>();
-    if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
-      List<FlattenColumn> cols = new ArrayList<>();
-      parseColumns(container.getDataModel().getColumns(), cols, null);
-      for (FlattenColumn col : cols) {
-        if (col.getTags() != null) {
-          childTags.add(col.getTags());
-        }
-      }
-    }
-    return childTags;
-  }
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(container.getDataModel().getColumns(), cols, null);
 
       List<String> columnsWithChildrenName = new ArrayList<>();
+      Set<List<TagLabel>> childTags = new HashSet<>();
       for (FlattenColumn col : cols) {
         columnsWithChildrenName.add(col.getName());
+        if (col.getTags() != null) {
+          childTags.add(col.getTags());
+        }
       }
       doc.put("columnNames", columnsWithChildrenName);
       doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
+      mergeChildTags(doc, childTags);
 
       SearchIndexUtils.transformColumnExtensionsAtPath(
           doc, "dataModel.columns", Entity.TABLE_COLUMN);

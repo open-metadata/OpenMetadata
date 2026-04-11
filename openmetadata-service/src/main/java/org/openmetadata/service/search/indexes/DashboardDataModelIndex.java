@@ -26,32 +26,22 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     return Entity.DASHBOARD_DATA_MODEL;
   }
 
-  @Override
-  public Set<List<TagLabel>> collectChildTags() {
-    Set<List<TagLabel>> childTags = new HashSet<>();
-    if (dashboardDataModel.getColumns() != null) {
-      List<FlattenColumn> cols = new ArrayList<>();
-      parseColumns(dashboardDataModel.getColumns(), cols, null);
-      for (FlattenColumn col : cols) {
-        if (col.getTags() != null) {
-          childTags.add(col.getTags());
-        }
-      }
-    }
-    return childTags;
-  }
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (dashboardDataModel.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(dashboardDataModel.getColumns(), cols, null);
 
       List<String> columnsWithChildrenName = new ArrayList<>();
+      Set<List<TagLabel>> childTags = new HashSet<>();
       for (FlattenColumn col : cols) {
         columnsWithChildrenName.add(col.getName());
+        if (col.getTags() != null) {
+          childTags.add(col.getTags());
+        }
       }
       doc.put("columnNames", columnsWithChildrenName);
       doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
+      mergeChildTags(doc, childTags);
 
       SearchIndexUtils.transformColumnExtensions(doc, Entity.DASHBOARD_DATA_MODEL_COLUMN);
     }

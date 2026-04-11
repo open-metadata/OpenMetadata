@@ -44,23 +44,6 @@ public class TopicIndex implements DataAssetIndex {
     return topic.getServiceType();
   }
 
-  @Override
-  public Set<List<TagLabel>> collectChildTags() {
-    Set<List<TagLabel>> childTags = new HashSet<>();
-    if (topic.getMessageSchema() != null
-        && topic.getMessageSchema().getSchemaFields() != null
-        && !topic.getMessageSchema().getSchemaFields().isEmpty()) {
-      List<FlattenSchemaField> flattenFields = new ArrayList<>();
-      parseSchemaFields(topic.getMessageSchema().getSchemaFields(), flattenFields, null);
-      for (FlattenSchemaField field : flattenFields) {
-        if (field.getTags() != null) {
-          childTags.add(field.getTags());
-        }
-      }
-    }
-    return childTags;
-  }
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (topic.getMessageSchema() != null
         && topic.getMessageSchema().getSchemaFields() != null
@@ -69,11 +52,16 @@ public class TopicIndex implements DataAssetIndex {
       parseSchemaFields(topic.getMessageSchema().getSchemaFields(), flattenFields, null);
 
       List<String> fieldsWithChildrenName = new ArrayList<>();
+      Set<List<TagLabel>> childTags = new HashSet<>();
       for (FlattenSchemaField field : flattenFields) {
         fieldsWithChildrenName.add(field.getName());
+        if (field.getTags() != null) {
+          childTags.add(field.getTags());
+        }
       }
       doc.put("fieldNames", fieldsWithChildrenName);
       doc.put("fieldNamesFuzzy", String.join(" ", fieldsWithChildrenName));
+      mergeChildTags(doc, childTags);
     }
 
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
