@@ -95,7 +95,9 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
           .build()
           .forEach(
               (name, value) -> {
-                if ("Content-Security-Policy".equals(name) && value.contains("__CSP_NONCE__")) {
+                if ((name.equals("Content-Security-Policy")
+                        || name.equals("Content-Security-Policy-Report-Only"))
+                    && value.contains("__CSP_NONCE__")) {
                   final String nonce =
                       (String) request.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
                   if (nonce != null) {

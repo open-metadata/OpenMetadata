@@ -18,14 +18,20 @@ import org.openmetadata.service.security.CspNonceHandler;
 @Slf4j
 @Path("/")
 public class IndexResource {
-  private String indexHtml;
+  private static final String RAW_INDEX_HTML;
 
-  public IndexResource() {
-    InputStream inputStream = getClass().getResourceAsStream("/assets/index.html");
-    indexHtml =
+  static {
+    InputStream inputStream = IndexResource.class.getResourceAsStream("/assets/index.html");
+    RAW_INDEX_HTML =
         new BufferedReader(new InputStreamReader(inputStream))
             .lines()
             .collect(Collectors.joining("\n"));
+  }
+
+  private String indexHtml;
+
+  public IndexResource() {
+    indexHtml = RAW_INDEX_HTML;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -35,13 +41,7 @@ public class IndexResource {
   public static String getIndexFile(String basePath) {
     LOG.info("IndexResource.getIndexFile called with basePath: [{}]", basePath);
 
-    InputStream inputStream = IndexResource.class.getResourceAsStream("/assets/index.html");
-    String indexHtml =
-        new BufferedReader(new InputStreamReader(inputStream))
-            .lines()
-            .collect(Collectors.joining("\n"));
-
-    String result = indexHtml.replace("${basePath}", basePath);
+    String result = RAW_INDEX_HTML.replace("${basePath}", basePath);
     String basePathLine =
         result
             .lines()
