@@ -2592,6 +2592,7 @@
     "expected-schema-structure-of-this-asset": "ساختار طرح مورد انتظار این دارایی",
     "explore-our-guide-here": "راهنمای ما را اینجا ببینید.",
     "export-all-matching-assets-description": "صادرات همه ی دارایی‌های مطابق با این جستجو در طرح‌های دارایی",
+    "export-assets-limit-exceeded": "Export is beperkt tot {{limit}} activa. Please refine your filters or choose visible results.",
     "export-audit-logs-description": "صدور گزارش‌های حسابرسی. یک بازه تاریخ برای فیلتر کردن رویدادها انتخاب کنید. فایل صادر شده به 100,000 ورودی محدود خواهد بود.",
     "export-count-successful": "{{count}} واژه‌نامه با موفقیت خروجی گرفته شد!",
     "export-entity-help": "تمام {{entity}} خود را به صورت فایل CSV دانلود کنید و با تیم خود به اشتراک بگذارید.",

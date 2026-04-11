@@ -2592,6 +2592,7 @@
     "expected-schema-structure-of-this-asset": "此资产的预期模式结构",
     "explore-our-guide-here": "点击此处查看我们的指南",
     "export-all-matching-assets-description": "跨资产类型导出与此搜索匹配的所有资产",
+    "export-assets-limit-exceeded": "导出限制为 {{limit}} 资产。请优化您的过滤器或选择可见的结果。",
     "export-audit-logs-description": "导出审计日志。选择日期范围以筛选事件。导出文件将限制为 100,000 条记录。",
     "export-count-successful": "成功导出{{count}}个术语表！",
     "export-entity-help": "以 CSV 文件格式导出下载所有{{entity}}, 并可与团队共享。",

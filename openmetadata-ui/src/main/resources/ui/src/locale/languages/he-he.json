@@ -2592,6 +2592,7 @@
     "expected-schema-structure-of-this-asset": "מבנה סchema צפוי של נכס זה",
     "explore-our-guide-here": "חקור את המדריך שלנו כאן.",
     "export-all-matching-assets-description": "ייצא את כל הנכסים המתאימים לחיפוש זה בכל סוגי הנכסים",
+    "export-assets-limit-exceeded": "ייצוא מוגבל ל-{{limit}} נכסים. נא לשפר את הסינונות שלך או לבחור תוצאות נכונות.",
     "export-audit-logs-description": "ייצא יומני ביקורת. בחר טווח תאריכים לסינון אירועים. קובץ הייצוא יוגבל ל-100,000 רשומות.",
     "export-count-successful": "יוצאו {{count}} מילונים בהצלחה!",
     "export-entity-help": "הורד את כל הישויות שלך בפורמט קובץ CSV ושתף עם הצוות שלך.",

@@ -2592,6 +2592,7 @@
     "expected-schema-structure-of-this-asset": "بنية المخطط المتوقعة لهذا الأصل",
     "explore-our-guide-here": "استكشف دليلنا هنا.",
     "export-all-matching-assets-description": "تصدير جميع الأصول المطابقة لهذا البحث عبر أنواع الأصول",
+    "export-assets-limit-exceeded": "يتم تقييد التصدير إلى {{limit}} أصول. يرجى تحسين التصفيات أو اختيار النتائج المرئية.",
     "export-audit-logs-description": "تصدير سجلات التدقيق. حدد نطاق تاريخ لتصفية الأحداث. سيكون ملف التصدير محدودًا بـ 100,000 إدخال.",
     "export-count-successful": "تم تصدير {{count}} مسرد بنجاح!",
     "export-entity-help": "قم بتنزيل جميع {{entity}} كملف CSV، وشاركه مع فريقك.",

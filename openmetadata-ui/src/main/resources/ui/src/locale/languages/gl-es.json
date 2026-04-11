@@ -2592,6 +2592,7 @@
     "expected-schema-structure-of-this-asset": "Estrutura de esquema esperada deste activo",
     "explore-our-guide-here": "explora a nosa guía aquí.",
     "export-all-matching-assets-description": "Exportar todos os activos coincidentes con esta busca a través de tipos de activos",
+    "export-assets-limit-exceeded": "O export é limitado a {{limit}} activos. Por favor, refine os seus filtros ou elixa resultados visibles.",
     "export-audit-logs-description": "Exportar rexistros de auditoría. Seleccione un rango de dates para filtrar eventos. O ficheiro de exportación estará limitado a 100.000 entradas.",
     "export-count-successful": "Exportáronse {{count}} glosarios correctamente!",
     "export-entity-help": "Descarga todos os teus {{entity}} como ficheiro CSV e compárteo co teu equipo.",

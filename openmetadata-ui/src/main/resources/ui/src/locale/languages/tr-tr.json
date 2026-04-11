@@ -2592,6 +2592,7 @@
     "expected-schema-structure-of-this-asset": "Bu varlığın beklenen şema yapısı",
     "explore-our-guide-here": "kılavuzumuzu buradan keşfedin.",
     "export-all-matching-assets-description": "Bu aramayla eşleşen tüm varlıkları varlık türleri arasında dışa aktarın",
+    "export-assets-limit-exceeded": "Dışa aktarma {{limit}} varlığa kadar sınırlıdır. Lütfen filtrelerinizi iyileştirin veya görünür sonuçları seçin.",
     "export-audit-logs-description": "Denetim günlüklerini dışa aktar. Olayları filtrelemek için bir tarih aralığı seçin. Dışa aktarma dosyası 100.000 girişle sınırlı olacaktır.",
     "export-count-successful": "{{count}} sözlük başarıyla dışarı aktarıldı!",
     "export-entity-help": "Tüm {{entity}} öğelerinizi bir CSV dosyası olarak indirin ve ekibinizle paylaşın.",
