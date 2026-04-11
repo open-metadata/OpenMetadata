@@ -30,13 +30,15 @@ import { test } from '../../fixtures/pages';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table1 = new TableClass();
-const table2 = new TableClass();
+let table1: TableClass;
+let table2: TableClass;
 const bundleTestSuite = new BundleTestSuiteClass();
 let bundleSuiteName: string;
 let existingBundleSuiteName: string;
 
 test.beforeAll(async ({ browser }) => {
+  table1 = new TableClass();
+  table2 = new TableClass();
   const { apiContext, afterAction } = await createNewPage(browser);
 
   await table1.create(apiContext);
