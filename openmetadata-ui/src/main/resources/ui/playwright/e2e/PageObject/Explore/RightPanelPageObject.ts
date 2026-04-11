@@ -12,12 +12,13 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
+import { EntityClass } from '../../../support/entity/EntityClass';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { OverviewPageObject } from './OverviewPageObject';
 import { SchemaPageObject } from './SchemaPageObject';
 import { LineagePageObject } from './LineagePageObject';
 import { DataQualityPageObject } from './DataQualityPageObject';
 import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
-import { EntityClass } from '../../../support/entity/EntityClass';
 
 /** Tab names for data-driven visibility and content assertions. Must match UI labels (e.g. "Custom Property"). */
 export const RIGHT_PANEL_TAB = {
@@ -60,7 +61,7 @@ export const RIGHT_PANEL_ASSET_TYPES = [
   'Metric',
 ] as const;
 
-export type AssetType = typeof RIGHT_PANEL_ASSET_TYPES[number] | string;
+export type AssetType = (typeof RIGHT_PANEL_ASSET_TYPES)[number] | string;
 
 // Interface for entities that have children
 interface EntityWithChildren extends EntityClass {
@@ -935,7 +936,7 @@ export class RightPanelPageObject {
     await expect(this.panelLoaders).toHaveCount(0, { timeout });
 
     // Step 3: Wait for any remaining loaders on the page (fallback)
-    await this.pageLoader.waitFor({ state: 'detached', timeout });
+    await this.waitForLoadersToDisappear(timeout);
 
     // Step 4: Ensure panel is still visible and stable
     await this.getSummaryPanel().waitFor({ state: 'visible' });
@@ -1021,8 +1022,8 @@ export class RightPanelPageObject {
   /**
    * Wait for all loaders to disappear
    */
-  async waitForLoadersToDisappear() {
-    await this.pageLoader.waitFor({ state: 'detached' });
+  async waitForLoadersToDisappear(timeout?: number) {
+    await waitForAllLoadersToDisappear(this.page, 'loader', timeout);
   }
 
   /**
