@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  Browser,
-  Page,
-  request,
-} from '@playwright/test';
+import { APIRequestContext, Browser, Page, request } from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { AdminClass } from '../support/user/AdminClass';
 import { getAuthContext, getToken, redirectToHomePage } from './common';

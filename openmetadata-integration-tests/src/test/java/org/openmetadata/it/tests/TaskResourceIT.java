@@ -2018,8 +2018,18 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .withAboutType("table")
                     .withPayload(payload));
 
-    task.setAvailableTransitions(List.of());
-    Task updatedTask = SdkClients.adminClient().tasks().update(task.getId().toString(), task);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    Task taskWithoutTransitions =
+        SdkClients.adminClient()
+            .tasks()
+            .get(
+                task.getId().toString(),
+                "assignees,reviewers,watchers,about,domains,comments,createdBy,payload");
+    taskWithoutTransitions.setAvailableTransitions(List.of());
+    Task updatedTask =
+        SdkClients.adminClient()
+            .tasks()
+            .update(taskWithoutTransitions.getId().toString(), taskWithoutTransitions);
 
     Task resolvedTask =
         SdkClients.adminClient()
@@ -2066,8 +2076,18 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .withAboutType("table")
                     .withPayload(rawSuggestionPayload));
 
-    task.setAvailableTransitions(List.of());
-    Task updatedTask = SdkClients.adminClient().tasks().update(task.getId().toString(), task);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    Task taskWithoutTransitions =
+        SdkClients.adminClient()
+            .tasks()
+            .get(
+                task.getId().toString(),
+                "assignees,reviewers,watchers,about,domains,comments,createdBy,payload");
+    taskWithoutTransitions.setAvailableTransitions(List.of());
+    Task updatedTask =
+        SdkClients.adminClient()
+            .tasks()
+            .update(taskWithoutTransitions.getId().toString(), taskWithoutTransitions);
 
     Task rejectedTask =
         SdkClients.adminClient()

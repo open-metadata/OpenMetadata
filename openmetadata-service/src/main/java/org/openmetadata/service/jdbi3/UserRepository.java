@@ -29,6 +29,9 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -106,6 +109,20 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
   private static final int MAX_TASK_CLEANUP_RETRIES = 3;
+  private static final long INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS = 100L;
+  private static final long MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS = 1000L;
+  private static final IntervalFunction TASK_CLEANUP_RETRY_INTERVAL_FUNCTION =
+      attempt -> {
+        long retryDelayMillis =
+            INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS << Math.max(0, (int) attempt - 1);
+        return Math.min(retryDelayMillis, MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS);
+      };
+  private static final RetryConfig TASK_CLEANUP_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(MAX_TASK_CLEANUP_RETRIES)
+          .intervalFunction(TASK_CLEANUP_RETRY_INTERVAL_FUNCTION)
+          .retryOnException(UserRepository::isTransientDeadlock)
+          .build();
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
@@ -1252,27 +1269,31 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private void deleteSuggestionTasksForUser(User entity) {
-    for (int attempt = 1; attempt <= MAX_TASK_CLEANUP_RETRIES; attempt++) {
-      try {
-        daoCollection
-            .taskDAO()
-            .deleteByCreatorAndCategory(
-                entity.getId().toString(), TaskCategory.MetadataUpdate.value());
-        return;
-      } catch (RuntimeException ex) {
-        if (!isTransientDeadlock(ex) || attempt == MAX_TASK_CLEANUP_RETRIES) {
-          throw ex;
-        }
-        LOG.warn(
-            "Retrying suggestion task cleanup for user {} after transient deadlock (attempt {}/{})",
-            entity.getFullyQualifiedName(),
-            attempt + 1,
-            MAX_TASK_CLEANUP_RETRIES);
-      }
-    }
+    Retry retry = Retry.of("user-task-cleanup", TASK_CLEANUP_RETRY_CONFIG);
+    retry
+        .getEventPublisher()
+        .onRetry(
+            event ->
+                LOG.warn(
+                    "Retrying suggestion task cleanup for user {} after transient deadlock in {} "
+                        + "ms (attempt {}/{})",
+                    entity.getFullyQualifiedName(),
+                    event.getWaitInterval().toMillis(),
+                    event.getNumberOfRetryAttempts() + 1,
+                    MAX_TASK_CLEANUP_RETRIES));
+    retry.executeRunnable(
+        () ->
+            daoCollection
+                .taskDAO()
+                .deleteByCreatorAndCategory(
+                    entity.getId().toString(), TaskCategory.MetadataUpdate.value()));
   }
 
-  private boolean isTransientDeadlock(Throwable throwable) {
+  static long getTaskCleanupRetryDelayMillis(int attempt) {
+    return TASK_CLEANUP_RETRY_INTERVAL_FUNCTION.apply(attempt);
+  }
+
+  private static boolean isTransientDeadlock(Throwable throwable) {
     for (Throwable current = throwable; current != null; current = current.getCause()) {
       if (current instanceof SQLException sqlException) {
         int errorCode = sqlException.getErrorCode();
