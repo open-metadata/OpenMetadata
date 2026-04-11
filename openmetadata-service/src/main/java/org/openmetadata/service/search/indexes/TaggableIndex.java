@@ -1,7 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,10 +55,10 @@ public interface TaggableIndex extends SearchIndex {
       return;
     }
     List<TagLabel> entityTags = (List<TagLabel>) doc.getOrDefault("tags", List.of());
-    Set<List<TagLabel>> allTagSets = new HashSet<>(childTagSets);
-    allTagSets.add(entityTags);
+    // Entity-level tags first for deterministic ordering, then child tags
     LinkedHashMap<String, TagLabel> deduped = new LinkedHashMap<>();
-    allTagSets.stream()
+    entityTags.forEach(tag -> deduped.putIfAbsent(tag.getTagFQN(), tag));
+    childTagSets.stream()
         .flatMap(List::stream)
         .forEach(tag -> deduped.putIfAbsent(tag.getTagFQN(), tag));
     doc.put("tags", new ArrayList<>(deduped.values()));

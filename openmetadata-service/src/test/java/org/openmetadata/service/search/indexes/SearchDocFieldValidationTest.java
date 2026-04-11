@@ -61,6 +61,7 @@ class SearchDocFieldValidationTest {
   /** Fields that populateCommonFields must set for every EntityInterface entity. */
   private static final Set<String> COMMON_FIELDS =
       Set.of(
+          "displayName",
           "entityType",
           "owners",
           "ownerDisplayName",
