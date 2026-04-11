@@ -95,11 +95,16 @@ public class WorkflowInstanceListener implements JavaDelegate {
 
   private void addWorkflowInstance(
       DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
+    String processKey = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+    String workflowDefinitionName = getMainWorkflowDefinitionNameFromTrigger(processKey);
+    if (workflowDefinitionName.equals(processKey)) {
+      LOG.debug(
+          "[WORKFLOW_INSTANCE_SKIP] ProcessInstance: {} - process key '{}' is not an OM trigger workflow, skipping",
+          execution.getProcessInstanceId(),
+          processKey);
+      return;
+    }
     updateBusinessKey(execution.getProcessInstanceId());
-
-    String workflowDefinitionName =
-        getMainWorkflowDefinitionNameFromTrigger(
-            getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
 
     workflowInstanceRepository.addNewWorkflowInstance(
@@ -116,9 +121,15 @@ public class WorkflowInstanceListener implements JavaDelegate {
 
   private void updateWorkflowInstance(
       DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
-    String workflowDefinitionName =
-        getMainWorkflowDefinitionNameFromTrigger(
-            getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
+    String processKey = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+    String workflowDefinitionName = getMainWorkflowDefinitionNameFromTrigger(processKey);
+    if (workflowDefinitionName.equals(processKey)) {
+      LOG.debug(
+          "[WORKFLOW_INSTANCE_SKIP] ProcessInstance: {} - process key '{}' is not an OM trigger workflow, skipping",
+          execution.getProcessInstanceId(),
+          processKey);
+      return;
+    }
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
 
     // Capture all variables including any failure indicators
