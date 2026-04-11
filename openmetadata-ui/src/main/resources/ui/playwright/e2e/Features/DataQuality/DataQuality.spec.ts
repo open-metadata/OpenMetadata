@@ -47,9 +47,6 @@ import {
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
-const table1 = new TableClass();
-const table2 = new TableClass();
-
 // Test data for tags and glossary terms
 const testClassification = new ClassificationClass();
 const testTag1 = new TagClass({
@@ -87,8 +84,13 @@ test.describe(
     ],
   },
   () => {
+    let table1: TableClass;
+    let table2: TableClass;
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      table1 = new TableClass();
+      table2 = new TableClass();
       await table1.create(apiContext);
       await table2.create(apiContext);
       const testCase = await table2.createTestCase(apiContext, {
