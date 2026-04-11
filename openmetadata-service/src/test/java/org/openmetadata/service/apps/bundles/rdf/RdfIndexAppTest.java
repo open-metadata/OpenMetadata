@@ -94,6 +94,7 @@ class RdfIndexAppTest {
   @BeforeEach
   void setUp() {
     lenient().when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    clearInvocations(mockRdfRepository);
     rdfIndexApp = new RdfIndexApp(collectionDAO, searchRepository);
   }
 
@@ -477,6 +478,31 @@ class RdfIndexAppTest {
         assertEquals(Set.of("table"), result);
       }
     }
+
+    @Test
+    @DisplayName(
+        "Should treat null or empty entity selection as all supported repository-backed entities")
+    void testResolveEntityTypesDefaultsEmptySelectionToAllSupportedEntities() throws Exception {
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        EntityRepository<?> mockRepository = mock(EntityRepository.class);
+        entityMock.when(Entity::getEntityList).thenReturn(Set.of("table", "queryCostRecord"));
+        entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepository);
+        entityMock
+            .when(() -> Entity.getEntityRepository("queryCostRecord"))
+            .thenThrow(new IllegalStateException("Unsupported entity"));
+
+        var method = RdfIndexApp.class.getDeclaredMethod("resolveEntityTypes", Set.class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        Set<String> nullSelection = (Set<String>) method.invoke(rdfIndexApp, new Object[] {null});
+        @SuppressWarnings("unchecked")
+        Set<String> emptySelection = (Set<String>) method.invoke(rdfIndexApp, Set.of());
+
+        assertEquals(Set.of("table"), nullSelection);
+        assertEquals(Set.of("table"), emptySelection);
+      }
+    }
   }
 
   @Nested
@@ -767,6 +793,39 @@ class RdfIndexAppTest {
       // Verify addLineageWithDetails was called (lineage with JSON should use special method)
       verify(mockRdfRepository)
           .addLineageWithDetails(eq("table"), eq(fromId), eq("table"), eq(toId), any());
+    }
+
+    @Test
+    @DisplayName("Should skip event subscription relationships using canonical entity type")
+    void testProcessBatchRelationshipsSkipsEventSubscriptionEntities() throws Exception {
+      List<EntityInterface> mockEntities = new ArrayList<>();
+      EntityInterface mockEntity = mock(EntityInterface.class);
+      UUID entityId = UUID.randomUUID();
+      when(mockEntity.getId()).thenReturn(entityId);
+      mockEntities.add(mockEntity);
+
+      List<EntityRelationshipObject> mockRelationships = new ArrayList<>();
+      mockRelationships.add(
+          EntityRelationshipObject.builder()
+              .fromId(entityId.toString())
+              .toId(UUID.randomUUID().toString())
+              .fromEntity("table")
+              .toEntity(Entity.EVENT_SUBSCRIPTION)
+              .relation(Relationship.HAS.ordinal())
+              .build());
+
+      when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
+          .thenReturn(mockRelationships);
+      when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
+          .thenReturn(new ArrayList<>());
+
+      var method =
+          RdfIndexApp.class.getDeclaredMethod(
+              "processBatchRelationships", String.class, List.class);
+      method.setAccessible(true);
+      method.invoke(rdfIndexApp, "table", mockEntities);
+
+      verifyNoInteractions(mockRdfRepository);
     }
   }
 

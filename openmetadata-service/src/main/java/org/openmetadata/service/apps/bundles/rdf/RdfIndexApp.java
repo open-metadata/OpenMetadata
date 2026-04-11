@@ -756,17 +756,16 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private Set<String> resolveEntityTypes(Set<String> requestedEntities) {
+    Set<String> entitiesToResolve = requestedEntities;
+    if (entitiesToResolve == null
+        || entitiesToResolve.isEmpty()
+        || entitiesToResolve.contains(ALL)) {
+      entitiesToResolve = new HashSet<>(Entity.getEntityList());
+    }
+
     Set<String> resolvedEntities = new LinkedHashSet<>();
-    if (requestedEntities == null || requestedEntities.isEmpty()) {
-      return resolvedEntities;
-    }
-
-    if (requestedEntities.contains(ALL)) {
-      requestedEntities = new HashSet<>(Entity.getEntityList());
-    }
-
     List<String> skippedEntities = new ArrayList<>();
-    for (String entityType : requestedEntities) {
+    for (String entityType : entitiesToResolve) {
       if (entityType == null || entityType.isBlank() || ALL.equals(entityType)) {
         continue;
       }

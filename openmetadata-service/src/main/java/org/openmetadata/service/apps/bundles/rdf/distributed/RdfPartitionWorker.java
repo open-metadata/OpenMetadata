@@ -16,6 +16,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
 public class RdfPartitionWorker {
+  private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
   private static final int PROGRESS_UPDATE_INTERVAL = 100;
 
   private final DistributedRdfIndexCoordinator coordinator;
@@ -114,9 +115,20 @@ public class RdfPartitionWorker {
     if (offset <= 0) {
       return null;
     }
-    int cursorOffset = (int) offset - 1;
+    int cursorOffset = toCursorOffset(entityType, offset);
     return Entity.getEntityRepository(entityType)
         .getCursorAtOffset(new ListFilter(Include.ALL), cursorOffset);
+  }
+
+  private int toCursorOffset(String entityType, long offset) {
+    long cursorOffset = offset - 1L;
+    if (cursorOffset > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Keyset cursor initialization for entityType %s does not support offsets above %d",
+              entityType, MAX_CURSOR_INITIALIZATION_OFFSET));
+    }
+    return Math.toIntExact(cursorOffset);
   }
 
   public record PartitionResult(

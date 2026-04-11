@@ -13,6 +13,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -25,12 +26,12 @@ public class RdfBatchProcessor {
   public static final Set<String> EXCLUDED_RELATIONSHIP_ENTITY_TYPES =
       Set.of(
           "changeEvent",
-          "auditLog",
-          "webAnalyticEvent",
+          Entity.AUDIT_LOG,
+          Entity.WEB_ANALYTIC_EVENT,
           "entityUsage",
-          "eventSubscription",
+          Entity.EVENT_SUBSCRIPTION,
           "vote",
-          "THREAD");
+          Entity.THREAD);
 
   public static final Set<Integer> EXCLUDED_RELATIONSHIP_TYPES =
       Set.of(Relationship.VOTED.ordinal(), Relationship.FOLLOWS.ordinal());
