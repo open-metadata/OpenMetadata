@@ -271,13 +271,21 @@ def build_fallback_task_statuses(
     ]
 
 
+def _get_sortable_sync_start(sync: dict) -> datetime:
+    """Return a consistently comparable naive datetime for sorting."""
+    ts = sync.get("sync_start_ts")
+    if ts is None:
+        return datetime.min
+    if ts.tzinfo is not None and ts.tzinfo.utcoffset(ts) is not None:
+        return ts.astimezone(timezone.utc).replace(tzinfo=None)
+    return ts
+
+
 def sort_and_limit_syncs(syncs: Dict[str, dict]) -> List[dict]:
     """Sort parsed syncs by start time descending and limit to MAX_SYNC_RUNS."""
     sorted_pairs = sorted(
         syncs.items(),
-        key=lambda x: x[1].get(
-            "sync_start_ts", datetime.min.replace(tzinfo=timezone.utc)
-        ),
+        key=lambda x: _get_sortable_sync_start(x[1]),
         reverse=True,
     )[:MAX_SYNC_RUNS]
     return [sync for _sync_id, sync in sorted_pairs if sync.get("sync_start_ts")]

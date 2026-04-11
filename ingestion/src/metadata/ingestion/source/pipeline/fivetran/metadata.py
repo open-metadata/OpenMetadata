@@ -181,7 +181,7 @@ class FivetranSource(PipelineServiceSource):
         )
 
         db_statuses = self._get_status_from_db(pipeline_details, pipeline_fqn)
-        if db_statuses is not None:
+        if db_statuses:
             for status in db_statuses:
                 yield Either(right=status)
             return
