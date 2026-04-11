@@ -49,7 +49,10 @@ import {
   getCanvasColor,
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
-import { computeGlossaryGroupPositions } from '../utils/layoutCalculations';
+import {
+  computeGlossaryGroupPositions,
+  computeOutermostRingRadius,
+} from '../utils/layoutCalculations';
 import { ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE } from '../utils/ontologyComboAwarePolylineEdge';
 
 const INVERSE_RELATION_PAIRS: Record<string, string> = {
@@ -220,6 +223,8 @@ export function useGraphDataBuilder({
     let nodesForGraph: OntologyNode[];
     let edgesForGraph: MergedEdge[];
     let termAssetCountMap = new Map<string, number>();
+    let termHSpacing = DATA_MODE_TERM_H_SPACING;
+    let termVSpacing = DATA_MODE_TERM_V_SPACING;
 
     if (explorationMode === 'data') {
       const allAssetIds = new Set(
@@ -251,6 +256,33 @@ export function useGraphDataBuilder({
           }
         });
       });
+
+      if (idsToExpand.size > 0) {
+        let maxFootprint = 0;
+        idsToExpand.forEach((termId) => {
+          if (!allTermIds.has(termId)) {
+            return;
+          }
+          let visibleCount = 0;
+          mergedEdgesList.forEach((edge) => {
+            if (edge.from === termId && allAssetIds.has(edge.to)) {
+              visibleCount++;
+            }
+            if (edge.to === termId && allAssetIds.has(edge.from)) {
+              visibleCount++;
+            }
+          });
+          const footprint = computeOutermostRingRadius(visibleCount);
+          if (footprint > maxFootprint) {
+            maxFootprint = footprint;
+          }
+        });
+        if (maxFootprint > 0) {
+          const minSpacing = maxFootprint * 2 + 40;
+          termHSpacing = Math.max(DATA_MODE_TERM_H_SPACING, minSpacing);
+          termVSpacing = Math.max(DATA_MODE_TERM_V_SPACING, minSpacing);
+        }
+      }
 
       termAssetCountMap = new Map<string, number>();
       inputNodes.forEach((node) => {
@@ -311,8 +343,8 @@ export function useGraphDataBuilder({
               (n) => n.type !== 'dataAsset' && n.type !== 'metric'
             ),
             LayoutEngine.Dagre,
-            DATA_MODE_TERM_H_SPACING,
-            DATA_MODE_TERM_V_SPACING
+            termHSpacing,
+            termVSpacing
           )
         : {};
 

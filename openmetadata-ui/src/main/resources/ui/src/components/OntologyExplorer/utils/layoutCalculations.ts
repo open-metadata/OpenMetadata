@@ -44,8 +44,8 @@ function getMacroCols(numGroups: number): number {
 const CIRCLE_MIN_RADIUS = 100;
 const CIRCLE_NODE_SPACING = 80;
 
-const DATA_MODE_ASSET_SPACING_ALONG_ARC = 90;
-const DATA_MODE_RING_SAFETY_PAD = 45;
+const DATA_MODE_ASSET_SPACING_ALONG_ARC = 150;
+const DATA_MODE_RING_SAFETY_PAD = 60;
 
 export function computeGlossaryGroupPositions(
   inputNodes: OntologyNode[],
@@ -224,6 +224,35 @@ export function computeGlossaryGroupPositions(
   });
 
   return positions;
+}
+
+export function computeOutermostRingRadius(assetCount: number): number {
+  if (assetCount === 0) {
+    return 0;
+  }
+  const ASSET_NODE_DIAMETER = DATA_MODE_ASSET_CIRCLE_SIZE;
+  const LABEL_HEIGHT = DATA_MODE_ASSET_LABEL_LAYOUT_STACK;
+  const SAFETY_PAD = DATA_MODE_RING_SAFETY_PAD;
+  const RING_GAP = ASSET_NODE_DIAMETER + LABEL_HEIGHT + SAFETY_PAD;
+  const firstRingRadius =
+    DATA_MODE_TERM_TO_FIRST_RING_GAP + ASSET_NODE_DIAMETER;
+
+  let placed = 0;
+  let ringIdx = 0;
+  while (placed < assetCount) {
+    const ringRadius = firstRingRadius + ringIdx * RING_GAP;
+    const capacity = Math.max(
+      1,
+      Math.floor((ringRadius * 2 * Math.PI) / DATA_MODE_ASSET_SPACING_ALONG_ARC)
+    );
+    placed += Math.min(capacity, assetCount - placed);
+    if (placed >= assetCount) {
+      return ringRadius + ASSET_NODE_DIAMETER / 2;
+    }
+    ringIdx++;
+  }
+
+  return firstRingRadius + ASSET_NODE_DIAMETER / 2;
 }
 
 export function computeAssetRingPositions(

@@ -275,6 +275,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     explorationModeRef.current = explorationMode;
   }, [explorationMode]);
 
+  const glossariesRef = useRef<Glossary[]>(glossaries);
+  glossariesRef.current = glossaries;
+
   const glossaryColorMap = useMemo(() => {
     const map: Record<string, string> = {};
     glossaries.forEach((g, i) => {
@@ -1266,7 +1269,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const fetchGraphDataFromDatabase = useCallback(
     async (glossaryIdParam?: string, allGlossaries?: Glossary[]) => {
-      const glossariesToUse = allGlossaries ?? glossaries;
+      const glossariesToUse = allGlossaries ?? glossariesRef.current;
 
       const glossariesToFetch = glossaryIdParam
         ? glossariesToUse.filter((g) => g.id === glossaryIdParam)
