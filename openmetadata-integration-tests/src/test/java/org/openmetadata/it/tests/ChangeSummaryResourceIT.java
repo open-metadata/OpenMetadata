@@ -335,11 +335,6 @@ public class ChangeSummaryResourceIT {
   }
 
   private Task createSuggestionTask(
-      String entityFqn, String aboutType, String fieldPath, String suggestedValue) {
-    return createSuggestionTask(entityFqn, aboutType, fieldPath, suggestedValue, "admin");
-  }
-
-  private Task createSuggestionTask(
       String entityFqn,
       String aboutType,
       String fieldPath,

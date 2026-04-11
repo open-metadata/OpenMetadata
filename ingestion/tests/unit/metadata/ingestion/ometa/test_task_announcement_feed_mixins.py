@@ -1,7 +1,9 @@
+import importlib
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 
 from metadata.generated.schema.api.feed.closeTask import CloseTaskRequest
 from metadata.generated.schema.api.feed.createPost import CreatePostRequest
@@ -11,6 +13,7 @@ from metadata.generated.schema.api.feed.resolveTask import (
 )
 from metadata.generated.schema.entity.feed.thread import ThreadTaskStatus, ThreadType
 from metadata.ingestion.ometa.announcement_models import (
+    Announcement,
     AnnouncementStatus,
     CreateAnnouncementRequest,
 )
@@ -18,12 +21,15 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.mixins.announcement_mixin import OMetaAnnouncementMixin
 from metadata.ingestion.ometa.mixins.feed_mixin import OMetaFeedMixin
 from metadata.ingestion.ometa.mixins.task_mixin import OMetaTaskMixin
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.task_models import (
     BulkTaskOperationParams,
     BulkTaskOperationRequest,
+    BulkTaskOperationResult,
     BulkTaskOperationType,
     CreateTaskRequest,
     ResolveTaskRequest,
+    Task,
     TaskCategory,
     TaskEntityStatus,
     TaskEntityType,
@@ -230,6 +236,46 @@ class TestTaskMixin:
             == f"/tasks/{task_id}/suggestion/apply?comment={quote(comment)}"
         )
 
+    def test_task_minimal_paths_and_none_responses(self):
+        mixin = _make_task_mixin()
+        task_id = uuid4()
+        mixin.client.get.side_effect = [
+            None,
+            None,
+            _entity_list(_task_response()),
+        ]
+        mixin.client.post.side_effect = [
+            None,
+            _task_response(status=TaskEntityStatus.Cancelled.value),
+        ]
+        mixin.client.put.return_value = _task_response(
+            status=TaskEntityStatus.Approved.value
+        )
+
+        assert mixin.get_task(task_id) is None
+        assert mixin.get_task_by_task_id("TASK-00002") is None
+
+        tasks = mixin.list_tasks()
+        updated = mixin.add_task_comment(task_id, "hello")
+        closed = mixin.close_task(task_id)
+        applied = mixin.apply_suggestion(task_id)
+
+        assert tasks.total == 1
+        assert updated is None
+        assert closed.status == TaskEntityStatus.Cancelled
+        assert applied.status == TaskEntityStatus.Approved
+        assert mixin.client.get.call_args_list[0].args[0] == f"/tasks/{task_id}"
+        assert (
+            mixin.client.get.call_args_list[1].args[0]
+            == f"/tasks/name/{quote('TASK-00002')}"
+        )
+        assert mixin.client.get.call_args_list[2].args[1] == {"limit": "10"}
+        assert mixin.client.post.call_args_list[1].args[0] == f"/tasks/{task_id}/close"
+        assert (
+            mixin.client.put.call_args_list[0].args[0]
+            == f"/tasks/{task_id}/suggestion/apply"
+        )
+
 
 class TestAnnouncementMixin:
     def test_list_get_and_create_announcements(self):
@@ -299,6 +345,40 @@ class TestAnnouncementMixin:
         mixin.client.delete.assert_called_once_with(
             f"/announcements/{announcement_id}?hardDelete=true"
         )
+
+    def test_announcement_minimal_paths_and_soft_delete(self):
+        mixin = _make_announcement_mixin()
+        announcement_id = uuid4()
+        announcement = _announcement_response(name="announcement-minimal")
+        mixin.client.get.side_effect = [
+            _entity_list(announcement),
+            _entity_list(announcement),
+            announcement,
+            announcement,
+        ]
+
+        listed_without_active = mixin.list_announcements()
+        listed = mixin.list_announcements(active=False)
+        fetched = mixin.get_announcement(announcement_id)
+        named = mixin.get_announcement_by_name("sample.announcement")
+        mixin.delete_announcement(announcement_id, hard_delete=False)
+
+        assert listed_without_active.total == 1
+        assert listed.total == 1
+        assert str(fetched.id.root) == announcement["id"]
+        assert named.name.root == "announcement-minimal"
+        assert mixin.client.get.call_args_list[0].args[1] == {"limit": "10"}
+        assert mixin.client.get.call_args_list[1].args[1] == {
+            "limit": "10",
+            "active": "false",
+        }
+        assert mixin.client.get.call_args_list[2].args[0] == (
+            f"/announcements/{announcement_id}"
+        )
+        assert mixin.client.get.call_args_list[3].args[0] == (
+            f"/announcements/name/{quote('sample.announcement')}"
+        )
+        mixin.client.delete.assert_called_once_with(f"/announcements/{announcement_id}")
 
 
 class TestFeedMixin:
@@ -370,3 +450,247 @@ class TestFeedMixin:
         assert mixin.client.post.call_args_list[1].args[0] == f"/feed/{thread_id}/posts"
         assert mixin.client.put.call_args_list[0].args[0] == "/feed/tasks/42/resolve"
         assert mixin.client.put.call_args_list[1].args[0] == "/feed/tasks/42/close"
+
+    def test_feed_minimal_list_paths(self):
+        mixin = _make_feed_mixin()
+        thread_id = uuid4()
+        mixin.client.get.side_effect = [
+            _entity_list(_thread_response()),
+            _entity_list(_post_response()),
+        ]
+
+        threads = mixin.list_threads()
+        posts = mixin.list_posts(thread_id)
+
+        assert threads.total == 1
+        assert posts.total == 1
+        assert mixin.client.get.call_args_list[0].args[1] == {
+            "limitPosts": "3",
+            "limit": "10",
+            "resolved": "false",
+        }
+        assert mixin.client.get.call_args_list[1].args == (
+            f"/feed/{thread_id}/posts",
+            None,
+        )
+
+
+class TestClientModels:
+    def test_task_models_validate_nested_payloads(self):
+        owner_ref = {"id": str(uuid4()), "type": "user", "name": "owner"}
+        about_ref = {
+            "id": str(uuid4()),
+            "type": "table",
+            "name": "sample_table",
+            "fullyQualifiedName": "service.db.schema.sample_table",
+        }
+        task = Task.model_validate(
+            {
+                "id": str(uuid4()),
+                "taskId": "TASK-00042",
+                "name": "workflow-task",
+                "displayName": "Workflow task",
+                "description": "Task body",
+                "category": TaskCategory.MetadataUpdate.value,
+                "type": TaskEntityType.Suggestion.value,
+                "status": TaskEntityStatus.Pending.value,
+                "priority": TaskPriority.High.value,
+                "about": about_ref,
+                "domains": [owner_ref],
+                "createdBy": owner_ref,
+                "createdById": str(uuid4()),
+                "assignees": [owner_ref],
+                "reviewers": [owner_ref],
+                "watchers": [owner_ref],
+                "payload": {"fieldPath": "description"},
+                "dueDate": 1712728800000,
+                "externalReference": {
+                    "system": "jira",
+                    "externalId": "TASK-42",
+                    "externalUrl": "https://example.com/TASK-42",
+                    "syncStatus": "SYNCED",
+                    "lastSyncedAt": 1712728800000,
+                },
+                "tags": [
+                    {
+                        "tagFQN": "PII.Sensitive",
+                        "source": "Classification",
+                        "labelType": "Manual",
+                        "state": "Confirmed",
+                    }
+                ],
+                "comments": [
+                    {
+                        "id": str(uuid4()),
+                        "message": "Looks good",
+                        "author": owner_ref,
+                        "createdAt": 1712728800000,
+                    }
+                ],
+                "resolution": {
+                    "type": TaskResolutionType.Approved.value,
+                    "resolvedBy": owner_ref,
+                    "resolvedAt": 1712729800000,
+                    "comment": "approved",
+                    "newValue": "updated",
+                },
+                "workflowDefinitionId": str(uuid4()),
+                "workflowInstanceId": str(uuid4()),
+                "workflowStageId": "review",
+                "availableTransitions": [
+                    {
+                        "id": "approve",
+                        "label": "Approve",
+                        "targetStageId": "done",
+                        "targetTaskStatus": TaskEntityStatus.Approved.value,
+                        "resolutionType": TaskResolutionType.Approved.value,
+                        "formRef": "taskForm",
+                        "requiresComment": True,
+                    }
+                ],
+                "createdAt": 1712728800000,
+                "updatedAt": 1712729800000,
+                "updatedBy": "owner",
+                "version": 1.2,
+                "href": "https://example.com/task/42",
+                "deleted": False,
+                "ignoredField": "ignored",
+            }
+        )
+        create_request = CreateTaskRequest(
+            name="task-client-create",
+            category=TaskCategory.MetadataUpdate,
+            type=TaskEntityType.Suggestion,
+            priority=TaskPriority.High,
+            about="sample.table",
+            aboutType="table",
+            domain="Marketing",
+            assignees=["owner"],
+            reviewers=["reviewer"],
+            payload={"fieldPath": "description"},
+            dueDate=1712728800000,
+            externalReference=task.externalReference,
+            tags=task.tags,
+        )
+        resolve_request = ResolveTaskRequest(
+            transitionId="approve",
+            resolutionType=TaskResolutionType.Approved,
+            comment="approved",
+            newValue="updated",
+            payload={"fieldPath": "description"},
+        )
+        bulk_result = BulkTaskOperationResult.model_validate(
+            {
+                "totalRequested": 1,
+                "successful": 1,
+                "failed": 0,
+                "results": [
+                    {"taskId": str(task.id.root), "status": "success", "error": None}
+                ],
+            }
+        )
+
+        assert task.externalReference.system == "jira"
+        assert task.comments[0].author.name == "owner"
+        assert (
+            task.availableTransitions[0].resolutionType == TaskResolutionType.Approved
+        )
+        assert create_request.assignees == ["owner"]
+        assert resolve_request.transitionId == "approve"
+        assert bulk_result.results[0].status == "success"
+        assert "ignoredField" not in task.model_dump()
+
+    def test_announcement_models_validate_and_reject_unknown_fields(self):
+        owner_ref = {"id": str(uuid4()), "type": "user", "name": "owner"}
+        announcement = Announcement.model_validate(
+            {
+                "id": str(uuid4()),
+                "name": "announcement-client",
+                "fullyQualifiedName": "sample.announcement",
+                "displayName": "Announcement Client",
+                "description": "Announcement body",
+                "entityLink": "<#E::table::sample.table::description>",
+                "startTime": 1712728800000,
+                "endTime": 1712815200000,
+                "status": AnnouncementStatus.Active.value,
+                "createdBy": "admin",
+                "updatedBy": "admin",
+                "owners": [owner_ref],
+                "domains": [owner_ref],
+                "createdAt": 1712728800000,
+                "updatedAt": 1712815200000,
+                "version": 1.0,
+                "href": "https://example.com/announcements/1",
+                "deleted": False,
+                "ignoredField": "ignored",
+            }
+        )
+        request = CreateAnnouncementRequest(
+            name="announcement-client",
+            displayName="Announcement Client",
+            description="Announcement body",
+            entityLink="<#E::table::sample.table::description>",
+            startTime=1712728800000,
+            endTime=1712815200000,
+            owners=["admin"],
+        )
+
+        assert announcement.status == AnnouncementStatus.Active
+        assert request.owners == ["admin"]
+        assert "ignoredField" not in announcement.model_dump()
+
+        with pytest.raises(ValidationError):
+            CreateAnnouncementRequest(
+                description="Announcement body",
+                startTime=1712728800000,
+                endTime=1712815200000,
+                owners=["admin"],
+                ignoredField="ignored",
+            )
+
+    def test_request_models_reject_invalid_input(self):
+        with pytest.raises(ValidationError):
+            CreateTaskRequest(
+                category=TaskCategory.MetadataUpdate,
+                type=TaskEntityType.Suggestion,
+                ignoredField="ignored",
+            )
+
+        with pytest.raises(ValidationError):
+            BulkTaskOperationRequest(
+                taskIds=[],
+                operation=BulkTaskOperationType.Assign,
+            )
+
+
+def test_openmetadata_includes_new_client_mixins():
+    assert issubclass(OpenMetadata, OMetaFeedMixin)
+    assert issubclass(OpenMetadata, OMetaAnnouncementMixin)
+    assert issubclass(OpenMetadata, OMetaTaskMixin)
+
+
+def test_reimport_new_client_modules_for_coverage():
+    expected_exports = {
+        "metadata.ingestion.ometa.announcement_models": [
+            "Announcement",
+            "CreateAnnouncementRequest",
+        ],
+        "metadata.ingestion.ometa.task_models": [
+            "Task",
+            "CreateTaskRequest",
+            "BulkTaskOperationResult",
+        ],
+        "metadata.ingestion.ometa.mixins.announcement_mixin": [
+            "OMetaAnnouncementMixin"
+        ],
+        "metadata.ingestion.ometa.mixins.feed_mixin": ["OMetaFeedMixin"],
+        "metadata.ingestion.ometa.mixins.task_mixin": ["OMetaTaskMixin"],
+        "metadata.ingestion.ometa.ometa_api": ["OpenMetadata"],
+    }
+
+    for module_name, exported_names in expected_exports.items():
+        module = importlib.import_module(module_name)
+        reloaded = importlib.reload(module)
+
+        for exported_name in exported_names:
+            assert hasattr(reloaded, exported_name)

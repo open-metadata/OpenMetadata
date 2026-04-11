@@ -10,7 +10,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -35,10 +34,12 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IncidentPaginationIT {
+  private static final Logger LOG = LoggerFactory.getLogger(IncidentPaginationIT.class);
 
   private static final int TEST_DATA_SIZE = 11;
   private static final int PAGE_SIZE = 5;
@@ -97,7 +98,7 @@ public class IncidentPaginationIT {
         .conditionEvaluationListener(
             condition -> {
               if (!condition.isSatisfied()) {
-                log.warn(
+                LOG.warn(
                     "waitForDataIndexed not satisfied after {} (last error: {})",
                     condition.getElapsedTimeInMS() + "ms",
                     lastError.get());
