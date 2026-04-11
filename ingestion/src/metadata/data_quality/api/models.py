@@ -22,7 +22,7 @@ from pydantic import Field
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
@@ -51,6 +51,9 @@ class TestSuiteProcessorConfig(ConfigModel):
 class TestCaseResultResponse(BaseModel):
     testCaseResult: TestCaseResult
     testCase: TestCase
+    failedRowsSample: Optional[TableData] = None
+    inspectionQuery: Optional[str] = None
+    validateColumns: bool = True
 
 
 class TableAndTests(BaseModel):

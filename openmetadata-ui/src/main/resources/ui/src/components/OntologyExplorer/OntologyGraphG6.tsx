@@ -14,13 +14,14 @@ import {
   forwardRef,
   useCallback,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useGraphDataBuilder } from './hooks/useGraphData';
 import { useOntologyGraph } from './hooks/useOntologyGraph';
 import {
-  LayoutEngine,
+  fitViewWithMinZoom,
   toLayoutEngineType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
@@ -35,7 +36,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       nodes: inputNodes,
       edges: inputEdges,
       settings,
-      nodePositions,
       selectedNodeId,
       expandedTermIds,
       glossaryColorMap,
@@ -48,6 +48,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      nodePositions,
     },
     ref
   ) => {
@@ -56,30 +57,41 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     const [clickedEdgeId, setClickedEdgeId] = useState<string | null>(null);
 
     const getLayoutType = useCallback((): LayoutEngineType => {
-      if (explorationMode === 'data') {
-        return LayoutEngine.Radial;
-      }
-
       return toLayoutEngineType(settings.layout);
-    }, [settings.layout, explorationMode]);
+    }, [settings.layout]);
 
     const layoutType = getLayoutType();
 
-    const { graphData, mergedEdgesList, neighborSet, computeNodeColor } =
-      useGraphDataBuilder({
-        inputNodes,
-        inputEdges,
-        explorationMode,
-        settings,
-        selectedNodeId: selectedNodeId ?? null,
-        expandedTermIds,
-        clickedEdgeId,
-        nodePositions,
-        glossaryColorMap,
-        layoutType,
-        hierarchyCombos: hierarchyCombos ?? [],
-        graphSearchHighlight,
-      });
+    const termCountForFit = useMemo(() => {
+      if (explorationMode === 'data') {
+        return inputNodes.filter(
+          (n) => n.type !== 'dataAsset' && n.type !== 'metric'
+        ).length;
+      }
+
+      return inputNodes.length;
+    }, [explorationMode, inputNodes]);
+
+    const {
+      graphData,
+      mergedEdgesList,
+      neighborSet,
+      computeNodeColor,
+      assetToTermMap,
+    } = useGraphDataBuilder({
+      inputNodes,
+      inputEdges,
+      explorationMode,
+      settings,
+      selectedNodeId: selectedNodeId ?? null,
+      expandedTermIds,
+      clickedEdgeId,
+      glossaryColorMap,
+      hierarchyCombos: hierarchyCombos ?? [],
+      graphSearchHighlight,
+      layoutType,
+      nodePositions,
+    });
 
     const { graphRef, extractNodePositions } = useOntologyGraph({
       containerRef,
@@ -101,19 +113,19 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       neighborSet,
       glossaryColorMap,
       computeNodeColor,
+      assetToTermMap,
     });
 
     useImperativeHandle(
       ref,
       () => ({
-        fitView: () => {
+        fitView: async () => {
           const graph = graphRef.current;
           if (!graph) {
             return;
           }
-          const duration = 300;
-          graph.fitView(undefined, { duration });
-          graph.zoomBy(0.6, { duration });
+          const isDataMode = explorationMode === 'data';
+          await fitViewWithMinZoom(graph, termCountForFit, isDataMode, 300);
         },
         zoomIn: () => {
           graphRef.current?.zoomBy(1.2);
@@ -132,8 +144,43 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           graphRef.current?.focusElement(nodeId, { duration: 0 });
         },
         getNodePositions: () => extractNodePositions(),
+        exportAsPng: async () => {
+          const graph = graphRef.current;
+          if (!graph) {
+            return;
+          }
+          const dataUrl = await graph.toDataURL({
+            mode: 'overall',
+            type: 'image/png',
+          });
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = 'ontology-graph.png';
+          a.click();
+        },
+        exportAsSvg: async () => {
+          const graph = graphRef.current;
+          if (!graph) {
+            return;
+          }
+          const dataUrl = await graph.toDataURL({
+            mode: 'overall',
+            type: 'image/png',
+          });
+          const [width, height] = graph.getCanvas().getSize();
+          const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <image href="${dataUrl}" width="${width}" height="${height}"/>
+</svg>`;
+          const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'ontology-graph.svg';
+          a.click();
+          URL.revokeObjectURL(url);
+        },
       }),
-      [extractNodePositions, graphRef]
+      [explorationMode, extractNodePositions, graphRef, termCountForFit]
     );
 
     return (

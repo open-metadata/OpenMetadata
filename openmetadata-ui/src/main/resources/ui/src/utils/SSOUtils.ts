@@ -225,8 +225,8 @@ const navigateToTargetField = (
     current = current[part] as ErrorSchema;
   }
 
-  const targetKey = pathParts[pathParts.length - 1];
-  if (!current[targetKey]) {
+  const targetKey = pathParts.at(-1);
+  if (!targetKey || !current[targetKey]) {
     return null;
   }
 
@@ -1109,5 +1109,116 @@ export const createFormKeyDownHandler = () => {
         }
       }
     }
+  };
+};
+
+/**
+ * Result of parsing a SAML IdP metadata XML file.
+ */
+export interface SamlIdpMetadata {
+  entityId: string;
+  ssoLoginUrl: string;
+  idpX509Certificate: string;
+}
+
+const SAML_MD_NS = 'urn:oasis:names:tc:SAML:2.0:metadata';
+const XMLDSIG_NS = 'http://www.w3.org/2000/09/xmldsig#';
+
+/**
+ * Parses a SAML IdP federation metadata XML string and extracts
+ * entityId, ssoLoginUrl, and idpX509Certificate.
+ *
+ * Uses the browser's built-in DOMParser — no external dependencies.
+ */
+const SAML_REDIRECT_BINDING =
+  'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect';
+const SAML_POST_BINDING = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST';
+
+const resolveSsoLoginUrl = (
+  ssoServices: HTMLCollectionOf<Element>
+): string | null => {
+  let fallback: string | null = null;
+
+  // Prefer HTTP-Redirect binding, fall back to HTTP-POST
+  for (const ssoService of ssoServices) {
+    const binding = ssoService.getAttribute('Binding') ?? '';
+    const location = ssoService.getAttribute('Location');
+
+    if (binding === SAML_REDIRECT_BINDING && location) {
+      return location;
+    }
+    if (!fallback && binding === SAML_POST_BINDING && location) {
+      fallback = location;
+    }
+  }
+
+  return fallback;
+};
+
+const resolveX509Certificate = (
+  keyDescriptors: HTMLCollectionOf<Element>
+): string | undefined => {
+  let fallback: string | undefined;
+
+  for (const keyDescriptor of keyDescriptors) {
+    const use = keyDescriptor.getAttribute('use');
+    const x509 = keyDescriptor.getElementsByTagNameNS(
+      XMLDSIG_NS,
+      'X509Certificate'
+    )[0];
+
+    if (use === 'signing' && x509?.textContent) {
+      return x509.textContent.replaceAll(/\s+/g, '');
+    }
+    if (!use && !fallback && x509?.textContent) {
+      fallback = x509.textContent.replaceAll(/\s+/g, '');
+    }
+  }
+
+  return fallback;
+};
+
+export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlString, 'application/xml');
+
+  if (doc.querySelector('parsererror')) {
+    throw new Error('Invalid XML: the file could not be parsed.');
+  }
+
+  const entityId = doc
+    .getElementsByTagNameNS(SAML_MD_NS, 'EntityDescriptor')[0]
+    ?.getAttribute('entityID');
+
+  if (!entityId) {
+    throw new Error(
+      'Invalid metadata: missing entityID on EntityDescriptor element.'
+    );
+  }
+
+  const ssoLoginUrl = resolveSsoLoginUrl(
+    doc.getElementsByTagNameNS(SAML_MD_NS, 'SingleSignOnService')
+  );
+
+  if (!ssoLoginUrl) {
+    throw new Error(
+      'Invalid metadata: no SingleSignOnService element with a Location attribute found.'
+    );
+  }
+
+  const certText = resolveX509Certificate(
+    doc.getElementsByTagNameNS(SAML_MD_NS, 'KeyDescriptor')
+  );
+
+  if (!certText) {
+    throw new Error(
+      'Invalid metadata: no X509Certificate found. A signing certificate is required.'
+    );
+  }
+
+  return {
+    entityId,
+    ssoLoginUrl,
+    idpX509Certificate: `-----BEGIN CERTIFICATE-----\n${certText}\n-----END CERTIFICATE-----`,
   };
 };

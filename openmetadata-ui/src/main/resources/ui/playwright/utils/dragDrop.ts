@@ -37,10 +37,10 @@ export const dragAndDropElement = async (
 };
 
 export const openDragDropDropdown = async (page: Page, name: string) => {
-  const dropdownIcon = page.locator(
-    `[data-row-key=${name}] > .whitespace-nowrap > [data-testid="expand-icon"] > svg`
-  );
-  await dropdownIcon.click();
+  await page
+    .locator(`[data-row-key="${name}"]`)
+    .getByTestId('expand-icon')
+    .click();
 };
 
 export const confirmationDragAndDropTeam = async (

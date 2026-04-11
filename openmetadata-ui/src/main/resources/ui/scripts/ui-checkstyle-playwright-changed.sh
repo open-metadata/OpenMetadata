@@ -61,6 +61,11 @@ if [ "${#FILES[@]}" -eq 0 ]; then
   exit 0
 fi
 
-yarn organize-imports:cli "${FILES[@]}"
+# organize-imports-cli only handles TS/JS source files, not JSON
+TS_FILES=()
+for f in "${FILES[@]}"; do
+[[ "$f" =~ \.(ts|tsx|js|jsx)$ ]] && TS_FILES+=("$f")
+done
+[ "${#TS_FILES[@]}" -gt 0 ] && yarn organize-imports:cli "${TS_FILES[@]}"
 yarn lint:base --fix "${FILES[@]}"
 yarn pretty:base --write "${FILES[@]}"

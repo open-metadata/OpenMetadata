@@ -81,4 +81,5 @@ export const DQ_FILTER_KEYS = {
   TIER: 'tier',
   TAGS: 'tags',
   GLOSSARY_TERMS: 'glossaryTerms',
+  DATA_PRODUCTS: 'dataProducts',
 } as const;

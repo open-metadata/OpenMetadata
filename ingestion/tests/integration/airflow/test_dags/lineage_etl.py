@@ -2,6 +2,7 @@
 DAG that triggers OpenLineage events with inlets/outlets for lineage testing.
 Uses Airflow 3.x native OpenLineage support.
 """
+
 from datetime import datetime
 
 from airflow import DAG

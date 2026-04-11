@@ -305,7 +305,7 @@ public class MigrationUtil {
                     + "json::json -> 'certification' -> 'tagLabel' ->> 'tagFQN' AS tagFQN, "
                     + "json::json -> 'certification' ->> 'expiryDate' AS expiryDate, "
                     + "json::json -> 'certification' ->> 'appliedDate' AS appliedDate "
-                    + "FROM %s WHERE json::jsonb ? 'certification' "
+                    + "FROM %s WHERE json::jsonb ?? 'certification' "
                     + "AND json::json -> 'certification' -> 'tagLabel' ->> 'tagFQN' IS NOT NULL "
                     + "LIMIT %d",
                 table, CERT_BATCH_SIZE)

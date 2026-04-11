@@ -25,6 +25,7 @@ VERSIONS = {
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
     "boto3": "boto3~=1.41.5",
+    "cloud-sql-python-connector-pymysql": "cloud-sql-python-connector[pymysql]>=1.0.0,<2.0.0",
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
@@ -66,7 +67,6 @@ VERSIONS = {
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
     "starrocks": "pymysql~=1.0",
-    "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
@@ -296,13 +296,10 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
-    "iceberg": {
-        VERSIONS["pyiceberg"],
-        # Forcing the version of a few packages so it plays nicely with other requirements.
-        VERSIONS["pydantic"],
-        VERSIONS["adlfs"],
-        VERSIONS["gcsfs"],
-        VERSIONS["pyarrow"],
+    "iomete": {
+        "iomete-sqlalchemy>=1.0.22",
+        "adbc-driver-flightsql",
+        "adbc-driver-manager",
     },
     "impala": {
         "presto-types-parser>=0.0.2",
@@ -336,6 +333,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "mysql": {
         VERSIONS["pymysql"],
+        VERSIONS["cloud-sql-python-connector-pymysql"],
         DATA_DIFF["mysql"],
     },
     "nifi": {},  # uses requests
@@ -463,7 +461,6 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
-    VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",

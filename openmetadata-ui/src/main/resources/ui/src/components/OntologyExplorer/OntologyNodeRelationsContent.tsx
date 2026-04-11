@@ -22,6 +22,7 @@ import {
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import { RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
 
 export interface OntologyNodeRelationsContentProps {
@@ -132,25 +133,44 @@ export const OntologyNodeRelationsContent: React.FC<
               const labelText = relatedDisplayName(rel, otherEnd);
               const hasRowBelow = rowIndex < rows.length - 1;
 
+              const meta = RELATION_META[rel.relationType];
+
               return (
                 <li
                   className="tw:flex tw:flex-col tw:gap-2 tw:py-1"
-                  key={`${rel.from}-${rel.to}-${rel.relationType}`}>
-                  <div className="tw:grid tw:w-full tw:items-center tw:gap-3 tw:grid-cols-2">
-                    <Badge color="gray" type="modern">
+                  key={`${rel.from}-${rel.to}-${rel.relationType}`}
+                  style={
+                    meta
+                      ? ({
+                          '--rel-bg': meta.background,
+                          '--rel-color': meta.color,
+                        } as React.CSSProperties)
+                      : undefined
+                  }>
+                  <div className="tw:grid tw:w-full tw:grid-cols-2 tw:items-center tw:gap-3">
+                    <Badge
+                      className={
+                        meta
+                          ? 'tw:bg-[var(--rel-bg)] tw:text-[var(--rel-color)] tw:ring-0'
+                          : 'tw:ring-0'
+                      }
+                      size="sm"
+                      type="color">
                       {getDisplayName(rel.relationType)}
                     </Badge>
-                    <Tooltip placement="top" title={labelText}>
-                      <TooltipTrigger className="tw:min-w-0">
-                        <Typography
-                          as="span"
-                          className="tw:block tw:truncate tw:text-primary"
-                          size="text-sm"
-                          weight="regular">
-                          {labelText}
-                        </Typography>
-                      </TooltipTrigger>
-                    </Tooltip>
+                    <div className="tw:min-w-0">
+                      <Tooltip placement="top" title={labelText}>
+                        <TooltipTrigger className="tw:block tw:w-full">
+                          <Typography
+                            as="span"
+                            className="tw:block tw:truncate tw:text-primary"
+                            size="text-sm"
+                            weight="regular">
+                            {labelText}
+                          </Typography>
+                        </TooltipTrigger>
+                      </Tooltip>
+                    </div>
                   </div>
                   {hasRowBelow ? <Divider orientation="horizontal" /> : null}
                 </li>

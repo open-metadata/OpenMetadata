@@ -345,7 +345,11 @@ export class TableClass extends EntityClass {
       !searchTerm || (tableFqn.length > 0 && searchTerm === tableFqn);
 
     if (canUseDirectNavigation && tableFqn.length > 0) {
+      const tableResponse = page.waitForResponse(
+        `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
+      );
       await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+      await tableResponse;
       await waitForAllLoadersToDisappear(page);
 
       return;
@@ -492,12 +496,20 @@ export class TableClass extends EntityClass {
   async patch({
     apiContext,
     patchData,
+    queryParams,
   }: {
     apiContext: APIRequestContext;
     patchData: Operation[];
+    queryParams?: Record<string, string>;
   }) {
+    const fqn = encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    );
+    const queryString = queryParams
+      ? `?${new URLSearchParams(queryParams).toString()}`
+      : '';
     const response = await apiContext.patch(
-      `/api/v1/tables/name/${this.entityResponseData?.fullyQualifiedName}`,
+      `/api/v1/tables/name/${fqn}${queryString}`,
       {
         data: patchData,
         headers: {

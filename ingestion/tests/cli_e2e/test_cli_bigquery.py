@@ -94,6 +94,10 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "bigquery"
 
     @staticmethod
+    def get_lineage_config_args() -> dict:
+        return {"processQueryLineage": True}
+
+    @staticmethod
     def expected_tables() -> int:
         return 2
 

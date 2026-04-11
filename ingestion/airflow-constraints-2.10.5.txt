@@ -574,7 +574,6 @@ pydruid==0.6.9
 pyenchant==3.2.2
 pyexasol==0.27.0
 pygraphviz==1.14
-pyiceberg==0.8.1
 pykerberos==1.2.4
 pymongo==4.11
 pymssql==2.3.2

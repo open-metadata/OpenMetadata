@@ -118,7 +118,12 @@ SELECT * from names
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
-        return ["^ADMIN$"]
+        # Oracle stores unquoted identifiers in uppercase in the DB, but
+        # OpenMetadata normalises them to lowercase when ingested. Use a
+        # case-insensitive regex so the pattern works for both the
+        # ingestion source filter (Oracle uppercase) and the profiler /
+        # auto-classification source filter (OpenMetadata API lowercase).
+        return ["(?i)^admin$"]
 
     @staticmethod
     def get_includes_tables() -> List[str]:

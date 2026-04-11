@@ -79,14 +79,27 @@ class EdgeSource(BaseModel):
 
     @property
     def node_id(self):
+        """Extract node ID from source: handles inode-, slash-separated, or direct IDs"""
         if self.source:
             if "inode-" in self.source:
                 return self.source.replace("inode-", "")
+            elif "/" in self.source:
+                return self.source.split("/")[0]
+            else:
+                return self.source
         return None
+
+
+class Dependency(BaseModel):
+    nodeId: str
+    type: str
+    name: Optional[str]
+    elementId: Optional[str]
 
 
 class EdgeSourceResponse(BaseModel):
     edges: Optional[List[EdgeSource]] = []
+    dependencies: Optional[dict] = {}
 
 
 class NodeDetails(BaseModel):
@@ -97,7 +110,25 @@ class NodeDetails(BaseModel):
 
     @property
     def node_schema(self):
-        if self.node_type == "table" and self.path:
+        """Extract database.schema from path (searches for dotted format like DB.SCHEMA)"""
+        if self.node_type in ["table", "dataset"] and self.path:
             if "/" in self.path:
-                return self.path.split("/", maxsplit=-1)[-1]
+                parts = self.path.split("/")
+                for part in reversed(parts):
+                    if "." in part and not part.startswith("."):
+                        return part
+                return parts[-1]
         return None
+
+
+class WorkbookQuery(BaseModel):
+    elementId: str
+    name: Optional[str]
+    sql: Optional[str] = None
+    error: Optional[str] = None
+
+
+class WorkbookQueriesResponse(BaseModel):
+    entries: Optional[List[WorkbookQuery]] = []
+    total: int
+    nextPage: Optional[str] = None

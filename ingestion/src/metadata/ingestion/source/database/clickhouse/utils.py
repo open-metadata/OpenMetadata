@@ -62,6 +62,13 @@ ischema_names.update(
         "UInt8": SMALLINT,
         "IPv4": create_sqlalchemy_type("IPv4"),
         "IPv6": create_sqlalchemy_type("IPv6"),
+        # ClickHouse geo types (v21+)
+        "Point": create_sqlalchemy_type("Point"),
+        "Ring": create_sqlalchemy_type("Ring"),
+        "Polygon": create_sqlalchemy_type("Polygon"),
+        "MultiPolygon": create_sqlalchemy_type("MultiPolygon"),
+        "LineString": create_sqlalchemy_type("LineString"),
+        "MultiLineString": create_sqlalchemy_type("MultiLineString"),
     }
 )
 
@@ -83,8 +90,9 @@ def _get_column_type(
 
     if spec.startswith("LowCardinality"):
         inner = spec[15:-1]
-        coltype = self.ischema_names["_lowcardinality"]
-        return coltype(self._get_column_type(name, inner))
+        # Using inner type directly instead of _lowcardinality for LowCardinality.
+        # Example: LowCardinality(String) should return String.
+        return self._get_column_type(name, inner)
 
     if spec.startswith("Tuple"):
         return self.ischema_names["Tuple"]

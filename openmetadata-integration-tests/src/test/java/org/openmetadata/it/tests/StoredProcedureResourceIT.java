@@ -43,6 +43,7 @@ public class StoredProcedureResourceIT
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================

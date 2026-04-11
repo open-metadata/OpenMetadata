@@ -68,8 +68,8 @@ import {
   HEX,
   HIVE,
   IBMDB2,
-  ICEBERGE,
   IMPALA,
+  IOMETE,
   KAFKA,
   KINESIS,
   LIGHT_DASH,
@@ -457,7 +457,6 @@ class ServiceUtilClassBase {
     [this.DatabaseServiceTypeSmallCase.Couchbase, COUCHBASE],
     [this.DatabaseServiceTypeSmallCase.Cockroach, COCKROACH],
     [this.DatabaseServiceTypeSmallCase.Greenplum, GREENPLUM],
-    [this.DatabaseServiceTypeSmallCase.Iceberg, ICEBERGE],
     [this.DatabaseServiceTypeSmallCase.Teradata, TERADATA],
     [this.DatabaseServiceTypeSmallCase.Synapse, SYNAPSE],
     [this.DatabaseServiceTypeSmallCase.BurstIQ, BURSTIQ],
@@ -516,6 +515,7 @@ class ServiceUtilClassBase {
     [this.DriveServiceTypeSmallCase.CustomDrive, CUSTOM_DRIVE_DEFAULT],
     [this.DriveServiceTypeSmallCase.GoogleDrive, GOOGLE_DRIVE],
     [this.DriveServiceTypeSmallCase.SFTP, SFTP],
+    [this.DatabaseServiceTypeSmallCase.Iomete, IOMETE],
   ]);
 
   private getDefaultLogoForServiceType(type: string): string {

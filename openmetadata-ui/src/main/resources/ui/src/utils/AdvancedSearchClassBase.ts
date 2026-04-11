@@ -923,6 +923,19 @@ class AdvancedSearchClassBase {
         },
       },
 
+      [EntityFields.GLOSSARY_TERMS]: {
+        label: t('label.glossary-term-plural'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: SearchIndex.GLOSSARY_TERM,
+            entityField: EntityFields.FULLY_QUALIFIED_NAME,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
       [EntityFields.CERTIFICATION]: {
         label: t('label.certification'),
         type: 'select',

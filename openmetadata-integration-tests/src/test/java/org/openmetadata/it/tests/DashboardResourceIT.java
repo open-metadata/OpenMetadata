@@ -47,6 +47,7 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================

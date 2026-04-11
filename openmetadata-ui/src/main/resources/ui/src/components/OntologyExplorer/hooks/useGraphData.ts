@@ -12,13 +12,16 @@
  */
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
   DATA_MODE_ASSET_EDGE_STROKE_COLOR,
+  DATA_MODE_TERM_MIN_CENTER_SPACING,
   DATA_MODE_TERM_NODE_SIZE,
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_STROKE_COLOR,
+  LayoutEngine,
   NODE_BORDER_COLOR,
   RELATION_COLORS,
 } from '../OntologyExplorer.constants';
@@ -28,6 +31,7 @@ import {
   OntologyEdge,
   OntologyNode,
 } from '../OntologyExplorer.interface';
+import { getEntityIconUrl } from '../utils/entityIconUrls';
 import {
   BADGE_MIN_NODE_WIDTH,
   estimateNodeWidth,
@@ -44,10 +48,8 @@ import {
   getCanvasColor,
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
-import {
-  computeDataModePositions,
-  computeGlossaryGroupPositions,
-} from '../utils/layoutCalculations';
+import { computeGlossaryGroupPositions } from '../utils/layoutCalculations';
+import { ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE } from '../utils/ontologyComboAwarePolylineEdge';
 
 const INVERSE_RELATION_PAIRS: Record<string, string> = {
   broader: 'narrower',
@@ -216,7 +218,6 @@ export function useGraphDataBuilder({
 
     let nodesForGraph: OntologyNode[];
     let edgesForGraph: MergedEdge[];
-    let dataModePositions: Record<string, { x: number; y: number }> = {};
     let termAssetCountMap = new Map<string, number>();
 
     if (explorationMode === 'data') {
@@ -229,30 +230,7 @@ export function useGraphDataBuilder({
         inputNodes.filter((n) => !allAssetIds.has(n.id)).map((n) => n.id)
       );
 
-      const termsWithAssets = new Set<string>();
-      mergedEdgesList.forEach((edge) => {
-        if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-          termsWithAssets.add(edge.from);
-        }
-        if (allTermIds.has(edge.to) && allAssetIds.has(edge.from)) {
-          termsWithAssets.add(edge.to);
-        }
-      });
-      inputNodes.forEach((node) => {
-        if (allTermIds.has(node.id) && (node.assetCount ?? 0) > 0) {
-          termsWithAssets.add(node.id);
-        }
-      });
-
-      const visibleTermIds = new Set(termsWithAssets);
-      mergedEdgesList.forEach((edge) => {
-        if (allTermIds.has(edge.from) && allTermIds.has(edge.to)) {
-          if (termsWithAssets.has(edge.from) || termsWithAssets.has(edge.to)) {
-            visibleTermIds.add(edge.from);
-            visibleTermIds.add(edge.to);
-          }
-        }
-      });
+      const visibleTermIds = new Set(allTermIds);
 
       const visibleAssetIds = new Set<string>();
       const idsToExpand =
@@ -281,16 +259,20 @@ export function useGraphDataBuilder({
       });
       mergedEdgesList.forEach((edge) => {
         if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-          termAssetCountMap.set(
-            edge.from,
-            (termAssetCountMap.get(edge.from) ?? 0) + 1
-          );
+          if (!termAssetCountMap.has(edge.from)) {
+            termAssetCountMap.set(
+              edge.from,
+              (termAssetCountMap.get(edge.from) ?? 0) + 1
+            );
+          }
         }
         if (allAssetIds.has(edge.from) && allTermIds.has(edge.to)) {
-          termAssetCountMap.set(
-            edge.to,
-            (termAssetCountMap.get(edge.to) ?? 0) + 1
-          );
+          if (!termAssetCountMap.has(edge.to)) {
+            termAssetCountMap.set(
+              edge.to,
+              (termAssetCountMap.get(edge.to) ?? 0) + 1
+            );
+          }
         }
       });
 
@@ -298,13 +280,6 @@ export function useGraphDataBuilder({
       nodesForGraph = inputNodes.filter((n) => visibleIds.has(n.id));
       edgesForGraph = mergedEdgesList.filter(
         (e) => visibleIds.has(e.from) && visibleIds.has(e.to)
-      );
-
-      const visTermNodes = nodesForGraph.filter((n) => !allAssetIds.has(n.id));
-      dataModePositions = computeDataModePositions(
-        visTermNodes,
-        edgesForGraph,
-        visibleAssetIds
       );
     } else if (explorationMode === 'hierarchy') {
       nodesForGraph = inputNodes;
@@ -328,17 +303,15 @@ export function useGraphDataBuilder({
       nodeIdToType.set(n.id, n.type);
     });
 
-    const distinctGlossaryIds = new Set(
-      nodesForGraph.map((n) => n.glossaryId).filter(Boolean)
-    );
-    const needsGroupLayout =
-      explorationMode !== 'data' &&
-      explorationMode !== 'hierarchy' &&
-      distinctGlossaryIds.size > 1;
-
-    const groupPositions: Record<string, { x: number; y: number }> =
-      needsGroupLayout
-        ? computeGlossaryGroupPositions(nodesForGraph, layoutType)
+    const dataModeTermPositions: Record<string, { x: number; y: number }> =
+      explorationMode === 'data'
+        ? computeGlossaryGroupPositions(
+            nodesForGraph.filter(
+              (n) => n.type !== 'dataAsset' && n.type !== 'metric'
+            ),
+            LayoutEngine.Dagre,
+            DATA_MODE_TERM_MIN_CENTER_SPACING
+          )
         : {};
 
     const localAssetToTermColor = new Map<string, string>();
@@ -378,12 +351,15 @@ export function useGraphDataBuilder({
       const label = isInModelMode
         ? truncateNodeLabelByWidth(rawLabel, nodeWidth)
         : rawLabel;
+      const isDataAsset = node.type === 'dataAsset' || node.type === 'metric';
       const pos =
-        explorationMode === 'data'
-          ? dataModePositions[node.id]
-          : explorationMode === 'hierarchy'
+        explorationMode === 'hierarchy'
           ? nodePositions?.[node.id]
-          : groupPositions[node.id] ?? nodePositions?.[node.id];
+          : explorationMode === 'data'
+          ? isDataAsset
+            ? undefined
+            : dataModeTermPositions[node.id]
+          : undefined;
       const isSelected =
         explorationMode === 'hierarchy'
           ? node.termId === selectedNodeId || selectedNodeId === node.id
@@ -400,8 +376,7 @@ export function useGraphDataBuilder({
 
       const isInHierarchyMode = explorationMode === 'hierarchy';
       const isInDataMode = explorationMode === 'data';
-      const isDataAssetOrMetric =
-        node.type === 'dataAsset' || node.type === 'metric';
+      const isDataAssetOrMetric = isDataAsset;
 
       if (isInHierarchyMode) {
         const comboId = `hierarchy-combo-${node.glossaryId}`;
@@ -440,10 +415,15 @@ export function useGraphDataBuilder({
         const sz = DATA_MODE_ASSET_CIRCLE_SIZE;
         const assetColor =
           localAssetToTermColor.get(node.id) ?? NODE_BORDER_COLOR;
+        const entityTypeLabel =
+          node.entityRef?.type !== undefined
+            ? entityUtilClassBase.getFormattedEntityType(node.entityRef.type)
+            : undefined;
+        const entityIconUrl = getEntityIconUrl(node.entityRef?.type);
 
         return {
           id: node.id,
-          type: 'circle',
+          type: 'data-mode-asset',
           data: {
             ontologyNode: node,
             label,
@@ -460,7 +440,9 @@ export function useGraphDataBuilder({
             getCanvasColor,
             label,
             assetColor,
-            pos
+            pos,
+            entityTypeLabel,
+            entityIconUrl
           ),
         };
       }
@@ -484,6 +466,7 @@ export function useGraphDataBuilder({
             nodeWidth,
             glossaryId: node.glossaryId ?? '',
             assetCount,
+            loadedAssetCount: node.loadedAssetCount ?? 0,
             assetsExpanded,
           },
           style: buildDataModeTermNodeStyle(getCanvasColor, label, color, pos),
@@ -524,8 +507,8 @@ export function useGraphDataBuilder({
           )
         : null;
 
-    const g6Edges: EdgeData[] = edgesForGraph.map((edge, index) => {
-      const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
+    const g6Edges: EdgeData[] = edgesForGraph.map((edge) => {
+      const edgeId = `edge-${edge.from}-${edge.to}-${edge.relationType}`;
       const fromGlossary = nodeIdToGlossaryId.get(edge.from);
       const toGlossary = nodeIdToGlossaryId.get(edge.to);
       const isCrossTeam = Boolean(
@@ -562,6 +545,18 @@ export function useGraphDataBuilder({
         toType !== 'dataAsset' &&
         toType !== 'metric';
 
+      const isTermTermEdge =
+        fromType !== 'dataAsset' &&
+        fromType !== 'metric' &&
+        toType !== 'dataAsset' &&
+        toType !== 'metric';
+
+      const isCrossGlossaryTermEdge =
+        isCrossTeam && isTermTermEdge && explorationMode !== 'data';
+
+      const useComboAwarePolyline =
+        isTermTermInDataMode || isCrossGlossaryTermEdge;
+
       const rawEdgeColor =
         explorationMode === 'data' && !isTermTermInDataMode
           ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
@@ -597,6 +592,10 @@ export function useGraphDataBuilder({
           getEdgeRelationLabelStyle(labelText, edge.relationType)),
       };
 
+      const edgeType = useComboAwarePolyline
+        ? ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE
+        : 'cubic-vertical';
+
       return {
         id: edgeId,
         source: edge.from,
@@ -608,11 +607,18 @@ export function useGraphDataBuilder({
           isClickedEdge,
           isCrossTeam,
           isEdgeDimmed,
-          edgeShapeType: 'cubic-vertical',
+          edgeShapeType: edgeType,
         },
-        type: 'cubic-vertical',
+        type: edgeType,
         style: {
           ...baseEdgeStyle,
+          ...(useComboAwarePolyline && {
+            router: {
+              type: 'shortest-path',
+              offset: 20,
+              enableObstacleAvoidance: true,
+            },
+          }),
         },
       };
     });
@@ -673,16 +679,46 @@ export function useGraphDataBuilder({
     settings.showEdgeLabels,
     selectedNodeId,
     expandedTermIds,
-    nodePositions,
     glossaryColorMap,
     neighborSet,
     computeNodeColor,
     clickedEdgeId,
+    nodePositions,
     layoutType,
     explorationMode,
     hierarchyCombos,
     graphSearchHighlight,
   ]);
 
-  return { graphData, mergedEdgesList, neighborSet, computeNodeColor };
+  const assetToTermMap = useMemo(() => {
+    if (explorationMode !== 'data') {
+      return {} as Record<string, string>;
+    }
+    const map: Record<string, string> = {};
+    const allAssetIds = new Set(
+      inputNodes
+        .filter((n) => n.type === 'dataAsset' || n.type === 'metric')
+        .map((n) => n.id)
+    );
+    const allTermIds = new Set(
+      inputNodes.filter((n) => !allAssetIds.has(n.id)).map((n) => n.id)
+    );
+    mergedEdgesList.forEach((edge) => {
+      if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
+        map[edge.to] = edge.from;
+      } else if (allAssetIds.has(edge.from) && allTermIds.has(edge.to)) {
+        map[edge.from] = edge.to;
+      }
+    });
+
+    return map;
+  }, [explorationMode, inputNodes, mergedEdgesList]);
+
+  return {
+    graphData,
+    mergedEdgesList,
+    neighborSet,
+    computeNodeColor,
+    assetToTermMap,
+  };
 }

@@ -61,6 +61,8 @@ RELKIND_MAP = {
     "View": TableType.View,
     "MEMORY": TableType.View,
     "OLAP": TableType.MaterializedView,
+    "Iceberg": TableType.Iceberg,
+    "ICEBERG": TableType.Iceberg,
 }
 
 DorisDialect.get_table_names_and_type = get_table_names_and_type
