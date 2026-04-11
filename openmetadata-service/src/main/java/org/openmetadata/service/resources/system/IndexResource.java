@@ -22,10 +22,14 @@ public class IndexResource {
 
   static {
     InputStream inputStream = IndexResource.class.getResourceAsStream("/assets/index.html");
-    RAW_INDEX_HTML =
-        new BufferedReader(new InputStreamReader(inputStream))
-            .lines()
-            .collect(Collectors.joining("\n"));
+    if (inputStream != null) {
+      RAW_INDEX_HTML =
+          new BufferedReader(new InputStreamReader(inputStream))
+              .lines()
+              .collect(Collectors.joining("\n"));
+    } else {
+      RAW_INDEX_HTML = "";
+    }
   }
 
   private String indexHtml;

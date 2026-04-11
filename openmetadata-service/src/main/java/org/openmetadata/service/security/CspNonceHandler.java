@@ -3,6 +3,7 @@ package org.openmetadata.service.security;
 import java.security.SecureRandom;
 import java.util.Base64;
 import org.eclipse.jetty.http.HttpField;
+import org.eclipse.jetty.http.HttpFields;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
@@ -21,35 +22,37 @@ public final class CspNonceHandler extends Handler.Wrapper {
     final String nonce = generateNonce();
     request.setAttribute(CSP_NONCE_ATTRIBUTE, nonce);
 
-    Callback demandCallback =
-        new Callback() {
-          @Override
-          public void succeeded() {
-            replaceNonceInCspHeader(response, nonce);
-            callback.succeeded();
-          }
+    Response.Wrapper wrappedResponse =
+        new Response.Wrapper(request, response) {
+          private HttpFields.Mutable wrappedHeaders;
 
           @Override
-          public void failed(Throwable x) {
-            replaceNonceInCspHeader(response, nonce);
-            callback.failed(x);
+          public HttpFields.Mutable getHeaders() {
+            if (wrappedHeaders == null) {
+              final HttpFields.Mutable delegate = super.getHeaders();
+              wrappedHeaders =
+                  new HttpFields.Mutable.Wrapper(delegate) {
+                    @Override
+                    public HttpFields.Mutable put(HttpField field) {
+                      if (field.getName().equals(CSP_HEADER_NAME)
+                          || field.getName().equals(CSP_REPORT_ONLY_HEADER_NAME)) {
+                        final String value = field.getValue();
+                        if (value != null && value.contains(CSP_NONCE_PLACEHOLDER)) {
+                          final String replaced = value.replace(CSP_NONCE_PLACEHOLDER, nonce);
+                          super.put(new HttpField(field.getName(), replaced));
+                          return this;
+                        }
+                      }
+                      super.put(field);
+                      return this;
+                    }
+                  };
+            }
+            return wrappedHeaders;
           }
         };
 
-    return super.handle(request, response, demandCallback);
-  }
-
-  private void replaceNonceInCspHeader(Response response, String nonce) {
-    replaceNonceInHeader(response, CSP_HEADER_NAME, nonce);
-    replaceNonceInHeader(response, CSP_REPORT_ONLY_HEADER_NAME, nonce);
-  }
-
-  private void replaceNonceInHeader(Response response, String headerName, String nonce) {
-    final String headerValue = response.getHeaders().get(headerName);
-    if (headerValue != null && headerValue.contains(CSP_NONCE_PLACEHOLDER)) {
-      final String replaced = headerValue.replace(CSP_NONCE_PLACEHOLDER, nonce);
-      response.getHeaders().put(new HttpField(headerName, replaced));
-    }
+    return super.handle(request, wrappedResponse, callback);
   }
 
   private static String generateNonce() {

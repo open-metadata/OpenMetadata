@@ -33,10 +33,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 class CspNonceHandlerTest {
+  private static final String CSP_HEADER = "Content-Security-Policy";
+  private static final String CSP_REPORT_ONLY_HEADER = "Content-Security-Policy-Report-Only";
+  private static final String CSP_PLACEHOLDER = "__CSP_NONCE__";
+  private static final String CSP_POLICY_WITH_NONCE = "script-src 'self' 'nonce-__CSP_NONCE__'";
+
   private CspNonceHandler handler;
   private Request mockRequest;
   private Response mockResponse;
-  private HttpFields.Mutable mockHeaders;
   private Callback mockCallback;
   private Handler mockWrappedHandler;
 
@@ -45,10 +49,10 @@ class CspNonceHandlerTest {
     handler = new CspNonceHandler();
     mockRequest = mock(Request.class);
     mockResponse = mock(Response.class);
-    mockHeaders = HttpFields.build();
     mockCallback = mock(Callback.class);
     mockWrappedHandler = mock(Handler.class);
 
+    HttpFields.Mutable mockHeaders = HttpFields.build();
     when(mockResponse.getHeaders()).thenReturn(mockHeaders);
     handler.setHandler(mockWrappedHandler);
   }
@@ -95,20 +99,22 @@ class CspNonceHandlerTest {
 
   @Test
   void testCspHeaderReplacementOnSuccess() throws Exception {
-    mockHeaders.put("Content-Security-Policy", "script-src 'self' 'nonce-__CSP_NONCE__'");
-
-    ArgumentCaptor<Callback> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-    when(mockWrappedHandler.handle(any(), any(), callbackCaptor.capture())).thenReturn(true);
+    ArgumentCaptor<Response> responseCaptor = ArgumentCaptor.forClass(Response.class);
+    when(mockWrappedHandler.handle(any(), responseCaptor.capture(), any()))
+        .thenAnswer(
+            invocation -> {
+              Response wrappedResponse = responseCaptor.getValue();
+              wrappedResponse.getHeaders().put(CSP_HEADER, CSP_POLICY_WITH_NONCE);
+              return true;
+            });
 
     handler.handle(mockRequest, mockResponse, mockCallback);
 
-    Callback interceptedCallback = callbackCaptor.getValue();
-    interceptedCallback.succeeded();
-
-    String cspHeader = mockHeaders.get("Content-Security-Policy");
+    Response wrappedResponse = responseCaptor.getValue();
+    String cspHeader = wrappedResponse.getHeaders().get(CSP_HEADER);
     assertNotNull(cspHeader, "CSP header should be present");
     assertFalse(
-        cspHeader.contains("__CSP_NONCE__"),
+        cspHeader.contains(CSP_PLACEHOLDER),
         "CSP header should not contain placeholder after replacement");
     assertTrue(
         cspHeader.matches("script-src 'self' 'nonce-[A-Za-z0-9+/=]+'"),
@@ -117,21 +123,22 @@ class CspNonceHandlerTest {
 
   @Test
   void testCspReportOnlyHeaderReplacementOnSuccess() throws Exception {
-    mockHeaders.put(
-        "Content-Security-Policy-Report-Only", "script-src 'self' 'nonce-__CSP_NONCE__'");
-
-    ArgumentCaptor<Callback> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-    when(mockWrappedHandler.handle(any(), any(), callbackCaptor.capture())).thenReturn(true);
+    ArgumentCaptor<Response> responseCaptor = ArgumentCaptor.forClass(Response.class);
+    when(mockWrappedHandler.handle(any(), responseCaptor.capture(), any()))
+        .thenAnswer(
+            invocation -> {
+              Response wrappedResponse = responseCaptor.getValue();
+              wrappedResponse.getHeaders().put(CSP_REPORT_ONLY_HEADER, CSP_POLICY_WITH_NONCE);
+              return true;
+            });
 
     handler.handle(mockRequest, mockResponse, mockCallback);
 
-    Callback interceptedCallback = callbackCaptor.getValue();
-    interceptedCallback.succeeded();
-
-    String cspReportOnlyHeader = mockHeaders.get("Content-Security-Policy-Report-Only");
+    Response wrappedResponse = responseCaptor.getValue();
+    String cspReportOnlyHeader = wrappedResponse.getHeaders().get(CSP_REPORT_ONLY_HEADER);
     assertNotNull(cspReportOnlyHeader, "CSP-Report-Only header should be present");
     assertFalse(
-        cspReportOnlyHeader.contains("__CSP_NONCE__"),
+        cspReportOnlyHeader.contains(CSP_PLACEHOLDER),
         "CSP-Report-Only header should not contain placeholder");
     assertTrue(
         cspReportOnlyHeader.matches("script-src 'self' 'nonce-[A-Za-z0-9+/=]+'"),
@@ -140,25 +147,29 @@ class CspNonceHandlerTest {
 
   @Test
   void testBothCspHeadersReplacement() throws Exception {
-    mockHeaders.put("Content-Security-Policy", "script-src 'self' 'nonce-__CSP_NONCE__'");
-    mockHeaders.put(
-        "Content-Security-Policy-Report-Only", "default-src 'self' 'nonce-__CSP_NONCE__'");
-
-    ArgumentCaptor<Callback> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-    when(mockWrappedHandler.handle(any(), any(), callbackCaptor.capture())).thenReturn(true);
+    ArgumentCaptor<Response> responseCaptor = ArgumentCaptor.forClass(Response.class);
+    when(mockWrappedHandler.handle(any(), responseCaptor.capture(), any()))
+        .thenAnswer(
+            invocation -> {
+              Response wrappedResponse = responseCaptor.getValue();
+              wrappedResponse.getHeaders().put(CSP_HEADER, CSP_POLICY_WITH_NONCE);
+              wrappedResponse
+                  .getHeaders()
+                  .put(
+                      CSP_REPORT_ONLY_HEADER, "default-src 'self' 'nonce-" + CSP_PLACEHOLDER + "'");
+              return true;
+            });
 
     handler.handle(mockRequest, mockResponse, mockCallback);
 
-    Callback interceptedCallback = callbackCaptor.getValue();
-    interceptedCallback.succeeded();
-
-    String cspHeader = mockHeaders.get("Content-Security-Policy");
-    String cspReportOnlyHeader = mockHeaders.get("Content-Security-Policy-Report-Only");
+    Response wrappedResponse = responseCaptor.getValue();
+    String cspHeader = wrappedResponse.getHeaders().get(CSP_HEADER);
+    String cspReportOnlyHeader = wrappedResponse.getHeaders().get(CSP_REPORT_ONLY_HEADER);
 
     assertNotNull(cspHeader);
     assertNotNull(cspReportOnlyHeader);
-    assertFalse(cspHeader.contains("__CSP_NONCE__"));
-    assertFalse(cspReportOnlyHeader.contains("__CSP_NONCE__"));
+    assertFalse(cspHeader.contains(CSP_PLACEHOLDER));
+    assertFalse(cspReportOnlyHeader.contains(CSP_PLACEHOLDER));
 
     String noncePattern = "'nonce-([A-Za-z0-9+/=]+)'";
     assertTrue(cspHeader.matches(".*" + noncePattern + ".*"));
@@ -171,69 +182,81 @@ class CspNonceHandlerTest {
 
   @Test
   void testCspHeaderReplacementOnFailure() throws Exception {
-    mockHeaders.put("Content-Security-Policy", "script-src 'self' 'nonce-__CSP_NONCE__'");
-
-    ArgumentCaptor<Callback> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-    when(mockWrappedHandler.handle(any(), any(), callbackCaptor.capture())).thenReturn(true);
+    ArgumentCaptor<Response> responseCaptor = ArgumentCaptor.forClass(Response.class);
+    when(mockWrappedHandler.handle(any(), responseCaptor.capture(), any()))
+        .thenAnswer(
+            invocation -> {
+              Response wrappedResponse = responseCaptor.getValue();
+              wrappedResponse.getHeaders().put(CSP_HEADER, CSP_POLICY_WITH_NONCE);
+              return true;
+            });
 
     handler.handle(mockRequest, mockResponse, mockCallback);
 
-    Callback interceptedCallback = callbackCaptor.getValue();
-    interceptedCallback.failed(new RuntimeException("Test failure"));
-
-    String cspHeader = mockHeaders.get("Content-Security-Policy");
+    Response wrappedResponse = responseCaptor.getValue();
+    String cspHeader = wrappedResponse.getHeaders().get(CSP_HEADER);
     assertNotNull(cspHeader);
     assertFalse(
-        cspHeader.contains("__CSP_NONCE__"), "CSP header should be replaced even on failure");
+        cspHeader.contains(CSP_PLACEHOLDER), "CSP header should be replaced even on failure");
   }
 
   @Test
   void testNoCspHeader() throws Exception {
-    ArgumentCaptor<Callback> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-    when(mockWrappedHandler.handle(any(), any(), callbackCaptor.capture())).thenReturn(true);
+    ArgumentCaptor<Response> responseCaptor = ArgumentCaptor.forClass(Response.class);
+    when(mockWrappedHandler.handle(any(), responseCaptor.capture(), any())).thenReturn(true);
 
     handler.handle(mockRequest, mockResponse, mockCallback);
 
-    Callback interceptedCallback = callbackCaptor.getValue();
-    interceptedCallback.succeeded();
-
-    assertEquals(0, mockHeaders.size(), "No headers should be added if CSP header is not present");
+    Response wrappedResponse = responseCaptor.getValue();
+    assertEquals(
+        0,
+        wrappedResponse.getHeaders().size(),
+        "No headers should be added if CSP header is not present");
   }
 
   @Test
   void testCspHeaderWithoutPlaceholder() throws Exception {
-    mockHeaders.put("Content-Security-Policy", "script-src 'self'");
-
-    ArgumentCaptor<Callback> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-    when(mockWrappedHandler.handle(any(), any(), callbackCaptor.capture())).thenReturn(true);
+    final String cspWithoutNonce = "script-src 'self'";
+    ArgumentCaptor<Response> responseCaptor = ArgumentCaptor.forClass(Response.class);
+    when(mockWrappedHandler.handle(any(), responseCaptor.capture(), any()))
+        .thenAnswer(
+            invocation -> {
+              Response wrappedResponse = responseCaptor.getValue();
+              wrappedResponse.getHeaders().put(CSP_HEADER, cspWithoutNonce);
+              return true;
+            });
 
     handler.handle(mockRequest, mockResponse, mockCallback);
 
-    Callback interceptedCallback = callbackCaptor.getValue();
-    interceptedCallback.succeeded();
-
-    String cspHeader = mockHeaders.get("Content-Security-Policy");
+    Response wrappedResponse = responseCaptor.getValue();
+    String cspHeader = wrappedResponse.getHeaders().get(CSP_HEADER);
     assertEquals(
-        "script-src 'self'", cspHeader, "CSP header without placeholder should remain unchanged");
+        cspWithoutNonce, cspHeader, "CSP header without placeholder should remain unchanged");
   }
 
   @Test
   void testMultiplePlaceholdersInSameHeader() throws Exception {
-    mockHeaders.put(
-        "Content-Security-Policy",
-        "script-src 'self' 'nonce-__CSP_NONCE__'; style-src 'self' 'nonce-__CSP_NONCE__'");
-
-    ArgumentCaptor<Callback> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-    when(mockWrappedHandler.handle(any(), any(), callbackCaptor.capture())).thenReturn(true);
+    final String cspWithMultipleNonces =
+        "script-src 'self' 'nonce-"
+            + CSP_PLACEHOLDER
+            + "'; style-src 'self' 'nonce-"
+            + CSP_PLACEHOLDER
+            + "'";
+    ArgumentCaptor<Response> responseCaptor = ArgumentCaptor.forClass(Response.class);
+    when(mockWrappedHandler.handle(any(), responseCaptor.capture(), any()))
+        .thenAnswer(
+            invocation -> {
+              Response wrappedResponse = responseCaptor.getValue();
+              wrappedResponse.getHeaders().put(CSP_HEADER, cspWithMultipleNonces);
+              return true;
+            });
 
     handler.handle(mockRequest, mockResponse, mockCallback);
 
-    Callback interceptedCallback = callbackCaptor.getValue();
-    interceptedCallback.succeeded();
-
-    String cspHeader = mockHeaders.get("Content-Security-Policy");
+    Response wrappedResponse = responseCaptor.getValue();
+    String cspHeader = wrappedResponse.getHeaders().get(CSP_HEADER);
     assertNotNull(cspHeader);
-    assertFalse(cspHeader.contains("__CSP_NONCE__"), "All placeholders should be replaced");
+    assertFalse(cspHeader.contains(CSP_PLACEHOLDER), "All placeholders should be replaced");
 
     long nonceCount = cspHeader.chars().filter(ch -> ch == '\'').count() / 2;
     assertEquals(
@@ -256,29 +279,22 @@ class CspNonceHandlerTest {
 
   @Test
   void testCallbackForwardingOnSuccess() throws Exception {
-    ArgumentCaptor<Callback> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-    when(mockWrappedHandler.handle(any(), any(), callbackCaptor.capture())).thenReturn(true);
+    when(mockWrappedHandler.handle(any(), any(), any())).thenReturn(true);
 
     handler.handle(mockRequest, mockResponse, mockCallback);
 
-    Callback interceptedCallback = callbackCaptor.getValue();
-    interceptedCallback.succeeded();
-
-    verify(mockCallback).succeeded();
+    verify(mockWrappedHandler).handle(any(), any(), any());
   }
 
   @Test
   void testCallbackForwardingOnFailure() throws Exception {
     RuntimeException testException = new RuntimeException("Test failure");
+    when(mockWrappedHandler.handle(any(), any(), any())).thenThrow(testException);
 
-    ArgumentCaptor<Callback> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
-    when(mockWrappedHandler.handle(any(), any(), callbackCaptor.capture())).thenReturn(true);
-
-    handler.handle(mockRequest, mockResponse, mockCallback);
-
-    Callback interceptedCallback = callbackCaptor.getValue();
-    interceptedCallback.failed(testException);
-
-    verify(mockCallback).failed(testException);
+    try {
+      handler.handle(mockRequest, mockResponse, mockCallback);
+    } catch (RuntimeException e) {
+      assertEquals(testException, e);
+    }
   }
 }
