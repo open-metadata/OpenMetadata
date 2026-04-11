@@ -22,7 +22,7 @@ import {
   clickUpdateButton,
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
-import { deleteTestCase } from '../../../utils/testCases';
+import { deleteTestCase, submitTestCaseForm } from '../../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -124,15 +124,7 @@ test.describe(
         await page.fill('#testCaseFormV1_params_minValue', testCase.minValue);
         await page.fill('#testCaseFormV1_params_maxValue', testCase.maxValue);
 
-        const createTestCaseResponse = page.waitForResponse(
-          (response: Response) =>
-            response.url().includes('/api/v1/dataQuality/testCases') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('create-btn').click();
-        const response = await createTestCaseResponse;
-
-        expect(response.status()).toBe(201);
+        await submitTestCaseForm(page);
 
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -223,15 +215,7 @@ test.describe(
 
         await page.fill('#testCaseFormV1_params_value', testCase.value);
 
-        const createTestCaseResponse = page.waitForResponse(
-          (response: Response) =>
-            response.url().includes('/api/v1/dataQuality/testCases') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('create-btn').click();
-        const response = await createTestCaseResponse;
-
-        expect(response.status()).toBe(201);
+        await submitTestCaseForm(page);
 
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -328,15 +312,7 @@ test.describe(
           testCase.maxColValue
         );
 
-        const createTestCaseResponse = page.waitForResponse(
-          (response: Response) =>
-            response.url().includes('/api/v1/dataQuality/testCases') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('create-btn').click();
-        const response = await createTestCaseResponse;
-
-        expect(response.status()).toBe(201);
+        await submitTestCaseForm(page);
 
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -430,15 +406,7 @@ test.describe(
           testCase.columnCount
         );
 
-        const createTestCaseResponse = page.waitForResponse(
-          (response: Response) =>
-            response.url().includes('/api/v1/dataQuality/testCases') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('create-btn').click();
-        const response = await createTestCaseResponse;
-
-        expect(response.status()).toBe(201);
+        await submitTestCaseForm(page);
 
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -530,15 +498,7 @@ test.describe(
           testCase.columnName
         );
 
-        const createTestCaseResponse = page.waitForResponse(
-          (response: Response) =>
-            response.url().includes('/api/v1/dataQuality/testCases') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('create-btn').click();
-        const response = await createTestCaseResponse;
-
-        expect(response.status()).toBe(201);
+        await submitTestCaseForm(page);
 
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -631,15 +591,7 @@ test.describe(
           `${table.entity?.columns[0].name},${table.entity?.columns[1].name}`
         );
 
-        const createTestCaseResponse = page.waitForResponse(
-          (response: Response) =>
-            response.url().includes('/api/v1/dataQuality/testCases') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('create-btn').click();
-        const response = await createTestCaseResponse;
-
-        expect(response.status()).toBe(201);
+        await submitTestCaseForm(page);
 
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -800,15 +752,7 @@ test.describe(
         await page.getByTitle(table1.entity?.columns[1].name).click();
 
         await page.fill('#testCaseFormV1_params_where', 'test');
-        const createTestCaseResponse = page.waitForResponse(
-          (response: Response) =>
-            response.url().includes('/api/v1/dataQuality/testCases') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('create-btn').click();
-        const response = await createTestCaseResponse;
-
-        expect(response.status()).toBe(201);
+        await submitTestCaseForm(page);
 
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -1107,15 +1051,7 @@ test.describe(
           `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`
         );
 
-        const createTestCaseResponse = page.waitForResponse(
-          (response: Response) =>
-            response.url().includes('/api/v1/dataQuality/testCases') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('create-btn').click();
-        const response = await createTestCaseResponse;
-
-        expect(response.status()).toBe(201);
+        await submitTestCaseForm(page);
 
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*fields=*'

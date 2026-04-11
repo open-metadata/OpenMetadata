@@ -41,6 +41,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,
+  submitTestCaseForm,
   verifyIncidentBreadcrumbsFromTablePageRedirect,
   visitDataQualityTab,
 } from '../../../utils/testCases';
@@ -237,18 +238,7 @@ test.describe(
           .click();
 
         await page.getByRole('heading', { name: 'Glossary Terms' }).click();
-        const ingestionPipelines = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines'
-        );
-        const deploy = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines/deploy/*'
-        );
-        await page.click('[data-testid="create-btn"]');
-
-        await ingestionPipelines;
-        await deploy;
-
-        await toastNotification(page, 'Test case created successfully.');
+        await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
       });
@@ -454,10 +444,7 @@ test.describe(
 
         await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
-        await page.click('[data-testid="create-btn"]');
-        await toastNotification(page, 'Test case created successfully.');
-
-        await page.getByTestId(NEW_COLUMN_TEST_CASE.name).waitFor();
+        await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_COLUMN_TEST_CASE.name)).toBeVisible();
       });
