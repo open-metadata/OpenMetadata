@@ -14,136 +14,93 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
+import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
+import customPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json';
+import dagsterConnection from '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json';
+import databricksPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/databricksPipelineConnection.json';
+import dbtCloudConnection from '../jsons/connectionSchemas/connections/pipeline/dbtCloudConnection.json';
+import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json';
+import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
+import flinkConnection from '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json';
+import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
+import KafkaConnectConnection from '../jsons/connectionSchemas/connections/pipeline/kafkaConnectConnection.json';
+import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
+import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
+import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
 
-export const getPipelineConfig = async (type: PipelineServiceType) => {
+export const getPipelineConfig = (type: PipelineServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-
   switch (type) {
     case PipelineServiceType.Airbyte: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json'
-        )
-      ).default;
+      schema = airbyteConnection;
 
       break;
     }
 
     case PipelineServiceType.Airflow: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json'
-        )
-      ).default;
+      schema = airflowConnection;
 
       break;
     }
     case PipelineServiceType.GluePipeline: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json'
-        )
-      ).default;
+      schema = gluePipelineConnection;
 
       break;
     }
     case PipelineServiceType.KafkaConnect: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/kafkaConnectConnection.json'
-        )
-      ).default;
+      schema = KafkaConnectConnection;
 
       break;
     }
     case PipelineServiceType.Fivetran: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json'
-        )
-      ).default;
+      schema = fivetranConnection;
 
       break;
     }
     case PipelineServiceType.Dagster: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json'
-        )
-      ).default;
+      schema = dagsterConnection;
 
       break;
     }
     case PipelineServiceType.DBTCloud: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/dbtCloudConnection.json'
-        )
-      ).default;
+      schema = dbtCloudConnection;
 
       break;
     }
     case PipelineServiceType.Nifi: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json'
-        )
-      ).default;
+      schema = nifiConnection;
 
       break;
     }
     case PipelineServiceType.DomoPipeline: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json'
-        )
-      ).default;
+      schema = domoPipelineConnection;
 
       break;
     }
     case PipelineServiceType.CustomPipeline: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json'
-        )
-      ).default;
+      schema = customPipelineConnection;
 
       break;
     }
     case PipelineServiceType.DatabricksPipeline: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/databricksPipelineConnection.json'
-        )
-      ).default;
+      schema = databricksPipelineConnection;
 
       break;
     }
     case PipelineServiceType.Spline: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/splineConnection.json'
-        )
-      ).default;
+      schema = splineConnection;
 
       break;
     }
     case PipelineServiceType.OpenLineage: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json'
-        )
-      ).default;
+      schema = openLineageConnection;
 
       break;
     }
     case PipelineServiceType.Flink: {
-      schema = (
-        await import(
-          '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json'
-        )
-      ).default;
+      schema = flinkConnection;
 
       break;
     }

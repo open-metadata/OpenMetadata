@@ -11,158 +11,249 @@
  *  limitations under the License.
  */
 
-const SERVICE_ICON_LOADERS: Record<string, () => Promise<{ default: string }>> =
-  {
-    // Database services
-    mysql: () => import('../assets/img/service-icon-sql.png'),
-    sqlite: () => import('../assets/img/service-icon-sqlite.png'),
-    mssql: () => import('../assets/img/service-icon-mssql.png'),
-    redshift: () => import('../assets/img/service-icon-redshift.png'),
-    bigquery: () => import('../assets/img/service-icon-query.png'),
-    bigtable: () => import('../assets/img/service-icon-bigtable.png'),
-    hive: () => import('../assets/img/service-icon-hive.png'),
-    impala: () => import('../assets/img/service-icon-impala.png'),
-    postgres: () => import('../assets/img/service-icon-post.png'),
-    oracle: () => import('../assets/img/service-icon-oracle.png'),
-    snowflake: () => import('../assets/img/service-icon-snowflakes.png'),
-    athena: () => import('../assets/img/service-icon-athena.png'),
-    presto: () => import('../assets/img/service-icon-presto.png'),
-    trino: () => import('../assets/img/service-icon-trino.png'),
-    glue: () => import('../assets/img/service-icon-glue.png'),
-    mariadb: () => import('../assets/img/service-icon-mariadb.png'),
-    vertica: () => import('../assets/img/service-icon-vertica.png'),
-    azuresql: () => import('../assets/img/service-icon-azuresql.png'),
-    clickhouse: () => import('../assets/img/service-icon-clickhouse.png'),
-    databrick: () => import('../assets/img/service-icon-databrick.png'),
-    unitycatalog: () => import('../assets/img/service-icon-unitycatalog.svg'),
-    ibmdb2: () => import('../assets/img/service-icon-ibmdb2.png'),
-    doris: () => import('../assets/img/service-icon-doris.png'),
-    starrocks: () => import('../assets/img/service-icon-starrocks.png'),
-    druid: () => import('../assets/img/service-icon-druid.png'),
-    dynamodb: () => import('../assets/img/service-icon-dynamodb.png'),
-    singlestore: () => import('../assets/img/service-icon-singlestore.png'),
-    salesforce: () => import('../assets/img/service-icon-salesforce.png'),
-    saphana: () => import('../assets/img/service-icon-sap-hana.png'),
-    saperp: () => import('../assets/img/service-icon-sap-erp.png'),
-    deltalake: () => import('../assets/img/service-icon-delta-lake.png'),
-    pinot: () => import('../assets/img/service-icon-pinot.png'),
-    datalake: () => import('../assets/img/service-icon-datalake.png'),
-    exasol: () => import('../assets/img/service-icon-exasol.png'),
-    mongodb: () => import('../assets/img/service-icon-mongodb.png'),
-    cassandra: () => import('../assets/img/service-icon-cassandra.png'),
-    couchbase: () => import('../assets/img/service-icon-couchbase.svg'),
-    greenplum: () => import('../assets/img/service-icon-greenplum.png'),
-    teradata: () => import('../assets/svg/teradata.svg'),
-    cockroach: () => import('../assets/img/service-icon-cockroach.png'),
-    timescale: () => import('../assets/img/service-icon-timescale.png'),
-    burstiq: () => import('../assets/img/service-icon-burstiq.png'),
-    sas: () => import('../assets/img/service-icon-sas.svg'),
+import mysql from '../assets/img/service-icon-sql.png';
+import sqlite from '../assets/img/service-icon-sqlite.png';
+import mssql from '../assets/img/service-icon-mssql.png';
+import redshift from '../assets/img/service-icon-redshift.png';
+import bigquery from '../assets/img/service-icon-query.png';
+import bigtable from '../assets/img/service-icon-bigtable.png';
+import hive from '../assets/img/service-icon-hive.png';
+import impala from '../assets/img/service-icon-impala.png';
+import postgres from '../assets/img/service-icon-post.png';
+import oracle from '../assets/img/service-icon-oracle.png';
+import snowflake from '../assets/img/service-icon-snowflakes.png';
+import athena from '../assets/img/service-icon-athena.png';
+import presto from '../assets/img/service-icon-presto.png';
+import trino from '../assets/img/service-icon-trino.png';
+import glue from '../assets/img/service-icon-glue.png';
+import mariadb from '../assets/img/service-icon-mariadb.png';
+import vertica from '../assets/img/service-icon-vertica.png';
+import azuresql from '../assets/img/service-icon-azuresql.png';
+import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import databrick from '../assets/img/service-icon-databrick.png';
+import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
+import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
+import doris from '../assets/img/service-icon-doris.png';
+import starrocks from '../assets/img/service-icon-starrocks.png';
+import druid from '../assets/img/service-icon-druid.png';
+import dynamodb from '../assets/img/service-icon-dynamodb.png';
+import singlestore from '../assets/img/service-icon-singlestore.png';
+import salesforce from '../assets/img/service-icon-salesforce.png';
+import saphana from '../assets/img/service-icon-sap-hana.png';
+import saperp from '../assets/img/service-icon-sap-erp.png';
+import deltalake from '../assets/img/service-icon-delta-lake.png';
+import pinot from '../assets/img/service-icon-pinot.png';
+import datalake from '../assets/img/service-icon-datalake.png';
+import exasol from '../assets/img/service-icon-exasol.png';
+import mongodb from '../assets/img/service-icon-mongodb.png';
+import cassandra from '../assets/img/service-icon-cassandra.png';
+import couchbase from '../assets/img/service-icon-couchbase.svg';
+import greenplum from '../assets/img/service-icon-greenplum.png';
+import teradata from '../assets/svg/teradata.svg';
+import cockroach from '../assets/img/service-icon-cockroach.png';
+import timescale from '../assets/img/service-icon-timescale.png';
+import burstiq from '../assets/img/service-icon-burstiq.png';
+import sas from '../assets/img/service-icon-sas.svg';
 
     // Messaging services
-    kafka: () => import('../assets/img/service-icon-kafka.png'),
-    pubsub: () => import('../assets/svg/service-icon-pubsub.svg'),
-    redpanda: () => import('../assets/img/service-icon-redpanda.png'),
-    kinesis: () => import('../assets/img/service-icon-kinesis.png'),
+import kafka from '../assets/img/service-icon-kafka.png';
+import pubsub from '../assets/svg/service-icon-pubsub.svg';
+import redpanda from '../assets/img/service-icon-redpanda.png';
+import kinesis from '../assets/img/service-icon-kinesis.png';
 
     // Dashboard services
-    superset: () => import('../assets/img/service-icon-superset.png'),
-    looker: () => import('../assets/img/service-icon-looker.png'),
-    tableau: () => import('../assets/img/service-icon-tableau.png'),
-    redash: () => import('../assets/img/service-icon-redash.png'),
-    metabase: () => import('../assets/img/service-icon-metabase.png'),
-    powerbi: () => import('../assets/img/service-icon-power-bi.png'),
-    sigma: () => import('../assets/img/service-icon-sigma.png'),
-    mode: () => import('../assets/img/service-icon-mode.png'),
-    domo: () => import('../assets/img/service-icon-domo.png'),
-    quicksight: () => import('../assets/img/service-icon-quicksight.png'),
-    qliksense: () => import('../assets/img/service-icon-qlik-sense.png'),
-    lightdash: () => import('../assets/img/service-icon-lightdash.png'),
-    microstrategy: () => import('../assets/img/service-icon-microstrategy.svg'),
-    grafana: () => import('../assets/img/service-icon-grafana.png'),
-    hex: () => import('../assets/svg/service-icon-hex.svg'),
+import superset from '../assets/img/service-icon-superset.png';
+import looker from '../assets/img/service-icon-looker.png';
+import tableau from '../assets/img/service-icon-tableau.png';
+import redash from '../assets/img/service-icon-redash.png';
+import metabase from '../assets/img/service-icon-metabase.png';
+import powerbi from '../assets/img/service-icon-power-bi.png';
+import sigma from '../assets/img/service-icon-sigma.png';
+import mode from '../assets/img/service-icon-mode.png';
+import domo from '../assets/img/service-icon-domo.png';
+import quicksight from '../assets/img/service-icon-quicksight.png';
+import qliksense from '../assets/img/service-icon-qlik-sense.png';
+import lightdash from '../assets/img/service-icon-lightdash.png';
+import microstrategy from '../assets/img/service-icon-microstrategy.svg';
+import grafana from '../assets/img/service-icon-grafana.png';
+import hex from '../assets/svg/service-icon-hex.svg';
 
     // Pipeline services
-    airflow: () => import('../assets/img/service-icon-airflow.png'),
-    airbyte: () => import('../assets/img/Airbyte.png'),
-    dagster: () => import('../assets/img/service-icon-dagster.png'),
-    dbt: () => import('../assets/img/service-icon-dbt.png'),
-    fivetran: () => import('../assets/img/service-icon-fivetran.png'),
-    nifi: () => import('../assets/img/service-icon-nifi.png'),
-    spark: () => import('../assets/img/service-icon-spark.png'),
-    spline: () => import('../assets/img/service-icon-spline.png'),
-    flink: () => import('../assets/img/service-icon-flink.png'),
-    openlineage: () => import('../assets/img/service-icon-openlineage.svg'),
+import airflow from '../assets/img/service-icon-airflow.png';
+import airbyte from '../assets/img/Airbyte.png';
+import dagster from '../assets/img/service-icon-dagster.png';
+import dbt from '../assets/img/service-icon-dbt.png';
+import fivetran from '../assets/img/service-icon-fivetran.png';
+import nifi from '../assets/img/service-icon-nifi.png';
+import spark from '../assets/img/service-icon-spark.png';
+import spline from '../assets/img/service-icon-spline.png';
+import flink from '../assets/img/service-icon-flink.png';
+import openlineage from '../assets/img/service-icon-openlineage.svg';
 
     // ML Model services
-    mlflow: () => import('../assets/svg/service-icon-mlflow.svg'),
-    scikit: () => import('../assets/img/service-icon-scikit.png'),
-    sagemaker: () => import('../assets/img/service-icon-sagemaker.png'),
+import mlflow from '../assets/svg/service-icon-mlflow.svg';
+import scikit from '../assets/img/service-icon-scikit.png';
+import sagemaker from '../assets/img/service-icon-sagemaker.png';
 
     // Storage services
-    amazons3: () => import('../assets/img/service-icon-amazon-s3.svg'),
-    gcs: () => import('../assets/img/service-icon-gcs.png'),
+import amazons3 from '../assets/img/service-icon-amazon-s3.svg';
+import gcs from '../assets/img/service-icon-gcs.png';
 
     // Search services
-    elasticsearch: () => import('../assets/svg/elasticsearch.svg'),
-    opensearch: () => import('../assets/svg/open-search.svg'),
+import elasticsearch from '../assets/svg/elasticsearch.svg';
+import opensearch from '../assets/svg/open-search.svg';
 
     // Metadata services
-    amundsen: () => import('../assets/img/service-icon-amundsen.png'),
-    atlas: () => import('../assets/img/service-icon-atlas.svg'),
-    alationsink: () => import('../assets/img/service-icon-alation-sink.png'),
+import amundsen from '../assets/img/service-icon-amundsen.png';
+import atlas from '../assets/img/service-icon-atlas.svg';
+import alationsink from '../assets/img/service-icon-alation-sink.png';
 
     // Drive services
-    googledrive: () => import('../assets/svg/service-icon-google-drive.svg'),
-    sftp: () => import('../assets/svg/service-icon-sftp.svg'),
+import googledrive from '../assets/svg/service-icon-google-drive.svg';
+import sftp from '../assets/svg/service-icon-sftp.svg';
 
     // Default icons
-    defaultservice: () => import('../assets/svg/default-service-icon.svg'),
-    databasedefault: () => import('../assets/svg/ic-custom-database.svg'),
-    topicdefault: () => import('../assets/svg/topic.svg'),
-    dashboarddefault: () => import('../assets/svg/dashboard.svg'),
-    pipelinedefault: () => import('../assets/svg/pipeline.svg'),
-    mlmodeldefault: () => import('../assets/svg/ic-custom-model.svg'),
-    storagedefault: () => import('../assets/svg/ic-custom-storage.svg'),
-    drivedefault: () => import('../assets/svg/ic-drive-service.svg'),
-    customdrivedefault: () => import('../assets/svg/ic-custom-drive.svg'),
-    searchdefault: () => import('../assets/svg/ic-custom-search.svg'),
-    securitydefault: () => import('../assets/svg/security-safe.svg'),
-    restservice: () => import('../assets/svg/ic-service-rest-api.svg'),
-    logo: () => import('../assets/svg/logo-monogram.svg'),
-    synapse: () => import('../assets/img/service-icon-synapse.png'),
+import defaultservice from '../assets/svg/default-service-icon.svg';
+import databasedefault from '../assets/svg/ic-custom-database.svg';
+import topicdefault from '../assets/svg/topic.svg';
+import dashboarddefault from '../assets/svg/dashboard.svg';
+import pipelinedefault from '../assets/svg/pipeline.svg';
+import mlmodeldefault from '../assets/svg/ic-custom-model.svg';
+import storagedefault from '../assets/svg/ic-custom-storage.svg';
+import drivedefault from '../assets/svg/ic-drive-service.svg';
+import customdrivedefault from '../assets/svg/ic-custom-drive.svg';
+import searchdefault from '../assets/svg/ic-custom-search.svg';
+import securitydefault from '../assets/svg/security-safe.svg';
+import restservice from '../assets/svg/ic-service-rest-api.svg';
+import logo from '../assets/svg/logo-monogram.svg';
+import synapse from '../assets/img/service-icon-synapse.png';
+
+
+const SERVICE_ICON_LOADERS: Record<string, string> =
+  {
+    // Database services
+    mysql: mysql,
+    sqlite: sqlite,
+    mssql: mssql,
+    redshift: redshift,
+    bigquery: bigquery,
+    bigtable: bigtable,
+    hive: hive,
+    impala: impala,
+    postgres: postgres,
+    oracle: oracle,
+    snowflake: snowflake,
+    athena: athena,
+    presto: presto,
+    trino: trino,
+    glue: glue,
+    mariadb: mariadb,
+    vertica: vertica,
+    azuresql: azuresql,
+    clickhouse: clickhouse,
+    databrick: databrick,
+    unitycatalog: unitycatalog,
+    ibmdb2: ibmdb2,
+    doris: doris,
+    starrocks: starrocks,
+    druid: druid,
+    dynamodb: dynamodb,
+    singlestore: singlestore,
+    salesforce: salesforce,
+    saphana: saphana,
+    saperp: saperp,
+    deltalake: deltalake,
+    pinot: pinot,
+    datalake: datalake,
+    exasol: exasol,
+    mongodb: mongodb,
+    cassandra: cassandra,
+    couchbase: couchbase,
+    greenplum: greenplum,
+    teradata: teradata,
+    cockroach: cockroach,
+    timescale: timescale,
+    burstiq: burstiq,
+    sas: sas,
+
+    // Messaging services
+    kafka: kafka,
+    pubsub: pubsub,
+    redpanda: redpanda,
+    kinesis: kinesis,
+
+    // Dashboard services
+    superset: superset,
+    looker: looker,
+    tableau: tableau,
+    redash: redash,
+    metabase: metabase,
+    powerbi: powerbi,
+    sigma: sigma,
+    mode: mode,
+    domo: domo,
+    quicksight: quicksight,
+    qliksense: qliksense,
+    lightdash: lightdash,
+    microstrategy: microstrategy,
+    grafana: grafana,
+    hex: hex,
+
+    // Pipeline services
+    airflow: airflow,
+    airbyte: airbyte,
+    dagster: dagster,
+    dbt: dbt,
+    fivetran: fivetran,
+    nifi: nifi,
+    spark: spark,
+    spline: spline,
+    flink: flink,
+    openlineage: openlineage,
+
+    // ML Model services
+    mlflow: mlflow,
+    scikit: scikit,
+    sagemaker: sagemaker,
+
+    // Storage services
+    amazons3: amazons3,
+    gcs: gcs,
+
+    // Search services
+    elasticsearch: elasticsearch,
+    opensearch: opensearch,
+
+    // Metadata services
+    amundsen: amundsen,
+    atlas: atlas,
+    alationsink: alationsink,
+
+    // Drive services
+    googledrive: googledrive,
+    sftp: sftp,
+
+    // Default icons
+    defaultservice: defaultservice,
+    databasedefault: databasedefault,
+    topicdefault: topicdefault,
+    dashboarddefault: dashboarddefault,
+    pipelinedefault: pipelinedefault,
+    mlmodeldefault: mlmodeldefault,
+    storagedefault: storagedefault,
+    drivedefault: drivedefault,
+    customdrivedefault: customdrivedefault,
+    searchdefault: searchdefault,
+    securitydefault: securitydefault,
+    restservice: restservice,
+    logo: logo,
+    synapse: synapse,
   };
 
-const iconCache = new Map<string, string>();
 
-export const getServiceIcon = async (iconKey: string): Promise<string> => {
-  const normalizedKey = iconKey.toLowerCase().replace(/[_-]/g, '');
+export const getServiceIcon = (iconKey: string): string => {
+  const normalizedKey = iconKey.toLowerCase().replaceAll(/[_-]/g, '');
+  const icon = SERVICE_ICON_LOADERS[normalizedKey] ?? defaultservice;
 
-  if (iconCache.has(normalizedKey)) {
-    return iconCache.get(normalizedKey) as unknown as string;
-  }
-
-  const loader = SERVICE_ICON_LOADERS[normalizedKey];
-
-  if (!loader) {
-    const defaultIcon = await SERVICE_ICON_LOADERS.defaultservice();
-
-    return defaultIcon.default;
-  }
-
-  const icon = await loader();
-  iconCache.set(normalizedKey, icon.default);
-
-  return icon.default;
-};
-
-export const getServiceIconSync = (iconKey: string): string | null => {
-  const normalizedKey = iconKey.toLowerCase().replace(/[_-]/g, '');
-
-  return iconCache.get(normalizedKey) ?? null;
-};
-
-export const preloadServiceIcons = async (
-  iconKeys: string[]
-): Promise<void> => {
-  await Promise.all(iconKeys.map((key) => getServiceIcon(key)));
+  return icon;
 };

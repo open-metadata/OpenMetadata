@@ -22,209 +22,297 @@ import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
+import athenaConnection from '../jsons/connectionSchemas/connections/database/athenaConnection.json';
+import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
+import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
+import bigTableConnection from '../jsons/connectionSchemas/connections/database/bigTableConnection.json';
+import burstiqConnection from '../jsons/connectionSchemas/connections/database/burstIQConnection.json';
+import cassandraConnection from '../jsons/connectionSchemas/connections/database/cassandraConnection.json';
+import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
+import cockroachConnection from '../jsons/connectionSchemas/connections/database/cockroachConnection.json';
+import couchbaseConnection from '../jsons/connectionSchemas/connections/database/couchbaseConnection.json';
+import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
+import databricksConnection from '../jsons/connectionSchemas/connections/database/databricksConnection.json';
+import DatalakeConnection from '../jsons/connectionSchemas/connections/database/datalakeConnection.json';
+import db2Connection from '../jsons/connectionSchemas/connections/database/db2Connection.json';
+import deltaLakeConnection from '../jsons/connectionSchemas/connections/database/deltaLakeConnection.json';
+import domoDatabaseConnection from '../jsons/connectionSchemas/connections/database/domoDatabaseConnection.json';
+import dorisConnection from '../jsons/connectionSchemas/connections/database/dorisConnection.json';
+import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
+import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
+import exasolConnection from '../jsons/connectionSchemas/connections/database/exasolConnection.json';
+import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
+import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
+import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
+import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
+import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
+import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
+import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
+import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
+import oracleConnection from '../jsons/connectionSchemas/connections/database/oracleConnection.json';
+import pinotConnection from '../jsons/connectionSchemas/connections/database/pinotDBConnection.json';
+import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
+import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
+import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
+import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
+import sapErpConnection from '../jsons/connectionSchemas/connections/database/sapErpConnection.json';
+import sapHanaConnection from '../jsons/connectionSchemas/connections/database/sapHanaConnection.json';
+import sasConnection from '../jsons/connectionSchemas/connections/database/sasConnection.json';
+import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
+import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
+import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
+import starrocksConnection from '../jsons/connectionSchemas/connections/database/starrocksConnection.json';
+import synapseConnection from '../jsons/connectionSchemas/connections/database/synapseConnection.json';
+import teradataConnection from '../jsons/connectionSchemas/connections/database/teradataConnection.json';
+import timescaleConnection from '../jsons/connectionSchemas/connections/database/timescaleConnection.json';
+import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
+import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
+import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
 import { exportDatabaseServiceDetailsInCSV } from '../rest/serviceAPI';
 import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 
-const DATABASE_CONNECTION_SCHEMAS: Record<
-  DatabaseServiceType,
-  () => Promise<{ default: Record<string, unknown> }>
-> = {
-  [DatabaseServiceType.Athena]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/athenaConnection.json'
-    ),
-  [DatabaseServiceType.AzureSQL]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/azureSQLConnection.json'
-    ),
-  [DatabaseServiceType.BigQuery]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/bigQueryConnection.json'
-    ),
-  [DatabaseServiceType.BigTable]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/bigTableConnection.json'
-    ),
-  [DatabaseServiceType.Clickhouse]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/clickhouseConnection.json'
-    ),
-  [DatabaseServiceType.Cockroach]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/cockroachConnection.json'
-    ),
-  [DatabaseServiceType.CustomDatabase]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json'
-    ),
-  [DatabaseServiceType.Databricks]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/databricksConnection.json'
-    ),
-  [DatabaseServiceType.Datalake]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/datalakeConnection.json'
-    ),
-  [DatabaseServiceType.Db2]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/db2Connection.json'
-    ),
-  [DatabaseServiceType.DeltaLake]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/deltaLakeConnection.json'
-    ),
-  [DatabaseServiceType.Doris]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/dorisConnection.json'
-    ),
-  [DatabaseServiceType.Druid]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/druidConnection.json'
-    ),
-  [DatabaseServiceType.DynamoDB]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json'
-    ),
-  [DatabaseServiceType.Glue]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/glueConnection.json'
-    ),
-  [DatabaseServiceType.Hive]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/hiveConnection.json'
-    ),
-  [DatabaseServiceType.Impala]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/impalaConnection.json'
-    ),
-  [DatabaseServiceType.MariaDB]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/mariaDBConnection.json'
-    ),
-  [DatabaseServiceType.Mssql]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/mssqlConnection.json'
-    ),
-  [DatabaseServiceType.Mysql]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/mysqlConnection.json'
-    ),
-  [DatabaseServiceType.Oracle]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/oracleConnection.json'
-    ),
-  [DatabaseServiceType.PinotDB]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/pinotDBConnection.json'
-    ),
-  [DatabaseServiceType.Postgres]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/postgresConnection.json'
-    ),
-  [DatabaseServiceType.Presto]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/prestoConnection.json'
-    ),
-  [DatabaseServiceType.Redshift]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/redshiftConnection.json'
-    ),
-  [DatabaseServiceType.Salesforce]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/salesforceConnection.json'
-    ),
-  [DatabaseServiceType.SAPHana]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/sapHanaConnection.json'
-    ),
-  [DatabaseServiceType.SingleStore]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/singleStoreConnection.json'
-    ),
-  [DatabaseServiceType.Snowflake]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/snowflakeConnection.json'
-    ),
-  [DatabaseServiceType.SQLite]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/sqliteConnection.json'
-    ),
-  [DatabaseServiceType.Synapse]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/synapseConnection.json'
-    ),
-  [DatabaseServiceType.Teradata]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/teradataConnection.json'
-    ),
-  [DatabaseServiceType.Trino]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/trinoConnection.json'
-    ),
-  [DatabaseServiceType.UnityCatalog]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json'
-    ),
-  [DatabaseServiceType.Vertica]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/verticaConnection.json'
-    ),
-  [DatabaseServiceType.MongoDB]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/mongoDBConnection.json'
-    ),
-  [DatabaseServiceType.Couchbase]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/couchbaseConnection.json'
-    ),
-  [DatabaseServiceType.Greenplum]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/greenplumConnection.json'
-    ),
-  [DatabaseServiceType.DomoDatabase]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/domoDatabaseConnection.json'
-    ),
-  [DatabaseServiceType.Cassandra]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/cassandraConnection.json'
-    ),
-  [DatabaseServiceType.Exasol]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/exasolConnection.json'
-    ),
-  [DatabaseServiceType.SapErp]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/sapErpConnection.json'
-    ),
-  [DatabaseServiceType.Sas]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/sasConnection.json'
-    ),
-  [DatabaseServiceType.StarRocks]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/starrocksConnection.json'
-    ),
-  [DatabaseServiceType.Timescale]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/timescaleConnection.json'
-    ),
-  [DatabaseServiceType.BurstIQ]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/burstIQConnection.json'
-    ),
-};
-
-export const getDatabaseConfig = async (type: DatabaseServiceType) => {
+export const getDatabaseConfig = (type: DatabaseServiceType) => {
+  let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  const loaderFn = DATABASE_CONNECTION_SCHEMAS[type];
+  switch (type as unknown as DatabaseServiceType) {
+    case DatabaseServiceType.Athena: {
+      schema = athenaConnection;
 
-  if (!loaderFn) {
-    return cloneDeep({ schema: {}, uiSchema });
+      break;
+    }
+    case DatabaseServiceType.AzureSQL: {
+      schema = azureSQLConnection;
+
+      break;
+    }
+    case DatabaseServiceType.BigQuery: {
+      schema = bigQueryConnection;
+
+      break;
+    }
+    case DatabaseServiceType.BigTable: {
+      schema = bigTableConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Clickhouse: {
+      schema = clickhouseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Cockroach: {
+      schema = cockroachConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Databricks: {
+      schema = databricksConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Datalake: {
+      schema = DatalakeConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Db2: {
+      schema = db2Connection;
+
+      break;
+    }
+    case DatabaseServiceType.DeltaLake: {
+      schema = deltaLakeConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Doris: {
+      schema = dorisConnection;
+
+      break;
+    }
+    case DatabaseServiceType.StarRocks: {
+      schema = starrocksConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Druid: {
+      schema = druidConnection;
+
+      break;
+    }
+
+    case DatabaseServiceType.DynamoDB: {
+      schema = dynamoDBConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Exasol: {
+      schema = exasolConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Glue: {
+      schema = glueConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Hive: {
+      schema = hiveConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Impala: {
+      schema = impalaConnection;
+
+      break;
+    }
+    case DatabaseServiceType.MariaDB: {
+      schema = mariaDBConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Mssql: {
+      schema = mssqlConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Mysql: {
+      schema = mysqlConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Oracle: {
+      schema = oracleConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Postgres: {
+      schema = postgresConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Presto: {
+      schema = prestoConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Redshift: {
+      schema = redshiftConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Salesforce: {
+      schema = salesforceConnection;
+
+      break;
+    }
+    case DatabaseServiceType.SingleStore: {
+      schema = singleStoreConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Snowflake: {
+      schema = snowflakeConnection;
+
+      break;
+    }
+    case DatabaseServiceType.SQLite: {
+      schema = sqliteConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Synapse: {
+      schema = synapseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Trino: {
+      schema = trinoConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Vertica: {
+      schema = verticaConnection;
+
+      break;
+    }
+    case DatabaseServiceType.CustomDatabase: {
+      schema = customDatabaseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.DomoDatabase: {
+      schema = domoDatabaseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.SapHana: {
+      schema = sapHanaConnection;
+
+      break;
+    }
+    case DatabaseServiceType.SapERP: {
+      schema = sapErpConnection;
+
+      break;
+    }
+    case DatabaseServiceType.MongoDB: {
+      schema = mongoDBConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Cassandra: {
+      schema = cassandraConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Couchbase: {
+      schema = couchbaseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.PinotDB: {
+      schema = pinotConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Greenplum: {
+      schema = greenplumConnection;
+
+      break;
+    }
+    case DatabaseServiceType.UnityCatalog: {
+      schema = unityCatalogConnection;
+
+      break;
+    }
+    case DatabaseServiceType.SAS: {
+      schema = sasConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Teradata: {
+      schema = teradataConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Timescale: {
+      schema = timescaleConnection;
+
+      break;
+    }
+    case DatabaseServiceType.BurstIQ: {
+      schema = burstiqConnection;
+
+      break;
+    }
+    default: {
+      schema = {};
+
+      break;
+    }
   }
-
-  const schema = (await loaderFn()).default;
 
   return cloneDeep({ schema, uiSchema });
 };

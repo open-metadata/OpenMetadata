@@ -14,40 +14,36 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
+import customMlModelConnection from '../jsons/connectionSchemas/connections/mlmodel/customMlModelConnection.json';
+import mlflowConnection from '../jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json';
+import segamakerConnection from '../jsons/connectionSchemas/connections/mlmodel/sageMakerConnection.json';
+import sklearnConnection from '../jsons/connectionSchemas/connections/mlmodel/sklearnConnection.json';
 
-const MLMODEL_CONNECTION_SCHEMAS: Record<
-  MlModelServiceType,
-  () => Promise<{ default: Record<string, unknown> }>
-> = {
-  [MlModelServiceType.Mlflow]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json'
-    ),
-  [MlModelServiceType.Sklearn]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/mlmodel/sklearnConnection.json'
-    ),
-  [MlModelServiceType.CustomMlModel]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/mlmodel/customMlModelConnection.json'
-    ),
-  [MlModelServiceType.SageMaker]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/mlmodel/sageMakerConnection.json'
-    ),
-};
-
-export const getMlmodelConfig = async (type: MlModelServiceType) => {
+export const getMlmodelConfig = (type: MlModelServiceType) => {
+  let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  const loaderFn = MLMODEL_CONNECTION_SCHEMAS[type]
-    ? MLMODEL_CONNECTION_SCHEMAS[type]
-    : null;
+  switch (type) {
+    case MlModelServiceType.Mlflow: {
+      schema = mlflowConnection;
 
-  if (!loaderFn) {
-    return cloneDeep({ schema: {}, uiSchema });
+      break;
+    }
+    case MlModelServiceType.Sklearn: {
+      schema = sklearnConnection;
+
+      break;
+    }
+    case MlModelServiceType.CustomMlModel: {
+      schema = customMlModelConnection;
+
+      break;
+    }
+    case MlModelServiceType.SageMaker: {
+      schema = segamakerConnection;
+
+      break;
+    }
   }
-
-  const schema = (await loaderFn()).default;
 
   return cloneDeep({ schema, uiSchema });
 };

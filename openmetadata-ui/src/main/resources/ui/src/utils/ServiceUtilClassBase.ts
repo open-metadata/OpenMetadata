@@ -12,7 +12,7 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { get, isEmpty, toLower } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
@@ -317,12 +317,8 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
-  async getServiceLogo(type: string): Promise<string> {
-    const lowerType = toLower(type);
-
-    const icon = await getServiceIcon(lowerType);
-
-    return icon;
+  public getServiceLogo(type: string) {
+    return getServiceIcon(type);
   }
 
   public getServiceTypeLogo(searchSource: {

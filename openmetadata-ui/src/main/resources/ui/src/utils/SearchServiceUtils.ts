@@ -14,34 +14,30 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { SearchServiceType } from '../generated/entity/services/searchService';
+import customSearchConnection from '../jsons/connectionSchemas/connections/search/customSearchConnection.json';
+import elasticSearchConnection from '../jsons/connectionSchemas/connections/search/elasticSearchConnection.json';
+import openSearchConnection from '../jsons/connectionSchemas/connections/search/openSearchConnection.json';
 
-const SEARCH_CONNECTION_SCHEMAS: Record<
-  SearchServiceType,
-  () => Promise<{ default: Record<string, unknown> }>
-> = {
-  [SearchServiceType.ElasticSearch]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/search/elasticSearchConnection.json'
-    ),
-  [SearchServiceType.OpenSearch]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/search/openSearchConnection.json'
-    ),
-  [SearchServiceType.CustomSearch]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/search/customSearchConnection.json'
-    ),
-};
-
-export const getSearchServiceConfig = async (type: SearchServiceType) => {
+export const getSearchServiceConfig = (type: SearchServiceType) => {
+  let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  const loaderFn = SEARCH_CONNECTION_SCHEMAS[type];
+  switch (type) {
+    case SearchServiceType.ElasticSearch: {
+      schema = elasticSearchConnection;
 
-  if (!loaderFn) {
-    return cloneDeep({ schema: {}, uiSchema });
+      break;
+    }
+    case SearchServiceType.OpenSearch: {
+      schema = openSearchConnection;
+
+      break;
+    }
+    case SearchServiceType.CustomSearch: {
+      schema = customSearchConnection;
+
+      break;
+    }
   }
-
-  const schema = (await loaderFn()).default;
 
   return cloneDeep({ schema, uiSchema });
 };

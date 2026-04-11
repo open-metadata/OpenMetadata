@@ -14,17 +14,14 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { Type } from '../generated/entity/services/securityService';
+import rangerConnection from '../jsons/connectionSchemas/connections/security/rangerConnection.json';
 
-export const getSecurityConfig = async (type: Type) => {
+export const getSecurityConfig = (type: Type) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
 
   if (type === Type.Ranger) {
-    schema = (
-      await import(
-        '../jsons/connectionSchemas/connections/security/rangerConnection.json'
-      )
-    ).default;
+    schema = rangerConnection;
   }
 
   return cloneDeep({ schema, uiSchema });

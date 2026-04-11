@@ -12,32 +12,35 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { StorageServiceType } from '../generated/entity/services/storageService';
+import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
+import gcsConnection from '../jsons/connectionSchemas/connections/storage/gcsConnection.json';
+import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
 
-const STORAGE_CONNECTION_SCHEMAS: Record<
-  StorageServiceType,
-  () => Promise<{ default: Record<string, unknown> }>
-> = {
-  [StorageServiceType.S3]: () =>
-    import('../jsons/connectionSchemas/connections/storage/s3Connection.json'),
-  [StorageServiceType.Gcs]: () =>
-    import('../jsons/connectionSchemas/connections/storage/gcsConnection.json'),
-  [StorageServiceType.CustomStorage]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/storage/customStorageConnection.json'
-    ),
-};
-
-export const getStorageConfig = async (type: StorageServiceType) => {
+export const getStorageConfig = (type: StorageServiceType) => {
+  let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  const loaderFn = STORAGE_CONNECTION_SCHEMAS[type];
+  switch (type) {
+    case StorageServiceType.S3: {
+      schema = s3Connection;
 
-  if (!loaderFn) {
-    return cloneDeep({ schema: {}, uiSchema });
+      break;
+    }
+    case StorageServiceType.Gcs: {
+      schema = gcsConnection;
+
+      break;
+    }
+    case StorageServiceType.CustomStorage: {
+      schema = customConnection;
+
+      break;
+    }
+
+    default:
+      break;
   }
-
-  const schema = (await loaderFn()).default;
 
   return cloneDeep({ schema, uiSchema });
 };
