@@ -73,6 +73,27 @@ export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await toastNotification(page, /deleted successfully!/);
 };
 
+export const submitTestCaseForm = async (page: Page) => {
+  const testCaseResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases') &&
+      response.request().method() === 'POST'
+  );
+  await page.getByTestId('create-btn').click();
+  const response = await testCaseResponse;
+
+  expect(response.status()).toBe(201);
+
+  // Wait for the drawer to close — this is the definitive signal that test
+  // case creation and any subsequent pipeline/deploy actions triggered by the
+  // form have finished. Unlike waiting for toast or specific API responses
+  // (which may or may not fire, or may be slow), the drawer closes only after
+  // the applicable submit flow completes.
+  await page.getByTestId('test-case-form-v1').waitFor({ state: 'detached' });
+
+  return response;
+};
+
 export const waitForPermissionsResponse = (page: Page) =>
   page.waitForResponse((res) => {
     const url = res.url();

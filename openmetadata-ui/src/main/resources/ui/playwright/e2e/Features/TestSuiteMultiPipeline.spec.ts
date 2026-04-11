@@ -20,6 +20,7 @@ import {
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForTestSuiteIngestionPipelinesListResponse } from '../../utils/testCases';
+import { submitTestCaseForm } from '../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -62,13 +63,7 @@ test(
       await page.getByTestId('test-type').locator('div').click();
       await page.getByTestId('tableColumnCountToEqual').click();
       await page.getByPlaceholder('Enter a Count').fill('13');
-      const createTestCaseResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      await createTestCaseResponse;
+      await submitTestCaseForm(page);
 
       await page.reload();
       await waitForAllLoadersToDisappear(page);
