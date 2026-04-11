@@ -107,6 +107,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
 )
 from metadata.ingestion.source.database.snowflake.utils import (
     _current_database_schema,
+    _get_schema_unique_constraints,
     get_columns,
     get_foreign_keys,
     get_pk_constraint,
@@ -176,6 +177,7 @@ SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_all_view_definitions = get_all_view_definitions
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
+SnowflakeDialect._get_schema_unique_constraints = _get_schema_unique_constraints
 SnowflakeDialect._get_schema_columns = get_schema_columns
 Inspector.get_table_names = get_table_names_reflection
 Inspector.get_view_names = get_view_names_reflection
