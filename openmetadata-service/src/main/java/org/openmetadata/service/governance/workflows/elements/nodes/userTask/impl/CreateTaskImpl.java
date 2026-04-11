@@ -419,6 +419,14 @@ public class CreateTaskImpl implements TaskListener {
       return null;
     }
     if (existingTask != null) {
+      LOG.info(
+          "[CreateTaskImpl] Updating existing task '{}' stage='{}' workflowAssignees={} requestedAssignees={}",
+          existingTask.getId(),
+          existingTask.getWorkflowStageId(),
+          assignees != null ? assignees.stream().map(EntityReference::getName).toList() : null,
+          requestedAssignees != null
+              ? requestedAssignees.stream().map(EntityReference::getName).toList()
+              : null);
       Task currentTask =
           taskRepository.get(
               null,
@@ -428,7 +436,14 @@ public class CreateTaskImpl implements TaskListener {
       Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
       List<EntityReference> resolvedAssignees =
           resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees);
-      updatedTask.setStatus(stageStatus != null ? stageStatus : updatedTask.getStatus());
+      boolean preserveTerminalWorkflowState = isTerminalTaskStatus(currentTask.getStatus());
+      if (!preserveTerminalWorkflowState) {
+        updatedTask.setStatus(stageStatus != null ? stageStatus : updatedTask.getStatus());
+        updatedTask.setWorkflowStageId(workflowStageId);
+        updatedTask.setWorkflowStageDisplayName(
+            workflowStageDisplayName != null ? workflowStageDisplayName : workflowStageId);
+        updatedTask.setAvailableTransitions(availableTransitions);
+      }
       if (resolvedAssignees != null) {
         updatedTask.setAssignees(resolvedAssignees);
       }
@@ -437,10 +452,6 @@ public class CreateTaskImpl implements TaskListener {
       }
       updatedTask.setWorkflowInstanceId(
           workflowInstanceId != null ? workflowInstanceId : updatedTask.getWorkflowInstanceId());
-      updatedTask.setWorkflowStageId(workflowStageId);
-      updatedTask.setWorkflowStageDisplayName(
-          workflowStageDisplayName != null ? workflowStageDisplayName : workflowStageId);
-      updatedTask.setAvailableTransitions(availableTransitions);
       updatedTask.setUpdatedAt(System.currentTimeMillis());
       updatedTask.setUpdatedBy(updatedBy);
       updatedTask.setPayload(
@@ -574,11 +585,11 @@ public class CreateTaskImpl implements TaskListener {
     List<EntityReference> existingAssignees = existingTask.getAssignees();
     boolean hasExistingAssignees = existingAssignees != null && !existingAssignees.isEmpty();
 
-    // The initial workflow materialization runs asynchronously after the task row is created.
-    // If the API caller has already updated assignees on the pending row, leave assignees unset
-    // in the workflow-side PUT so the repository preserves the current database value.
-    if (PENDING_WORKFLOW_START_STAGE_ID.equals(existingTask.getWorkflowStageId())
-        && hasExistingAssignees) {
+    // For API-created workflow-managed tasks, taskAssignees is seeded into the workflow start
+    // variables. Subsequent workflow callbacks must not overwrite the task row's current
+    // assignees with BPMN candidate users or the original start-variable snapshot; the persisted
+    // task row is the source of truth once assignees are present.
+    if (requestedAssignees != null && !requestedAssignees.isEmpty() && hasExistingAssignees) {
       return null;
     }
 
@@ -591,6 +602,13 @@ public class CreateTaskImpl implements TaskListener {
     }
 
     return existingAssignees;
+  }
+
+  static boolean isTerminalTaskStatus(TaskEntityStatus status) {
+    return status != null
+        && status != TaskEntityStatus.Open
+        && status != TaskEntityStatus.InProgress
+        && status != TaskEntityStatus.Pending;
   }
 
   static boolean shouldSkipDeletedWorkflowManagedDraftTask(

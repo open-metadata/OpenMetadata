@@ -82,6 +82,30 @@ public class FieldPathUtils {
   }
 
   /**
+   * Resolve the current description for a field path.
+   *
+   * @param entity The entity to inspect
+   * @param fieldPath The field path (e.g., "columns::customer_id::description")
+   * @return the current description if the field path could be resolved
+   */
+  public static Optional<String> getFieldDescription(EntityInterface entity, String fieldPath) {
+    if (fieldPath == null
+        || fieldPath.isEmpty()
+        || fieldPath.equals("description")
+        || fieldPath.equals("entity")) {
+      return Optional.ofNullable(entity.getDescription());
+    }
+
+    FieldPathComponents components = parseFieldPath(fieldPath);
+    if (components == null) {
+      LOG.warn("[FieldPathUtils] Could not parse field path: {}", fieldPath);
+      return Optional.empty();
+    }
+
+    return navigateAndGetDescription(entity, components);
+  }
+
+  /**
    * Set description on a field identified by field path.
    * Modifies the entity in memory.
    */
@@ -122,7 +146,7 @@ public class FieldPathUtils {
    * - "columns.field_name.description"
    * - "messageSchema::\"nested.field\"::description"
    */
-  static FieldPathComponents parseFieldPath(String fieldPath) {
+  public static FieldPathComponents parseFieldPath(String fieldPath) {
     if (fieldPath == null || fieldPath.isEmpty()) {
       return null;
     }
@@ -188,6 +212,21 @@ public class FieldPathUtils {
     return handleNestedContainer(entity, container, fieldName, description);
   }
 
+  /** Navigate entity structure and get the description on the target field. */
+  private static Optional<String> navigateAndGetDescription(
+      EntityInterface entity, FieldPathComponents components) {
+
+    String container = components.containerName();
+    String fieldName = components.fieldName();
+
+    List<?> fieldList = getFieldList(entity, container);
+    if (fieldList != null) {
+      return getDescriptionFromList(fieldList, fieldName);
+    }
+
+    return getNestedContainerDescription(entity, container, fieldName);
+  }
+
   /** Handle nested containers like messageSchema.schemaFields or dataModel.columns. */
   private static boolean handleNestedContainer(
       EntityInterface entity, String container, String fieldName, String description) {
@@ -228,6 +267,45 @@ public class FieldPathUtils {
 
     LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
     return false;
+  }
+
+  /** Handle nested containers like messageSchema.schemaFields or dataModel.columns. */
+  private static Optional<String> getNestedContainerDescription(
+      EntityInterface entity, String container, String fieldName) {
+
+    if ("messageSchema".equals(container)) {
+      Object schema = invokeGetter(entity, "getMessageSchema");
+      if (schema != null) {
+        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
+        if (schemaFields != null) {
+          return getDescriptionFromList(schemaFields, fieldName);
+        }
+      }
+    }
+
+    if ("dataModel".equals(container)) {
+      Object dataModel = invokeGetter(entity, "getDataModel");
+      if (dataModel != null) {
+        List<?> columns = getFieldListFromObject(dataModel, "columns");
+        if (columns != null) {
+          return getDescriptionFromList(columns, fieldName);
+        }
+      }
+    }
+
+    if ("responseSchema".equals(container) || "requestSchema".equals(container)) {
+      String methodName = "get" + capitalize(container);
+      Object schema = invokeGetter(entity, methodName);
+      if (schema != null) {
+        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
+        if (schemaFields != null) {
+          return getDescriptionFromList(schemaFields, fieldName);
+        }
+      }
+    }
+
+    LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
+    return Optional.empty();
   }
 
   /**
@@ -272,6 +350,42 @@ public class FieldPathUtils {
     return false;
   }
 
+  /** Find field by name in list and get its description. */
+  private static Optional<String> getDescriptionFromList(List<?> fieldList, String fieldName) {
+
+    Optional<?> field = findFieldByName(fieldList, fieldName);
+    if (field.isPresent()) {
+      return getDescription(field.get());
+    }
+
+    if (fieldName.contains(".")) {
+      String[] parts = fieldName.split("\\.", 2);
+      String parentName = parts[0];
+      String childPath = parts[1];
+
+      Optional<?> parent = findFieldByName(fieldList, parentName);
+      if (parent.isPresent()) {
+        List<?> children = getFieldListFromObject(parent.get(), "children");
+        if (children != null) {
+          return getDescriptionFromList(children, childPath);
+        }
+      }
+    }
+
+    for (Object item : fieldList) {
+      List<?> children = getFieldListFromObject(item, "children");
+      if (children != null && !children.isEmpty()) {
+        Optional<String> description = getDescriptionFromList(children, fieldName);
+        if (description.isPresent()) {
+          return description;
+        }
+      }
+    }
+
+    LOG.warn("[FieldPathUtils] Field '{}' not found in list", fieldName);
+    return Optional.empty();
+  }
+
   /** Find a field by name in a list of fields. */
   private static Optional<?> findFieldByName(List<?> fieldList, String name) {
     for (Object item : fieldList) {
@@ -293,6 +407,12 @@ public class FieldPathUtils {
       LOG.warn("[FieldPathUtils] Could not set description: {}", e.getMessage());
       return false;
     }
+  }
+
+  /** Get description from a field object. */
+  private static Optional<String> getDescription(Object field) {
+    Object description = invokeGetter(field, "getDescription");
+    return Optional.ofNullable((String) description);
   }
 
   /** Get a field list from entity by name (columns, fields, schemaFields, etc.). */

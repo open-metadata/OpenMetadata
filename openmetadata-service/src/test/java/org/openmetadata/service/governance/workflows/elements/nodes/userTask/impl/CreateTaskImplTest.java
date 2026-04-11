@@ -24,6 +24,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TaskEntityStatus;
 
 class CreateTaskImplTest {
 
@@ -56,7 +57,7 @@ class CreateTaskImplTest {
   }
 
   @Test
-  void testResolveExistingTaskAssigneesUsesWorkflowAssigneesAfterMaterialization() {
+  void testResolveExistingTaskAssigneesPreservesDatabaseAssignmentsAfterMaterialization() {
     EntityReference existingAssignee =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -80,6 +81,24 @@ class CreateTaskImplTest {
         CreateTaskImpl.resolveExistingTaskAssignees(
             existingTask, List.of(workflowAssignee), List.of(workflowAssignee));
 
+    assertNull(resolved);
+  }
+
+  @Test
+  void testResolveExistingTaskAssigneesUsesWorkflowAssigneesForWorkflowNativeTasks() {
+    EntityReference workflowAssignee =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("user")
+            .withName("shared_user1")
+            .withFullyQualifiedName("shared_user1");
+
+    Task existingTask =
+        new Task().withId(UUID.randomUUID()).withWorkflowStageId("review").withAssignees(null);
+
+    List<EntityReference> resolved =
+        CreateTaskImpl.resolveExistingTaskAssignees(existingTask, List.of(workflowAssignee), null);
+
     assertEquals(List.of(workflowAssignee), resolved);
   }
 
@@ -99,5 +118,22 @@ class CreateTaskImplTest {
     assertFalse(
         CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(
             UUID.randomUUID(), true, existingTask));
+  }
+
+  @Test
+  void testIsTerminalTaskStatusReturnsTrueForResolvedStates() {
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Approved));
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Rejected));
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Completed));
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Cancelled));
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Failed));
+  }
+
+  @Test
+  void testIsTerminalTaskStatusReturnsFalseForOpenStates() {
+    assertFalse(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Open));
+    assertFalse(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.InProgress));
+    assertFalse(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Pending));
+    assertFalse(CreateTaskImpl.isTerminalTaskStatus(null));
   }
 }

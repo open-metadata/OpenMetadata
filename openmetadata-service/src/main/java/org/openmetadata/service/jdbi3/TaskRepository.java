@@ -768,6 +768,15 @@ public class TaskRepository extends EntityRepository<Task> {
 
     // Allow if user is owner of the target entity
     List<EntityReference> owners = about != null ? Entity.getOwners(about) : null;
+    LOG.info(
+        "[TaskRepository] checkPermissionsForResolveTask taskId='{}' user='{}' closeTask={} type='{}' about='{}' assignees={} owners={}",
+        task.getId(),
+        userName,
+        closeTask,
+        task.getType(),
+        about != null ? about.getFullyQualifiedName() : null,
+        assignees != null ? assignees.stream().map(EntityReference::getName).toList() : null,
+        owners != null ? owners.stream().map(EntityReference::getName).toList() : null);
     if (!nullOrEmpty(owners)
         && owners.stream().anyMatch(owner -> owner.getName().equals(userName))) {
       return;
@@ -1115,6 +1124,14 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     try {
+      LOG.info(
+          "[TaskRepository] triggerWorkflowManagedTask taskId='{}' draftAssignees={} createdBy='{}' updatedBy='{}'",
+          task.getId(),
+          task.getAssignees() != null
+              ? task.getAssignees().stream().map(EntityReference::getName).toList()
+              : null,
+          task.getCreatedBy() != null ? task.getCreatedBy().getName() : null,
+          task.getUpdatedBy());
       WorkflowDefinition workflowDefinition =
           Entity.getEntity(
               Entity.WORKFLOW_DEFINITION,
