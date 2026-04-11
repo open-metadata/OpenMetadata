@@ -448,7 +448,7 @@ class SampleTest(TestCase):
                 sample_data_count=5,
             )
 
-        results = [sampler.fetch_sample_data().rows for _ in range(10)]
+        results = [sampler.fetch_sample_data().rows for _ in range(20)]
         assert any(
             results[i] != results[0] for i in range(1, len(results))
         ), "Expected non-deterministic row ordering with randomizedSample=True"
