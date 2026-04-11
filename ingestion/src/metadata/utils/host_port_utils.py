@@ -15,10 +15,7 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-# Schemes we recognise as "user entered a full URL by mistake"
-_URL_SCHEMES = frozenset(
-    {"http", "https", "jdbc", "mysql", "postgresql", "mongodb", "redis"}
-)
+
 
 
 def clean_host_port(host_port: str) -> str:
@@ -53,7 +50,7 @@ def clean_host_port(host_port: str) -> str:
         extracted from the value.
     """
     if not host_port:
-        return host_port
+        return host_port or ""
 
     # Detect whether a scheme prefix is present
     scheme = host_port.split("://")[0].lower() if "://" in host_port else None
@@ -83,7 +80,14 @@ def clean_host_port(host_port: str) -> str:
             f"(e.g. 'localhost:3306')."
         )
 
-    port = parsed.port  # None when no port is present
+    try:
+        port = parsed.port  # None when no port is present
+    except ValueError:
+        raise ValueError(
+            f"hostPort '{host_port}' contains an invalid port. "
+            f"Please use the format 'hostname' or 'hostname:port' "
+            f"(e.g. 'localhost:3306') with a numeric port when provided."
+        )
     return f"{hostname}:{port}" if port else hostname
 
 

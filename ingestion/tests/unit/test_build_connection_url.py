@@ -137,8 +137,9 @@ class TestGetConnectionURL(unittest.TestCase):
 
 class TestCleanHostPortInConnectionURL(unittest.TestCase):
     """
-    Integration-style tests verifying that URL-prefixed hostPort values
-    produce correct SQLAlchemy connection URLs.
+    Unit tests verifying that clean_host_port() correctly sanitises
+    URL-prefixed hostPort values before they are used in connection
+    URL building.
     Issue #24348 — ValueError: invalid literal for int() with base 10.
     """
 

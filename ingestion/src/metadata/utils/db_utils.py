@@ -13,9 +13,10 @@
 Helpers module for db sources
 """
 import time
-from metadata.utils.host_port_utils import get_host_from_host_port as _clean_get_host
 import traceback
 from typing import Iterable, List, Union
+
+from metadata.utils.host_port_utils import get_host_from_host_port as _clean_get_host
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
