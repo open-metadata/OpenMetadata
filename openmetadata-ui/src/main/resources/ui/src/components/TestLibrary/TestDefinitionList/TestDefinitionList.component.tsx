@@ -79,6 +79,7 @@ import {
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../common/Table/Table';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
@@ -107,6 +108,7 @@ const TestDefinitionList = () => {
   } = usePaging(PAGE_SIZE_BASE);
 
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDefinition, setSelectedDefinition] = useState<
     TestDefinition | undefined
@@ -143,7 +145,7 @@ const TestDefinitionList = () => {
       ...filter,
       value:
         urlFilters[filter.key]?.map((v) =>
-          mapUrlValueToOption(v, filter.options)
+          mapUrlValueToOption(v, filter.options),
         ) || [],
     }));
   }, [urlFilters]);
@@ -175,7 +177,7 @@ const TestDefinitionList = () => {
         cursorValue: undefined,
       });
     },
-    [updateUrlParams, handlePageChange]
+    [updateUrlParams, handlePageChange],
   );
 
   // Use filter hooks
@@ -194,9 +196,7 @@ const TestDefinitionList = () => {
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: {
       filters: urlFilters,
-      searchQuery: '',
-      currentPage,
-      pageSize,
+      searchQuery: searchQuery,
     },
     filterConfigs: TEST_DEFINITION_FILTERS,
     parsedFilters,
@@ -208,9 +208,9 @@ const TestDefinitionList = () => {
       checkPermission(
         Operation.Create,
         ResourceEntity.TEST_DEFINITION,
-        permissions
+        permissions,
       ),
-    [permissions]
+    [permissions],
   );
 
   const viewPermission = useMemo(
@@ -218,14 +218,14 @@ const TestDefinitionList = () => {
       checkPermission(
         Operation.ViewBasic,
         ResourceEntity.TEST_DEFINITION,
-        permissions
+        permissions,
       ) ||
       checkPermission(
         Operation.ViewAll,
         ResourceEntity.TEST_DEFINITION,
-        permissions
+        permissions,
       ),
-    [permissions]
+    [permissions],
   );
 
   const fetchTestDefinitionPermissions = useCallback(
@@ -244,25 +244,27 @@ const TestDefinitionList = () => {
           definitions.map((def) =>
             getEntityPermissionByFqn(
               ResourceEntity.TEST_DEFINITION,
-              def.fullyQualifiedName ?? ''
-            )
+              def.fullyQualifiedName ?? '',
+            ),
           );
 
-        const permissionResponses = await Promise.allSettled(
-          permissionPromises
+        const permissionResponses =
+          await Promise.allSettled(permissionPromises);
+
+        const permissionsMap = definitions.reduce(
+          (acc, def, idx) => {
+            const response = permissionResponses[idx];
+
+            return {
+              ...acc,
+              [def.name]:
+                response?.status === 'fulfilled'
+                  ? response.value
+                  : DEFAULT_ENTITY_PERMISSION,
+            };
+          },
+          {} as Record<string, OperationPermission>,
         );
-
-        const permissionsMap = definitions.reduce((acc, def, idx) => {
-          const response = permissionResponses[idx];
-
-          return {
-            ...acc,
-            [def.name]:
-              response?.status === 'fulfilled'
-                ? response.value
-                : DEFAULT_ENTITY_PERMISSION,
-          };
-        }, {} as Record<string, OperationPermission>);
 
         setTestDefinitionPermissions(permissionsMap);
       } catch (error) {
@@ -271,54 +273,71 @@ const TestDefinitionList = () => {
         setPermissionLoading(false);
       }
     },
-    [getEntityPermissionByFqn]
+    [getEntityPermissionByFqn],
   );
 
-  const fetchTestDefinitions = useCallback(
-    async (pagingOffset?: Partial<Paging>) => {
-      setIsLoading(true);
-      try {
-        // Extract filter values for API
-        const entityTypeFilter = urlFilters.entityType?.[0] as
-          | EntityType
-          | undefined;
-        const testPlatformFilter = urlFilters.testPlatforms?.[0] as
-          | TestPlatform
-          | undefined;
+  const fetchTestDefinitions = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Extract filter values for API
+      const entityTypeFilter = urlFilters.entityType?.[0] as
+        | EntityType
+        | undefined;
+      const testPlatformFilter = urlFilters.testPlatforms?.[0] as
+        | TestPlatform
+        | undefined;
 
-        const { data, paging: responsePaging } = await getListTestDefinitions({
-          after: pagingOffset?.after,
-          before: pagingOffset?.before,
-          limit: pageSize,
-          entityType: entityTypeFilter,
-          testPlatform: testPlatformFilter,
-        });
-        setTestDefinitions(data);
-        handlePagingChange(responsePaging);
-        // Fetch permissions asynchronously to avoid blocking list render
-        fetchTestDefinitionPermissions(data);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [pageSize, handlePagingChange, fetchTestDefinitionPermissions, urlFilters]
-  );
+      const { data } = await getListTestDefinitions({
+        limit: 10000,
+        entityType: entityTypeFilter,
+        testPlatform: testPlatformFilter,
+      });
+      setTestDefinitions(data);
+
+      // Fetch permissions asynchronously to avoid blocking list render
+      fetchTestDefinitionPermissions(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchTestDefinitionPermissions, urlFilters]);
 
   useEffect(() => {
-    const { cursorType, cursorValue } = pagingCursor ?? {};
+    fetchTestDefinitions();
+  }, [urlParams.entityType, urlParams.testPlatforms]);
 
-    if (cursorType && cursorValue) {
-      fetchTestDefinitions({ [cursorType]: cursorValue });
-    } else {
-      fetchTestDefinitions();
+  useEffect(() => {
+    handlePageChange(1);
+  }, [searchQuery, handlePageChange]);
+
+  const filteredTestDefinitions = useMemo(() => {
+    const text = searchQuery.toLowerCase();
+
+    let filtered = testDefinitions;
+    if (text) {
+      filtered = testDefinitions.filter(
+        (test) =>
+          test.displayName?.toLowerCase().includes(text) ||
+          test.name?.toLowerCase().includes(text) ||
+          test.description?.toLowerCase().includes(text),
+      );
     }
-  }, [pageSize, pagingCursor, urlParams.entityType, urlParams.testPlatforms]);
 
+    return filtered.sort((a, b) => {
+      const nameA = a.displayName || a.name || '';
+      const nameB = b.displayName || b.name || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [testDefinitions, searchQuery]);
+
+  const slicedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTestDefinitions.slice(start, start + pageSize);
+  }, [filteredTestDefinitions, currentPage, pageSize]);
   const handleEnableToggle = async (
     record: TestDefinition,
-    checked: boolean
+    checked: boolean,
   ) => {
     try {
       const updatedData = { ...record, enabled: checked };
@@ -328,7 +347,7 @@ const TestDefinitionList = () => {
       showSuccessToast(
         t('server.entity-updated-success', {
           entity: t('label.test-definition'),
-        })
+        }),
       );
       // Optimistically update the local state instead of re-fetching
       setTestDefinitions((prev) =>
@@ -338,8 +357,8 @@ const TestDefinitionList = () => {
                 ...item,
                 enabled: checked,
               }
-            : item
-        )
+            : item,
+        ),
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -363,12 +382,12 @@ const TestDefinitionList = () => {
 
     try {
       await deleteTestDefinitionByFqn(
-        definitionToDelete.fullyQualifiedName ?? ''
+        definitionToDelete.fullyQualifiedName ?? '',
       );
       showSuccessToast(
         t('server.entity-deleted-success', {
           entity: t('label.test-definition'),
-        })
+        }),
       );
       setIsDeleteModalVisible(false);
       setDefinitionToDelete(undefined);
@@ -394,7 +413,7 @@ const TestDefinitionList = () => {
     setIsFormVisible(false);
     if (selectedDefinition && data) {
       setTestDefinitions((prev) =>
-        prev.map((item) => (item.id === data.id ? data : item))
+        prev.map((item) => (item.id === data.id ? data : item)),
       );
     } else {
       // New item created: reset to page 1 to show the new item
@@ -553,7 +572,7 @@ const TestDefinitionList = () => {
         },
       },
     ],
-    [t, testDefinitionPermissions]
+    [t, testDefinitionPermissions],
   );
 
   const handlePageChangeCallback = ({
@@ -564,7 +583,7 @@ const TestDefinitionList = () => {
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },
-        pageSize
+        pageSize,
       );
     }
   };
@@ -573,21 +592,23 @@ const TestDefinitionList = () => {
     () => ({
       currentPage,
       pageSize,
-      paging,
-      pagingHandler: handlePageChangeCallback,
-      showPagination,
+      paging: { total: filteredTestDefinitions.length },
+      pagingHandler: ({ currentPage }: { currentPage?: number }) => {
+        handlePageChange(currentPage ?? 1);
+      },
+      isNumberBased: true,
+      showPagination: filteredTestDefinitions.length > pageSize,
       isLoading,
       onShowSizeChange: handlePageSizeChange,
     }),
     [
       currentPage,
-      paging,
       pageSize,
+      filteredTestDefinitions.length,
       handlePageChange,
       handlePageSizeChange,
-      showPagination,
       isLoading,
-    ]
+    ],
   );
 
   if (!viewPermission) {
@@ -636,8 +657,18 @@ const TestDefinitionList = () => {
             bodyStyle={{
               padding: 0,
             }}>
-            <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
-              <div className="tw:flex tw:gap-2 tw:items-center">
+            <div className="flex flex-col gap-2 p-4">
+              <div className="flex gap-2 items-center w-full">
+                <div className="w-64">
+                  <Searchbar
+                    removeMargin
+                    placeholder={t('label.search-entity', {
+                      entity: t('label.data-quality-rule-plural'),
+                    })}
+                    searchValue={searchQuery}
+                    onSearch={setSearchQuery}
+                  />
+                </div>
                 {quickFilters}
               </div>
               {!isEmpty(urlFilters) && <div>{filterSelectionDisplay}</div>}
@@ -650,7 +681,7 @@ const TestDefinitionList = () => {
               containerClassName="custom-card-with-table"
               customPaginationProps={customPaginationProps}
               data-testid="test-definition-table"
-              dataSource={testDefinitions}
+              dataSource={slicedData}
               loading={isLoading}
               locale={{
                 emptyText: !isLoading && (
