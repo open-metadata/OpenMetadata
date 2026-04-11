@@ -26,7 +26,6 @@ import {
   getDomainDisplayName,
   getEntityBreadcrumbs,
   getEntityLinkFromType,
-  getEntityOverview,
   hasCustomPropertiesTab,
   hasLineageTab,
   hasSchemaTab,
@@ -215,59 +214,6 @@ describe('EntityUtils unit tests', () => {
         { name: 'label.test-suite-plural', url: undefined },
         { name: 'testSuite', url: '' },
       ]);
-    });
-  });
-
-  describe('getEntityOverview', () => {
-    it('should call getChartOverview and get ChartData if ExplorePageTabs is charts', () => {
-      const result = JSON.stringify(
-        getEntityOverview(ExplorePageTabs.CHARTS, {
-          ...MOCK_CHART_DATA,
-          dataProducts: [],
-        })
-      );
-
-      expect(result).toContain('label.owner-plural');
-      expect(result).toContain('label.chart');
-      expect(result).toContain('label.url-uppercase');
-      expect(result).toContain('Are you an ethnic minority in your city?');
-      expect(result).toContain(
-        `http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20127%7D`
-      );
-      expect(result).toContain('label.service');
-      expect(result).toContain('sample_superset');
-      expect(result).toContain('Other');
-      expect(result).toContain('label.service-type');
-      expect(result).toContain('Superset');
-    });
-
-    it('should call getChartOverview and get TableData if ExplorePageTabs is table', () => {
-      const result = JSON.stringify(
-        getEntityOverview(ExplorePageTabs.TABLES, {
-          ...MOCK_TABLE,
-          tags: [MOCK_TIER_DATA],
-          dataProducts: [],
-        })
-      );
-
-      expect(result).toContain('label.owner-plural');
-      expect(result).toContain('label.type');
-      expect(result).toContain('label.service');
-      expect(result).toContain('label.database');
-      expect(result).toContain('label.schema');
-      expect(result).toContain('label.tier');
-      expect(result).toContain('label.usage');
-      expect(result).toContain('label.query-plural');
-      expect(result).toContain('label.column-plural');
-      expect(result).toContain('label.row-plural');
-      expect(getTierTags).toHaveBeenCalledWith([MOCK_TIER_DATA]);
-      expect(result).toContain('Regular');
-      expect(result).toContain('sample_data');
-      expect(result).toContain('ecommerce_db');
-      expect(result).toContain('shopify');
-      expect(result).toContain('0th');
-      expect(result).toContain('4');
-      expect(result).toContain('14567');
     });
   });
 

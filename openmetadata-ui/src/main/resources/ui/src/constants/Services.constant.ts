@@ -27,5 +27,5 @@
  * - const icon = await getServiceIcon('mysql');
  */
 
-export * from './ServiceUISchema.constant';
 export * from './ServiceType.constant';
+export * from './ServiceUISchema.constant';

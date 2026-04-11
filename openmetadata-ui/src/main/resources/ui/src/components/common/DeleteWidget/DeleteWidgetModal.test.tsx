@@ -17,6 +17,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';
 import DeleteWidgetModal from './DeleteWidgetModal';
+import { ReactNode } from 'react';
 
 const mockProps: DeleteWidgetModalProps = {
   visible: true,
@@ -36,10 +37,6 @@ const mockPropsUser: DeleteWidgetModalProps = {
 
 const mockOnLogoutHandler = jest.fn();
 
-jest.mock('lodash', () => ({
-  ...jest.requireActual('lodash'),
-  startCase: jest.fn(),
-}));
 
 jest.mock('../../../rest/miscAPI', () => ({
   deleteEntity: jest.fn().mockImplementation(() =>
@@ -63,6 +60,12 @@ jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
+}));
+
+jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  Transi18next: ({ children }: { children: ReactNode }) => children,
+  detectBrowserLanguage: jest.fn().mockImplementation(() => 'en'),
+  t: jest.fn().mockImplementation((key: string) => key),
 }));
 
 describe('Test DeleteWidgetV1 Component', () => {

@@ -32,17 +32,17 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-// Mock Transi18next component
-jest.mock('../../../../utils/CommonUtils', () => ({
-  Transi18next: jest
-    .fn()
-    .mockImplementation(({ i18nKey, renderElement, values }) => (
-      <div data-testid="trans-component">
-        {i18nKey} - {values?.entity} - {values?.docs}
-        {renderElement}
-      </div>
-    )),
-}));
+// // Mock Transi18next component
+// jest.mock('../../../../utils/CommonUtils', () => ({
+//   Transi18next: jest
+//     .fn()
+//     .mockImplementation(({ i18nKey, renderElement, values }) => (
+//       <div data-testid="trans-component">
+//         {i18nKey} - {values?.entity} - {values?.docs}
+//         {renderElement}
+//       </div>
+//     )),
+// }));
 
 // Mock Loader component
 jest.mock('../../../common/Loader/Loader', () => {
@@ -272,11 +272,8 @@ describe('CustomPropertiesSection', () => {
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveAttribute('data-type', 'PERMISSION');
-
-      const transComponent = screen.getByTestId('trans-component');
-
-      expect(transComponent).toBeInTheDocument();
-      expect(transComponent).toHaveTextContent('message.no-access-placeholder');
+      
+      expect(errorPlaceholder).toHaveTextContent('message.no-access-placeholder');
 
       expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
       expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
@@ -296,11 +293,8 @@ describe('CustomPropertiesSection', () => {
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveAttribute('data-type', 'CUSTOM');
-
-      const transComponent = screen.getByTestId('trans-component');
-
-      expect(transComponent).toBeInTheDocument();
-      expect(transComponent).toHaveTextContent(
+      
+      expect(errorPlaceholder).toHaveTextContent(
         'message.no-custom-properties-entity'
       );
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -36,6 +35,7 @@ import {
   TEST_CONNECTION_DEFINITION,
   WORKFLOW_DETAILS,
 } from './TestConnection.mock';
+import { act } from 'react';
 
 const mockonValidateFormRequiredFields = jest.fn();
 
@@ -95,6 +95,7 @@ jest.mock(
       .mockImplementation(() => ({ isAirflowAvailable: true })),
   })
 );
+
 
 jest.useFakeTimers();
 

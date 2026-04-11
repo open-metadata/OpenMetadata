@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import {
   LAST_VERSION_FETCH_TIME_KEY,
   ONE_HOUR_MS,
@@ -18,6 +18,7 @@ import {
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import NavBarComponent from './NavBar';
+import { act } from 'react';
 
 // Place these at the very top of your test file, before any imports!
 const mockGetItem = jest.fn();
@@ -213,6 +214,11 @@ jest.mock('./PopupAlertClassBase', () => ({
   },
 }));
 
+jest.mock('../../utils/i18next/i18nextUtil', () => ({
+  languageSelectOptions: [],
+  loadLocale: jest.fn()
+})) 
+  
 describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBarComponent />);
@@ -287,6 +293,7 @@ describe('handleDocumentVisibilityChange one hour threshold', () => {
     jest.resetModules();
     jest.clearAllMocks();
     global.Date.now = jest.fn();
+    mockUseCustomLocation.pathname = '/'
   });
 
   afterEach(() => {

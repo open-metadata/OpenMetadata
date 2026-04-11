@@ -40,7 +40,8 @@ export const getImages = (imageUri: string) => {
     EImageTypes,
     string
   >;
-  for (const type in EImageTypes) {
+  const keys = Object.keys(EImageTypes);
+  for (const type of keys) {
     imagesObj[type] = imageUri.replace('s96-c', EImageTypes[type]);
   }
 

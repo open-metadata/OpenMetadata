@@ -16,8 +16,8 @@ import {
   Builder,
   Config,
   ImmutableTree,
-  Utils as QbUtils,
   Query,
+  Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
 import { WidgetProps } from '@rjsf/utils';
 import {

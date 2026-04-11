@@ -39,8 +39,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
-  REDIRECT_PATHNAME,
   APP_ROUTER_ROUTES as ROUTES,
+  REDIRECT_PATHNAME,
 } from '../../../constants/router.constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';

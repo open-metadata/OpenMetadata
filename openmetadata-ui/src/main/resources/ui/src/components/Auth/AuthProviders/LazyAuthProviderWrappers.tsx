@@ -11,23 +11,32 @@
  *  limitations under the License.
  */
 
-import { IPublicClientApplication } from '@azure/msal-browser';
+import type { IPublicClientApplication } from '@azure/msal-browser';
 import { lazy, ReactNode, Suspense } from 'react';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
 
-const Auth0ProviderComponent = lazy(() =>
-  import('@auth0/auth0-react').then((m) => ({ default: m.Auth0Provider }))
+const Auth0ProviderComponent = withSuspenseFallback(
+  lazy(() =>
+    import('@auth0/auth0-react').then((m) => ({ default: m.Auth0Provider }))
+  )
 );
 
-const MsalProviderComponent = lazy(() =>
-  import('@azure/msal-react').then((m) => ({ default: m.MsalProvider }))
+const MsalProviderComponent = withSuspenseFallback(
+  lazy(() =>
+    import('@azure/msal-react').then((m) => ({ default: m.MsalProvider }))
+  )
 );
 
-const OktaAuthProviderComponent = lazy(() =>
-  import('./OktaAuthProvider').then((m) => ({ default: m.OktaAuthProvider }))
+const OktaAuthProviderComponent = withSuspenseFallback(
+  lazy(() =>
+    import('./OktaAuthProvider').then((m) => ({ default: m.OktaAuthProvider }))
+  )
 );
 
-const BasicAuthProviderComponent = lazy(() => import('./BasicAuthProvider'));
+const BasicAuthProviderComponent = withSuspenseFallback(
+  lazy(() => import('./BasicAuthProvider'))
+);
 
 interface Auth0ProviderWrapperProps {
   clientId: string;
@@ -66,11 +75,9 @@ export const LazyMsalProviderWrapper = ({
   children,
 }: MsalProviderWrapperProps) => {
   return (
-    <Suspense fallback={<Loader fullScreen />}>
-      <MsalProviderComponent instance={instance}>
-        {children}
-      </MsalProviderComponent>
-    </Suspense>
+    <MsalProviderComponent instance={instance}>
+      {children}
+    </MsalProviderComponent>
   );
 };
 
@@ -81,11 +88,7 @@ interface OktaAuthProviderWrapperProps {
 export const LazyOktaAuthProviderWrapper = ({
   children,
 }: OktaAuthProviderWrapperProps) => {
-  return (
-    <Suspense fallback={<Loader fullScreen />}>
-      <OktaAuthProviderComponent>{children}</OktaAuthProviderComponent>
-    </Suspense>
-  );
+  return <OktaAuthProviderComponent>{children}</OktaAuthProviderComponent>;
 };
 
 interface BasicAuthProviderWrapperProps {
@@ -95,9 +98,5 @@ interface BasicAuthProviderWrapperProps {
 export const LazyBasicAuthProviderWrapper = ({
   children,
 }: BasicAuthProviderWrapperProps) => {
-  return (
-    <Suspense fallback={<Loader fullScreen />}>
-      <BasicAuthProviderComponent>{children}</BasicAuthProviderComponent>
-    </Suspense>
-  );
+  return <BasicAuthProviderComponent>{children}</BasicAuthProviderComponent>;
 };

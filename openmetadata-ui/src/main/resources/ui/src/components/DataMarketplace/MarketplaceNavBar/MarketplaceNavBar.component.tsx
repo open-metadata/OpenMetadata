@@ -57,7 +57,10 @@ import {
   getEntityType,
   prepareFeedLink,
 } from '../../../utils/FeedUtils';
-import { languageSelectOptions, loadLocale } from '../../../utils/i18next/i18nextUtil';
+import {
+  languageSelectOptions,
+  loadLocale,
+} from '../../../utils/i18next/i18nextUtil';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
 import { getHelpDropdownItems } from '../../../utils/NavbarUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';

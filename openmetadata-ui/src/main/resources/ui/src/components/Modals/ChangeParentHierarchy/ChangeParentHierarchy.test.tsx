@@ -12,7 +12,6 @@
  */
 
 import {
-  act,
   findByRole,
   fireEvent,
   render,
@@ -22,6 +21,7 @@ import userEvent from '@testing-library/user-event';
 import { PageType } from '../../../generated/system/ui/page';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
 import ChangeParent from './ChangeParentHierarchy.component';
+import { act } from 'react';
 
 const mockOnCancel = jest.fn();
 

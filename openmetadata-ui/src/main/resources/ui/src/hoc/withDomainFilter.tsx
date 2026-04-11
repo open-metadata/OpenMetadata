@@ -18,11 +18,7 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
-import { getBasePath } from '../utils/HistoryUtils';
-
-export const getPathNameFromWindowLocation = () => {
-  return window.location.pathname.replace(getBasePath() ?? '', '');
-};
+import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
@@ -31,6 +27,7 @@ export const withDomainFilter = (
   const activeDomain = useDomainStore.getState().activeDomain;
   const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
   const currentPath = getPathNameFromWindowLocation();
+
   const shouldNotIntercept = [
     '/domain',
     '/auth/logout',

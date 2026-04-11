@@ -19,9 +19,6 @@ import Suggestions from './Suggestions';
 
 // Mock dependencies
 jest.mock('../../rest/searchAPI');
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn(),
-}));
 jest.mock('../../context/TourProvider/TourProvider');
 jest.mock('../../utils/SearchUtils', () => ({
   filterOptionsByIndex: jest.fn((options, index) => {
@@ -39,12 +36,16 @@ jest.mock('../../utils/SearchUtils', () => ({
 jest.mock('../../utils/SearchClassBase', () => ({
   getEntitiesSuggestions: jest.fn(() => []),
 }));
-jest.mock('../../utils/CommonUtils', () => ({
-  Transi18next: ({ i18nKey, values }: { i18nKey: string; values: any }) => (
-    <span data-testid="transi18next">
-      {i18nKey} {values?.keyword || ''}
-    </span>
-  ),
+jest.mock('../../utils/i18next/LocalUtil', () => ({
+  Transi18next: jest.fn().mockImplementation(({ i18nKey }) => {
+    return <span>{i18nKey}</span>;
+  }),
+  __esModule: true,
+  default: {
+    t: jest.fn().mockImplementation((key) => key),
+  },
+  t: jest.fn().mockImplementation((key) => key),
+  detectBrowserLanguage: jest.fn().mockImplementation(() => 'en'),
 }));
 
 // Mock location.search for the component
@@ -56,7 +57,6 @@ Object.defineProperty(window, 'location', {
 });
 
 const mockSearchQuery = searchQuery as jest.Mock;
-const mockUseTranslation = useTranslation as jest.Mock;
 const mockUseTourProvider = useTourProvider as jest.Mock;
 
 const defaultProps = {
@@ -71,15 +71,11 @@ const defaultProps = {
 describe('Suggestions Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseTranslation.mockReturnValue({
-      t: jest.fn((key: string) => key),
-      i18n: { language: 'en' },
-    } as any);
     mockUseTourProvider.mockReturnValue({
       isTourOpen: false,
       updateTourPage: jest.fn(),
       updateTourSearch: jest.fn(),
-    } as any);
+    });
   });
 
   describe('AI Query Suggestions', () => {

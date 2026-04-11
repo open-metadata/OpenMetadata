@@ -14,16 +14,16 @@ import { InternalAxiosRequestConfig } from 'axios';
 import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { useDomainStore } from '../hooks/useDomainStore';
-import {
-  getPathNameFromWindowLocation,
-  withDomainFilter,
-} from './withDomainFilter';
+import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
+import { withDomainFilter } from './withDomainFilter';
 
 jest.mock('../hooks/useDomainStore');
+jest.mock('../utils/LocationUtils', () => ({
+  getPathNameFromWindowLocation: jest.fn(),
+}));
 
 describe('withDomainFilter', () => {
   const mockGetState = jest.fn();
-  const mockGetPathName = getPathNameFromWindowLocation as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -47,7 +47,9 @@ describe('withDomainFilter', () => {
 
   describe('should not intercept requests', () => {
     it('should return config unchanged when path starts with /domain', () => {
-      mockGetPathName.mockReturnValue('/domain/test');
+      (getPathNameFromWindowLocation as jest.Mock).mockImplementationOnce(
+        () => '/domain/test'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'testDomain' });
 
       const config = createMockConfig();
@@ -58,7 +60,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should return config unchanged when path starts with /auth/logout', () => {
-      mockGetPathName.mockReturnValue('/auth/logout');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/auth/logout'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'testDomain' });
 
       const config = createMockConfig();
@@ -69,7 +73,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should return config unchanged when path starts with /auth/refresh', () => {
-      mockGetPathName.mockReturnValue('/auth/refresh');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/auth/refresh'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'testDomain' });
 
       const config = createMockConfig();
@@ -80,7 +86,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should return config unchanged when method is not GET', () => {
-      mockGetPathName.mockReturnValue('/api/test');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/test'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'testDomain' });
 
       const config = createMockConfig('post');
@@ -91,7 +99,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should return config unchanged when activeDomain is DEFAULT_DOMAIN_VALUE', () => {
-      mockGetPathName.mockReturnValue('/api/test');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/test'
+      );
       mockGetState.mockReturnValue({ activeDomain: DEFAULT_DOMAIN_VALUE });
 
       const config = createMockConfig();
@@ -104,7 +114,9 @@ describe('withDomainFilter', () => {
 
   describe('regular GET requests', () => {
     it('should add domain parameter for regular GET requests with active domain', () => {
-      mockGetPathName.mockReturnValue('/api/tables');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/tables'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const config = createMockConfig('get', '/api/tables');
@@ -116,7 +128,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should preserve existing params when adding domain parameter', () => {
-      mockGetPathName.mockReturnValue('/api/tables');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/tables'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const config = createMockConfig('get', '/api/tables', {
@@ -135,7 +149,9 @@ describe('withDomainFilter', () => {
 
   describe('search query requests', () => {
     it('should add should filter with term and prefix for /search/query with active domain', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const config = createMockConfig('get', '/search/query', {
@@ -174,7 +190,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should return config unchanged for TAG index searches', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const config = createMockConfig('get', '/search/query', {
@@ -187,7 +205,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should use fullyQualifiedName field for DOMAIN index searches', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const config = createMockConfig('get', '/search/query', {
@@ -206,7 +226,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should preserve existing query_filter and add should filter', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const existingFilter = {
@@ -256,7 +278,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should handle invalid JSON in query_filter gracefully', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const config = createMockConfig('get', '/search/query', {
@@ -294,7 +318,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should handle query_filter with empty must array', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const existingFilter = {
@@ -331,7 +357,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should handle empty object query_filter gracefully', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const config = createMockConfig('get', '/search/query', {
@@ -369,7 +397,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should preserve existing params when adding query_filter', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const config = createMockConfig('get', '/search/query', {
@@ -386,7 +416,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should preserve non-bool top-level clauses when adding domain filter', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const existingFilter = JSON.stringify({
@@ -432,7 +464,9 @@ describe('withDomainFilter', () => {
 
   describe('nested domain paths', () => {
     it('should handle nested domain paths correctly', () => {
-      mockGetPathName.mockReturnValue('/api/tables');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/tables'
+      );
       mockGetState.mockReturnValue({
         activeDomain: 'engineering.backend.services',
       });
@@ -446,7 +480,9 @@ describe('withDomainFilter', () => {
     });
 
     it('should add should filter with nested domain for search queries', () => {
-      mockGetPathName.mockReturnValue('/api/search');
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
       mockGetState.mockReturnValue({
         activeDomain: 'engineering.backend.services',
       });
