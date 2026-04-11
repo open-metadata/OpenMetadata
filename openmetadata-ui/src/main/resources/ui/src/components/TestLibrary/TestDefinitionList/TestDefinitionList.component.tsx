@@ -293,19 +293,16 @@ const TestDefinitionList = () => {
         testPlatform: testPlatformFilter,
       });
       setTestDefinitions(data);
-
-      // Fetch permissions asynchronously to avoid blocking list render
-      fetchTestDefinitionPermissions(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [fetchTestDefinitionPermissions, urlFilters]);
+  }, [urlFilters]);
 
   useEffect(() => {
     fetchTestDefinitions();
-  }, [urlParams.entityType, urlParams.testPlatforms]);
+  }, [fetchTestDefinitions]);
 
   useEffect(() => {
     handlePageChange(1);
@@ -335,6 +332,13 @@ const TestDefinitionList = () => {
     const start = (currentPage - 1) * pageSize;
     return filteredTestDefinitions.slice(start, start + pageSize);
   }, [filteredTestDefinitions, currentPage, pageSize]);
+
+  useEffect(() => {
+    if (slicedData.length > 0) {
+      fetchTestDefinitionPermissions(slicedData);
+    }
+  }, [slicedData, fetchTestDefinitionPermissions]);
+
   const handleEnableToggle = async (
     record: TestDefinition,
     checked: boolean,
