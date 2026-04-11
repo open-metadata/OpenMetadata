@@ -1418,11 +1418,9 @@ public class TableRepository extends EntityRepository<Table> {
 
     List<TagLabel> mergedTableTags =
         mergeTagsWithIncomingPrecedence(table.getTags(), dataModel.getTags());
-    if (table.getTags() != null) {
-      java.util.List<String> incomingTags = dataModel.getTags() != null 
-          ? dataModel.getTags().stream().map(org.openmetadata.schema.type.TagLabel::getTagFQN).collect(java.util.stream.Collectors.toList())
-          : java.util.Collections.emptyList();
-      mergedTableTags.removeIf(t -> t.getLabelType() == org.openmetadata.schema.type.TagLabel.LabelType.AUTOMATED && !incomingTags.contains(t.getTagFQN()));
+    if (table.getTags() != null && dataModel.getTags() != null) {
+      List<String> incomingTags = dataModel.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+      mergedTableTags.removeIf(t -> t.getLabelType() == TagLabel.LabelType.AUTOMATED && !incomingTags.contains(t.getTagFQN()));
     }
     daoCollection.tagUsageDAO().deleteTagsByTarget(table.getFullyQualifiedName());
     table.setTags(mergedTableTags);
@@ -1441,11 +1439,9 @@ public class TableRepository extends EntityRepository<Table> {
       }
       List<TagLabel> mergedColumnTags =
           mergeTagsWithIncomingPrecedence(stored.getTags(), modelColumn.getTags());
-      if (stored.getTags() != null) {
-        java.util.List<String> incomingColTags = modelColumn.getTags() != null 
-            ? modelColumn.getTags().stream().map(org.openmetadata.schema.type.TagLabel::getTagFQN).collect(java.util.stream.Collectors.toList())
-            : java.util.Collections.emptyList();
-        mergedColumnTags.removeIf(t -> t.getLabelType() == org.openmetadata.schema.type.TagLabel.LabelType.AUTOMATED && !incomingColTags.contains(t.getTagFQN()));
+      if (stored.getTags() != null && modelColumn.getTags() != null) {
+        List<String> incomingColTags = modelColumn.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+        mergedColumnTags.removeIf(t -> t.getLabelType() == TagLabel.LabelType.AUTOMATED && !incomingColTags.contains(t.getTagFQN()));
       }
       if (stored.getFullyQualifiedName() != null) {
         stored.setTags(mergedColumnTags);
