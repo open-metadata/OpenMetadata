@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Response, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
@@ -906,17 +906,7 @@ test.describe(
         await page.getByLabel('Strategy').click();
         await page.getByTitle('ROWS').click();
         await page.fill('#testCaseFormV1_params_threshold', '23');
-        const createTestCaseResponse = page.waitForResponse(
-          (response: Response) =>
-            response.url().includes('/api/v1/dataQuality/testCases') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('create-btn').click();
-        await createTestCaseResponse;
-
-        const response = await createTestCaseResponse;
-
-        expect(response.status()).toBe(201);
+        await submitTestCaseForm(page);
 
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*fields=*'
