@@ -133,10 +133,12 @@
           "threshold": {
             "type": "number",
             "description": "Minimum similarity score threshold (0.0 to 1.0). Results below this score are excluded. Default is 0.0 (no filtering). Use higher values like 0.5 or 0.7 to get only highly relevant results.",
-            "default": 0.0
+            "default": 0
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "examples": [
           {
             "description": "Find tables related to customer purchases",
@@ -145,7 +147,14 @@
           {
             "description": "Find dashboards about revenue in BigQuery",
             "query": "revenue metrics dashboard",
-            "filters": {"entityType": ["dashboard"], "service": ["BigQuery"]}
+            "filters": {
+              "entityType": [
+                "dashboard"
+              ],
+              "service": [
+                "BigQuery"
+              ]
+            }
           },
           {
             "description": "High-confidence search for PII data",
@@ -155,7 +164,11 @@
           {
             "description": "Find pipeline assets processing user events",
             "query": "user event processing pipeline",
-            "filters": {"entityType": ["pipeline"]}
+            "filters": {
+              "entityType": [
+                "pipeline"
+              ]
+            }
           }
         ]
       }
@@ -345,7 +358,10 @@
                 "description": "Id of the entity"
               }
             },
-            "required": ["type", "id"]
+            "required": [
+              "type",
+              "id"
+            ]
           },
           "toEntity": {
             "description": "Destination Entity.",
@@ -360,7 +376,10 @@
                 "description": "Id of the entity"
               }
             },
-            "required": ["type", "id"]
+            "required": [
+              "type",
+              "id"
+            ]
           }
         },
         "required": [
@@ -481,7 +500,13 @@
           "metricExpressionLanguage": {
             "type": "string",
             "description": "Language used to define the metric expression.",
-            "enum": ["SQL", "Java", "JavaScript", "Python", "External"]
+            "enum": [
+              "SQL",
+              "Java",
+              "JavaScript",
+              "Python",
+              "External"
+            ]
           },
           "metricExpressionCode": {
             "type": "string",
@@ -490,17 +515,49 @@
           "metricType": {
             "type": "string",
             "description": "Type of the metric.",
-            "enum": ["COUNT", "SUM", "AVERAGE", "RATIO", "PERCENTAGE", "MIN", "MAX", "MEDIAN", "MODE", "STANDARD_DEVIATION", "VARIANCE", "OTHER"]
+            "enum": [
+              "COUNT",
+              "SUM",
+              "AVERAGE",
+              "RATIO",
+              "PERCENTAGE",
+              "MIN",
+              "MAX",
+              "MEDIAN",
+              "MODE",
+              "STANDARD_DEVIATION",
+              "VARIANCE",
+              "OTHER"
+            ]
           },
           "granularity": {
             "type": "string",
             "description": "Time granularity at which the metric is computed.",
-            "enum": ["SECOND", "MINUTE", "HOUR", "DAY", "WEEK", "MONTH", "QUARTER", "YEAR"]
+            "enum": [
+              "SECOND",
+              "MINUTE",
+              "HOUR",
+              "DAY",
+              "WEEK",
+              "MONTH",
+              "QUARTER",
+              "YEAR"
+            ]
           },
           "unitOfMeasurement": {
             "type": "string",
             "description": "Unit of measurement for the metric value.",
-            "enum": ["COUNT", "DOLLARS", "PERCENTAGE", "TIMESTAMP", "SIZE", "REQUESTS", "EVENTS", "TRANSACTIONS", "OTHER"]
+            "enum": [
+              "COUNT",
+              "DOLLARS",
+              "PERCENTAGE",
+              "TIMESTAMP",
+              "SIZE",
+              "REQUESTS",
+              "EVENTS",
+              "TRANSACTIONS",
+              "OTHER"
+            ]
           },
           "customUnitOfMeasurement": {
             "type": "string",
@@ -542,7 +599,11 @@
             }
           }
         },
-        "required": ["name", "metricExpressionLanguage", "metricExpressionCode"]
+        "required": [
+          "name",
+          "metricExpressionLanguage",
+          "metricExpressionCode"
+        ]
       }
     },
     {
@@ -584,6 +645,60 @@
           "entityType"
         ]
       }
+    },
+    {
+      "name": "create_domain",
+      "description": "Create a new Domain in OpenMetadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Domain description"
+          },
+          "domainType": {
+            "type": "string",
+            "description": "Type",
+            "enum": ["Aggregate", "Source-aligned", "Consumer-aligned"]
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "parent": {
+            "type": "string",
+            "description": "Parent FQN"
+          },
+          "experts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "domainType"
+        ]
+      }
     }
   ]
 }
+
