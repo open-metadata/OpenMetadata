@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.security;
 
 import java.security.SecureRandom;
@@ -8,12 +21,11 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
+import org.openmetadata.service.config.web.CspHeaderFactory;
 
 public final class CspNonceHandler extends Handler.Wrapper {
   public static final String CSP_NONCE_ATTRIBUTE = "cspNonce";
-  private static final String CSP_NONCE_PLACEHOLDER = "__CSP_NONCE__";
-  private static final String CSP_HEADER_NAME = "Content-Security-Policy";
-  private static final String CSP_REPORT_ONLY_HEADER_NAME = "Content-Security-Policy-Report-Only";
+  public static final String CSP_NONCE_PLACEHOLDER = "__CSP_NONCE__";
   private static final int NONCE_SIZE_BYTES = 16;
   private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -34,8 +46,8 @@ public final class CspNonceHandler extends Handler.Wrapper {
                   new HttpFields.Mutable.Wrapper(delegate) {
                     @Override
                     public HttpFields.Mutable put(HttpField field) {
-                      if (field.getName().equals(CSP_HEADER_NAME)
-                          || field.getName().equals(CSP_REPORT_ONLY_HEADER_NAME)) {
+                      if (field.getName().equals(CspHeaderFactory.CSP_HEADER)
+                          || field.getName().equals(CspHeaderFactory.CSP_REPORT_ONLY_HEADER)) {
                         final String value = field.getValue();
                         if (value != null && value.contains(CSP_NONCE_PLACEHOLDER)) {
                           final String replaced = value.replace(CSP_NONCE_PLACEHOLDER, nonce);

@@ -14,6 +14,7 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.config.web.CspHeaderFactory;
 import org.openmetadata.service.security.CspNonceHandler;
 
 /**
@@ -95,13 +96,13 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
           .build()
           .forEach(
               (name, value) -> {
-                if ((name.equals("Content-Security-Policy")
-                        || name.equals("Content-Security-Policy-Report-Only"))
-                    && value.contains("__CSP_NONCE__")) {
+                if ((name.equals(CspHeaderFactory.CSP_HEADER)
+                        || name.equals(CspHeaderFactory.CSP_REPORT_ONLY_HEADER))
+                    && value.contains(CspNonceHandler.CSP_NONCE_PLACEHOLDER)) {
                   final String nonce =
                       (String) request.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
                   if (nonce != null) {
-                    value = value.replace("__CSP_NONCE__", nonce);
+                    value = value.replace(CspNonceHandler.CSP_NONCE_PLACEHOLDER, nonce);
                   }
                 }
                 response.getHeaders().put(new HttpField(name, value));

@@ -16,6 +16,7 @@ package org.openmetadata.service.security;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -181,7 +182,7 @@ class CspNonceHandlerTest {
   }
 
   @Test
-  void testCspHeaderReplacementOnFailure() throws Exception {
+  void testCspHeaderReplacedWhenHandlerSucceeds() throws Exception {
     ArgumentCaptor<Response> responseCaptor = ArgumentCaptor.forClass(Response.class);
     when(mockWrappedHandler.handle(any(), responseCaptor.capture(), any()))
         .thenAnswer(
@@ -196,8 +197,7 @@ class CspNonceHandlerTest {
     Response wrappedResponse = responseCaptor.getValue();
     String cspHeader = wrappedResponse.getHeaders().get(CSP_HEADER);
     assertNotNull(cspHeader);
-    assertFalse(
-        cspHeader.contains(CSP_PLACEHOLDER), "CSP header should be replaced even on failure");
+    assertFalse(cspHeader.contains(CSP_PLACEHOLDER), "CSP placeholder should be replaced");
   }
 
   @Test
@@ -291,10 +291,9 @@ class CspNonceHandlerTest {
     RuntimeException testException = new RuntimeException("Test failure");
     when(mockWrappedHandler.handle(any(), any(), any())).thenThrow(testException);
 
-    try {
-      handler.handle(mockRequest, mockResponse, mockCallback);
-    } catch (RuntimeException e) {
-      assertEquals(testException, e);
-    }
+    RuntimeException thrown =
+        assertThrows(
+            RuntimeException.class, () -> handler.handle(mockRequest, mockResponse, mockCallback));
+    assertEquals(testException, thrown);
   }
 }
