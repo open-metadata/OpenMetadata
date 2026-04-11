@@ -33,6 +33,7 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -104,6 +105,7 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
+  private static final int MAX_TASK_CLEANUP_RETRIES = 3;
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
@@ -1236,15 +1238,7 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
     }
-    try {
-      // Task cleanup must complete before delete returns so callers do not observe orphaned tasks.
-      daoCollection
-          .taskDAO()
-          .deleteByCreatorAndCategory(
-              entity.getId().toString(), TaskCategory.MetadataUpdate.value());
-    } catch (Exception ex) {
-      LOG.error("Error deleting suggestion tasks for user: ", ex);
-    }
+    deleteSuggestionTasksForUser(entity);
 
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
@@ -1255,6 +1249,47 @@ public class UserRepository extends EntityRepository<User> {
             LOG.error("Error updating test case incident assignee: ", ex);
           }
         });
+  }
+
+  private void deleteSuggestionTasksForUser(User entity) {
+    for (int attempt = 1; attempt <= MAX_TASK_CLEANUP_RETRIES; attempt++) {
+      try {
+        daoCollection
+            .taskDAO()
+            .deleteByCreatorAndCategory(
+                entity.getId().toString(), TaskCategory.MetadataUpdate.value());
+        return;
+      } catch (RuntimeException ex) {
+        if (!isTransientDeadlock(ex) || attempt == MAX_TASK_CLEANUP_RETRIES) {
+          throw ex;
+        }
+        LOG.warn(
+            "Retrying suggestion task cleanup for user {} after transient deadlock (attempt {}/{})",
+            entity.getFullyQualifiedName(),
+            attempt + 1,
+            MAX_TASK_CLEANUP_RETRIES);
+      }
+    }
+  }
+
+  private boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      if (current instanceof SQLException sqlException) {
+        int errorCode = sqlException.getErrorCode();
+        String sqlState = sqlException.getSQLState();
+        if (errorCode == 1213
+            || errorCode == 1205
+            || "40001".equals(sqlState)
+            || "40P01".equals(sqlState)) {
+          return true;
+        }
+      }
+      String message = current.getMessage();
+      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Handles entity updated from PUT and POST operation. */
