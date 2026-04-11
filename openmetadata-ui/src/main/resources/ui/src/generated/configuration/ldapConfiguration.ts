@@ -51,6 +51,14 @@ export interface LDAPConfiguration {
      */
     groupMemberAttributeName?: string;
     /**
+     * Enable opt-in recursive (transitive) group membership resolution
+     * for Active Directory nested groups. When true, uses the
+     * LDAP_MATCHING_RULE_IN_CHAIN extensible match rule
+     * (OID 1.2.840.113556.1.4.1941) to resolve nested group membership
+     * server-side. Applicable only when using Active Directory.
+     */
+    recursiveGroupMembership?: boolean;
+    /**
      * LDAP server address without scheme(Example :- localhost)
      */
     host: string;

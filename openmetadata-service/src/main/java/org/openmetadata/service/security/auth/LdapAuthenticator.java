@@ -82,6 +82,7 @@ import org.springframework.util.CollectionUtils;
 @Slf4j
 public class LdapAuthenticator implements AuthenticatorHandler {
   static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection ";
+  static final String AD_RECURSIVE_GROUP_MATCHING_RULE = "1.2.840.113556.1.4.1941";
   private static final int MAX_RETRIES = 3;
   private static final int BASE_DELAY_MS = 500;
   private RoleRepository roleRepository;
@@ -386,6 +387,34 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     return user;
   }
 
+
+  /**
+   * Builds the LDAP filter used to match group membership for a given user DN.
+   *
+   * <p>When {@code recursiveGroupMembership} is enabled in the LDAP configuration,
+   * this method uses Active Directory's {@code LDAP_MATCHING_RULE_IN_CHAIN} extensible
+   * match rule (OID {@value AD_RECURSIVE_GROUP_MATCHING_RULE}) to resolve transitive
+   * (nested) group membership server-side without requiring multiple queries.
+   *
+   * <p>When the flag is disabled (default), a standard equality filter is used
+   * which only matches direct group members.
+   *
+   * @param ldapConfiguration the current LDAP configuration
+   * @param userDn the distinguished name of the user being checked
+   * @return a {@link Filter} for use in the group membership LDAP search
+   */
+  Filter buildGroupMemberFilter(LdapConfiguration ldapConfiguration, String userDn) {
+    if (Boolean.TRUE.equals(ldapConfiguration.getRecursiveGroupMembership())) {
+      return Filter.createExtensibleMatchFilter(
+          ldapConfiguration.getGroupMemberAttributeName(),
+          AD_RECURSIVE_GROUP_MATCHING_RULE,
+          false,
+          userDn);
+    }
+    return Filter.createEqualityFilter(
+        ldapConfiguration.getGroupMemberAttributeName(), userDn);
+  }
+
   /**
    * Getting user's roles according to the mapping between ldap groups and roles
    */
@@ -397,8 +426,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           Filter.createEqualityFilter(
               ldapConfiguration.getGroupAttributeName(),
               ldapConfiguration.getGroupAttributeValue());
-      Filter groupMemberAttr =
-          Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
+      Filter groupMemberAttr = buildGroupMemberFilter(ldapConfiguration, userDn);
       Filter groupAndMemberFilter = Filter.createANDFilter(groupFilter, groupMemberAttr);
       SearchRequest searchRequest =
           new SearchRequest(
