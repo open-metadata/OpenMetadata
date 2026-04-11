@@ -199,13 +199,17 @@ class TestTaskMixin:
             _task_response(status=TaskEntityStatus.Cancelled.value),
             {"totalRequested": 1, "successful": 1, "failed": 0, "results": []},
         ]
-        mixin.client.patch.return_value = _task_response(status=TaskEntityStatus.InProgress.value)
+        mixin.client.patch.return_value = _task_response(
+            status=TaskEntityStatus.InProgress.value
+        )
         mixin.client.put.return_value = _task_response(
             status=TaskEntityStatus.Approved.value
         )
 
         updated = mixin.add_task_comment(task_id, "hello")
-        patched = mixin.patch_task(task_id, [{"op": "replace", "path": "/status", "value": "InProgress"}])
+        patched = mixin.patch_task(
+            task_id, [{"op": "replace", "path": "/status", "value": "InProgress"}]
+        )
         closed = mixin.close_task(task_id, comment=comment)
         applied = mixin.apply_suggestion(task_id, comment=comment)
         bulk_result = mixin.bulk_task_operation(bulk_request)
@@ -284,7 +288,8 @@ class TestAnnouncementMixin:
         mixin.client.put.return_value = _announcement_response()
 
         patched = mixin.patch_announcement(
-            announcement_id, [{"op": "replace", "path": "/description", "value": "updated"}]
+            announcement_id,
+            [{"op": "replace", "path": "/description", "value": "updated"}],
         )
         mixin.delete_announcement(announcement_id, hard_delete=True)
         restored = mixin.restore_announcement(announcement_id)
@@ -350,7 +355,9 @@ class TestFeedMixin:
 
         created_thread = mixin.create_thread(create_thread_request)
         created_post = mixin.create_post(thread_id, create_post_request)
-        posts = mixin.list_posts(thread_id, after="after-cursor", before="before-cursor")
+        posts = mixin.list_posts(
+            thread_id, after="after-cursor", before="before-cursor"
+        )
         resolved = mixin.resolve_feed_task(42, resolve_request)
         closed = mixin.close_feed_task(42, close_request)
 
