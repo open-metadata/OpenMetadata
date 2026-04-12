@@ -256,8 +256,8 @@ def is_array(kwargs: Dict) -> bool:
     return False
 
 
-def update_mssql_ischema_names(ischema_names):
-    return ischema_names.update(
+def update_mssql_ischema_names(ischema_names: dict) -> None:
+    ischema_names.update(
         {
             "nvarchar": create_sqlalchemy_type("NVARCHAR"),
             "nchar": create_sqlalchemy_type("NCHAR"),

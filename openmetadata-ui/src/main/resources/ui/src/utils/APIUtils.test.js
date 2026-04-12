@@ -12,7 +12,12 @@
  */
 
 import { isNil } from 'lodash';
-import { formatTeamsResponse, omitDeep } from './APIUtils';
+import {
+  formatTeamsResponse,
+  isBlobLikeResponse,
+  omitDeep,
+  parseExportErrorMessage,
+} from './APIUtils';
 
 const APIHits = [
   {
@@ -149,6 +154,143 @@ describe('Test APIUtils utility', () => {
 
     expect(omitObj).toEqual({
       key3: { key6: [{}] },
+    });
+  });
+
+  describe('isBlobLikeResponse', () => {
+    it('returns true for Blob instance', () => {
+      const blob = new Blob(['hello'], { type: 'text/plain' });
+
+      expect(isBlobLikeResponse(blob)).toBe(true);
+    });
+
+    it('returns true for blob-like object', () => {
+      const blobLike = {
+        size: 0,
+        slice: jest.fn(),
+        text: jest.fn().mockResolvedValue(''),
+        type: 'text/plain',
+      };
+
+      expect(isBlobLikeResponse(blobLike)).toBe(true);
+    });
+
+    it('returns false for plain error object', () => {
+      const errorObject = {
+        message: 'failed',
+        size: 0,
+        text: jest.fn(),
+      };
+
+      expect(isBlobLikeResponse(errorObject)).toBe(false);
+    });
+  });
+
+  describe('parseExportErrorMessage', () => {
+    const fallback = 'Something went wrong';
+
+    const makeBlobLike = (content) => ({
+      size: content.length,
+      type: 'text/plain',
+      text: jest.fn().mockResolvedValue(content),
+      slice: jest.fn(),
+    });
+
+    it('should extract message from JSON blob response', async () => {
+      const error = {
+        response: {
+          data: makeBlobLike(
+            JSON.stringify({ message: 'Export limit exceeded' })
+          ),
+        },
+      };
+
+      const result = await parseExportErrorMessage(error, fallback);
+
+      expect(result).toBe('Export limit exceeded');
+    });
+
+    it('should return raw text when blob contains non-JSON text', async () => {
+      const error = {
+        response: {
+          data: makeBlobLike('plain error text'),
+        },
+      };
+
+      const result = await parseExportErrorMessage(error, fallback);
+
+      expect(result).toBe('plain error text');
+    });
+
+    it('should return fallback when blob contains empty text', async () => {
+      const error = {
+        response: { data: makeBlobLike('') },
+      };
+
+      const result = await parseExportErrorMessage(error, fallback);
+
+      expect(result).toBe(fallback);
+    });
+
+    it('should return raw text when JSON blob has no message field', async () => {
+      const jsonText = JSON.stringify({ code: 500 });
+      const error = {
+        response: {
+          data: makeBlobLike(jsonText),
+        },
+      };
+
+      const result = await parseExportErrorMessage(error, fallback);
+
+      expect(result).toBe(jsonText);
+    });
+
+    it('should return string response data directly', async () => {
+      const error = {
+        response: { data: 'Server error' },
+      };
+
+      const result = await parseExportErrorMessage(error, fallback);
+
+      expect(result).toBe('Server error');
+    });
+
+    it('should return fallback for empty string response data', async () => {
+      const error = {
+        response: { data: '' },
+      };
+
+      const result = await parseExportErrorMessage(error, fallback);
+
+      expect(result).toBe(fallback);
+    });
+
+    it('should extract message from object response data', async () => {
+      const error = {
+        response: { data: { message: 'Rate limited' } },
+      };
+
+      const result = await parseExportErrorMessage(error, fallback);
+
+      expect(result).toBe('Rate limited');
+    });
+
+    it('should return fallback when object has no message', async () => {
+      const error = {
+        response: { data: { code: 403 } },
+      };
+
+      const result = await parseExportErrorMessage(error, fallback);
+
+      expect(result).toBe(fallback);
+    });
+
+    it('should return fallback when response is undefined', async () => {
+      const error = {};
+
+      const result = await parseExportErrorMessage(error, fallback);
+
+      expect(result).toBe(fallback);
     });
   });
 });
