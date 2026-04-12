@@ -5850,7 +5850,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   // ===================================================================
-  // TIMESERIES CLEANUP ON HARD DELETE TESTS (fixes #27041, #27042)
+  // TABLE PROFILER TIMESERIES CLEANUP ON HARD DELETE TESTS (fixes #27041)
   // ===================================================================
 
   /**

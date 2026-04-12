@@ -532,14 +532,6 @@ public interface EntityTimeSeriesDAO {
     delete(getTimeSeriesTableName(), entityFQNHash, extension);
   }
 
-  @SqlUpdate("DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash")
-  void deleteAllByEntityFQN(
-      @Define("table") String table, @BindFQN("entityFQNHash") String entityFQN);
-
-  default void deleteAllByEntityFQN(String entityFQN) {
-    deleteAllByEntityFQN(getTimeSeriesTableName(), entityFQN);
-  }
-
   @SqlUpdate(
       "DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash OR entityFQNHash LIKE :prefix")
   void deleteAllByEntityFQNPrefixInternal(
