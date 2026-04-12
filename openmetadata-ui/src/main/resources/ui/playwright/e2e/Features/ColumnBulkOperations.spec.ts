@@ -543,6 +543,7 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
         .getByTestId('display-name-input')
         .locator('input');
       await displayNameInput.fill(`PendingCounter_${uuid()}`);
+      await displayNameInput.blur();
     });
 
     await test.step('Verify pending changes value shows edited/selected count', async () => {
