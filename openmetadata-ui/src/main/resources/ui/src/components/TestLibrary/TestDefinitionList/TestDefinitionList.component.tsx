@@ -301,7 +301,7 @@ const TestDefinitionList = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [urlFilters]);
+  }, [urlFilters, setTestDefinitions]);
 
   useEffect(() => {
     fetchTestDefinitions();
