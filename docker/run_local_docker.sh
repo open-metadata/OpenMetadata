@@ -533,7 +533,7 @@ if [[ $RDF_ENABLED == "true" && $RDF_AUTO_REINDEX == "true" ]]; then
   ensure_app_installed "RdfIndexApp"
   echo "✔running RDF reindexing"
   trigger_app_and_wait "RdfIndexApp" '{
-    "entities": ["all"],
+    "entities": [],
     "recreateIndex": true,
     "batchSize": 100,
     "useDistributedIndexing": true,

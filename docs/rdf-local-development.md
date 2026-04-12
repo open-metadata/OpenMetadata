@@ -221,7 +221,7 @@ Trigger the RDF indexing application to populate the triple store with existing 
 curl -X POST \
   -H "Authorization: Bearer <admin-token>" \
   -H "Content-Type: application/json" \
-  -d '{"entities": ["all"], "recreateIndex": true, "batchSize": 100}' \
+  -d '{"entities": [], "recreateIndex": true, "batchSize": 100}' \
   http://localhost:8585/api/v1/apps/trigger/RdfIndexApp
 ```
 
