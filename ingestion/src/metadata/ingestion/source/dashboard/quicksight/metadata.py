@@ -45,13 +45,18 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     Uuid,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import (
     LINEAGE_MAP,
@@ -233,6 +238,91 @@ class QuicksightSource(DashboardServiceSource):
             logger.info(f"Cannot parse lineage from the dashboard: {dashboard_details.Name} to dataset due to: {err}")
             return dataset_id, []
 
+    def _build_column_lineage_from_parser(
+        self,
+        lineage_parser: LineageParser,
+        from_entity: Table,
+        data_model_entity: DashboardDataModel,
+    ) -> List[ColumnLineage]:
+        """
+        Build column-level lineage using SQL parser alias mappings.
+
+        When a QuickSight CustomSql query uses column aliases
+        (e.g. ``SELECT id AS relation_id``), name-based matching fails
+        because the alias name is matched against upstream columns instead
+        of tracing back through the SQL expression.
+
+        This method uses :class:`LineageParser` column mappings to resolve
+        the true source column (``id``) from the alias (``relation_id``),
+        and filters by ``src_col._parent`` to avoid multi-table column
+        name collisions.
+
+        Falls back to :meth:`_get_column_lineage` when the parser returns
+        no column lineage (e.g. SQL too complex, parsing failed, or no
+        aliases present).
+
+        Issue #26670.
+        """
+        column_lineage: List[ColumnLineage] = []
+
+        for col_pair in lineage_parser.column_lineage or []:
+            # Guard: parser may return single-element tuples in edge cases
+            if len(col_pair) < 2:
+                continue
+
+            src_col = col_pair[0]
+            tgt_col = col_pair[-1]
+
+            # Multi-table safety: filter by parent table to avoid resolving
+            # a shared column name (e.g. 'id') to the wrong upstream table.
+            if src_col._parent:
+                # _parent may be qualified: '<default>.table' or 'schema.table'
+                parent_str = str(src_col._parent).replace("<default>.", "")
+                # Compare only the table name portion (last segment)
+                parent_table = parent_str.split(".")[-1].lower()
+                entity_table = from_entity.name.root.lower()
+                if parent_table != entity_table:
+                    continue
+
+            # raw_name may be fully-qualified (e.g. 'schema.table.col')
+            # Extract just the column name portion.
+            src_col_name = src_col.raw_name.split(".")[-1]
+            tgt_col_name = tgt_col.raw_name.split(".")[-1]
+
+            try:
+                from_col_fqn = get_column_fqn(
+                    table_entity=from_entity, column=src_col_name
+                )
+                to_col_fqn = self._get_data_model_column_fqn(
+                    data_model_entity=data_model_entity,
+                    column=tgt_col_name,
+                )
+                if from_col_fqn and to_col_fqn:
+                    column_lineage.append(
+                        ColumnLineage(
+                            fromColumns=[from_col_fqn],
+                            toColumn=to_col_fqn,
+                        )
+                    )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(
+                    f"Failed to build column lineage for {src_col_name} -> {tgt_col_name}: {exc}"
+                )
+                logger.debug(traceback.format_exc())
+
+        # Only fall back to name-based matching when the parser found
+        # NO column lineage globally (parse failure, too complex, no aliases).
+        # If the parser DID produce lineage but none matched this specific
+        # from_entity (multi-table query), return an empty list rather than
+        # manufacturing incorrect cross-table lineage.
+        if not column_lineage and not lineage_parser.column_lineage:
+            columns = [col.name.root for col in data_model_entity.columns]
+            return self._get_column_lineage(
+                from_entity, data_model_entity, columns
+            )
+
+        return column_lineage
+
     def _yield_lineage_from_query(
         self,
         data_model_entity,
@@ -308,8 +398,9 @@ class QuicksightSource(DashboardServiceSource):
                     )
                     for from_entity in from_entities or []:
                         if from_entity is not None and data_model_entity is not None:
-                            columns = [col.name.root for col in data_model_entity.columns]
-                            column_lineage = self._get_column_lineage(from_entity, data_model_entity, columns)
+                            column_lineage = self._build_column_lineage_from_parser(
+                                lineage_parser, from_entity, data_model_entity
+                            )
                             lineage_details.columnsLineage = column_lineage
                             yield Either(
                                 right=AddLineageRequest(
