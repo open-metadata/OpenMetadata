@@ -102,8 +102,14 @@ if [[ $cleanDbVolumes == "true" ]]
 then
   if [[ -d "$PWD/docker/development/docker-volume/" ]]
   then
-      rm -rf $PWD/docker/development/docker-volume
+    if ! rm -rf "$PWD/docker/development/docker-volume"; then
+      if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+        sudo rm -rf "$PWD/docker/development/docker-volume"
+      else
+        echo "Warning: failed to remove $PWD/docker/development/docker-volume; continuing may reuse stale database state"
+      fi
     fi
+  fi
 fi
 
 if [[ $includeIngestion == "true" ]]; then
