@@ -200,6 +200,41 @@ test.describe('OSS Workflow Capabilities', () => {
       ).not.toBeVisible();
       await expect(page.getByTestId('run-workflow-button')).not.toBeVisible();
     });
+
+    test('clicking a node in view mode opens read-only config sidebar (no save or delete buttons)', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const fitViewButton = page.getByTestId('fit-view-button');
+
+      await expect(fitViewButton).toBeVisible();
+      await fitViewButton.click();
+
+      const taskNode = page
+        .locator('.react-flow__node')
+        .filter({ hasNotText: /^Start$/ })
+        .filter({ hasNotText: /^End$/ })
+        .filter({ hasNotText: /^Approved$/ })
+        .filter({ hasNotText: /^Rejected$/ })
+        .first();
+
+      await expect(taskNode).toBeVisible();
+      await taskNode.click();
+
+      const sidebar = page.getByTestId('node-config-sidebar');
+
+      await expect(sidebar).toBeVisible();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        sidebar.getByTestId('save-node-configuration-button')
+      ).not.toBeVisible();
+      await expect(
+        sidebar.getByTestId('delete-node-button')
+      ).not.toBeVisible();
+    });
   });
 
   test.describe('Test workflow — edit mode: structural restrictions', () => {
@@ -226,6 +261,45 @@ test.describe('OSS Workflow Capabilities', () => {
       await enterEditMode(page);
 
       await expect(page.locator('.react-flow__node').first()).toBeVisible();
+    });
+  });
+
+  test.describe('Test workflow — edit mode: header controls', () => {
+    test('save, cancel, and validate buttons visible; delete absent in edit mode', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+      await enterEditMode(page);
+
+      await expect(page.getByTestId('save-workflow-button')).toBeVisible();
+      await expect(page.getByTestId('cancel-workflow-button')).toBeVisible();
+      await expect(page.getByTestId('test-workflow-button')).toBeVisible();
+      await expect(
+        page.getByTestId('delete-workflow-button')
+      ).not.toBeVisible();
+    });
+
+    test('cancel workflow opens confirmation modal; close-without-saving returns to view mode', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+      await enterEditMode(page);
+
+      await page.getByTestId('cancel-workflow-button').click();
+
+      await expect(
+        page.getByTestId('close-without-saving-button')
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('save-workflow-cancel-modal-button')
+      ).toBeVisible();
+
+      await page.getByTestId('close-without-saving-button').click();
+
+      await expect(page.getByTestId('edit-workflow-button')).toBeVisible();
+      await expect(page.getByTestId('save-workflow-button')).not.toBeVisible();
     });
   });
 
@@ -269,6 +343,38 @@ test.describe('OSS Workflow Capabilities', () => {
 
       await sidebar.getByTestId('save-node-configuration-button').click();
       await expect(sidebar).not.toBeVisible();
+    });
+
+    test('editing a form field and saving node config then workflow fires PUT API with updated data', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openTaskNodeSidebar(page);
+
+      const thresholdInput = sidebar
+        .getByTestId('user-approval-approval-threshold-label')
+        .locator('input');
+
+      await expect(thresholdInput).toBeEnabled();
+      await thresholdInput.fill('2');
+
+      await sidebar.getByTestId('save-node-configuration-button').click();
+      await expect(sidebar).not.toBeVisible();
+
+      const saveResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/governance/workflowDefinitions') &&
+          response.request().method() === 'PUT' &&
+          response.ok()
+      );
+
+      await page.getByTestId('save-workflow-button').click();
+      await saveResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('edit-workflow-button')).toBeVisible();
     });
   });
 

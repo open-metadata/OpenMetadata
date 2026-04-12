@@ -17,7 +17,7 @@ import {
   Type,
   WorkflowDefinition,
 } from '../generated/governance/workflows/workflowDefinition';
-import workflowUiClassBase from '../utils/WorkflowUiClassBase';
+import workflowClassBase from '../utils/WorkflowClassBase';
 
 export type WorkflowMode = 'view' | 'edit';
 
@@ -140,7 +140,7 @@ export const useWorkflowMode = (
       !Array.isArray(trigger);
     const triggerType = isTriggerObject ? trigger.type : undefined;
     const isNoOpTrigger = triggerType === Type.NoOp;
-    const caps = workflowUiClassBase.getCapabilities();
+    const caps = workflowClassBase.getCapabilities();
     const structural = caps.allowStructuralGraphEdits;
     const showWorkflowNodePalette = caps.showWorkflowNodePalette;
     const allowFullStartNodeConfiguration =

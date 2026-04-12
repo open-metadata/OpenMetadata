@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-export interface WorkflowUiCapabilities {
+export interface WorkflowCapabilities {
   allowCreateWorkflow: boolean;
   allowDeleteWorkflow: boolean;
   allowStructuralGraphEdits: boolean;
@@ -20,8 +20,8 @@ export interface WorkflowUiCapabilities {
   allowStartNodeFilterScheduleAndBatchEdit: boolean;
 }
 
-export class WorkflowUiClassBase {
-  public getCapabilities(): WorkflowUiCapabilities {
+export class WorkflowClassBase {
+  public getCapabilities(): WorkflowCapabilities {
     return {
       allowCreateWorkflow: false,
       allowDeleteWorkflow: false,
@@ -33,6 +33,6 @@ export class WorkflowUiClassBase {
   }
 }
 
-const workflowUiClassBase = new WorkflowUiClassBase();
+const workflowClassBase = new WorkflowClassBase();
 
-export default workflowUiClassBase;
+export default workflowClassBase;

@@ -63,7 +63,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { applyFlowchartLayout } from '../../../utils/WorkflowLayout';
 import { getWorkflowDefinitionsListPath } from '../../../utils/WorkflowRouterUtils';
-import workflowUiClassBase from '../../../utils/WorkflowUiClassBase';
+import workflowClassBase from '../../../utils/WorkflowClassBase';
 
 interface WorkflowBuilderInternalProps {
   workflowLogic: UseWorkflowLogicReturn;
@@ -591,7 +591,7 @@ const WorkflowBuilderWrapper: React.FC<{ workflowFqn?: string }> = ({
 const WorkflowBuilder: React.FC = () => {
   const { fqn } = useFqn();
   const allowCreateWorkflow =
-    workflowUiClassBase.getCapabilities().allowCreateWorkflow;
+    workflowClassBase.getCapabilities().allowCreateWorkflow;
 
   if (!fqn?.trim() && !allowCreateWorkflow) {
     return <Navigate replace to={getWorkflowDefinitionsListPath()} />;

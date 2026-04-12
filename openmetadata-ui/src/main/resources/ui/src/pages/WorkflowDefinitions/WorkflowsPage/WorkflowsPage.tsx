@@ -43,7 +43,7 @@ import {
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
-import workflowUiClassBase from '../../../utils/WorkflowUiClassBase';
+import workflowClassBase from '../../../utils/WorkflowClassBase';
 import {
   WORKFLOW_NAME_MAX_LENGTH,
   WORKFLOW_NAME_MIN_LENGTH,
@@ -69,7 +69,7 @@ const WorkflowsPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const allowCreateWorkflow = useMemo(
-    () => workflowUiClassBase.getCapabilities().allowCreateWorkflow,
+    () => workflowClassBase.getCapabilities().allowCreateWorkflow,
     []
   );
 

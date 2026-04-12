@@ -34,7 +34,7 @@ import {
 import { showErrorToast } from '../utils/ToastUtils';
 import { applyFlowchartLayout } from '../utils/WorkflowLayout';
 import { deserializeWorkflow } from '../utils/WorkflowSerializer';
-import workflowUiClassBase from '../utils/WorkflowUiClassBase';
+import workflowClassBase from '../utils/WorkflowClassBase';
 import { useWorkflowState } from './useWorkflowState';
 
 interface UseWorkflowLogicProps {
@@ -121,7 +121,7 @@ export const useWorkflowLogic = ({
   useEffect(() => {
     const fetchWorkflowDefinition = async () => {
       if (!fqn) {
-        if (!workflowUiClassBase.getCapabilities().allowCreateWorkflow) {
+        if (!workflowClassBase.getCapabilities().allowCreateWorkflow) {
           return;
         }
         setWorkflowMetadata({
