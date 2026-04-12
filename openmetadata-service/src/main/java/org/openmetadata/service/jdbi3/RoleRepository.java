@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -239,6 +240,15 @@ public class RoleRepository extends EntityRepository<Role> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE));
     }
+  }
+
+  @Override
+  protected void postDelete(Role entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeFromCondition(
+                condition, entity.getName(), PolicyConditionUpdater.ROLE_FUNCTIONS));
   }
 
   /** Handles entity updated from PUT and POST operation. */

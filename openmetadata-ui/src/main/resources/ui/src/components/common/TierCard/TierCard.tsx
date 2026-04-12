@@ -125,91 +125,95 @@ const TierCard = ({
     <Popover
       className="p-0"
       content={
-        <FocusTrapWithContainer active={popoverProps?.open || false}>
-          <Card
-            className={`tier-card ${tierCardClassName}`}
-            data-testid="cards"
-            title={
-              <Space className="w-full p-xs justify-between">
-                <Typography.Text className="m-b-0 font-medium text-md">
-                  {t('label.edit-entity', { entity: t('label.tier') })}
-                </Typography.Text>
-                <Typography.Text
-                  className="m-b-0 font-normal text-primary cursor-pointer"
-                  data-testid="clear-tier"
-                  tabIndex={0}
-                  // we need to pass undefined to clear the tier
-                  onClick={() => updateTierData()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      updateTierData();
-                    }
-                  }}>
-                  {t('label.clear')}
-                </Typography.Text>
-              </Space>
-            }>
-            <Spin
-              indicator={<Loader size="small" />}
-              spinning={isLoadingTierData}>
-              <Radio.Group value={selectedTier} onChange={handleTierSelection}>
-                <Collapse
-                  accordion
-                  className="bg-white border-none tier-card-content"
-                  collapsible="icon"
-                  defaultActiveKey={selectedTier}
-                  expandIconPosition="end">
-                  {tierCardData.map((card) => (
-                    <Panel
-                      data-testid="card-list"
-                      header={
-                        <Radio
-                          className="radio-input"
-                          data-testid={`radio-btn-${card.title}`}
-                          value={card.id}>
-                          <Space direction="vertical" size={0}>
-                            <Typography.Paragraph
-                              className="m-b-0 font-regular text-grey-body"
-                              style={{ color: card.style?.color }}>
-                              {card.title}
-                            </Typography.Paragraph>
-                            <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
-                              {card.description.replace(/\*/g, '')}
-                            </Typography.Paragraph>
-                          </Space>
-                        </Radio>
+        <div data-react-aria-top-layer>
+          <FocusTrapWithContainer active={popoverProps?.open || false}>
+            <Card
+              className={`tier-card ${tierCardClassName}`}
+              data-testid="cards"
+              title={
+                <Space className="w-full p-xs justify-between">
+                  <Typography.Text className="m-b-0 font-medium text-md">
+                    {t('label.edit-entity', { entity: t('label.tier') })}
+                  </Typography.Text>
+                  <Typography.Text
+                    className="m-b-0 font-normal text-primary cursor-pointer"
+                    data-testid="clear-tier"
+                    tabIndex={0}
+                    // we need to pass undefined to clear the tier
+                    onClick={() => updateTierData()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        updateTierData();
                       }
-                      key={card.id}>
-                      <div className="m-l-md">
-                        <RichTextEditorPreviewerV1
-                          className="tier-card-description"
-                          enableSeeMoreVariant={false}
-                          markdown={card.data}
-                        />
-                      </div>
-                    </Panel>
-                  ))}
-                </Collapse>
-              </Radio.Group>
-              <div
-                className={`flex justify-end text-lg gap-2 mt-4 ${footerActionButtonsClassName}`}>
-                <Button
-                  data-testid="close-tier-card"
-                  type="default"
-                  onClick={handleCloseTier}>
-                  <CloseOutlined />
-                </Button>
-                <Button
-                  data-testid="update-tier-card"
-                  type="primary"
-                  onClick={() => updateTierData(selectedTier)}>
-                  <CheckOutlined />
-                </Button>
-              </div>
-            </Spin>
-          </Card>
-        </FocusTrapWithContainer>
+                    }}>
+                    {t('label.clear')}
+                  </Typography.Text>
+                </Space>
+              }>
+              <Spin
+                indicator={<Loader size="small" />}
+                spinning={isLoadingTierData}>
+                <Radio.Group
+                  value={selectedTier}
+                  onChange={handleTierSelection}>
+                  <Collapse
+                    accordion
+                    className="bg-white border-none tier-card-content"
+                    collapsible="icon"
+                    defaultActiveKey={selectedTier}
+                    expandIconPosition="end">
+                    {tierCardData.map((card) => (
+                      <Panel
+                        data-testid="card-list"
+                        header={
+                          <Radio
+                            className="radio-input"
+                            data-testid={`radio-btn-${card.title}`}
+                            value={card.id}>
+                            <Space direction="vertical" size={0}>
+                              <Typography.Paragraph
+                                className="m-b-0 font-regular text-grey-body"
+                                style={{ color: card.style?.color }}>
+                                {card.title}
+                              </Typography.Paragraph>
+                              <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
+                                {card.description.replace(/\*/g, '')}
+                              </Typography.Paragraph>
+                            </Space>
+                          </Radio>
+                        }
+                        key={card.id}>
+                        <div className="m-l-md">
+                          <RichTextEditorPreviewerV1
+                            className="tier-card-description"
+                            enableSeeMoreVariant={false}
+                            markdown={card.data}
+                          />
+                        </div>
+                      </Panel>
+                    ))}
+                  </Collapse>
+                </Radio.Group>
+                <div
+                  className={`flex justify-end text-lg gap-2 mt-4 ${footerActionButtonsClassName}`}>
+                  <Button
+                    data-testid="close-tier-card"
+                    type="default"
+                    onClick={handleCloseTier}>
+                    <CloseOutlined />
+                  </Button>
+                  <Button
+                    data-testid="update-tier-card"
+                    type="primary"
+                    onClick={() => updateTierData(selectedTier)}>
+                    <CheckOutlined />
+                  </Button>
+                </div>
+              </Spin>
+            </Card>
+          </FocusTrapWithContainer>
+        </div>
       }
       overlayClassName="tier-card-popover"
       placement="bottomRight"

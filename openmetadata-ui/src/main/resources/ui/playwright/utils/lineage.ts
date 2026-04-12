@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { get } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ChartClass } from '../support/entity/ChartClass';
@@ -221,8 +221,8 @@ export const dragConnection = async (
   const selector = isColumnLineage
     ? '.lineage-column-node-handle'
     : '.lineage-node-handle';
-  const sourceNode = page.locator(`[data-testid="${sourceId}"]`);
-  const targetNode = page.locator(`[data-testid="${targetId}"]`);
+  const sourceNode = page.getByTestId(sourceId);
+  const targetNode = page.getByTestId(targetId);
   const sourceHandle = sourceNode.locator(
     `${selector}.react-flow__handle-right`
   );
@@ -230,18 +230,13 @@ export const dragConnection = async (
     `${selector}.react-flow__handle-left`
   );
 
-  const lineageRes = page.waitForResponse('/api/v1/lineage');
   await sourceHandle.dispatchEvent('click');
   await targetHandle.dispatchEvent('click');
-
-  await lineageRes;
 };
 
 export const rearrangeNodes = async (page: Page) => {
   await page.getByTestId('fit-screen').click();
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- node rearrange animation settling time
-  await page.waitForTimeout(500);
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -278,11 +273,18 @@ export const connectEdgeBetweenNodes = async (
     `lineage-node-${fromNodeFqn}`,
     `lineage-node-${toNodeFqn}`
   );
+
+  await expect(
+    page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
+  ).toBeVisible();
 };
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
-  const name = get(node, 'entityResponseData.displayName') ?? '';
+  const name =
+    get(node, 'entityResponseData.displayName') ??
+    get(node, 'entityResponseData.name') ??
+    '';
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
   await lineageNode.waitFor({ state: 'attached' });
@@ -553,14 +555,12 @@ export const addColumnLineage = async (
   toColumnNode: string,
   exitEditMode = true
 ) => {
-  const lineageRes = page.waitForResponse('/api/v1/lineage');
   await dragConnection(
     page,
     `column-${fromColumnNode}`,
     `column-${toColumnNode}`,
     true
   );
-  await lineageRes;
 
   await page.getByTestId(`column-${toColumnNode}`).click();
 
@@ -604,6 +604,52 @@ export const visitLineageTab = async (page: Page) => {
   await page.getByRole('button', { name: 'Full Screen View' }).first().click();
   const pane = page.locator('.react-flow__pane');
   await pane.click({ position: { x: 0, y: 0 } });
+};
+
+export const getEntityColumns = (
+  entity: EntityClass,
+  entityName: string
+): Array<{ name: string; fullyQualifiedName?: string }> => {
+  if (entityName === 'table' || entityName === 'dashboardDataModel') {
+    return get(entity, 'entityResponseData.columns', []);
+  } else if (entityName === 'topic') {
+    return get(entity, 'entityResponseData.messageSchema.schemaFields', []);
+  } else if (entityName === 'dashboard') {
+    return get(entity, 'entityResponseData.charts', []);
+  } else if (entityName === 'container') {
+    return get(entity, 'entityResponseData.dataModel.columns', []);
+  } else if (entityName === 'apiEndpoint') {
+    const requestSchema = get(
+      entity,
+      'entityResponseData.requestSchema.schemaFields',
+      []
+    );
+    const responseSchema = get(
+      entity,
+      'entityResponseData.responseSchema.schemaFields',
+      []
+    );
+    const schema = responseSchema.length > 0 ? responseSchema : requestSchema;
+
+    return isEmpty(schema) ? [] : schema;
+  } else if (entityName === 'mlModel') {
+    return get(entity, 'entityResponseData.mlFeatures', []);
+  } else if (entityName === 'searchIndex') {
+    return get(entity, 'entityResponseData.fields', []);
+  }
+
+  return [];
+};
+
+export const openImpactAnalysisTab = async (page: Page) => {
+  const impactAnalysisTab = page.getByRole('tab', {
+    name: 'Impact Analysis',
+  });
+
+  await expect(impactAnalysisTab).toBeVisible();
+  await impactAnalysisTab.scrollIntoViewIfNeeded();
+  await impactAnalysisTab.click();
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const addPipelineBetweenNodes = async (
@@ -716,17 +762,7 @@ export const getLineageCSVData = async (page: Page) => {
 export const verifyExportLineageCSV = async (
   page: Page,
   currentEntity: EntityClass,
-  entities: readonly [
-    TableClass,
-    DashboardClass,
-    TopicClass,
-    MlModelClass,
-    ContainerClass,
-    SearchIndexClass,
-    ApiEndpointClass,
-    MetricClass,
-    DashboardDataModelClass
-  ],
+  entities: EntityClass[],
   pipeline: PipelineClass
 ) => {
   const parsedData = await getLineageCSVData(page);
@@ -825,15 +861,15 @@ export const verifyColumnLineageInCSV = async (
     )
   );
 
+  console.log('Expected Row:', expectedRow, parsedData);
+
   expect(matchingRow).toBeDefined(); // Ensure a matching row exists
 };
 
 export const verifyLineageConfig = async (page: Page) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.locator('.ant-modal-content').first().waitFor({
-    state: 'visible',
-  });
+  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
 
   await page.getByTestId('field-upstream').fill('-1');
   await page.getByTestId('field-downstream').fill('-1');
@@ -903,9 +939,7 @@ export const updateLineageConfigFromModal = async (
 ) => {
   await page.getByTestId('lineage-config').click();
 
-  await page.locator('.ant-modal-content').first().waitFor({
-    state: 'visible',
-  });
+  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
 
   await page
     .getByTestId('field-upstream')
@@ -914,9 +948,35 @@ export const updateLineageConfigFromModal = async (
     .getByTestId('field-downstream')
     .fill(config.downstreamDepth.toString());
 
-  const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
   await page.getByText('OK').click();
-  await saveRes;
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+};
+
+export const setLineageDepthAndVerify = async (
+  page: Page,
+  upstreamDepth: number,
+  downstreamDepth: number
+) => {
+  await page.getByTestId('lineage-config').click();
+
+  await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
+
+  await page.getByTestId('field-upstream').fill(upstreamDepth.toString());
+  await page.getByTestId('field-downstream').fill(downstreamDepth.toString());
+
+  const lineageRes = page.waitForResponse((response) => {
+    const url = response.url();
+
+    return (
+      url.includes('/api/v1/lineage/getLineage') &&
+      url.includes(`upstreamDepth=${upstreamDepth}`) &&
+      url.includes(`downstreamDepth=${downstreamDepth}`)
+    );
+  });
+
+  await page.getByText('OK').click();
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  await lineageRes;
 };
 
 export const verifyPlatformLineageForEntity = async (
@@ -949,25 +1009,6 @@ export const verifyPlatformLineageForEntity = async (
   if (toFqn) {
     await expect(page.getByTestId(`lineage-node-${toFqn}`)).toBeVisible();
   }
-};
-
-export const getEntityColumns = (
-  entity: EntityClass,
-  entityName: string
-): Array<{ name: string; fullyQualifiedName?: string }> => {
-  if (entityName === 'Table') {
-    return get(entity, 'entityResponseData.columns', []);
-  } else if (entityName === 'Topic') {
-    return get(entity, 'entityResponseData.messageSchema.schemaFields', []);
-  } else if (entityName === 'Dashboard') {
-    return get(entity, 'entityResponseData.charts[0].columns', []);
-  } else if (entityName === 'Container') {
-    return get(entity, 'entityResponseData.dataModel.columns', []);
-  } else if (entityName === 'ApiEndpoint') {
-    return get(entity, 'entityResponseData.responseSchema.schemaFields', []);
-  }
-
-  return [];
 };
 
 export const generateColumns = (count: number, prefix: string) => {

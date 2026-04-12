@@ -569,7 +569,7 @@ public class LineageRepository {
                       .withQueryFilter(queryFilter)
                       .withIncludeDeleted(deleted)
                       .withIsConnectedVia(isConnectedVia(entityType))
-                      .withDirection(LineageDirection.UPSTREAM));
+                      .withDirection(null));
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 
@@ -996,13 +996,14 @@ public class LineageRepository {
   @Transaction
   public void deleteLineageBySource(UUID toId, String toEntity, String source) {
     List<CollectionDAO.EntityRelationshipObject> relations;
-    if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())) {
+    if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())
+        || source.equals(LineageDetails.Source.OPEN_LINEAGE.value())) {
       relations =
           dao.relationshipDAO()
               .findLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
       // Finally, delete lineage relationship
       dao.relationshipDAO()
-          .deleteLineageBySourcePipeline(toId, toEntity, Relationship.UPSTREAM.ordinal());
+          .deleteLineageBySourcePipeline(toId, source, Relationship.UPSTREAM.ordinal());
     } else {
       relations =
           dao.relationshipDAO()

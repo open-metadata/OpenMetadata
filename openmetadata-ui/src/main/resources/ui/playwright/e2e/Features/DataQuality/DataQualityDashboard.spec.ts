@@ -13,6 +13,8 @@
 
 import test, { expect, Page } from '@playwright/test';
 import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
+import { DataProduct } from '../../../support/domain/DataProduct';
+import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
@@ -48,6 +50,8 @@ const tag = new TagClass({ classification: classification.data.name });
 const tier = new TagClass({ classification: 'Tier' });
 const glossary = new Glossary();
 const glossaryTerm = new GlossaryTerm(glossary);
+const domain = new Domain();
+const dataProduct = new DataProduct([domain]);
 
 const testCaseResult = {
   result: 'Found min=10001, max=27809 vs. the expected min=90001, max=96162.',
@@ -76,6 +80,13 @@ test.beforeAll('setup pre-test', async ({ browser }) => {
   await table1.create(apiContext);
   await table2.create(apiContext);
   await table3.create(apiContext);
+  await domain.create(apiContext);
+  await dataProduct.create(apiContext);
+  await dataProduct.addAssets(apiContext, [
+    { id: table1.entityResponseData.id, type: 'table' },
+    { id: table2.entityResponseData.id, type: 'table' },
+    { id: table3.entityResponseData.id, type: 'table' },
+  ]);
   for (const table of [table1, table2, table3]) {
     await table.patch({
       apiContext,
@@ -159,6 +170,8 @@ test.afterAll('cleanup', async ({ browser }) => {
   await tag.delete(apiContext);
   await tier.delete(apiContext);
   await classification.delete(apiContext);
+  await dataProduct.delete(apiContext);
+  await domain.delete(apiContext);
 
   await afterAction();
 });
@@ -303,6 +316,31 @@ test('DataQualityDashboardTab', async ({ page }) => {
   );
   await page.getByTestId('update-btn').click();
   for (const apiRes of glossaryTermApiResponse) {
+    const responseData = await apiRes;
+
+    expect(responseData.ok()).toBeTruthy();
+  }
+
+  await page.getByRole('button', { name: 'Data Product' }).click();
+  await page.getByTestId('search-input').click();
+  const dataProductSearchApi = page.waitForResponse(
+    '/api/v1/search/query?*q=*index=dataProduct*'
+  );
+  await page
+    .getByTestId('search-input')
+    .fill(dataProduct.responseData.displayName ?? dataProduct.data.displayName);
+  await dataProductSearchApi;
+  await page
+    .getByText(
+      dataProduct.responseData.displayName ?? dataProduct.data.displayName
+    )
+    .click();
+  const dataProductApiResponse = waitForDashboardApiResponses(
+    page,
+    encodeURIComponent(dataProduct.data.name)
+  );
+  await page.getByTestId('update-btn').click();
+  for (const apiRes of dataProductApiResponse) {
     const responseData = await apiRes;
 
     expect(responseData.ok()).toBeTruthy();

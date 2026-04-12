@@ -37,6 +37,10 @@ const mockProps = {
 };
 
 describe('Test TreeSelectWidget Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Should render tree select component', async () => {
     render(<TreeSelectWidget {...mockProps} />);
 
@@ -95,5 +99,73 @@ describe('Test TreeSelectWidget Component', () => {
     });
 
     expect(mockOnChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('Should pass through "all" when expandAllValue is not set', async () => {
+    const passThroughProps = {
+      ...mockProps,
+      value: [],
+    };
+
+    render(<TreeSelectWidget {...passThroughProps} />);
+
+    const treeSelectInput = await findByRole(
+      screen.getByTestId('tree-select-widget'),
+      'combobox'
+    );
+
+    await act(async () => {
+      userEvent.click(treeSelectInput);
+    });
+
+    await waitFor(() => screen.getByText('All'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('All'));
+    });
+
+    expect(mockOnChange).toHaveBeenCalledWith(['all']);
+  });
+
+  it('Should expand "all" into individual enum values when expandAllValue is true', async () => {
+    const expandAllProps = {
+      ...mockProps,
+      options: {
+        enumOptions: [
+          { label: 'PROFILE', value: 'PROFILE' },
+          { label: 'TEST_CASE_RESULTS', value: 'TEST_CASE_RESULTS' },
+          { label: 'ENTITY_HISTORY', value: 'ENTITY_HISTORY' },
+        ],
+      },
+      schema: {
+        ...mockProps.schema,
+        expandAllValue: true,
+      },
+      value: [],
+    };
+
+    render(<TreeSelectWidget {...expandAllProps} />);
+
+    const treeSelectInput = await findByRole(
+      screen.getByTestId('tree-select-widget'),
+      'combobox'
+    );
+
+    await act(async () => {
+      userEvent.click(treeSelectInput);
+    });
+
+    await waitFor(() => screen.getByText('All'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('All'));
+    });
+
+    expect(mockOnChange).toHaveBeenCalledWith([
+      'PROFILE',
+      'TEST_CASE_RESULTS',
+      'ENTITY_HISTORY',
+    ]);
+    expect(mockOnChange).not.toHaveBeenCalledWith(['all']);
   });
 });

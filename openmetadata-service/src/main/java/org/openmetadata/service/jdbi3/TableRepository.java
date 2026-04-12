@@ -196,12 +196,8 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    if (fields.contains(COLUMN_FIELD)) {
-      populateEntityFieldTags(
-          entityType,
-          table.getColumns(),
-          table.getFullyQualifiedName(),
-          fields.contains(FIELD_TAGS));
+    if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
@@ -233,18 +229,9 @@ public class TableRepository extends EntityRepository<Table> {
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
 
-    // Handle table-specific fields that aren't in fetchAndSetFields
-    // Only call per-entity populateEntityFieldTags when FIELD_TAGS was NOT requested,
-    // since fetchAndSetColumnTags already handles column tags via bulkPopulateEntityFieldTags
-    var needPerEntityColumnTags = fields.contains(COLUMN_FIELD) && !fields.contains(FIELD_TAGS);
-    entities.forEach(
-        table -> {
-          if (needPerEntityColumnTags) {
-            populateEntityFieldTags(
-                entityType, table.getColumns(), table.getFullyQualifiedName(), false);
-          }
-          clearFieldsInternal(table, fields);
-        });
+    // Column tags come from tag_usage, not table JSON — fetched via fetchAndSetColumnTags when tags
+    // requested
+    entities.forEach(table -> clearFieldsInternal(table, fields));
   }
 
   // Individual field fetchers registered in constructor
@@ -305,8 +292,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (fields.contains(COLUMN_FIELD)) {
-      bulkPopulateEntityFieldTags(
-          tables, entityType, Table::getColumns, Table::getFullyQualifiedName);
+      bulkPopulateEntityFieldTags(tables, Table::getColumns);
     }
   }
 

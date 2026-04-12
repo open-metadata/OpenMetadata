@@ -9,37 +9,53 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# This workflow executes SSO-specific end-to-end (e2e) tests using Playwright with MySQL as the database.
-# 
+# This workflow executes SSO-specific end-to-end (e2e) tests using Playwright with PostgreSQL as the database.
+#
 # Purpose:
-#   - Run SSO configuration tests for various authentication providers (Google, Azure AD, Okta, SAML, LDAP, etc.)
-#   - Validate SSO provider selection, field visibility, and configuration workflows
-#   - Tests are tagged with @sso and run in isolation from other Playwright tests
+#   - Run SSO token renewal E2E tests using a mock OIDC provider on PRs
+#   - Run SSO configuration tests for various providers (Google, Azure AD, Okta, etc.) via manual trigger
+#   - Tests run in isolation from the regular sharded Playwright E2E tests
 #
 # Triggers:
-#   - Manual trigger via workflow_dispatch
-#   - Pull requests with "safe to test" label
-#   - Excludes draft PRs
+#   - Pull requests with "safe to test" label (mock-oidc only, Chromium + WebKit)
+#   - Manual trigger via workflow_dispatch (any SSO provider, Chromium + WebKit)
 #
 # Test Location:
-#   - openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts
-#
-# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+#   - openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/SSOAuthentication.spec.ts (mock-oidc)
 
-name: SSO Authentication Tests (Nightly)
+name: SSO Playwright E2E Tests
 
 on:
-  # schedule:
-  #   # Run every night at 2 AM UTC
-  #   - cron: '0 2 * * *'
-  workflow_dispatch: # Allow manual trigger
+  pull_request_target:
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - "openmetadata-ui/src/main/resources/ui/src/components/Auth/**"
+      - "openmetadata-ui/src/main/resources/ui/src/rest/auth-API*"
+      - "openmetadata-ui/src/main/resources/ui/src/utils/AuthProvider*"
+      - "openmetadata-ui/src/main/resources/ui/src/utils/TokenServiceUtil*"
+      - "openmetadata-ui/src/main/resources/ui/src/utils/UserDataUtils*"
+      - "openmetadata-ui/src/main/resources/ui/src/hooks/useSignIn*"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/utils/mockOidc*"
+      - "openmetadata-ui/src/main/resources/ui/playwright.sso.config.ts"
+      - "docker/development/mock-oidc-provider/**"
+      - "docker/development/docker-compose.yml"
+      - "docker/development/.env.sso-test"
+      - ".github/workflows/playwright-sso-tests.yml"
+  workflow_dispatch:
     inputs:
       sso_provider:
         description: "SSO Provider to test"
         required: true
-        default: "google"
+        default: "mock-oidc"
         type: choice
         options:
+          - mock-oidc
           - google
           - okta
           - azure
@@ -49,9 +65,10 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
-  group: sso-auth-tests-${{ github.workflow }}-${{ github.event.inputs.sso_provider || 'scheduled' }}
+  group: sso-playwright-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -63,7 +80,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        provider: ${{ github.event.inputs.sso_provider == 'all' && fromJSON('["google", "okta", "azure", "auth0"]') || github.event.inputs.sso_provider && fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) || fromJSON('["google"]') }}
+        provider: ${{ github.event_name == 'pull_request_target' && fromJSON('["mock-oidc"]') || github.event.inputs.sso_provider && fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) || fromJSON('["mock-oidc"]') }}
 
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -93,7 +110,7 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           valid-labels: "safe to test"
           pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
+          disable-reviews: true
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -109,13 +126,43 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Start Mock OIDC Provider
+        if: ${{ matrix.provider == 'mock-oidc' }}
+        run: |
+          cd docker/development
+          docker compose --profile sso-test build mock-oidc-provider
+          docker compose --profile sso-test up -d mock-oidc-provider
+          echo "Waiting for mock OIDC provider to be healthy..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:9090/health > /dev/null 2>&1; then
+              echo "Mock OIDC provider is ready"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          curl -sf http://localhost:9090/.well-known/openid-configuration || echo "WARNING: Discovery endpoint not ready"
+
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
-          # Skip ingestion setup for SSO tests
           args: "-d postgresql -i false"
           ingestion_dependency: "all"
+        env:
+          AUTHENTICATION_PROVIDER: ${{ matrix.provider == 'mock-oidc' && 'custom-oidc' || 'basic' }}
+          CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${{ matrix.provider == 'mock-oidc' && 'mock-oidc' || '' }}
+          AUTHENTICATION_PUBLIC_KEYS: ${{ matrix.provider == 'mock-oidc' && '[http://localhost:9090/jwks,http://localhost:8585/api/v1/system/config/jwks]' || '[http://localhost:8585/api/v1/system/config/jwks]' }}
+          AUTHENTICATION_AUTHORITY: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:9090' || 'https://accounts.google.com' }}
+          AUTHENTICATION_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
+          AUTHENTICATION_CALLBACK_URL: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:8585/callback' || '' }}
+          OIDC_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
+          OIDC_TYPE: ${{ matrix.provider == 'mock-oidc' && 'custom-oidc' || '' }}
+          OIDC_CLIENT_SECRET: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test-secret' || '' }}
+          OIDC_DISCOVERY_URI: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:9090/.well-known/openid-configuration' || '' }}
+          OIDC_CALLBACK: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:8585/callback' || 'http://localhost:8585/callback' }}
+          OIDC_SERVER_URL: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:8585' || 'http://localhost:8585' }}
+          AUTHENTICATION_CLIENT_TYPE: ${{ matrix.provider == 'mock-oidc' && 'confidential' || 'public' }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -127,11 +174,22 @@ jobs:
         run: yarn --ignore-scripts --frozen-lockfile
 
       - name: Install Playwright Browsers
-        run: npx playwright@1.51.1 install --with-deps
+        run: npx playwright@1.51.1 install chromium webkit --with-deps
+
+      - name: Run Mock OIDC Authentication Tests
+        if: ${{ matrix.provider == 'mock-oidc' }}
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx playwright test --config=playwright.sso.config.ts --workers=1
+        env:
+          MOCK_OIDC_URL: http://localhost:9090
+          PLAYWRIGHT_IS_OSS: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        timeout-minutes: 60
 
       - name: Run SSO Authentication Tests
+        if: ${{ matrix.provider != 'mock-oidc' }}
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: npx playwright test playwright/e2e/Auth/SSOAuthentication.spec.ts --workers=1
+        run: npx playwright test --config=playwright.sso.config.ts --workers=1
         env:
           SSO_PROVIDER_TYPE: ${{ matrix.provider }}
           SSO_USERNAME: ${{ secrets[format('{0}_SSO_USERNAME', upper(matrix.provider))] }}
@@ -145,21 +203,154 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sso-auth-test-results-${{ matrix.provider }}
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/sso-playwright-report
+            openmetadata-ui/src/main/resources/ui/playwright/output/sso-test-results
           retention-days: 5
+
+      - name: Upload results JSON for summary
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: sso-results-json-${{ matrix.provider }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/sso-results.json
+          retention-days: 1
+          if-no-files-found: ignore
 
       - name: Clean Up
         run: |
           cd ./docker/development
+          docker compose --profile sso-test down --remove-orphans 2>/dev/null || true
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
-    
-  notify:
+
+  sso-summary:
+    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
     needs: sso-auth-tests
     runs-on: ubuntu-latest
-    if: failure()
     steps:
-      - name: Send notification on failure
-        run: |
-          echo "SSO Authentication tests failed for one or more providers"
-          # Add your notification logic here (Slack, email, etc.)
+      - name: Download results JSON
+        uses: actions/download-artifact@v4
+        with:
+          pattern: sso-results-json-*
+          path: results
+
+      - name: Post SSO test summary as PR comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const runId = '${{ github.run_id }}';
+            const repo = context.repo;
+            const prNumber = context.payload.pull_request?.number;
+            if (!prNumber) return;
+
+            const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
+            const commentMarker = '<!-- sso-playwright-summary -->';
+
+            const allTests = [];
+            const resultsDir = 'results';
+            if (fs.existsSync(resultsDir)) {
+              for (const dir of fs.readdirSync(resultsDir).sort()) {
+                const jsonPath = path.join(resultsDir, dir, 'sso-results.json');
+                if (!fs.existsSync(jsonPath)) continue;
+
+                const report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+
+                function collectTests(suite, filePath) {
+                  const file = suite.file || filePath || '';
+                  for (const spec of (suite.specs || [])) {
+                    for (const test of (spec.tests || [])) {
+                      const results = test.results || [];
+                      const lastResult = results[results.length - 1] || {};
+                      const firstResult = results[0] || {};
+                      allTests.push({
+                        title: spec.title,
+                        project: test.projectName || '',
+                        file: file,
+                        status: test.status,
+                        retries: results.length - 1,
+                        error: lastResult.error?.message || firstResult.error?.message || '',
+                      });
+                    }
+                  }
+                  for (const child of (suite.suites || [])) {
+                    collectTests(child, file);
+                  }
+                }
+                for (const suite of (report.suites || [])) {
+                  collectTests(suite, '');
+                }
+              }
+            }
+
+            if (allTests.length === 0) {
+              console.log('No SSO test results found');
+              return;
+            }
+
+            const passed = allTests.filter(t => t.status === 'expected');
+            const failed = allTests.filter(t => t.status === 'unexpected');
+            const flaky = allTests.filter(t => t.status === 'flaky');
+            const skipped = allTests.filter(t => t.status === 'skipped');
+
+            const lines = [commentMarker];
+
+            if (failed.length > 0) {
+              lines.push(`## 🔴 SSO Playwright Results — ${failed.length} failure(s)${flaky.length > 0 ? `, ${flaky.length} flaky` : ''}`);
+            } else if (flaky.length > 0) {
+              lines.push(`## 🟡 SSO Playwright Results — all passed (${flaky.length} flaky)`);
+            } else {
+              lines.push(`## ✅ SSO Playwright Results — all ${passed.length} tests passed`);
+            }
+            lines.push('');
+            lines.push(`✅ ${passed.length} passed · ❌ ${failed.length} failed · 🟡 ${flaky.length} flaky · ⏭️ ${skipped.length} skipped`);
+            lines.push('');
+
+            if (failed.length > 0) {
+              lines.push('### Failures');
+              lines.push('');
+              for (const t of failed.slice(0, 20)) {
+                lines.push(`<details><summary>❌ ${t.project} › ${t.title}</summary>`);
+                lines.push('');
+                lines.push('```');
+                lines.push(t.error.substring(0, 1000));
+                lines.push('```');
+                lines.push('</details>');
+                lines.push('');
+              }
+            }
+
+            if (flaky.length > 0) {
+              lines.push(`<details><summary>🟡 ${flaky.length} flaky test(s)</summary>`);
+              lines.push('');
+              for (const t of flaky.slice(0, 20)) {
+                lines.push(`- ${t.project} › ${t.title} (${t.retries} ${t.retries === 1 ? 'retry' : 'retries'})`);
+              }
+              lines.push('');
+              lines.push('</details>');
+              lines.push('');
+            }
+
+            lines.push(`📦 [View run details](${artifactUrl})`);
+
+            const body = lines.join('\n');
+
+            let existingComment = null;
+            for await (const response of github.paginate.iterator(
+              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+            )) {
+              const found = response.data.find(c =>
+                c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
+              );
+              if (found) { existingComment = found; break; }
+            }
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
+            }

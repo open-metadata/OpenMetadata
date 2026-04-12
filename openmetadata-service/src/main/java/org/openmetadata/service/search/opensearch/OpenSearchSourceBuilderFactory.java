@@ -205,7 +205,7 @@ public class OpenSearchSourceBuilderFactory
     compositeConfig.setTermBoosts(allTermBoosts);
     compositeConfig.setFieldValueBoosts(allFieldValueBoosts);
     compositeConfig.setScoreMode(AssetTypeConfiguration.ScoreMode.SUM);
-    compositeConfig.setBoostMode(AssetTypeConfiguration.BoostMode.SUM);
+    compositeConfig.setBoostMode(AssetTypeConfiguration.BoostMode.MULTIPLY);
 
     return compositeConfig;
   }
@@ -558,6 +558,12 @@ public class OpenSearchSourceBuilderFactory
     List<os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore> functions =
         new ArrayList<>();
 
+    // Add baseline weight of 1.0 so that assets with no tier/usage retain their text score
+    // when boostMode is multiply. Without this, function_score could be 0 and zero out the
+    // text relevance score.
+    functions.add(
+        OpenSearchQueryBuilder.weightFunction(OpenSearchQueryBuilder.matchAllQuery(), 1.0));
+
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
       searchSettings.getGlobalSettings().getTermBoosts().stream()
           .map(this::buildTermBoostFunctionV2)
@@ -716,7 +722,7 @@ public class OpenSearchSourceBuilderFactory
       int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
       if (!nullOrEmpty(agg.getField())) {
-        String field = SearchSourceBuilderFactory.remapAggregationField(agg.getField());
+        String field = SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(agg.getField());
         termsAgg = OpenSearchAggregationBuilder.termsAggregation(field, maxSize);
       } else if (!nullOrEmpty(agg.getScript())) {
         termsAgg =
@@ -737,7 +743,8 @@ public class OpenSearchSourceBuilderFactory
               int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
               if (!nullOrEmpty(agg.getField())) {
-                String field = SearchSourceBuilderFactory.remapAggregationField(agg.getField());
+                String field =
+                    SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(agg.getField());
                 termsAgg = OpenSearchAggregationBuilder.termsAggregation(field, maxSize);
               } else if (!nullOrEmpty(agg.getScript())) {
                 termsAgg =

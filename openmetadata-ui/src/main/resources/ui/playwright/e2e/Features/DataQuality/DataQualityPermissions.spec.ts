@@ -24,14 +24,11 @@ import {
   TEST_SUITE_POLICY,
   VIEW_ALL_TEST_CASE_POLICY,
 } from '../../../constant/dataQualityPermissions';
-import { PolicyClass } from '../../../support/access-control/PoliciesClass';
-import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { setupUserWithPolicy } from '../../../utils/permission';
 import {
   visitTestSuiteDetailsPage,
   visitTestSuitesPage,
@@ -41,51 +38,21 @@ import {
   waitForTestCaseListResponse,
 } from '../../../utils/testCases';
 
-// --- Objects ---
-const createPolicy = new PolicyClass();
-const createRole = new RolesClass();
-const createUser = new UserClass();
+let createUser: UserClass;
+let deleteUser: UserClass;
+let suiteUser: UserClass;
+let viewBasicUser: UserClass;
+let tableCreateTestsUser: UserClass;
+let editTestCaseUser: UserClass;
+let tableEditTestsUser: UserClass;
+let editTestsOnTcUser: UserClass;
+let viewAllTcUser: UserClass;
+let suiteEditOnlyUser: UserClass;
 
-const deletePolicy = new PolicyClass();
-const deleteRole = new RolesClass();
-const deleteUser = new UserClass();
+let dataConsumerUser: UserClass;
+let dataStewardUser: UserClass;
 
-const suitePolicy = new PolicyClass();
-const suiteRole = new RolesClass();
-const suiteUser = new UserClass();
-
-const viewBasicPolicy = new PolicyClass();
-const viewBasicRole = new RolesClass();
-const viewBasicUser = new UserClass();
-
-const tableCreateTestsPolicy = new PolicyClass();
-const tableCreateTestsRole = new RolesClass();
-const tableCreateTestsUser = new UserClass();
-
-const editTestCasePolicy = new PolicyClass();
-const editTestCaseRole = new RolesClass();
-const editTestCaseUser = new UserClass();
-
-const tableEditTestsPolicy = new PolicyClass();
-const tableEditTestsRole = new RolesClass();
-const tableEditTestsUser = new UserClass();
-
-const editTestsOnTcPolicy = new PolicyClass();
-const editTestsOnTcRole = new RolesClass();
-const editTestsOnTcUser = new UserClass();
-
-const viewAllTcPolicy = new PolicyClass();
-const viewAllTcRole = new RolesClass();
-const viewAllTcUser = new UserClass();
-
-const suiteEditOnlyPolicy = new PolicyClass();
-const suiteEditOnlyRole = new RolesClass();
-const suiteEditOnlyUser = new UserClass();
-
-const dataConsumerUser = new UserClass();
-const dataStewardUser = new UserClass();
-
-const table = new TableClass();
+let table: TableClass;
 
 // --- Fixtures ---
 const test = base.extend<{
@@ -190,6 +157,20 @@ test.describe(
 
     test.beforeAll(async ({ browser }) => {
       test.slow();
+      createUser = new UserClass();
+      deleteUser = new UserClass();
+      suiteUser = new UserClass();
+      viewBasicUser = new UserClass();
+      tableCreateTestsUser = new UserClass();
+      editTestCaseUser = new UserClass();
+      tableEditTestsUser = new UserClass();
+      editTestsOnTcUser = new UserClass();
+      viewAllTcUser = new UserClass();
+      suiteEditOnlyUser = new UserClass();
+      dataConsumerUser = new UserClass();
+      dataStewardUser = new UserClass();
+      table = new TableClass();
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);
@@ -241,76 +222,75 @@ test.describe(
         ],
       });
 
-      // 3. Setup Custom Roles
-      await setupUserWithPolicy(
+      // 3. Setup custom policies via team (setCustomRulePolicy)
+      await createUser.create(apiContext, false);
+      await createUser.setCustomRulePolicy(
         apiContext,
-        createUser,
-        createPolicy,
-        createRole,
-        CREATE_TEST_CASE_POLICY
+        CREATE_TEST_CASE_POLICY,
+        'PW-DQ-create-test-case'
       );
-      await setupUserWithPolicy(
+
+      await deleteUser.create(apiContext, false);
+      await deleteUser.setCustomRulePolicy(
         apiContext,
-        deleteUser,
-        deletePolicy,
-        deleteRole,
-        DELETE_TEST_CASE_POLICY
+        DELETE_TEST_CASE_POLICY,
+        'PW-DQ-delete-test-case'
       );
-      await setupUserWithPolicy(
+
+      await suiteUser.create(apiContext, false);
+      await suiteUser.setCustomRulePolicy(
         apiContext,
-        suiteUser,
-        suitePolicy,
-        suiteRole,
-        TEST_SUITE_POLICY
+        TEST_SUITE_POLICY,
+        'PW-DQ-test-suite'
       );
-      await setupUserWithPolicy(
+
+      await viewBasicUser.create(apiContext, false);
+      await viewBasicUser.setCustomRulePolicy(
         apiContext,
-        viewBasicUser,
-        viewBasicPolicy,
-        viewBasicRole,
-        TEST_CASE_VIEW_BASIC_POLICY
+        TEST_CASE_VIEW_BASIC_POLICY,
+        'PW-DQ-view-basic'
       );
-      await setupUserWithPolicy(
+
+      await tableCreateTestsUser.create(apiContext, false);
+      await tableCreateTestsUser.setCustomRulePolicy(
         apiContext,
-        tableCreateTestsUser,
-        tableCreateTestsPolicy,
-        tableCreateTestsRole,
-        TABLE_CREATE_TESTS_POLICY
+        TABLE_CREATE_TESTS_POLICY,
+        'PW-DQ-table-create-tests'
       );
-      await setupUserWithPolicy(
+
+      await editTestCaseUser.create(apiContext, false);
+      await editTestCaseUser.setCustomRulePolicy(
         apiContext,
-        editTestCaseUser,
-        editTestCasePolicy,
-        editTestCaseRole,
-        EDIT_TEST_CASE_POLICY
+        EDIT_TEST_CASE_POLICY,
+        'PW-DQ-edit-test-case'
       );
-      await setupUserWithPolicy(
+
+      await tableEditTestsUser.create(apiContext, false);
+      await tableEditTestsUser.setCustomRulePolicy(
         apiContext,
-        tableEditTestsUser,
-        tableEditTestsPolicy,
-        tableEditTestsRole,
-        TABLE_EDIT_TESTS_POLICY
+        TABLE_EDIT_TESTS_POLICY,
+        'PW-DQ-table-edit-tests'
       );
-      await setupUserWithPolicy(
+
+      await editTestsOnTcUser.create(apiContext, false);
+      await editTestsOnTcUser.setCustomRulePolicy(
         apiContext,
-        editTestsOnTcUser,
-        editTestsOnTcPolicy,
-        editTestsOnTcRole,
-        EDIT_TESTS_ON_TEST_CASE_POLICY
+        EDIT_TESTS_ON_TEST_CASE_POLICY,
+        'PW-DQ-edit-tests-on-tc'
       );
-      await setupUserWithPolicy(
+
+      await viewAllTcUser.create(apiContext, false);
+      await viewAllTcUser.setCustomRulePolicy(
         apiContext,
-        viewAllTcUser,
-        viewAllTcPolicy,
-        viewAllTcRole,
-        VIEW_ALL_TEST_CASE_POLICY
+        VIEW_ALL_TEST_CASE_POLICY,
+        'PW-DQ-view-all-tc'
       );
-      await setupUserWithPolicy(
+
+      await suiteEditOnlyUser.create(apiContext, false);
+      await suiteEditOnlyUser.setCustomRulePolicy(
         apiContext,
-        suiteEditOnlyUser,
-        suiteEditOnlyPolicy,
-        suiteEditOnlyRole,
-        TEST_SUITE_EDIT_ONLY_POLICY
+        TEST_SUITE_EDIT_ONLY_POLICY,
+        'PW-DQ-suite-edit-only'
       );
 
       await afterAction();
