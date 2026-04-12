@@ -227,7 +227,9 @@ const TestDefinitionList = () => {
   const fetchTestDefinitionPermissions = useCallback(
     async (definitions: TestDefinition[], requestId: number) => {
       try {
-        if (requestId !== latestRequestRef.current) return;
+        if (requestId !== latestRequestRef.current) {
+          return;
+        }
         setPermissionLoading(true);
 
         if (!definitions.length) {
@@ -249,23 +251,27 @@ const TestDefinitionList = () => {
           permissionPromises
         );
 
-        const permissionsMap = definitions.reduce((acc, def, idx) => {
-          const response = permissionResponses[idx];
+        if (requestId === latestRequestRef.current) {
+          const permissionsMap = definitions.reduce((acc, def, idx) => {
+            const response = permissionResponses[idx];
 
-          return {
-            ...acc,
-            [def.name]:
-              response?.status === 'fulfilled'
-                ? response.value
-                : DEFAULT_ENTITY_PERMISSION,
-          };
-        }, {} as Record<string, OperationPermission>);
+            return {
+              ...acc,
+              [def.name]:
+                response?.status === 'fulfilled'
+                  ? response.value
+                  : DEFAULT_ENTITY_PERMISSION,
+            };
+          }, {} as Record<string, OperationPermission>);
 
-        setTestDefinitionPermissions(permissionsMap);
+          setTestDefinitionPermissions(permissionsMap);
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setPermissionLoading(false);
+        if (requestId === latestRequestRef.current) {
+          setPermissionLoading(false);
+        }
       }
     },
     [getEntityPermissionByFqn]
@@ -304,17 +310,22 @@ const TestDefinitionList = () => {
   }, [searchQuery, handlePageChange]);
 
   const filteredTestDefinitions = useMemo(() => {
+    if (!searchQuery) {
+      return [...testDefinitions].sort((a, b) => {
+        const nameA = a.displayName || a.name || '';
+        const nameB = b.displayName || b.name || '';
+        return nameA.localeCompare(nameB);
+      });
+    }
+
     const text = searchQuery.toLowerCase();
 
-    let filtered = testDefinitions;
-    if (text) {
-      filtered = testDefinitions.filter(
-        (test) =>
-          test.displayName?.toLowerCase().includes(text) ||
-          test.name?.toLowerCase().includes(text) ||
-          test.description?.toLowerCase().includes(text)
-      );
-    }
+    const filtered = testDefinitions.filter(
+      (test) =>
+        test.displayName?.toLowerCase().includes(text) ||
+        test.name?.toLowerCase().includes(text) ||
+        test.description?.toLowerCase().includes(text)
+    );
 
     return filtered.sort((a, b) => {
       const nameA = a.displayName || a.name || '';
