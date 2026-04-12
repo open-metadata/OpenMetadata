@@ -245,8 +245,6 @@ export default [
     },
     rules: {
       // TypeScript/base rule overrides for Playwright files
-
-      'react-hooks/rules-of-hooks': 'off', // Playwright fixtures use a `use` callback parameter that triggers false positives
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-duplicate-enum-values': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',

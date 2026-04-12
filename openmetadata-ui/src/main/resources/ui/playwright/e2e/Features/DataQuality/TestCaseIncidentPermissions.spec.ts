@@ -106,7 +106,15 @@ test.describe(
     let incidentId: string;
 
     const visitTestCaseIncidentPage = async (page: Page) => {
-      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/name/*?*fields=*'
+      );
+      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      const testCaseRes = await testCaseResponse;
+      expect(testCaseRes.status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
       await expect(page.getByTestId('entity-page-header')).toBeVisible();
       const incidentTab = page.getByRole('tab', { name: /Incident/i });
       await expect(incidentTab).toBeVisible();
