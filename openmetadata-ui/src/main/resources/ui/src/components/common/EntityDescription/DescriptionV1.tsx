@@ -31,6 +31,7 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
+import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import {
   CommentIconButton,
@@ -62,7 +63,7 @@ const DescriptionV1 = ({
   entityFullyQualifiedName,
 }: DescriptionProps) => {
   const navigate = useNavigate();
-  const { isVersionView } = useGenericContext<Domain>();
+  const { isVersionView, changeSummary } = useGenericContext<Domain>();
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
@@ -219,22 +220,36 @@ const DescriptionV1 = ({
     }
   }, [description, suggestionData, isDescriptionExpanded]);
 
+  const shouldShowDescriptionMetadata = useMemo(
+    () => changeSummary?.['description']?.changeSource != null,
+    [changeSummary]
+  );
+
   const header = useMemo(() => {
     return (
       <div
-        className={classNames('d-flex justify-between flex-wrap', {
-          'm-t-sm': suggestions?.length > 0,
-        })}>
-        <div className="d-flex items-center gap-2">
-          <Text className={classNames('text-sm font-medium')}>
+        className={classNames(
+          'description-v1-header d-flex justify-between flex-wrap',
+          {
+            'm-t-sm': suggestions?.length > 0,
+          }
+        )}>
+        <div className="description-v1-title-row d-flex items-center gap-2">
+          <Text
+            className={classNames('description-v1-title text-sm font-medium')}>
             {t('label.description')}
           </Text>
+          <DescriptionSourceBadge
+            changeSummaryEntry={changeSummary?.['description']}
+            showAcceptedBy={false}
+            showTimestamp={false}
+          />
           {showActions && actionButtons}
         </div>
         {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
       </div>
     );
-  }, [showActions, actionButtons, suggestions, showSuggestions]);
+  }, [showActions, actionButtons, suggestions, showSuggestions, changeSummary]);
 
   const content = (
     <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
@@ -247,9 +262,17 @@ const DescriptionV1 = ({
         className={classNames('schema-description d-flex', className)}
         direction="vertical"
         size={16}>
-        {!wrapInCard ? header : null}
+        {wrapInCard ? null : header}
         <div>
           {descriptionContent}
+          {!suggestionData && shouldShowDescriptionMetadata && (
+            <div className="description-v1-metadata">
+              <DescriptionSourceBadge
+                changeSummaryEntry={changeSummary?.['description']}
+                showBadge={false}
+              />
+            </div>
+          )}
           <ModalWithMarkdownEditor
             header={t('label.edit-description-for', { entityName })}
             placeholder={t('label.enter-entity', {

@@ -19,8 +19,6 @@ Each edge contains:
 import traceback
 from typing import Iterable, Optional
 
-from pydantic import ValidationError
-
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.burstIQConnection import (
@@ -119,21 +117,17 @@ class BurstiqLineageSource(Source):
             logger.debug(f"Table not found for dictionary {dictionary_name}: {exc}")
             return None
 
-    def _process_edge(self, edge_data: dict) -> Optional[Either[AddLineageRequest]]:
+    def _process_edge(self, edge: BurstIQEdge) -> Optional[Either[AddLineageRequest]]:
         """
         Process a single edge and create lineage request
 
         Args:
-            edge_data: Edge data from API: {fromDictionary, toDictionary, condition: [{fromCol, toCol}]}
+            edge: BurstIQEdge model instance
 
         Returns:
             Either[AddLineageRequest] or None
         """
         try:
-            # Parse edge
-            edge = BurstIQEdge.model_validate(edge_data)
-
-            # Get source and target tables
             from_table = self._get_table_entity(edge.fromDictionary)
             to_table = self._get_table_entity(edge.toDictionary)
 
@@ -180,14 +174,6 @@ class BurstiqLineageSource(Source):
 
             return Either(right=AddLineageRequest(edge=entities_edge))
 
-        except ValidationError as exc:
-            return Either(
-                left=StackTraceError(
-                    name=f"Validation error for edge",
-                    error=str(exc),
-                    stackTrace=traceback.format_exc(),
-                )
-            )
         except Exception as exc:
             return Either(
                 left=StackTraceError(
@@ -212,9 +198,8 @@ class BurstiqLineageSource(Source):
             edges = client.get_edges()
             logger.info(f"Processing {len(edges)} edges")
 
-            # Process each edge
-            for edge_data in edges:
-                result = self._process_edge(edge_data)
+            for edge in edges:
+                result = self._process_edge(edge)
                 if result:
                     yield result
 

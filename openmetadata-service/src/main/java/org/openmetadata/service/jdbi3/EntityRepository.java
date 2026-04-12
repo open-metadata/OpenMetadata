@@ -552,9 +552,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    changeSummarizer = new ChangeSummarizer<>(entityClass, changeSummaryFields);
+    changeSummarizer =
+        new ChangeSummarizer<>(entityClass, getEffectiveChangeSummaryFields(changeSummaryFields));
 
     Entity.registerEntity(entityClass, entityType, this);
+  }
+
+  private Set<String> getEffectiveChangeSummaryFields(Set<String> configuredFields) {
+    Set<String> effectiveFields = new HashSet<>(configuredFields);
+
+    if (allowedFields.contains(FIELD_DESCRIPTION)) {
+      effectiveFields.add(FIELD_DESCRIPTION);
+    }
+    if (allowedFields.contains(FIELD_OWNERS)) {
+      effectiveFields.add(FIELD_OWNERS);
+    }
+
+    return effectiveFields;
   }
 
   /**
@@ -3253,6 +3267,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_UPDATED);
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_NO_CHANGE);
+  }
+
+  /**
+   * Update only the changeSummary entry for a specific field without modifying the entity data.
+   * Used when accepting a suggestion that sets the same value already present — the JSON patch is
+   * empty so the normal update path produces no FieldChange, but the changeSummary must still
+   * reflect who accepted the suggestion.
+   */
+  @Transaction
+  public void patchChangeSummary(
+      UUID entityId, String fieldName, ChangeSource changeSource, String user) {
+    T entity = get(null, entityId, getFields("changeDescription"));
+    ChangeDescription cd = entity.getChangeDescription();
+    if (cd == null) {
+      cd = new ChangeDescription().withPreviousVersion(entity.getVersion());
+    }
+    ChangeSummaryMap csm = cd.getChangeSummary();
+    if (csm == null) {
+      csm = new ChangeSummaryMap();
+      cd.setChangeSummary(csm);
+    }
+
+    csm.getAdditionalProperties()
+        .put(
+            fieldName,
+            new ChangeSummary()
+                .withChangeSource(changeSource)
+                .withChangedBy(user)
+                .withChangedAt(System.currentTimeMillis()));
+
+    entity.setChangeDescription(cd);
+    dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
   }
 
   @Transaction
