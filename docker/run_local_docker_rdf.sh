@@ -12,8 +12,7 @@
 
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit
 
-helpFunction()
-{
+helpFunction() {
    echo ""
    echo "Usage: $0 [run_local_docker.sh args]"
    echo "\t-f Start Fuseki for RDF support: [true, false]. Default [true]"
@@ -46,9 +45,65 @@ done
 if [[ $startFuseki == "true" ]]; then
   export RDF_ENABLED=true
   export RDF_AUTO_REINDEX=true
+  export RDF_STORAGE_TYPE="${RDF_STORAGE_TYPE:-FUSEKI}"
+  export RDF_ENDPOINT="${RDF_ENDPOINT:-http://fuseki:3030/openmetadata}"
+  export RDF_REMOTE_USERNAME="${RDF_REMOTE_USERNAME:-admin}"
+  export RDF_REMOTE_PASSWORD="${RDF_REMOTE_PASSWORD:-admin}"
+  export RDF_BASE_URI="${RDF_BASE_URI:-https://open-metadata.org/}"
+  export RDF_DATASET="${RDF_DATASET:-openmetadata}"
+  export VALIDATE_COMPOSE_MAX_RETRIES="${VALIDATE_COMPOSE_MAX_RETRIES:-30}"
+  export VALIDATE_COMPOSE_DAG_RUN_RETRIES="${VALIDATE_COMPOSE_DAG_RUN_RETRIES:-60}"
+  export VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS="${VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS:-10}"
+  export VALIDATE_COMPOSE_DAG_RUN_POLL_SECONDS="${VALIDATE_COMPOSE_DAG_RUN_POLL_SECONDS:-5}"
+  export VALIDATION_TIMEOUT_SECONDS="${VALIDATION_TIMEOUT_SECONDS:-600}"
+  export APP_RUN_WAIT_TIMEOUT_SECONDS="${APP_RUN_WAIT_TIMEOUT_SECONDS:-600}"
+  export STRICT_DAG_VALIDATION=true
+  export OM_EXTRA_COMPOSE_FILES="docker/development/docker-compose-fuseki.yml"
+  export OM_ADDITIONAL_UP_SERVICES="fuseki"
 else
   export RDF_ENABLED=false
   export RDF_AUTO_REINDEX=false
+  unset RDF_STORAGE_TYPE
+  unset RDF_ENDPOINT
+  unset RDF_REMOTE_USERNAME
+  unset RDF_REMOTE_PASSWORD
+  unset RDF_BASE_URI
+  unset RDF_DATASET
+  unset VALIDATE_COMPOSE_MAX_RETRIES
+  unset VALIDATE_COMPOSE_DAG_RUN_RETRIES
+  unset VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS
+  unset VALIDATE_COMPOSE_DAG_RUN_POLL_SECONDS
+  export VALIDATION_TIMEOUT_SECONDS="${VALIDATION_TIMEOUT_SECONDS:-300}"
+  export APP_RUN_WAIT_TIMEOUT_SECONDS="${APP_RUN_WAIT_TIMEOUT_SECONDS:-300}"
+  unset STRICT_DAG_VALIDATION
+  unset OM_EXTRA_COMPOSE_FILES
+  unset OM_ADDITIONAL_UP_SERVICES
 fi
 
-exec ./run_local_docker.sh "${filtered_args[@]}"
+source ./run_local_docker_common.sh
+
+run_local_docker_main "${filtered_args[@]}"
+
+if [[ $startFuseki != "true" || $RDF_AUTO_REINDEX != "true" ]]; then
+  exit 0
+fi
+
+until curl -s -f "http://localhost:3030/\$/ping" > /dev/null 2>&1; do
+  echo 'Checking if Fuseki is reachable...\n'
+  sleep 5
+done
+
+ensure_app_installed "RdfIndexApp"
+echo "✔running RDF reindexing"
+trigger_app_and_wait "RdfIndexApp" '{
+  "entities": [],
+  "recreateIndex": true,
+  "batchSize": 100,
+  "useDistributedIndexing": true,
+  "partitionSize": 10000
+}' "$APP_RUN_WAIT_TIMEOUT_SECONDS"
+
+tput setaf 2
+echo "✔ RDF/Knowledge Graph support is enabled"
+echo "  - Fuseki UI: http://localhost:3030"
+echo "  - SPARQL endpoint: http://localhost:3030/openmetadata/sparql"
