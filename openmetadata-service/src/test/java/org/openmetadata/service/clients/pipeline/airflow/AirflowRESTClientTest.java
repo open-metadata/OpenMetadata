@@ -546,6 +546,23 @@ class AirflowRESTClientTest {
   }
 
   @Test
+  void constructorHandlesNullAdditionalProperties() throws Exception {
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setApiEndpoint("http://localhost:8080");
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    Parameters parameters = new Parameters();
+    java.lang.reflect.Field field = Parameters.class.getDeclaredField("additionalProperties");
+    field.setAccessible(true);
+    field.set(parameters, null);
+    config.setParameters(parameters);
+
+    PipelineServiceClientException exception =
+        assertThrows(PipelineServiceClientException.class, () -> new AirflowRESTClient(config));
+    assertTrue(exception.getMessage().contains("Missing Airflow credentials"));
+  }
+
+  @Test
   void constructorHandlesMissingCredentials() {
     PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
     config.setEnabled(true);

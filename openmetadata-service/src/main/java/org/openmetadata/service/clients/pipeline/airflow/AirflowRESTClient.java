@@ -78,7 +78,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     this.setPlatform(PLATFORM);
 
     Map<String, Object> params =
-        config.getParameters() != null
+        config.getParameters() != null && config.getParameters().getAdditionalProperties() != null
             ? config.getParameters().getAdditionalProperties()
             : Collections.emptyMap();
     this.username = getStringParam(params, USERNAME_KEY);
@@ -112,7 +112,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       throws KeyStoreException {
 
     Map<String, Object> params =
-        config.getParameters() != null
+        config.getParameters() != null && config.getParameters().getAdditionalProperties() != null
             ? config.getParameters().getAdditionalProperties()
             : Collections.emptyMap();
     String truststorePath = getStringParam(params, TRUSTSTORE_PATH_KEY);
