@@ -37,6 +37,13 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
+jest.mock('../../../hooks/useRequestAccessUrl', () => ({
+  useRequestAccessUrl: jest.fn().mockReturnValue({
+    url: null,
+    isLoading: false,
+  }),
+}));
+
 const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
     id: 'assets-id',
@@ -263,6 +270,21 @@ describe('DataAssetsHeader component', () => {
       fields: 'parent',
     });
     expect(getDataQualityLineage).not.toHaveBeenCalled();
+  });
+
+  it('should render request access button when a request access URL is available', () => {
+    const { useRequestAccessUrl } = jest.requireMock(
+      '../../../hooks/useRequestAccessUrl'
+    );
+
+    useRequestAccessUrl.mockReturnValueOnce({
+      url: 'https://access.example.com/new',
+      isLoading: false,
+    });
+
+    render(<DataAssetsHeader {...mockProps} />);
+
+    expect(screen.getByTestId('request-access-button')).toBeInTheDocument();
   });
 
   it('should not call getContainerByName API if parent is undefined', () => {

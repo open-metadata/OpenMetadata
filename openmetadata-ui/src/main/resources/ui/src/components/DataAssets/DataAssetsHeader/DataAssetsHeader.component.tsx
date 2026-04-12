@@ -61,6 +61,7 @@ import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import { useRequestAccessUrl } from '../../../hooks/useRequestAccessUrl';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -404,6 +405,12 @@ export const DataAssetsHeader = ({
       return 'service';
     }
   }, [isDataAssetsWithServiceField, dataAsset]);
+  const { url: requestAccessUrl } = useRequestAccessUrl({
+    entityFqn: dataAsset.fullyQualifiedName,
+    entityType,
+    serviceName: dataAsset.service?.name,
+    serviceType: dataAsset.service?.type,
+  });
 
   const handleVoteChange = async (data: VotingDataProps) => {
     await onUpdateVote?.(data, dataAsset.id ?? '');
@@ -686,6 +693,16 @@ export const DataAssetsHeader = ({
                         </Button>
                       </Typography.Link>
                     </Tooltip>
+                  )}
+                  {requestAccessUrl && (
+                    <Button
+                      className="font-semibold"
+                      data-testid="request-access-button"
+                      href={requestAccessUrl}
+                      rel="noopener noreferrer"
+                      target="_blank">
+                      {t('label.request-access')}
+                    </Button>
                   )}
                   <ManageButton
                     isAsyncDelete

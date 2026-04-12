@@ -30,6 +30,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
+import { useRequestAccessUrl } from '../../../hooks/useRequestAccessUrl';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
 import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -254,6 +255,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       () => searchClassBase.getEntityLink(source),
       [source]
     );
+    const { url: requestAccessUrl } = useRequestAccessUrl({
+      entityFqn: source.fullyQualifiedName,
+      entityType: source.entityType as EntityType,
+      serviceName: source.service?.name,
+      serviceType: source.service?.type,
+    });
 
     const header = useMemo(() => {
       const hasGlossaryTermStatus =
@@ -414,8 +421,20 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ))}
           </div>
         ) : null}
-        {actionPopoverContent && (
-          <Space className="explore-card-actions">{actionPopoverContent}</Space>
+        {(actionPopoverContent || requestAccessUrl) && (
+          <Space className="explore-card-actions">
+            {actionPopoverContent}
+            {requestAccessUrl && (
+              <Button
+                data-testid="request-access-button"
+                href={requestAccessUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+                type="link">
+                {t('label.request-access')}
+              </Button>
+            )}
+          </Space>
         )}
       </div>
     );

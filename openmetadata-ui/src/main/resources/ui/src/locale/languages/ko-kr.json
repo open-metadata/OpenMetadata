@@ -1671,6 +1671,7 @@
     "reply-lowercase-plural": "답글들",
     "reposition": "위치 변경",
     "request": "요청",
+    "request-access": "Request Access",
     "request-method": "요청 메서드",
     "request-schema-field": "요청 스키마 필드",
     "request-tag-plural": "태그 요청",

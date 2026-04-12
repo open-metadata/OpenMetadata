@@ -17,6 +17,13 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import ExploreSearchCard from './ExploreSearchCard';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
+jest.mock('../../../hooks/useRequestAccessUrl', () => ({
+  useRequestAccessUrl: jest.fn().mockReturnValue({
+    url: null,
+    isLoading: false,
+  }),
+}));
+
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
 }));
@@ -106,5 +113,23 @@ describe('ExploreSearchCard - Domain section', () => {
     renderCard({ domains: [] });
 
     expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+  });
+
+  it('renders request access button when a request access URL is available', () => {
+    const { useRequestAccessUrl } = jest.requireMock(
+      '../../../hooks/useRequestAccessUrl'
+    );
+
+    useRequestAccessUrl.mockReturnValueOnce({
+      url: 'https://access.example.com/new',
+      isLoading: false,
+    });
+
+    renderCard({
+      entityType: 'database',
+      service: { id: 'service-1', name: 'sample', type: 'databaseService' },
+    });
+
+    expect(screen.getByTestId('request-access-button')).toBeInTheDocument();
   });
 });

@@ -1671,6 +1671,7 @@
     "reply-lowercase-plural": "คำตอบหลายรายการ",
     "reposition": "ปรับตำแหน่งใหม่",
     "request": "คำขอ",
+    "request-access": "Request Access",
     "request-method": "วิธีการของคำขอ",
     "request-schema-field": "ฟิลด์สคีมาของคำขอ",
     "request-tag-plural": "แท็กคำขอ",
