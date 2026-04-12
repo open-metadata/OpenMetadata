@@ -1026,6 +1026,75 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_createTestCaseWithTestSuiteNames_addsToLogicalSuites(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_suite_names"));
+    TestSuite logicalSuite = client.testSuites().create(suiteReq);
+
+    String testCaseName = ns.prefix("suite_names_1");
+    CreateTestCase request =
+        TestCaseBuilder.create(client)
+            .name(testCaseName)
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    request.setTestSuiteNames(List.of(logicalSuite.getFullyQualifiedName()));
+
+    TestCase created = client.testCases().create(request);
+
+    Awaitility.await("test case added to logical suite")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched = client.testCases().get(created.getId().toString(), "testSuites");
+              assertNotNull(fetched.getTestSuites());
+              assertTrue(
+                  fetched.getTestSuites().stream()
+                      .anyMatch(ts -> ts.getId().equals(logicalSuite.getId())),
+                  "created test case should belong to the logical suite");
+
+              TestSuite fetchedSuite =
+                  client.testSuites().get(logicalSuite.getId().toString(), "tests");
+              assertNotNull(fetchedSuite.getTests());
+              assertTrue(
+                  fetchedSuite.getTests().stream()
+                      .anyMatch(ref -> ref.getId().equals(created.getId())),
+                  "logical suite should include the created test case");
+            });
+  }
+
+  @Test
+  void test_createTestCaseWithTestSuiteNames_basicSuiteRejected_atomic(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    CreateTestSuite basicSuiteReq = new CreateTestSuite();
+    basicSuiteReq.setName(table.getFullyQualifiedName());
+    basicSuiteReq.setBasicEntityReference(table.getFullyQualifiedName());
+    TestSuite basicSuite = client.testSuites().create(basicSuiteReq);
+
+    String testCaseName = ns.prefix("suite_names_basic_rejected");
+    CreateTestCase request =
+        TestCaseBuilder.create(client)
+            .name(testCaseName)
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    request.setTestSuiteNames(List.of(basicSuite.getFullyQualifiedName()));
+
+    assertThrows(Exception.class, () -> client.testCases().create(request));
+
+    String expectedFqn = table.getFullyQualifiedName() + "." + testCaseName;
+    assertThrows(Exception.class, () -> client.testCases().getByName(expectedFqn));
+  }
+
+  @Test
   void test_bulkAddTestCasesToLogicalTestSuiteByIds_nonExistentTestCase(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 

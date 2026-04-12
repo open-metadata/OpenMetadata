@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -708,9 +709,26 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(tableOpContext, tableResourceContext),
             new AuthRequest(testCaseOpContext, testCaseResourceContext));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    test = addHref(uriInfo, repository.create(uriInfo, test));
-    addTestCaseToNamedTestSuites(test, create.getTestSuiteNames(), securityContext);
-    return Response.created(test.getHref()).entity(test).build();
+
+    List<TestSuite> validatedSuites =
+        validateNamedTestSuites(create.getTestSuiteNames(), securityContext);
+    TestCase createdTest = addHref(uriInfo, repository.create(uriInfo, test));
+    try {
+      attachTestCaseToSuites(createdTest.getId(), validatedSuites);
+    } catch (Exception e) {
+      try {
+        repository.delete(
+            securityContext.getUserPrincipal().getName(), createdTest.getId(), false, false);
+      } catch (Exception rollbackException) {
+        LOG.error(
+            "Failed to rollback created test case {} after named test suite attachment failure",
+            createdTest.getId(),
+            rollbackException);
+        e.addSuppressed(rollbackException);
+      }
+      throw e;
+    }
+    return Response.created(createdTest.getHref()).entity(createdTest).build();
   }
 
   @POST
@@ -736,6 +754,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid List<CreateTestCase> createTestCases) {
+    if (createTestCases.stream().anyMatch(create -> !nullOrEmpty(create.getTestSuiteNames()))) {
+      throw new BadRequestException(
+          "testSuiteNames is not supported in createMany; use POST /v1/dataQuality/testCases");
+    }
     List<TestCase> testCases = new ArrayList<>();
     Set<String> entityLinks =
         createTestCases.stream().map(CreateTestCase::getEntityLink).collect(Collectors.toSet());
@@ -864,9 +886,31 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.prepareInternal(test, true);
+
+    List<TestSuite> validatedSuites =
+        validateNamedTestSuites(create.getTestSuiteNames(), securityContext);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
-    addTestCaseToNamedTestSuites(response.getEntity(), create.getTestSuiteNames(), securityContext);
+    try {
+      attachTestCaseToSuites(response.getEntity().getId(), validatedSuites);
+    } catch (Exception e) {
+      if (Response.Status.CREATED.equals(response.getStatus())) {
+        try {
+          repository.delete(
+              securityContext.getUserPrincipal().getName(),
+              response.getEntity().getId(),
+              false,
+              false);
+        } catch (Exception rollbackException) {
+          LOG.error(
+              "Failed to rollback created test case {} after named test suite attachment failure",
+              response.getEntity().getId(),
+              rollbackException);
+          e.addSuppressed(rollbackException);
+        }
+      }
+      throw e;
+    }
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -1596,12 +1640,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return filter.getExcludeIds();
   }
 
-  private void addTestCaseToNamedTestSuites(
-      TestCase testCase, List<String> testSuiteNames, SecurityContext securityContext) {
+  private List<TestSuite> validateNamedTestSuites(
+      List<String> testSuiteNames, SecurityContext securityContext) {
     if (nullOrEmpty(testSuiteNames)) {
-      return;
+      return List.of();
     }
-    // Validate all suites first before attaching any (atomicity)
     List<TestSuite> validatedSuites = new ArrayList<>();
     for (String testSuiteName : testSuiteNames) {
       TestSuite testSuite;
@@ -1622,9 +1665,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       validateTestSuiteOps(testSuite, securityContext);
       validatedSuites.add(testSuite);
     }
-    // Attach all validated suites
+    return validatedSuites;
+  }
+
+  private void attachTestCaseToSuites(UUID testCaseId, List<TestSuite> validatedSuites) {
+    if (nullOrEmpty(validatedSuites)) {
+      return;
+    }
     for (TestSuite testSuite : validatedSuites) {
-      repository.addTestCasesToLogicalTestSuite(testSuite, List.of(testCase.getId()));
+      repository.addTestCasesToLogicalTestSuite(testSuite, List.of(testCaseId));
     }
   }
 
