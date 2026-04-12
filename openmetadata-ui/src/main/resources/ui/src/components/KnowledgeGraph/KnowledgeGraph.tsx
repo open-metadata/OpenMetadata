@@ -278,6 +278,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     const apiFormat = apiFormatMap[format];
 
     if (!apiFormat) {
+      showErrorToast(t('server.unexpected-error'));
+
       return;
     }
 
