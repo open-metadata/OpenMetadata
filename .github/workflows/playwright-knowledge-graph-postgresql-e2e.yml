@@ -202,6 +202,6 @@ jobs:
       - name: Clean Up
         if: always()
         run: |
+          docker compose -f docker/development/docker-compose-postgres.yml -f docker/development/docker-compose-fuseki.yml down --remove-orphans || true
           docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans || true
-          docker compose -f docker/development/docker-compose-fuseki.yml down --remove-orphans || true
           sudo rm -rf ${PWD}/docker/development/docker-volume

@@ -59,6 +59,14 @@ services:
     # Create the database directory before starting Fuseki
     entrypoint: /bin/sh -c "mkdir -p /fuseki/databases/openmetadata && exec /docker-entrypoint.sh /jena-fuseki/fuseki-server --update --loc=/fuseki/databases/openmetadata /openmetadata"
 
+networks:
+  local_app_net:
+    name: ometa_network
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.239.0/24"
+
 volumes:
   fuseki-data:
     driver: local

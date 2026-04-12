@@ -29,6 +29,7 @@ public class RdfBatchProcessor {
           Entity.AUDIT_LOG,
           Entity.WEB_ANALYTIC_EVENT,
           "entityUsage",
+          "eventSubscription",
           Entity.EVENT_SUBSCRIPTION,
           "vote",
           Entity.THREAD);

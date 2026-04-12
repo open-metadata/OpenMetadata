@@ -91,6 +91,11 @@ if [[ $RDF_ENABLED == "true" ]]; then
   export RDF_REMOTE_PASSWORD="${RDF_REMOTE_PASSWORD:-admin}"
   export RDF_BASE_URI="${RDF_BASE_URI:-https://open-metadata.org/}"
   export RDF_DATASET="${RDF_DATASET:-openmetadata}"
+  : "${VALIDATE_COMPOSE_MAX_RETRIES:=30}"
+  : "${VALIDATE_COMPOSE_DAG_RUN_RETRIES:=60}"
+  : "${APP_RUN_WAIT_TIMEOUT_SECONDS:=600}"
+else
+  : "${APP_RUN_WAIT_TIMEOUT_SECONDS:=300}"
 fi
 
 if [[ $cleanDbVolumes == "true" ]]
@@ -218,6 +223,202 @@ until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://lo
   sleep 5
 done
 
+current_time_ms() {
+  python3 -c "import time; print(int(time.time() * 1000))"
+}
+
+wait_for_app_availability() {
+  local app_name=$1
+  local timeout_seconds=${2:-120}
+  local deadline=$((SECONDS + timeout_seconds))
+
+  while [ $SECONDS -lt $deadline ]; do
+    local http_code
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+      --header "Authorization: Bearer $authorizationToken" \
+      "http://localhost:8585/api/v1/apps/name/${app_name}")
+
+    if [ "$http_code" = "200" ]; then
+      echo "✓ App ${app_name} is available"
+      return 0
+    fi
+
+    echo "Waiting for app ${app_name} to become available..."
+    sleep 5
+  done
+
+  echo "✗ App ${app_name} did not become available within ${timeout_seconds}s"
+  return 1
+}
+
+ensure_app_installed() {
+  local app_name=$1
+  local response
+  local http_code
+  local body
+
+  response=$(curl -s -w "\n%{http_code}" \
+    --header "Authorization: Bearer $authorizationToken" \
+    "http://localhost:8585/api/v1/apps/name/${app_name}")
+  http_code=$(echo "$response" | tail -n1)
+  body=$(echo "$response" | sed '$d')
+
+  if [ "$http_code" = "200" ]; then
+    echo "✓ App ${app_name} is already installed"
+    return 0
+  fi
+
+  if [ "$http_code" != "404" ]; then
+    echo "✗ Failed to inspect app ${app_name} (HTTP ${http_code})"
+    echo "  Response: ${body}"
+    return 1
+  fi
+
+  echo "App ${app_name} is not installed. Installing it from the marketplace definition..."
+  local marketplace_response
+  marketplace_response=$(curl -s -f \
+    --header "Authorization: Bearer $authorizationToken" \
+    "http://localhost:8585/api/v1/apps/marketplace/name/${app_name}") || {
+      echo "✗ Could not fetch marketplace definition for ${app_name}"
+      return 1
+    }
+
+  local create_payload
+  create_payload=$(printf "%s" "$marketplace_response" | python3 - <<'PY'
+import json
+import sys
+
+definition = json.load(sys.stdin)
+payload = {
+    "name": definition["name"],
+    "displayName": definition.get("displayName"),
+    "description": definition.get("description"),
+    "appConfiguration": definition.get("appConfiguration", {}),
+    "appSchedule": {"scheduleTimeline": "None"},
+    "supportsInterrupt": definition.get("supportsInterrupt", False),
+}
+print(json.dumps(payload))
+PY
+)
+
+  response=$(curl -s -w "\n%{http_code}" --location --request POST 'http://localhost:8585/api/v1/apps' \
+    --header "Authorization: Bearer $authorizationToken" \
+    --header 'Content-Type: application/json' \
+    --data-raw "$create_payload")
+  http_code=$(echo "$response" | tail -n1)
+  body=$(echo "$response" | sed '$d')
+
+  if [ "$http_code" = "200" ] || [ "$http_code" = "201" ] || [ "$http_code" = "409" ]; then
+    wait_for_app_availability "$app_name" 120
+    return $?
+  fi
+
+  echo "✗ Failed to install app ${app_name} (HTTP ${http_code})"
+  echo "  Response: ${body}"
+  return 1
+}
+
+wait_for_app_run_completion() {
+  local app_name=$1
+  local trigger_timestamp_ms=$2
+  local timeout_seconds=${3:-$APP_RUN_WAIT_TIMEOUT_SECONDS}
+  local deadline=$((SECONDS + timeout_seconds))
+
+  while [ $SECONDS -lt $deadline ]; do
+    local status_response
+    local status_line
+
+    status_response=$(curl -s \
+      --header "Authorization: Bearer $authorizationToken" \
+      "http://localhost:8585/api/v1/apps/name/${app_name}/status?offset=0&limit=1")
+    status_line=$(printf "%s" "$status_response" | python3 - "$trigger_timestamp_ms" <<'PY'
+import json
+import sys
+
+threshold = int(sys.argv[1])
+
+try:
+    payload = json.load(sys.stdin)
+except json.JSONDecodeError:
+    print("invalid")
+    sys.exit(0)
+
+records = payload.get("data") or []
+if not records:
+    print("missing")
+    sys.exit(0)
+
+record = records[0]
+timestamp = int(record.get("timestamp") or 0)
+status = str(record.get("status") or "").lower()
+
+if timestamp < threshold:
+    print(f"stale:{status}:{timestamp}")
+else:
+    print(f"current:{status}:{timestamp}")
+PY
+)
+
+    case "$status_line" in
+      current:completed:*|current:success:*)
+        echo "✓ ${app_name} completed successfully"
+        return 0
+        ;;
+      current:failed:*|current:stopped:*)
+        echo "✗ ${app_name} finished with status ${status_line#current:}"
+        echo "  Response: ${status_response}"
+        return 1
+        ;;
+      current:running:*|current:started:*|current:pending:*|current:active:*|current:stopinprogress:*)
+        echo "Waiting for ${app_name} to finish (${status_line#current:})..."
+        ;;
+      stale:*|missing|invalid)
+        echo "Waiting for a fresh run record for ${app_name}..."
+        ;;
+      *)
+        echo "Waiting for ${app_name}; latest status was ${status_line}"
+        ;;
+    esac
+
+    sleep 5
+  done
+
+  echo "✗ Timed out waiting for ${app_name} to finish within ${timeout_seconds}s"
+  return 1
+}
+
+trigger_app_and_wait() {
+  local app_name=$1
+  local payload=${2:-}
+  local timeout_seconds=${3:-$APP_RUN_WAIT_TIMEOUT_SECONDS}
+  local trigger_timestamp_ms
+  local response
+  local http_code
+  local body
+
+  trigger_timestamp_ms=$(current_time_ms)
+  if [ -n "$payload" ]; then
+    response=$(curl -s -w "\n%{http_code}" --location --request POST "http://localhost:8585/api/v1/apps/trigger/${app_name}" \
+      --header "Authorization: Bearer $authorizationToken" \
+      --header 'Content-Type: application/json' \
+      --data-raw "$payload")
+  else
+    response=$(curl -s -w "\n%{http_code}" --location --request POST "http://localhost:8585/api/v1/apps/trigger/${app_name}" \
+      --header "Authorization: Bearer $authorizationToken")
+  fi
+
+  http_code=$(echo "$response" | tail -n1)
+  body=$(echo "$response" | sed '$d')
+
+  if [ "$http_code" != "200" ] && [ "$http_code" != "201" ] && [ "$http_code" != "202" ]; then
+    echo "✗ Failed to trigger ${app_name} (HTTP ${http_code})"
+    echo "  Response: ${body}"
+    return 1
+  fi
+
+  wait_for_app_run_completion "$app_name" "$trigger_timestamp_ms" "$timeout_seconds"
+}
+
 if [[ $includeIngestion == "true" ]]; then
   # Function to unpause DAG using Airflow API with OAuth Bearer token
   unpause_dag() {
@@ -291,16 +492,28 @@ if [[ $includeIngestion == "true" ]]; then
 
   # Run validation with timeout to avoid hanging indefinitely
   echo "Running DAG validation (this may take a few minutes)..."
-  timeout 300 python docker/validate_compose.py || {
+  sample_data_validation_failed=false
+  validation_timeout_seconds=300
+  if [[ $RDF_ENABLED == "true" ]]; then
+    validation_timeout_seconds=600
+  fi
+
+  timeout "$validation_timeout_seconds" python docker/validate_compose.py || {
     exit_code=$?
+    sample_data_validation_failed=true
     if [ $exit_code -eq 124 ]; then
-      echo "⚠ Warning: DAG validation timed out after 5 minutes"
+      echo "⚠ Warning: DAG validation timed out after ${validation_timeout_seconds} seconds"
       echo "  The DAG may still be running. Check Airflow UI at http://localhost:8080"
     else
       echo "⚠ Warning: DAG validation failed with exit code $exit_code"
     fi
     echo "  Continuing with remaining setup..."
   }
+
+  if [[ "$sample_data_validation_failed" == "true" && $RDF_ENABLED == "true" ]]; then
+    echo "✗ RDF startup requires sample data ingestion to complete before graph indexing."
+    exit 1
+  fi
 
   sleep 5
   unpause_dag "sample_usage"
@@ -313,26 +526,19 @@ else
 fi
 
 echo "✔running reindexing"
-# Trigger ElasticSearch ReIndexing from UI
-curl --location --request POST 'http://localhost:8585/api/v1/apps/trigger/SearchIndexingApplication' \
---header 'Authorization: Bearer eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg'
-
-sleep 60 # Sleep for 60 seconds to make sure the elasticsearch reindexing from UI finishes
+ensure_app_installed "SearchIndexingApplication"
+trigger_app_and_wait "SearchIndexingApplication" "" "$APP_RUN_WAIT_TIMEOUT_SECONDS"
 
 if [[ $RDF_ENABLED == "true" && $RDF_AUTO_REINDEX == "true" ]]; then
+  ensure_app_installed "RdfIndexApp"
   echo "✔running RDF reindexing"
-  curl --location --request POST 'http://localhost:8585/api/v1/apps/trigger/RdfIndexApp' \
-  --header 'Authorization: Bearer eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{
-      "entities": [],
-      "recreateIndex": true,
-      "batchSize": 100,
-      "useDistributedIndexing": true,
-      "partitionSize": 10000
-  }'
-
-  sleep 30
+  trigger_app_and_wait "RdfIndexApp" '{
+    "entities": ["all"],
+    "recreateIndex": true,
+    "batchSize": 100,
+    "useDistributedIndexing": true,
+    "partitionSize": 10000
+  }' "$APP_RUN_WAIT_TIMEOUT_SECONDS"
 fi
 tput setaf 2
 echo "✔ OpenMetadata is up and running"
