@@ -61,9 +61,9 @@ import {
   triggerWorkflow,
 } from '../../../rest/workflowDefinitionsAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import workflowClassBase from '../../../utils/WorkflowClassBase';
 import { applyFlowchartLayout } from '../../../utils/WorkflowLayout';
 import { getWorkflowDefinitionsListPath } from '../../../utils/WorkflowRouterUtils';
-import workflowClassBase from '../../../utils/WorkflowClassBase';
 
 interface WorkflowBuilderInternalProps {
   workflowLogic: UseWorkflowLogicReturn;

@@ -32,9 +32,9 @@ import {
   shouldUseConfigSidebar,
 } from '../utils/NodeUtils';
 import { showErrorToast } from '../utils/ToastUtils';
+import workflowClassBase from '../utils/WorkflowClassBase';
 import { applyFlowchartLayout } from '../utils/WorkflowLayout';
 import { deserializeWorkflow } from '../utils/WorkflowSerializer';
-import workflowClassBase from '../utils/WorkflowClassBase';
 import { useWorkflowState } from './useWorkflowState';
 
 interface UseWorkflowLogicProps {

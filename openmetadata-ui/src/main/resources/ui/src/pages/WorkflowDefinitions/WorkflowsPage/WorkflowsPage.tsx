@@ -42,8 +42,8 @@ import {
 } from '../../../rest/workflowDefinitionsAPI';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
+import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
 import {
   WORKFLOW_NAME_MAX_LENGTH,
   WORKFLOW_NAME_MIN_LENGTH,
