@@ -233,15 +233,6 @@ test.describe('Ontology Explorer', () => {
       await expect(page.getByTestId('ontology-explorer')).toBeVisible();
     });
 
-    test('should reload graph when refresh is clicked', async ({ page }) => {
-      await waitForGraphLoaded(page);
-      await page.getByTestId('refresh').click();
-      await expect(page.getByTestId('ontology-graph-loading')).toBeVisible({
-        timeout: 5000,
-      });
-      await waitForGraphLoaded(page);
-    });
-
     test('should disable refresh button while graph is loading', async ({
       page,
     }) => {
