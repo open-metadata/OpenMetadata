@@ -67,6 +67,8 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TopicRepository extends EntityRepository<Topic> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS =
+      Set.of("messageSchema.schemaFields.description");
 
   public TopicRepository() {
     super(
@@ -75,7 +77,8 @@ public class TopicRepository extends EntityRepository<Topic> {
         Topic.class,
         Entity.getCollectionDAO().topicDAO(),
         "",
-        "");
+        "",
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
@@ -239,11 +242,7 @@ public class TopicRepository extends EntityRepository<Topic> {
           topics.stream().filter(t -> t.getMessageSchema() != null).toList();
 
       if (!topicsWithSchemas.isEmpty()) {
-        bulkPopulateEntityFieldTags(
-            topicsWithSchemas,
-            entityType,
-            t -> t.getMessageSchema().getSchemaFields(),
-            Topic::getFullyQualifiedName);
+        bulkPopulateEntityFieldTags(topicsWithSchemas, t -> t.getMessageSchema().getSchemaFields());
       }
     }
   }

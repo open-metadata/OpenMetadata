@@ -116,6 +116,24 @@ export const createNewPage = async (browser: Browser) => {
   return { page, apiContext, afterAction };
 };
 
+export const getDefaultAdminAPIContext = async (browser: Browser) => {
+  const context = await browser.newContext({
+    storageState: 'playwright/.auth/admin.json',
+  });
+
+  const page = await context.newPage();
+  await redirectToHomePage(page);
+  const { apiContext } = await getApiContext(page);
+
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+    await context.close();
+  };
+
+  return { apiContext, afterAction };
+};
+
 /**
  * Retrieves the API context for the given page.
  * @param page The Playwright page object.
@@ -142,6 +160,11 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     SearchIndex: 'searchIndex',
     ApiEndpoint: 'apiEndpoint',
     Metric: 'metric',
+    ['Store Procedure']: 'storedProcedure',
+    Directory: 'directory',
+    File: 'file',
+    Spreadsheet: 'spreadsheet',
+    Worksheet: 'worksheet',
     [DASHBOARD_DATA_MODEL]: 'dashboardDataModel',
   };
 

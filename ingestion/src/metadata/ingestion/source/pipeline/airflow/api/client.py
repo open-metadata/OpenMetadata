@@ -207,8 +207,7 @@ class AirflowApiClient:
     def _paginate(self, path: str, key: str, limit: int = 100) -> List[dict]:
         result: List[dict] = []
         offset = 0
-        total = limit
-        while offset < total:
+        while True:
             separator = "&" if "?" in path else "?"
             response = self.client.get(
                 f"{path}{separator}limit={limit}&offset={offset}"
@@ -222,8 +221,14 @@ class AirflowApiClient:
             if not page:
                 break
             result.extend(page)
-            total = response.get("total_entries", len(result))
             offset += limit
+
+            total_entries = response.get("total_entries")
+            if total_entries is not None:
+                if offset >= total_entries:
+                    break
+            elif len(page) < limit:
+                break
         return result
 
     def get_all_dags(self) -> List[dict]:

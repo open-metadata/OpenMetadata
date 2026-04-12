@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.service.search.SearchUtils.buildHttpHostsForHc5;
+import static org.openmetadata.service.search.SearchUtils.buildScopedCredentialsProvider;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 
@@ -30,10 +31,7 @@ import java.util.stream.Stream;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hc.client5.http.auth.AuthScope;
-import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpHeaders;
@@ -297,6 +295,12 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
     return searchManager.search(request, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper searchForExport(
+      SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchManager.searchForExport(request, subjectContext);
   }
 
   @Override
@@ -734,13 +738,9 @@ public class ElasticSearchClient implements SearchClient {
 
               httpAsyncClientBuilder.setConnectionManager(connectionManagerBuilder.build());
 
-              if (StringUtils.isNotEmpty(esConfig.getUsername())
-                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
-                BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-                credentialsProvider.setCredentials(
-                    new AuthScope(null, -1),
-                    new UsernamePasswordCredentials(
-                        esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+              BasicCredentialsProvider credentialsProvider =
+                  buildScopedCredentialsProvider(esConfig, httpHosts);
+              if (credentialsProvider != null) {
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               }
 
@@ -751,6 +751,8 @@ public class ElasticSearchClient implements SearchClient {
                         org.apache.hc.core5.util.TimeValue.ofSeconds(
                             esConfig.getKeepAliveTimeoutSecs()));
               }
+
+              httpAsyncClientBuilder.useSystemProperties();
             });
 
         restClientBuilder.setRequestConfigCallback(

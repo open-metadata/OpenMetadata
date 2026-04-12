@@ -280,6 +280,7 @@ public class WebhookSinkProvider implements SinkProvider {
 
   private Response sendRequest(String payload) {
     WebTarget target = client.target(config.getEndpoint());
+    target = addQueryParams(target);
     Invocation.Builder request = target.request(MediaType.APPLICATION_JSON);
 
     // Add custom headers
@@ -303,6 +304,20 @@ public class WebhookSinkProvider implements SinkProvider {
       case "PATCH" -> request.method("PATCH", Entity.json(payload));
       default -> request.post(Entity.json(payload));
     };
+  }
+
+  private WebTarget addQueryParams(WebTarget target) {
+    if (config.getQueryParams() == null || config.getQueryParams().isEmpty()) {
+      return target;
+    }
+
+    for (var queryParam : config.getQueryParams()) {
+      if (queryParam.getKey() != null && queryParam.getValue() != null) {
+        target = target.queryParam(queryParam.getKey(), queryParam.getValue());
+      }
+    }
+
+    return target;
   }
 
   private void addAuthentication(Invocation.Builder request, Authentication auth) {

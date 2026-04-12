@@ -60,6 +60,7 @@ export const LINEAGE_CHILD_ITEMS_PER_PAGE = 10;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
+export const EXPORT_ALL_ASSETS_LIMIT = 200000;
 export const CUSTOM_PROPERTY_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
@@ -215,6 +216,9 @@ export const ROUTES = {
   MARKETPLACE: '/marketplace',
   MARKETPLACE_APP_DETAILS: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}`,
   MARKETPLACE_APP_INSTALL: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}/install`,
+
+  DATA_MARKETPLACE_SECTION: '/data-marketplace-section',
+  DATA_MARKETPLACE: '/data-marketplace',
 
   APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
   APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,

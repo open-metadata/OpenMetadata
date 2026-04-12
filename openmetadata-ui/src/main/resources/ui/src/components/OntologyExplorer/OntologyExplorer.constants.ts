@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Graph } from '@antv/g6';
 import {
   GlossaryTermRelationType,
   RelationCategory,
@@ -339,6 +340,10 @@ export const DIMMED_EDGE_OPACITY = 0.25;
 
 export const NODE_FILL_DEFAULT = '#ffffff';
 export const NODE_BORDER_COLOR = '#D5D9EB';
+export const NODE_SELECTED_STROKE = '#1570ef';
+export const NODE_SELECTED_LINE_WIDTH = 2.5;
+export const NODE_SELECTED_HALO_LINE_WIDTH = 8;
+export const NODE_SELECTED_HALO_FILL = 'rgba(21, 112, 239, 0.06)';
 export const NODE_BORDER_RADIUS = 6;
 export const NODE_PADDING_V = 9;
 export const NODE_PADDING_H = 10;
@@ -353,6 +358,9 @@ export const COMBO_FILL_DEFAULT = NODE_FILL_DEFAULT;
 export const COMBO_BODY_FILL_OPACITY = '22';
 export const COMBO_LABEL_BG_OPACITY = '40';
 export const NODE_LABEL_FILL = '#000000';
+export const BRAND_BLUE_FALLBACK = '#3b82f6';
+export const COMBO_COLOR_FALLBACK = '#94a3b8';
+export const DATA_MODE_LOAD_MORE_BADGE_BG = '#155EEF';
 export const NODE_LABEL_FONT_SIZE = 14;
 export const NODE_LABEL_FONT_WEIGHT = 500;
 export const NODE_SHADOW_COLOR = 'rgba(0, 0, 0, 0.12)';
@@ -366,7 +374,7 @@ export const EDGE_LABEL_FONT_FAMILY = 'Inter';
 export const EDGE_LABEL_LINE_HEIGHT = 16;
 export const EDGE_LABEL_LETTER_SPACING = 0;
 export const EDGE_LABEL_BG_FILL = '#EFF1F8';
-export const EDGE_LABEL_BG_STROKE = '#FFFFFF';
+export const EDGE_LABEL_BG_STROKE = NODE_FILL_DEFAULT;
 export const EDGE_LABEL_BG_RADIUS = 3;
 export const EDGE_LABEL_BG_SHADOW_COLOR = '#EBEDF5';
 export const EDGE_LABEL_BG_SHADOW_BLUR = 10;
@@ -378,14 +386,36 @@ export const TERM_LABEL_BG_PADDING: [number, number, number, number] = [
   8, 8, 8, 8,
 ];
 
-export const MIN_ZOOM = 0.1;
+export const MIN_ZOOM = 0.001;
 export const MAX_ZOOM = 3;
 export const DEFAULT_ZOOM = 1;
-export const FIT_VIEW_ZOOM_OUT = 0.9;
-export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.7;
+export const FIT_VIEW_ZOOM_OUT = 0.95;
+export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.85;
+export const ONTOLOGY_FIT_VIEW_PADDING = 40;
+export const ONTOLOGY_LARGE_GRAPH_NODE_COUNT = 1500;
+export const ONTOLOGY_TERMS_PAGE_SIZE = 300;
+export const DATA_MODE_MAX_RENDER_COUNT = 3500;
+export const PRACTICAL_MIN_ZOOM = 0.15;
+export const PRACTICAL_MAX_ZOOM_INITIAL = 1;
+
+export async function fitViewWithMinZoom(
+  graph: Graph,
+  duration = 0
+): Promise<void> {
+  await graph.fitView({ when: 'always', direction: 'both' }, { duration });
+  const zoom = graph.getZoom();
+  if (zoom > PRACTICAL_MAX_ZOOM_INITIAL) {
+    graph.zoomTo(
+      PRACTICAL_MAX_ZOOM_INITIAL,
+      { duration: 0 },
+      graph.getCanvasCenter()
+    );
+  }
+}
 
 export const DATA_MODE_ASSET_LOAD_PAGE_SIZE = 1000;
 export const DATA_MODE_ASSET_CIRCLE_SIZE = 20;
+
 export const DATA_MODE_ASSET_LABEL_FONT_SIZE = 12;
 export const DATA_MODE_ASSET_LABEL_BOX_MIN_WIDTH = 0;
 export const DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX = 300;
@@ -399,10 +429,12 @@ export const DATA_MODE_ASSET_LABEL_BOX_PADDING: [
   number
 ] = [6, 10, 6, 10];
 export const DATA_MODE_ASSET_LABEL_LAYOUT_STACK = 62;
-/** Extra radial gap from term node center to the first asset ring (longer connector feel in data mode). */
-export const DATA_MODE_TERM_TO_FIRST_RING_GAP = 168;
+export const DATA_MODE_TERM_TO_FIRST_RING_GAP = 120;
 export const COMBO_HEADER_HEIGHT = 34;
+export const COMBO_INTERIOR_PADDING_TOP = COMBO_HEADER_HEIGHT + 10;
+export const COMBO_INTERIOR_PADDING_SIDES = 12;
 export const COMBO_LABEL_PADDING_LEFT = 13;
+export const MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS = 100;
 
 export enum LayoutType {
   Hierarchical = 'hierarchical',
@@ -426,13 +458,10 @@ export function toLayoutEngineType(layout: LayoutType): LayoutEngineType {
   return layout as LayoutEngineType;
 }
 
-export const COMBO_PADDING = 48;
 export const COMBO_LABEL_PADDING_TOP_BOTTOM = 10;
 export const DATA_MODE_TERM_NODE_SIZE = 30;
-
-export const DATA_MODE_TERM_MIN_CENTER_SPACING = 400;
-export const DATA_MODE_TERM_GROUP_LAYOUT_MIN_RADIUS = 200;
-export const DATA_MODE_GLOSSARY_MACRO_HULL_GAP = 120;
+export const DATA_MODE_TERM_H_SPACING = 160;
+export const DATA_MODE_TERM_V_SPACING = 160;
 export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 2;
 /** Outer soft ring behind the term circle (G6 halo), light gray like elevated selection. */
 export const DATA_MODE_TERM_HALO_LINE_WIDTH = 5;
