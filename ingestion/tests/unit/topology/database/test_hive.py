@@ -553,6 +553,42 @@ class HiveUnitTest(TestCase):
         self.assertIsNotNone(partition)
         self.assertEqual([c.columnName for c in partition.columns], ["dt"])
 
+    def test_get_table_partition_details_from_describe_formatted(self):
+        class ConnectionContextManager:
+            def __init__(self, connection):
+                self._connection = connection
+
+            def __enter__(self):
+                return self._connection
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        mock_connection = Mock()
+        mock_connection.execute.return_value = [
+            ("id", "int", None),
+            ("name", "string", None),
+            ("# Partition Information", None, None),
+            ("# col_name", "data_type", "comment"),
+            ("dt", "string", None),
+            ("region", "string", None),
+            ("# Detailed Table Information", None, None),
+            ("Database:", "default", None),
+        ]
+
+        self.hive.engine = types.SimpleNamespace(
+            url=types.SimpleNamespace(drivername="hive"),
+            connect=lambda: ConnectionContextManager(mock_connection),
+        )
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="sample_table", schema_name="sample_schema", inspector=Mock()
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertIsNotNone(partition)
+        self.assertEqual([c.columnName for c in partition.columns], ["dt", "region"])
+
     def test_ssl_connection_configuration(self):
         """
         Test SSL configuration in Hive connection
