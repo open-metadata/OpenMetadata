@@ -67,6 +67,9 @@ from metadata.generated.schema.entity.services.connections.database.starrocksCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
+    RedpandaConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
     MatillionConnection,
 )
@@ -239,8 +242,9 @@ class SSLManager:
         return connection
 
     @setup_ssl.register(KafkaConnection)
-    def _(self, connection) -> KafkaConnection:
-        connection = cast(KafkaConnection, connection)
+    @setup_ssl.register(RedpandaConnection)
+    def _(self, connection):
+        connection = cast(Union[KafkaConnection, RedpandaConnection], connection)
         if connection.consumerConfigSSL:
             connection.consumerConfig = {
                 **connection.consumerConfig,
@@ -450,9 +454,10 @@ def _(connection):
 
 
 @check_ssl_and_init.register(KafkaConnection)
+@check_ssl_and_init.register(RedpandaConnection)
 def _(connection, *args, **kwargs):
 
-    service_connection: KafkaConnection = cast(KafkaConnection, connection)
+    service_connection = cast(Union[KafkaConnection, RedpandaConnection], connection)
     ssl_consumer_config: Optional[
         verifySSLConfig.SslConfig
     ] = service_connection.consumerConfigSSL

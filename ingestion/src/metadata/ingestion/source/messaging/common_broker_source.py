@@ -31,6 +31,10 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.entity.data.topic import (
+    ConsumerGroup,
+    ConsumerGroupMember,
+)
 from metadata.generated.schema.entity.data.topic import Topic as TopicEntity
 from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -90,6 +94,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
+        self.extract_consumer_groups = (
+            self.config.sourceConfig.config.extractConsumerGroups
+        )
+        self._topic_consumer_groups = None
         if self.generate_sample_data:
             self.consumer_client = self.connection.consumer_client
 
@@ -159,6 +167,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             else:
                 topic.messageSchema = Topic(
                     schemaText="", schemaType=SchemaType.Other, schemaFields=[]
+                )
+            if self.extract_consumer_groups:
+                topic.consumerGroups = self._get_consumer_groups_for_topic(
+                    topic_details.topic_name
                 )
             yield Either(right=topic)
             self.register_record(topic_request=topic)
@@ -370,6 +382,92 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.debug("Protobuf deserializing sample data is not supported")
             return ""
         return str(record.decode("utf-8"))
+
+    def _build_topic_consumer_groups_map(self) -> dict:
+        """
+        Build a mapping of topic_name -> list of ConsumerGroup objects.
+        Calls list_consumer_groups + describe_consumer_groups once per run.
+        """
+        topic_cg_map = {}
+        try:
+            list_result = self.admin_client.list_consumer_groups()
+            group_ids = [g.group_id for g in list_result.valid]
+            if not group_ids:
+                return topic_cg_map
+
+            describe_futures = self.admin_client.describe_consumer_groups(group_ids)
+            for group_id, future in describe_futures.items():
+                try:
+                    group_desc = future.result(timeout=10)
+                    for member in group_desc.members:
+                        if (
+                            not member.assignment
+                            or not member.assignment.topic_partitions
+                        ):
+                            continue
+                        for tp in member.assignment.topic_partitions:
+                            if tp.topic not in topic_cg_map:
+                                topic_cg_map[tp.topic] = {}
+                            cg_entry = topic_cg_map[tp.topic]
+                            if group_id not in cg_entry:
+                                cg_entry[group_id] = {
+                                    "state": str(group_desc.state)
+                                    if group_desc.state
+                                    else "Unknown",
+                                    "partition_assignor": group_desc.partition_assignor,
+                                    "members": {},
+                                }
+                            cg_entry[group_id]["members"][member.member_id] = {
+                                "client_id": member.client_id,
+                                "host": member.host,
+                                "group_instance_id": getattr(
+                                    member, "group_instance_id", None
+                                ),
+                                "partitions": [
+                                    p.partition
+                                    for p in member.assignment.topic_partitions
+                                    if p.topic == tp.topic
+                                ],
+                            }
+                except Exception as exc:
+                    logger.debug(f"Failed to describe consumer group {group_id}: {exc}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to extract consumer groups: {exc}")
+        return topic_cg_map
+
+    def _get_consumer_groups_for_topic(self, topic_name: str) -> list:
+        """
+        Get consumer group details for a specific topic.
+        Lazily builds the mapping on first call.
+        """
+        if self._topic_consumer_groups is None:
+            self._topic_consumer_groups = self._build_topic_consumer_groups_map()
+
+        cg_entries = self._topic_consumer_groups.get(topic_name, {})
+        consumer_groups = []
+        for group_id, info in cg_entries.items():
+            members = []
+            for member_id, member_info in info.get("members", {}).items():
+                members.append(
+                    ConsumerGroupMember(
+                        memberId=member_id,
+                        clientId=member_info.get("client_id"),
+                        host=member_info.get("host"),
+                        groupInstanceId=member_info.get("group_instance_id"),
+                        assignedPartitions=member_info.get("partitions", []),
+                    )
+                )
+            consumer_groups.append(
+                ConsumerGroup(
+                    groupId=group_id,
+                    state=info.get("state", "Unknown"),
+                    partitionAssignor=info.get("partition_assignor"),
+                    memberCount=len(members),
+                    members=members,
+                )
+            )
+        return consumer_groups if consumer_groups else None
 
     def close(self):
         if self.generate_sample_data and self.consumer_client:

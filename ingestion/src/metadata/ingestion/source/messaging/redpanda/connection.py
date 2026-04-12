@@ -23,13 +23,16 @@ from metadata.generated.schema.entity.services.connections.messaging.redpandaCon
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.messaging.kafka.connection import KafkaClient
 from metadata.ingestion.source.messaging.kafka.connection import (
-    get_connection as get_kafka_connection,
+    TIMEOUT_SECONDS,
+    InvalidKafkaCreds,
+    KafkaClient,
+    SchemaRegistryException,
 )
 from metadata.ingestion.source.messaging.kafka.connection import (
-    test_connection as test_kafka_connection,
+    get_connection as get_kafka_connection,
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
@@ -56,10 +59,47 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    return test_kafka_connection(
+    def custom_executor():
+        try:
+            client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics
+        except Exception as err:
+            raise InvalidKafkaCreds(
+                f"Failed to fetch topics due to: {err}. "
+                "Please validate credentials and check if you are using correct security protocol"
+            )
+
+    def schema_registry_test():
+        if client.schema_registry_client:
+            client.schema_registry_client.get_subjects()
+        else:
+            raise SchemaRegistryException(
+                "Schema Registry not initialized, please provide schema registry "
+                "credentials in case you want topic schema and sample data to be ingested"
+            )
+
+    test_fn = {
+        "GetTopics": custom_executor,
+        "CheckSchemaRegistry": schema_registry_test,
+    }
+
+    if service_connection.redpandaAdminApiUrl:
+
+        def admin_api_test():
+            from metadata.ingestion.source.messaging.redpanda.client import (
+                RedpandaAdminClient,
+            )
+
+            admin_client = RedpandaAdminClient(
+                str(service_connection.redpandaAdminApiUrl)
+            )
+            admin_client.check_connectivity()
+
+        test_fn["CheckRedpandaAdminAPI"] = admin_api_test
+
+    return test_connection_steps(
         metadata=metadata,
-        client=client,
-        service_connection=service_connection,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )

@@ -20,6 +20,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.metadata import CassandraSource
 from metadata.ingestion.source.messaging.kafka.metadata import KafkaSource
+from metadata.ingestion.source.messaging.redpanda.metadata import RedpandaSource
 from metadata.utils.ssl_manager import SSLManager
 
 
@@ -137,6 +138,88 @@ class KafkaSourceSSLTest(TestCase):
         )
         self.assertIsNotNone(
             kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
+                "ssl.certificate.location"
+            ),
+        )
+
+
+class RedpandaSourceSSLTest(TestCase):
+    @patch(
+        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
+    )
+    @patch("metadata.ingestion.source.messaging.redpanda.metadata.SSLManager")
+    def test_init(self, mock_ssl_manager, test_connection):
+        test_connection.return_value = True
+        config = WorkflowSource(
+            **{
+                "type": "redpanda",
+                "serviceName": "local_redpanda",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Redpanda",
+                        "bootstrapServers": "localhost:9092",
+                    }
+                },
+                "sourceConfig": {"config": {"type": "MessagingMetadata"}},
+            }
+        )
+        metadata = OpenMetadata(
+            OpenMetadataConnection(
+                hostPort="http://localhost:8585/api",
+                authProvider="openmetadata",
+                securityConfig=OpenMetadataJWTClientConfig(jwtToken="token"),
+            )
+        )
+        redpanda_source = RedpandaSource(config, metadata)
+
+        self.assertIsNone(redpanda_source.ssl_manager)
+        mock_ssl_manager.assert_not_called()
+
+        config_with_ssl = WorkflowSource(
+            **{
+                "type": "redpanda",
+                "serviceName": "local_redpanda",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Redpanda",
+                        "bootstrapServers": "localhost:9092",
+                        "schemaRegistrySSL": {
+                            "caCertificate": "caCertificateData",
+                            "sslKey": "sslKeyData",
+                            "sslCertificate": "sslCertificateData",
+                        },
+                    },
+                },
+                "sourceConfig": {"config": {"type": "MessagingMetadata"}},
+            }
+        )
+        redpanda_source_with_ssl = RedpandaSource(config_with_ssl, metadata)
+
+        self.assertIsNotNone(redpanda_source_with_ssl.ssl_manager)
+        self.assertEqual(
+            redpanda_source_with_ssl.service_connection.schemaRegistrySSL.root.caCertificate.get_secret_value(),
+            "caCertificateData",
+        )
+        self.assertEqual(
+            redpanda_source_with_ssl.service_connection.schemaRegistrySSL.root.sslKey.get_secret_value(),
+            "sslKeyData",
+        )
+        self.assertEqual(
+            redpanda_source_with_ssl.service_connection.schemaRegistrySSL.root.sslCertificate.get_secret_value(),
+            "sslCertificateData",
+        )
+        self.assertIsNotNone(
+            redpanda_source_with_ssl.service_connection.schemaRegistryConfig.get(
+                "ssl.ca.location"
+            ),
+        )
+        self.assertIsNotNone(
+            redpanda_source_with_ssl.service_connection.schemaRegistryConfig.get(
+                "ssl.key.location"
+            ),
+        )
+        self.assertIsNotNone(
+            redpanda_source_with_ssl.service_connection.schemaRegistryConfig.get(
                 "ssl.certificate.location"
             ),
         )

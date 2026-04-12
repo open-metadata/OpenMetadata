@@ -18,7 +18,7 @@ import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TopicIndex implements SearchIndex {
-  final Set<String> excludeTopicFields = Set.of("sampleData");
+  final Set<String> excludeTopicFields = Set.of("sampleData", "consumerGroups");
   final Topic topic;
 
   public TopicIndex(Topic topic) {

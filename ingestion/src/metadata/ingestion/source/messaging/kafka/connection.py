@@ -156,9 +156,14 @@ def test_connection(
                 "credentials in case you want topic schema and sample data to be ingested"
             )
 
+    def get_consumer_groups():
+        result = client.admin_client.list_consumer_groups()
+        _ = [g.group_id for g in result.valid]
+
     test_fn = {
         "GetTopics": custom_executor,
         "CheckSchemaRegistry": schema_registry_test,
+        "GetConsumerGroups": get_consumer_groups,
     }
 
     return test_connection_steps(

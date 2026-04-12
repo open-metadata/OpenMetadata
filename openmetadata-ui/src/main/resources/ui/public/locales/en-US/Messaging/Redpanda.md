@@ -10,6 +10,15 @@ Note that the ingestion of the Redpanda topics' schema is done separately by con
 $$
 You can find further information on the Redpanda connector in the <a href="https://docs.open-metadata.org/connectors/messaging/redpanda" target="_blank">docs</a>.
 
+## Kafka Connect Lineage
+
+Redpanda is wire-compatible with Apache Kafka, so the existing **Kafka Connect** pipeline connector works with Redpanda out of the box. If you have Kafka Connect sink connectors running against Redpanda (e.g., JDBC Sink, BigQuery Sink, S3 Sink), you can set up a Kafka Connect pipeline in OpenMetadata to automatically extract topic-to-table lineage.
+
+To configure this:
+1. Set up a Redpanda messaging service in OpenMetadata (this connector)
+2. Set up a **Kafka Connect** pipeline service, pointing to your Kafka Connect REST API
+3. The pipeline connector will automatically detect sink connectors and create lineage from Redpanda topics to destination tables
+
 ## Connection Details
 
 $$section
@@ -31,7 +40,7 @@ $$section
 
 Security Protocol used in bootstrap server.
 
-Supported: 
+Supported:
 `PLAINTEXT`: Un-authenticated, non-encrypted channel
 `SASL_PLAINTEXT`: SASL authenticated, non-encrypted channel
 `SASL_SSL`: SASL authenticated, SSL channel
@@ -78,4 +87,37 @@ $$section
 ### Schema Registry Config $(id="schemaRegistryConfig")
 
 The accepted additional values for the Schema Registry configuration can be found in the following <a href="https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient" target="_blank">link</a>.
+$$
+
+$$section
+### Consumer Config SSL $(id="consumerConfigSSL")
+
+SSL configuration for the Kafka consumer connection used by Redpanda. Configure CA certificate, client certificate, and private key for mTLS authentication.
+$$
+
+$$section
+### Schema Registry SSL $(id="schemaRegistrySSL")
+
+SSL configuration for the Schema Registry connection used by Redpanda. Configure CA certificate, client certificate, and private key for mTLS authentication.
+$$
+
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation.
+$$
+
+$$section
+### SSL Certificate $(id="sslCertificate")
+The SSL certificate used for client authentication.
+$$
+
+$$section
+### SSL Key $(id="sslKey")
+The private key associated with the SSL certificate.
+$$
+
+$$section
+### Redpanda Admin API URL $(id="redpandaAdminApiUrl")
+
+URL of the Redpanda Admin API, typically running on port 9644. When configured, OpenMetadata will extract data transform metadata to create topic-to-topic lineage. E.g., `http://localhost:9644`
 $$
