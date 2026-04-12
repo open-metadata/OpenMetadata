@@ -20,8 +20,7 @@ import {
 import { useGraphDataBuilder } from './hooks/useGraphData';
 import { useOntologyGraph } from './hooks/useOntologyGraph';
 import {
-  FIT_VIEW_ZOOM_OUT,
-  FIT_VIEW_ZOOM_OUT_DATA_MODE,
+  fitViewWithMinZoom,
   toLayoutEngineType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
@@ -36,7 +35,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       nodes: inputNodes,
       edges: inputEdges,
       settings,
-      nodePositions,
       selectedNodeId,
       expandedTermIds,
       glossaryColorMap,
@@ -49,6 +47,8 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      onScrollNearEdge,
+      nodePositions,
     },
     ref
   ) => {
@@ -76,56 +76,55 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       selectedNodeId: selectedNodeId ?? null,
       expandedTermIds,
       clickedEdgeId,
-      nodePositions,
       glossaryColorMap,
-      layoutType,
       hierarchyCombos: hierarchyCombos ?? [],
       graphSearchHighlight,
+      layoutType,
+      nodePositions,
     });
 
-    const { graphRef, extractNodePositions } = useOntologyGraph({
-      containerRef,
-      graphData,
-      inputNodes,
-      mergedEdgesList,
-      explorationMode,
-      settings,
-      layoutType,
-      focusNodeId,
-      selectedNodeId,
-      expandedTermIds,
-      dataSignature,
-      onNodeClick,
-      onNodeDoubleClick,
-      onNodeContextMenu,
-      onPaneClick,
-      setClickedEdgeId,
-      neighborSet,
-      glossaryColorMap,
-      computeNodeColor,
-      assetToTermMap,
-    });
+    const { graphRef, extractNodePositions, suppressEdgeCheck } =
+      useOntologyGraph({
+        containerRef,
+        graphData,
+        inputNodes,
+        mergedEdgesList,
+        explorationMode,
+        settings,
+        layoutType,
+        focusNodeId,
+        selectedNodeId,
+        expandedTermIds,
+        dataSignature,
+        onNodeClick,
+        onNodeDoubleClick,
+        onNodeContextMenu,
+        onPaneClick,
+        onScrollNearEdge,
+        setClickedEdgeId,
+        neighborSet,
+        glossaryColorMap,
+        computeNodeColor,
+        assetToTermMap,
+      });
 
     useImperativeHandle(
       ref,
       () => ({
-        fitView: () => {
+        fitView: async () => {
           const graph = graphRef.current;
           if (!graph) {
             return;
           }
-          const duration = 300;
-          const zoomAfterFit =
-            explorationMode === 'data'
-              ? FIT_VIEW_ZOOM_OUT_DATA_MODE
-              : FIT_VIEW_ZOOM_OUT;
-          graph.fitView(undefined, { duration });
-          graph.zoomBy(zoomAfterFit, { duration });
+          suppressEdgeCheck(800);
+          await fitViewWithMinZoom(graph, 300);
         },
         zoomIn: () => {
+          suppressEdgeCheck();
           graphRef.current?.zoomBy(1.2);
         },
         zoomOut: () => {
+          suppressEdgeCheck();
           graphRef.current?.zoomBy(0.8);
         },
         runLayout: () => {
@@ -175,7 +174,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           URL.revokeObjectURL(url);
         },
       }),
-      [extractNodePositions, graphRef]
+      [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
 
     return (

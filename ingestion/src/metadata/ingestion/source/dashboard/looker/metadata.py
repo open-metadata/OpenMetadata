@@ -838,12 +838,9 @@ class LookerSource(DashboardServiceSource):
                 self.register_record_datamodel(datamodel_request=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
-                yield Either(
-                    left=StackTraceError(
-                        name=view_name,
-                        error=f"Cannot find the view [{view_name}]: empty",
-                        stackTrace=traceback.format_exc(),
-                    )
+                logger.warning(
+                    f"Cannot find the view [{view_name}] in the configured repositories. "
+                    "It may be defined in an imported project not listed in 'additionalRepositories'."
                 )
 
     def replace_derived_references(self, sql_query):
