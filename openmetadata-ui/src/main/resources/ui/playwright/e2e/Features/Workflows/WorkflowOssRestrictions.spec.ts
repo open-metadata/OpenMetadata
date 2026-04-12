@@ -14,11 +14,7 @@
 import { expect, test as base, type Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { performAdminLogin } from '../../../utils/admin';
-import {
-  clickOutside,
-  redirectToHomePage,
-  uuid,
-} from '../../../utils/common';
+import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 const test = base.extend<{ page: Page }>({
@@ -91,7 +87,6 @@ async function openTaskNodeSidebar(page: Page) {
 }
 
 test.describe('OSS Workflow Capabilities', () => {
-
   test.beforeAll('Create test workflow via API', async ({ browser }) => {
     workflowName = `pw-oss-test-workflow-${uuid()}`;
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -169,7 +164,9 @@ test.describe('OSS Workflow Capabilities', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await apiContext.delete(
-      `/api/v1/governance/workflowDefinitions/name/${encodeURIComponent(workflowName)}`,
+      `/api/v1/governance/workflowDefinitions/name/${encodeURIComponent(
+        workflowName
+      )}`,
       { params: { hardDelete: true } }
     );
 
@@ -231,9 +228,7 @@ test.describe('OSS Workflow Capabilities', () => {
       await expect(
         sidebar.getByTestId('save-node-configuration-button')
       ).not.toBeVisible();
-      await expect(
-        sidebar.getByTestId('delete-node-button')
-      ).not.toBeVisible();
+      await expect(sidebar.getByTestId('delete-node-button')).not.toBeVisible();
     });
   });
 
@@ -245,9 +240,7 @@ test.describe('OSS Workflow Capabilities', () => {
       await navigateToWorkflowDetailPage(page, workflowName);
       await enterEditMode(page);
 
-      await expect(
-        page.getByTestId('workflow-node-sidebar')
-      ).not.toBeVisible();
+      await expect(page.getByTestId('workflow-node-sidebar')).not.toBeVisible();
     });
 
     test('graph canvas contains workflow nodes', async ({ page }) => {
@@ -328,9 +321,7 @@ test.describe('OSS Workflow Capabilities', () => {
 
       const sidebar = await openTaskNodeSidebar(page);
 
-      await expect(
-        sidebar.getByTestId('delete-node-button')
-      ).not.toBeVisible();
+      await expect(sidebar.getByTestId('delete-node-button')).not.toBeVisible();
     });
 
     test('save-node-configuration-button closes sidebar (local state update)', async ({
