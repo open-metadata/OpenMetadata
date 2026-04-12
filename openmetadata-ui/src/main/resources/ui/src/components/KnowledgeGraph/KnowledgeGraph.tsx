@@ -261,8 +261,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     }
   }, [t]);
 
-  const getExportHandler = (format: EntityGraphExportFormat) => async () => {
-    if (!entity?.id) {
+  const getExportHandler = (format: ExportFormat) => async () => {
+    if (!entity?.id || !entityType) {
       showErrorToast(
         t('label.no-entity-selected', { entity: t('label.asset') })
       );
@@ -270,10 +270,23 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       return;
     }
 
+    const apiFormatMap: Partial<Record<ExportFormat, EntityGraphExportFormat>> =
+      {
+        [ExportFormat.JSONLD]: 'jsonld',
+        [ExportFormat.TURTLE]: 'turtle',
+      };
+    const apiFormat = apiFormatMap[format];
+
+    if (!apiFormat) {
+      showErrorToast(t('server.unexpected-error'));
+
+      return;
+    }
+
     try {
       await downloadEntityGraph({
         entityId: entity.id,
-        entityType: entityType ?? '',
+        entityType,
         entityName:
           entity.fullyQualifiedName ?? entity.name ?? 'knowledge-graph',
         depth: selectedDepth,
@@ -283,7 +296,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         relationshipTypes: selectedRelationshipTypes.length
           ? selectedRelationshipTypes
           : undefined,
-        format: format,
+        format: apiFormat,
       });
     } catch {
       showErrorToast(t('server.unexpected-error'));
