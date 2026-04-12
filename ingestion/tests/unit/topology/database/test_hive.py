@@ -360,15 +360,15 @@ class HiveUnitTest(TestCase):
         self.thread_id = self.hive.context.get_current_thread_id()
         self.hive._inspector_map[self.thread_id] = types.SimpleNamespace()
 
-        self.hive._inspector_map[
-            self.thread_id
-        ].get_pk_constraint = lambda table_name, schema_name: []
-        self.hive._inspector_map[
-            self.thread_id
-        ].get_unique_constraints = lambda table_name, schema_name: []
-        self.hive._inspector_map[
-            self.thread_id
-        ].get_foreign_keys = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_pk_constraint = (
+            lambda table_name, schema_name: []
+        )
+        self.hive._inspector_map[self.thread_id].get_unique_constraints = (
+            lambda table_name, schema_name: []
+        )
+        self.hive._inspector_map[self.thread_id].get_foreign_keys = (
+            lambda table_name, schema_name: []
+        )
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [
@@ -517,6 +517,41 @@ class HiveUnitTest(TestCase):
             f"dt should appear exactly once but got: {col_names}",
         )
         self.assertEqual(col_names, ["id", "name", "dt"])
+
+    def test_get_table_partition_details_from_metastore_mysql(self):
+        self.hive.engine = types.SimpleNamespace(
+            url=types.SimpleNamespace(drivername="hive+mysql")
+        )
+        mock_connection = Mock()
+        mock_connection.execute.return_value.fetchall.return_value = [
+            ("dt",),
+            ("region",),
+        ]
+        self.hive._connection_map[self.thread_id] = mock_connection
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="sample_table", schema_name="sample_schema", inspector=Mock()
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertIsNotNone(partition)
+        self.assertEqual([c.columnName for c in partition.columns], ["dt", "region"])
+
+    def test_get_table_partition_details_from_metastore_postgres(self):
+        self.hive.engine = types.SimpleNamespace(
+            url=types.SimpleNamespace(drivername="hive+postgres")
+        )
+        mock_connection = Mock()
+        mock_connection.execute.return_value.fetchall.return_value = [("dt",)]
+        self.hive._connection_map[self.thread_id] = mock_connection
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="sample_table", schema_name="sample_schema", inspector=Mock()
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertIsNotNone(partition)
+        self.assertEqual([c.columnName for c in partition.columns], ["dt"])
 
     def test_ssl_connection_configuration(self):
         """

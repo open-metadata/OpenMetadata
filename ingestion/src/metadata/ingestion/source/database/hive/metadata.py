@@ -185,21 +185,48 @@ class HiveSource(CommonDbSourceService):
         partition_keys: List[str] = []
         in_partition_section = False
         try:
-            with self.engine.connect() as conn:
-                rows = conn.execute(
-                    text(f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`")
+            drivername = getattr(getattr(self.engine, "url", None), "drivername", "")
+            if drivername in {"hive+mysql", "hive+postgres"}:
+                query = (
+                    """
+                    SELECT pk.PKEY_NAME
+                    FROM PARTITION_KEYS pk
+                    JOIN TBLS tbl ON pk.TBL_ID = tbl.TBL_ID
+                    JOIN DBS db ON tbl.DB_ID = db.DB_ID
+                    WHERE db.NAME = :schema AND tbl.TBL_NAME = :table_name
+                    ORDER BY pk.INTEGER_IDX
+                    """
+                    if drivername == "hive+mysql"
+                    else """
+                    SELECT pk."PKEY_NAME"
+                    FROM "PARTITION_KEYS" pk
+                    JOIN "TBLS" tbl ON pk."TBL_ID" = tbl."TBL_ID"
+                    JOIN "DBS" db ON tbl."DB_ID" = db."DB_ID"
+                    WHERE db."NAME" = :schema AND tbl."TBL_NAME" = :table_name
+                    ORDER BY pk."INTEGER_IDX"
+                    """
                 )
-                for row in rows:
-                    col_name = row[0].strip() if row[0] else ""
-                    if col_name == "# Partition Information":
-                        in_partition_section = True
-                        continue
-                    if in_partition_section:
-                        if not col_name or col_name.startswith("# Detailed"):
-                            break
-                        if col_name.startswith("#"):
+                rows = self.connection.execute(
+                    text(query),
+                    {"table_name": table_name, "schema": schema_name},
+                ).fetchall()
+                partition_keys = [row[0] for row in rows if row and row[0]]
+            else:
+                with self.engine.connect() as conn:
+                    rows = conn.execute(
+                        text(f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`")
+                    )
+                    for row in rows:
+                        col_name = row[0].strip() if row[0] else ""
+                        if col_name == "# Partition Information":
+                            in_partition_section = True
                             continue
-                        partition_keys.append(col_name)
+                        if in_partition_section:
+                            if not col_name or col_name.startswith("# Detailed"):
+                                break
+                            if col_name.startswith("#"):
+                                continue
+                            partition_keys.append(col_name)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
