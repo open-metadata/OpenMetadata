@@ -453,10 +453,11 @@ public class DistributedRdfIndexCoordinator {
     }
 
     Long completedAt = existing.getCompletedAt();
-    if (status == IndexJobStatus.COMPLETED
-        || status == IndexJobStatus.COMPLETED_WITH_ERRORS
-        || status == IndexJobStatus.FAILED
-        || status == IndexJobStatus.STOPPED) {
+    if (completedAt == null
+        && (status == IndexJobStatus.COMPLETED
+            || status == IndexJobStatus.COMPLETED_WITH_ERRORS
+            || status == IndexJobStatus.FAILED
+            || status == IndexJobStatus.STOPPED)) {
       completedAt = completedAt != null ? completedAt : System.currentTimeMillis();
     }
 
