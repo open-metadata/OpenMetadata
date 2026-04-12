@@ -22,10 +22,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.feed.FormSchema;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -319,6 +323,58 @@ public final class TaskWorkflowLifecycleResolver {
     }
 
     return transitions;
+  }
+
+  public static List<TaskAvailableTransition> resolveTransitionsForStage(
+      UUID workflowDefinitionId, String workflowStageId) {
+    if (workflowDefinitionId == null || nullOrEmpty(workflowStageId)) {
+      return List.of();
+    }
+
+    try {
+      WorkflowDefinition workflowDefinition =
+          Entity.getEntity(
+              Entity.WORKFLOW_DEFINITION, workflowDefinitionId, "nodes", Include.NON_DELETED);
+      return resolveTransitionsForStage(workflowDefinition, workflowStageId);
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to resolve workflow transitions from definition '{}' for stage '{}': {}",
+          workflowDefinitionId,
+          workflowStageId,
+          e.getMessage());
+      return List.of();
+    }
+  }
+
+  public static List<TaskAvailableTransition> resolveTransitionsForStage(
+      WorkflowDefinition workflowDefinition, String workflowStageId) {
+    if (workflowDefinition == null
+        || nullOrEmpty(workflowStageId)
+        || nullOrEmpty(workflowDefinition.getNodes())) {
+      return List.of();
+    }
+
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      if (node == null
+          || !"userApprovalTask".equals(node.getSubType())
+          || node.getConfig() == null) {
+        continue;
+      }
+
+      Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
+      if (config == null) {
+        continue;
+      }
+
+      String nodeStageId = stringValue(config.get("stageId"));
+      if (!workflowStageId.equals(nodeStageId)) {
+        continue;
+      }
+
+      return parseTransitions(config.get("transitionMetadata"));
+    }
+
+    return List.of();
   }
 
   public static TaskAvailableTransition findTransition(Task task, String transitionId) {

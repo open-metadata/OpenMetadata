@@ -706,6 +706,31 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                 .withClassification(classification.getFullyQualifiedName())
                 .withDescription("Tag for classification display name search"));
 
+    Awaitility.await("Tag should be present in tag_search_index before display name query")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollInterval(java.time.Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tag.getId())
+                      .index("tag_search_index")
+                      .size(5)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              boolean found =
+                  StreamSupport.stream(hits.spliterator(), false)
+                      .anyMatch(
+                          hit ->
+                              tag.getId().toString().equals(hit.path("_id").asText())
+                                  || tag.getId()
+                                      .toString()
+                                      .equals(hit.path("_source").path("id").asText()));
+              assertTrue(found, "Expected tag to be present in tag_search_index before querying");
+            });
+
     Awaitility.await("Tag should be searchable by classification display name")
         .atMost(java.time.Duration.ofSeconds(30))
         .pollInterval(java.time.Duration.ofMillis(500))

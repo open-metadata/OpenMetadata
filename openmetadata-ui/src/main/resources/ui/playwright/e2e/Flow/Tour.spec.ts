@@ -164,17 +164,17 @@ test.describe(
     test.describe.configure({ mode: 'serial' });
     let user: UserClass;
 
-    test.beforeEach('Create user and visit entity details page', async ({
-      browser,
-      page,
-    }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      user = new UserClass();
-      await user.create(apiContext);
-      await afterAction();
+    test.beforeEach(
+      'Create user and visit entity details page',
+      async ({ browser, page }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        user = new UserClass();
+        await user.create(apiContext);
+        await afterAction();
 
-      await user.login(page);
-    });
+        await user.login(page);
+      }
+    );
 
     test.afterEach(async ({ browser }) => {
       if (!user?.responseData?.id) {

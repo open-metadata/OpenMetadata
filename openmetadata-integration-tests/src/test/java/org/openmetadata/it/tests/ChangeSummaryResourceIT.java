@@ -412,8 +412,7 @@ public class ChangeSummaryResourceIT {
 
               assertNotNull(task.getWorkflowDefinitionId(), "workflow definition should be bound");
               assertNotNull(task.getWorkflowStageId(), "workflow stage should be materialized");
-              assertNotNull(
-                  task.getAvailableTransitions(), "workflow transitions should be materialized");
+              assertNotNull(task.getAvailableTransitions(), "workflow transitions should exist");
               assertFalse(
                   task.getAvailableTransitions().isEmpty(),
                   "workflow transitions should be available before resolution");

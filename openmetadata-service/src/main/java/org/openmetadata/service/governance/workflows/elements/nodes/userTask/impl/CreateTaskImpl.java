@@ -23,7 +23,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
-import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -406,6 +405,11 @@ public class CreateTaskImpl implements TaskListener {
     List<TaskAvailableTransition> availableTransitions =
         TaskWorkflowLifecycleResolver.parseTransitions(
             transitionMetadataExpr != null ? transitionMetadataExpr.getValue(delegateTask) : null);
+    if (availableTransitions.isEmpty()) {
+      availableTransitions =
+          TaskWorkflowLifecycleResolver.resolveTransitionsForStage(
+              resolvedWorkflowDefinitionId, workflowStageId);
+    }
 
     // Build the about reference
     EntityReference aboutRef =
@@ -439,12 +443,17 @@ public class CreateTaskImpl implements TaskListener {
               ? requestedAssignees.stream().map(EntityReference::getName).toList()
               : null);
       Task currentTask =
-          taskRepository.get(
-              null,
-              existingTask.getId(),
-              taskRepository.getFields(
-                  "assignees,reviewers,watchers,about,createdBy,domains,tags"));
+          taskRepository.get(null, existingTask.getId(), taskRepository.getFields("*"));
       Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
+      UUID effectiveWorkflowDefinitionId =
+          resolvedWorkflowDefinitionId != null
+              ? resolvedWorkflowDefinitionId
+              : currentTask.getWorkflowDefinitionId();
+      if (availableTransitions.isEmpty()) {
+        availableTransitions =
+            TaskWorkflowLifecycleResolver.resolveTransitionsForStage(
+                effectiveWorkflowDefinitionId, workflowStageId);
+      }
       List<EntityReference> resolvedAssignees =
           resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees);
       boolean preserveTerminalWorkflowState = isTerminalTaskStatus(currentTask.getStatus());
@@ -467,8 +476,8 @@ public class CreateTaskImpl implements TaskListener {
       updatedTask.setUpdatedBy(updatedBy);
       updatedTask.setPayload(
           requestedPayload != null ? requestedPayload : updatedTask.getPayload());
-      if (resolvedWorkflowDefinitionId != null) {
-        updatedTask.setWorkflowDefinitionId(resolvedWorkflowDefinitionId);
+      if (effectiveWorkflowDefinitionId != null) {
+        updatedTask.setWorkflowDefinitionId(effectiveWorkflowDefinitionId);
       }
       if (taskFormSchemaId != null && !taskFormSchemaId.isBlank()) {
         updatedTask.setTaskFormSchemaId(UUID.fromString(taskFormSchemaId));
@@ -502,12 +511,7 @@ public class CreateTaskImpl implements TaskListener {
                 new com.fasterxml.jackson.core.type.TypeReference<List<TagLabel>>() {}));
       }
 
-      JsonPatch patch = JsonUtils.getJsonPatch(currentTask, updatedTask);
-      if (patch.toJsonArray().isEmpty()) {
-        return currentTask;
-      }
-
-      return taskRepository.patch(null, currentTask.getId(), updatedBy, patch).entity();
+      return taskRepository.update(null, currentTask, updatedTask, updatedBy).getEntity();
     }
 
     // Create the task

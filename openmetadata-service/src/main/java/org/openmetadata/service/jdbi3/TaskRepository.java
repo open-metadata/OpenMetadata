@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -1284,8 +1285,10 @@ public class TaskRepository extends EntityRepository<Task> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateAssignees();
       updateTaskReviewers();
+      updateWorkflowMetadata();
       updateStatus();
       updatePriority();
+      updatePayload();
       updateResolution();
     }
 
@@ -1382,6 +1385,56 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updatePriority() {
       recordChange("priority", original.getPriority(), updated.getPriority());
+    }
+
+    private void updateWorkflowMetadata() {
+      recordChange(
+          "workflowInstanceId",
+          original.getWorkflowInstanceId(),
+          updated.getWorkflowInstanceId(),
+          false,
+          Objects::equals,
+          false);
+      recordChange(
+          "workflowStageId",
+          original.getWorkflowStageId(),
+          updated.getWorkflowStageId(),
+          false,
+          Objects::equals,
+          false);
+      recordChange(
+          "workflowStageDisplayName",
+          original.getWorkflowStageDisplayName(),
+          updated.getWorkflowStageDisplayName(),
+          false,
+          Objects::equals,
+          false);
+      recordChange(
+          "availableTransitions",
+          original.getAvailableTransitions(),
+          updated.getAvailableTransitions(),
+          true,
+          Objects::equals,
+          false);
+      recordChange(
+          "taskFormSchemaId",
+          original.getTaskFormSchemaId(),
+          updated.getTaskFormSchemaId(),
+          false,
+          Objects::equals,
+          false);
+      recordChange(
+          "taskFormSchemaVersion",
+          original.getTaskFormSchemaVersion(),
+          updated.getTaskFormSchemaVersion(),
+          false,
+          Objects::equals,
+          false);
+    }
+
+    private void updatePayload() {
+      recordChange(
+          FIELD_PAYLOAD, original.getPayload(), updated.getPayload(), true, Objects::equals, false);
     }
 
     private void updateResolution() {
