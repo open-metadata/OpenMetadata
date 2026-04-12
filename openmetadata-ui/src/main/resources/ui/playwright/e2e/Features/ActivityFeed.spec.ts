@@ -13,7 +13,6 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -372,7 +371,7 @@ test.describe('FeedWidget on landing page', () => {
 test.describe('Mention notifications in Notification Box', () => {
   const adminUser = new UserClass();
   const user1 = new UserClass();
-  const entity = EntityDataClass.table1;
+  const entity = new TableClass();
 
   const test = base.extend<{
     adminPage: Page;
@@ -398,6 +397,7 @@ test.describe('Mention notifications in Notification Box', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
     await user1.create(apiContext);
+    await entity.create(apiContext);
     await afterAction();
   });
 
@@ -586,12 +586,12 @@ test.describe('Mention notifications in Notification Box', () => {
       await expect(message).toBeVisible();
 
       // Add reaction
-      await message.locator('[data-testid="add-reactions"]').click();
       const reactionResponse = user1Page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/feed') &&
           response.request().method() === 'PATCH'
       );
+      await message.locator('[data-testid="add-reactions"]').click();
       await user1Page.locator('[title="rocket"]').click();
       await reactionResponse;
 
@@ -676,22 +676,19 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     expect(feedResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
+    const seededThread = page
+      .locator('[data-testid="message-container"]')
+      .filter({
+        hasText: 'Initial conversation for Chinese character encoding test',
+      })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
     const commentsInput = page.getByTestId('comments-input-field');
-    if (!(await commentsInput.isVisible().catch(() => false))) {
-      const seededThread = page
-        .locator(
-          '[data-testid="message-container"], [data-testid="feed-reply-card"]'
-        )
-        .filter({
-          hasText: 'Initial conversation for Chinese character encoding test',
-        })
-        .first();
-
-      await expect(seededThread).toBeVisible({ timeout: 30_000 });
-      await seededThread.click();
-      await waitForAllLoadersToDisappear(page);
-    }
-
+    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
     await commentsInput.click();
 
     const editorLocator = page.locator(
@@ -773,7 +770,20 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     expect(feedResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('comments-input-field').click();
+    const seededThread = page
+      .locator('[data-testid="message-container"]')
+      .filter({
+        hasText: 'Initial conversation for Chinese character encoding test',
+      })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
+    const commentsInput = page.getByTestId('comments-input-field');
+    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
+    await commentsInput.click();
 
     const editorLocator = page.locator(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'

@@ -27,4 +27,4 @@ class MssqlStoredProcedure(BaseModel):
     name: str = Field(...)
     owner: Optional[str] = Field(None)
     language: str = Field(Language.SQL)
-    definition: str = Field(None)
+    definition: Optional[str] = Field(None)
