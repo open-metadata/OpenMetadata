@@ -14,18 +14,47 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Tests for the validateLineageDetails logic in LineageRepository.
  * This test verifies the filtering behavior of the new implementation.
  */
 class LineageRepositoryTest {
+
+  private static MockedStatic<Entity> mockedEntity;
+
+  @BeforeAll
+  static void initMocks() {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchClient searchClient = mock(SearchClient.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    mockedEntity = mockStatic(Entity.class);
+    mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+  }
+
+  @AfterAll
+  static void closeMocks() {
+    if (mockedEntity != null) {
+      mockedEntity.close();
+    }
+  }
 
   private EntityReference fromEntity;
   private EntityReference toEntity;
@@ -434,5 +463,36 @@ class LineageRepositoryTest {
     assertEquals(
         "database.schema.fromTable.validColumn",
         details.getColumnsLineage().get(0).getFromColumns().get(0));
+  }
+
+  @Test
+  void testDeleteLineageBySource_OpenLineage_UsesPipelinePath() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    when(relationshipDAO.findLineageBySourcePipeline(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyInt()))
+        .thenReturn(Collections.emptyList());
+
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    LineageRepository lineageRepository = new LineageRepository();
+    UUID entityId = UUID.randomUUID();
+    lineageRepository.deleteLineageBySource(
+        entityId, "table", LineageDetails.Source.OPEN_LINEAGE.value());
+
+    org.mockito.Mockito.verify(relationshipDAO)
+        .findLineageBySourcePipeline(
+            entityId,
+            "table",
+            LineageDetails.Source.OPEN_LINEAGE.value(),
+            Relationship.UPSTREAM.ordinal());
+    org.mockito.Mockito.verify(relationshipDAO)
+        .deleteLineageBySourcePipeline(
+            entityId, LineageDetails.Source.OPEN_LINEAGE.value(), Relationship.UPSTREAM.ordinal());
   }
 }

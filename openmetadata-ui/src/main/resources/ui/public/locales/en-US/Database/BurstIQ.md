@@ -34,3 +34,8 @@ $$section
 BurstIQ customer name for API requests.
 $$
 
+$$section
+### BurstIQ System Wallet ID $(id="biqSystemWalletId")
+BurstIQ system wallet ID sent as the `biq_system_wallet_id` header. Required for profiler data access.
+$$
+
