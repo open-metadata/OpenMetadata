@@ -135,7 +135,7 @@ const TestDefinitionList = () => {
       ...filter,
       value:
         urlFilters[filter.key]?.map((v) =>
-          mapUrlValueToOption(v, filter.options),
+          mapUrlValueToOption(v, filter.options)
         ) || [],
     }));
   }, [urlFilters]);
@@ -167,7 +167,7 @@ const TestDefinitionList = () => {
         cursorValue: undefined,
       });
     },
-    [updateUrlParams, handlePageChange],
+    [updateUrlParams, handlePageChange]
   );
 
   // Use filter hooks
@@ -198,9 +198,9 @@ const TestDefinitionList = () => {
       checkPermission(
         Operation.Create,
         ResourceEntity.TEST_DEFINITION,
-        permissions,
+        permissions
       ),
-    [permissions],
+    [permissions]
   );
 
   const viewPermission = useMemo(
@@ -208,14 +208,14 @@ const TestDefinitionList = () => {
       checkPermission(
         Operation.ViewBasic,
         ResourceEntity.TEST_DEFINITION,
-        permissions,
+        permissions
       ) ||
       checkPermission(
         Operation.ViewAll,
         ResourceEntity.TEST_DEFINITION,
-        permissions,
+        permissions
       ),
-    [permissions],
+    [permissions]
   );
 
   const fetchTestDefinitionPermissions = useCallback(
@@ -234,27 +234,25 @@ const TestDefinitionList = () => {
           definitions.map((def) =>
             getEntityPermissionByFqn(
               ResourceEntity.TEST_DEFINITION,
-              def.fullyQualifiedName ?? '',
-            ),
+              def.fullyQualifiedName ?? ''
+            )
           );
 
-        const permissionResponses =
-          await Promise.allSettled(permissionPromises);
-
-        const permissionsMap = definitions.reduce(
-          (acc, def, idx) => {
-            const response = permissionResponses[idx];
-
-            return {
-              ...acc,
-              [def.name]:
-                response?.status === 'fulfilled'
-                  ? response.value
-                  : DEFAULT_ENTITY_PERMISSION,
-            };
-          },
-          {} as Record<string, OperationPermission>,
+        const permissionResponses = await Promise.allSettled(
+          permissionPromises
         );
+
+        const permissionsMap = definitions.reduce((acc, def, idx) => {
+          const response = permissionResponses[idx];
+
+          return {
+            ...acc,
+            [def.name]:
+              response?.status === 'fulfilled'
+                ? response.value
+                : DEFAULT_ENTITY_PERMISSION,
+          };
+        }, {} as Record<string, OperationPermission>);
 
         setTestDefinitionPermissions(permissionsMap);
       } catch (error) {
@@ -263,7 +261,7 @@ const TestDefinitionList = () => {
         setPermissionLoading(false);
       }
     },
-    [getEntityPermissionByFqn],
+    [getEntityPermissionByFqn]
   );
 
   const fetchTestDefinitions = useCallback(async () => {
@@ -307,7 +305,7 @@ const TestDefinitionList = () => {
         (test) =>
           test.displayName?.toLowerCase().includes(text) ||
           test.name?.toLowerCase().includes(text) ||
-          test.description?.toLowerCase().includes(text),
+          test.description?.toLowerCase().includes(text)
       );
     }
 
@@ -331,7 +329,7 @@ const TestDefinitionList = () => {
 
   const handleEnableToggle = async (
     record: TestDefinition,
-    checked: boolean,
+    checked: boolean
   ) => {
     try {
       const updatedData = { ...record, enabled: checked };
@@ -341,7 +339,7 @@ const TestDefinitionList = () => {
       showSuccessToast(
         t('server.entity-updated-success', {
           entity: t('label.test-definition'),
-        }),
+        })
       );
       // Optimistically update the local state instead of re-fetching
       setTestDefinitions((prev) =>
@@ -351,8 +349,8 @@ const TestDefinitionList = () => {
                 ...item,
                 enabled: checked,
               }
-            : item,
-        ),
+            : item
+        )
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -376,12 +374,12 @@ const TestDefinitionList = () => {
 
     try {
       await deleteTestDefinitionByFqn(
-        definitionToDelete.fullyQualifiedName ?? '',
+        definitionToDelete.fullyQualifiedName ?? ''
       );
       showSuccessToast(
         t('server.entity-deleted-success', {
           entity: t('label.test-definition'),
-        }),
+        })
       );
       setIsDeleteModalVisible(false);
       setDefinitionToDelete(undefined);
@@ -407,7 +405,7 @@ const TestDefinitionList = () => {
     setIsFormVisible(false);
     if (selectedDefinition && data) {
       setTestDefinitions((prev) =>
-        prev.map((item) => (item.id === data.id ? data : item)),
+        prev.map((item) => (item.id === data.id ? data : item))
       );
     } else {
       // New item created: reset to page 1 to show the new item
@@ -566,7 +564,7 @@ const TestDefinitionList = () => {
         },
       },
     ],
-    [t, testDefinitionPermissions],
+    [t, testDefinitionPermissions]
   );
 
   const customPaginationProps = useMemo(
@@ -589,7 +587,7 @@ const TestDefinitionList = () => {
       handlePageChange,
       handlePageSizeChange,
       isLoading,
-    ],
+    ]
   );
 
   if (!viewPermission) {
