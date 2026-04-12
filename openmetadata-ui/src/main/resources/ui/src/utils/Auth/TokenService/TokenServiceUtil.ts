@@ -87,16 +87,22 @@ class TokenService {
     this.setRefreshInProgress();
 
     try {
-      const token = await getOidcToken();
-      const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
+      const oldToken = await getOidcToken();
+      const { isExpired, timeoutExpiry } = extractDetailsFromToken(oldToken);
 
       // If token is expired or timeoutExpiry is less than 0 then try to silent signIn
       if (isExpired || timeoutExpiry <= 0) {
         // Logic to refresh the token
         const newToken = await this.fetchNewToken();
         if (newToken) {
-          // Wait briefly for token to be persisted in SW+IndexedDB before notifying
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          // Wait for token to be persisted in SW+IndexedDB before notifying
+          const persisted = await this.waitForTokenPersistence(oldToken);
+          if (!persisted) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              'Token persistence timed out, proceeding with callback'
+            );
+          }
           this.refreshSuccessCallback?.();
           // To update all the tabs on updating channel token
           // Notify all tabs that the token has been refreshed
@@ -126,19 +132,13 @@ class TokenService {
         response = await this.renewToken();
       } catch (error) {
         // Silent Frame window timeout error since it doesn't affect refresh token process
-        if ((error as AxiosError).message !== 'Frame window timed out') {
-          // Perform logout for any error
-          this.clearRefreshInProgress();
-
-          throw new Error(
-            `Failed to refresh token: ${(error as Error).message}`
-          );
+        if ((error as AxiosError).message === 'Frame window timed out') {
+          return null;
         }
-        // Do nothing
+
+        throw new Error(`Failed to refresh token: ${(error as Error).message}`);
       } finally {
-        // If response is not null then clear the refresh flag
-        // For Callback based refresh token, response will be void
-        response && this.clearRefreshInProgress();
+        this.clearRefreshInProgress();
       }
     }
 
@@ -159,6 +159,23 @@ class TokenService {
   // Check if a refresh is already in progress (used by other tabs)
   isTokenUpdateInProgress() {
     return localStorage.getItem(REFRESH_IN_PROGRESS_KEY) === 'true';
+  }
+
+  private async waitForTokenPersistence(oldToken: string): Promise<boolean> {
+    const maxAttempts = 20;
+    const delayMs = 50;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+
+      const currentToken = await getOidcToken();
+
+      if (currentToken && currentToken !== oldToken) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
 

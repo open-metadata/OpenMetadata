@@ -6,6 +6,7 @@ import static org.openmetadata.service.util.TestUtils.simulateWork;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +18,7 @@ class RequestLatencyContextTest {
   @BeforeEach
   void setUp() {
     Metrics.globalRegistry.clear();
-    Metrics.globalRegistry.getRegistries().forEach(Metrics.globalRegistry::remove);
+    new ArrayList<>(Metrics.globalRegistry.getRegistries()).forEach(Metrics.globalRegistry::remove);
 
     SimpleMeterRegistry registry = new SimpleMeterRegistry();
     Metrics.addRegistry(registry);

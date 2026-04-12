@@ -18,6 +18,7 @@ import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { ChangeSummaryEntry } from '../../../rest/changeSummaryAPI';
 import { ColumnOrTask } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
 
 export interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
@@ -56,4 +57,5 @@ export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   openColumnDetailPanel: (column: ColumnOrTask) => void;
   closeColumnDetailPanel: () => void;
   setDisplayedColumns: (columns: ColumnOrTask[]) => void;
+  changeSummary?: Record<string, ChangeSummaryEntry>;
 }
