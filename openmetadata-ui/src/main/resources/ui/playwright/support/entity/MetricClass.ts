@@ -13,7 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { uuid } from '../../utils/common';
-import { visitEntityPageByUrl } from '../../utils/entity';
+import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -103,10 +103,14 @@ export class MetricClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPageByUrl({
+    const metricName = this.entityResponseData.name ?? this.entity.name;
+    const searchTerm =
+      this.entityResponseData?.['fullyQualifiedName'] ?? metricName;
+
+    await visitEntityPage({
       page,
-      entityType: 'metric',
-      fqn: this.entityResponseData?.['fullyQualifiedName'] ?? '',
+      searchTerm,
+      dataTestId: `${metricName}-${metricName}`,
     });
   }
 

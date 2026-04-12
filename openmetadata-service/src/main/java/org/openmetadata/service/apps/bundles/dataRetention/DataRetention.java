@@ -23,13 +23,11 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.jdbi3.ActivityStreamRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.ActivityStreamPartitionManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
 import org.openmetadata.service.util.TagUsageCleanup;
 import org.quartz.JobExecutionContext;
@@ -53,9 +51,6 @@ public class DataRetention extends AbstractNativeApplication {
   private final EntityTimeSeriesDAO profileDataDAO;
   private final CollectionDAO.AuditLogDAO auditLogDAO;
 
-  private final ActivityStreamRepository activityStreamRepository;
-  private final ActivityStreamPartitionManager activityStreamPartitionManager;
-
   public DataRetention(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
     this.eventSubscriptionDAO = collectionDAO.eventSubscriptionDAO();
@@ -64,8 +59,6 @@ public class DataRetention extends AbstractNativeApplication {
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
-    this.activityStreamRepository = new ActivityStreamRepository();
-    this.activityStreamPartitionManager = new ActivityStreamPartitionManager();
   }
 
   @Override
@@ -116,7 +109,6 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("change_events", new StepStats());
     entityStats.withAdditionalProperty("consumers_dlq", new StepStats());
     entityStats.withAdditionalProperty("activity_threads", new StepStats());
-    entityStats.withAdditionalProperty("activity_stream", new StepStats());
 
     // Add stats for relationship and hierarchy cleanup
     entityStats.withAdditionalProperty("orphaned_relationships", new StepStats());
@@ -158,12 +150,6 @@ public class DataRetention extends AbstractNativeApplication {
         threadRetentionPeriod);
     cleanActivityThreads(threadRetentionPeriod);
 
-    int activityStreamRetentionPeriod = config.getActivityThreadsRetentionPeriod();
-    LOG.info(
-        "Starting cleanup for activity stream with retention period: {} days.",
-        activityStreamRetentionPeriod);
-    cleanActivityStream(activityStreamRetentionPeriod);
-
     int testCaseResultsRetentionPeriod = config.getTestCaseResultsRetentionPeriod();
     LOG.info(
         "Starting cleanup for test case results with retention period: {} days.",
@@ -201,37 +187,6 @@ public class DataRetention extends AbstractNativeApplication {
         "activity_threads", () -> feedRepository.deleteThreadsInBatch(threadIdsToDelete));
 
     LOG.info("Activity threads cleanup complete.");
-  }
-
-  @Transaction
-  private void cleanActivityStream(int retentionPeriod) {
-    LOG.info("Initiating activity stream cleanup: Retention = {} days.", retentionPeriod);
-
-    try {
-      // First, maintain partitions - create future partitions and drop old ones
-      ActivityStreamPartitionManager.PartitionMaintenanceResult partitionResult =
-          activityStreamPartitionManager.maintainPartitions(3, retentionPeriod);
-      LOG.info(
-          "Activity stream partition maintenance: {} created, {} dropped",
-          partitionResult.created().size(),
-          partitionResult.dropped().size());
-
-      // Delete old activity events beyond retention period
-      long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
-      int deleted = activityStreamRepository.deleteOlderThan(cutoffMillis);
-      updateStats("activity_stream", deleted, 0);
-
-      LOG.info("Activity stream cleanup complete. Deleted {} old events.", deleted);
-    } catch (Exception ex) {
-      LOG.error("Failed to clean activity stream", ex);
-      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
-
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
-    }
   }
 
   @Transaction

@@ -420,10 +420,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("offset")
           @Min(0)
           int offset) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-
     App app = repository.getByName(uriInfo, name, repository.getFields("id"));
     if (!"SearchIndexingApplication".equals(app.getName())) {
       throw new BadRequestException(

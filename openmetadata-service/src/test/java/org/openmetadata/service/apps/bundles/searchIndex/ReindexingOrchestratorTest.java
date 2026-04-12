@@ -426,6 +426,7 @@ class ReindexingOrchestratorTest {
           "job-123",
           appRunRecord.getSuccessContext().getAdditionalProperties().get("distributedJobId"));
       assertNotNull(appRunRecord.getFailureContext());
+      verify(context).pushStatusUpdate(appRunRecord, true);
       verify(webSocketManager).broadCastMessageToAll(anyString(), anyString());
     }
   }

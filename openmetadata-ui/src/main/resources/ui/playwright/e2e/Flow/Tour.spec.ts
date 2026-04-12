@@ -16,8 +16,6 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
-const user = new UserClass();
-
 const waitForTourBadgeWithRetry = async (
   page: Page,
   maxAttempts = 3,
@@ -163,20 +161,29 @@ test.describe(
   'Tour should work properly',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.beforeAll(async ({ browser }) => {
+    test.describe.configure({ mode: 'serial' });
+    let user: UserClass;
+
+    test.beforeEach('Create user and visit entity details page', async ({
+      browser,
+      page,
+    }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      user = new UserClass();
       await user.create(apiContext);
       await afterAction();
+
+      await user.login(page);
     });
 
-    test.afterAll(async ({ browser }) => {
+    test.afterEach(async ({ browser }) => {
+      if (!user?.responseData?.id) {
+        return;
+      }
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await afterAction();
-    });
-
-    test.beforeEach('Visit entity details page', async ({ page }) => {
-      await user.login(page);
     });
 
     test('Tour should work from help section', async ({ page }) => {

@@ -35,14 +35,14 @@ import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.socket.WebSocketManager;
 
 /**
- * Publisher that writes to the new lightweight activity_stream table.
+ * Publisher that writes to the lightweight activity_stream table.
  *
- * <p>This replaces ActivityFeedPublisher for the activity stream use case. The key differences:
+ * <p>Key characteristics:
  * <ul>
- *   <li>Writes to partitioned activity_stream table (not thread_entity)</li>
+ *   <li>Writes to the partitioned activity_stream table</li>
  *   <li>Stores domain references for domain-scoped filtering</li>
- *   <li>Lightweight records - no full Thread/Post structure</li>
- *   <li>Automatic retention via partition management</li>
+ *   <li>Persists lightweight records instead of full Thread/Post structures</li>
+ *   <li>Relies on partition management for retention</li>
  * </ul>
  */
 @Slf4j

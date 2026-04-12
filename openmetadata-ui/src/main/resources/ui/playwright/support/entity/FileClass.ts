@@ -20,7 +20,7 @@ import {
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import { visitEntityPageByUrl } from '../../utils/entity';
+import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -202,10 +202,12 @@ export class FileClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPageByUrl({
+    await visitEntityPage({
       page,
-      entityType: 'file',
-      fqn: this.entityResponseData?.['fullyQualifiedName'] ?? '',
+      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
+      dataTestId: `${
+        this.entityResponseData.service?.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

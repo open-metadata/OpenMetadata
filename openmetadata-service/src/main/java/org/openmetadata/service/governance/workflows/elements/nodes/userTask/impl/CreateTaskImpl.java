@@ -20,6 +20,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -27,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
@@ -79,6 +83,22 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class CreateTaskImpl implements TaskListener {
   static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
   private static final String DEFAULT_SYSTEM_USER = "admin";
+  private static final int WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS = 6;
+  private static final long INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 25L;
+  private static final long MAX_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 250L;
+  private static final IntervalFunction WORKFLOW_MANAGED_DRAFT_LOOKUP_INTERVAL_FUNCTION =
+      attempt -> {
+        long retryDelayMillis =
+            INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS << Math.max(0, (int) attempt - 1);
+        return Math.min(retryDelayMillis, MAX_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS);
+      };
+  private static final RetryConfig WORKFLOW_MANAGED_DRAFT_LOOKUP_RETRY_CONFIG =
+      RetryConfig.<Task>custom()
+          .maxAttempts(WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS)
+          .intervalFunction(WORKFLOW_MANAGED_DRAFT_LOOKUP_INTERVAL_FUNCTION)
+          .retryOnResult(task -> task == null)
+          .failAfterMaxAttempts(false)
+          .build();
   private Expression inputNamespaceMapExpr;
   private Expression assigneesVarNameExpr;
   private Expression approvalThresholdExpr;
@@ -402,17 +422,8 @@ public class CreateTaskImpl implements TaskListener {
             ? requestedUpdatedBy
             : resolveUpdatedBy(entity, createdByRef);
 
-    Task existingTask = null;
-    if (requestedTaskId != null) {
-      try {
-        existingTask = taskRepository.find(requestedTaskId, Include.ALL);
-      } catch (EntityNotFoundException ignored) {
-        LOG.debug(
-            "[CreateTaskImpl] No existing task entity found for requested task id '{}'; "
-                + "creating workflow-managed task row",
-            requestedTaskId);
-      }
-    }
+    Task existingTask =
+        findExistingTaskWithRetry(taskRepository, requestedTaskId, workflowManagedDraftTask);
     if (shouldSkipDeletedWorkflowManagedDraftTask(
         requestedTaskId, workflowManagedDraftTask, existingTask)) {
       terminateDeletedWorkflowManagedDraftTask(delegateTask, requestedTaskId);
@@ -614,6 +625,45 @@ public class CreateTaskImpl implements TaskListener {
   static boolean shouldSkipDeletedWorkflowManagedDraftTask(
       UUID requestedTaskId, boolean workflowManagedDraftTask, Task existingTask) {
     return workflowManagedDraftTask && requestedTaskId != null && existingTask == null;
+  }
+
+  static Task findExistingTaskWithRetry(
+      TaskRepository taskRepository, UUID requestedTaskId, boolean workflowManagedDraftTask) {
+    if (requestedTaskId == null) {
+      return null;
+    }
+
+    Supplier<Task> lookupTask =
+        () -> {
+          try {
+            return taskRepository.find(requestedTaskId, Include.ALL);
+          } catch (EntityNotFoundException ignored) {
+            LOG.debug(
+                "[CreateTaskImpl] Task '{}' not visible yet during workflow callback",
+                requestedTaskId);
+            return null;
+          }
+        };
+
+    if (!workflowManagedDraftTask) {
+      return lookupTask.get();
+    }
+
+    Task existingTask =
+        Retry.decorateSupplier(
+                Retry.of(
+                    "workflowManagedDraftTaskLookup", WORKFLOW_MANAGED_DRAFT_LOOKUP_RETRY_CONFIG),
+                lookupTask)
+            .get();
+
+    if (existingTask == null) {
+      LOG.info(
+          "[CreateTaskImpl] Workflow-managed draft task '{}' remained unavailable after {} lookup attempts",
+          requestedTaskId,
+          WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS);
+    }
+
+    return existingTask;
   }
 
   private UUID resolveRequestedTaskId(DelegateTask delegateTask) {
