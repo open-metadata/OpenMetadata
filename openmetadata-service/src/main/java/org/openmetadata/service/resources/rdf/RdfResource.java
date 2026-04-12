@@ -22,11 +22,13 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import javax.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -365,7 +367,7 @@ public class RdfResource {
   }
 
   private String buildErrorResponse(String message) {
-    return String.format("{\"error\": \"%s\"}", message);
+    return JsonUtils.pojoToJson(Map.of("error", message));
   }
 
   private Set<String> parseCsvFilter(String values) {
