@@ -21,7 +21,6 @@ import openmetadata_managed_apis.api.utils as utils_module
 def _reset_module_state():
     """Reset the module-level singleton state between tests."""
     utils_module._current_scan = None
-    utils_module._rescan_requested = False
 
 
 def test_first_call_starts_process():
@@ -37,8 +36,8 @@ def test_first_call_starts_process():
     assert utils_module._current_scan is mock_process
 
 
-def test_skips_when_scan_alive_and_sets_rescan_flag():
-    """While a scan is alive, new calls should be deferred (not spawn another)."""
+def test_skips_when_scan_alive():
+    """While a scan is alive, new calls should skip (not spawn another)."""
     _reset_module_state()
 
     alive_process = MagicMock()
@@ -50,7 +49,6 @@ def test_skips_when_scan_alive_and_sets_rescan_flag():
 
     mock_cls.assert_not_called()
     assert utils_module._current_scan is alive_process
-    assert utils_module._rescan_requested is True
 
 
 def test_replaces_finished_scan_with_new_one():
@@ -70,28 +68,9 @@ def test_replaces_finished_scan_with_new_one():
     assert utils_module._current_scan is new_process
 
 
-def test_reaper_starts_follow_up_when_rescan_requested():
-    """Reaper thread should start a new scan if _rescan_requested is True."""
+def test_reaper_clears_current_scan():
+    """Reaper thread should join process and clear _current_scan."""
     _reset_module_state()
-    utils_module._rescan_requested = True
-
-    finished_process = MagicMock()
-    utils_module._current_scan = finished_process
-
-    new_process = MagicMock()
-    with patch.object(utils_module, "ScanDagsTask", return_value=new_process):
-        with patch.object(utils_module.threading, "Thread"):
-            utils_module._reap_scan(finished_process)
-
-    finished_process.join.assert_called_once()
-    new_process.start.assert_called_once()
-    assert utils_module._rescan_requested is False
-
-
-def test_reaper_clears_current_scan_without_follow_up():
-    """Reaper thread should clear _current_scan when no rescan is needed."""
-    _reset_module_state()
-    utils_module._rescan_requested = False
 
     finished_process = MagicMock()
     utils_module._current_scan = finished_process
@@ -102,6 +81,19 @@ def test_reaper_clears_current_scan_without_follow_up():
     finished_process.join.assert_called_once()
     mock_cls.assert_not_called()
     assert utils_module._current_scan is None
+
+
+def test_reaper_never_forks():
+    """Reaper thread must never start a new process (fork from non-main thread)."""
+    _reset_module_state()
+
+    finished_process = MagicMock()
+    utils_module._current_scan = finished_process
+
+    with patch.object(utils_module, "ScanDagsTask") as mock_cls:
+        utils_module._reap_scan(finished_process)
+
+    mock_cls.assert_not_called()
 
 
 def test_no_daemon_flag_on_process():
@@ -120,18 +112,15 @@ def test_no_daemon_flag_on_process():
     assert mock_process.daemon is False
 
 
-def test_stale_reaper_does_not_spawn_duplicate():
-    """Stale reaper must not start a rescan if another scan already replaced it."""
+def test_stale_reaper_does_not_clear_replaced_scan():
+    """Stale reaper must not clear _current_scan if another scan replaced it."""
     _reset_module_state()
 
     old_process = MagicMock()
     new_process = MagicMock()
     utils_module._current_scan = new_process
-    utils_module._rescan_requested = True
 
-    with patch.object(utils_module, "ScanDagsTask") as mock_cls:
-        utils_module._reap_scan(old_process)
+    utils_module._reap_scan(old_process)
 
     old_process.join.assert_called_once()
-    mock_cls.assert_not_called()
     assert utils_module._current_scan is new_process
