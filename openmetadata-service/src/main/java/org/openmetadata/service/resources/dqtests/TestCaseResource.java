@@ -713,8 +713,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     List<TestSuite> validatedSuites =
         validateNamedTestSuites(create.getTestSuiteNames(), securityContext);
     TestCase createdTest = addHref(uriInfo, repository.create(uriInfo, test));
+    Set<UUID> existingSuiteIds = Set.of();
     try {
-      attachTestCaseToSuites(createdTest.getId(), validatedSuites);
+      attachTestCaseToSuites(createdTest.getId(), validatedSuites, existingSuiteIds);
     } catch (Exception e) {
       try {
         repository.delete(
@@ -891,8 +892,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         validateNamedTestSuites(create.getTestSuiteNames(), securityContext);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
+    Set<UUID> existingSuiteIds = getExistingTestSuiteIds(response.getEntity().getId());
     try {
-      attachTestCaseToSuites(response.getEntity().getId(), validatedSuites);
+      attachTestCaseToSuites(response.getEntity().getId(), validatedSuites, existingSuiteIds);
     } catch (Exception e) {
       if (Response.Status.CREATED.equals(response.getStatus())) {
         try {
@@ -1668,12 +1670,48 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return validatedSuites;
   }
 
-  private void attachTestCaseToSuites(UUID testCaseId, List<TestSuite> validatedSuites) {
+  private Set<UUID> getExistingTestSuiteIds(UUID testCaseId) {
+    try {
+      TestCase testCase =
+          Entity.getEntity(Entity.TEST_CASE, testCaseId, "testSuites", Include.NON_DELETED);
+      if (testCase == null || nullOrEmpty(testCase.getTestSuites())) {
+        return Set.of();
+      }
+      return testCase.getTestSuites().stream()
+          .map(EntityReference::getId)
+          .collect(Collectors.toSet());
+    } catch (EntityNotFoundException e) {
+      return Set.of();
+    }
+  }
+
+  private void attachTestCaseToSuites(
+      UUID testCaseId, List<TestSuite> validatedSuites, Set<UUID> existingSuiteIds) {
     if (nullOrEmpty(validatedSuites)) {
       return;
     }
-    for (TestSuite testSuite : validatedSuites) {
-      repository.addTestCasesToLogicalTestSuite(testSuite, List.of(testCaseId));
+    List<UUID> newlyAttachedSuiteIds = new ArrayList<>();
+    try {
+      for (TestSuite testSuite : validatedSuites) {
+        repository.addTestCasesToLogicalTestSuite(testSuite, List.of(testCaseId));
+        if (existingSuiteIds == null || !existingSuiteIds.contains(testSuite.getId())) {
+          newlyAttachedSuiteIds.add(testSuite.getId());
+        }
+      }
+    } catch (Exception e) {
+      for (UUID suiteId : newlyAttachedSuiteIds) {
+        try {
+          repository.deleteTestCaseFromLogicalTestSuite(suiteId, testCaseId);
+        } catch (Exception rollbackException) {
+          LOG.error(
+              "Failed to rollback logical test suite attachment {} -> {}",
+              suiteId,
+              testCaseId,
+              rollbackException);
+          e.addSuppressed(rollbackException);
+        }
+      }
+      throw e;
     }
   }
 
