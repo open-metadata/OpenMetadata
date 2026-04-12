@@ -272,11 +272,7 @@ const TestDefinitionList = () => {
         }
       }
     },
-    [
-      getEntityPermissionByFqn,
-      setPermissionLoading,
-      setTestDefinitionPermissions,
-    ]
+    [getEntityPermissionByFqn]
   );
 
   const fetchTestDefinitions = useCallback(async () => {
@@ -311,7 +307,7 @@ const TestDefinitionList = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [urlFilters, setTestDefinitions, setIsLoading]);
+  }, [urlFilters]);
 
   useEffect(() => {
     fetchTestDefinitions();
@@ -357,7 +353,7 @@ const TestDefinitionList = () => {
       latestRequestRef.current += 1;
       fetchTestDefinitionPermissions(slicedData, latestRequestRef.current);
     }
-  }, [slicedData, fetchTestDefinitionPermissions, latestRequestRef]);
+  }, [slicedData, fetchTestDefinitionPermissions]);
 
   const handleEnableToggle = async (
     record: TestDefinition,
