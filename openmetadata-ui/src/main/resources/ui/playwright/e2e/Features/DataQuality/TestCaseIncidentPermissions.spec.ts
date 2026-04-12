@@ -30,25 +30,25 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
 
 // --- Objects ---
-const viewIncidentsPolicy = new PolicyClass();
-const viewIncidentsRole = new RolesClass();
-const viewIncidentsUser = new UserClass();
+let viewIncidentsPolicy: PolicyClass;
+let viewIncidentsRole: RolesClass;
+let viewIncidentsUser: UserClass;
 
-const editIncidentsPolicy = new PolicyClass();
-const editIncidentsRole = new RolesClass();
-const editIncidentsUser = new UserClass();
+let editIncidentsPolicy: PolicyClass;
+let editIncidentsRole: RolesClass;
+let editIncidentsUser: UserClass;
 
-const tableEditIncidentsPolicy = new PolicyClass();
-const tableEditIncidentsRole = new RolesClass();
-const tableEditIncidentsUser = new UserClass();
+let tableEditIncidentsPolicy: PolicyClass;
+let tableEditIncidentsRole: RolesClass;
+let tableEditIncidentsUser: UserClass;
 
-const tableViewIncidentsPolicy = new PolicyClass();
-const tableViewIncidentsRole = new RolesClass();
-const tableViewIncidentsUser = new UserClass();
+let tableViewIncidentsPolicy: PolicyClass;
+let tableViewIncidentsRole: RolesClass;
+let tableViewIncidentsUser: UserClass;
 
-const consumerLikePolicy = new PolicyClass();
-const consumerLikeRole = new RolesClass();
-const consumerLikeUser = new UserClass();
+let consumerLikePolicy: PolicyClass;
+let consumerLikeRole: RolesClass;
+let consumerLikeUser: UserClass;
 
 let table: TableClass;
 
@@ -125,6 +125,22 @@ test.describe(
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      viewIncidentsPolicy = new PolicyClass();
+      viewIncidentsRole = new RolesClass();
+      viewIncidentsUser = new UserClass();
+      editIncidentsPolicy = new PolicyClass();
+      editIncidentsRole = new RolesClass();
+      editIncidentsUser = new UserClass();
+      tableEditIncidentsPolicy = new PolicyClass();
+      tableEditIncidentsRole = new RolesClass();
+      tableEditIncidentsUser = new UserClass();
+      tableViewIncidentsPolicy = new PolicyClass();
+      tableViewIncidentsRole = new RolesClass();
+      tableViewIncidentsUser = new UserClass();
+      consumerLikePolicy = new PolicyClass();
+      consumerLikeRole = new RolesClass();
+      consumerLikeUser = new UserClass();
       table = new TableClass();
       await table.create(apiContext);
 
@@ -238,7 +254,9 @@ test.describe(
       await tableEditIncidentsPolicy.delete(apiContext);
       await tableViewIncidentsPolicy.delete(apiContext);
       await consumerLikePolicy.delete(apiContext);
-      await table.delete(apiContext);
+      if (table) {
+        await table.delete(apiContext);
+      }
       await afterAction();
     });
 
