@@ -1186,9 +1186,19 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         "Domain endpoint should not include tasks from a different domain");
 
     ListResponse<Task> cancelledDomainTasks =
-        SdkClients.adminClient()
-            .domains()
-            .listTasks(domainA.getFullyQualifiedName(), TaskEntityStatus.Cancelled, 1000);
+        Awaitility.await("cancelled domain task visibility for " + closedDomainTask.getId())
+            .atMost(Duration.ofSeconds(20))
+            .pollInterval(Duration.ofMillis(250))
+            .until(
+                () ->
+                    SdkClients.adminClient()
+                        .domains()
+                        .listTasks(
+                            domainA.getFullyQualifiedName(), TaskEntityStatus.Cancelled, 1000),
+                response ->
+                    response.getData() != null
+                        && response.getData().stream()
+                            .anyMatch(t -> t.getId().equals(closedDomainTask.getId())));
 
     assertTrue(
         cancelledDomainTasks.getData().stream()
@@ -2135,6 +2145,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     // Reject the task
     ResolveTask resolveRequest =
@@ -2183,6 +2194,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task task = SdkClients.adminClient().tasks().create(request);
     assertEquals(TaskEntityStatus.Open, task.getStatus());
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2229,6 +2241,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2284,6 +2297,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task task = SdkClients.adminClient().tasks().create(request);
     assertEquals(TaskEntityStatus.Open, task.getStatus());
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2336,6 +2350,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task task = SdkClients.adminClient().tasks().create(request);
     assertEquals(TaskEntityStatus.Open, task.getStatus());
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2387,6 +2402,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2447,6 +2463,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2512,6 +2529,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2590,6 +2608,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2791,6 +2810,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(tagPayload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2844,6 +2864,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2899,6 +2920,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2959,6 +2981,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -3715,6 +3738,10 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                           "status,workflowDefinitionId,workflowInstanceId,workflowStageId,availableTransitions");
 
               assertNotNull(task.getWorkflowDefinitionId(), "workflow definition should be bound");
+              assertTrue(
+                  org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
+                      .hasActiveRuntimeTask(taskId),
+                  "workflow runtime task should be active before resolution");
               assertNotNull(task.getWorkflowStageId(), "workflow stage should be materialized");
               assertNotNull(task.getAvailableTransitions(), "workflow transitions should exist");
               assertFalse(
