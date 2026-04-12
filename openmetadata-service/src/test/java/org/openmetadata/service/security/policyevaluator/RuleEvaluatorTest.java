@@ -1090,14 +1090,14 @@ class RuleEvaluatorTest {
     RuleEvaluator evaluator = new RuleEvaluator(null, localSubjectContext, customPropertiesContext);
     StandardEvaluationContext context = new StandardEvaluationContext(evaluator);
     Boolean result =
-        parseExpression("customProperties.get('sensitivity') == 'PII'")
+        parseExpression("customProperties['sensitivity'] == 'PII'")
             .getValue(context, Boolean.class);
     assertTrue(result != null && result);
 
     RuleEvaluator validationEvaluator = new RuleEvaluator(false);
     StandardEvaluationContext validationContext = new StandardEvaluationContext(validationEvaluator);
     Boolean validationResult =
-        parseExpression("customProperties.get('sensitivity') == 'PII'")
+        parseExpression("customProperties['sensitivity'] == 'PII'")
             .getValue(validationContext, Boolean.class);
     assertTrue(validationResult != null && !validationResult);
   }

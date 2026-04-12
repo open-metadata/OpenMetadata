@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
@@ -40,6 +41,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private final UUID id;
   private final String name;
   private T entity; // Will be lazily initialized
+  private boolean extensionResolved;
   private ResourceContextInterface.Operation operation = ResourceContextInterface.Operation.NONE;
   private Include include;
   private Fields requestedFields;
@@ -192,13 +194,17 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   @Override
   public Map<String, Object> getCustomProperties() {
     resolveEntity();
-    if (entity == null || entity.getExtension() == null) {
+    if (entity == null) {
+      return Collections.emptyMap();
+    }
+    ensureExtensionResolved();
+    if (entity.getExtension() == null) {
       return Collections.emptyMap();
     }
     try {
       return JsonUtils.getMap(entity.getExtension());
     } catch (Exception e) {
-      LOG.warn("Failed to get custom properties: {}", e.getMessage());
+      LOG.warn("Failed to get custom properties", e);
       return Collections.emptyMap();
     }
   }
@@ -227,9 +233,6 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
         if (entityRepository.isSupportsReviewers()) {
           fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
         }
-        if (supportsExtension()) {
-          fields = EntityUtil.addField(fields, FIELD_EXTENSION);
-        }
         fieldList = entityRepository.getFields(fields);
       }
 
@@ -253,6 +256,63 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return entity;
   }
 
+  private void ensureExtensionResolved() {
+    if (extensionResolved) {
+      return;
+    }
+    extensionResolved = true;
+    if (entity == null || entity.getExtension() != null || !supportsExtension()) {
+      return;
+    }
+
+    Fields fieldList = buildFieldsWithExtension();
+    Include includeToUse = resolveInclude();
+    RelationIncludes relationIncludesToUse = relationIncludes;
+    if (relationIncludesToUse == null) {
+      relationIncludesToUse = RelationIncludes.fromInclude(includeToUse);
+    }
+
+    try {
+      if (id != null) {
+        entity = entityRepository.get(null, id, fieldList, relationIncludesToUse, false);
+      } else if (name != null) {
+        entity = entityRepository.getByName(null, name, fieldList, relationIncludesToUse, false);
+      }
+    } catch (EntityNotFoundException e) {
+      entity = null;
+    }
+  }
+
+  private Fields buildFieldsWithExtension() {
+    if (operation == ResourceContextInterface.Operation.PATCH) {
+      return entityRepository.getPatchFields();
+    }
+    if (operation == ResourceContextInterface.Operation.PUT) {
+      return entityRepository.getPutFields();
+    }
+    if (requestedFields != null) {
+      Set<String> fields = new HashSet<>(requestedFields.getFieldList());
+      fields.add(FIELD_EXTENSION);
+      return new Fields(entityRepository.getAllowedFields(), fields);
+    }
+
+    String fields = "";
+    if (entityRepository.isSupportsOwners()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
+    }
+    if (entityRepository.isSupportsTags()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
+    }
+    if (entityRepository.isSupportsDomains()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
+    }
+    if (entityRepository.isSupportsReviewers()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+    }
+    fields = EntityUtil.addField(fields, FIELD_EXTENSION);
+    return entityRepository.getFields(fields);
+  }
+
   private Include resolveInclude() {
     if (operation == ResourceContextInterface.Operation.PATCH
         || operation == ResourceContextInterface.Operation.PUT) {
@@ -273,11 +333,6 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   private boolean supportsExtension() {
-    try {
-      entityRepository.getFields(FIELD_EXTENSION);
-      return true;
-    } catch (Exception e) {
-      return false;
-    }
+    return entityRepository.getAllowedFields().contains(FIELD_EXTENSION);
   }
 }
