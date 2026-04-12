@@ -276,7 +276,7 @@ const TestDefinitionList = () => {
         }
       }
     },
-    [getEntityPermissionByFqn],
+    [getEntityPermissionByFqn, setPermissionLoading, setTestDefinitionPermissions],
   );
 
   const fetchTestDefinitions = useCallback(async () => {
@@ -301,7 +301,7 @@ const TestDefinitionList = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [urlFilters, setTestDefinitions]);
+  }, [urlFilters, setTestDefinitions, setIsLoading]);
 
   useEffect(() => {
     fetchTestDefinitions();
@@ -604,7 +604,7 @@ const TestDefinitionList = () => {
     [
       currentPage,
       pageSize,
-      filteredTestDefinitions.length,
+      filteredTestDefinitions,
       handlePageChange,
       handlePageSizeChange,
       isLoading,
