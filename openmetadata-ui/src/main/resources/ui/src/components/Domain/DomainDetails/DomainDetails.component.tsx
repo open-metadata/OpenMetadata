@@ -36,7 +36,7 @@ import { AssetsTabRef } from '../../../components/Glossary/GlossaryTerms/tabs/As
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { ERROR_MESSAGE } from '../../../constants/constants';
+import { ERROR_MESSAGE, ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -56,6 +56,7 @@ import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import {
   addDataProducts,
   patchDataProduct,
@@ -144,6 +145,7 @@ const DomainDetails = ({
   const { t } = useTranslation();
   const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const { isMarketplace } = useMarketplaceStore();
   const { getEntityPermission, permissions } = usePermissionProvider();
   const routeParams = useParams<{
     fqn?: string;
@@ -344,6 +346,7 @@ const DomainDetails = ({
     title: t('label.add-entity', { entity: t('label.data-product') }),
     width: 670,
     closeOnEscape: false,
+    className: 'tw:z-[20]',
     onCancel: () => {
       dataProductForm.resetFields();
     },
@@ -397,14 +400,22 @@ const DomainDetails = ({
   });
 
   const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
+    const marketplaceRoot: BreadcrumbItem[] = isMarketplace
+      ? [{ name: t('label.data-marketplace'), url: ROUTES.DATA_MARKETPLACE }]
+      : [];
+
     if (!domainFqn) {
-      return [{ name: t('label.domain-plural'), url: getDomainPath() }];
+      return [
+        ...marketplaceRoot,
+        { name: t('label.domain-plural'), url: getDomainPath() },
+      ];
     }
 
     const arr = Fqn.split(domainFqn);
     const dataFQN: Array<string> = [];
 
     return [
+      ...marketplaceRoot,
       {
         name: t('label.domain-plural'),
         url: getDomainPath(),
@@ -418,7 +429,7 @@ const DomainDetails = ({
         };
       }),
     ];
-  }, [domainFqn, t]);
+  }, [domainFqn, isMarketplace, t]);
 
   const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 
@@ -487,6 +498,7 @@ const DomainDetails = ({
     title: t('label.add-entity', { entity: t('label.sub-domain') }),
     width: 670,
     closeOnEscape: false,
+    className: 'tw:z-[20]',
     onCancel: () => {
       subDomainForm.resetFields();
     },

@@ -12,18 +12,18 @@
  */
 
 import {
-  ExclamationCircleOutlined,
   FilterOutlined,
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
 import {
+  Alert,
   Button,
+  Card as CoreCard,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import { Download01 } from '@untitledui/icons';
 import {
-  Alert,
   Button as AntdButton,
   Card,
   Col,
@@ -31,6 +31,7 @@ import {
   Modal,
   Radio,
   Row,
+  Spin,
   Switch,
   Typography,
 } from 'antd';
@@ -39,7 +40,6 @@ import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -47,29 +47,25 @@ import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import {
   entitySortingFields,
-  SEARCH_INDEXING_APPLICATION,
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
   exportSearchResultsCsvStream,
   searchQuery,
 } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
-import { Transi18next } from '../../utils/CommonUtils';
+import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   getExploreQueryFilterMust,
   getSelectedValuesFromQuickFilter,
 } from '../../utils/ExploreUtils';
-import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import { showErrorToast } from '../../utils/ToastUtils';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
@@ -82,47 +78,9 @@ import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
+import { IndexNotFoundBanner } from './IndexNotFoundBanner';
 
-const IndexNotFoundBanner = () => {
-  const { theme } = useApplicationStore();
-  const { t } = useTranslation();
-
-  return (
-    <Alert
-      closable
-      description={
-        <div className="d-flex items-start gap-3">
-          <ExclamationCircleOutlined
-            style={{
-              color: theme.errorColor,
-              fontSize: '16px',
-            }}
-          />
-          <div className="d-flex flex-col gap-2">
-            <Typography.Text className="font-semibold text-xs">
-              {t('server.indexing-error')}
-            </Typography.Text>
-            <Typography.Paragraph className="m-b-0 text-xs">
-              <Transi18next
-                i18nKey="message.configure-search-re-index"
-                renderElement={
-                  <Link
-                    className="alert-link"
-                    to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
-                  />
-                }
-                values={{
-                  settings: t('label.search-index-setting-plural'),
-                }}
-              />
-            </Typography.Paragraph>
-          </div>
-        </div>
-      }
-      type="error"
-    />
-  );
-};
+const EXPORT_ALL_ASSETS_LIMIT = 200000;
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
@@ -177,13 +135,26 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [exportScope, setExportScope] = useState<'visible' | 'all'>('all');
   const [isExporting, setIsExporting] = useState(false);
   const [allAssetsCount, setAllAssetsCount] = useState<number>();
+  const [exportError, setExportError] = useState<string | undefined>();
+  const [isCountLoading, setIsCountLoading] = useState(false);
 
   const visibleResultCount = searchResults?.hits?.hits?.length ?? 0;
+  const isAllAssetsLimitExceeded =
+    exportScope === 'all' &&
+    allAssetsCount !== undefined &&
+    allAssetsCount > EXPORT_ALL_ASSETS_LIMIT;
+
+  const handleExportScopeChange = (scope: 'visible' | 'all') => {
+    setExportScope(scope);
+    setExportError(undefined);
+  };
 
   const handleOpenExportScopeModal = useCallback(async () => {
     setExportScope('all');
     setAllAssetsCount(undefined);
+    setExportError(undefined);
     setShowExportScopeModal(true);
+    setIsCountLoading(true);
 
     try {
       const combinedQueryFilter = getCombinedQueryFilterObject(
@@ -201,10 +172,16 @@ const ExploreV1: React.FC<ExploreProps> = ({
       setAllAssetsCount(response.hits.total.value);
     } catch {
       // Count fetch failed — modal still usable without count
+    } finally {
+      setIsCountLoading(false);
     }
   }, [searchQueryParam, showDeleted, quickFilters, queryFilter]);
 
   const handleExportScopeConfirm = useCallback(async () => {
+    if (isAllAssetsLimitExceeded) {
+      return;
+    }
+
     const isVisibleScope = exportScope === 'visible';
     const combinedQueryFilter = getCombinedQueryFilterObject(
       quickFilters,
@@ -238,6 +215,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       params.from = (currentPage - 1) * pageSize;
     }
 
+    setExportError(undefined);
     setIsExporting(true);
 
     try {
@@ -250,7 +228,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
       URL.revokeObjectURL(url);
       setShowExportScopeModal(false);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      const message = await parseExportErrorMessage(
+        error as AxiosError<Blob | { message?: string }>,
+        t('server.unexpected-error')
+      );
+      setExportError(message);
     } finally {
       setIsExporting(false);
     }
@@ -265,6 +247,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     showDeleted,
     quickFilters,
     queryFilter,
+    isAllAssetsLimitExceeded,
   ]);
 
   const translatedSortingFields = useMemo(() => {
@@ -644,13 +627,31 @@ const ExploreV1: React.FC<ExploreProps> = ({
         cancelText={t('label.cancel')}
         className="search-export-modal tw:overflow-hidden"
         data-testid="export-scope-modal"
-        okButtonProps={{ disabled: isExporting, loading: isExporting }}
+        okButtonProps={{
+          disabled: isExporting || isCountLoading || isAllAssetsLimitExceeded,
+          loading: isExporting,
+        }}
         okText={t('label.export')}
         open={showExportScopeModal}
         title={exportModalTitle()}
         width={610}
-        onCancel={() => setShowExportScopeModal(false)}
+        onCancel={() => {
+          setShowExportScopeModal(false);
+          setExportError(undefined);
+        }}
         onOk={handleExportScopeConfirm}>
+        {isAllAssetsLimitExceeded && (
+          <Alert
+            className="m-b-sm"
+            title={t('message.export-assets-limit-exceeded', {
+              limit: EXPORT_ALL_ASSETS_LIMIT,
+            })}
+            variant="error"
+          />
+        )}
+        {exportError && (
+          <Alert className="m-b-sm" title={exportError} variant="error" />
+        )}
         <CoreTypography
           className="tw:text-secondary"
           size="text-sm"
@@ -660,18 +661,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
         <Radio.Group
           className="d-flex gap-3 m-t-sm w-full"
           value={exportScope}
-          onChange={(e) => setExportScope(e.target.value)}>
-          <div
-            className={`export-scope-option-card${
-              exportScope === 'visible' ? ' selected' : ''
-            }`}
-            onClick={() => setExportScope('visible')}>
-            <div
-              className={`d-flex items-start gap-2 border-radius-sm tw:p-4 border ${
-                exportScope === 'visible'
-                  ? 'tw:border-brand'
-                  : 'tw:border-secondary'
-              }`}>
+          onChange={(e) =>
+            handleExportScopeChange(e.target.value as 'visible' | 'all')
+          }>
+          <CoreCard
+            isClickable
+            className="export-scope-option-card tw:flex-1 tw:p-4"
+            isSelected={exportScope === 'visible'}
+            onClick={() => handleExportScopeChange('visible')}>
+            <div className="d-flex items-start gap-2">
               <Radio value="visible" />
               <div>
                 <div className="d-flex items-center gap-2">
@@ -696,18 +694,13 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 </CoreTypography>
               </div>
             </div>
-          </div>
-          <div
-            className={`export-scope-option-card${
-              exportScope === 'all' ? ' selected' : ''
-            }`}
-            onClick={() => setExportScope('all')}>
-            <div
-              className={`d-flex items-start border-radius-sm tw:gap-1 tw:p-4 border ${
-                exportScope === 'all'
-                  ? 'tw:border-brand'
-                  : 'tw:border-secondary'
-              }`}>
+          </CoreCard>
+          <CoreCard
+            isClickable
+            className="export-scope-option-card tw:flex-1 tw:p-4"
+            isSelected={exportScope === 'all'}
+            onClick={() => handleExportScopeChange('all')}>
+            <div className="d-flex items-start tw:gap-1">
               <Radio value="all" />
               <div>
                 <CoreTypography
@@ -715,13 +708,17 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   size="text-sm"
                   weight="semibold">
                   {`${t('label.all-matching-asset-plural')} `}
-                  {allAssetsCount !== undefined && (
-                    <CoreTypography
-                      className="tw:text-tertiary"
-                      size="text-sm"
-                      weight="regular">
-                      ({allAssetsCount} {t('label.result-plural')})
-                    </CoreTypography>
+                  {isCountLoading ? (
+                    <Spin className="m-l-xs" size="small" />
+                  ) : (
+                    allAssetsCount !== undefined && (
+                      <CoreTypography
+                        className="tw:text-tertiary"
+                        size="text-sm"
+                        weight="regular">
+                        ({allAssetsCount} {t('label.result-plural')})
+                      </CoreTypography>
+                    )
                   )}
                 </CoreTypography>
                 <CoreTypography
@@ -732,7 +729,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 </CoreTypography>
               </div>
             </div>
-          </div>
+          </CoreCard>
         </Radio.Group>
       </Modal>
     </div>

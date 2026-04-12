@@ -236,17 +236,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public Map<String, Integer> getRelationTypeUsageCounts() {
-    Map<String, Integer> usageCounts = new HashMap<>();
-    List<EntityRelationshipRecord> records =
+    List<List<String>> rows =
         daoCollection
             .relationshipDAO()
-            .findAllByEntityTypes(entityType, entityType, Relationship.RELATED_TO.ordinal());
+            .countByRelationType(entityType, entityType, Relationship.RELATED_TO.ordinal());
 
-    for (EntityRelationshipRecord record : records) {
-      String relationType = extractRelationType(record.getJson());
-      usageCounts.merge(relationType, 1, Integer::sum);
+    Map<String, Integer> usageCounts = new HashMap<>();
+    for (List<String> row : rows) {
+      usageCounts.put(row.get(0), Integer.parseInt(row.get(1)));
     }
-
     return usageCounts;
   }
 

@@ -576,6 +576,9 @@ class CommonDbSourceService(
                 foreign_columns=foreign_columns,
                 columns=columns,
             )
+            table_constraints = self.normalize_table_constraints(
+                table_constraints, columns
+            )
 
             description = (
                 Markdown(db_description)
@@ -663,8 +666,12 @@ class CommonDbSourceService(
         else:
             database_name = self.context.get().database
 
-        referred_table_fqn = f"{self.context.get().database_service}.{database_name}.{column.get('referred_schema')}.{column.get('referred_table')}"
-
+        referred_schema = column.get("referred_schema") or schema_name
+        referred_table_fqn = (
+            f"{self.context.get().database_service}."
+            f"{database_name}.{referred_schema}."
+            f"{column.get('referred_table')}"
+        )
         referred_table = self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn)
         if referred_table:
             for referred_column in column.get("referred_columns"):

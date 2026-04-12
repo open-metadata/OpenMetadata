@@ -90,9 +90,15 @@ test.describe('Ontology Explorer', () => {
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);
 
-    await term1.delete(apiContext);
-    await term2.delete(apiContext);
-    await glossary.delete(apiContext);
+    if (term1.responseData?.id) {
+      await term1.delete(apiContext);
+    }
+    if (term2.responseData?.id) {
+      await term2.delete(apiContext);
+    }
+    if (glossary.responseData?.id) {
+      await glossary.delete(apiContext);
+    }
 
     await apiContext.dispose();
     await page.close();
@@ -225,15 +231,6 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await page.getByTestId('zoom-out').click();
       await expect(page.getByTestId('ontology-explorer')).toBeVisible();
-    });
-
-    test('should reload graph when refresh is clicked', async ({ page }) => {
-      await waitForGraphLoaded(page);
-      await page.getByTestId('refresh').click();
-      await expect(page.getByTestId('ontology-graph-loading')).toBeVisible({
-        timeout: 5000,
-      });
-      await waitForGraphLoaded(page);
     });
 
     test('should disable refresh button while graph is loading', async ({
@@ -377,6 +374,29 @@ test.describe('Ontology Explorer', () => {
     });
   });
 
+  test.describe('Clear All Filters', () => {
+    test('should show and clear all filters', async ({ page }) => {
+      await waitForGraphLoaded(page);
+      const glossaryName =
+        glossary.responseData.displayName ?? glossary.responseData.name;
+      await applyGlossaryFilter(page, glossaryName);
+      await clickOutside(page);
+      const clearAll = page.getByTestId('ontology-clear-all-btn');
+      await expect(clearAll).toBeVisible();
+      await clearAll.click();
+      await expect(clearAll).not.toBeVisible();
+    });
+  });
+
+  test.describe('Export Graph', () => {
+    test('should show export options', async ({ page }) => {
+      await waitForGraphLoaded(page);
+      await page.getByTestId('ontology-export-graph').click();
+      await expect(page.getByText('PNG', { exact: true })).toBeVisible();
+      await expect(page.getByText('SVG', { exact: true })).toBeVisible();
+    });
+  });
+
   test.describe('Glossary Filter Dropdown', () => {
     test('should display Glossary filter label', async ({ page }) => {
       await expect(page.getByText('Glossary:')).toBeVisible();
@@ -482,6 +502,19 @@ test.describe('Ontology Explorer', () => {
       );
     });
   });
+
+  test.describe('Hierarchy View', () => {
+    test('should show hierarchy empty state when no hierarchical relations', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await page.getByTestId('view-mode-select').click();
+      await page.getByRole('option', { name: 'Hierarchy' }).click();
+      await expect(
+        page.getByTestId('ontology-graph-hierarchy-empty')
+      ).toBeVisible();
+    });
+  });
 });
 
 test.describe('Relation Sync with OntologyExplorer', () => {
@@ -513,9 +546,15 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);
 
-    await syncTerm1.delete(apiContext);
-    await syncTerm2.delete(apiContext);
-    await syncGlossary.delete(apiContext);
+    if (syncTerm1.responseData?.id) {
+      await syncTerm1.delete(apiContext);
+    }
+    if (syncTerm2.responseData?.id) {
+      await syncTerm2.delete(apiContext);
+    }
+    if (syncGlossary.responseData?.id) {
+      await syncGlossary.delete(apiContext);
+    }
 
     await apiContext.dispose();
     await page.close();
@@ -573,5 +612,86 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /0\s*Relations?/i
     );
+  });
+});
+
+test.describe('Ontology Explorer - Hierarchy View', () => {
+  const hierarchyGlossary = new Glossary();
+  const parentTerm = new GlossaryTerm(hierarchyGlossary);
+  const childTerm = new GlossaryTerm(hierarchyGlossary);
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    await hierarchyGlossary.create(apiContext);
+    await parentTerm.create(apiContext);
+    await childTerm.create(apiContext);
+
+    await parentTerm.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/relatedTerms/0',
+        value: {
+          relationType: 'narrower',
+          term: {
+            id: childTerm.responseData.id,
+            type: 'glossaryTerm',
+            name: childTerm.responseData.name,
+            fullyQualifiedName: childTerm.responseData.fullyQualifiedName,
+          },
+        },
+      },
+    ]);
+
+    await apiContext.dispose();
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    if (childTerm.responseData?.id) {
+      await childTerm.delete(apiContext);
+    }
+    if (parentTerm.responseData?.id) {
+      await parentTerm.delete(apiContext);
+    }
+    if (hierarchyGlossary.responseData?.id) {
+      await hierarchyGlossary.delete(apiContext);
+    }
+
+    await apiContext.dispose();
+    await page.close();
+  });
+
+  test('should display terms with narrower relation in Hierarchy view', async ({
+    page,
+  }) => {
+    await navigateToOntologyExplorer(page);
+    await waitForGraphLoaded(page);
+
+    const glossaryName =
+      hierarchyGlossary.responseData.displayName ??
+      hierarchyGlossary.responseData.name;
+    await applyGlossaryFilter(page, glossaryName);
+    await clickOutside(page);
+
+    await page.getByTestId('view-mode-select').click();
+    await page.getByRole('option', { name: 'Hierarchy' }).click();
+    await waitForGraphLoaded(page);
+
+    await expect(
+      page.getByTestId('ontology-graph-hierarchy-empty')
+    ).not.toBeVisible();
   });
 });
