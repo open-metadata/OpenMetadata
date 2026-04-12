@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -1077,6 +1078,28 @@ class RuleEvaluatorTest {
     Boolean negatedNoDomainInherited =
         parseExpression("!noDomain()").getValue(contextInherited, Boolean.class);
     assertTrue(negatedNoDomainInherited != null && negatedNoDomainInherited);
+  }
+
+  @Test
+  void test_customPropertiesExposedInSpEL() {
+    ResourceContextInterface customPropertiesContext = mock(ResourceContextInterface.class);
+    Mockito.when(customPropertiesContext.getCustomProperties())
+        .thenReturn(Map.of("sensitivity", "PII"));
+
+    SubjectContext localSubjectContext = new SubjectContext(user, null);
+    RuleEvaluator evaluator = new RuleEvaluator(null, localSubjectContext, customPropertiesContext);
+    StandardEvaluationContext context = new StandardEvaluationContext(evaluator);
+    Boolean result =
+        parseExpression("customProperties.get('sensitivity') == 'PII'")
+            .getValue(context, Boolean.class);
+    assertTrue(result != null && result);
+
+    RuleEvaluator validationEvaluator = new RuleEvaluator(false);
+    StandardEvaluationContext validationContext = new StandardEvaluationContext(validationEvaluator);
+    Boolean validationResult =
+        parseExpression("customProperties.get('sensitivity') == 'PII'")
+            .getValue(validationContext, Boolean.class);
+    assertTrue(validationResult != null && !validationResult);
   }
 
   @AfterEach

@@ -4,7 +4,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -413,5 +415,13 @@ public class RuleEvaluator {
           entityType,
           name);
     }
+  }
+
+  @SuppressWarnings("unused")
+  public Map<String, Object> getCustomProperties() {
+    if (resourceContext == null) {
+      return Collections.emptyMap();
+    }
+    return resourceContext.getCustomProperties();
   }
 }

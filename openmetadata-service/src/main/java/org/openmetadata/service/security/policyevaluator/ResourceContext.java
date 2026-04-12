@@ -1,12 +1,14 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
@@ -17,6 +19,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -186,6 +189,20 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return entity.getDomains();
   }
 
+  @Override
+  public Map<String, Object> getCustomProperties() {
+    resolveEntity();
+    if (entity == null || entity.getExtension() == null) {
+      return Collections.emptyMap();
+    }
+    try {
+      return JsonUtils.getMap(entity.getExtension());
+    } catch (Exception e) {
+      LOG.warn("Failed to get custom properties: {}", e.getMessage());
+      return Collections.emptyMap();
+    }
+  }
+
   private EntityInterface resolveEntity() {
     if (entity == null) {
       Fields fieldList;
@@ -209,6 +226,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
         }
         if (entityRepository.isSupportsReviewers()) {
           fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+        }
+        if (supportsExtension()) {
+          fields = EntityUtil.addField(fields, FIELD_EXTENSION);
         }
         fieldList = entityRepository.getFields(fields);
       }
@@ -250,5 +270,14 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     }
     return operation != ResourceContextInterface.Operation.PATCH
         && operation != ResourceContextInterface.Operation.PUT;
+  }
+
+  private boolean supportsExtension() {
+    try {
+      entityRepository.getFields(FIELD_EXTENSION);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
   }
 }
