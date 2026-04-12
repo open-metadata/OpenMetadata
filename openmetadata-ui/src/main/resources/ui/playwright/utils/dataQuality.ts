@@ -16,6 +16,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { submitTestCaseForm } from './testCases';
 
 /** Recharts PieChart id for the Test Case Result pie on the Data Quality dashboard. */
 export const TEST_CASE_STATUS_PIE_CHART_TEST_ID = 'test-case-result-pie-chart';
@@ -101,15 +102,7 @@ export const clickCreateTestCaseButton = async (
   page: Page,
   testCaseName: string
 ) => {
-  const createTestCaseResponse = page.waitForResponse(
-    (response: Response) =>
-      response.url().includes('/api/v1/dataQuality/testCases') &&
-      response.request().method() === 'POST'
-  );
-  await page.getByTestId('create-btn').click();
-  const response = await createTestCaseResponse;
-
-  expect(response.status()).toBe(201);
+  await submitTestCaseForm(page);
 
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
