@@ -526,6 +526,59 @@ class QuickSightUnitTest(TestCase):
         assert result == []
 
     @pytest.mark.order(13)
+    def test_build_column_lineage_from_parser_iterable_parent(self):
+        """
+        When src_col._parent is an iterable of parent tables (as some
+        parser outputs produce), _build_column_lineage_from_parser must
+        correctly match against from_entity when any parent matches.
+        Issue #26670.
+        """
+        # Parent is an iterable (list) of Table objects
+        parent_table_mock = MagicMock()
+        parent_table_mock.__str__ = MagicMock(
+            return_value="relation_table"
+        )
+
+        src_col = MagicMock()
+        src_col.raw_name = "id"
+        # _parent is a list — simulates iterable parser output
+        src_col._parent = [parent_table_mock]
+
+        tgt_col = MagicMock()
+        tgt_col.raw_name = "relation_id"
+
+        mock_parser = MagicMock()
+        mock_parser.column_lineage = [(src_col, tgt_col)]
+
+        src_fqn = "postgres.public.relation_table.id"
+        alias_fqn = "quicksight_service.dataset.relation_id"
+
+        mock_from_entity = MagicMock()
+        mock_from_entity.name.root = "relation_table"
+        mock_data_model = MagicMock()
+
+        with patch(
+            "metadata.ingestion.source.dashboard.quicksight.metadata.get_column_fqn",
+            return_value=src_fqn,
+        ):
+            with patch.object(
+                self.quicksight,
+                "_get_data_model_column_fqn",
+                return_value=alias_fqn,
+            ):
+                result = (
+                    self.quicksight._build_column_lineage_from_parser(
+                        mock_parser,
+                        mock_from_entity,
+                        mock_data_model,
+                    )
+                )
+
+        assert len(result) == 1
+        assert result[0].fromColumns == [src_fqn]
+        assert result[0].toColumn == alias_fqn
+
+    @pytest.mark.order(14)
     def test_build_column_lineage_from_parser_falls_back_when_empty(self):
         """
         When lineage_parser.column_lineage is empty (parser failed or

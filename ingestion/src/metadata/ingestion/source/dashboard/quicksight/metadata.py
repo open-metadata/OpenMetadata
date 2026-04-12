@@ -273,16 +273,38 @@ class QuicksightSource(DashboardServiceSource):
             src_col = col_pair[0]
             tgt_col = col_pair[-1]
 
-            # Multi-table safety: filter by parent table to avoid resolving
-            # a shared column name (e.g. 'id') to the wrong upstream table.
-            if src_col._parent:
-                # _parent may be qualified: '<default>.table' or 'schema.table'
-                parent_str = str(src_col._parent).replace("<default>.", "")
-                # Compare only the table name portion (last segment)
-                parent_table = parent_str.split(".")[-1].lower()
+            parent = getattr(src_col, "_parent", None)
+            if parent is not None:
+                # _parent may be a single Table or an iterable of Tables.
+                # Normalise to a list so we handle both cases uniformly.
+                parents = (
+                    list(parent)
+                    if hasattr(parent, "__iter__")
+                    and not isinstance(parent, str)
+                    else [parent]
+                )
                 entity_table = from_entity.name.root.lower()
-                if parent_table != entity_table:
+                # Accept the pair only when at least one parent table
+                # matches the current upstream entity being processed.
+                if not any(
+                    str(p)
+                    .replace("<default>.", "")
+                    .split(".")[-1]
+                    .lower()
+                    == entity_table
+                    for p in parents
+                ):
                     continue
+            else:
+                # _parent is None — parser could not determine source
+                # table.  Log for visibility but allow the pair through;
+                # get_column_fqn provides a secondary guard (column must
+                # exist in entity).
+                logger.debug(
+                    "No parent table info for column %s; "
+                    "skipping parent-table filter",
+                    src_col.raw_name,
+                )
 
             # raw_name may be fully-qualified (e.g. 'schema.table.col')
             # Extract just the column name portion.
@@ -306,7 +328,8 @@ class QuicksightSource(DashboardServiceSource):
                     )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(
-                    f"Failed to build column lineage for {src_col_name} -> {tgt_col_name}: {exc}"
+                    f"Failed to build column lineage "
+                    f"for {src_col_name} -> {tgt_col_name}: {exc}"
                 )
                 logger.debug(traceback.format_exc())
 
