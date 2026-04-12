@@ -85,11 +85,14 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
   onCronExpressionChange,
   onBatchSizeChange,
   lockNonIncludeExcludeFields = false,
+  lockPeriodicBatchFields,
 }) => {
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
   const nonIncludeExcludeDisabled =
     isFormDisabled || lockNonIncludeExcludeFields;
+  const periodicBatchDisabled =
+    isFormDisabled || (lockPeriodicBatchFields ?? lockNonIncludeExcludeFields);
   const includeExcludeDisabled = isFormDisabled;
 
   const triggerTypeOptions = [
@@ -296,7 +299,7 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
             isRequired
             data-testid="schedule-type-select"
             hint={t('message.choose-how-the-workflow-should-be-triggered')}
-            isDisabled={nonIncludeExcludeDisabled}
+            isDisabled={periodicBatchDisabled}
             label={t('label.schedule-type')}
             value={scheduleType}
             onChange={(key) => onScheduleTypeChange?.(String(key ?? ''))}>
@@ -318,7 +321,7 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
               showInfoIcon={false}>
               <div className="tw:mb-6">
                 <CronExpressionBuilder
-                  forceDisabled={nonIncludeExcludeDisabled}
+                  forceDisabled={periodicBatchDisabled}
                   value={cronExpression}
                   onChange={onCronExpressionChange}
                 />
@@ -330,7 +333,7 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
             className="tw:mt-6"
             data-testid="batch-size-input"
             hint={t('message.number-of-entities-to-process-in-each-batch')}
-            isDisabled={nonIncludeExcludeDisabled}
+            isDisabled={periodicBatchDisabled}
             label={t('label.batch-size')}
             placeholder="100"
             type="number"

@@ -75,8 +75,8 @@ export interface TriggerConfigSectionProps {
   onScheduleTypeChange?: (scheduleType: string) => void;
   onCronExpressionChange?: (cron: string) => void;
   onBatchSizeChange?: (batchSize: number) => void;
-  /** OSS: disable all trigger controls except include/exclude (event-based) */
   lockNonIncludeExcludeFields?: boolean;
+  lockPeriodicBatchFields?: boolean;
 }
 
 export interface MetadataFormSectionProps {

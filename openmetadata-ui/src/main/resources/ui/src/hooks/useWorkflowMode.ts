@@ -73,6 +73,7 @@ export interface UseWorkflowModeReturn {
   allowStructuralGraphEdits: boolean;
   showWorkflowNodePalette: boolean;
   allowFullStartNodeConfiguration: boolean;
+  allowStartNodeFilterScheduleAndBatchEdit: boolean;
 }
 
 export const useWorkflowMode = (
@@ -144,6 +145,8 @@ export const useWorkflowMode = (
     const showWorkflowNodePalette = caps.showWorkflowNodePalette;
     const allowFullStartNodeConfiguration =
       caps.allowFullStartNodeConfiguration;
+    const allowStartNodeFilterScheduleAndBatchEdit =
+      caps.allowStartNodeFilterScheduleAndBatchEdit;
 
     return {
       mode: internalMode,
@@ -158,6 +161,7 @@ export const useWorkflowMode = (
       allowStructuralGraphEdits: structural,
       showWorkflowNodePalette,
       allowFullStartNodeConfiguration,
+      allowStartNodeFilterScheduleAndBatchEdit,
 
       showEditButton: isViewMode && !isNoOpTrigger,
       showSaveButton: isEditMode && !isNoOpTrigger,

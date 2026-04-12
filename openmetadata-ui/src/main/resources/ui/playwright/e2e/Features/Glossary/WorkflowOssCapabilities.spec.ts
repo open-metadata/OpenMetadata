@@ -1,0 +1,329 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { expect, test as base, type Page } from '@playwright/test';
+import { SidebarItem } from '../../../constant/sidebar';
+import { performAdminLogin } from '../../../utils/admin';
+import {
+  clickOutside,
+  redirectToHomePage,
+  uuid,
+} from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const { page, afterAction } = await performAdminLogin(browser);
+    await use(page);
+    await afterAction();
+  },
+});
+
+let workflowName: string;
+
+async function navigateToWorkflowsListPage(page: Page) {
+  await page.hover('[data-testid="left-sidebar"]');
+  await page.click(`[data-testid="${SidebarItem.GOVERNANCE}"]`);
+
+  const listResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/governance/workflowDefinitions') &&
+      response.request().method() === 'GET'
+  );
+
+  await page.click('[data-testid="app-bar-item-workflows"]');
+  await listResponse;
+  await waitForAllLoadersToDisappear(page);
+}
+
+async function navigateToWorkflowDetailPage(page: Page, name: string) {
+  await navigateToWorkflowsListPage(page);
+  await clickOutside(page);
+
+  const detailResponse = page.waitForResponse(
+    '/api/v1/governance/workflowDefinitions/name/*'
+  );
+
+  await page.click(`[data-testid="${name}"]`);
+  await detailResponse;
+  await waitForAllLoadersToDisappear(page);
+}
+
+async function enterEditMode(page: Page) {
+  await page.getByTestId('edit-workflow-button').click();
+  await waitForAllLoadersToDisappear(page);
+}
+
+async function openTaskNodeSidebar(page: Page) {
+  const fitViewButton = page.getByTestId('fit-view-button');
+
+  await expect(fitViewButton).toBeVisible();
+  await fitViewButton.click();
+  await enterEditMode(page);
+
+  const taskNode = page
+    .locator('.react-flow__node')
+    .filter({ hasNotText: /^Start$/ })
+    .filter({ hasNotText: /^End$/ })
+    .filter({ hasNotText: /^Approved$/ })
+    .filter({ hasNotText: /^Rejected$/ })
+    .first();
+
+  await expect(taskNode).toBeVisible();
+  await taskNode.click();
+
+  const sidebar = page.getByTestId('node-config-sidebar');
+
+  await expect(sidebar).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+
+  return sidebar;
+}
+
+test.describe('OSS Workflow Capabilities', () => {
+
+  test.beforeAll('Create test workflow via API', async ({ browser }) => {
+    workflowName = `pw-oss-test-workflow-${uuid()}`;
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    const response = await apiContext.post(
+      '/api/v1/governance/workflowDefinitions',
+      {
+        data: {
+          name: workflowName,
+          description: 'OSS capability test workflow created by Playwright',
+          config: { storeStageStatus: false },
+          trigger: {
+            type: 'eventBasedEntity',
+            config: {
+              entityTypes: ['table'],
+              events: ['Created'],
+              exclude: [],
+              include: [],
+              filter: {},
+            },
+            output: ['relatedEntity', 'updatedBy'],
+          },
+          nodes: [
+            {
+              type: 'startEvent',
+              subType: 'startEvent',
+              name: 'Start',
+              displayName: 'Start',
+            },
+            {
+              type: 'userTask',
+              subType: 'userApprovalTask',
+              name: 'ApprovalTask',
+              displayName: 'Approval Task',
+              config: {
+                assignees: {
+                  addReviewers: false,
+                  addOwners: false,
+                  candidates: [],
+                },
+                approvalThreshold: 1,
+                rejectionThreshold: 1,
+              },
+              inputNamespaceMap: {
+                relatedEntity: 'global',
+              },
+            },
+            {
+              type: 'endEvent',
+              subType: 'endEvent',
+              name: 'ApprovedEnd',
+              displayName: 'Approved',
+            },
+            {
+              type: 'endEvent',
+              subType: 'endEvent',
+              name: 'RejectedEnd',
+              displayName: 'Rejected',
+            },
+          ],
+          edges: [
+            { from: 'Start', to: 'ApprovalTask' },
+            { from: 'ApprovalTask', to: 'ApprovedEnd', condition: 'true' },
+            { from: 'ApprovalTask', to: 'RejectedEnd', condition: 'false' },
+          ],
+        },
+      }
+    );
+
+    expect(response.ok()).toBeTruthy();
+    await afterAction();
+  });
+
+  test.afterAll('Delete test workflow via API', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await apiContext.delete(
+      `/api/v1/governance/workflowDefinitions/name/${encodeURIComponent(workflowName)}`,
+      { params: { hardDelete: true } }
+    );
+
+    await afterAction();
+  });
+
+  test.describe('Workflow listing page', () => {
+    test('create-workflow-button absent on OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowsListPage(page);
+
+      await expect(
+        page.getByTestId('create-workflow-button')
+      ).not.toBeVisible();
+    });
+  });
+
+  test.describe('Test workflow — view mode', () => {
+    test('edit-workflow-button visible; delete-workflow-button and run-workflow-button absent', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      await expect(page.getByTestId('edit-workflow-button')).toBeVisible();
+      await expect(
+        page.getByTestId('delete-workflow-button')
+      ).not.toBeVisible();
+      await expect(page.getByTestId('run-workflow-button')).not.toBeVisible();
+    });
+  });
+
+  test.describe('Test workflow — edit mode: structural restrictions', () => {
+    test('workflow-node-sidebar (node palette) not rendered in edit mode', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+      await enterEditMode(page);
+
+      await expect(
+        page.getByTestId('workflow-node-sidebar')
+      ).not.toBeVisible();
+    });
+
+    test('graph canvas contains workflow nodes', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const fitViewButton = page.getByTestId('fit-view-button');
+
+      await expect(fitViewButton).toBeVisible();
+      await fitViewButton.click();
+      await enterEditMode(page);
+
+      await expect(page.locator('.react-flow__node').first()).toBeVisible();
+    });
+  });
+
+  test.describe('Test workflow — edit mode: task node config', () => {
+    test('task node config sidebar opens and save button is enabled', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openTaskNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('save-node-configuration-button')
+      ).toBeEnabled();
+
+      await sidebar.getByTestId('cancel-workflow-button').click();
+      await expect(sidebar).not.toBeVisible();
+    });
+
+    test('delete-node-button absent in node config sidebar (structural edit blocked)', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openTaskNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('delete-node-button')
+      ).not.toBeVisible();
+    });
+
+    test('save-node-configuration-button closes sidebar (local state update)', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openTaskNodeSidebar(page);
+
+      await sidebar.getByTestId('save-node-configuration-button').click();
+      await expect(sidebar).not.toBeVisible();
+    });
+  });
+
+  test.describe('Test workflow — save workflow', () => {
+    test('save-workflow-button visible in edit mode', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+      await enterEditMode(page);
+
+      await expect(page.getByTestId('save-workflow-button')).toBeVisible();
+    });
+
+    test('save-workflow-button fires PUT API and returns to view mode', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+      await enterEditMode(page);
+
+      const saveResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/governance/workflowDefinitions') &&
+          response.request().method() === 'PUT' &&
+          response.ok()
+      );
+
+      await page.getByTestId('save-workflow-button').click();
+      await saveResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('edit-workflow-button')).toBeVisible();
+      await expect(page.getByTestId('save-workflow-button')).not.toBeVisible();
+    });
+  });
+
+  test.describe('Test workflow — execution history', () => {
+    test('execution history tab loads and API call succeeds', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const historyResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/governance/workflowInstances') &&
+          response.ok()
+      );
+
+      await page.getByTestId('workflow-execution-history').click();
+      await historyResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('workflow-execution-history')
+      ).toBeVisible();
+    });
+  });
+});

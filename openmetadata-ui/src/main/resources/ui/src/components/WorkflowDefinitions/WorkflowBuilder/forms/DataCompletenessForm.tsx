@@ -48,12 +48,6 @@ interface DataCompletenessFormProps {
   entityTypes?: EntityType[];
 }
 
-const PercentIcon = ({ className }: { className?: string }) => (
-  <Typography as="span" className={className}>
-    %
-  </Typography>
-);
-
 const convertScoringLevelsToQualityBands = (
   scoringLevels: ScoringLevel[]
 ): QualityBand[] => {
@@ -275,20 +269,29 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
             <div
               className="tw:flex tw:gap-3 tw:mb-3 tw:items-center"
               key={index}>
-              <div className="tw:w-1/3">
-                <Input
-                  icon={PercentIcon}
-                  isDisabled={isFormDisabled}
-                  type="number"
-                  value={String(level.threshold)}
-                  onChange={(value) => {
-                    handleScoringLevelChange(
-                      index,
-                      'threshold',
-                      value === '' ? '' : parseInt(value) || 0
-                    );
-                  }}
-                />
+              <div className="tw:flex tw:w-1/3 tw:min-w-0 tw:items-center tw:gap-2">
+                <div className="tw:min-w-0 tw:flex-1">
+                  <Input
+                    isDisabled={isFormDisabled}
+                    type="number"
+                    value={String(level.threshold)}
+                    onChange={(value) => {
+                      handleScoringLevelChange(
+                        index,
+                        'threshold',
+                        value === '' ? '' : parseInt(value) || 0
+                      );
+                    }}
+                  />
+                </div>
+                <Typography
+                  aria-hidden
+                  as="span"
+                  className="tw:shrink-0 tw:text-tertiary"
+                  size="text-sm"
+                  weight="medium">
+                  %
+                </Typography>
               </div>
 
               <div className="tw:w-3/5">

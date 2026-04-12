@@ -72,7 +72,10 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   workflowMetadata,
   onWorkflowMetadataUpdate,
 }) => {
-  const { allowFullStartNodeConfiguration } = useWorkflowModeContext();
+  const {
+    allowFullStartNodeConfiguration,
+    allowStartNodeFilterScheduleAndBatchEdit,
+  } = useWorkflowModeContext();
   const [isUpdating, setIsUpdating] = useState(false);
   const [backendConfig, setBackendConfig] = useState(() =>
     getBackendConfig(node)
@@ -408,6 +411,9 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       <WorkflowConfigFormV1
         addDataAssetFilter={addDataAssetFilter}
         allowFullStartNodeConfiguration={allowFullStartNodeConfiguration}
+        allowStartNodeFilterScheduleAndBatchEdit={
+          allowStartNodeFilterScheduleAndBatchEdit
+        }
         availableEventTypes={[...AVAILABLE_OPTIONS.EVENT_TYPES]}
         availableExcludeFields={availableExcludeFields}
         config={effectiveConfig}

@@ -31,6 +31,7 @@ interface WorkflowConfigFormV1Props {
   availableEventTypes: string[];
   availableExcludeFields: string[];
   allowFullStartNodeConfiguration: boolean;
+  allowStartNodeFilterScheduleAndBatchEdit: boolean;
   updateConfig: <K extends keyof NodeConfig>(
     key: K,
     value: NodeConfig[K]
@@ -60,6 +61,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   availableEventTypes,
   availableExcludeFields,
   allowFullStartNodeConfiguration,
+  allowStartNodeFilterScheduleAndBatchEdit,
   updateConfig,
   removeFromArray,
   handleEventTypeChange,
@@ -67,14 +69,17 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   onUpdateDataAssetFilter,
   removeDataAssetFilter,
 }) => {
-  const lockStartNodeFields = !allowFullStartNodeConfiguration;
+  const lockCoreStartFields = !allowFullStartNodeConfiguration;
+  const canEditFiltersAndPeriodicSchedule =
+    allowFullStartNodeConfiguration || allowStartNodeFilterScheduleAndBatchEdit;
+  const lockFilterSections = !canEditFiltersAndPeriodicSchedule;
 
   return (
     <div data-testid="workflow-config-form-v1">
       <MetadataFormSection
         isStartNode
         description={config.description}
-        lockFields={lockStartNodeFields}
+        lockFields={lockCoreStartFields}
         name={config.name}
         onDescriptionChange={(description) =>
           updateConfig('description', description)
@@ -85,7 +90,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
       <DataAssetFormSection
         availableDataAssets={[...AVAILABLE_OPTIONS.DATA_ASSETS]}
         dataAssets={config.dataAssets}
-        lockFields={lockStartNodeFields}
+        lockFields={lockCoreStartFields}
         onDataAssetsChange={(dataAssets) =>
           updateConfig('dataAssets', dataAssets)
         }
@@ -96,7 +101,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
         <DataAssetFiltersSection
           dataAssetFilters={config.dataAssetFilters || []}
           dataAssets={config.dataAssets || []}
-          lockFields={lockStartNodeFields}
+          lockFields={lockFilterSections}
           onAddDataAssetFilter={addDataAssetFilter}
           onRemoveDataAssetFilter={removeDataAssetFilter}
           onUpdateDataAssetFilter={onUpdateDataAssetFilter}
@@ -111,7 +116,8 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
         eventType={config.eventType}
         excludeFields={config.excludeFields}
         include={config.include}
-        lockNonIncludeExcludeFields={lockStartNodeFields}
+        lockNonIncludeExcludeFields={lockCoreStartFields}
+        lockPeriodicBatchFields={lockFilterSections}
         scheduleType={config.scheduleType}
         triggerType={config.triggerType}
         onBatchSizeChange={(batchSize) => updateConfig('batchSize', batchSize)}
@@ -141,7 +147,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
       {config.triggerType === WorkflowType.EVENT_BASED && (
         <EventTriggerFilterSection
           entityType={getEventTriggerEntityType(config.dataAssets)}
-          lockFields={lockStartNodeFields}
+          lockFields={lockFilterSections}
           triggerFilter={config.triggerFilter}
           onTriggerFilterChange={(filter) =>
             updateConfig('triggerFilter', filter)

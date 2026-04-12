@@ -17,6 +17,7 @@ export interface WorkflowUiCapabilities {
   allowStructuralGraphEdits: boolean;
   showWorkflowNodePalette: boolean;
   allowFullStartNodeConfiguration: boolean;
+  allowStartNodeFilterScheduleAndBatchEdit: boolean;
 }
 
 export class WorkflowUiClassBase {
@@ -27,6 +28,7 @@ export class WorkflowUiClassBase {
       allowStructuralGraphEdits: false,
       showWorkflowNodePalette: false,
       allowFullStartNodeConfiguration: false,
+      allowStartNodeFilterScheduleAndBatchEdit: true,
     };
   }
 }

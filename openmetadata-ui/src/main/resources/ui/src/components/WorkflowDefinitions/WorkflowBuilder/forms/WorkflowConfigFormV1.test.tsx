@@ -21,11 +21,14 @@ import { NodeConfig } from '../../../../interface/workflow-builder-components.in
 jest.mock('./TriggerConfigSection', () => ({
   TriggerConfigSection: ({
     lockNonIncludeExcludeFields,
+    lockPeriodicBatchFields,
   }: {
     lockNonIncludeExcludeFields?: boolean;
+    lockPeriodicBatchFields?: boolean;
   }) => (
     <div
       data-lock-non-include-exclude={String(!!lockNonIncludeExcludeFields)}
+      data-lock-periodic-batch={String(!!lockPeriodicBatchFields)}
       data-testid="trigger-config-section">
       <div data-testid="trigger-type-select" />
     </div>
@@ -99,7 +102,7 @@ const renderWithWorkflowMode = (ui: React.ReactElement) =>
   );
 
 describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
-  it('renders the full form layout with locked start fields when OSS (allowFullStartNodeConfiguration false)', () => {
+  it('OSS: locks metadata, data assets, and trigger type but allows filters and periodic schedule/batch when allowStartNodeFilterScheduleAndBatchEdit', () => {
     const config: NodeConfig = {
       name: 'W',
       description: '',
@@ -117,6 +120,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
         {...baseHandlers}
+        allowStartNodeFilterScheduleAndBatchEdit
         allowFullStartNodeConfiguration={false}
         availableEventTypes={[]}
         availableExcludeFields={[]}
@@ -135,9 +139,48 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
     );
     expect(
       screen.getByTestId('data-asset-filters-section-mock')
-    ).toHaveAttribute('data-lock-fields', 'true');
+    ).toHaveAttribute('data-lock-fields', 'false');
     expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
       'data-lock-non-include-exclude',
+      'true'
+    );
+    expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
+      'data-lock-periodic-batch',
+      'false'
+    );
+  });
+
+  it('locks filters and periodic batch when both start capabilities are false', () => {
+    const config: NodeConfig = {
+      name: 'W',
+      description: '',
+      dataAssets: ['table'],
+      triggerType: WorkflowType.PERIODIC_BATCH,
+      eventType: [],
+      dataAssetFilters: [],
+      excludeFields: [],
+      include: [],
+      scheduleType: 'OnDemand',
+      cronExpression: '',
+      batchSize: 100,
+    };
+
+    renderWithWorkflowMode(
+      <WorkflowConfigFormV1
+        {...baseHandlers}
+        allowFullStartNodeConfiguration={false}
+        allowStartNodeFilterScheduleAndBatchEdit={false}
+        availableEventTypes={[]}
+        availableExcludeFields={[]}
+        config={config}
+      />
+    );
+
+    expect(
+      screen.getByTestId('data-asset-filters-section-mock')
+    ).toHaveAttribute('data-lock-fields', 'true');
+    expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
+      'data-lock-periodic-batch',
       'true'
     );
   });
@@ -161,6 +204,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
       <WorkflowConfigFormV1
         {...baseHandlers}
         allowFullStartNodeConfiguration
+        allowStartNodeFilterScheduleAndBatchEdit
         availableEventTypes={['entityUpdated']}
         availableExcludeFields={['description']}
         config={config}
@@ -173,6 +217,10 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
     );
     expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
       'data-lock-non-include-exclude',
+      'false'
+    );
+    expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
+      'data-lock-periodic-batch',
       'false'
     );
     expect(
