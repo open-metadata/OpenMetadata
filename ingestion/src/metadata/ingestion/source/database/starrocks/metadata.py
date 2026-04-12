@@ -282,24 +282,20 @@ class StarRocksSource(CommonDbSourceService):
         return tables
 
     def get_table_description(
-        self, schema_name: str, table_name: str, inspector: Inspector
+        self, schema_name: str, table_name: str, _inspector: Inspector
     ) -> Optional[str]:
-        description = None
         try:
-            with self.engine.connect() as conn:
-                rows = conn.execute(
-                    sql.text(STARROCKS_TABLE_COMMENTS),
-                    {"table_name": table_name, "schema": schema_name},
-                )
-                for row in rows:
-                    description = row[0]
-                    break
+            row = self.connection.execute(
+                sql.text(STARROCKS_TABLE_COMMENTS),
+                {"table_name": table_name, "schema": schema_name},
+            ).fetchone()
+            return row[0] if row else None
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
-        return description or None
+        return None
 
     def _get_columns(self, table_name, schema=None):
         """Get column information and primary key columns of the specified table"""

@@ -14,7 +14,7 @@ Test StarRocks using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import types as sqltypes
@@ -113,6 +113,32 @@ class StarRocksUnitTest(TestCase):
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.starrocks_source.close()
+
+    def test_get_table_description_returns_comment(self):
+        mock_result = Mock()
+        mock_result.fetchone.return_value = ("table comment",)
+        mock_connection = Mock()
+        mock_connection.execute.return_value = mock_result
+        self.starrocks_source.connection = mock_connection
+
+        result = self.starrocks_source.get_table_description(
+            schema_name="public", table_name="my_table", _inspector=Mock()
+        )
+
+        self.assertEqual(result, "table comment")
+
+    def test_get_table_description_returns_none_when_missing(self):
+        mock_result = Mock()
+        mock_result.fetchone.return_value = None
+        mock_connection = Mock()
+        mock_connection.execute.return_value = mock_result
+        self.starrocks_source.connection = mock_connection
+
+        result = self.starrocks_source.get_table_description(
+            schema_name="public", table_name="my_table", _inspector=Mock()
+        )
+
+        self.assertIsNone(result)
 
 
 class StarRocksSSLUnitTest(TestCase):
