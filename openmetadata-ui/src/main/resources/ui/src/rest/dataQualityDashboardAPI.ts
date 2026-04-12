@@ -17,6 +17,7 @@ import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolu
 import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   buildDataQualityDashboardFilters,
+  buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
 } from '../utils/DataQuality/DataQualityUtils';
@@ -115,6 +116,9 @@ export const fetchTestCaseSummaryByNoDimension = (
   if (combinedTags.length > 0) {
     mustFilter.push(buildMustEsFilterForTags(combinedTags));
   }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
+  }
 
   return getDataQualityReport({
     q: JSON.stringify({
@@ -144,6 +148,11 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
   if (combinedTags.length > 0) {
     mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
 
   return getDataQualityReport({
@@ -184,6 +193,11 @@ export const fetchIncidentTimeMetrics = (
   const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
   if (combinedTags.length > 0) {
     mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
 
   return getDataQualityReport({
@@ -233,6 +247,11 @@ export const fetchTestCaseStatusMetricsByDays = (
   const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
   if (combinedTags.length > 0) {
     mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
   if (filters?.entityFQN) {
     mustFilter.push({
