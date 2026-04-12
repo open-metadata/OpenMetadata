@@ -25,6 +25,10 @@ export interface Topic {
      */
     cleanupPolicies?: CleanupPolicy[];
     /**
+     * Consumer groups that are actively consuming from this topic.
+     */
+    consumerGroups?: ConsumerGroup[];
+    /**
      * Reference to the data contract for this entity.
      */
     dataContract?: EntityReference;
@@ -236,7 +240,7 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
+    state:  TagLabelState;
     style?: Style;
     tagFQN: string;
 }
@@ -341,7 +345,7 @@ export enum TagSource {
  * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
  * entity must confirm the suggested labels before it is marked as 'Confirmed'.
  */
-export enum State {
+export enum TagLabelState {
     Confirmed = "Confirmed",
     Suggested = "Suggested",
 }
@@ -454,6 +458,100 @@ export interface FieldChange {
 export enum CleanupPolicy {
     Compact = "compact",
     Delete = "delete",
+}
+
+/**
+ * A consumer group that is actively consuming from this topic.
+ */
+export interface ConsumerGroup {
+    /**
+     * Unique consumer group identifier.
+     */
+    groupId: string;
+    /**
+     * Number of active members in the consumer group.
+     */
+    memberCount?: number;
+    /**
+     * Members of the consumer group consuming from this topic.
+     */
+    members?: ConsumerGroupMember[];
+    /**
+     * Partition assignment strategy used by the group (e.g., range, roundrobin, sticky).
+     */
+    partitionAssignor?: string;
+    /**
+     * Offset and lag information per partition for this consumer group on this topic.
+     */
+    partitionOffsets?: ConsumerGroupPartitionOffset[];
+    /**
+     * Current state of the consumer group.
+     */
+    state?: ConsumerGroupState;
+    /**
+     * Total consumer lag across all partitions of this topic for this group.
+     */
+    totalLag?: number;
+}
+
+/**
+ * A member within a consumer group consuming from this topic.
+ */
+export interface ConsumerGroupMember {
+    /**
+     * Partitions of this topic assigned to this member.
+     */
+    assignedPartitions?: number[];
+    /**
+     * Client application identifier.
+     */
+    clientId?: string;
+    /**
+     * Static instance identifier for static group membership.
+     */
+    groupInstanceId?: string;
+    /**
+     * Network address of the member.
+     */
+    host?: string;
+    /**
+     * Unique identifier of this group member.
+     */
+    memberId: string;
+}
+
+/**
+ * Offset and lag information for a consumer group on a specific topic partition.
+ */
+export interface ConsumerGroupPartitionOffset {
+    /**
+     * Current committed offset of the consumer group on this partition.
+     */
+    currentOffset?: number;
+    /**
+     * Latest offset (high watermark) of this partition.
+     */
+    endOffset?: number;
+    /**
+     * Consumer lag (endOffset - currentOffset).
+     */
+    lag?: number;
+    /**
+     * Partition number.
+     */
+    partition: number;
+}
+
+/**
+ * Current state of the consumer group.
+ */
+export enum ConsumerGroupState {
+    CompletingRebalance = "CompletingRebalance",
+    Dead = "Dead",
+    Empty = "Empty",
+    PreparingRebalance = "PreparingRebalance",
+    Stable = "Stable",
+    Unknown = "Unknown",
 }
 
 /**

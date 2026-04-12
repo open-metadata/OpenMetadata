@@ -15,6 +15,11 @@
  */
 export interface MessagingServiceMetadataPipeline {
     /**
+     * Option to turn on/off extracting consumer group metadata for topics. When enabled, active
+     * consumer groups and their member details are populated on each topic.
+     */
+    extractConsumerGroups?: boolean;
+    /**
      * Option to turn on/off generating sample data during metadata extraction.
      */
     generateSampleData?: boolean;
