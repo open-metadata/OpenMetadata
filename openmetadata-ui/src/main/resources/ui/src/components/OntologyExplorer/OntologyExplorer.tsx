@@ -2123,6 +2123,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       );
     }
 
+    if (!graphDataToShow) {
+      return null;
+    }
+
     return (
       <>
         {filters.searchQuery.trim() ? (
@@ -2133,7 +2137,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         ) : null}
         <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
           <OntologyGraph
-            edges={graphDataToShow!.edges}
+            edges={graphDataToShow.edges}
             expandedTermIds={
               explorationMode === 'data' ? expandedTermIds : undefined
             }
@@ -2155,7 +2159,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 : undefined
             }
             nodePositions={hierarchyBakedPositions}
-            nodes={graphDataToShow!.nodes}
+            nodes={graphDataToShow.nodes}
             ref={graphRef}
             selectedNodeId={
               explorationMode === 'data' && expandedTermIds.size > 1
