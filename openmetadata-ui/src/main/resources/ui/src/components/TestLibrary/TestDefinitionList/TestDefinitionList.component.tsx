@@ -12,68 +12,68 @@
  */
 
 import {
-    Button,
-    Card,
-    Col,
-    Row,
-    Skeleton,
-    Space,
-    Switch,
-    Tooltip,
-    Typography
+  Button,
+  Card,
+  Col,
+  Row,
+  Skeleton,
+  Space,
+  Switch,
+  Tooltip,
+  Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import {
-    INITIAL_PAGING_VALUE,
-    PAGE_SIZE_BASE
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
 } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import {
-    TEST_DEFINITION_DEFAULT_QUICK_FILTERS,
-    TEST_DEFINITION_FILTERS
+  TEST_DEFINITION_DEFAULT_QUICK_FILTERS,
+  TEST_DEFINITION_FILTERS,
 } from '../../../constants/TestDefinition.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Operation } from '../../../generated/entity/policies/policy';
 import {
-    EntityType,
-    TestDefinition,
-    TestPlatform
+  EntityType,
+  TestDefinition,
+  TestPlatform,
 } from '../../../generated/tests/testDefinition';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import {
-    deleteTestDefinitionByFqn,
-    getListTestDefinitions,
-    patchTestDefinition
+  deleteTestDefinitionByFqn,
+  getListTestDefinitions,
+  patchTestDefinition,
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-    checkPermission,
-    DEFAULT_ENTITY_PERMISSION
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
 } from '../../../utils/PermissionsUtils';
 import {
-    isExternalTestDefinition,
-    mapUrlValueToOption
+  isExternalTestDefinition,
+  mapUrlValueToOption,
 } from '../../../utils/TestDefinitionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import {
-    SelectMode,
-    useQuickFiltersWithComponent
+  SelectMode,
+  useQuickFiltersWithComponent,
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -84,8 +84,14 @@ import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 
+// Hardcoded limit to fetch all definitions for client-side search/sort.
+// Without true server-side search, fetching all definitions upfront ensures that
+// the client-side filters don't incorrectly truncate results if > 10,000 exist.
+const CLIENT_SIDE_FETCH_LIMIT = 10000;
+
 const TestDefinitionList = () => {
   const { t } = useTranslation();
+  const latestRequestRef = useRef(0);
   const { permissions, getEntityPermissionByFqn } = usePermissionProvider();
 
   // Use useTableFilters for filter state management
@@ -219,8 +225,9 @@ const TestDefinitionList = () => {
   );
 
   const fetchTestDefinitionPermissions = useCallback(
-    async (definitions: TestDefinition[]) => {
+    async (definitions: TestDefinition[], requestId: number) => {
       try {
+        if (requestId !== latestRequestRef.current) return;
         setPermissionLoading(true);
 
         if (!definitions.length) {
@@ -276,7 +283,7 @@ const TestDefinitionList = () => {
         | undefined;
 
       const { data } = await getListTestDefinitions({
-        limit: 10000,
+        limit: CLIENT_SIDE_FETCH_LIMIT,
         entityType: entityTypeFilter,
         testPlatform: testPlatformFilter,
       });
@@ -323,7 +330,8 @@ const TestDefinitionList = () => {
 
   useEffect(() => {
     if (slicedData.length > 0) {
-      fetchTestDefinitionPermissions(slicedData);
+      latestRequestRef.current += 1;
+      fetchTestDefinitionPermissions(slicedData, latestRequestRef.current);
     }
   }, [slicedData, fetchTestDefinitionPermissions]);
 
