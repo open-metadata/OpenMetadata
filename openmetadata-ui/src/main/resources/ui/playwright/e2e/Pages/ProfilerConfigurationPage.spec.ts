@@ -31,16 +31,16 @@ const admin = new AdminClass();
 
 // Create 2 page and authenticate 1 with admin and another with normal user
 const test = base.extend<{ adminPage: Page; userPage: Page }>({
-  adminPage: async ({ browser }, applyFixture) => {
+  adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await admin.login(page);
-    await applyFixture(page);
+    await use(page);
     await page.close();
   },
-  userPage: async ({ browser }, applyFixture) => {
+  userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await user.login(page);
-    await applyFixture(page);
+    await use(page);
     await page.close();
   },
 });

@@ -50,7 +50,7 @@ const consumerLikePolicy = new PolicyClass();
 const consumerLikeRole = new RolesClass();
 const consumerLikeUser = new UserClass();
 
-const table = new TableClass();
+let table: TableClass;
 
 // --- Fixtures ---
 const test = base.extend<{
@@ -104,7 +104,6 @@ test.describe(
   () => {
     let testCaseFqn: string;
     let incidentId: string;
-    let incidentStateId: string;
 
     const visitTestCaseIncidentPage = async (page: Page) => {
       await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
@@ -118,7 +117,7 @@ test.describe(
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-
+      table = new TableClass();
       await table.create(apiContext);
 
       // Create executable test suite
@@ -163,7 +162,6 @@ test.describe(
               );
               if (incident) {
                 incidentId = incident.id;
-                incidentStateId = incident.stateId;
 
                 return true;
               }
@@ -171,7 +169,7 @@ test.describe(
 
             return false;
           },
-          { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
+          { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
         )
         .toBe(true);
 
