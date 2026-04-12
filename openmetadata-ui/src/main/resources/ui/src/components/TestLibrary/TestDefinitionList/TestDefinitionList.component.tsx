@@ -76,6 +76,7 @@ import {
   useQuickFiltersWithComponent,
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../common/Table/Table';
@@ -83,11 +84,6 @@ import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
-
-// Hardcoded limit to fetch all definitions for client-side search/sort.
-// Without true server-side search, fetching all definitions upfront ensures that
-// the client-side filters don't incorrectly truncate results if > 10,000 exist.
-const CLIENT_SIDE_FETCH_LIMIT = 10000;
 
 const TestDefinitionList = () => {
   const { t } = useTranslation();
@@ -141,7 +137,7 @@ const TestDefinitionList = () => {
       ...filter,
       value:
         urlFilters[filter.key]?.map((v) =>
-          mapUrlValueToOption(v, filter.options),
+          mapUrlValueToOption(v, filter.options)
         ) || [],
     }));
   }, [urlFilters]);
@@ -173,7 +169,7 @@ const TestDefinitionList = () => {
         cursorValue: undefined,
       });
     },
-    [updateUrlParams, handlePageChange],
+    [updateUrlParams, handlePageChange]
   );
 
   // Use filter hooks
@@ -193,6 +189,8 @@ const TestDefinitionList = () => {
     urlState: {
       filters: urlFilters,
       searchQuery: searchQuery,
+      currentPage,
+      pageSize,
     },
     filterConfigs: TEST_DEFINITION_FILTERS,
     parsedFilters,
@@ -204,9 +202,9 @@ const TestDefinitionList = () => {
       checkPermission(
         Operation.Create,
         ResourceEntity.TEST_DEFINITION,
-        permissions,
+        permissions
       ),
-    [permissions],
+    [permissions]
   );
 
   const viewPermission = useMemo(
@@ -214,14 +212,14 @@ const TestDefinitionList = () => {
       checkPermission(
         Operation.ViewBasic,
         ResourceEntity.TEST_DEFINITION,
-        permissions,
+        permissions
       ) ||
       checkPermission(
         Operation.ViewAll,
         ResourceEntity.TEST_DEFINITION,
-        permissions,
+        permissions
       ),
-    [permissions],
+    [permissions]
   );
 
   const fetchTestDefinitionPermissions = useCallback(
@@ -243,28 +241,26 @@ const TestDefinitionList = () => {
           definitions.map((def) =>
             getEntityPermissionByFqn(
               ResourceEntity.TEST_DEFINITION,
-              def.fullyQualifiedName ?? '',
-            ),
+              def.fullyQualifiedName ?? ''
+            )
           );
 
-        const permissionResponses =
-          await Promise.allSettled(permissionPromises);
+        const permissionResponses = await Promise.allSettled(
+          permissionPromises
+        );
 
         if (requestId === latestRequestRef.current) {
-          const permissionsMap = definitions.reduce(
-            (acc, def, idx) => {
-              const response = permissionResponses[idx];
+          const permissionsMap = definitions.reduce((acc, def, idx) => {
+            const response = permissionResponses[idx];
 
-              return {
-                ...acc,
-                [def.name]:
-                  response?.status === 'fulfilled'
-                    ? response.value
-                    : DEFAULT_ENTITY_PERMISSION,
-              };
-            },
-            {} as Record<string, OperationPermission>,
-          );
+            return {
+              ...acc,
+              [def.name]:
+                response?.status === 'fulfilled'
+                  ? response.value
+                  : DEFAULT_ENTITY_PERMISSION,
+            };
+          }, {} as Record<string, OperationPermission>);
 
           setTestDefinitionPermissions(permissionsMap);
         }
@@ -276,7 +272,11 @@ const TestDefinitionList = () => {
         }
       }
     },
-    [getEntityPermissionByFqn, setPermissionLoading, setTestDefinitionPermissions],
+    [
+      getEntityPermissionByFqn,
+      setPermissionLoading,
+      setTestDefinitionPermissions,
+    ]
   );
 
   const fetchTestDefinitions = useCallback(async () => {
@@ -290,12 +290,22 @@ const TestDefinitionList = () => {
         | TestPlatform
         | undefined;
 
-      const { data } = await getListTestDefinitions({
-        limit: CLIENT_SIDE_FETCH_LIMIT,
-        entityType: entityTypeFilter,
-        testPlatform: testPlatformFilter,
-      });
-      setTestDefinitions(data);
+      const allData: TestDefinition[] = [];
+      let after: string | undefined;
+
+      do {
+        const response = await getListTestDefinitions({
+          limit: 100,
+          after,
+          entityType: entityTypeFilter,
+          testPlatform: testPlatformFilter,
+        });
+
+        allData.push(...response.data);
+        after = response.paging?.after;
+      } while (after);
+
+      setTestDefinitions(allData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -309,14 +319,15 @@ const TestDefinitionList = () => {
 
   useEffect(() => {
     handlePageChange(1);
-  }, [searchQuery, handlePageChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   const filteredTestDefinitions = useMemo(() => {
     if (!searchQuery) {
       return [...testDefinitions].sort((a, b) => {
         const nameA = a.displayName || a.name || '';
         const nameB = b.displayName || b.name || '';
-        return nameA.localeCompare(nameB);
+        return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
       });
     }
 
@@ -326,13 +337,13 @@ const TestDefinitionList = () => {
       (test) =>
         test.displayName?.toLowerCase().includes(text) ||
         test.name?.toLowerCase().includes(text) ||
-        test.description?.toLowerCase().includes(text),
+        test.description?.toLowerCase().includes(text)
     );
 
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const nameA = a.displayName || a.name || '';
       const nameB = b.displayName || b.name || '';
-      return nameA.localeCompare(nameB);
+      return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
     });
   }, [testDefinitions, searchQuery]);
 
@@ -346,11 +357,11 @@ const TestDefinitionList = () => {
       latestRequestRef.current += 1;
       fetchTestDefinitionPermissions(slicedData, latestRequestRef.current);
     }
-  }, [slicedData, fetchTestDefinitionPermissions]);
+  }, [slicedData, fetchTestDefinitionPermissions, latestRequestRef]);
 
   const handleEnableToggle = async (
     record: TestDefinition,
-    checked: boolean,
+    checked: boolean
   ) => {
     try {
       const updatedData = { ...record, enabled: checked };
@@ -360,7 +371,7 @@ const TestDefinitionList = () => {
       showSuccessToast(
         t('server.entity-updated-success', {
           entity: t('label.test-definition'),
-        }),
+        })
       );
       // Optimistically update the local state instead of re-fetching
       setTestDefinitions((prev) =>
@@ -370,8 +381,8 @@ const TestDefinitionList = () => {
                 ...item,
                 enabled: checked,
               }
-            : item,
-        ),
+            : item
+        )
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -395,12 +406,12 @@ const TestDefinitionList = () => {
 
     try {
       await deleteTestDefinitionByFqn(
-        definitionToDelete.fullyQualifiedName ?? '',
+        definitionToDelete.fullyQualifiedName ?? ''
       );
       showSuccessToast(
         t('server.entity-deleted-success', {
           entity: t('label.test-definition'),
-        }),
+        })
       );
       setIsDeleteModalVisible(false);
       setDefinitionToDelete(undefined);
@@ -426,7 +437,7 @@ const TestDefinitionList = () => {
     setIsFormVisible(false);
     if (selectedDefinition && data) {
       setTestDefinitions((prev) =>
-        prev.map((item) => (item.id === data.id ? data : item)),
+        prev.map((item) => (item.id === data.id ? data : item))
       );
     } else {
       // New item created: reset to page 1 to show the new item
@@ -585,7 +596,7 @@ const TestDefinitionList = () => {
         },
       },
     ],
-    [t, testDefinitionPermissions],
+    [t, testDefinitionPermissions]
   );
 
   const customPaginationProps = useMemo(
@@ -593,8 +604,8 @@ const TestDefinitionList = () => {
       currentPage,
       pageSize,
       paging: { total: filteredTestDefinitions.length },
-      pagingHandler: ({ currentPage }: { currentPage?: number }) => {
-        handlePageChange(currentPage ?? 1);
+      pagingHandler: ({ currentPage }: PagingHandlerParams) => {
+        handlePageChange(currentPage);
       },
       isNumberBased: true,
       showPagination: filteredTestDefinitions.length > pageSize,
@@ -608,7 +619,7 @@ const TestDefinitionList = () => {
       handlePageChange,
       handlePageSizeChange,
       isLoading,
-    ],
+    ]
   );
 
   if (!viewPermission) {
@@ -657,9 +668,9 @@ const TestDefinitionList = () => {
             bodyStyle={{
               padding: 0,
             }}>
-            <div className="flex flex-col gap-2 p-4">
-              <div className="flex gap-2 items-center w-full">
-                <div className="w-64">
+            <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
+              <div className="tw:flex tw:gap-2 tw:items-center tw:w-full">
+                <div className="tw:w-64">
                   <Searchbar
                     removeMargin
                     placeholder={t('label.search-entity', {
