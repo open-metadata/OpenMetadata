@@ -26,21 +26,21 @@ import {
 } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
-const user = new UserClass();
+let user: UserClass;
 const admin = new AdminClass();
 
 // Create 2 page and authenticate 1 with admin and another with normal user
 const test = base.extend<{ adminPage: Page; userPage: Page }>({
-  adminPage: async ({ browser }, use) => {
+  adminPage: async ({ browser }, applyFixture) => {
     const page = await browser.newPage();
     await admin.login(page);
-    await use(page);
+    await applyFixture(page);
     await page.close();
   },
-  userPage: async ({ browser }, use) => {
+  userPage: async ({ browser }, applyFixture) => {
     const page = await browser.newPage();
     await user.login(page);
-    await use(page);
+    await applyFixture(page);
     await page.close();
   },
 });
@@ -48,6 +48,7 @@ const test = base.extend<{ adminPage: Page; userPage: Page }>({
 // Create new user with admin login
 base.beforeAll(async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
+  user = new UserClass();
   await user.create(apiContext);
   await afterAction();
 });
