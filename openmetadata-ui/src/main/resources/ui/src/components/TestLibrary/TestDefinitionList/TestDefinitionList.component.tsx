@@ -12,15 +12,15 @@
  */
 
 import {
-  Button,
-  Card,
-  Col,
-  Row,
-  Skeleton,
-  Space,
-  Switch,
-  Tooltip,
-  Typography,
+    Button,
+    Card,
+    Col,
+    Row,
+    Skeleton,
+    Space,
+    Switch,
+    Tooltip,
+    Typography
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -31,49 +31,49 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_BASE
 } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import {
-  TEST_DEFINITION_DEFAULT_QUICK_FILTERS,
-  TEST_DEFINITION_FILTERS,
+    TEST_DEFINITION_DEFAULT_QUICK_FILTERS,
+    TEST_DEFINITION_FILTERS
 } from '../../../constants/TestDefinition.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Operation } from '../../../generated/entity/policies/policy';
 import {
-  EntityType,
-  TestDefinition,
-  TestPlatform,
+    EntityType,
+    TestDefinition,
+    TestPlatform
 } from '../../../generated/tests/testDefinition';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import {
-  deleteTestDefinitionByFqn,
-  getListTestDefinitions,
-  patchTestDefinition,
+    deleteTestDefinitionByFqn,
+    getListTestDefinitions,
+    patchTestDefinition
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
+    checkPermission,
+    DEFAULT_ENTITY_PERMISSION
 } from '../../../utils/PermissionsUtils';
 import {
-  isExternalTestDefinition,
-  mapUrlValueToOption,
+    isExternalTestDefinition,
+    mapUrlValueToOption
 } from '../../../utils/TestDefinitionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import {
-  SelectMode,
-  useQuickFiltersWithComponent,
+    SelectMode,
+    useQuickFiltersWithComponent
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -135,7 +135,7 @@ const TestDefinitionList = () => {
       ...filter,
       value:
         urlFilters[filter.key]?.map((v) =>
-          mapUrlValueToOption(v, filter.options)
+          mapUrlValueToOption(v, filter.options),
         ) || [],
     }));
   }, [urlFilters]);
@@ -167,7 +167,7 @@ const TestDefinitionList = () => {
         cursorValue: undefined,
       });
     },
-    [updateUrlParams, handlePageChange]
+    [updateUrlParams, handlePageChange],
   );
 
   // Use filter hooks
@@ -198,9 +198,9 @@ const TestDefinitionList = () => {
       checkPermission(
         Operation.Create,
         ResourceEntity.TEST_DEFINITION,
-        permissions
+        permissions,
       ),
-    [permissions]
+    [permissions],
   );
 
   const viewPermission = useMemo(
@@ -208,14 +208,14 @@ const TestDefinitionList = () => {
       checkPermission(
         Operation.ViewBasic,
         ResourceEntity.TEST_DEFINITION,
-        permissions
+        permissions,
       ) ||
       checkPermission(
         Operation.ViewAll,
         ResourceEntity.TEST_DEFINITION,
-        permissions
+        permissions,
       ),
-    [permissions]
+    [permissions],
   );
 
   const fetchTestDefinitionPermissions = useCallback(
@@ -234,25 +234,27 @@ const TestDefinitionList = () => {
           definitions.map((def) =>
             getEntityPermissionByFqn(
               ResourceEntity.TEST_DEFINITION,
-              def.fullyQualifiedName ?? ''
-            )
+              def.fullyQualifiedName ?? '',
+            ),
           );
 
-        const permissionResponses = await Promise.allSettled(
-          permissionPromises
+        const permissionResponses =
+          await Promise.allSettled(permissionPromises);
+
+        const permissionsMap = definitions.reduce(
+          (acc, def, idx) => {
+            const response = permissionResponses[idx];
+
+            return {
+              ...acc,
+              [def.name]:
+                response?.status === 'fulfilled'
+                  ? response.value
+                  : DEFAULT_ENTITY_PERMISSION,
+            };
+          },
+          {} as Record<string, OperationPermission>,
         );
-
-        const permissionsMap = definitions.reduce((acc, def, idx) => {
-          const response = permissionResponses[idx];
-
-          return {
-            ...acc,
-            [def.name]:
-              response?.status === 'fulfilled'
-                ? response.value
-                : DEFAULT_ENTITY_PERMISSION,
-          };
-        }, {} as Record<string, OperationPermission>);
 
         setTestDefinitionPermissions(permissionsMap);
       } catch (error) {
@@ -261,7 +263,7 @@ const TestDefinitionList = () => {
         setPermissionLoading(false);
       }
     },
-    [getEntityPermissionByFqn]
+    [getEntityPermissionByFqn],
   );
 
   const fetchTestDefinitions = useCallback(async () => {
@@ -305,7 +307,7 @@ const TestDefinitionList = () => {
         (test) =>
           test.displayName?.toLowerCase().includes(text) ||
           test.name?.toLowerCase().includes(text) ||
-          test.description?.toLowerCase().includes(text)
+          test.description?.toLowerCase().includes(text),
       );
     }
 
@@ -329,7 +331,7 @@ const TestDefinitionList = () => {
 
   const handleEnableToggle = async (
     record: TestDefinition,
-    checked: boolean
+    checked: boolean,
   ) => {
     try {
       const updatedData = { ...record, enabled: checked };
@@ -339,7 +341,7 @@ const TestDefinitionList = () => {
       showSuccessToast(
         t('server.entity-updated-success', {
           entity: t('label.test-definition'),
-        })
+        }),
       );
       // Optimistically update the local state instead of re-fetching
       setTestDefinitions((prev) =>
@@ -349,8 +351,8 @@ const TestDefinitionList = () => {
                 ...item,
                 enabled: checked,
               }
-            : item
-        )
+            : item,
+        ),
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -374,12 +376,12 @@ const TestDefinitionList = () => {
 
     try {
       await deleteTestDefinitionByFqn(
-        definitionToDelete.fullyQualifiedName ?? ''
+        definitionToDelete.fullyQualifiedName ?? '',
       );
       showSuccessToast(
         t('server.entity-deleted-success', {
           entity: t('label.test-definition'),
-        })
+        }),
       );
       setIsDeleteModalVisible(false);
       setDefinitionToDelete(undefined);
@@ -405,7 +407,7 @@ const TestDefinitionList = () => {
     setIsFormVisible(false);
     if (selectedDefinition && data) {
       setTestDefinitions((prev) =>
-        prev.map((item) => (item.id === data.id ? data : item))
+        prev.map((item) => (item.id === data.id ? data : item)),
       );
     } else {
       // New item created: reset to page 1 to show the new item
@@ -564,7 +566,7 @@ const TestDefinitionList = () => {
         },
       },
     ],
-    [t, testDefinitionPermissions]
+    [t, testDefinitionPermissions],
   );
 
   const customPaginationProps = useMemo(
@@ -587,7 +589,7 @@ const TestDefinitionList = () => {
       handlePageChange,
       handlePageSizeChange,
       isLoading,
-    ]
+    ],
   );
 
   if (!viewPermission) {
