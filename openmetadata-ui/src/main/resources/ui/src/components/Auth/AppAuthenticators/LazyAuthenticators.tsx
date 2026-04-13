@@ -11,28 +11,29 @@
  *  limitations under the License.
  */
 
-import { forwardRef, lazy, ReactNode, Suspense } from 'react';
-import Loader from '../../common/Loader/Loader';
+import { type ComponentType, forwardRef, lazy, ReactNode } from 'react';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import type { WebStorageStateStore } from 'oidc-client';
 
-const Auth0Authenticator = lazy(() => import('./Auth0Authenticator'));
-const BasicAuthAuthenticator = lazy(() => import('./BasicAuthAuthenticator'));
-const MsalAuthenticator = lazy(() => import('./MsalAuthenticator'));
-const OidcAuthenticator = lazy(() => import('./OidcAuthenticator'));
-const OktaAuthenticator = lazy(() => import('./OktaAuthenticator'));
-const GenericAuthenticator = lazy(() =>
+const Auth0Authenticator = withSuspenseFallback(lazy(() => import('./Auth0Authenticator')));
+const BasicAuthAuthenticator = withSuspenseFallback(lazy(() => import('./BasicAuthAuthenticator')));
+const MsalAuthenticator = withSuspenseFallback(lazy(() => import('./MsalAuthenticator')));
+const OidcAuthenticator = withSuspenseFallback(lazy(() => import('./OidcAuthenticator')));
+const OktaAuthenticator = withSuspenseFallback(lazy(() => import('./OktaAuthenticator')));
+const GenericAuthenticator = withSuspenseFallback(lazy(() =>
   import('./GenericAuthenticator').then((m) => ({
     default: m.GenericAuthenticator,
   }))
-);
+));
 
 export const LazyAuth0Authenticator = forwardRef<
   AuthenticatorRef,
   { children: ReactNode }
 >((props, ref) => (
-  <Suspense fallback={<Loader fullScreen />}>
+  
     <Auth0Authenticator ref={ref} {...props} />
-  </Suspense>
+  
 ));
 
 LazyAuth0Authenticator.displayName = 'LazyAuth0Authenticator';
@@ -41,9 +42,9 @@ export const LazyBasicAuthAuthenticator = forwardRef<
   AuthenticatorRef,
   { children: ReactNode }
 >((props, ref) => (
-  <Suspense fallback={<Loader fullScreen />}>
+  
     <BasicAuthAuthenticator ref={ref} {...props} />
-  </Suspense>
+  
 ));
 
 LazyBasicAuthAuthenticator.displayName = 'LazyBasicAuthAuthenticator';
@@ -52,9 +53,9 @@ export const LazyMsalAuthenticator = forwardRef<
   AuthenticatorRef,
   { children: ReactNode }
 >((props, ref) => (
-  <Suspense fallback={<Loader fullScreen />}>
+  
     <MsalAuthenticator ref={ref} {...props} />
-  </Suspense>
+  
 ));
 
 LazyMsalAuthenticator.displayName = 'LazyMsalAuthenticator';
@@ -63,15 +64,13 @@ export const LazyOidcAuthenticator = forwardRef<
   AuthenticatorRef,
   {
     children: ReactNode;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    childComponentType: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    userConfig: any;
+    childComponentType: ComponentType;
+    userConfig: Record<string, string | boolean | WebStorageStateStore>;
   }
 >((props, ref) => (
-  <Suspense fallback={<Loader fullScreen />}>
+  
     <OidcAuthenticator ref={ref} {...props} />
-  </Suspense>
+  
 ));
 
 LazyOidcAuthenticator.displayName = 'LazyOidcAuthenticator';
@@ -80,9 +79,9 @@ export const LazyOktaAuthenticator = forwardRef<
   AuthenticatorRef,
   { children: ReactNode }
 >((props, ref) => (
-  <Suspense fallback={<Loader fullScreen />}>
+  
     <OktaAuthenticator ref={ref} {...props} />
-  </Suspense>
+  
 ));
 
 LazyOktaAuthenticator.displayName = 'LazyOktaAuthenticator';
@@ -91,9 +90,9 @@ export const LazyGenericAuthenticator = forwardRef<
   AuthenticatorRef,
   { children: ReactNode }
 >((props, ref) => (
-  <Suspense fallback={<Loader fullScreen />}>
+  
     <GenericAuthenticator ref={ref} {...props} />
-  </Suspense>
+  
 ));
 
 LazyGenericAuthenticator.displayName = 'LazyGenericAuthenticator';

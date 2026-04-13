@@ -25,24 +25,23 @@ import {
 import { showErrorToast } from './ToastUtils';
 import userClassBase from './UserClassBase';
 
-export enum EImageTypes {
-  image = 's96-c',
-  image192 = 's192-c',
-  image24 = 's24-c',
-  image32 = 's32-c',
-  image48 = 's48-c',
-  image512 = 's512-c',
-  image72 = 's72-c',
+export const imageTypes = {
+  image: 's96-c',
+  image192: 's192-c',
+  image24: 's24-c',
+  image32: 's32-c',
+  image48: 's48-c',
+  image512: 's512-c',
+  image72: 's72-c',
 }
 
 export const getImages = (imageUri: string) => {
-  const imagesObj: Record<EImageTypes, string> = {} as Record<
-    EImageTypes,
-    string
-  >;
-  const keys = Object.keys(EImageTypes);
-  for (const type of keys) {
-    imagesObj[type] = imageUri.replace('s96-c', EImageTypes[type]);
+  const imagesObj: typeof imageTypes = imageTypes;
+  for (const type in imageTypes) {
+    imagesObj[type as keyof typeof imageTypes] = imageUri.replace(
+      's96-c',
+      imageTypes[type as keyof typeof imageTypes]
+    );
   }
 
   return imagesObj;
@@ -57,7 +56,7 @@ export const getUserDataFromOidc = (
     : undefined;
   const profileEmail = oidcUser.profile.email;
   const email =
-    profileEmail && profileEmail.indexOf('@') !== -1
+    profileEmail?.includes('@')
       ? profileEmail
       : userData.email;
 

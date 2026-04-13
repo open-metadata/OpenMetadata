@@ -16,6 +16,18 @@ import { MOCK_TABLE, MOCK_TIER_DATA } from '../mocks/TableData.mock';
 import { getEntityOverview } from './DataAssetSummaryPanelUtils';
 import { getTierTags } from './TableUtils';
 
+jest.mock('./TableUtils', () => ({
+  getTierTags: jest.fn(),
+  getUsagePercentile: jest.fn().mockImplementation((value) => value + 'th'),
+}));
+
+
+jest.mock('./CommonUtils', () => ({
+  getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
+  getTableFQNFromColumnFQN: jest.fn().mockImplementation((value) => value),
+  formatNumberWithComma: jest.fn().mockImplementation((value) => value),
+}));
+
 describe('getEntityOverview', () => {
   it('should call getChartOverview and get ChartData if ExplorePageTabs is charts', () => {
     const result = JSON.stringify(

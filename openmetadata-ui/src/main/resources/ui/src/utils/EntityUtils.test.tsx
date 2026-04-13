@@ -14,11 +14,8 @@ import { render } from '@testing-library/react';
 import { startCase } from 'lodash';
 import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { TestSuite } from '../generated/tests/testCase';
-import { MOCK_CHART_DATA } from '../mocks/Chart.mock';
-import { MOCK_TABLE, MOCK_TIER_DATA } from '../mocks/TableData.mock';
 import {
   columnSorter,
   getBreadcrumbForTestSuite,
@@ -54,7 +51,6 @@ import {
   getSettingPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { getTierTags } from './TableUtils';
 
 jest.mock('../constants/constants', () => ({
   DEFAULT_DOMAIN_VALUE: 'All Domains',

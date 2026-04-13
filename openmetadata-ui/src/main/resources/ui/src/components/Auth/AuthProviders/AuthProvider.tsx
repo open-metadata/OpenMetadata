@@ -611,6 +611,7 @@ export const AuthProvider = ({
   };
 
   const getProtectedApp = () => {
+    // Show loader if application is loading or authenticating
     const childElement =
       isApplicationLoading || isAuthenticating ? (
         <Loader fullScreen />
@@ -618,6 +619,7 @@ export const AuthProvider = ({
         children
       );
 
+    // Handling for SAML moved to GenericAuthenticator
     if (
       clientType === ClientType.Confidential ||
       authConfig?.provider === AuthProviderEnum.Saml
@@ -642,6 +644,8 @@ export const AuthProvider = ({
       case AuthProviderEnum.Auth0: {
         return (
           <LazyAuth0ProviderWrapper
+            useRefreshTokens
+            cacheLocation="memory"
             clientId={authConfig.clientId?.toString() ?? ''}
             domain={authConfig.authority?.toString() ?? ''}
             redirectUri={authConfig.callbackUrl?.toString() ?? ''}>

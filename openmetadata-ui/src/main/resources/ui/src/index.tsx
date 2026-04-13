@@ -29,7 +29,7 @@ root.render(
   </React.StrictMode>
 );
 
-if ('serviceWorker' in navigator && 'indexedDB' in window) {
+if ('serviceWorker' in navigator && 'indexedDB' in globalThis) {
   window.addEventListener('load', () => {
     const basePath = getBasePath();
     const serviceWorkerPath = basePath

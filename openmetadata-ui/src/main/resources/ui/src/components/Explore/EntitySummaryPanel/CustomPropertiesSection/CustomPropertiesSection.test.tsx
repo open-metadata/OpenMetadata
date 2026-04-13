@@ -32,18 +32,6 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-// // Mock Transi18next component
-// jest.mock('../../../../utils/CommonUtils', () => ({
-//   Transi18next: jest
-//     .fn()
-//     .mockImplementation(({ i18nKey, renderElement, values }) => (
-//       <div data-testid="trans-component">
-//         {i18nKey} - {values?.entity} - {values?.docs}
-//         {renderElement}
-//       </div>
-//     )),
-// }));
-
 // Mock Loader component
 jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(({ size }) => (

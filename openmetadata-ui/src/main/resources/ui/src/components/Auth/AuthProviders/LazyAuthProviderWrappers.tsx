@@ -12,9 +12,9 @@
  */
 
 import type { IPublicClientApplication } from '@azure/msal-browser';
-import { lazy, ReactNode, Suspense } from 'react';
+import { lazy, ReactNode } from 'react';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import Loader from '../../common/Loader/Loader';
+import { CacheLocation } from '@auth0/auth0-react';
 
 const Auth0ProviderComponent = withSuspenseFallback(
   lazy(() =>
@@ -43,6 +43,8 @@ interface Auth0ProviderWrapperProps {
   domain: string;
   redirectUri: string;
   children: ReactNode;
+  useRefreshTokens: boolean
+  cacheLocation?: CacheLocation
 }
 
 export const LazyAuth0ProviderWrapper = ({
@@ -50,18 +52,18 @@ export const LazyAuth0ProviderWrapper = ({
   domain,
   redirectUri,
   children,
+  useRefreshTokens,
+  cacheLocation
 }: Auth0ProviderWrapperProps) => {
   return (
-    <Suspense fallback={<Loader fullScreen />}>
       <Auth0ProviderComponent
-        useRefreshTokens
-        cacheLocation="memory"
+        cacheLocation={cacheLocation}
         clientId={clientId}
         domain={domain}
-        redirectUri={redirectUri}>
+        redirectUri={redirectUri}
+        useRefreshTokens={useRefreshTokens}>
         {children}
       </Auth0ProviderComponent>
-    </Suspense>
   );
 };
 

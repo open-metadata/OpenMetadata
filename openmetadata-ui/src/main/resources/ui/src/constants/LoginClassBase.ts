@@ -11,40 +11,33 @@
  *  limitations under the License.
  */
 
+import dataCollaborationImg from '../assets/img/login-screen/data-collaboration/data-collaboration.png';
+import discoveryImg from '../assets/img/login-screen/discovery/data-discovery.png';
+import governanceImg from '../assets/img/login-screen/governance/governance.png';
+import observabilityImg from '../assets/img/login-screen/observability/data-observability.png';
+
 class LoginClassBase {
   public getLoginCarouselContent() {
     const carouselContent = [
       {
         title: 'governance',
-        imagePath: () =>
-          import('../assets/img/login-screen/governance/governance.png').then(
-            (m) => m.default
-          ),
+        image: governanceImg,
         descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
       },
       {
         title: 'data-collaboration',
-        imagePath: () =>
-          import(
-            '../assets/img/login-screen/data-collaboration/data-collaboration.png'
-          ).then((m) => m.default),
+        image: dataCollaborationImg,
         descriptionKey: 'deeply-understand-table-relations-message',
       },
       {
         title: 'data-observability',
-        imagePath: () =>
-          import(
-            '../assets/img/login-screen/observability/data-observability.png'
-          ).then((m) => m.default),
+        image: observabilityImg,
         descriptionKey:
           'discover-your-data-and-unlock-the-value-of-data-assets',
       },
       {
         title: 'data-discovery',
-        imagePath: () =>
-          import(
-            '../assets/img/login-screen/discovery/data-discovery.png'
-          ).then((m) => m.default),
+        image: discoveryImg,
         descriptionKey: 'enables-end-to-end-metadata-management',
       },
     ];

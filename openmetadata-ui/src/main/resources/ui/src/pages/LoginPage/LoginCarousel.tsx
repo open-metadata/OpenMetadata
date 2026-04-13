@@ -13,29 +13,14 @@
 
 import { Carousel, Typography } from 'antd';
 import { uniqueId } from 'lodash';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import loginClassBase from '../../constants/LoginClassBase';
 
 const LoginCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
   const carouselContent = loginClassBase.getLoginCarouselContent();
   const { t } = useTranslation();
-
-  useEffect(() => {
-    const loadImage = async (index: number) => {
-      if (!loadedImages[index] && carouselContent[index]) {
-        const imageSrc = await carouselContent[index].imagePath();
-        setLoadedImages((prev) => ({ ...prev, [index]: imageSrc }));
-      }
-    };
-
-    loadImage(currentIndex);
-
-    const nextIndex = (currentIndex + 1) % carouselContent.length;
-    loadImage(nextIndex);
-  }, [currentIndex, carouselContent, loadedImages]);
 
   return (
     <Carousel
@@ -63,14 +48,7 @@ const LoginCarousel = () => {
             </p>
           </div>
 
-          {loadedImages[idx] && (
-            <img
-              alt="slider"
-              className="main-image"
-              loading="lazy"
-              src={loadedImages[idx]}
-            />
-          )}
+          <img alt="slider" className="main-image" src={data.image} />
         </div>
       ))}
     </Carousel>

@@ -15,10 +15,11 @@ import {
   InteractionStatus,
 } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import MsalAuthenticator from './MsalAuthenticator';
+import { act } from 'react';
 
 // Mock MSAL hooks and utilities
 jest.mock('@azure/msal-react', () => ({
@@ -75,11 +76,11 @@ describe('MsalAuthenticator', () => {
 
   it('should handle login in iframe using popup', async () => {
     // Mock window.self !== window.top for iframe detection
-    Object.defineProperty(window, 'self', {
+    Object.defineProperty(globalThis, 'self', {
       value: { location: {} },
       writable: true,
     });
-    Object.defineProperty(window, 'top', {
+    Object.defineProperty(globalThis, 'top', {
       value: { location: {} },
       writable: true,
     });
@@ -105,12 +106,12 @@ describe('MsalAuthenticator', () => {
 
   it('should handle login in normal window using redirect', async () => {
     // Mock window.self === window.top for normal window detection
-    Object.defineProperty(window, 'self', {
-      value: window,
+    Object.defineProperty(globalThis, 'self', {
+      value: globalThis,
       writable: true,
     });
-    Object.defineProperty(window, 'top', {
-      value: window,
+    Object.defineProperty(globalThis, 'top', {
+      value: globalThis,
       writable: true,
     });
 
