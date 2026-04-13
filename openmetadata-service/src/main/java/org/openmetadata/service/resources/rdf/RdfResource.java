@@ -44,6 +44,8 @@ import org.openmetadata.service.security.Authorizer;
 @Slf4j
 public class RdfResource {
   public static final String COLLECTION_PATH = "/v1/rdf";
+  private static final int MIN_GRAPH_DEPTH = 1;
+  private static final int MAX_GRAPH_DEPTH = 5;
   private volatile RdfRepository rdfRepository;
   private final Authorizer authorizer;
   private volatile SemanticSearchEngine semanticSearchEngine;
@@ -255,6 +257,7 @@ public class RdfResource {
     authorizer.authorizeAdmin(securityContext);
     try {
       String validatedEntityType = validateEntityType(entityType);
+      int clampedDepth = clampGraphDepth(depth);
       if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
             .entity(buildErrorResponse("RDF service not enabled"))
@@ -266,7 +269,7 @@ public class RdfResource {
               .getEntityGraph(
                   entityId,
                   validatedEntityType,
-                  depth,
+                  clampedDepth,
                   parseCsvFilter(entityTypes),
                   parseCsvFilter(relationshipTypes));
       return Response.ok(graphData, MediaType.APPLICATION_JSON).build();
@@ -316,6 +319,7 @@ public class RdfResource {
     authorizer.authorizeAdmin(securityContext);
     try {
       String validatedEntityType = validateEntityType(entityType);
+      int clampedDepth = clampGraphDepth(depth);
       String normalizedFormat = RdfRepository.normalizeEntityGraphExportFormat(format);
       if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
@@ -328,7 +332,7 @@ public class RdfResource {
               .exportEntityGraph(
                   entityId,
                   validatedEntityType,
-                  depth,
+                  clampedDepth,
                   parseCsvFilter(entityTypes),
                   parseCsvFilter(relationshipTypes),
                   normalizedFormat);
@@ -368,6 +372,10 @@ public class RdfResource {
 
   private String buildErrorResponse(String message) {
     return JsonUtils.pojoToJson(Map.of("error", message));
+  }
+
+  private int clampGraphDepth(int depth) {
+    return Math.min(Math.max(depth, MIN_GRAPH_DEPTH), MAX_GRAPH_DEPTH);
   }
 
   private Set<String> parseCsvFilter(String values) {

@@ -471,7 +471,7 @@ public class DistributedRdfIndexCoordinator {
             || status == IndexJobStatus.COMPLETED_WITH_ERRORS
             || status == IndexJobStatus.FAILED
             || status == IndexJobStatus.STOPPED)) {
-      completedAt = completedAt != null ? completedAt : System.currentTimeMillis();
+      completedAt = System.currentTimeMillis();
     }
 
     RdfIndexJob refreshed =

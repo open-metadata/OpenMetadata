@@ -16,6 +16,7 @@ package org.openmetadata.service.apps.bundles.rdf.distributed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -197,6 +198,66 @@ class DistributedRdfIndexCoordinatorTest {
             eq(completedAt),
             anyLong(),
             isNull());
+  }
+
+  @Test
+  void getJobWithAggregatedStatsSetsCompletedAtWhenTerminalJobWasPreviouslyUnset() {
+    UUID jobId = UUID.randomUUID();
+    EventPublisherJob jobConfiguration = new EventPublisherJob().withEntities(Set.of("table"));
+    RdfIndexJobRecord jobRecord =
+        new RdfIndexJobRecord(
+            jobId.toString(),
+            IndexJobStatus.RUNNING.name(),
+            JsonUtils.pojoToJson(jobConfiguration),
+            25L,
+            25L,
+            25L,
+            0L,
+            JsonUtils.pojoToJson(
+                Map.of(
+                    "table",
+                    RdfIndexJob.EntityTypeStats.builder()
+                        .entityType("table")
+                        .totalRecords(25)
+                        .build())),
+            "admin",
+            System.currentTimeMillis(),
+            System.currentTimeMillis() - 10000,
+            null,
+            System.currentTimeMillis(),
+            null);
+
+    when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new RdfAggregatedStatsRecord(25L, 25L, 25L, 0L, 1, 1, 0, 0, 0));
+    when(partitionDAO.getEntityStats(jobId.toString()))
+        .thenReturn(
+            List.of(
+                new CollectionDAO.RdfIndexPartitionDAO.RdfEntityStatsRecord(
+                    "table", 25L, 25L, 25L, 0L, 1, 1, 0)));
+    when(partitionDAO.getServerStats(jobId.toString())).thenReturn(List.of());
+
+    RdfIndexJob refreshed = coordinator.getJobWithAggregatedStats(jobId);
+
+    assertEquals(IndexJobStatus.COMPLETED, refreshed.getStatus());
+    assertNotNull(refreshed.getCompletedAt());
+
+    ArgumentCaptor<Long> completedAtCaptor = ArgumentCaptor.forClass(Long.class);
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED.name()),
+            eq(25L),
+            eq(25L),
+            eq(0L),
+            anyString(),
+            eq(jobRecord.startedAt()),
+            completedAtCaptor.capture(),
+            anyLong(),
+            isNull());
+
+    assertNotNull(completedAtCaptor.getValue());
+    assertEquals(completedAtCaptor.getValue(), refreshed.getCompletedAt());
   }
 
   @Test
