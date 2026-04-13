@@ -37,7 +37,7 @@ jobs:
 
       - name: Install UI dependencies
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: yarn install --ignore-scripts
+        run: yarn install --frozen-lockfile --ignore-scripts
 
       - name: Run Retire.js scan
         id: retire-scan
