@@ -46,6 +46,7 @@ import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
 import impala from '../assets/img/service-icon-impala.png';
+import iomete from '../assets/img/service-icon-iomete.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import kinesis from '../assets/img/service-icon-kinesis.png';
 import lightDash from '../assets/img/service-icon-lightdash.png';
@@ -230,6 +231,7 @@ export const GOOGLE_DRIVE = googleDrive;
 export const SFTP = sftp;
 export const TIMESCALE = timescale;
 export const BURSTIQ = burstiq;
+export const IOMETE = iomete;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -465,6 +467,7 @@ export const BETA_SERVICES = [
   DriveServiceType.SFTP,
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
+  DatabaseServiceType.Iomete,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

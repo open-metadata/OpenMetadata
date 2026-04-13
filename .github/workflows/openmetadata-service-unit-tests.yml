@@ -65,6 +65,10 @@ jobs:
     timeout-minutes: 90
     needs: changes
     if: ${{ needs.changes.outputs.java == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [mysql, postgresql]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -97,12 +101,12 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Run openmetadata-service unit tests
+      - name: Run openmetadata-service unit tests (${{ matrix.database }})
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn -B clean package -pl openmetadata-service -am \
-            -Pstatic-code-analysis \
+            -Pstatic-code-analysis,${{ matrix.database }} \
             -DfailIfNoTests=false \
             -Dsonar.skip=true
 
@@ -110,7 +114,7 @@ jobs:
         if: ${{ failure() && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: openmetadata-service-surefire-reports
+          name: openmetadata-service-surefire-reports-${{ matrix.database }}
           path: openmetadata-service/target/surefire-reports/
 
       - name: Publish Test Report
@@ -120,6 +124,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
           report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
+          check_name: "Test Report (${{ matrix.database }})"
 
   # Single required-check gate for branch protection.
   # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
