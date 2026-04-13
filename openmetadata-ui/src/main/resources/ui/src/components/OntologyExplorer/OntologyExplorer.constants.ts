@@ -393,30 +393,16 @@ export const FIT_VIEW_ZOOM_OUT = 0.95;
 export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.85;
 export const ONTOLOGY_FIT_VIEW_PADDING = 40;
 export const ONTOLOGY_LARGE_GRAPH_NODE_COUNT = 1500;
+export const ONTOLOGY_TERMS_PAGE_SIZE = 300;
+export const DATA_MODE_MAX_RENDER_COUNT = 3500;
 export const PRACTICAL_MIN_ZOOM = 0.15;
-export const PRACTICAL_MAX_ZOOM_INITIAL = 1.0;
+export const PRACTICAL_MAX_ZOOM_INITIAL = 1;
 
-export function getOntologyFitViewZoomRatio(
-  nodeCount: number,
-  isDataMode: boolean
-): number {
-  if (nodeCount >= ONTOLOGY_LARGE_GRAPH_NODE_COUNT) {
-    return 1;
-  }
-
-  return isDataMode ? FIT_VIEW_ZOOM_OUT_DATA_MODE : FIT_VIEW_ZOOM_OUT;
-}
 export async function fitViewWithMinZoom(
   graph: Graph,
-  termNodeCount: number,
-  isDataMode: boolean,
   duration = 0
 ): Promise<void> {
   await graph.fitView({ when: 'always', direction: 'both' }, { duration });
-  const zoomRatio = getOntologyFitViewZoomRatio(termNodeCount, isDataMode);
-  if (zoomRatio !== 1) {
-    await graph.zoomBy(zoomRatio, { duration: 0 });
-  }
   const zoom = graph.getZoom();
   if (zoom > PRACTICAL_MAX_ZOOM_INITIAL) {
     graph.zoomTo(
@@ -443,7 +429,7 @@ export const DATA_MODE_ASSET_LABEL_BOX_PADDING: [
   number
 ] = [6, 10, 6, 10];
 export const DATA_MODE_ASSET_LABEL_LAYOUT_STACK = 62;
-export const DATA_MODE_TERM_TO_FIRST_RING_GAP = 168;
+export const DATA_MODE_TERM_TO_FIRST_RING_GAP = 120;
 export const COMBO_HEADER_HEIGHT = 34;
 export const COMBO_INTERIOR_PADDING_TOP = COMBO_HEADER_HEIGHT + 10;
 export const COMBO_INTERIOR_PADDING_SIDES = 12;
@@ -474,7 +460,8 @@ export function toLayoutEngineType(layout: LayoutType): LayoutEngineType {
 
 export const COMBO_LABEL_PADDING_TOP_BOTTOM = 10;
 export const DATA_MODE_TERM_NODE_SIZE = 30;
-export const DATA_MODE_TERM_MIN_CENTER_SPACING = 600;
+export const DATA_MODE_TERM_H_SPACING = 160;
+export const DATA_MODE_TERM_V_SPACING = 160;
 export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 2;
 /** Outer soft ring behind the term circle (G6 halo), light gray like elevated selection. */
 export const DATA_MODE_TERM_HALO_LINE_WIDTH = 5;
