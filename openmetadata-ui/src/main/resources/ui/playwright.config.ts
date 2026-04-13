@@ -126,7 +126,6 @@ export default defineConfig({
       testMatch: '**/DataAssetRulesDisabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
-      teardown: 'SearchRBAC',
       fullyParallel: true,
     },
     {
@@ -139,6 +138,7 @@ export default defineConfig({
     {
       name: 'SearchRBAC',
       testMatch: '**/SearchRBAC.spec.ts',
+      dependencies: ['DataAssetRulesDisabled'],
       use: { ...devices['Desktop Chrome'] },
       teardown: 'entity-data-teardown',
     },
