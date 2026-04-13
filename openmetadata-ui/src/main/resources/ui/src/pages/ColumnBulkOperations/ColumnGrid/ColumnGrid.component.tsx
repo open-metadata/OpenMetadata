@@ -124,6 +124,7 @@ interface ColumnEditFormProps {
   allRows: ColumnGridRowData[];
   editorRef: React.RefObject<EditorContentRef>;
   getTagDisplayLabel: (tag: TagLabel) => string;
+  onDescriptionChange: (description: string, preview: string) => void;
   onDisplayNameSync: (value: string) => void;
   onTagsUpdate: (rowId: string, tags: TagLabel[]) => void;
 }
@@ -299,6 +300,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
       allRows,
       editorRef,
       getTagDisplayLabel,
+      onDescriptionChange,
       onDisplayNameSync,
       onTagsUpdate,
     },
@@ -325,7 +327,9 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
     );
 
     const currentDescription =
-      selectedCount === 1 ? firstRow?.description ?? '' : '';
+      selectedCount === 1
+        ? firstRow?.editedDescription ?? firstRow?.description ?? ''
+        : '';
 
     const currentTags =
       selectedCount === 1 ? firstRow?.editedTags ?? firstRow?.tags ?? [] : [];
@@ -397,8 +401,10 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
             placeholder={t('label.display-name')}
             size="sm"
             value={localDisplayName}
-            onBlur={() => onDisplayNameSync(localDisplayName)}
-            onChange={setLocalDisplayName}
+            onChange={(value) => {
+              setLocalDisplayName(value);
+              onDisplayNameSync(value);
+            }}
           />
         </div>
 
@@ -419,6 +425,8 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
             ref={editorRef}
             onTextChange={() => {
               hasDescriptionEditedRef.current = true;
+              const content = editorRef.current?.getEditorContent() ?? '';
+              onDescriptionChange(content, getDescriptionPreview(content));
             }}
           />
         </div>
@@ -2258,6 +2266,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         ref={columnEditFormRef}
         selectedCount={selectedCount}
         selectedRowsData={selectedRowsData}
+        onDescriptionChange={(description, preview) => {
+          columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+            prev.map((row: ColumnGridRowData) =>
+              columnGridListing.isSelected(row.id)
+                ? {
+                    ...row,
+                    editedDescription: description,
+                    editedDescriptionPreview: preview,
+                  }
+                : row
+            )
+          );
+        }}
         onDisplayNameSync={(value) => {
           columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
             prev.map((row: ColumnGridRowData) =>
