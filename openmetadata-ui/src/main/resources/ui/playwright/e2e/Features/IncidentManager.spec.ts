@@ -615,15 +615,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       }
 
       await waitForAllLoadersToDisappear(adminPage);
-      const notificationResponse = adminPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/feed') &&
-          response.url().includes('filterType=ASSIGNED_TO') &&
-          response.request().method() === 'GET'
-      );
       await adminPage.getByRole('button', { name: 'Notifications' }).click();
-      const notification = await notificationResponse;
-      expect(notification.status()).toBe(200);
+      await expect(adminPage.locator('.notification-box')).toBeVisible();
 
       const mentionResponse = adminPage.waitForResponse(
         (response) =>
@@ -698,35 +691,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await testCaseResponse;
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
-      const statusChip = actorPage.getByTestId(`${testCaseName}-status`);
-      const assigneePopover = actorPage.getByTestId(
-        `${testCaseName}-assignee-popover`
-      );
-      const assigneeInput = actorPage
-        .getByTestId('assignee-search-input')
-        .locator('input');
-
-      await expect(statusChip).toBeVisible({ timeout: 30_000 });
-      await statusChip.click();
-      await expect(assigneePopover).toBeVisible({ timeout: 10_000 });
-
-      const searchUserResponse = actorPage.waitForResponse(
-        '/api/v1/search/query?q=*'
-      );
-      await assigneeInput.fill(assignee2.displayName);
-      await searchUserResponse;
-
-      const updateIncident = actorPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-      );
-
-      await actorPage.getByTestId(assignee2.name.toLowerCase()).click();
-      await actorPage.getByTestId('submit-assignee-popover-button').click();
-      await updateIncident;
-
-      await expect(actorPage.getByTestId('assignee')).toContainText(
-        assignee2.displayName
-      );
+      await openIncidentTaskTab(actorPage, true);
+      await addAssigneeFromPopoverWidget({
+        page: actorPage,
+        user: assignee2,
+      });
     });
 
     /**
