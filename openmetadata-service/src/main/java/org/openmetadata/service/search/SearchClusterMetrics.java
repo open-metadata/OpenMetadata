@@ -446,7 +446,8 @@ public class SearchClusterMetrics {
     double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
 
     // Default to conservative 10MB for AWS-managed clusters if we can't fetch from cluster
-    long maxPayloadSize = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default
+    long maxPayloadSize =
+        DEFAULT_MAX_CONTENT_LENGTH * 9 / 10; // 9 MB — same 10% headroom as connected path
     try {
       if (searchRepository != null) {
         SearchClient searchClient = searchRepository.getSearchClient();
