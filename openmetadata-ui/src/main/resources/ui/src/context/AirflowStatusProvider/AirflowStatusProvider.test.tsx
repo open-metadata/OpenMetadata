@@ -13,7 +13,6 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { MemoryRouter } from 'react-router-dom';
 import { getAirflowStatus } from '../../rest/ingestionPipelineAPI';
 import AirflowStatusProvider, {
   useAirflowStatus,
@@ -60,15 +59,6 @@ const TestComponent = () => {
 };
 
 describe('AirflowStatusProvider', () => {
-  const renderProvider = (route = '/service/databaseServices/sample') =>
-    render(
-      <MemoryRouter initialEntries={[route]}>
-        <AirflowStatusProvider>
-          <TestComponent />
-        </AirflowStatusProvider>
-      </MemoryRouter>
-    );
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -80,7 +70,11 @@ describe('AirflowStatusProvider', () => {
       platform: 'managed',
     });
 
-    renderProvider();
+    render(
+      <AirflowStatusProvider>
+        <TestComponent />
+      </AirflowStatusProvider>
+    );
 
     // Initial loading state
     expect(screen.getByTestId('isFetchingStatus').textContent).toBe('true');
@@ -102,7 +96,11 @@ describe('AirflowStatusProvider', () => {
     const mockError = new Error('API Error') as AxiosError;
     (getAirflowStatus as jest.Mock).mockRejectedValueOnce(mockError);
 
-    renderProvider();
+    render(
+      <AirflowStatusProvider>
+        <TestComponent />
+      </AirflowStatusProvider>
+    );
 
     // Initial loading state
     expect(screen.getByTestId('isFetchingStatus').textContent).toBe('true');
@@ -126,7 +124,11 @@ describe('AirflowStatusProvider', () => {
       platform: 'unknown',
     });
 
-    renderProvider();
+    render(
+      <AirflowStatusProvider>
+        <TestComponent />
+      </AirflowStatusProvider>
+    );
 
     // Wait for the API call to complete
     await waitFor(() => {
@@ -154,7 +156,11 @@ describe('AirflowStatusProvider', () => {
         platform: 'managed',
       });
 
-    renderProvider();
+    render(
+      <AirflowStatusProvider>
+        <TestComponent />
+      </AirflowStatusProvider>
+    );
 
     // Wait for initial load
     await waitFor(() => {
@@ -168,20 +174,5 @@ describe('AirflowStatusProvider', () => {
     await waitFor(() => {
       expect(screen.getByTestId('reason').textContent).toBe('Refreshed status');
     });
-  });
-
-  it('should skip fetching airflow status on application pages', async () => {
-    renderProvider('/settings/applications/RdfIndexApp');
-
-    await waitFor(() => {
-      expect(screen.getByTestId('isFetchingStatus').textContent).toBe('false');
-      expect(screen.getByTestId('isAirflowAvailable').textContent).toBe(
-        'false'
-      );
-    });
-
-    expect(getAirflowStatus).not.toHaveBeenCalled();
-    expect(screen.getByTestId('platform').textContent).toBe('unknown');
-    expect(screen.getByTestId('error').textContent).toBe('no-error');
   });
 });

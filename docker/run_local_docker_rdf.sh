@@ -88,11 +88,6 @@ if [[ $startFuseki != "true" || $RDF_AUTO_REINDEX != "true" ]]; then
   exit 0
 fi
 
-until curl -s -f "http://localhost:3030/\$/ping" > /dev/null 2>&1; do
-  echo 'Checking if Fuseki is reachable...\n'
-  sleep 5
-done
-
 ensure_app_installed "RdfIndexApp"
 echo "✔running RDF reindexing"
 trigger_app_and_wait "RdfIndexApp" '{
