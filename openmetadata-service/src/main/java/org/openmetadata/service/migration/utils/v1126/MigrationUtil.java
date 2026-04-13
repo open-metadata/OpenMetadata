@@ -49,8 +49,8 @@ public class MigrationUtil {
               .relationshipDAO()
               .getRecordWithOffset(Relationship.UPSTREAM.ordinal(), offset, batchSize);
       for (CollectionDAO.EntityRelationshipObject record : batch) {
-        if (!SERVICE_ENTITY_TYPES.contains(record.getFromEntity())) {
-          continue;
+        if (SERVICE_ENTITY_TYPES.contains(record.getFromEntity())) {
+          continue; // Skip service-level edges; we need data-asset-level edges
         }
         String json = record.getJson();
         if (json == null || !json.contains("\"pipeline\"")) {
@@ -90,35 +90,41 @@ public class MigrationUtil {
         return;
       }
 
+      EntityInterface fromEntity =
+          Entity.getEntity(
+              record.getFromEntity(), UUID.fromString(record.getFromId()), "service", Include.ALL);
+      EntityInterface toEntity =
+          Entity.getEntity(
+              record.getToEntity(), UUID.fromString(record.getToId()), "service", Include.ALL);
       EntityInterface pipelineEntity =
           Entity.getEntity(pipelineRef.getType(), pipelineRef.getId(), "service", Include.ALL);
+
+      EntityReference fromService = fromEntity.getService();
+      EntityReference toService = toEntity.getService();
       EntityReference pipelineService = pipelineEntity.getService();
-      if (pipelineService == null) {
+
+      if (fromService == null || toService == null || pipelineService == null) {
         return;
       }
 
-      UUID fromSvcId = UUID.fromString(record.getFromId());
-      UUID toSvcId = UUID.fromString(record.getToId());
-      UUID pipelineSvcId = pipelineService.getId();
-
       putEdgeIfDistinct(
           edgesToCreate,
-          fromSvcId,
-          record.getFromEntity(),
-          pipelineSvcId,
+          fromService.getId(),
+          fromService.getType(),
+          pipelineService.getId(),
           pipelineService.getType(),
           details);
       putEdgeIfDistinct(
           edgesToCreate,
-          pipelineSvcId,
+          pipelineService.getId(),
           pipelineService.getType(),
-          toSvcId,
-          record.getToEntity(),
+          toService.getId(),
+          toService.getType(),
           details);
 
     } catch (Exception e) {
       LOG.warn(
-          "Skipping service edge {} -> {}: {}",
+          "Skipping lineage edge {} -> {}: {}",
           record.getFromId(),
           record.getToId(),
           e.getMessage());
