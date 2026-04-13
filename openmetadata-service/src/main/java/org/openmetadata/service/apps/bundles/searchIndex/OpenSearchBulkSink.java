@@ -107,6 +107,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
   private final OpenSearchClient searchClient;
   protected final SearchRepository searchRepository;
+  private final long maxPayloadSizeBytes;
   private final CustomBulkProcessor bulkProcessor;
   private final StepStats stats = new StepStats();
 
@@ -152,6 +153,7 @@ public class OpenSearchBulkSink implements BulkSink {
     this.searchClient = (OpenSearchClient) searchRepository.getSearchClient();
     this.batchSize = batchSize;
     this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxPayloadSizeBytes = maxPayloadSizeBytes;
 
     // Initialize stats
     stats.withTotalRecords(0).withSuccessRecords(0).withFailedRecords(0);
@@ -354,9 +356,22 @@ public class OpenSearchBulkSink implements BulkSink {
 
       String finalJson = json;
       String docId = entity.getId().toString();
-      long estimatedSize =
-          (long) finalJson.getBytes(StandardCharsets.UTF_8).length
-              + BULK_OPERATION_METADATA_OVERHEAD;
+      long rawDocSize = (long) finalJson.getBytes(StandardCharsets.UTF_8).length;
+      long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
+
+      if (estimatedSize > maxPayloadSizeBytes) {
+        LOG.warn(
+            "Document {} of type {} is too large for bulk ({} bytes), sending directly",
+            docId,
+            entityType,
+            rawDocSize);
+        indexDocumentDirectly(indexName, docId, finalJson, entityType, tracker);
+        processSuccess.incrementAndGet();
+        if (tracker != null) {
+          tracker.recordProcess(StatsResult.SUCCESS);
+        }
+        return;
+      }
 
       BulkOperation operation;
       if (recreateIndex) {
@@ -421,6 +436,42 @@ public class OpenSearchBulkSink implements BulkSink {
             entity.getFullyQualifiedName(),
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
+      }
+    }
+  }
+
+  private void indexDocumentDirectly(
+      String indexName, String docId, String json, String entityType, StageStatsTracker tracker) {
+    try {
+      searchClient
+          .getNewClient()
+          .index(idx -> idx.index(indexName).id(docId).document(OsUtils.toJsonData(json)));
+      totalSuccess.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.SUCCESS);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Direct index failed for document {} of type {}: {}",
+          docId,
+          entityType,
+          e.getMessage(),
+          e);
+      totalFailed.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.FAILED);
+      }
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            docId,
+            null,
+            String.format(
+                "Document too large for bulk (%d bytes); direct index failed: %s",
+                json.getBytes(StandardCharsets.UTF_8).length, e.getMessage()),
+            IndexingFailureRecorder.FailureStage.SINK);
       }
     }
   }
@@ -910,32 +961,6 @@ public class OpenSearchBulkSink implements BulkSink {
 
         long operationSize =
             estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
-
-        if (operationSize > maxPayloadSizeBytes) {
-          totalFailed.incrementAndGet();
-          statsUpdater.run();
-          String entityTypeName = entityType != null ? entityType : "unknown";
-          LOG.error(
-              "Document {} of type {} exceeds max payload size ({} > {} bytes), dropping",
-              docId,
-              entityTypeName,
-              operationSize,
-              maxPayloadSizeBytes);
-          if (failureCallback != null) {
-            failureCallback.onFailure(
-                entityTypeName,
-                docId,
-                null,
-                String.format(
-                    "Document size %d bytes exceeds max payload limit %d bytes",
-                    operationSize, maxPayloadSizeBytes),
-                IndexingFailureRecorder.FailureStage.SINK);
-          }
-          if (tracker != null) {
-            tracker.recordSink(StatsResult.FAILED);
-          }
-          return;
-        }
 
         if (!buffer.isEmpty()
             && (buffer.size() >= bulkActions
