@@ -1777,6 +1777,11 @@ export interface ConfigObject {
      */
     topicFilterPattern?: FilterPattern;
     /**
+     * URL of the Redpanda Admin API (typically port 9644). Required for extracting data
+     * transform lineage. E.g., http://localhost:9644
+     */
+    redpandaAdminApiUrl?: string;
+    /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
     gcpConfig?: GcpConfigClass;

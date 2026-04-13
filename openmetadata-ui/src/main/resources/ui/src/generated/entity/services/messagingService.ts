@@ -273,8 +273,13 @@ export interface Connection {
      *
      * Custom messaging service type
      */
-    type?:      MessagingServiceType;
-    awsConfig?: AWSCredentials;
+    type?: MessagingServiceType;
+    /**
+     * URL of the Redpanda Admin API (typically port 9644). Required for extracting data
+     * transform lineage. E.g., http://localhost:9644
+     */
+    redpandaAdminApiUrl?: string;
+    awsConfig?:           AWSCredentials;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
