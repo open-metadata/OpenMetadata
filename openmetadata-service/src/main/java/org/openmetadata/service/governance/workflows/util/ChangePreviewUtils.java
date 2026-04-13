@@ -13,10 +13,12 @@
 
 package org.openmetadata.service.governance.workflows.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -63,7 +65,7 @@ public final class ChangePreviewUtils {
       if (item.getValueType() == JsonValue.ValueType.OBJECT) {
         result.addAll(extractFromObject(item.asJsonObject()));
       } else if (item.getValueType() == JsonValue.ValueType.STRING) {
-        result.add(item.toString().replaceAll("^\"|\"$", "").strip());
+        result.add(((JsonString) item).getString().strip());
       }
     }
     return result;
@@ -87,13 +89,13 @@ public final class ChangePreviewUtils {
 
   public static Map<String, Map<String, List<String>>> buildChangeMap(ChangeDescription cd) {
     Map<String, Map<String, List<String>>> result = new LinkedHashMap<>();
-    for (FieldChange fc : cd.getFieldsAdded()) {
+    for (FieldChange fc : listOrEmpty(cd.getFieldsAdded())) {
       result.put(fc.getName(), fieldEntry(extractIdentifiers(fc.getNewValue()), List.of()));
     }
-    for (FieldChange fc : cd.getFieldsDeleted()) {
+    for (FieldChange fc : listOrEmpty(cd.getFieldsDeleted())) {
       result.put(fc.getName(), fieldEntry(List.of(), extractIdentifiers(fc.getOldValue())));
     }
-    for (FieldChange fc : cd.getFieldsUpdated()) {
+    for (FieldChange fc : listOrEmpty(cd.getFieldsUpdated())) {
       result.put(
           fc.getName(),
           fieldEntry(extractIdentifiers(fc.getNewValue()), extractIdentifiers(fc.getOldValue())));

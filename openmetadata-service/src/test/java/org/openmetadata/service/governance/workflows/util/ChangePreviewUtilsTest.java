@@ -264,6 +264,17 @@ class ChangePreviewUtilsTest {
   // ---------------------------------------------------------------------------
 
   @Test
+  void buildChangeMap_nullFieldLists_doesNotThrow() {
+    ChangeDescription cd = new ChangeDescription();
+    Map<String, Map<String, List<String>>> result = ChangePreviewUtils.buildChangeMap(cd);
+    assertTrue(result.isEmpty());
+  }
+
+  // ---------------------------------------------------------------------------
+  // hasNoChanges
+  // ---------------------------------------------------------------------------
+
+  @Test
   void hasNoChanges_nullChangeDescription_returnsTrue() {
     assertTrue(ChangePreviewUtils.hasNoChanges(null));
   }
