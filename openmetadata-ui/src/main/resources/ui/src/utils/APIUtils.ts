@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { isArray, isObject, transform } from 'lodash';
+import { AxiosError } from 'axios';
+import { isArray, isObject, isString, transform } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
@@ -92,6 +93,45 @@ export const formatDataProductResponse = (
       owners: d._source.owners,
     };
   });
+};
+
+export const isBlobLikeResponse = (value: unknown): value is Blob => {
+  if (value instanceof Blob) {
+    return true;
+  }
+
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof (value as Blob).text === 'function' &&
+      typeof (value as Blob).size === 'number' &&
+      typeof (value as Blob).type === 'string' &&
+      typeof (value as Blob).slice === 'function'
+  );
+};
+
+export const parseExportErrorMessage = async (
+  error: AxiosError<Blob | { message?: string }>,
+  fallback: string
+): Promise<string> => {
+  const responseData = error.response?.data;
+
+  if (isBlobLikeResponse(responseData)) {
+    const text = await responseData.text();
+    try {
+      const json = JSON.parse(text) as { message?: string };
+
+      return json?.message ?? (text || fallback);
+    } catch {
+      return text || fallback;
+    }
+  }
+
+  if (isString(responseData)) {
+    return responseData || fallback;
+  }
+
+  return responseData?.message ?? fallback;
 };
 
 export const omitDeep = <T>(
