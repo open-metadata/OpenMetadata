@@ -1332,8 +1332,6 @@ class TestComplexTypeNullCount(TestCase):
 
         import sqlalchemy
 
-        from metadata.profiler.api.models import ThreadPoolMetrics
-        from metadata.profiler.metrics.core import MetricTypes
         from metadata.profiler.metrics.registry import Metrics
         from metadata.profiler.processor.core import Profiler
 
@@ -1355,7 +1353,9 @@ class TestComplexTypeNullCount(TestCase):
         mock_profiler.source_config = None  # skip computeColumnMetrics check
         mock_profiler.table = MagicMock()
         mock_profiler.metric_filter = MagicMock()
-        mock_profiler.metric_filter.get_column_metrics.return_value = []
+        mock_profiler.metric_filter.get_column_metrics.return_value = [
+            Metrics.nullCount.value
+        ]
         mock_profiler.profiler_interface = MagicMock()
         mock_profiler.get_custom_metrics.return_value = None
 

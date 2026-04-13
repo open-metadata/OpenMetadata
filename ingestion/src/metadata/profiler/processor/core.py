@@ -457,17 +457,21 @@ class Profiler(Generic[TMetric]):
 
 
         # Add nullCount for complex columns (Issue #15627)
-        if complex_columns:
-            complex_static_metrics = [
-                ThreadPoolMetrics(
-                    metrics=[Metrics.nullCount.value],
-                    metric_type=MetricTypes.Static,
-                    column=column,
-                    table=self.table,
+        for column in complex_columns:
+            allowed_metrics = self.metric_filter.get_column_metrics(
+                StaticMetric,
+                column,
+                self.profiler_interface.table_entity.serviceType,
+            )
+            if Metrics.nullCount.value in allowed_metrics:
+                column_metrics_for_thread_pool.append(
+                    ThreadPoolMetrics(
+                        metrics=[Metrics.nullCount.value],
+                        metric_type=MetricTypes.Static,
+                        column=column,
+                        table=self.table,
+                    )
                 )
-                for column in complex_columns
-            ]
-            column_metrics_for_thread_pool.extend(complex_static_metrics)
 
         return column_metrics_for_thread_pool
 

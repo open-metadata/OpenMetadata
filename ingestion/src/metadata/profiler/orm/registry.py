@@ -152,6 +152,7 @@ COMPLEX_STRUCT_TYPES = frozenset({
     sqa_types.SQAUnion.__name__,
 })
 
+# Both entries are needed: class-name for mapped types, DataType value for unmapped/fallthrough cases.
 COMPLEX_GEO_TYPES = frozenset({
     sqa_types.SQASGeography.__name__,
     DataType.GEOMETRY.value,
