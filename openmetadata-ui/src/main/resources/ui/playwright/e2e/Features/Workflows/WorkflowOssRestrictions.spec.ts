@@ -26,6 +26,7 @@ const test = base.extend<{ page: Page }>({
 });
 
 let workflowName: string;
+let periodicWorkflowName: string;
 
 async function navigateToWorkflowsListPage(page: Page) {
   await page.hover('[data-testid="left-sidebar"]');
@@ -77,6 +78,29 @@ async function openTaskNodeSidebar(page: Page) {
 
   await expect(taskNode).toBeVisible();
   await taskNode.click();
+
+  const sidebar = page.getByTestId('node-config-sidebar');
+
+  await expect(sidebar).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+
+  return sidebar;
+}
+
+async function openStartNodeSidebar(page: Page) {
+  const fitViewButton = page.getByTestId('fit-view-button');
+
+  await expect(fitViewButton).toBeVisible();
+  await fitViewButton.click();
+  await enterEditMode(page);
+
+  const startNode = page
+    .locator('.react-flow__node')
+    .filter({ hasText: /^Start$/ })
+    .first();
+
+  await expect(startNode).toBeVisible();
+  await startNode.click();
 
   const sidebar = page.getByTestId('node-config-sidebar');
 
@@ -370,14 +394,6 @@ test.describe('OSS Workflow Capabilities', () => {
   });
 
   test.describe('Test workflow — save workflow', () => {
-    test('save-workflow-button visible in edit mode', async ({ page }) => {
-      await redirectToHomePage(page);
-      await navigateToWorkflowDetailPage(page, workflowName);
-      await enterEditMode(page);
-
-      await expect(page.getByTestId('save-workflow-button')).toBeVisible();
-    });
-
     test('save-workflow-button fires PUT API and returns to view mode', async ({
       page,
     }) => {
@@ -398,6 +414,217 @@ test.describe('OSS Workflow Capabilities', () => {
 
       await expect(page.getByTestId('edit-workflow-button')).toBeVisible();
       await expect(page.getByTestId('save-workflow-button')).not.toBeVisible();
+    });
+  });
+
+  test.describe('Test workflow — start node config (event-based)', () => {
+    test('workflow-name-input is disabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('workflow-name-input').locator('input')
+      ).toBeDisabled();
+    });
+
+    test('workflow-description-input is enabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('workflow-description-input').locator('textarea')
+      ).toBeEnabled();
+    });
+
+    test('data-asset selector is disabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('data-asset').locator('input')
+      ).toBeDisabled();
+    });
+
+    test('trigger-type-select is disabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('trigger-type-select').locator('button').first()
+      ).toBeDisabled();
+    });
+
+    test('event-type-select is disabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('event-type-select').locator('input')
+      ).toBeDisabled();
+    });
+
+    test('exclude-fields-select is enabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('exclude-fields-select').locator('input')
+      ).toBeEnabled();
+    });
+
+    test('include-fields-select is enabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('include-fields-select').locator('input')
+      ).toBeEnabled();
+    });
+
+    test('add-event-filter-button is enabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, workflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('add-event-filter-button')
+      ).toBeEnabled();
+    });
+  });
+
+  test.describe('Test workflow — start node config (periodic-batch)', () => {
+    test.beforeAll(
+      'Create periodic-batch test workflow via API',
+      async ({ browser }) => {
+        periodicWorkflowName = `pw-oss-periodic-workflow-${uuid()}`;
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        const response = await apiContext.post(
+          '/api/v1/governance/workflowDefinitions',
+          {
+            data: {
+              name: periodicWorkflowName,
+              description:
+                'OSS periodic-batch capability test workflow created by Playwright',
+              config: { storeStageStatus: false },
+              trigger: {
+                type: 'periodicBatchEntity',
+                config: {
+                  entityTypes: ['table'],
+                  schedule: {
+                    scheduleTimeline: 'None',
+                    cronExpression: '',
+                  },
+                },
+                output: ['relatedEntity'],
+              },
+              nodes: [
+                {
+                  type: 'startEvent',
+                  subType: 'startEvent',
+                  name: 'Start',
+                  displayName: 'Start',
+                },
+                {
+                  type: 'userTask',
+                  subType: 'userApprovalTask',
+                  name: 'ApprovalTask',
+                  displayName: 'Approval Task',
+                  config: {
+                    assignees: {
+                      addReviewers: false,
+                      addOwners: false,
+                      candidates: [],
+                    },
+                    approvalThreshold: 1,
+                    rejectionThreshold: 1,
+                  },
+                  inputNamespaceMap: {
+                    relatedEntity: 'global',
+                  },
+                },
+                {
+                  type: 'endEvent',
+                  subType: 'endEvent',
+                  name: 'ApprovedEnd',
+                  displayName: 'Approved',
+                },
+                {
+                  type: 'endEvent',
+                  subType: 'endEvent',
+                  name: 'RejectedEnd',
+                  displayName: 'Rejected',
+                },
+              ],
+              edges: [
+                { from: 'Start', to: 'ApprovalTask' },
+                { from: 'ApprovalTask', to: 'ApprovedEnd', condition: 'true' },
+                {
+                  from: 'ApprovalTask',
+                  to: 'RejectedEnd',
+                  condition: 'false',
+                },
+              ],
+            },
+          }
+        );
+
+        expect(response.ok()).toBeTruthy();
+        await afterAction();
+      }
+    );
+
+    test.afterAll(
+      'Delete periodic-batch test workflow via API',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        await apiContext.delete(
+          `/api/v1/governance/workflowDefinitions/name/${encodeURIComponent(
+            periodicWorkflowName
+          )}`,
+          { params: { hardDelete: true } }
+        );
+
+        await afterAction();
+      }
+    );
+
+    test('schedule-type-select is disabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, periodicWorkflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('schedule-type-select').locator('button').first()
+      ).toBeDisabled();
+    });
+
+    test('batch-size-input is enabled in OSS', async ({ page }) => {
+      await redirectToHomePage(page);
+      await navigateToWorkflowDetailPage(page, periodicWorkflowName);
+
+      const sidebar = await openStartNodeSidebar(page);
+
+      await expect(
+        sidebar.getByTestId('batch-size-input').locator('input')
+      ).toBeEnabled();
     });
   });
 

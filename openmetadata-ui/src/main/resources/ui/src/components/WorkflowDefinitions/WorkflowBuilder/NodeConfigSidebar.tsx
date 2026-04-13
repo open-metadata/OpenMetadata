@@ -75,6 +75,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   const {
     allowFullStartNodeConfiguration,
     allowStartNodeFilterScheduleAndBatchEdit,
+    allowScheduledTrigger,
   } = useWorkflowModeContext();
   const [isUpdating, setIsUpdating] = useState(false);
   const [backendConfig, setBackendConfig] = useState(() =>
@@ -411,6 +412,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       <WorkflowConfigFormV1
         addDataAssetFilter={addDataAssetFilter}
         allowFullStartNodeConfiguration={allowFullStartNodeConfiguration}
+        allowScheduledTrigger={allowScheduledTrigger}
         allowStartNodeFilterScheduleAndBatchEdit={
           allowStartNodeFilterScheduleAndBatchEdit
         }

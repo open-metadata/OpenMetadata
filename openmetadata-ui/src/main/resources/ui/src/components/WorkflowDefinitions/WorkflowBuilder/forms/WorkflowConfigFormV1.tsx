@@ -32,6 +32,7 @@ interface WorkflowConfigFormV1Props {
   availableExcludeFields: string[];
   allowFullStartNodeConfiguration: boolean;
   allowStartNodeFilterScheduleAndBatchEdit: boolean;
+  allowScheduledTrigger: boolean;
   updateConfig: <K extends keyof NodeConfig>(
     key: K,
     value: NodeConfig[K]
@@ -62,6 +63,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   availableExcludeFields,
   allowFullStartNodeConfiguration,
   allowStartNodeFilterScheduleAndBatchEdit,
+  allowScheduledTrigger,
   updateConfig,
   removeFromArray,
   handleEventTypeChange,
@@ -79,6 +81,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
       <MetadataFormSection
         isStartNode
         description={config.description}
+        lockDescriptionField={false}
         lockFields={lockCoreStartFields}
         name={config.name}
         onDescriptionChange={(description) =>
@@ -118,6 +121,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
         include={config.include}
         lockNonIncludeExcludeFields={lockCoreStartFields}
         lockPeriodicBatchFields={lockFilterSections}
+        lockScheduleTypeField={!allowScheduledTrigger}
         scheduleType={config.scheduleType}
         triggerType={config.triggerType}
         onBatchSizeChange={(batchSize) => updateConfig('batchSize', batchSize)}

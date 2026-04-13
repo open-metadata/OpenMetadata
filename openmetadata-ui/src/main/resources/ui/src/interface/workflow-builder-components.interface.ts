@@ -77,14 +77,16 @@ export interface TriggerConfigSectionProps {
   onBatchSizeChange?: (batchSize: number) => void;
   lockNonIncludeExcludeFields?: boolean;
   lockPeriodicBatchFields?: boolean;
+  /** OSS: disable only the schedule-type select; cron and batch size remain editable */
+  lockScheduleTypeField?: boolean;
 }
 
 export interface MetadataFormSectionProps {
   name: string;
   description: string;
   isStartNode: boolean;
-  /** OSS: lock name/description when only include/exclude may be edited */
   lockFields?: boolean;
+  lockDescriptionField?: boolean;
   onNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
 }

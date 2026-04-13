@@ -86,6 +86,7 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
   onBatchSizeChange,
   lockNonIncludeExcludeFields = false,
   lockPeriodicBatchFields,
+  lockScheduleTypeField,
 }) => {
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
@@ -93,6 +94,9 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
     isFormDisabled || lockNonIncludeExcludeFields;
   const periodicBatchDisabled =
     isFormDisabled || (lockPeriodicBatchFields ?? lockNonIncludeExcludeFields);
+  const scheduleTypeDisabled =
+    isFormDisabled ||
+    (lockScheduleTypeField ?? lockPeriodicBatchFields ?? lockNonIncludeExcludeFields);
   const includeExcludeDisabled = isFormDisabled;
 
   const triggerTypeOptions = [
@@ -299,7 +303,7 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
             isRequired
             data-testid="schedule-type-select"
             hint={t('message.choose-how-the-workflow-should-be-triggered')}
-            isDisabled={periodicBatchDisabled}
+            isDisabled={scheduleTypeDisabled}
             label={t('label.schedule-type')}
             value={scheduleType}
             onChange={(key) => onScheduleTypeChange?.(String(key ?? ''))}>

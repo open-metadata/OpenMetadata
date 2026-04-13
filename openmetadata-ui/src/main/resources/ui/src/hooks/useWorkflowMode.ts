@@ -74,6 +74,7 @@ export interface UseWorkflowModeReturn {
   showWorkflowNodePalette: boolean;
   allowFullStartNodeConfiguration: boolean;
   allowStartNodeFilterScheduleAndBatchEdit: boolean;
+  allowScheduledTrigger: boolean;
 }
 
 export const useWorkflowMode = (
@@ -147,6 +148,7 @@ export const useWorkflowMode = (
       caps.allowFullStartNodeConfiguration;
     const allowStartNodeFilterScheduleAndBatchEdit =
       caps.allowStartNodeFilterScheduleAndBatchEdit;
+    const allowScheduledTrigger = caps.allowScheduledTrigger;
 
     return {
       mode: internalMode,
@@ -162,6 +164,7 @@ export const useWorkflowMode = (
       showWorkflowNodePalette,
       allowFullStartNodeConfiguration,
       allowStartNodeFilterScheduleAndBatchEdit,
+      allowScheduledTrigger,
 
       showEditButton: isViewMode && !isNoOpTrigger,
       showSaveButton: isEditMode && !isNoOpTrigger,
