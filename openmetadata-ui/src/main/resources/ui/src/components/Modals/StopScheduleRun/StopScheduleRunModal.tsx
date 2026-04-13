@@ -57,19 +57,20 @@ const StopScheduleModal: FC<StopScheduleRunModalProps> = ({
       cancelText={t('label.cancel')}
       closable={false}
       confirmLoading={isLoading}
-      data-testid="stop-modal"
       maskClosable={false}
       okText={t('label.confirm')}
       open={isModalOpen}
       title={`${t('label.stop')} ${displayName} ?`}
       onCancel={onClose}
       onOk={handleConfirm}>
-      <Typography.Text data-testid="stop-modal-body">
-        {t('message.are-you-sure-action-property', {
-          action: 'Stop',
-          propertyName: displayName,
-        })}
-      </Typography.Text>
+      <div data-testid="stop-modal">
+        <Typography.Text data-testid="stop-modal-body">
+          {t('message.are-you-sure-action-property', {
+            action: 'Stop',
+            propertyName: displayName,
+          })}
+        </Typography.Text>
+      </div>
     </Modal>
   );
 };

@@ -156,7 +156,7 @@ test.describe('App Stop Run Modal', () => {
 
     await expect(page.getByTestId('stop-modal')).toBeVisible();
 
-    await page.click('[data-testid="stop-modal"] .ant-btn-primary');
+    await page.getByRole('button', { name: 'Confirm' }).click();
 
     await expect.poll(() => stopApiCalled, { timeout: 5000 }).toBe(true);
 
