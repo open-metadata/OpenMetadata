@@ -63,7 +63,9 @@ export const redirectToHomePage = async (
   await page.goto('/', {
     waitUntil: 'domcontentloaded',
   });
-  await page.waitForURL('**/my-data');
+  await page.waitForURL('**/my-data', {
+    waitUntil: 'domcontentloaded',
+  });
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
