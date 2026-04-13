@@ -27,7 +27,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
-  ROUTES,
 } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -251,7 +250,10 @@ const ObservabilityAlertsPage = () => {
             <div className="d-flex items-center">
               {alertPermission.edit && (
                 <Tooltip placement="bottom" title={t('label.edit')}>
-                  <Link to={ObservabilityRouterClassBase.getObservabilityAlertsEditPath(fqn)}>
+                  <Link
+                    to={ObservabilityRouterClassBase.getObservabilityAlertsEditPath(
+                      fqn
+                    )}>
                     <Button
                       className="flex flex-center"
                       data-testid={`alert-edit-${record.name}`}
@@ -309,7 +311,11 @@ const ObservabilityAlertsPage = () => {
                     <Button
                       data-testid="create-observability"
                       type="primary"
-                      onClick={() => navigate(ObservabilityRouterClassBase.getAddObservabilityAlertsPath())}>
+                      onClick={() =>
+                        navigate(
+                          ObservabilityRouterClassBase.getAddObservabilityAlertsPath()
+                        )
+                      }>
                       {t('label.add-entity', { entity: t('label.alert') })}
                     </Button>
                   </LimitWrapper>
@@ -343,7 +349,11 @@ const ObservabilityAlertsPage = () => {
                     entity: t('label.alert'),
                   })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() => navigate(ObservabilityRouterClassBase.getAddObservabilityAlertsPath())}
+                  onClick={() =>
+                    navigate(
+                      ObservabilityRouterClassBase.getAddObservabilityAlertsPath()
+                    )
+                  }
                 />
               ),
             }}

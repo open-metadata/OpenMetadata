@@ -797,9 +797,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="success"
                   redirectPath={{
-                    pathname: ObservabilityRouterClassBase.getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      ObservabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Success,
                     }),
@@ -814,9 +815,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="aborted"
                   redirectPath={{
-                    pathname: ObservabilityRouterClassBase.getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      ObservabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Aborted,
                     }),
@@ -831,9 +833,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="failed"
                   redirectPath={{
-                    pathname: ObservabilityRouterClassBase.getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      ObservabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Failed,
                     }),

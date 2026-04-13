@@ -28,7 +28,6 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import ObservabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import {
-  getDataQualityPagePath,
   getTestCaseDetailPagePath,
   getTestSuitePath,
 } from '../../utils/RouterUtils';
@@ -114,7 +113,11 @@ const DataQualityPage = () => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      navigate(ObservabilityRouterClassBase.getDataQualityPagePath(activeKey as DataQualityPageTabs));
+      navigate(
+        ObservabilityRouterClassBase.getDataQualityPagePath(
+          activeKey as DataQualityPageTabs
+        )
+      );
     }
   };
 
