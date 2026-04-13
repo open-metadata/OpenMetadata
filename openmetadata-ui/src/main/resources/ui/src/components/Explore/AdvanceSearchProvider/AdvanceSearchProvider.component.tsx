@@ -18,7 +18,7 @@ import {
   OldJsonTree,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
-import { isEmpty, isEqual, isNil, isString } from 'lodash';
+import { isEmpty, isArray, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import {
   createContext,
@@ -26,9 +26,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
@@ -88,9 +90,30 @@ export const AdvanceSearchProvider = ({
     null
   );
 
+  // Tracks the effectiveEntityType that was used to build the cached customProps.
+  // Used to invalidate the cache when the entity type context changes.
+  const customPropsEntityTypeRef = useRef<string | undefined>(undefined);
+
   const [searchIndex, setSearchIndex] = useState<
     SearchIndex | Array<SearchIndex>
   >(getSearchIndexFromTabInfo(tabsInfo, tab));
+
+  // When entityType is not explicitly provided, derive it from the current searchIndex
+  // so that custom property extension field paths do not include the entity type namespace
+  // prefix (e.g., "extension.informationOwners" instead of
+  // "extension.databaseSchema.informationOwners"), matching the actual ES document structure.
+  const effectiveEntityType = useMemo(() => {
+    if (entityType) {
+      return entityType;
+    }
+    if (isArray(searchIndex)) {
+      return undefined;
+    }
+    const mapping = searchClassBase.getSearchIndexEntityTypeMapping();
+    const mapped = mapping[searchIndex];
+    // EntityType.ALL represents a multi-entity context — preserve namespace prefixes
+    return mapped && mapped !== EntityType.ALL ? mapped : undefined;
+  }, [entityType, searchIndex]);
 
   const changeSearchIndex = useCallback(
     (index: SearchIndex | Array<SearchIndex>) => {
@@ -231,7 +254,7 @@ export const AdvanceSearchProvider = ({
           resEntityType,
           fields,
           subfields,
-          entityType,
+          effectiveEntityType,
           searchOutputType
         );
       });
@@ -249,10 +272,17 @@ export const AdvanceSearchProvider = ({
       isExplorePage,
     });
 
-    let extensionSubField = customProps;
+    // Use cached custom properties only if the effective entity type hasn't changed.
+    // If the entity type context changed (e.g., user switched explore tabs), refetch
+    // so that extension field paths are built without a stale namespace prefix.
+    let extensionSubField =
+      customPropsEntityTypeRef.current === effectiveEntityType
+        ? customProps
+        : null;
     if (extensionSubField === null) {
       extensionSubField = await fetchCustomPropertyType();
       setCustomProps(extensionSubField);
+      customPropsEntityTypeRef.current = effectiveEntityType;
     }
 
     if (
