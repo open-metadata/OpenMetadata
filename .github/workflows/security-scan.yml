@@ -11,10 +11,6 @@
 
 name: security-scan
 on:
-  pull_request:
-    paths:
-      - 'openmetadata-ui/src/main/resources/ui/package.json'
-      - 'openmetadata-ui/src/main/resources/ui/yarn.lock'
   schedule:
     - cron:  '0 0 */2 * *'
   workflow_dispatch:
@@ -22,6 +18,7 @@ on:
 jobs:
   retire-js-scan:
     runs-on: ubuntu-latest
+    environment: security-scan
     permissions:
       contents: read
     steps:
@@ -127,13 +124,36 @@ jobs:
                   print()
           EOF
 
+      - name: Slack on Failure
+        if: steps.retire-scan.outcome == 'failure'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload: |
+            {
+              "text": "🚨 Vulnerability scan failed, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Slack on Success
+        if: steps.retire-scan.outcome != 'failure'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload: |
+            {
+              "text": "🟢 Vulnerability scan passed for OpenMetadata Repo, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
       - name: Force failure on vulnerabilities found
         if: steps.retire-scan.outcome == 'failure'
         run: exit 1
 
   security-scan:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
     environment: security-scan
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
