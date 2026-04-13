@@ -3132,10 +3132,11 @@ public class TableRepository extends EntityRepository<Table> {
       int offset,
       String fieldsParam,
       Include include,
+      String tags,
       Authorizer authorizer,
       SecurityContext securityContext) {
     return searchTableColumnsById(
-        id, query, limit, offset, fieldsParam, include, "name", "asc", authorizer, securityContext);
+        id, query, limit, offset, fieldsParam, include, "name", "asc", tags, authorizer, securityContext);
   }
 
   public ResultList<Column> searchTableColumnsById(
@@ -3147,11 +3148,12 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       String sortBy,
       String sortOrder,
+      String tags,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, sortBy, sortOrder, tags, authorizer, securityContext);
   }
 
   public ResultList<Column> searchTableColumnsByFQN(
@@ -3161,6 +3163,7 @@ public class TableRepository extends EntityRepository<Table> {
       int offset,
       String fieldsParam,
       Include include,
+      String tags,
       Authorizer authorizer,
       SecurityContext securityContext) {
     return searchTableColumnsByFQN(
@@ -3172,6 +3175,7 @@ public class TableRepository extends EntityRepository<Table> {
         include,
         "name",
         "asc",
+        tags,
         authorizer,
         securityContext);
   }
@@ -3185,11 +3189,12 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       String sortBy,
       String sortOrder,
+      String tags,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, sortBy, sortOrder, tags, authorizer, securityContext);
   }
 
   private ResultList<Column> searchTableColumnsInternal(
@@ -3200,6 +3205,7 @@ public class TableRepository extends EntityRepository<Table> {
       String fieldsParam,
       String sortBy,
       String sortOrder,
+      String tags,
       Authorizer authorizer,
       SecurityContext securityContext) {
     List<Column> allColumns = table.getColumns();
@@ -3227,6 +3233,23 @@ public class TableRepository extends EntityRepository<Table> {
                         return column.getDisplayName() != null
                             && column.getDisplayName().toLowerCase().contains(searchTerm);
                       })
+                  .toList());
+    }
+
+    if (tags != null && !tags.trim().isEmpty()) {
+      String[] tagFQNs = tags.split(",");
+      matchingColumns =
+          new ArrayList<>(
+              matchingColumns.stream()
+                  .filter(
+                      column ->
+                          column.getTags() != null
+                              && column.getTags().stream()
+                                  .anyMatch(
+                                      tag ->
+                                          Arrays.stream(tagFQNs)
+                                              .anyMatch(
+                                                  tagFQN -> tag.getTagFQN().equals(tagFQN.trim()))))
                   .toList());
     }
 

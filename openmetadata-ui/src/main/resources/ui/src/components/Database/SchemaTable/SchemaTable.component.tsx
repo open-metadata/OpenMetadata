@@ -118,6 +118,16 @@ import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
 import { TableCellRendered } from './SchemaTable.interface';
 
+export const buildTagsParam = (
+  tagFilter: Record<TagSource, TagFilterOptions[]>
+): string | undefined => {
+  const tagsList = [
+    ...(tagFilter?.Classification?.map((t) => t.value) ?? []),
+    ...(tagFilter?.Glossary?.map((t) => t.value) ?? []),
+  ];
+  return tagsList.length > 0 ? tagsList.join(',') : undefined;
+};
+
 const SchemaTable = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -216,6 +226,15 @@ const SchemaTable = () => {
     [tablePermissions, deleted]
   );
 
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(tableColumns);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [tableColumns]);
+
   const searchTableColumns = useCallback(
     async (
       searchQuery: string,
@@ -233,6 +252,8 @@ const SchemaTable = () => {
         const sortByParam = columnSortBy ?? sortBy;
         const sortOrderParam = columnSortOrder ?? sortOrder;
 
+        const tagsParam = buildTagsParam(tagFilter);
+
         const response = await searchTableColumnsByFQN(tableFqn, {
           q: searchQuery,
           limit: pageSize,
@@ -240,6 +261,7 @@ const SchemaTable = () => {
           fields: 'tags,customMetrics,extension',
           sortBy: sortByParam,
           sortOrder: sortOrderParam,
+          tags: tagsParam,
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -255,7 +277,7 @@ const SchemaTable = () => {
         setColumnsLoading(false);
       }
     },
-    [tableFqn, pageSize, handlePagingChange]
+    [tableFqn, pageSize, handlePagingChange, tagFilter]
   );
 
   const fetchTableColumns = useCallback(
@@ -274,12 +296,15 @@ const SchemaTable = () => {
         const sortByParam = columnSortBy ?? sortBy;
         const sortOrderParam = columnSortOrder ?? sortOrder;
 
+        const tagsParam = buildTagsParam(tagFilter);
+
         const response = await getTableColumnsByFQN(tableFqn, {
           limit: pageSize,
           offset: offset,
           fields: 'tags,customMetrics,extension',
           sortBy: sortByParam,
           sortOrder: sortOrderParam,
+          ...(tagsParam ? { tags: tagsParam } : {}),
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -295,7 +320,7 @@ const SchemaTable = () => {
         setColumnsLoading(false);
       }
     },
-    [tableFqn, pageSize, handlePagingChange]
+    [tableFqn, pageSize, handlePagingChange, tagFilter]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -322,7 +347,7 @@ const SchemaTable = () => {
     if (searchText) {
       searchTableColumns(searchText, currentPage, sortBy, sortOrder);
     }
-  }, [searchText, currentPage, searchTableColumns, sortBy, sortOrder]);
+  }, [searchText, currentPage, searchTableColumns, sortBy, sortOrder, tagFilter]);
 
   useEffect(() => {
     if (searchText) {
@@ -337,6 +362,7 @@ const SchemaTable = () => {
     fetchTableColumns,
     sortBy,
     sortOrder,
+    tagFilter,
   ]);
 
   useEffect(() => {
@@ -587,15 +613,6 @@ const SchemaTable = () => {
       setEditColumnDisplayName(undefined);
     }
   };
-
-  const tagFilter = useMemo(() => {
-    const tags = getAllTags(tableColumns);
-
-    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
-      TagSource,
-      TagFilterOptions[]
-    >;
-  }, [tableColumns]);
 
   const handleColumnClick = useCallback(
     (column: Column, event: React.MouseEvent) => {

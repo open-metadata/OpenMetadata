@@ -2006,7 +2006,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       allowableValues = {"asc", "desc"}))
           @QueryParam("sortOrder")
           @DefaultValue("asc")
-          String sortOrder) {
+          String sortOrder,
+      @Parameter(
+              description = "Comma-separated list of tag FQNs to filter columns by",
+              schema = @Schema(type = "string"))
+          @QueryParam("tags")
+          String tags) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -2020,6 +2025,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
+            tags,
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();
@@ -2095,7 +2101,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       allowableValues = {"asc", "desc"}))
           @QueryParam("sortOrder")
           @DefaultValue("asc")
-          String sortOrder) {
+          String sortOrder,
+      @Parameter(
+              description = "Comma-separated list of tag FQNs to filter columns by",
+              schema = @Schema(type = "string"))
+          @QueryParam("tags")
+          String tags) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
@@ -2109,6 +2120,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
+            tags,
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();

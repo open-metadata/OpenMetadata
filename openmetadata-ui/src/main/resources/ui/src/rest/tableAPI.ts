@@ -282,6 +282,7 @@ export type GetTableColumnsParams = {
   include?: Include;
   sortBy?: 'name' | 'ordinalPosition';
   sortOrder?: 'asc' | 'desc';
+  tags?: string;
 };
 
 export const getTableColumnsById = async (
@@ -314,6 +315,7 @@ export const getTableColumnsByFQN = async (
 
 export interface SearchTableColumnsParams extends GetTableColumnsParams {
   q?: string; // Search query
+  tags?: string;
 }
 
 export const searchTableColumnsById = async (

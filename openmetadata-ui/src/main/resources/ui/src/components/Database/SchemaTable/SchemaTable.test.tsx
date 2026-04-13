@@ -16,9 +16,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
-import { getTableColumnsByFQN } from '../../../rest/tableAPI';
+import { getTableColumnsByFQN, searchTableColumnsByFQN } from '../../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import SchemaTable from './SchemaTable.component';
+import SchemaTable, { buildTagsParam } from './SchemaTable.component';
+import { TagFilterOptions } from 'Models';
+import { TagSource } from '../../../generated/type/schema';
+import { getAllTags, searchTagInData } from '../../../utils/TableTags/TableTags.utils';
 
 const mockTableConstraints = [
   {
@@ -441,11 +444,9 @@ describe('Test EntityTable Component', () => {
     });
 
     const entityTable = await screen.findByTestId('entity-table');
-
     expect(entityTable).toBeInTheDocument();
 
     const emptyPlaceholder = screen.getByText('FilterTablePlaceHolder');
-
     expect(emptyPlaceholder).toBeInTheDocument();
   });
 
@@ -611,6 +612,62 @@ describe('Test EntityTable Component', () => {
       expect(mockColumnsWithNested[1].children).toBeDefined();
       expect(mockColumnsWithNested[1].children).toHaveLength(3);
       expect(mockColumnsWithNested[1].children?.[0].name).toBe('product_id');
+    });
+  });
+
+  describe('Tag Filtering Server-Side Integration (Issue #25063)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      
+      // Reset core mocks back to default implementation for TEST 1 integration
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+        data: mockColumns,
+        paging: { total: mockColumns.length },
+      });
+      (searchTableColumnsByFQN as jest.Mock).mockResolvedValue({
+        data: mockColumns,
+        paging: { total: mockColumns.length },
+      });
+    });
+
+    it('TEST 1 — No tags param sent when no filter active', async () => {
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.not.objectContaining({ tags: expect.anything() })
+      );
+    });
+
+    it('TEST 2 — Classification filter', () => {
+      expect(buildTagsParam({
+        Classification: [{ value: 'PII.Sensitive' }],
+        Glossary: []
+      } as Record<TagSource, TagFilterOptions[]>)).toBe('PII.Sensitive');
+    });
+
+    it('TEST 3 — Glossary filter', () => {
+      expect(buildTagsParam({
+        Classification: [],
+        Glossary: [{ value: 'Glossary.Term1' }]
+      } as Record<TagSource, TagFilterOptions[]>)).toBe('Glossary.Term1');
+    });
+
+    it('TEST 4 — Multiple tags comma-separated', () => {
+      expect(buildTagsParam({
+        Classification: [{ value: 'PII.Sensitive' }],
+        Glossary: [{ value: 'Glossary.Term1' }]
+      } as Record<TagSource, TagFilterOptions[]>)).toBe('PII.Sensitive,Glossary.Term1');
+    });
+
+    it('TEST 5 — Empty filter returns undefined', () => {
+      expect(buildTagsParam({
+        Classification: [],
+        Glossary: []
+      } as Record<TagSource, TagFilterOptions[]>)).toBeUndefined();
     });
   });
 });
