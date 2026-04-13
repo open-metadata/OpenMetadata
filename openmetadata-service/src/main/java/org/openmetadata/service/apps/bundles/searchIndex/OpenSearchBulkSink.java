@@ -358,20 +358,26 @@ public class OpenSearchBulkSink implements BulkSink {
           (long) finalJson.getBytes(StandardCharsets.UTF_8).length
               + BULK_OPERATION_METADATA_OVERHEAD;
 
-      org.opensearch.client.json.JsonData jsonData = OsUtils.toJsonData(finalJson);
-
       BulkOperation operation;
       if (recreateIndex) {
         operation =
             BulkOperation.of(
-                op -> op.index(idx -> idx.index(indexName).id(docId).document(jsonData)));
+                op ->
+                    op.index(
+                        idx ->
+                            idx.index(indexName)
+                                .id(docId)
+                                .document(OsUtils.toJsonData(finalJson))));
       } else {
         operation =
             BulkOperation.of(
                 op ->
                     op.update(
                         upd ->
-                            upd.index(indexName).id(docId).document(jsonData).docAsUpsert(true)));
+                            upd.index(indexName)
+                                .id(docId)
+                                .document(OsUtils.toJsonData(finalJson))
+                                .docAsUpsert(true)));
       }
       if (tracker != null) {
         tracker.incrementPendingSink();
@@ -427,14 +433,15 @@ public class OpenSearchBulkSink implements BulkSink {
     try {
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
-      org.opensearch.client.json.JsonData jsonData = OsUtils.toJsonData(json);
       String docId = entity.getId().toString();
       long estimatedSize =
           (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
 
       BulkOperation operation =
           BulkOperation.of(
-              op -> op.index(idx -> idx.index(indexName).id(docId).document(jsonData)));
+              op ->
+                  op.index(
+                      idx -> idx.index(indexName).id(docId).document(OsUtils.toJsonData(json))));
 
       if (tracker != null) {
         tracker.incrementPendingSink();
@@ -507,14 +514,18 @@ public class OpenSearchBulkSink implements BulkSink {
         ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
         Map<String, Object> searchIndexDoc = columnIndex.buildSearchIndexDoc();
         String json = JsonUtils.pojoToJson(searchIndexDoc);
-        org.opensearch.client.json.JsonData jsonData = OsUtils.toJsonData(json);
         String docId = searchIndexDoc.get("id").toString();
 
         BulkOperation operation;
         if (recreateIndex) {
           operation =
               BulkOperation.of(
-                  op -> op.index(idx -> idx.index(columnIndexName).id(docId).document(jsonData)));
+                  op ->
+                      op.index(
+                          idx ->
+                              idx.index(columnIndexName)
+                                  .id(docId)
+                                  .document(OsUtils.toJsonData(json))));
         } else {
           operation =
               BulkOperation.of(
@@ -523,7 +534,7 @@ public class OpenSearchBulkSink implements BulkSink {
                           upd ->
                               upd.index(columnIndexName)
                                   .id(docId)
-                                  .document(jsonData)
+                                  .document(OsUtils.toJsonData(json))
                                   .docAsUpsert(true)));
         }
         long estimatedSize =
@@ -854,13 +865,7 @@ public class OpenSearchBulkSink implements BulkSink {
       this.totalFailed = totalFailed;
       this.statsUpdater = statsUpdater;
       this.circuitBreaker = circuitBreaker;
-      this.scheduler =
-          Executors.newScheduledThreadPool(
-              1,
-              Thread.ofPlatform()
-                  .name("reindex-os-bulk-flush")
-                  .priority(Thread.MIN_PRIORITY)
-                  .factory());
+      this.scheduler = Executors.newScheduledThreadPool(1);
 
       scheduler.scheduleAtFixedRate(
           this::flushIfNeeded, flushIntervalMillis, flushIntervalMillis, TimeUnit.MILLISECONDS);

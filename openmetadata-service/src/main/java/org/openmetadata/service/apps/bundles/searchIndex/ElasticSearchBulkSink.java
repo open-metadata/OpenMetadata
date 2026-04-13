@@ -302,7 +302,6 @@ public class ElasticSearchBulkSink implements BulkSink {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
-      es.co.elastic.clients.json.JsonData jsonData = EsUtils.toJsonData(json);
       String docId = entity.getId().toString();
       long estimatedSize =
           (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
@@ -311,7 +310,9 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (recreateIndex) {
         operation =
             BulkOperation.of(
-                op -> op.index(idx -> idx.index(indexName).id(docId).document(jsonData)));
+                op ->
+                    op.index(
+                        idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
       } else {
         operation =
             BulkOperation.of(
@@ -320,7 +321,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                         upd ->
                             upd.index(indexName)
                                 .id(docId)
-                                .action(a -> a.doc(jsonData).docAsUpsert(true))));
+                                .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
       }
       if (tracker != null) {
         tracker.incrementPendingSink();
@@ -376,14 +377,15 @@ public class ElasticSearchBulkSink implements BulkSink {
     try {
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
-      es.co.elastic.clients.json.JsonData jsonData = EsUtils.toJsonData(json);
       String docId = entity.getId().toString();
       long estimatedSize =
           (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
 
       BulkOperation operation =
           BulkOperation.of(
-              op -> op.index(idx -> idx.index(indexName).id(docId).document(jsonData)));
+              op ->
+                  op.index(
+                      idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
 
       if (tracker != null) {
         tracker.incrementPendingSink();
@@ -456,14 +458,18 @@ public class ElasticSearchBulkSink implements BulkSink {
         ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
         Map<String, Object> searchIndexDoc = columnIndex.buildSearchIndexDoc();
         String json = JsonUtils.pojoToJson(searchIndexDoc);
-        es.co.elastic.clients.json.JsonData jsonData = EsUtils.toJsonData(json);
         String docId = searchIndexDoc.get("id").toString();
 
         BulkOperation operation;
         if (recreateIndex) {
           operation =
               BulkOperation.of(
-                  op -> op.index(idx -> idx.index(columnIndexName).id(docId).document(jsonData)));
+                  op ->
+                      op.index(
+                          idx ->
+                              idx.index(columnIndexName)
+                                  .id(docId)
+                                  .document(EsUtils.toJsonData(json))));
         } else {
           operation =
               BulkOperation.of(
@@ -472,7 +478,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                           upd ->
                               upd.index(columnIndexName)
                                   .id(docId)
-                                  .action(a -> a.doc(jsonData).docAsUpsert(true))));
+                                  .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
         }
         long estimatedSize =
             (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
@@ -719,11 +725,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       this.circuitBreaker = circuitBreaker;
       this.scheduler =
           Executors.newScheduledThreadPool(
-              1,
-              Thread.ofPlatform()
-                  .name("reindex-es-bulk-flush")
-                  .priority(Thread.MIN_PRIORITY)
-                  .factory());
+              1, Thread.ofPlatform().name("reindex-es-bulk-flush").factory());
 
       scheduler.scheduleAtFixedRate(
           this::flushIfNeeded, flushIntervalMillis, flushIntervalMillis, TimeUnit.MILLISECONDS);
