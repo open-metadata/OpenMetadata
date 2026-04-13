@@ -19,8 +19,10 @@ import {
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { waitForTestSuiteIngestionPipelinesListResponse } from '../../utils/testCases';
-import { submitTestCaseForm } from '../../utils/testCases';
+import {
+  submitTestCaseForm,
+  waitForTestSuiteIngestionPipelinesListResponse,
+} from '../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
