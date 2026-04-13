@@ -137,7 +137,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack on Success
-        if: steps.retire-scan.outcome != 'failure'
+        if: steps.retire-scan.outcome == 'success'
         uses: slackapi/slack-github-action@v1.23.0
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
