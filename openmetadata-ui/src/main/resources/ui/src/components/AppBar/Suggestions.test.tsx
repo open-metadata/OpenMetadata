@@ -134,7 +134,9 @@ describe('Suggestions Component', () => {
       render(<Suggestions {...defaultProps} />);
 
       // The component should show the no results message
-      expect(screen.getByTestId('transi18next')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.please-enter-to-find-data-assets')
+      ).toBeInTheDocument();
     });
 
     it('should not call searchQuery when tour is open', () => {

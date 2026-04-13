@@ -16,7 +16,6 @@ import { SEARCH_INDEXING_APPLICATION } from '../../constants/explore.constants';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { IndexNotFoundBanner } from './IndexNotFoundBanner';
 
-
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     theme: {
@@ -28,7 +27,6 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 jest.mock('../../utils/RouterUtils', () => ({
   getApplicationDetailsPath: jest.fn().mockReturnValue('/settings/search'),
 }));
-
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -75,8 +73,12 @@ describe('IndexNotFoundBanner', () => {
 
     expect(screen.getByTestId('index-not-found-alert')).toBeInTheDocument();
     expect(screen.getByText('server.indexing-error')).toBeInTheDocument();
-    expect(await screen.findByText(/message.configure-search-re-index/)).toBeInTheDocument();
-    expect(await screen.findByText(/label.search-index-setting-plural/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/message.configure-search-re-index/)
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/label.search-index-setting-plural/)
+    ).toBeInTheDocument();
   });
 
   it('builds the settings link using search indexing application path', () => {

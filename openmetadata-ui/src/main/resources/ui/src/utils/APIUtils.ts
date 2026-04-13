@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { get, isArray, isObject, transform, isString } from 'lodash';
+import { get, isArray, isObject, isString, transform } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';

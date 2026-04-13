@@ -19,9 +19,9 @@ import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
-import withSuspenseFallback from './withSuspenseFallback';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
+import withSuspenseFallback from './withSuspenseFallback';
 
 const AuthenticatedApp = withSuspenseFallback(
   lazy(() => import('./AuthenticatedApp'))
@@ -74,7 +74,7 @@ const AppRouter = () => {
     }))
   );
 
-    const { plugins = [] } = useApplicationsProvider();
+  const { plugins = [] } = useApplicationsProvider();
 
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
@@ -116,19 +116,18 @@ const AppRouter = () => {
             path={APP_ROUTER_ROUTES.AUTH_CALLBACK}
           />
 
-           {/* Render APP position plugin routes (they handle their own layouts) */}
-      {
-        plugins?.flatMap((plugin) => {
-          const routes = plugin.getRoutes?.() || [];
-          // Filter routes with APP position
-          const appRoutes = routes.filter(
-            (route) => route.position === RoutePosition.APP
-          );
+          {/* Render APP position plugin routes (they handle their own layouts) */}
+          {plugins?.flatMap((plugin) => {
+            const routes = plugin.getRoutes?.() || [];
+            // Filter routes with APP position
+            const appRoutes = routes.filter(
+              (route) => route.position === RoutePosition.APP
+            );
 
-          return appRoutes.map((route, idx) => (
-            <Route key={`${plugin.name}-app-${idx}`} {...route} />
-          ));
-        })}
+            return appRoutes.map((route, idx) => (
+              <Route key={`${plugin.name}-app-${idx}`} {...route} />
+            ));
+          })}
 
           <Route element={<AppContainer />} path="*" />
         </Routes>

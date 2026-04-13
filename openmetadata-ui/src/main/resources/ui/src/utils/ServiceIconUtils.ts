@@ -31,6 +31,7 @@ import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
 import impala from '../assets/img/service-icon-impala.png';
+import iomete from '../assets/img/service-icon-iomete.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
 import mongodb from '../assets/img/service-icon-mongodb.png';
 import mssql from '../assets/img/service-icon-mssql.png';
@@ -54,7 +55,6 @@ import trino from '../assets/img/service-icon-trino.png';
 import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.png';
 import teradata from '../assets/svg/teradata.svg';
-import iomete from '../assets/img/service-icon-iomete.png';
 
 // Messaging services
 import kafka from '../assets/img/service-icon-kafka.png';
