@@ -226,6 +226,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const [expandedTermIds, setExpandedTermIds] = useState<Set<string>>(
     new Set()
   );
+  const [loadingTermIds, setLoadingTermIds] = useState<Set<string>>(new Set());
   const [rdfEnabled, setRdfEnabled] = useState<boolean | null>(null);
   const [dataSource, setDataSource] = useState<'rdf' | 'database'>('database');
   const [relationTypes, setRelationTypes] = useState<
@@ -244,6 +245,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     Record<string, number>
   >({});
   const [hasMoreTerms, setHasMoreTerms] = useState(false);
+  const [dataModeRefreshKey, setDataModeRefreshKey] = useState(0);
 
   const graphDataRef = useRef<OntologyGraphData | null>(null);
   const explorationModeRef = useRef<ExplorationMode>('model');
@@ -267,6 +269,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     ...DEFAULT_FILTERS,
   });
   const dataModeInitialLoadUsesSpinnerRef = useRef(false);
+  const dataModeAbortGenRef = useRef(0);
+  const hasEnteredDataModeRef = useRef(false);
 
   useEffect(() => {
     graphDataRef.current = graphData;
@@ -316,6 +320,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           ...node,
           assetCount: termAssetCounts[node.id] ?? 0,
           loadedAssetCount: loadedAssetCountPerTerm[node.id] ?? 0,
+          isLoadingAssets: loadingTermIds.has(node.id),
         };
       });
 
@@ -354,6 +359,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     explorationMode,
     termAssetCounts,
     loadedAssetCountPerTerm,
+    loadingTermIds,
   ]);
 
   const filteredGraphData = useMemo(() => {
@@ -712,6 +718,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         return;
       }
 
+      setLoadingTermIds((prev) => new Set(prev).add(termNode.id));
+
       const size = Math.max(1, pageSize);
       const pageNumber = Math.floor(fromOffset / size) + 1;
 
@@ -791,6 +799,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           isAxiosError(error) ? error : String(error),
           t('server.entity-fetch-error')
         );
+      } finally {
+        setLoadingTermIds((prev) => {
+          const next = new Set(prev);
+          next.delete(termNode.id);
+
+          return next;
+        });
       }
     },
     [t]
@@ -1507,6 +1522,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return;
     }
 
+    const gen = dataModeAbortGenRef.current;
     const useSpinner = dataModeInitialLoadUsesSpinnerRef.current;
     if (useSpinner) {
       dataModeInitialLoadUsesSpinnerRef.current = false;
@@ -1525,9 +1541,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       );
 
       await fetchTermAssetCounts(termNodes, glossaryFilterIds);
+      if (dataModeAbortGenRef.current !== gen) {
+        return;
+      }
       setAssetGraphData(null);
     } finally {
-      if (useSpinner) {
+      if (useSpinner && dataModeAbortGenRef.current === gen) {
         setLoading(false);
       }
     }
@@ -1572,6 +1591,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   useEffect(() => {
     if (explorationMode !== 'data') {
+      dataModeAbortGenRef.current++;
+      if (hasEnteredDataModeRef.current) {
+        setLoading(false);
+        hasEnteredDataModeRef.current = false;
+      }
       setAssetGraphData(null);
       dataModeInitialLoadUsesSpinnerRef.current = false;
       if (isInGlobalDataModeRef.current && savedModelGraphRef.current) {
@@ -1582,6 +1606,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
       return;
     }
+
+    hasEnteredDataModeRef.current = true;
 
     if (scope !== 'global') {
       // Scoped data mode: fetch counts for existing model-mode graph
@@ -1596,6 +1622,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     const glossaryFilterIds = withoutOntologyAutocompleteAll(
       filters.glossaryIds
     );
+    const gen = ++dataModeAbortGenRef.current;
     setLoading(true);
     setGraphData(null);
     setTermAssetCounts({});
@@ -1605,19 +1632,27 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           graphData: OntologyGraphData;
           termCounts: Record<string, number>;
         }) => {
+          if (dataModeAbortGenRef.current !== gen) {
+            return;
+          }
           setGraphData(result.graphData);
           setTermAssetCounts(result.termCounts);
           setAssetGraphData(null);
         }
       )
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (dataModeAbortGenRef.current === gen) {
+          setLoading(false);
+        }
+      });
   }, [
     explorationMode,
     scope,
     filters.glossaryIds,
     loadAssetsForDataMode,
     loadDataModeTerms,
+    dataModeRefreshKey,
   ]);
   const mergeGraphResults = useCallback((results: OntologyGraphData[]) => {
     setGraphData((prev) => {
@@ -1865,12 +1900,28 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
 
   const handleRefresh = useCallback(() => {
+    if (explorationMode === 'data') {
+      if (scope === 'global') {
+        setDataModeRefreshKey((k) => k + 1);
+      } else {
+        dataModeInitialLoadUsesSpinnerRef.current = true;
+        loadAssetsForDataMode();
+      }
+
+      return;
+    }
     if (scope === 'global') {
       fetchAllGlossaryData();
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
     }
-  }, [scope, glossaryId, fetchAllGlossaryData]);
+  }, [
+    explorationMode,
+    scope,
+    glossaryId,
+    fetchAllGlossaryData,
+    loadAssetsForDataMode,
+  ]);
 
   const handleScrollNearEdge = useCallback(() => {
     const activeGlossaryFilter =
@@ -2105,7 +2156,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       );
     }
 
-    if (hasNoVisibleNodes && !loading) {
+    if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
       const hasActiveFilter =
         withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
         withoutOntologyAutocompleteAll(filters.relationTypes).length > 0;
