@@ -24,7 +24,7 @@ import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { expect, test as baseTest } from '../../support/fixtures/userPages';
+import { test as baseTest, expect } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -1459,14 +1459,6 @@ test.describe('Right Panel Test Suite', () => {
               e.create(apiContext)
             )
           );
-          for (const entityInstance of Object.values(dataConsumerEntityMap)) {
-            try {
-              await entityInstance.prepareCustomProperty(apiContext);
-            } catch {
-              // Custom property type may already exist from another describe block;
-              // continue so remaining entity types still get registered.
-            }
-          }
         } finally {
           await afterAction();
         }
