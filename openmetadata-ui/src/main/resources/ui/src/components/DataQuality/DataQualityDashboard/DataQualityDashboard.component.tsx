@@ -57,7 +57,7 @@ import {
   getStartOfDayInMillis,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import ObservabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
 import IncidentTimeChartWidget from '../ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
@@ -798,7 +798,7 @@ const DataQualityDashboard = ({
                   name="success"
                   redirectPath={{
                     pathname:
-                      ObservabilityRouterClassBase.getDataQualityPagePath(
+                      observabilityRouterClassBase.getDataQualityPagePath(
                         DataQualityPageTabs.TEST_CASES
                       ),
                     search: QueryString.stringify({
@@ -816,7 +816,7 @@ const DataQualityDashboard = ({
                   name="aborted"
                   redirectPath={{
                     pathname:
-                      ObservabilityRouterClassBase.getDataQualityPagePath(
+                      observabilityRouterClassBase.getDataQualityPagePath(
                         DataQualityPageTabs.TEST_CASES
                       ),
                     search: QueryString.stringify({
@@ -834,7 +834,7 @@ const DataQualityDashboard = ({
                   name="failed"
                   redirectPath={{
                     pathname:
-                      ObservabilityRouterClassBase.getDataQualityPagePath(
+                      observabilityRouterClassBase.getDataQualityPagePath(
                         DataQualityPageTabs.TEST_CASES
                       ),
                     search: QueryString.stringify({

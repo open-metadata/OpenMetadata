@@ -26,7 +26,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import ObservabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import {
   getTestCaseDetailPagePath,
   getTestSuitePath,
@@ -114,7 +114,7 @@ const DataQualityPage = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
-        ObservabilityRouterClassBase.getDataQualityPagePath(
+        observabilityRouterClassBase.getDataQualityPagePath(
           activeKey as DataQualityPageTabs
         )
       );

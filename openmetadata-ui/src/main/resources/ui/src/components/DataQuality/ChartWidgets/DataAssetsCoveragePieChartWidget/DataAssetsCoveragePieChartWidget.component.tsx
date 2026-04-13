@@ -25,7 +25,7 @@ import {
   fetchTotalEntityCount,
 } from '../../../../rest/dataQualityDashboardAPI';
 import { getPieChartLabel } from '../../../../utils/DataQuality/DataQualityUtils';
-import ObservabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import type { CustomPieChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
@@ -48,7 +48,7 @@ const DataAssetsCoveragePieChartWidget = ({
     (_entry: CustomPieChartData, index: number) => {
       if (index === 0) {
         navigate(
-          ObservabilityRouterClassBase.getDataQualityPagePath(
+          observabilityRouterClassBase.getDataQualityPagePath(
             DataQualityPageTabs.TEST_SUITES
           )
         );

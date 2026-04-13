@@ -68,7 +68,7 @@ import {
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
-import ObservabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
   checkPermission,
   getPrioritizedViewPermission,
@@ -738,7 +738,7 @@ export const TestCases = () => {
           breadcrumbData={[
             {
               name: t('label.data-quality'),
-              url: ObservabilityRouterClassBase.getDataQualityPagePath(
+              url: observabilityRouterClassBase.getDataQualityPagePath(
                 DataQualityPageTabs.TEST_CASES
               ),
             },

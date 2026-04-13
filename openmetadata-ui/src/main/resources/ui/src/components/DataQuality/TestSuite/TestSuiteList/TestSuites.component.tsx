@@ -57,7 +57,7 @@ import {
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
-import ObservabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
@@ -270,7 +270,7 @@ export const TestSuites = () => {
 
   const handleSubTabChange = (e: RadioChangeEvent) => {
     navigate(
-      ObservabilityRouterClassBase.getDataQualityPagePath(
+      observabilityRouterClassBase.getDataQualityPagePath(
         tab,
         e.target.value as DataQualitySubTabs
       )

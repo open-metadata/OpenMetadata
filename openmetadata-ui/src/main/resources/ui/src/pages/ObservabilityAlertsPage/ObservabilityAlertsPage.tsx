@@ -48,7 +48,7 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import ObservabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -251,7 +251,7 @@ const ObservabilityAlertsPage = () => {
               {alertPermission.edit && (
                 <Tooltip placement="bottom" title={t('label.edit')}>
                   <Link
-                    to={ObservabilityRouterClassBase.getObservabilityAlertsEditPath(
+                    to={observabilityRouterClassBase.getObservabilityAlertsEditPath(
                       fqn
                     )}>
                     <Button
@@ -313,7 +313,7 @@ const ObservabilityAlertsPage = () => {
                       type="primary"
                       onClick={() =>
                         navigate(
-                          ObservabilityRouterClassBase.getAddObservabilityAlertsPath()
+                          observabilityRouterClassBase.getAddObservabilityAlertsPath()
                         )
                       }>
                       {t('label.add-entity', { entity: t('label.alert') })}
@@ -351,7 +351,7 @@ const ObservabilityAlertsPage = () => {
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>
                     navigate(
-                      ObservabilityRouterClassBase.getAddObservabilityAlertsPath()
+                      observabilityRouterClassBase.getAddObservabilityAlertsPath()
                     )
                   }
                 />
