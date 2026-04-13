@@ -148,6 +148,12 @@ public class LabelBuilder {
     String sanitized =
         value.replaceAll("[^a-zA-Z0-9\\-_.]", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
 
-    return sanitized.length() > 63 ? sanitized.substring(0, 63) : sanitized;
+    if (sanitized.length() > 63) {
+      String hash = Integer.toHexString(value.hashCode());
+      int trimLen = 63 - hash.length() - 1;
+      sanitized = sanitized.substring(0, trimLen) + "-" + hash;
+    }
+
+      return sanitized;
   }
 }
