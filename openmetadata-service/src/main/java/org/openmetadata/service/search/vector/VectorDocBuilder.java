@@ -255,11 +255,18 @@ public class VectorDocBuilder {
   }
 
   static String buildBodyText(EntityInterface entity, String entityType) {
-    BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
-    if (customExtractor != null) {
-      String custom = customExtractor.extract(entity);
-      if (custom != null) {
-        return custom;
+    if (entityType != null) {
+      BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
+      if (customExtractor != null) {
+        try {
+          String custom = customExtractor.extract(entity);
+          if (custom != null) {
+            return custom;
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Custom BodyTextExtractor failed for [{}], falling back to default", entityType, e);
+        }
       }
     }
 
