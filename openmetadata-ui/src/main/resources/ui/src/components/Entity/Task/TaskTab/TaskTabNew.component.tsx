@@ -152,7 +152,11 @@ const parseProposedChanges = (message: string): ProposedChanges | null => {
   }
   try {
     const parsed = JSON.parse(message);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
       return null;
     }
     const normalized: ProposedChanges = {};
@@ -163,10 +167,14 @@ const parseProposedChanges = (message: string): ProposedChanges | null => {
       const entry = value as Record<string, unknown>;
       normalized[field] = {
         added: Array.isArray(entry.added)
-          ? (entry.added as unknown[]).filter((v): v is string => typeof v === 'string')
+          ? (entry.added as unknown[]).filter(
+              (v): v is string => typeof v === 'string'
+            )
           : [],
         removed: Array.isArray(entry.removed)
-          ? (entry.removed as unknown[]).filter((v): v is string => typeof v === 'string')
+          ? (entry.removed as unknown[]).filter(
+              (v): v is string => typeof v === 'string'
+            )
           : [],
       };
     }
