@@ -27,16 +27,13 @@ import {
   COMBO_COLOR_FALLBACK,
   COMBO_INTERIOR_PADDING_SIDES,
   COMBO_INTERIOR_PADDING_TOP,
-  DATA_MODE_ASSET_CIRCLE_SIZE,
-  DATA_MODE_ASSET_LABEL_LAYOUT_STACK,
+  DATA_MODE_ASSET_LOAD_PAGE_SIZE,
   DATA_MODE_LOAD_MORE_BADGE_BG,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN,
-  DATA_MODE_TERM_H_SPACING,
-  DATA_MODE_TERM_TO_FIRST_RING_GAP,
   DEFAULT_ZOOM,
   DIMMED_EDGE_OPACITY,
   DIMMED_NODE_OPACITY,
@@ -179,6 +176,7 @@ interface GraphNodeMeta {
   assetCount?: number;
   loadedAssetCount?: number;
   assetsExpanded?: boolean;
+  isLoadingAssets?: boolean;
   ontologyNode?: OntologyNode;
   isDimmed?: boolean;
   isSelected?: boolean;
@@ -485,134 +483,6 @@ export function useOntologyGraph({
     }
   }, []);
 
-  /**
-   * After assets are expanded around a term, nudges nearby term nodes outward
-   * so they don't overlap the asset ring. Then runs iterative separation passes
-   * to cascade any secondary overlaps between terms, ensuring no two terms end
-   * up closer than DATA_MODE_TERM_H_SPACING regardless of how many are shifted.
-   */
-  const shiftTermsFromExpandedRing = useCallback((graph: Graph) => {
-    const expanded = expandedTermIdsRef.current;
-    if (!expanded || expanded.size === 0) {
-      return;
-    }
-
-    const REPULSION_RADIUS =
-      DATA_MODE_TERM_TO_FIRST_RING_GAP +
-      DATA_MODE_ASSET_CIRCLE_SIZE +
-      DATA_MODE_ASSET_LABEL_LAYOUT_STACK +
-      24;
-    const MIN_TERM_SEP = DATA_MODE_TERM_H_SPACING;
-
-    // Step 1 – collect positions of all term (circle) nodes into a working map.
-    const termIds: string[] = [];
-    const workingPos = new Map<string, [number, number]>();
-    const initialPos = new Map<string, [number, number]>();
-
-    graph.getNodeData().forEach((node) => {
-      if ((node.type ?? 'rect') !== 'circle') {
-        return;
-      }
-      const id = String(node.id);
-      try {
-        const pos = graph.getElementPosition(id);
-        if (pos) {
-          workingPos.set(id, [pos[0], pos[1]]);
-          initialPos.set(id, [pos[0], pos[1]]);
-          termIds.push(id);
-        }
-      } catch {
-        // not yet positioned
-      }
-    });
-
-    // Step 2 – repulse every term within REPULSION_RADIUS of an expanded term.
-    expanded.forEach((expandedId) => {
-      const epos = workingPos.get(expandedId);
-      if (!epos) {
-        return;
-      }
-      const [ex, ey] = epos;
-      workingPos.forEach(([nx, ny], id) => {
-        if (id === expandedId) {
-          return;
-        }
-        const dx = nx - ex;
-        const dy = ny - ey;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 0 && dist < REPULSION_RADIUS) {
-          const scale = REPULSION_RADIUS / dist;
-          workingPos.set(id, [ex + dx * scale, ey + dy * scale]);
-        }
-      });
-    });
-
-    // Step 3 – iterative separation passes: push apart any pair of terms that
-    // ended up closer than MIN_TERM_SEP. Expanded terms act as anchors and
-    // absorb none of the push (the other term takes the full correction).
-    const PASSES = 12;
-    for (let pass = 0; pass < PASSES; pass++) {
-      let anyOverlap = false;
-      for (let i = 0; i < termIds.length; i++) {
-        for (let j = i + 1; j < termIds.length; j++) {
-          const idA = termIds[i];
-          const idB = termIds[j];
-          const posA = workingPos.get(idA)!;
-          const posB = workingPos.get(idB)!;
-          const dx = posB[0] - posA[0];
-          const dy = posB[1] - posA[1];
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < MIN_TERM_SEP && dist > 0) {
-            anyOverlap = true;
-            const overlap = MIN_TERM_SEP - dist;
-            const ux = dx / dist;
-            const uy = dy / dist;
-            const aIsAnchor = expanded.has(idA);
-            const bIsAnchor = expanded.has(idB);
-            if (!aIsAnchor && !bIsAnchor) {
-              const half = overlap / 2;
-              workingPos.set(idA, [posA[0] - ux * half, posA[1] - uy * half]);
-              workingPos.set(idB, [posB[0] + ux * half, posB[1] + uy * half]);
-            } else if (!aIsAnchor) {
-              workingPos.set(idA, [
-                posA[0] - ux * overlap,
-                posA[1] - uy * overlap,
-              ]);
-            } else if (!bIsAnchor) {
-              workingPos.set(idB, [
-                posB[0] + ux * overlap,
-                posB[1] + uy * overlap,
-              ]);
-            }
-          }
-        }
-      }
-      if (!anyOverlap) {
-        break;
-      }
-    }
-
-    // Step 4 – apply only nodes whose position actually changed.
-    const updates: NodeData[] = [];
-    workingPos.forEach(([nx, ny], id) => {
-      const orig = initialPos.get(id);
-      if (
-        !orig ||
-        (Math.abs(nx - orig[0]) < 0.5 && Math.abs(ny - orig[1]) < 0.5)
-      ) {
-        return;
-      }
-      const node = graph.getNodeData(id);
-      if (node) {
-        updates.push({ id, style: { ...(node.style ?? {}), x: nx, y: ny } });
-      }
-    });
-
-    if (updates.length > 0) {
-      graph.updateNodeData(updates);
-    }
-  }, []);
-
   const DATA_MODE_ASSET_TYPES = new Set(['dataAsset', 'metric']);
   const termNodeCount = useMemo(
     () =>
@@ -704,15 +574,29 @@ export function useOntologyGraph({
           if (isTerm) {
             const tc = nodeColor ?? NODE_BORDER_COLOR;
             const assetCount = d?.assetCount ?? 0;
-            const hasAssetBadge = assetCount > 0;
+            const isLoadingAssets = d?.isLoadingAssets ?? false;
+            const hasAssetBadge = assetCount > 0 || isLoadingAssets;
             const assetsExpanded = d?.assetsExpanded ?? false;
             const loadedAssetCount = d?.loadedAssetCount ?? 0;
             const remaining = Math.max(0, assetCount - loadedAssetCount);
-            const showLoadMore = assetsExpanded && remaining > 0;
-            const badgeText = assetsExpanded ? '\u2212' : `+${assetCount}`;
+            const showLoadMore =
+              assetsExpanded &&
+              loadedAssetCount > 0 &&
+              assetCount > DATA_MODE_ASSET_LOAD_PAGE_SIZE &&
+              remaining > 0;
+            const badgeText = isLoadingAssets
+              ? '...'
+              : assetsExpanded
+              ? '\u2212'
+              : `+${assetCount}`;
             const label = d?.label ?? datum.id;
+            const badgeDiameterBase = isLoadingAssets
+              ? DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE
+              : undefined;
             let assetCountBadgeDiameter: number;
-            if (assetsExpanded) {
+            if (badgeDiameterBase !== undefined) {
+              assetCountBadgeDiameter = badgeDiameterBase;
+            } else if (assetsExpanded) {
               assetCountBadgeDiameter =
                 badgeText.length > 2
                   ? DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE
@@ -1063,19 +947,15 @@ export function useOntologyGraph({
 
       const W = c.offsetWidth;
       const H = c.offsetHeight;
-      const canvasBottomRight = g.getCanvasByViewport([W, H]);
-      const cvpRight = Array.isArray(canvasBottomRight)
-        ? canvasBottomRight[0]
-        : (canvasBottomRight as unknown as ArrayLike<number>)[0];
-      const cvpBottom = Array.isArray(canvasBottomRight)
-        ? canvasBottomRight[1]
-        : (canvasBottomRight as unknown as ArrayLike<number>)[1];
+      const canvasBottom = g.getCanvasByViewport([W / 2, H]);
+      const cvpBottom = Array.isArray(canvasBottom)
+        ? canvasBottom[1]
+        : (canvasBottom as unknown as ArrayLike<number>)[1];
 
-      const { maxX, maxY } = graphBoundsRef.current;
-      const nearRight = cvpRight >= maxX - EDGE_TRIGGER_PX;
+      const { maxY } = graphBoundsRef.current;
       const nearBottom = cvpBottom >= maxY - EDGE_TRIGGER_PX;
 
-      if (nearRight || nearBottom) {
+      if (nearBottom) {
         onScrollNearEdgeRef.current();
       }
     };
@@ -1125,16 +1005,13 @@ export function useOntologyGraph({
 
     let renderCancelled = false;
     const runRender = async () => {
+      suppressEdgeCheck(1500);
       try {
         if (hasBakedPositions) {
-          await graph.draw();
           if (isDataMode) {
             positionAssetNodes(graph);
-            if ((expandedTermIds?.size ?? 0) > 0) {
-              shiftTermsFromExpandedRing(graph);
-            }
-            graph.draw();
           }
+          await graph.draw();
         } else if ((isModelView || isHierarchyMode) && hasCombos) {
           positionModelModeNodes(graph);
           await graph.draw();
@@ -1324,20 +1201,39 @@ export function useOntologyGraph({
       const COLS = Math.max(1, Math.ceil(Math.sqrt(addedNodes.length)));
       let newIdx = 0;
 
-      // Pre-compute asset ring positions from currentPositions so assets appear
-      // at the correct ring coordinates on the very first draw — no flicker.
+      // Pre-compute asset ring positions for newly added assets only.
+      // Existing assets keep their currentPositions — recomputing all 3500+
+      // entries on every expand is O(n) work that is mostly wasted because only
+      // the term(s) that received new assets need their ring recomputed.
       const precomputedAssetPositions: Record<string, [number, number]> = {};
 
       if (isDataMode) {
         const map = assetToTermMapRef.current;
-        const assetsByTerm = new Map<string, string[]>();
-        Object.entries(map).forEach(([assetId, termId]) => {
-          const list = assetsByTerm.get(termId) ?? [];
-          list.push(assetId);
-          assetsByTerm.set(termId, list);
+
+        // Find which terms actually received new asset nodes this render.
+        const addedNodeIds = new Set(addedNodes.map((n) => String(n.id)));
+        const termsWithNewAssets = new Set<string>();
+        addedNodeIds.forEach((assetId) => {
+          const termId = map[assetId];
+          if (termId) {
+            termsWithNewAssets.add(termId);
+          }
         });
 
-        assetsByTerm.forEach((assetIds, termId) => {
+        // Group ALL assets by term, but only for the affected terms.
+        // Ring positions are computed for the full ring because adding one asset
+        // shifts the angular spacing of every sibling in the same ring.
+        const affectedAssetsByTerm = new Map<string, string[]>();
+        Object.entries(map).forEach(([assetId, termId]) => {
+          if (!termsWithNewAssets.has(termId)) {
+            return;
+          }
+          const list = affectedAssetsByTerm.get(termId) ?? [];
+          list.push(assetId);
+          affectedAssetsByTerm.set(termId, list);
+        });
+
+        affectedAssetsByTerm.forEach((assetIds, termId) => {
           const termPos = currentPositions[termId];
           if (!termPos) {
             return;
@@ -1396,14 +1292,6 @@ export function useOntologyGraph({
 
       graph.setData(bakedData);
       graph.draw();
-      // Shift nearby term nodes outward whenever assets are visible so they
-      // don't overlap the asset ring. Applied after every expand (first or
-      // subsequent), cleared automatically when the full layout re-runs on
-      // collapse (assets removed → non-additive path).
-      if (isDataMode && (expandedTermIdsRef.current?.size ?? 0) > 0) {
-        shiftTermsFromExpandedRing(graph);
-        graph.draw();
-      }
 
       return;
     }
@@ -1438,6 +1326,7 @@ export function useOntologyGraph({
     };
 
     const runUpdate = async () => {
+      suppressEdgeCheck(1500);
       try {
         graph.stopLayout();
         if (cancelled) {
@@ -1458,17 +1347,18 @@ export function useOntologyGraph({
             // than leave the graph blank.
           }
         }
+
+        // In data mode, positions are baked into node data (style.x/y), so
+        // positionAssetNodes can read from node data before draw() — eliminating
+        // the second draw that caused visible node movement when opening a spiral.
+        if (isDataMode) {
+          positionAssetNodes(graph);
+        }
+
         if (cancelled) {
           return;
         }
-        graph.draw();
-        if (isDataMode) {
-          positionAssetNodes(graph);
-          if ((expandedTermIdsRef.current?.size ?? 0) > 0) {
-            shiftTermsFromExpandedRing(graph);
-          }
-          graph.draw();
-        }
+        await graph.draw();
 
         if (cancelled) {
           return;
@@ -1502,7 +1392,6 @@ export function useOntologyGraph({
     hasBakedPositions,
     positionAssetNodes,
     positionModelModeNodes,
-    shiftTermsFromExpandedRing,
     recomputeGraphBounds,
   ]);
 

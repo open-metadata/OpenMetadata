@@ -578,6 +578,10 @@ test.describe(
     test('should redirect to Data Quality page when canceling global bulk edit', async ({
       page,
     }) => {
+      if (!process.env.PLAYWRIGHT_IS_OSS) {
+        // In AUT Global test case list page has more data and takes more time to load
+        test.slow();
+      }
       await redirectToHomePage(page);
       await navigateToGlobalDataQuality(page);
       await clickManageButton(page, 'global');
