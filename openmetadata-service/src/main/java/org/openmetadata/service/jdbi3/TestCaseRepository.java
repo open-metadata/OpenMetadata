@@ -908,8 +908,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
       for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
         LOG.info(
-            "Recursively {} deleting {} {}",
-            hardDelete ? "hard" : "soft",
+            "Recursively hard deleting {} {}",
             entityRelationshipRecord.getType(),
             entityRelationshipRecord.getId());
         testCaseResolutionStatusRepository.deleteById(entityRelationshipRecord.getId(), hardDelete);
