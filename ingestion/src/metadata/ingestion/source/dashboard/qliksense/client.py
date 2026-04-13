@@ -12,9 +12,10 @@
 Websocket Auth & Client for QlikSense
 """
 import json
+import re
 import traceback
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from pydantic import ValidationError
 
@@ -28,16 +29,22 @@ from metadata.ingestion.source.dashboard.qliksense.constants import (
     CREATE_SHEET_SESSION,
     GET_DOCS_LIST_REQ,
     GET_LOADMODEL_LAYOUT,
+    GET_SCRIPT,
     GET_SHEET_LAYOUT,
+    GET_TABLES_AND_KEYS,
     OPEN_DOC_REQ,
 )
 from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikDashboard,
     QlikDashboardResult,
     QlikDataModelResult,
+    QlikFields,
+    QlikScriptResult,
     QlikSheet,
     QlikSheetResult,
     QlikTable,
+    QlikTableConnectionProp,
+    QlikTablesAndKeysResponse,
 )
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import clean_uri
@@ -174,25 +181,128 @@ class QlikSenseClient:
             logger.warning("Failed to fetch the dashboard charts")
         return []
 
+    def _get_tables_via_get_tables_and_keys(self) -> Optional[List[QlikTable]]:
+        """
+        Fetch all tables using GetTablesAndKeys API.
+        This returns all tables in the app including those
+        created via load scripts, not just Data Manager tables.
+        """
+        resp = self._websocket_send_request(GET_TABLES_AND_KEYS, response=True)
+        data = QlikTablesAndKeysResponse(**resp)
+        if not data.result or not data.result.qtr:
+            return None
+        tables = []
+        for table_record in data.result.qtr:
+            fields = [
+                QlikFields(
+                    name=field.qName,
+                    id=field.qOriginalFieldName or field.qName,
+                )
+                for field in table_record.qFields or []
+            ]
+            tables.append(
+                QlikTable(
+                    tableName=table_record.qName,
+                    id=table_record.qName,
+                    connectorProperties=table_record.qConnectorProperties
+                    or QlikTableConnectionProp(),
+                    fields=fields,
+                )
+            )
+        return tables
+
+    def _get_tables_via_load_model(self) -> List[QlikTable]:
+        """
+        Fallback: fetch tables from the LoadModel object.
+        Only returns tables created via Data Manager.
+        """
+        self._websocket_send_request(APP_LOADMODEL_REQ)
+        models = self._websocket_send_request(GET_LOADMODEL_LAYOUT, response=True)
+        data_models = QlikDataModelResult(**models)
+        layout = data_models.result.qLayout
+        if isinstance(layout, list):
+            tables = []
+            for layout in data_models.result.qLayout:
+                tables.extend(layout.value.tables)
+            return tables
+        return layout.tables
+
     def get_dashboard_models(self) -> List[QlikTable]:
         """
-        Get dahsboard chart list
+        Get all data model tables for the current app.
+        Uses GetTablesAndKeys to capture all tables including
+        those created via load scripts.
+        Falls back to LoadModel if GetTablesAndKeys fails.
         """
         try:
-            self._websocket_send_request(APP_LOADMODEL_REQ)
-            models = self._websocket_send_request(GET_LOADMODEL_LAYOUT, response=True)
-            data_models = QlikDataModelResult(**models)
-            layout = data_models.result.qLayout
-            if isinstance(layout, list):
-                tables = []
-                for layout in data_models.result.qLayout:
-                    tables.extend(layout.value.tables)
+            tables = self._get_tables_via_get_tables_and_keys()
+            if tables is not None:
                 return tables
-            return layout.tables
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("GetTablesAndKeys failed, falling back to LoadModel")
+        try:
+            return self._get_tables_via_load_model()
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard datamodels")
         return []
+
+    def get_script(self) -> Optional[str]:
+        """
+        Retrieve the load script from the current app
+        using the GetScript Engine API.
+        """
+        try:
+            resp = self._websocket_send_request(GET_SCRIPT, response=True)
+            script_result = QlikScriptResult(**resp)
+            if script_result.result and script_result.result.qScript:
+                return script_result.result.qScript
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the app load script")
+        return None
+
+    def get_script_tables(self) -> Dict[str, Set[str]]:
+        """
+        Parse the load script to extract source SQL tables
+        for each Qlik table defined in the script.
+
+        Returns a mapping of qlik_table_name -> set of source table names
+        found in FROM/JOIN clauses.
+        """
+        table_source_map: Dict[str, Set[str]] = {}
+        script = self.get_script()
+        if not script:
+            return table_source_map
+
+        sections = re.split(r"(?:^|\n)\s*(?:\[([^\]]+)\]|(\w+))\s*:", script)
+
+        current_table = None
+        for i, section in enumerate(sections):
+            if section is None:
+                continue
+            stripped = section.strip()
+            if not stripped:
+                continue
+            if i % 3 in (1, 2):
+                current_table = stripped
+                continue
+            if current_table:
+                from_join_tables = re.findall(
+                    r"(?:FROM|JOIN)\s+((?:(?:\[[a-zA-Z0-9_ ]+\]|[a-zA-Z0-9_]+)\.)*(?:\[[a-zA-Z0-9_ ]+\]|[a-zA-Z0-9_]+))",
+                    stripped,
+                    re.IGNORECASE,
+                )
+                sql_tables = {
+                    re.sub(r"[\[\]]", "", t)
+                    for t in from_join_tables
+                    if "." in re.sub(r"[\[\]]", "", t)
+                }
+                if sql_tables:
+                    table_source_map.setdefault(current_table, set()).update(sql_tables)
+
+        return table_source_map
 
     def get_dashboard_for_test_connection(self):
         try:

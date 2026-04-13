@@ -28,14 +28,13 @@ export const CHAR_WIDTH_ESTIMATE = 7;
 export const MODEL_NODE_MAX_WIDTH = 220;
 export const COMBO_PADDING = 48;
 export const HULL_GAP = 56;
-export const MIN_NODE_SPACING = 24;
-export const MIN_LINK_DISTANCE = 160;
+export const MIN_NODE_SPACING = 12;
+export const MIN_LINK_DISTANCE = 60;
 
-export const DAGRE_RANK_SEP = 150;
-export const DAGRE_NODE_SEP = 100;
-export const HIERARCHY_DAGRE_NODE_SEP = 260;
-export const HIERARCHY_DAGRE_RANK_SEP = 200;
-const CROSS_GLOSSARY_LAYOUT_EXTRA = 90;
+export const DAGRE_RANK_SEP = 40;
+export const DAGRE_NODE_SEP = 20;
+export const HIERARCHY_DAGRE_NODE_SEP = 150;
+export const HIERARCHY_DAGRE_RANK_SEP = 150;
 
 export const MIN_NODE_WIDTH = 72;
 export const BADGE_MIN_NODE_WIDTH = 100;
@@ -138,31 +137,19 @@ export function getLayoutConfig(
 
   if (!isModelView) {
     if (engineType === LayoutEngine.Dagre) {
-      const baseNodeSep =
-        COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA;
-      const baseRankSep =
-        COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA;
-
-      let nodesep = adaptiveSpacing(baseNodeSep, nodeCount);
-      let ranksep = adaptiveSpacing(baseRankSep, nodeCount);
-
-      if (isHierarchyMode) {
-        nodesep = Math.max(
-          nodesep,
-          adaptiveSpacing(HIERARCHY_DAGRE_NODE_SEP, nodeCount)
-        );
-        ranksep = Math.max(
-          ranksep,
-          adaptiveSpacing(HIERARCHY_DAGRE_RANK_SEP, nodeCount)
-        );
-      }
+      const baseSep = isHierarchyMode
+        ? HIERARCHY_DAGRE_NODE_SEP
+        : DAGRE_NODE_SEP;
+      const baseRank = isHierarchyMode
+        ? HIERARCHY_DAGRE_RANK_SEP
+        : DAGRE_RANK_SEP;
 
       return {
         type: LayoutEngine.Dagre,
         animation: false,
         rankdir: 'TB',
-        nodesep,
-        ranksep,
+        nodesep: adaptiveSpacing(baseSep, nodeCount),
+        ranksep: adaptiveSpacing(baseRank, nodeCount),
         preventOverlap: true,
         nodeSize: baseNodeSize,
       };
@@ -173,11 +160,11 @@ export function getLayoutConfig(
         type: LayoutEngine.Radial,
         animation: false,
         ...(focusNode && !isDataMode && { focusNode }),
-        unitRadius: isDataMode ? 220 : nodeCount <= 2 ? MIN_LINK_DISTANCE : 150,
+        unitRadius: isDataMode ? 80 : nodeCount <= 2 ? MIN_LINK_DISTANCE : 80,
         preventOverlap: true,
         nodeSize: isDataMode ? 20 : 40,
-        nodeSpacing: isDataMode ? 30 : MIN_NODE_SPACING,
-        linkDistance: isDataMode ? 220 : 200,
+        nodeSpacing: MIN_NODE_SPACING,
+        linkDistance: isDataMode ? 80 : 80,
         strictRadial: false,
         maxIteration: 1000,
         sortBy: 'degree',
@@ -211,7 +198,7 @@ export function getLayoutConfig(
 
   if (engineType === LayoutEngine.Radial) {
     const unitRadius = adaptiveSpacingModel(
-      nodeCount <= 2 ? MIN_LINK_DISTANCE : 140,
+      nodeCount <= 2 ? MIN_LINK_DISTANCE : 80,
       nodeCount
     );
 
@@ -223,7 +210,7 @@ export function getLayoutConfig(
       preventOverlap: true,
       nodeSize: baseNodeSize,
       nodeSpacing: adaptiveSpacingModel(MIN_NODE_SPACING, nodeCount),
-      linkDistance: adaptiveSpacingModel(200, nodeCount),
+      linkDistance: adaptiveSpacingModel(80, nodeCount),
       strictRadial: false,
       maxIteration: nodeCount > 500 ? 600 : 1000,
       sortBy: 'degree',
