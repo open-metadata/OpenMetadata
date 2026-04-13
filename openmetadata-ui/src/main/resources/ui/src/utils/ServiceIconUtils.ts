@@ -54,6 +54,7 @@ import trino from '../assets/img/service-icon-trino.png';
 import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.png';
 import teradata from '../assets/svg/teradata.svg';
+import iomete from '../assets/img/service-icon-iomete.png';
 
 // Messaging services
 import kafka from '../assets/img/service-icon-kafka.png';
@@ -173,6 +174,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   timescale: timescale,
   burstiq: burstiq,
   sas: sas,
+  iomete: iomete,
 
   // Messaging services
   kafka: kafka,

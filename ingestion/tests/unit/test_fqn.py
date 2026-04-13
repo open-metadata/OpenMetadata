@@ -426,3 +426,45 @@ class TestFqn(TestCase):
         with pytest.raises(fqn.FQNBuildingException) as exc:
             fqn.prefix_entity_for_wildcard_search(Column, "column")
         assert "not supported for wildcard search" in str(exc.value)
+
+    def test_split_table_name_standard(self):
+        result = fqn.split_table_name("database.schema.table")
+        assert result == {
+            "database": "database",
+            "database_schema": "schema",
+            "table": "table",
+        }
+
+    def test_split_table_name_two_parts(self):
+        result = fqn.split_table_name("schema.table")
+        assert result == {
+            "database": None,
+            "database_schema": "schema",
+            "table": "table",
+        }
+
+    def test_split_table_name_one_part(self):
+        result = fqn.split_table_name("table")
+        assert result == {
+            "database": None,
+            "database_schema": None,
+            "table": "table",
+        }
+
+    def test_split_table_name_four_parts(self):
+        """BigQuery INFORMATION_SCHEMA tables have 4-part names like
+        project.region.INFORMATION_SCHEMA.JOBS_TIMELINE"""
+        result = fqn.split_table_name("project.region.INFORMATION_SCHEMA.JOBS_TIMELINE")
+        assert result == {
+            "database": "region",
+            "database_schema": "INFORMATION_SCHEMA",
+            "table": "JOBS_TIMELINE",
+        }
+
+    def test_split_table_name_five_parts(self):
+        result = fqn.split_table_name("a.b.c.d.e")
+        assert result == {
+            "database": "c",
+            "database_schema": "d",
+            "table": "e",
+        }

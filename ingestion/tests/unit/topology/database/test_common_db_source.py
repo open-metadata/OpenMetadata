@@ -22,8 +22,10 @@ from metadata.generated.schema.entity.data.table import (
     ConstraintType,
     DataType,
     Table,
+    TableConstraint,
 )
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 
 
 @pytest.fixture
@@ -213,3 +215,122 @@ class TestPrepareForeignConstraintsReferredSchema:
 
         assert result is None
         assert len(source.context.get_global.return_value.foreign_tables) == 1
+
+
+class TestNormalizeTableConstraints:
+    """Test DatabaseServiceSource.normalize_table_constraints."""
+
+    def test_case_mismatch_is_normalized(self):
+        """Constraint column names with different casing should be
+        normalized to match actual column definitions."""
+        columns = [
+            Column(name="Entity_ID", dataType=DataType.INT),
+            Column(name="Entity_Type", dataType=DataType.INT),
+        ]
+        constraints = [
+            TableConstraint(
+                constraintType=ConstraintType.CLUSTER_KEY,
+                columns=["Entity_id", "Entity_Type"],
+            )
+        ]
+        result = DatabaseServiceSource.normalize_table_constraints(constraints, columns)
+        assert result[0].columns == ["Entity_ID", "Entity_Type"]
+
+    def test_all_lowercase_constraint_columns(self):
+        """Fully lowercase constraint columns should resolve to actual casing."""
+        columns = [
+            Column(name="OrderID", dataType=DataType.INT),
+            Column(name="CustomerName", dataType=DataType.STRING),
+        ]
+        constraints = [
+            TableConstraint(
+                constraintType=ConstraintType.PRIMARY_KEY,
+                columns=["orderid", "customername"],
+            )
+        ]
+        result = DatabaseServiceSource.normalize_table_constraints(constraints, columns)
+        assert result[0].columns == ["OrderID", "CustomerName"]
+
+    def test_already_matching_columns_unchanged(self):
+        """Columns that already match should pass through unchanged."""
+        columns = [
+            Column(name="id", dataType=DataType.INT),
+            Column(name="name", dataType=DataType.STRING),
+        ]
+        constraints = [
+            TableConstraint(
+                constraintType=ConstraintType.UNIQUE,
+                columns=["id", "name"],
+            )
+        ]
+        result = DatabaseServiceSource.normalize_table_constraints(constraints, columns)
+        assert result[0].columns == ["id", "name"]
+
+    def test_unmatched_columns_preserved(self):
+        """Constraint columns not found in column definitions should be
+        kept as-is (fallback)."""
+        columns = [
+            Column(name="id", dataType=DataType.INT),
+        ]
+        constraints = [
+            TableConstraint(
+                constraintType=ConstraintType.CLUSTER_KEY,
+                columns=["id", "missing_col"],
+            )
+        ]
+        result = DatabaseServiceSource.normalize_table_constraints(constraints, columns)
+        assert result[0].columns == ["id", "missing_col"]
+
+    def test_empty_constraints_returns_empty(self):
+        """Empty or None constraints should return an empty list."""
+        columns = [Column(name="id", dataType=DataType.INT)]
+        assert DatabaseServiceSource.normalize_table_constraints([], columns) == []
+        assert DatabaseServiceSource.normalize_table_constraints(None, columns) == []
+
+    def test_empty_columns_returns_constraints_unchanged(self):
+        """Empty columns list should return constraints as-is."""
+        constraints = [
+            TableConstraint(
+                constraintType=ConstraintType.PRIMARY_KEY,
+                columns=["id"],
+            )
+        ]
+        result = DatabaseServiceSource.normalize_table_constraints(constraints, [])
+        assert result[0].columns == ["id"]
+
+    def test_multiple_constraints_normalized(self):
+        """All constraints in the list should be normalized."""
+        columns = [
+            Column(name="Entity_ID", dataType=DataType.INT),
+            Column(name="Created_At", dataType=DataType.DATETIME),
+        ]
+        constraints = [
+            TableConstraint(
+                constraintType=ConstraintType.CLUSTER_KEY,
+                columns=["entity_id"],
+            ),
+            TableConstraint(
+                constraintType=ConstraintType.PRIMARY_KEY,
+                columns=["ENTITY_ID"],
+            ),
+        ]
+        result = DatabaseServiceSource.normalize_table_constraints(constraints, columns)
+        assert result[0].columns == ["Entity_ID"]
+        assert result[1].columns == ["Entity_ID"]
+
+    def test_constraint_with_none_columns_skipped(self):
+        """Constraints with None columns field should not cause errors."""
+        columns = [Column(name="id", dataType=DataType.INT)]
+        constraints = [
+            TableConstraint(
+                constraintType=ConstraintType.CLUSTER_KEY,
+                columns=None,
+            ),
+            TableConstraint(
+                constraintType=ConstraintType.PRIMARY_KEY,
+                columns=["ID"],
+            ),
+        ]
+        result = DatabaseServiceSource.normalize_table_constraints(constraints, columns)
+        assert result[0].columns is None
+        assert result[1].columns == ["id"]
