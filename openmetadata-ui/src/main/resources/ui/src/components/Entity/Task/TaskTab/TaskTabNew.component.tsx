@@ -151,7 +151,9 @@ const parseProposedChanges = (message: string): ProposedChanges | null => {
     return null;
   }
   try {
-    return JSON.parse(message) as ProposedChanges;
+    const parsed = JSON.parse(message) as ProposedChanges;
+
+    return Object.keys(parsed).length > 0 ? parsed : null;
   } catch {
     return null;
   }
@@ -1141,6 +1143,8 @@ export const TaskTabNew = ({
     setHasAddedComment(false);
   }, [taskThread.id]);
 
+  const proposedChanges = parseProposedChanges(taskThread.message ?? '');
+
   return (
     <Row
       className="relative task-details-panel"
@@ -1161,60 +1165,62 @@ export const TaskTabNew = ({
       </Col>
       <Divider className="m-0" type="horizontal" />
       <Col span={24}>{taskHeader}</Col>
-      {parseProposedChanges(taskThread.message ?? '') !== null && (
+      {proposedChanges !== null && (
         <Col span={24}>
           <div className="task-proposed-changes">
             <Typography.Text className="task-proposed-changes-title">
               {t('label.proposed-change-plural')}
             </Typography.Text>
             <div className="task-proposed-changes-fields">
-              {Object.entries(
-                parseProposedChanges(taskThread.message ?? '') ?? {}
-              ).map(([field, { added, removed }]) => {
-                const getUrl = FIELD_ROUTE_MAP[field];
+              {Object.entries(proposedChanges).map(
+                ([field, { added, removed }]) => {
+                  const getUrl = FIELD_ROUTE_MAP[field];
 
-                return (
-                  <div className="task-proposed-changes-field-row" key={field}>
-                    <Typography.Text className="task-proposed-changes-field-name">
-                      {field}
-                    </Typography.Text>
-                    <div className="task-proposed-changes-chips">
-                      {removed.map((val) =>
-                        getUrl ? (
-                          <a
-                            className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                            href={getUrl(val)}
-                            key={`removed-${val}`}>
-                            {val}
-                          </a>
-                        ) : (
-                          <span
-                            className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                            key={`removed-${val}`}>
-                            {val}
-                          </span>
-                        )
-                      )}
-                      {added.map((val) =>
-                        getUrl ? (
-                          <a
-                            className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                            href={getUrl(val)}
-                            key={`added-${val}`}>
-                            {val}
-                          </a>
-                        ) : (
-                          <span
-                            className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                            key={`added-${val}`}>
-                            {val}
-                          </span>
-                        )
-                      )}
+                  return (
+                    <div
+                      className="task-proposed-changes-field-row"
+                      key={field}>
+                      <Typography.Text className="task-proposed-changes-field-name">
+                        {field}
+                      </Typography.Text>
+                      <div className="task-proposed-changes-chips">
+                        {removed.map((val) =>
+                          getUrl ? (
+                            <a
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              href={getUrl(val)}
+                              key={`removed-${val}`}>
+                              {val}
+                            </a>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`removed-${val}`}>
+                              {val}
+                            </span>
+                          )
+                        )}
+                        {added.map((val) =>
+                          getUrl ? (
+                            <a
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              href={getUrl(val)}
+                              key={`added-${val}`}>
+                              {val}
+                            </a>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`added-${val}`}>
+                              {val}
+                            </span>
+                          )
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                }
+              )}
             </div>
           </div>
         </Col>

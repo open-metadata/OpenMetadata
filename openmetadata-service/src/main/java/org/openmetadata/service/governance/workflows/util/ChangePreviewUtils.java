@@ -186,13 +186,13 @@ public final class ChangePreviewUtils {
     taskThread.withCardStyle(null).withFieldOperation(null).withFeedInfo(null);
     final ChangeDescription cd = entity.getChangeDescription();
     if (hasNoChanges(cd)) {
-      taskThread.withMessage(oldMessage);
+      taskThread.withMessage(oldMessage != null ? oldMessage : "{}");
       return;
     }
     try {
       Map<String, Map<String, List<String>>> merged =
           mergeChangeMaps(parseChangeMap(oldMessage), buildChangeMap(cd));
-      taskThread.withMessage(merged.isEmpty() ? null : JsonUtils.pojoToJson(merged));
+      taskThread.withMessage(merged.isEmpty() ? "{}" : JsonUtils.pojoToJson(merged));
     } catch (Exception e) {
       LOG.warn(
           "Failed to build change preview for approval task on {}",
