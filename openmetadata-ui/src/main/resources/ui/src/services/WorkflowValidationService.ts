@@ -645,6 +645,8 @@ export const testWorkflow = async (
     } else {
       showErrorToast(String(error));
     }
+
+    throw error;
   }
 
   return backendReadyJSON;
