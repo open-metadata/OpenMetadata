@@ -613,6 +613,30 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       } finally {
         await afterActorApiAction();
       }
+
+      await waitForAllLoadersToDisappear(adminPage);
+      const notificationResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.url().includes('filterType=ASSIGNED_TO') &&
+          response.request().method() === 'GET'
+      );
+      await adminPage.getByRole('button', { name: 'Notifications' }).click();
+      const notification = await notificationResponse;
+      expect(notification.status()).toBe(200);
+
+      const mentionResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.url().includes('filterType=MENTIONS') &&
+          response.request().method() === 'GET'
+      );
+      await adminPage.getByText('Mentions').click();
+      const mention = await mentionResponse;
+      expect(mention.status()).toBe(200);
+
+      await waitForAllLoadersToDisappear(adminPage);
+
       const { apiContext: adminApiContext, afterAction: afterAdminApiAction } =
         await getApiContext(adminPage);
 
@@ -644,6 +668,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
             }
           )
           .toContain(testcaseName);
+
+        await expect(adminPage.getByLabel('Mentions')).toContainText(
+          `mentioned you on the testCase ${testcaseName}`
+        );
       } finally {
         await afterAdminApiAction();
       }

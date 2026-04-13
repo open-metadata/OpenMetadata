@@ -517,7 +517,6 @@ test.describe('Mention notifications in Notification Box', () => {
       threadId: conversationThreadId,
       message: conversationSeedText,
     });
-
     await afterAction();
   });
 
@@ -929,22 +928,19 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     expect(feedResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
+    const seededThread = page
+      .locator('[data-testid="message-container"]')
+      .filter({
+        hasText: 'Initial conversation for Chinese character encoding test',
+      })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
     const commentsInput = page.getByTestId('comments-input-field');
-    if (!(await commentsInput.isVisible().catch(() => false))) {
-      const seededThread = page
-        .locator(
-          '[data-testid="message-container"], [data-testid="feed-reply-card"]'
-        )
-        .filter({
-          hasText: 'Initial conversation for Chinese character encoding test',
-        })
-        .first();
-
-      await expect(seededThread).toBeVisible({ timeout: 30_000 });
-      await seededThread.click();
-      await waitForAllLoadersToDisappear(page);
-    }
-
+    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
     await commentsInput.click();
 
     const editorLocator = page.locator(
