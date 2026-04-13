@@ -100,7 +100,6 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   await settingClick(page, GlobalSettingOptions.USERS);
 
   const userList = page.getByTestId('user-list-v1-component');
-  const loader = userList.getByTestId('loader');
   const searchBar = page.getByTestId('searchbar');
   const userRow = page.getByTestId(userName);
 
@@ -114,7 +113,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   await searchBar.clear();
   await searchBar.fill(userName);
   await searchRequest;
-  await loader.waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(userRow).toBeVisible();
   await userRow.click();
