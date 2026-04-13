@@ -1456,9 +1456,9 @@ export const replyAnnouncement = async (page: Page) => {
 
   await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
 
-  await expect(page.getByTestId('add-reply').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('add-reply')).toBeVisible();
 
-  await page.getByTestId('add-reply').locator('svg').click();
+  await page.getByTestId('add-reply').click();
 
   await expect(page.locator('.ql-editor')).toBeVisible();
 
