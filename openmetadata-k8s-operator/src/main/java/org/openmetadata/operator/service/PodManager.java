@@ -407,12 +407,27 @@ public class PodManager {
     }
   }
 
+  private String normalize(String name) {
+
+    int MAX = 63;
+
+    if (name.length() <= MAX) return name;
+
+    LOG.warn("Normalizing long name (>63 chars): {}", name);  // Logs 
+
+    String hash = Integer.toHexString(name.hashCode());
+    int trimLength = MAX - hash.length() - 1;
+
+    return name.substring(0, trimLength) + "-" + hash;
+
+  }
+
   private String generateMainPodName(OMJobResource omJob) {
-    return omJob.getMetadata().getName() + "-main";
+    return normalize(omJob.getMetadata().getName() + "-main");
   }
 
   private String generateExitHandlerPodName(OMJobResource omJob) {
-    return omJob.getMetadata().getName() + "-exit";
+    return normalize(omJob.getMetadata().getName() + "-exit");
   }
 
   private String determinePipelineStatus(OMJobResource omJob) {
