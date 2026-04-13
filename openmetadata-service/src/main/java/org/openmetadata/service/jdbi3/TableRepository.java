@@ -1418,14 +1418,6 @@ public class TableRepository extends EntityRepository<Table> {
 
     List<TagLabel> mergedTableTags =
         mergeTagsWithIncomingPrecedence(table.getTags(), dataModel.getTags());
-    if (table.getTags() != null && dataModel.getTags() != null) {
-      Set<String> incomingTags =
-          dataModel.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
-      mergedTableTags.removeIf(
-          t ->
-              t.getLabelType() == TagLabel.LabelType.AUTOMATED
-                  && !incomingTags.contains(t.getTagFQN()));
-    }
     daoCollection.tagUsageDAO().deleteTagsByTarget(table.getFullyQualifiedName());
     table.setTags(mergedTableTags);
     applyTags(table);
@@ -1443,14 +1435,6 @@ public class TableRepository extends EntityRepository<Table> {
       }
       List<TagLabel> mergedColumnTags =
           mergeTagsWithIncomingPrecedence(stored.getTags(), modelColumn.getTags());
-      if (stored.getTags() != null && modelColumn.getTags() != null) {
-        Set<String> incomingColTags =
-            modelColumn.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
-        mergedColumnTags.removeIf(
-            t ->
-                t.getLabelType() == TagLabel.LabelType.AUTOMATED
-                    && !incomingColTags.contains(t.getTagFQN()));
-      }
       if (stored.getFullyQualifiedName() != null) {
         stored.setTags(mergedColumnTags);
         updatedColumnFqns.add(stored.getFullyQualifiedName());
