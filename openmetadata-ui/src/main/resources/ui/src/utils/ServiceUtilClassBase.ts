@@ -69,6 +69,7 @@ import {
   HIVE,
   IBMDB2,
   IMPALA,
+  IOMETE,
   KAFKA,
   KINESIS,
   LIGHT_DASH,
@@ -514,6 +515,7 @@ class ServiceUtilClassBase {
     [this.DriveServiceTypeSmallCase.CustomDrive, CUSTOM_DRIVE_DEFAULT],
     [this.DriveServiceTypeSmallCase.GoogleDrive, GOOGLE_DRIVE],
     [this.DriveServiceTypeSmallCase.SFTP, SFTP],
+    [this.DatabaseServiceTypeSmallCase.Iomete, IOMETE],
   ]);
 
   private getDefaultLogoForServiceType(type: string): string {

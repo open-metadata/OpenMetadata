@@ -337,6 +337,49 @@ export const AuthProvider = ({
     }
   }, [authenticatorRef.current?.renewIdToken]);
 
+  // When the tab becomes visible after being backgrounded, browsers may have
+  // throttled or suspended the proactive renewal timer. Check token freshness
+  // immediately and refresh if expired, or reschedule the timer with the
+  // correct remaining time.
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      try {
+        const token = await getOidcToken();
+        const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
+
+        // eslint-disable-next-line no-console
+        console.debug(
+          '[VisibilityHandler] token length:',
+          token?.length,
+          'isExpired:',
+          isExpired,
+          'timeoutExpiry:',
+          timeoutExpiry,
+          'hasTokenService:',
+          !!tokenService.current
+        );
+
+        if (isExpired || timeoutExpiry <= 0) {
+          tokenService.current?.refreshToken();
+        } else {
+          startTokenExpiryTimer();
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[VisibilityHandler] error:', error);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   /**
    * Performs cleanup around timers
    * Clean silentSignIn activities if going on
