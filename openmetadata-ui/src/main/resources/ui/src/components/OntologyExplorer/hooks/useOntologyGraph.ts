@@ -27,12 +27,16 @@ import {
   COMBO_COLOR_FALLBACK,
   COMBO_INTERIOR_PADDING_SIDES,
   COMBO_INTERIOR_PADDING_TOP,
+  DATA_MODE_ASSET_CIRCLE_SIZE,
+  DATA_MODE_ASSET_LABEL_LAYOUT_STACK,
   DATA_MODE_LOAD_MORE_BADGE_BG,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_PADDING,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN,
+  DATA_MODE_TERM_H_SPACING,
+  DATA_MODE_TERM_TO_FIRST_RING_GAP,
   DEFAULT_ZOOM,
   DIMMED_EDGE_OPACITY,
   DIMMED_NODE_OPACITY,
@@ -56,7 +60,6 @@ import {
   NODE_SELECTED_HALO_LINE_WIDTH,
   NODE_SELECTED_LINE_WIDTH,
   NODE_SELECTED_STROKE,
-  ONTOLOGY_FIT_VIEW_PADDING,
   PRACTICAL_MIN_ZOOM,
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
@@ -221,6 +224,7 @@ interface UseOntologyGraphProps {
     position: { x: number; y: number }
   ) => void;
   onPaneClick: () => void;
+  onScrollNearEdge?: () => void;
   setClickedEdgeId: (id: string | null) => void;
   neighborSet: Set<string>;
   glossaryColorMap: Record<string, string>;
@@ -244,6 +248,7 @@ export function useOntologyGraph({
   onNodeDoubleClick,
   onNodeContextMenu,
   onPaneClick,
+  onScrollNearEdge,
   setClickedEdgeId,
   neighborSet,
   glossaryColorMap,
@@ -268,6 +273,58 @@ export function useOntologyGraph({
 
   const inputNodesRef = useRef(inputNodes);
   inputNodesRef.current = inputNodes;
+
+  const expandedTermIdsRef = useRef(expandedTermIds);
+  expandedTermIdsRef.current = expandedTermIds;
+
+  const onScrollNearEdgeRef = useRef(onScrollNearEdge);
+  onScrollNearEdgeRef.current = onScrollNearEdge;
+
+  // Cached graph bounds — recomputed only when node data changes, not on every
+  // pan/zoom transform. Updated by recomputeGraphBounds() after data updates.
+  const graphBoundsRef = useRef<{ maxX: number; maxY: number } | null>(null);
+
+  const recomputeGraphBounds = useCallback(() => {
+    const g = graphRef.current;
+    if (!g) {
+      return;
+    }
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    g.getNodeData().forEach((node) => {
+      try {
+        const pos = g.getElementPosition(String(node.id));
+        if (pos) {
+          if (pos[0] > maxX) {
+            maxX = pos[0];
+          }
+          if (pos[1] > maxY) {
+            maxY = pos[1];
+          }
+        }
+      } catch {
+        // Node not yet positioned
+      }
+    });
+    graphBoundsRef.current = maxX === -Infinity ? null : { maxX, maxY };
+  }, []);
+
+  // Suppresses the edge-proximity API call during programmatic transforms
+  // (zoom buttons, fit-to-screen). Only user-initiated pan/scroll should
+  // trigger data fetching.
+  const isProgrammaticTransformRef = useRef(false);
+  const suppressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const suppressEdgeCheck = useCallback((durationMs = 600) => {
+    if (suppressTimeoutRef.current !== null) {
+      clearTimeout(suppressTimeoutRef.current);
+    }
+    isProgrammaticTransformRef.current = true;
+    suppressTimeoutRef.current = setTimeout(() => {
+      isProgrammaticTransformRef.current = false;
+      suppressTimeoutRef.current = null;
+    }, durationMs);
+  }, []);
 
   const extractNodePositions = useCallback((): Record<
     string,
@@ -351,9 +408,10 @@ export function useOntologyGraph({
       return;
     }
 
-    const NODE_H_SEP = 80;
-    const NODE_V_SEP = 60;
-    const COMBO_GAP = 500;
+    const NODE_H_SEP = 100;
+    const NODE_V_SEP = 80;
+    const COMBO_H_GAP = 160;
+    const COMBO_V_GAP = 180;
     const GRID_COLS = Math.ceil(Math.sqrt(combos.length));
 
     const nodesByCombo = new Map<string, NodeData[]>();
@@ -378,7 +436,7 @@ export function useOntologyGraph({
       const col = idx % GRID_COLS;
       if (col === 0 && idx > 0) {
         curX = 0;
-        curY += rowMaxH + COMBO_GAP;
+        curY += rowMaxH + COMBO_V_GAP;
         rowMaxH = 0;
       }
 
@@ -418,8 +476,136 @@ export function useOntologyGraph({
         COMBO_INTERIOR_PADDING_TOP +
         COMBO_INTERIOR_PADDING_SIDES;
 
-      curX += comboW + COMBO_GAP;
+      curX += comboW + COMBO_H_GAP;
       rowMaxH = Math.max(rowMaxH, comboH);
+    });
+
+    if (updates.length > 0) {
+      graph.updateNodeData(updates);
+    }
+  }, []);
+
+  /**
+   * After assets are expanded around a term, nudges nearby term nodes outward
+   * so they don't overlap the asset ring. Then runs iterative separation passes
+   * to cascade any secondary overlaps between terms, ensuring no two terms end
+   * up closer than DATA_MODE_TERM_H_SPACING regardless of how many are shifted.
+   */
+  const shiftTermsFromExpandedRing = useCallback((graph: Graph) => {
+    const expanded = expandedTermIdsRef.current;
+    if (!expanded || expanded.size === 0) {
+      return;
+    }
+
+    const REPULSION_RADIUS =
+      DATA_MODE_TERM_TO_FIRST_RING_GAP +
+      DATA_MODE_ASSET_CIRCLE_SIZE +
+      DATA_MODE_ASSET_LABEL_LAYOUT_STACK +
+      24;
+    const MIN_TERM_SEP = DATA_MODE_TERM_H_SPACING;
+
+    // Step 1 – collect positions of all term (circle) nodes into a working map.
+    const termIds: string[] = [];
+    const workingPos = new Map<string, [number, number]>();
+    const initialPos = new Map<string, [number, number]>();
+
+    graph.getNodeData().forEach((node) => {
+      if ((node.type ?? 'rect') !== 'circle') {
+        return;
+      }
+      const id = String(node.id);
+      try {
+        const pos = graph.getElementPosition(id);
+        if (pos) {
+          workingPos.set(id, [pos[0], pos[1]]);
+          initialPos.set(id, [pos[0], pos[1]]);
+          termIds.push(id);
+        }
+      } catch {
+        // not yet positioned
+      }
+    });
+
+    // Step 2 – repulse every term within REPULSION_RADIUS of an expanded term.
+    expanded.forEach((expandedId) => {
+      const epos = workingPos.get(expandedId);
+      if (!epos) {
+        return;
+      }
+      const [ex, ey] = epos;
+      workingPos.forEach(([nx, ny], id) => {
+        if (id === expandedId) {
+          return;
+        }
+        const dx = nx - ex;
+        const dy = ny - ey;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0 && dist < REPULSION_RADIUS) {
+          const scale = REPULSION_RADIUS / dist;
+          workingPos.set(id, [ex + dx * scale, ey + dy * scale]);
+        }
+      });
+    });
+
+    // Step 3 – iterative separation passes: push apart any pair of terms that
+    // ended up closer than MIN_TERM_SEP. Expanded terms act as anchors and
+    // absorb none of the push (the other term takes the full correction).
+    const PASSES = 12;
+    for (let pass = 0; pass < PASSES; pass++) {
+      let anyOverlap = false;
+      for (let i = 0; i < termIds.length; i++) {
+        for (let j = i + 1; j < termIds.length; j++) {
+          const idA = termIds[i];
+          const idB = termIds[j];
+          const posA = workingPos.get(idA)!;
+          const posB = workingPos.get(idB)!;
+          const dx = posB[0] - posA[0];
+          const dy = posB[1] - posA[1];
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < MIN_TERM_SEP && dist > 0) {
+            anyOverlap = true;
+            const overlap = MIN_TERM_SEP - dist;
+            const ux = dx / dist;
+            const uy = dy / dist;
+            const aIsAnchor = expanded.has(idA);
+            const bIsAnchor = expanded.has(idB);
+            if (!aIsAnchor && !bIsAnchor) {
+              const half = overlap / 2;
+              workingPos.set(idA, [posA[0] - ux * half, posA[1] - uy * half]);
+              workingPos.set(idB, [posB[0] + ux * half, posB[1] + uy * half]);
+            } else if (!aIsAnchor) {
+              workingPos.set(idA, [
+                posA[0] - ux * overlap,
+                posA[1] - uy * overlap,
+              ]);
+            } else if (!bIsAnchor) {
+              workingPos.set(idB, [
+                posB[0] + ux * overlap,
+                posB[1] + uy * overlap,
+              ]);
+            }
+          }
+        }
+      }
+      if (!anyOverlap) {
+        break;
+      }
+    }
+
+    // Step 4 – apply only nodes whose position actually changed.
+    const updates: NodeData[] = [];
+    workingPos.forEach(([nx, ny], id) => {
+      const orig = initialPos.get(id);
+      if (
+        !orig ||
+        (Math.abs(nx - orig[0]) < 0.5 && Math.abs(ny - orig[1]) < 0.5)
+      ) {
+        return;
+      }
+      const node = graph.getNodeData(id);
+      if (node) {
+        updates.push({ id, style: { ...(node.style ?? {}), x: nx, y: ny } });
+      }
     });
 
     if (updates.length > 0) {
@@ -470,7 +656,7 @@ export function useOntologyGraph({
       width,
       height,
       data: graphData,
-      padding: ONTOLOGY_FIT_VIEW_PADDING,
+      padding: 0,
       zoomRange: [MIN_ZOOM, MAX_ZOOM],
       zoom: DEFAULT_ZOOM,
       theme: false,
@@ -860,8 +1046,73 @@ export function useOntologyGraph({
     };
     graph.on('edge:click', handleEdgeClick);
 
+    const EDGE_TRIGGER_PX = 400;
+
+    const checkEdgeProximity = () => {
+      const g = graphRef.current;
+      const c = containerRef.current;
+      if (
+        !g ||
+        !c ||
+        !onScrollNearEdgeRef.current ||
+        isProgrammaticTransformRef.current ||
+        !graphBoundsRef.current
+      ) {
+        return;
+      }
+
+      const W = c.offsetWidth;
+      const H = c.offsetHeight;
+      const canvasBottomRight = g.getCanvasByViewport([W, H]);
+      const cvpRight = Array.isArray(canvasBottomRight)
+        ? canvasBottomRight[0]
+        : (canvasBottomRight as unknown as ArrayLike<number>)[0];
+      const cvpBottom = Array.isArray(canvasBottomRight)
+        ? canvasBottomRight[1]
+        : (canvasBottomRight as unknown as ArrayLike<number>)[1];
+
+      const { maxX, maxY } = graphBoundsRef.current;
+      const nearRight = cvpRight >= maxX - EDGE_TRIGGER_PX;
+      const nearBottom = cvpBottom >= maxY - EDGE_TRIGGER_PX;
+
+      if (nearRight || nearBottom) {
+        onScrollNearEdgeRef.current();
+      }
+    };
+
+    // Use a wheel-event flag to distinguish zoom (wheel/pinch) from pan (drag).
+    // AFTER_TRANSFORM fires for both — the wheel flag tells us which triggered it.
+    let isZooming = false;
+    let zoomClearTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleWheelEvent = () => {
+      isZooming = true;
+      if (zoomClearTimer !== null) {
+        clearTimeout(zoomClearTimer);
+      }
+      zoomClearTimer = setTimeout(() => {
+        isZooming = false;
+        zoomClearTimer = null;
+      }, 150);
+    };
+    container.addEventListener('wheel', handleWheelEvent, { passive: true });
+
+    // RAF-throttled: edge-proximity check on pan only (skip zoom)
+    let transformRafId: number | null = null;
+    const scheduleTransformWork = () => {
+      if (transformRafId !== null) {
+        return;
+      }
+      transformRafId = requestAnimationFrame(() => {
+        transformRafId = null;
+        if (!isZooming && !isProgrammaticTransformRef.current) {
+          checkEdgeProximity();
+        }
+      });
+    };
+    graph.on(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);
+
     const fitAndClampZoom = async () => {
-      await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
+      await fitViewWithMinZoom(graph);
       const zoom = graph.getZoom();
       if (zoom < PRACTICAL_MIN_ZOOM) {
         graph.zoomTo(
@@ -879,9 +1130,12 @@ export function useOntologyGraph({
           await graph.draw();
           if (isDataMode) {
             positionAssetNodes(graph);
+            if ((expandedTermIds?.size ?? 0) > 0) {
+              shiftTermsFromExpandedRing(graph);
+            }
             graph.draw();
           }
-        } else if (isModelView && hasCombos) {
+        } else if ((isModelView || isHierarchyMode) && hasCombos) {
           positionModelModeNodes(graph);
           await graph.draw();
         } else {
@@ -895,12 +1149,19 @@ export function useOntologyGraph({
           return;
         }
         await fitAndClampZoom();
+        recomputeGraphBounds();
       } catch {
+        if (renderCancelled) {
+          return;
+        }
         // Layout or draw failed — attempt a bare draw so at least something
         // renders, then still try to fit the view.
         try {
           await graph.draw();
-          await fitAndClampZoom();
+          if (!renderCancelled) {
+            await fitAndClampZoom();
+            recomputeGraphBounds();
+          }
         } catch {
           // Graph may have been destroyed; ignore.
         }
@@ -915,12 +1176,20 @@ export function useOntologyGraph({
           containerRef.current.offsetWidth,
           containerRef.current.offsetHeight
         );
+        scheduleTransformWork();
       }
     });
     resizeObserver.observe(container);
 
     return () => {
       renderCancelled = true;
+      if (transformRafId !== null) {
+        cancelAnimationFrame(transformRafId);
+      }
+      if (zoomClearTimer !== null) {
+        clearTimeout(zoomClearTimer);
+      }
+      container.removeEventListener('wheel', handleWheelEvent);
       if (cancelPendingUpdateRef.current) {
         cancelPendingUpdateRef.current();
         cancelPendingUpdateRef.current = null;
@@ -931,10 +1200,17 @@ export function useOntologyGraph({
       graph.off(NodeEvent.CONTEXT_MENU, handleNodeContextMenu);
       graph.off(CanvasEvent.CLICK);
       graph.off('edge:click', handleEdgeClick);
+      graph.off(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);
       graph.destroy();
       graphRef.current = null;
     };
-  }, [termNodeCount, explorationMode, hasBakedPositions, layoutType]);
+  }, [
+    termNodeCount,
+    explorationMode,
+    hasBakedPositions,
+    layoutType,
+    recomputeGraphBounds,
+  ]);
 
   useEffect(() => {
     const graph = graphRef.current;
@@ -1006,6 +1282,132 @@ export function useOntologyGraph({
       }
     }
 
+    // Additive-only change: all existing nodes still present + new ones added.
+    // Skip layout entirely — bake current positions for existing nodes and place
+    // new nodes in a grid below the existing graph.  This prevents Dagre from
+    // re-running on thousands of nodes on every scroll-append, which would time
+    // out and leave the graph blank.
+    const currentNodeIds = new Set(
+      graph.getNodeData().map((n) => String(n.id))
+    );
+    const newNodeIdSet = new Set(
+      (graphData.nodes ?? []).map((n) => String(n.id))
+    );
+    const noneRemoved = [...currentNodeIds].every((id) => newNodeIdSet.has(id));
+    const isAdditiveOnly =
+      noneRemoved && (graphData.nodes?.length ?? 0) > currentNodeIds.size;
+
+    if (isAdditiveOnly) {
+      let maxY = 0;
+      let sumX = 0;
+      let positionedCount = 0;
+      const currentPositions: Record<string, [number, number]> = {};
+
+      graph.getNodeData().forEach((n) => {
+        try {
+          const pos = graph.getElementPosition(String(n.id));
+          if (pos) {
+            currentPositions[String(n.id)] = [pos[0], pos[1]];
+            maxY = Math.max(maxY, pos[1]);
+            sumX += pos[0];
+            positionedCount++;
+          }
+        } catch {
+          // not yet positioned
+        }
+      });
+
+      const centerX = positionedCount > 0 ? sumX / positionedCount : 0;
+      const addedNodes = (graphData.nodes ?? []).filter(
+        (n) => !currentNodeIds.has(String(n.id))
+      );
+      const COLS = Math.max(1, Math.ceil(Math.sqrt(addedNodes.length)));
+      let newIdx = 0;
+
+      // Pre-compute asset ring positions from currentPositions so assets appear
+      // at the correct ring coordinates on the very first draw — no flicker.
+      const precomputedAssetPositions: Record<string, [number, number]> = {};
+
+      if (isDataMode) {
+        const map = assetToTermMapRef.current;
+        const assetsByTerm = new Map<string, string[]>();
+        Object.entries(map).forEach(([assetId, termId]) => {
+          const list = assetsByTerm.get(termId) ?? [];
+          list.push(assetId);
+          assetsByTerm.set(termId, list);
+        });
+
+        assetsByTerm.forEach((assetIds, termId) => {
+          const termPos = currentPositions[termId];
+          if (!termPos) {
+            return;
+          }
+          const [termX, termY] = termPos;
+          const ringPositions = computeAssetRingPositions(
+            termX,
+            termY,
+            assetIds
+          );
+          Object.entries(ringPositions).forEach(([assetId, pos]) => {
+            precomputedAssetPositions[assetId] = [pos.x, pos.y];
+          });
+        });
+      }
+
+      const bakedData = {
+        ...graphData,
+        nodes: (graphData.nodes ?? []).map((node) => {
+          const id = String(node.id);
+
+          const ringPos = precomputedAssetPositions[id];
+          if (ringPos) {
+            return {
+              ...node,
+              style: { ...node.style, x: ringPos[0], y: ringPos[1] },
+            };
+          }
+
+          const existingPos = currentPositions[id];
+          if (existingPos) {
+            return {
+              ...node,
+              style: { ...node.style, x: existingPos[0], y: existingPos[1] },
+            };
+          }
+
+          const col = newIdx % COLS;
+          const row = Math.floor(newIdx / COLS);
+          newIdx++;
+
+          return {
+            ...node,
+            style: {
+              ...node.style,
+              x: centerX + (col - COLS / 2) * 220,
+              y: maxY + 200 + row * 120,
+            },
+          };
+        }),
+      };
+
+      if (termFingerprintChanged) {
+        termFingerprintRef.current = newTermFingerprint;
+      }
+
+      graph.setData(bakedData);
+      graph.draw();
+      // Shift nearby term nodes outward whenever assets are visible so they
+      // don't overlap the asset ring. Applied after every expand (first or
+      // subsequent), cleared automatically when the full layout re-runs on
+      // collapse (assets removed → non-additive path).
+      if (isDataMode && (expandedTermIdsRef.current?.size ?? 0) > 0) {
+        shiftTermsFromExpandedRing(graph);
+        graph.draw();
+      }
+
+      return;
+    }
+
     if (termFingerprintChanged) {
       termFingerprintRef.current = newTermFingerprint;
     }
@@ -1045,11 +1447,16 @@ export function useOntologyGraph({
         setClickedEdgeIdRef.current(null);
         graph.setData(graphData);
 
-        if (isModelViewLocal && hasCombos) {
+        if ((isModelViewLocal || isHierarchyMode) && hasCombos) {
           positionModelModeNodes(graph);
         } else if (!hasBakedPositions) {
           graph.setLayout(layoutOptions);
-          await runLayout(graph);
+          try {
+            await runLayout(graph);
+          } catch {
+            // Layout timed out or failed — draw with default positions rather
+            // than leave the graph blank.
+          }
         }
         if (cancelled) {
           return;
@@ -1057,6 +1464,9 @@ export function useOntologyGraph({
         graph.draw();
         if (isDataMode) {
           positionAssetNodes(graph);
+          if ((expandedTermIdsRef.current?.size ?? 0) > 0) {
+            shiftTermsFromExpandedRing(graph);
+          }
           graph.draw();
         }
 
@@ -1065,8 +1475,9 @@ export function useOntologyGraph({
         }
 
         if (termFingerprintChanged) {
-          await fitViewWithMinZoom(graph, termNodeCount, isDataMode);
+          await fitViewWithMinZoom(graph);
         }
+        recomputeGraphBounds();
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;
@@ -1091,7 +1502,9 @@ export function useOntologyGraph({
     hasBakedPositions,
     positionAssetNodes,
     positionModelModeNodes,
+    shiftTermsFromExpandedRing,
+    recomputeGraphBounds,
   ]);
 
-  return { graphRef, extractNodePositions };
+  return { graphRef, extractNodePositions, suppressEdgeCheck };
 }

@@ -125,6 +125,7 @@ export interface OntologyGraphProps {
     position: { x: number; y: number }
   ) => void;
   onPaneClick: () => void;
+  onScrollNearEdge?: () => void;
 }
 
 export interface FilterToolbarProps {
