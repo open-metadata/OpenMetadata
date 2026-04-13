@@ -20,6 +20,7 @@ import {
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
+  confirmIngestionPipelineHardDelete,
   submitTestCaseForm,
   waitForTestSuiteIngestionPipelinesListResponse,
 } from '../../utils/testCases';
@@ -194,16 +195,12 @@ test(
         )
         .click();
 
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-      const deleteRes = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines/*?hardDelete=true'
-      );
-      await page.getByTestId('confirm-button').click();
-      await deleteRes;
+      await confirmIngestionPipelineHardDelete(page);
 
       await page
         .getByTestId('ingestion-list-table')
         .getByTestId('more-actions')
+        .first()
         .click();
 
       await page
@@ -211,9 +208,7 @@ test(
           '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
         )
         .click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-      await page.getByTestId('confirm-button').click();
-      await deleteRes;
+      await confirmIngestionPipelineHardDelete(page);
 
       await expect(
         page.getByTestId('assign-error-placeholder-Pipeline')
