@@ -39,18 +39,26 @@ jobs:
 
       - name: Install UI dependencies
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: yarn --frozen-lockfile --ignore-scripts
+        run: yarn install --ignore-scripts
 
       - name: Run Retire.js scan
         id: retire-scan
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
-          npx retire \
+          npx retire@5 \
             --path node_modules/ \
             --severity medium \
             --outputformat json \
             --outputpath retire-report.json
+
+      - name: Verify report was generated
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          if [ ! -f retire-report.json ]; then
+            echo '::error::retire-report.json was not generated — retire scan may have crashed'
+            exit 1
+          fi
 
       - name: Upload Retire.js Report
         if: always()
@@ -79,6 +87,9 @@ jobs:
               raise SystemExit(0)
 
           findings = data.get("data", [])
+
+          def escape(text):
+              return str(text).replace('|', '\\|').replace('`', "'")
 
           # Group by (component, version) → {files: [], vulnerabilities: []}
           libs = {}
@@ -114,7 +125,7 @@ jobs:
                       cves = ids.get("CVE", [])
                       summary = ids.get("summary", "").split("\n")[0][:120]
                       cve_str = ", ".join(f"[{c}](https://nvd.nist.gov/vuln/detail/{c})" for c in cves) if cves else ids.get("githubID", "—")
-                      print(f"| {SEVERITY_ICON.get(sev, '')} {sev} | {cve_str} | {summary} |")
+                      print(f"| {SEVERITY_ICON.get(sev, '')} {sev} | {escape(cve_str)} | {escape(summary)} |")
 
                   print("\n**Bundled in:**")
                   for f in info["files"]:
