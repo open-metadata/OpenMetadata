@@ -182,7 +182,7 @@ jobs:
         echo "import os" >> $SITE_CUSTOMIZE_PATH
         echo "try:" >> $SITE_CUSTOMIZE_PATH
         echo "    import coverage" >> $SITE_CUSTOMIZE_PATH
-        echo "    os.environ['COVERAGE_PROCESS_START'] = 'ingestion/pyproject.toml'" >> $SITE_CUSTOMIZE_PATH
+        echo "    os.environ['COVERAGE_PROCESS_START'] = os.path.join(os.environ.get('GITHUB_WORKSPACE', os.getcwd()), 'ingestion', 'pyproject.toml')" >> $SITE_CUSTOMIZE_PATH
         echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
         echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
         echo "    pass" >> $SITE_CUSTOMIZE_PATH
