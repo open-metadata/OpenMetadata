@@ -475,9 +475,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     "lag": lag,
                 }
 
-    def _collect_committed_offsets(
-        self, group_ids: list, topic_cg_map: dict
-    ) -> dict:
+    def _collect_committed_offsets(self, group_ids: list, topic_cg_map: dict) -> dict:
         """Collect committed offsets per group.
 
         Returns {group_id: {(topic, partition): offset}}.
@@ -505,9 +503,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
         return committed
 
-    def _batch_get_end_offsets(
-        self, committed: dict, batch_size: int = 500
-    ) -> dict:
+    def _batch_get_end_offsets(self, committed: dict, batch_size: int = 500) -> dict:
         """Fetch end offsets for all unique topic-partitions in batched RPCs."""
         from confluent_kafka.admin import OffsetSpec
 

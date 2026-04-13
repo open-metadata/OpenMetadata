@@ -588,11 +588,7 @@ class TestBatchEndOffsets:
         """Partitions exceeding batch_size should result in multiple list_offsets calls."""
         source = self._make_source()
 
-        committed = {
-            "group-1": {
-                (f"topic-{i}", 0): 10 for i in range(750)
-            }
-        }
+        committed = {"group-1": {(f"topic-{i}", 0): 10 for i in range(750)}}
 
         mock_end_offset = MagicMock()
         mock_end_offset.offset = 100
