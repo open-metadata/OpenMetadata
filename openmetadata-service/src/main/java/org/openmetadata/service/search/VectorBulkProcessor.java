@@ -20,7 +20,7 @@ import os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 @Slf4j
 public class VectorBulkProcessor implements AutoCloseable {
   private static final int DEFAULT_MAX_BULK_ACTIONS = 500;
-  private static final long DEFAULT_MAX_PAYLOAD_BYTES = 50L * 1024 * 1024;
+  private static final long DEFAULT_MAX_PAYLOAD_BYTES = 9L * 1024 * 1024;
   private static final long FLUSH_INTERVAL_MS = 1000;
 
   private final OpenSearchClient client;
