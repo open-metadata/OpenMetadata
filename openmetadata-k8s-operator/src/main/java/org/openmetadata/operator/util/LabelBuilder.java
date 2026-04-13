@@ -154,6 +154,6 @@ public class LabelBuilder {
       sanitized = sanitized.substring(0, trimLen) + "-" + hash;
     }
 
-      return sanitized;
+    return sanitized;
   }
 }
