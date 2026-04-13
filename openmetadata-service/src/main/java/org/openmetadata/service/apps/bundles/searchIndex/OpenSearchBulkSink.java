@@ -911,6 +911,32 @@ public class OpenSearchBulkSink implements BulkSink {
         long operationSize =
             estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
 
+        if (operationSize > maxPayloadSizeBytes) {
+          totalFailed.incrementAndGet();
+          statsUpdater.run();
+          String entityTypeName = entityType != null ? entityType : "unknown";
+          LOG.error(
+              "Document {} of type {} exceeds max payload size ({} > {} bytes), dropping",
+              docId,
+              entityTypeName,
+              operationSize,
+              maxPayloadSizeBytes);
+          if (failureCallback != null) {
+            failureCallback.onFailure(
+                entityTypeName,
+                docId,
+                null,
+                String.format(
+                    "Document size %d bytes exceeds max payload limit %d bytes",
+                    operationSize, maxPayloadSizeBytes),
+                IndexingFailureRecorder.FailureStage.SINK);
+          }
+          if (tracker != null) {
+            tracker.recordSink(StatsResult.FAILED);
+          }
+          return;
+        }
+
         if (!buffer.isEmpty()
             && (buffer.size() >= bulkActions
                 || currentBufferSize + operationSize >= maxPayloadSizeBytes)) {
