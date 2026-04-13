@@ -1408,10 +1408,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<TagLabel> mergedTableTags =
         mergeTagsWithIncomingPrecedence(table.getTags(), dataModel.getTags());
     if (table.getTags() != null) {
-      java.util.List<String> incomingTags = dataModel.getTags() != null 
-          ? dataModel.getTags().stream().map(org.openmetadata.schema.type.TagLabel::getTagFQN).collect(java.util.stream.Collectors.toList())
-          : java.util.Collections.emptyList();
-      mergedTableTags.removeIf(t -> t.getLabelType() == org.openmetadata.schema.type.TagLabel.LabelType.AUTOMATED && !incomingTags.contains(t.getTagFQN()));
+      removeStaleAutomatedTags(mergedTableTags, dataModel.getTags());
     }
     daoCollection.tagUsageDAO().deleteTagsByTarget(table.getFullyQualifiedName());
     table.setTags(mergedTableTags);
@@ -1431,10 +1428,7 @@ public class TableRepository extends EntityRepository<Table> {
       List<TagLabel> mergedColumnTags =
           mergeTagsWithIncomingPrecedence(stored.getTags(), modelColumn.getTags());
       if (stored.getTags() != null) {
-        java.util.List<String> incomingColTags = modelColumn.getTags() != null 
-            ? modelColumn.getTags().stream().map(org.openmetadata.schema.type.TagLabel::getTagFQN).collect(java.util.stream.Collectors.toList())
-            : java.util.Collections.emptyList();
-        mergedColumnTags.removeIf(t -> t.getLabelType() == org.openmetadata.schema.type.TagLabel.LabelType.AUTOMATED && !incomingColTags.contains(t.getTagFQN()));
+        removeStaleAutomatedTags(mergedColumnTags, modelColumn.getTags());
       }
       if (stored.getFullyQualifiedName() != null) {
         stored.setTags(mergedColumnTags);
@@ -3370,4 +3364,15 @@ public class TableRepository extends EntityRepository<Table> {
         indexName,
         docId);
   }
+
+  private void removeStaleAutomatedTags(List<TagLabel> mergedTags, List<TagLabel> incomingTags) {
+    if (mergedTags == null || mergedTags.isEmpty()) {
+      return;
+    }
+    Set<String> incomingTagFqns = incomingTags != null
+        ? incomingTags.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet())
+        : Collections.emptySet();
+    mergedTags.removeIf(t -> t.getLabelType() == TagLabel.LabelType.AUTOMATED && !incomingTagFqns.contains(t.getTagFQN()));
+  }
 }
+
