@@ -93,31 +93,33 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     List<String> entityTypes = getEntityTypesForRequest(request);
 
-    // Two-phase query for tags/glossaryTerms filtering:
-    // Phase 1: Find entityFQN#columnName pairs that have the tag
-    // Phase 2: Filter to only return those specific occurrences
+    // Tag/glossary filter path: we must read _source to check which specific column has
+    // the tag (ES flat object mapping can't tell us). Since we're already reading _source,
+    // we extract full column metadata in the same pass — no separate data-fetch query needed.
     boolean hasTagFilter =
         !nullOrEmpty(request.getTags()) || !nullOrEmpty(request.getGlossaryTerms());
-    Set<String> entityColumnPairsWithTags = null;
-    Set<String> columnNamesWithTags = null;
 
     if (hasTagFilter) {
-      entityColumnPairsWithTags = getEntityColumnPairsWithTags(request, entityTypes);
-      if (entityColumnPairsWithTags.isEmpty()) {
+      Map<String, List<ColumnWithContext>> taggedColumns =
+          getColumnsWithTagsFromSource(request, entityTypes);
+      if (taggedColumns.isEmpty()) {
         return buildResponse(new ArrayList<>(), null, false, 0, 0);
       }
-      // Also keep just the column names for the Phase 2 query filter
-      columnNamesWithTags =
-          entityColumnPairsWithTags.stream()
-              .map(pair -> pair.substring(pair.indexOf('#') + 1))
-              .collect(java.util.stream.Collectors.toSet());
+
+      // Pattern + tag combined: filter the already-fetched columns by pattern in Java
+      if (!nullOrEmpty(request.getColumnNamePattern())) {
+        String pattern = request.getColumnNamePattern().toLowerCase(java.util.Locale.ROOT);
+        taggedColumns
+            .entrySet()
+            .removeIf(e -> !e.getKey().toLowerCase(java.util.Locale.ROOT).contains(pattern));
+      }
+
+      return aggregateColumnsWithKnownNames(request, taggedColumns);
     }
 
-    // When a column name pattern is set, use terms aggregation with include regex
-    // for efficient server-side filtering instead of composite agg + post-filter
+    // Pattern-only path (no tag filter): use terms agg with include regex
     if (!nullOrEmpty(request.getColumnNamePattern())) {
-      return aggregateColumnsWithPattern(
-          request, entityTypes, entityColumnPairsWithTags, columnNamesWithTags);
+      return aggregateColumnsWithPattern(request, entityTypes);
     }
 
     Map<String, List<ColumnWithContext>> allColumnsByName = new HashMap<>();
@@ -137,9 +139,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
       String columnFieldPath = INDEX_CONFIGS.get(groupEntityTypes.getFirst()).columnFieldPath();
 
-      List<String> columnNamesList =
-          columnNamesWithTags != null ? new ArrayList<>(columnNamesWithTags) : null;
-      Query query = buildFilters(request, columnNameKeyword, columnNamesList);
+      Query query = buildFilters(request, columnNameKeyword, null);
 
       try {
         SearchResponse<JsonData> response =
@@ -147,8 +147,6 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
         Map<String, List<ColumnWithContext>> columnsByName =
             parseCompositeAggResults(response, columnFieldPath);
-
-        applyTagPostFilter(columnsByName, entityColumnPairsWithTags);
 
         for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
           allColumnsByName
@@ -188,16 +186,13 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   }
 
   /**
-   * Search path: uses terms aggregation with include regex to filter column names at the
-   * aggregation level. Two queries per entity-type group: (1) lightweight names query to get all
-   * matching names and total count, (2) targeted data query with top_hits for the current page.
+   * Pattern-only search path (no tag filter): uses terms aggregation with include regex to filter
+   * column names at the aggregation level. Two queries per entity-type group: (1) lightweight names
+   * query to get all matching names and total count, (2) targeted data query with top_hits for the
+   * current page.
    */
   private ColumnGridResponse aggregateColumnsWithPattern(
-      ColumnAggregationRequest request,
-      List<String> entityTypes,
-      Set<String> entityColumnPairsWithTags,
-      Set<String> columnNamesWithTags)
-      throws IOException {
+      ColumnAggregationRequest request, List<String> entityTypes) throws IOException {
 
     Map<String, List<String>> fieldPathToEntityTypes = groupByFieldPath(entityTypes);
     String regex = ColumnAggregator.toCaseInsensitiveRegex(request.getColumnNamePattern());
@@ -208,9 +203,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
       String columnNameKeyword = entry.getKey();
       List<String> indexes = resolveIndexNames(entry.getValue());
-      List<String> columnNamesList =
-          columnNamesWithTags != null ? new ArrayList<>(columnNamesWithTags) : null;
-      Query query = buildFilters(request, columnNameKeyword, columnNamesList);
+      Query query = buildFilters(request, columnNameKeyword, null);
 
       try {
         List<String> names = executeNamesQuery(query, indexes, columnNameKeyword, regex);
@@ -242,15 +235,11 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       String columnNameKeyword = entry.getKey();
       List<String> indexes = resolveIndexNames(entry.getValue());
       String columnFieldPath = INDEX_CONFIGS.get(entry.getValue().getFirst()).columnFieldPath();
-      List<String> columnNamesList =
-          columnNamesWithTags != null ? new ArrayList<>(columnNamesWithTags) : null;
-      Query query = buildFilters(request, columnNameKeyword, columnNamesList);
+      Query query = buildFilters(request, columnNameKeyword, null);
 
       try {
         Map<String, List<ColumnWithContext>> columnsByName =
             executePageDataQuery(query, indexes, columnNameKeyword, columnFieldPath, pageNames);
-
-        applyTagPostFilter(columnsByName, entityColumnPairsWithTags);
 
         for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
           allColumnsByName
@@ -273,29 +262,55 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     return buildResponse(gridItems, cursor, hasMore, totalUniqueColumns, totalOccurrences);
   }
 
-  private void applyTagPostFilter(
-      Map<String, List<ColumnWithContext>> columnsByName, Set<String> entityColumnPairsWithTags) {
-    if (entityColumnPairsWithTags == null || entityColumnPairsWithTags.isEmpty()) {
-      return;
+  /**
+   * Tag/glossary filter path: the tag-check pass already extracted full column metadata from
+   * _source (only tagged columns are in the map). Just paginate over the in-memory result.
+   */
+  private ColumnGridResponse aggregateColumnsWithKnownNames(
+      ColumnAggregationRequest request, Map<String, List<ColumnWithContext>> taggedColumns) {
+
+    Set<String> allNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    allNames.addAll(taggedColumns.keySet());
+
+    int totalUniqueColumns = allNames.size();
+    int offset = decodeSearchOffset(request.getCursor());
+    int pageSize = request.getSize();
+
+    List<String> sortedNames = new ArrayList<>(allNames);
+    int fromIndex = Math.min(offset, sortedNames.size());
+    int toIndex = Math.min(offset + pageSize, sortedNames.size());
+    List<String> pageNames = sortedNames.subList(fromIndex, toIndex);
+
+    if (pageNames.isEmpty()) {
+      return buildResponse(new ArrayList<>(), null, false, totalUniqueColumns, 0);
     }
-    for (List<ColumnWithContext> occurrences : columnsByName.values()) {
-      occurrences.removeIf(
-          ctx -> {
-            String key = ctx.entityFQN + "#" + ctx.column.getName();
-            return !entityColumnPairsWithTags.contains(key);
-          });
+
+    // Slice only the current page from the full map
+    Map<String, List<ColumnWithContext>> pageColumns = new HashMap<>();
+    for (String name : pageNames) {
+      List<ColumnWithContext> occurrences = taggedColumns.get(name);
+      if (occurrences != null) {
+        pageColumns.put(name, occurrences);
+      }
     }
-    columnsByName.entrySet().removeIf(e -> e.getValue().isEmpty());
+
+    List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(pageColumns);
+    int totalOccurrences = gridItems.stream().mapToInt(ColumnGridItem::getTotalOccurrences).sum();
+
+    boolean hasMore = toIndex < totalUniqueColumns;
+    String cursor = hasMore ? encodeSearchOffset(toIndex) : null;
+
+    return buildResponse(gridItems, cursor, hasMore, totalUniqueColumns, totalOccurrences);
   }
 
   /**
-   * Phase 1: Get entityFQN#columnName pairs that have the specified tags. Since ES flattens
-   * arrays, we must fetch column data and filter in Java to find columns that actually have the
-   * tag.
+   * Fetch columns with matching tags from _source. ES flat object mapping means we can't filter
+   * "column X has tag Y" at query level, so we read _source and check in Java. Since we already
+   * have the full document, we extract column metadata here — avoiding a separate data-fetch query.
    */
-  private Set<String> getEntityColumnPairsWithTags(
+  private Map<String, List<ColumnWithContext>> getColumnsWithTagsFromSource(
       ColumnAggregationRequest request, List<String> entityTypes) throws IOException {
-    Set<String> entityColumnPairs = new HashSet<>();
+    Map<String, List<ColumnWithContext>> columnsByName = new HashMap<>();
     Map<String, List<String>> fieldPathToEntityTypes = groupByFieldPath(entityTypes);
 
     Set<String> targetTags = buildTargetTagSet(request);
@@ -309,9 +324,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       Query query = buildTagFilterQuery(request, columnNameKeyword);
 
       try {
-        Set<String> matchingPairs =
-            fetchEntityColumnPairsWithTags(indexes, query, columnFieldPath, targetTags);
-        entityColumnPairs.addAll(matchingPairs);
+        fetchColumnsWithTagsFromSource(indexes, query, columnFieldPath, targetTags, columnsByName);
       } catch (ElasticsearchException e) {
         if (!isIndexNotFoundException(e)) {
           throw e;
@@ -319,7 +332,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       }
     }
 
-    return entityColumnPairs;
+    return columnsByName;
   }
 
   private Set<String> buildTargetTagSet(ColumnAggregationRequest request) {
@@ -333,27 +346,28 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     return targetTags;
   }
 
-  private Set<String> fetchEntityColumnPairsWithTags(
-      List<String> indexes, Query query, String columnFieldPath, Set<String> targetTags)
+  private void fetchColumnsWithTagsFromSource(
+      List<String> indexes,
+      Query query,
+      String columnFieldPath,
+      Set<String> targetTags,
+      Map<String, List<ColumnWithContext>> columnsByName)
       throws IOException {
-    Set<String> entityColumnPairs = new HashSet<>();
 
     SearchRequest searchRequest = SearchRequest.of(s -> s.index(indexes).query(query).size(10000));
 
     SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
 
     for (Hit<JsonData> hit : response.hits().hits()) {
-      extractMatchingEntityColumnPairs(hit, columnFieldPath, targetTags, entityColumnPairs);
+      extractMatchingColumnsFromHit(hit, columnFieldPath, targetTags, columnsByName);
     }
-
-    return entityColumnPairs;
   }
 
-  private void extractMatchingEntityColumnPairs(
+  private void extractMatchingColumnsFromHit(
       Hit<JsonData> hit,
       String columnFieldPath,
       Set<String> targetTags,
-      Set<String> entityColumnPairs) {
+      Map<String, List<ColumnWithContext>> columnsByName) {
     if (hit.source() == null) {
       return;
     }
@@ -364,19 +378,35 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
         return;
       }
 
+      String entityType = getTextField(sourceNode, "entityType");
+      String entityDisplayName = getTextField(sourceNode, "displayName");
+      String serviceName = getNestedField(sourceNode, "service", "name");
+      String databaseName = getNestedField(sourceNode, "database", "name");
+      String schemaName = getNestedField(sourceNode, "databaseSchema", "name");
+
       JsonNode columnsData = getNestedJsonNode(sourceNode, columnFieldPath);
 
       if (columnsData != null && columnsData.isArray()) {
         for (JsonNode columnData : columnsData) {
           String colName = getTextField(columnData, "name");
-          boolean hasTag = columnHasTargetTag(columnData, targetTags);
-          if (hasTag && colName != null) {
-            entityColumnPairs.add(entityFQN + "#" + colName);
+          if (colName != null && columnHasTargetTag(columnData, targetTags)) {
+            Column column = parseColumn(columnData, entityFQN);
+            columnsByName
+                .computeIfAbsent(colName, k -> new ArrayList<>())
+                .add(
+                    new ColumnWithContext(
+                        column,
+                        entityType,
+                        entityFQN,
+                        entityDisplayName,
+                        serviceName,
+                        databaseName,
+                        schemaName));
           }
         }
       }
     } catch (Exception e) {
-      LOG.warn("Failed to extract entity column pairs from hit", e);
+      LOG.warn("Failed to extract columns from hit", e);
     }
   }
 
@@ -403,12 +433,23 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     return false;
   }
 
-  /** Build query specifically for tag filtering (Phase 1) */
+  /**
+   * Build query for tag filtering source fetch. Includes all scope filters (service, database,
+   * schema, domain, entityType) so the _source fetch is scoped to the same data as the main query.
+   */
   private Query buildTagFilterQuery(ColumnAggregationRequest request, String columnNameKeyword) {
     BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
     String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field(columnFieldPath))));
+
+    // Scope filters — must match the main query so we don't fetch columns outside the user's scope
+    addEntityTypeFilter(boolBuilder, request);
+    addServiceFilter(boolBuilder, request);
+    addServiceTypeFilter(boolBuilder, request);
+    addDatabaseFilter(boolBuilder, request);
+    addSchemaFilter(boolBuilder, request);
+    addDomainFilter(boolBuilder, request);
 
     String tagFQNField = columnNameKeyword.replace(".name.keyword", ".tags.tagFQN");
     List<String> allTags = new ArrayList<>();

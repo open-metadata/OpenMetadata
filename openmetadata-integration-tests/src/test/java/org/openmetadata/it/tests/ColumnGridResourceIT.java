@@ -1578,6 +1578,279 @@ public class ColumnGridResourceIT {
         foundNoDotCol, "Column without dot should not match — dot must be literal, not wildcard");
   }
 
+  @Test
+  void test_getColumnGrid_patternPlusTagFilter(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    TagLabel piiTag = new TagLabel();
+    piiTag.setTagFQN("PII.Sensitive");
+    piiTag.setSource(TagLabel.TagSource.CLASSIFICATION);
+    piiTag.setLabelType(TagLabel.LabelType.MANUAL);
+    piiTag.setState(TagLabel.State.CONFIRMED);
+
+    String taggedMatchCol = ns.prefix("pat_tag_match");
+    String taggedNoMatchCol = ns.prefix("pat_tag_other");
+    String untaggedMatchCol = ns.prefix("pat_tag_match_notag");
+
+    // Table 1: tagged column matching pattern + tagged column NOT matching pattern
+    Column col1 =
+        Columns.build(taggedMatchCol)
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(255)
+            .withTags(List.of(piiTag))
+            .create();
+    Column col2 =
+        Columns.build(taggedNoMatchCol)
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(255)
+            .withTags(List.of(piiTag))
+            .create();
+    Tables.create()
+        .name(ns.prefix("pat_tag_table_1"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(col1, col2))
+        .execute();
+
+    // Table 2: same column name as col1 but WITHOUT tag
+    Column col3 =
+        Columns.build(untaggedMatchCol).withType(ColumnDataType.VARCHAR).withLength(255).create();
+    Tables.create()
+        .name(ns.prefix("pat_tag_table_2"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(col3))
+        .execute();
+
+    waitForSearchIndexRefresh();
+
+    ColumnGridResponse response =
+        getColumnGrid(
+            client,
+            "entityTypes=table&tags=PII.Sensitive&columnNamePattern=pat_tag_match&serviceName="
+                + service.getName());
+
+    assertNotNull(response);
+
+    // Should find taggedMatchCol (matches pattern AND has tag)
+    // Should NOT find taggedNoMatchCol (has tag but doesn't match pattern)
+    // Should NOT find untaggedMatchCol (matches pattern but no tag)
+    boolean foundTaggedMatch = false;
+    boolean foundTaggedNoMatch = false;
+    boolean foundUntaggedMatch = false;
+
+    for (ColumnGridItem item : response.getColumns()) {
+      if (item.getColumnName().equals(taggedMatchCol)) {
+        foundTaggedMatch = true;
+      }
+      if (item.getColumnName().equals(taggedNoMatchCol)) {
+        foundTaggedNoMatch = true;
+      }
+      if (item.getColumnName().equals(untaggedMatchCol)) {
+        foundUntaggedMatch = true;
+      }
+    }
+
+    assertTrue(foundTaggedMatch, "Column with tag AND matching pattern should be in results");
+    assertFalse(foundTaggedNoMatch, "Column with tag but NOT matching pattern should be excluded");
+    assertFalse(foundUntaggedMatch, "Column matching pattern but WITHOUT tag should be excluded");
+  }
+
+  @Test
+  void test_getColumnGrid_patternPlusGlossaryFilter(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Glossary glossary = createGlossary(client, ns, "PG");
+    GlossaryTerm term = createGlossaryTerm(client, glossary, ns, "PT");
+
+    TagLabel glossaryTag = new TagLabel();
+    glossaryTag.setTagFQN(term.getFullyQualifiedName());
+    glossaryTag.setSource(TagLabel.TagSource.GLOSSARY);
+    glossaryTag.setLabelType(TagLabel.LabelType.MANUAL);
+    glossaryTag.setState(TagLabel.State.CONFIRMED);
+
+    String matchCol = ns.prefix("pg_match_col");
+    String noMatchCol = ns.prefix("pg_other_col");
+
+    Column col1 =
+        Columns.build(matchCol)
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(255)
+            .withTags(List.of(glossaryTag))
+            .create();
+    Column col2 =
+        Columns.build(noMatchCol)
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(255)
+            .withTags(List.of(glossaryTag))
+            .create();
+    Tables.create()
+        .name(ns.prefix("pg_table"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(col1, col2))
+        .execute();
+
+    waitForSearchIndexRefresh();
+
+    ColumnGridResponse response =
+        getColumnGrid(
+            client,
+            "entityTypes=table&glossaryTerms="
+                + term.getFullyQualifiedName()
+                + "&columnNamePattern=pg_match&serviceName="
+                + service.getName());
+
+    assertNotNull(response);
+
+    boolean foundMatch =
+        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(matchCol));
+    boolean foundNoMatch =
+        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(noMatchCol));
+
+    assertTrue(foundMatch, "Column matching both pattern and glossary should be in results");
+    assertFalse(foundNoMatch, "Column with glossary but not matching pattern should be excluded");
+  }
+
+  @Test
+  void test_getColumnGrid_tagFilterPaginationConsistency(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    TagLabel piiTag = new TagLabel();
+    piiTag.setTagFQN("PII.Sensitive");
+    piiTag.setSource(TagLabel.TagSource.CLASSIFICATION);
+    piiTag.setLabelType(TagLabel.LabelType.MANUAL);
+    piiTag.setState(TagLabel.State.CONFIRMED);
+
+    // Create 5 tables, each with a uniquely-named tagged column
+    for (int i = 0; i < 5; i++) {
+      Column col =
+          Columns.build(ns.prefix("pagcon_col_" + i))
+              .withType(ColumnDataType.VARCHAR)
+              .withLength(255)
+              .withTags(List.of(piiTag))
+              .create();
+      Tables.create()
+          .name(ns.prefix("pagcon_table_" + i))
+          .inSchema(schema.getFullyQualifiedName())
+          .withColumns(List.of(col))
+          .execute();
+    }
+
+    waitForSearchIndexRefresh();
+
+    // Page through with size=2 — should get 2, 2, 1
+    // Use serviceName to scope to this test's data, raw pattern prefix to match column names
+    String baseQuery =
+        "entityTypes=table&tags=PII.Sensitive&columnNamePattern=pagcon&serviceName="
+            + service.getName()
+            + "&size=2";
+
+    await("Wait for all 5 tagged columns to be indexed")
+        .atMost(Duration.ofSeconds(45))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse first = getColumnGrid(client, baseQuery);
+              assertNotNull(first);
+              assertEquals(5, first.getTotalUniqueColumns(), "Should report 5 unique columns");
+            });
+
+    ColumnGridResponse page1 = getColumnGrid(client, baseQuery);
+    assertEquals(2, page1.getColumns().size(), "Page 1 should have exactly 2 columns");
+    assertNotNull(page1.getCursor(), "Page 1 should have a cursor for next page");
+
+    ColumnGridResponse page2 = getColumnGrid(client, baseQuery + "&cursor=" + page1.getCursor());
+    assertEquals(2, page2.getColumns().size(), "Page 2 should have exactly 2 columns");
+    assertNotNull(page2.getCursor(), "Page 2 should have a cursor for next page");
+
+    ColumnGridResponse page3 = getColumnGrid(client, baseQuery + "&cursor=" + page2.getCursor());
+    assertEquals(1, page3.getColumns().size(), "Page 3 (last) should have exactly 1 column");
+
+    // Verify no duplicates across pages
+    java.util.Set<String> allNames = new java.util.HashSet<>();
+    for (ColumnGridItem item : page1.getColumns()) {
+      assertTrue(allNames.add(item.getColumnName()), "Duplicate found: " + item.getColumnName());
+    }
+    for (ColumnGridItem item : page2.getColumns()) {
+      assertTrue(allNames.add(item.getColumnName()), "Duplicate found: " + item.getColumnName());
+    }
+    for (ColumnGridItem item : page3.getColumns()) {
+      assertTrue(allNames.add(item.getColumnName()), "Duplicate found: " + item.getColumnName());
+    }
+    assertEquals(5, allNames.size(), "Should have collected all 5 unique columns across pages");
+  }
+
+  @Test
+  void test_getColumnGrid_glossaryFilter_onlyReturnsGlossaryOccurrences(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Glossary glossary = createGlossary(client, ns, "OG");
+    GlossaryTerm term = createGlossaryTerm(client, glossary, ns, "OT");
+
+    TagLabel glossaryTag = new TagLabel();
+    glossaryTag.setTagFQN(term.getFullyQualifiedName());
+    glossaryTag.setSource(TagLabel.TagSource.GLOSSARY);
+    glossaryTag.setLabelType(TagLabel.LabelType.MANUAL);
+    glossaryTag.setState(TagLabel.State.CONFIRMED);
+
+    String sharedName = ns.prefix("gocc_col");
+
+    // Table 1: column WITH glossary term
+    Column withGlossary =
+        Columns.build(sharedName)
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(255)
+            .withDescription("Has glossary")
+            .withTags(List.of(glossaryTag))
+            .create();
+    Tables.create()
+        .name(ns.prefix("gocc_t1"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(withGlossary))
+        .execute();
+
+    // Table 2: same column name WITHOUT glossary term
+    Column withoutGlossary =
+        Columns.build(sharedName)
+            .withType(ColumnDataType.VARCHAR)
+            .withLength(255)
+            .withDescription("No glossary")
+            .create();
+    Tables.create()
+        .name(ns.prefix("gocc_t2"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(withoutGlossary))
+        .execute();
+
+    waitForSearchIndexRefresh();
+
+    ColumnGridResponse response =
+        getColumnGrid(
+            client,
+            "entityTypes=table&glossaryTerms="
+                + term.getFullyQualifiedName()
+                + "&serviceName="
+                + service.getName());
+
+    assertNotNull(response);
+
+    for (ColumnGridItem item : response.getColumns()) {
+      if (item.getColumnName().equals(sharedName)) {
+        assertEquals(
+            1,
+            item.getTotalOccurrences(),
+            "Should only return the occurrence WITH the glossary term, not all with same name");
+      }
+    }
+  }
+
   private void waitForColumnToBeIndexed(
       OpenMetadataClient client, String columnName, String serviceName) {
     await()
