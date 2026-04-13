@@ -242,4 +242,56 @@
     line-height: 20px;
     margin-bottom: 8px;
   }
+
+  .task-proposed-changes-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .task-proposed-changes-field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .task-proposed-changes-field-name {
+    min-width: 100px;
+    color: @text-color-tertiary;
+    font-size: 12px;
+    font-weight: 500;
+    padding-top: 2px;
+    text-transform: capitalize;
+  }
+
+  .task-proposed-changes-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .task-proposed-changes-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 18px;
+    text-decoration: none;
+
+    &--added {
+      background-color: #ecfdf3;
+      color: #027a48;
+      border: 1px solid #a9efc5;
+    }
+
+    &--removed {
+      background-color: #fff1f3;
+      color: #c01048;
+      border: 1px solid #fea3b4;
+    }
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
 }

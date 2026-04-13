@@ -93,11 +93,7 @@ import { updateTask, updateThread } from '../../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import EntityLink from '../../../../utils/EntityLink';
-import {
-  getEntityFQN,
-  getFrontEndFormat,
-  MarkdownToHTMLConverter,
-} from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getField } from '../../../../utils/formUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringsUtils';
@@ -131,7 +127,6 @@ import {
   getGlossaryTermDetailsPath,
   getUserPath,
 } from '../../../../utils/RouterUtils';
-import { getSanitizeContent } from '../../../../utils/sanitize.utils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -141,52 +136,26 @@ import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/Tas
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
 
-const FIELD_LINK_MAP: Array<{
-  pattern: RegExp;
-  getUrl: (fqn: string) => string;
-}> = [
-  {
-    pattern: /\*\*(tags|tier)\*\*/,
-    getUrl: (fqn) => getClassificationTagPath(fqn),
-  },
-  {
-    pattern: /\*\*(glossaryTerms|glossaryTerm|relatedTerms)\*\*/,
-    getUrl: (fqn) => getGlossaryTermDetailsPath(fqn),
-  },
-  {
-    pattern: /\*\*(domain|domains)\*\*/,
-    getUrl: (fqn) => getDomainDetailsPath(fqn),
-  },
-];
+type ProposedChanges = Record<string, { added: string[]; removed: string[] }>;
 
-const DIFF_SPAN_RE =
-  /(<span\b[^>]*\bclass="[^"]*\bdiff-(?:added|removed)\b[^"]*"[^>]*>)([^<]+)(<\/span>)/g;
+const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
+  tags: (fqn) => getClassificationTagPath(fqn),
+  tier: (fqn) => getClassificationTagPath(fqn),
+  glossaryTerms: (fqn) => getGlossaryTermDetailsPath(fqn),
+  relatedTerms: (fqn) => getGlossaryTermDetailsPath(fqn),
+  domains: (fqn) => getDomainDetailsPath(fqn),
+};
 
-const escapeHtml = (s: string): string =>
-  s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-
-const addEntityLinks = (message: string): string =>
-  message
-    .split('\n')
-    .map((line) => {
-      const matcher = FIELD_LINK_MAP.find((m) => m.pattern.test(line));
-      if (!matcher) {
-        return line;
-      }
-
-      return line.replace(
-        DIFF_SPAN_RE,
-        (_, openTag: string, fqn: string, closeTag: string) =>
-          `${openTag}<a href="${matcher.getUrl(fqn.trim())}">${escapeHtml(
-            fqn
-          )}</a>${closeTag}`
-      );
-    })
-    .join('\n');
+const parseProposedChanges = (message: string): ProposedChanges | null => {
+  if (!message?.trimStart().startsWith('{')) {
+    return null;
+  }
+  try {
+    return JSON.parse(message) as ProposedChanges;
+  } catch {
+    return null;
+  }
+};
 
 export const TaskTabNew = ({
   taskThread,
@@ -1192,22 +1161,61 @@ export const TaskTabNew = ({
       </Col>
       <Divider className="m-0" type="horizontal" />
       <Col span={24}>{taskHeader}</Col>
-      {taskThread.message?.trimStart().startsWith('- ') && (
+      {parseProposedChanges(taskThread.message ?? '') !== null && (
         <Col span={24}>
           <div className="task-proposed-changes">
             <Typography.Text className="task-proposed-changes-title">
               {t('label.proposed-change-plural')}
             </Typography.Text>
-            <div
-              className="feed-message"
-              dangerouslySetInnerHTML={{
-                __html: getSanitizeContent(
-                  MarkdownToHTMLConverter.makeHtml(
-                    getFrontEndFormat(addEntityLinks(taskThread.message ?? ''))
-                  )
-                ),
-              }}
-            />
+            <div className="task-proposed-changes-fields">
+              {Object.entries(
+                parseProposedChanges(taskThread.message ?? '') ?? {}
+              ).map(([field, { added, removed }]) => {
+                const getUrl = FIELD_ROUTE_MAP[field];
+
+                return (
+                  <div className="task-proposed-changes-field-row" key={field}>
+                    <Typography.Text className="task-proposed-changes-field-name">
+                      {field}
+                    </Typography.Text>
+                    <div className="task-proposed-changes-chips">
+                      {removed.map((val) =>
+                        getUrl ? (
+                          <a
+                            className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                            href={getUrl(val)}
+                            key={`removed-${val}`}>
+                            {val}
+                          </a>
+                        ) : (
+                          <span
+                            className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                            key={`removed-${val}`}>
+                            {val}
+                          </span>
+                        )
+                      )}
+                      {added.map((val) =>
+                        getUrl ? (
+                          <a
+                            className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                            href={getUrl(val)}
+                            key={`added-${val}`}>
+                            {val}
+                          </a>
+                        ) : (
+                          <span
+                            className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                            key={`added-${val}`}>
+                            {val}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </Col>
       )}

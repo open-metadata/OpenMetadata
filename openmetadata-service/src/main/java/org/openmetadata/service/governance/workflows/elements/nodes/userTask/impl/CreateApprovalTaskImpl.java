@@ -1,6 +1,5 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
@@ -20,7 +19,6 @@ import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -32,19 +30,16 @@ import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.FeedMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.FeedUtils;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class CreateApprovalTaskImpl implements TaskListener {
-  private static final FeedMessageDecorator FEED_MESSAGE_DECORATOR = new FeedMessageDecorator();
 
   private Expression inputNamespaceMapExpr;
   private Expression approvalThresholdExpr;
@@ -64,21 +59,8 @@ public class CreateApprovalTaskImpl implements TaskListener {
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-      int approvalThreshold = 1;
-      if (approvalThresholdExpr != null) {
-        String thresholdStr = (String) approvalThresholdExpr.getValue(delegateTask);
-        if (thresholdStr != null && !thresholdStr.isEmpty()) {
-          approvalThreshold = Integer.parseInt(thresholdStr);
-        }
-      }
-
-      int rejectionThreshold = 1;
-      if (rejectionThresholdExpr != null) {
-        String thresholdStr = (String) rejectionThresholdExpr.getValue(delegateTask);
-        if (thresholdStr != null && !thresholdStr.isEmpty()) {
-          rejectionThreshold = Integer.parseInt(thresholdStr);
-        }
-      }
+      int approvalThreshold = resolveThreshold(approvalThresholdExpr, delegateTask, 1);
+      int rejectionThreshold = resolveThreshold(rejectionThresholdExpr, delegateTask, 1);
 
       Thread task = createApprovalTask(entity, assignees);
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
@@ -95,6 +77,14 @@ public class CreateApprovalTaskImpl implements TaskListener {
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
+  }
+
+  private static int resolveThreshold(
+      Expression expr, DelegateTask delegateTask, int defaultValue) {
+    if (expr == null) return defaultValue;
+    String raw = (String) expr.getValue(delegateTask);
+    if (raw == null || raw.isEmpty()) return defaultValue;
+    return Integer.parseInt(raw);
   }
 
   private List<EntityReference> getAssignees(DelegateTask delegateTask) {
@@ -116,60 +106,6 @@ public class CreateApprovalTaskImpl implements TaskListener {
         assigneeEntityLink.getEntityType(), assigneeEntityLink.getEntityFQN(), Include.NON_DELETED);
   }
 
-  /**
-   * Runs the entity's changeDescription through the activity-feed formatter pipeline and returns
-   * one Thread per changed field (same output shape the activity feed persists). Returns an empty
-   * list when there is nothing to diff or when the formatter fails — callers must handle both.
-   */
-  List<Thread> buildFormattedDiffs(EntityInterface entity, MessageParser.EntityLink about) {
-    final ChangeDescription cd = entity.getChangeDescription();
-    if (cd == null
-        || (nullOrEmpty(cd.getFieldsAdded())
-            && nullOrEmpty(cd.getFieldsUpdated())
-            && nullOrEmpty(cd.getFieldsDeleted()))) {
-      return List.of();
-    }
-    try {
-      final Thread baseThread =
-          FeedUtils.getThread(
-              FEED_MESSAGE_DECORATOR,
-              entity,
-              about.getLinkString(),
-              about.getEntityType(),
-              entity.getUpdatedBy());
-      return FormatterUtil.getFormattedMessages(FEED_MESSAGE_DECORATOR, baseThread, cd);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to build change summary for approval task on {}",
-          entity.getFullyQualifiedName(),
-          e);
-      return List.of();
-    }
-  }
-
-  /**
-   * Stamps the task thread with a change preview sourced from the entity's changeDescription.
-   *
-   * <p>Produces one markdown bullet line per changed field and stores the result in
-   * thread.message. Always clears cardStyle/feedInfo/fieldOperation so the UI owns rendering.
-   *
-   * <p>No change / formatter failure: sets message to null (no preview section shown).
-   */
-  void applyChangePreview(
-      Thread taskThread, EntityInterface entity, MessageParser.EntityLink about) {
-    final List<Thread> perFieldThreads = buildFormattedDiffs(entity, about);
-    taskThread.withCardStyle(null).withFieldOperation(null).withFeedInfo(null);
-    if (perFieldThreads.isEmpty()) {
-      taskThread.withMessage(null);
-      return;
-    }
-    final StringBuilder builder = new StringBuilder();
-    for (final Thread perField : perFieldThreads) {
-      builder.append("- ").append(perField.getMessage()).append('\n');
-    }
-    taskThread.withMessage(builder.toString());
-  }
-
   private Thread createApprovalTask(EntityInterface entity, List<EntityReference> assignees) {
     FeedRepository feedRepository = Entity.getFeedRepository();
     MessageParser.EntityLink about =
@@ -181,7 +117,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
     try {
       thread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
       thread.getTask().setAssignees(FeedMapper.formatAssignees(assignees));
-      applyChangePreview(thread, entity, about);
+      ChangePreviewUtils.applyChangePreview(thread, entity, thread.getMessage());
       thread.withUpdatedBy(entity.getUpdatedBy()).withUpdatedAt(System.currentTimeMillis());
 
       Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
@@ -214,7 +150,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
               .withTask(taskDetails)
               .withUpdatedBy(entity.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis());
-      applyChangePreview(thread, entity, about);
+      ChangePreviewUtils.applyChangePreview(thread, entity, null);
       feedRepository.create(thread);
 
       changeEvent =

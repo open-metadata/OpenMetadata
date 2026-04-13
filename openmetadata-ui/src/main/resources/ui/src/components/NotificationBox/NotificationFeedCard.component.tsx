@@ -49,7 +49,9 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
     ) {
       return (
         <>
-          <span className="p-x-xss">{task.message}</span>
+          <span className="p-x-xss">
+            {t('message.request-approval-message')}
+          </span>
           <Link
             className='className="p-r-xss"'
             to={getEntityLinkFromType(
