@@ -84,13 +84,14 @@ class RedpandaSource(CommonBrokerSource):
             return
 
         if self._transforms_cache is None:
-            self._transforms_cache = self.admin_client_rp.list_transforms()
+            transforms = self.admin_client_rp.list_transforms()
+            self._transforms_cache = {}
+            for t in transforms:
+                self._transforms_cache.setdefault(t.input_topic, []).append(t)
 
         current_topic = topic_details.topic_name
 
-        for transform in self._transforms_cache:
-            if transform.input_topic != current_topic:
-                continue
+        for transform in self._transforms_cache.get(current_topic, []):
 
             source_topic_fqn = fqn.build(
                 metadata=self.metadata,

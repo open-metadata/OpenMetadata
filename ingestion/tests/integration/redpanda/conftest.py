@@ -218,6 +218,48 @@ def ingestion_config_with_sample_data(db_service, workflow_config, sink_config):
 
 
 @pytest.fixture(scope="module")
+def redpanda_consumer_group_service(
+    redpanda_container, metadata, workflow_config, sink_config
+):
+    """Dedicated service for consumer group testing."""
+    svc_request = CreateMessagingServiceRequest(
+        name=f"rp_cg_test_{uuid.uuid4().hex[:8]}",
+        serviceType=MessagingServiceType.Redpanda,
+        connection=MessagingConnection(
+            config=RedpandaConnection(
+                bootstrapServers=redpanda_container.get_bootstrap_server(),
+                schemaRegistryURL=redpanda_container.get_schema_registry_url(),
+            )
+        ),
+    )
+    svc = metadata.create_or_update(data=svc_request)
+    config = {
+        "source": {
+            "type": "redpanda",
+            "serviceName": svc.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {
+                    "type": MessagingMetadataConfigType.MessagingMetadata.value,
+                    "extractConsumerGroups": True,
+                }
+            },
+            "serviceConnection": svc.connection.model_dump(),
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+    yield svc, config
+    svc = metadata.get_by_name(MessagingService, svc.fullyQualifiedName.root)
+    if svc:
+        metadata.delete(
+            entity=MessagingService,
+            entity_id=svc.id,
+            recursive=True,
+            hard_delete=True,
+        )
+
+
+@pytest.fixture(scope="module")
 def unmask_password():
     def patch_password(service):
         return service

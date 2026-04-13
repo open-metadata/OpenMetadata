@@ -157,7 +157,8 @@ def test_connection(
             )
 
     def get_consumer_groups():
-        result = client.admin_client.list_consumer_groups()
+        future = client.admin_client.list_consumer_groups()
+        result = future.result(timeout=10)
         _ = [g.group_id for g in result.valid]
 
     test_fn = {

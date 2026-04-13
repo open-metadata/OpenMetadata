@@ -15,6 +15,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
+from requests.exceptions import RequestException
 
 from metadata.generated.schema.entity.data.topic import (
     ConsumerGroup,
@@ -105,7 +106,7 @@ class TestRedpandaAdminClient:
     def test_list_transforms_api_error(self, mock_session_cls):
         mock_session = MagicMock()
         mock_session_cls.return_value = mock_session
-        mock_session.get.side_effect = Exception("Connection refused")
+        mock_session.get.side_effect = RequestException("Connection refused")
 
         client = RedpandaAdminClient("http://localhost:9644")
         transforms = client.list_transforms()
@@ -153,13 +154,15 @@ class TestRedpandaTopicLineage:
     def test_topic_not_input_of_any_transform(self, mock_redpanda_source):
         """No lineage when this topic is not the input of any transform"""
         mock_redpanda_source.admin_client_rp = MagicMock()
-        mock_redpanda_source._transforms_cache = [
-            RedpandaTransform(
-                name="t1",
-                input_topic="other-topic",
-                output_topics=["output"],
-            )
-        ]
+        mock_redpanda_source._transforms_cache = {
+            "other-topic": [
+                RedpandaTransform(
+                    name="t1",
+                    input_topic="other-topic",
+                    output_topics=["output"],
+                )
+            ]
+        }
 
         topic_details = BrokerTopicDetails(
             topic_name="test-topic", topic_metadata=MagicMock()
@@ -187,13 +190,15 @@ class TestRedpandaTopicLineage:
 
         mock_redpanda_source.metadata.get_by_name.side_effect = get_by_name_side_effect
         mock_redpanda_source.admin_client_rp = MagicMock()
-        mock_redpanda_source._transforms_cache = [
-            RedpandaTransform(
-                name="my-transform",
-                input_topic="input-topic",
-                output_topics=["output-topic"],
-            )
-        ]
+        mock_redpanda_source._transforms_cache = {
+            "input-topic": [
+                RedpandaTransform(
+                    name="my-transform",
+                    input_topic="input-topic",
+                    output_topics=["output-topic"],
+                )
+            ]
+        }
 
         topic_details = BrokerTopicDetails(
             topic_name="input-topic", topic_metadata=MagicMock()
@@ -236,13 +241,15 @@ class TestRedpandaTopicLineage:
 
         mock_redpanda_source.metadata.get_by_name.side_effect = get_by_name_side_effect
         mock_redpanda_source.admin_client_rp = MagicMock()
-        mock_redpanda_source._transforms_cache = [
-            RedpandaTransform(
-                name="fan-out",
-                input_topic="input",
-                output_topics=["out1", "out2"],
-            )
-        ]
+        mock_redpanda_source._transforms_cache = {
+            "input": [
+                RedpandaTransform(
+                    name="fan-out",
+                    input_topic="input",
+                    output_topics=["out1", "out2"],
+                )
+            ]
+        }
 
         topic_details = BrokerTopicDetails(
             topic_name="input", topic_metadata=MagicMock()
@@ -270,13 +277,15 @@ class TestRedpandaTopicLineage:
 
         mock_redpanda_source.metadata.get_by_name.side_effect = get_by_name_side_effect
         mock_redpanda_source.admin_client_rp = MagicMock()
-        mock_redpanda_source._transforms_cache = [
-            RedpandaTransform(
-                name="t1",
-                input_topic="input",
-                output_topics=["missing-topic"],
-            )
-        ]
+        mock_redpanda_source._transforms_cache = {
+            "input": [
+                RedpandaTransform(
+                    name="t1",
+                    input_topic="input",
+                    output_topics=["missing-topic"],
+                )
+            ]
+        }
 
         topic_details = BrokerTopicDetails(
             topic_name="input", topic_metadata=MagicMock()
@@ -353,6 +362,7 @@ class TestConsumerGroupExtraction:
                 source, CommonBrokerSource
             )
         )
+        source._map_consumer_group_state = CommonBrokerSource._map_consumer_group_state
 
         mock_group_listing = MagicMock()
         mock_group_listing.group_id = "test-group"
@@ -360,8 +370,11 @@ class TestConsumerGroupExtraction:
         mock_list_result = MagicMock()
         mock_list_result.valid = [mock_group_listing]
 
+        mock_list_future = MagicMock()
+        mock_list_future.result.return_value = mock_list_result
+
         source.admin_client = MagicMock()
-        source.admin_client.list_consumer_groups.return_value = mock_list_result
+        source.admin_client.list_consumer_groups.return_value = mock_list_future
 
         mock_tp = MagicMock()
         mock_tp.topic = "my-topic"
@@ -374,8 +387,11 @@ class TestConsumerGroupExtraction:
         mock_member.group_instance_id = None
         mock_member.assignment.topic_partitions = [mock_tp]
 
+        mock_state = MagicMock()
+        mock_state.name = "STABLE"
+
         mock_group_desc = MagicMock()
-        mock_group_desc.state = "Stable"
+        mock_group_desc.state = mock_state
         mock_group_desc.partition_assignor = "range"
         mock_group_desc.members = [mock_member]
 
@@ -408,8 +424,10 @@ class TestConsumerGroupExtraction:
 
         mock_list_result = MagicMock()
         mock_list_result.valid = []
+        mock_list_future = MagicMock()
+        mock_list_future.result.return_value = mock_list_result
         source.admin_client = MagicMock()
-        source.admin_client.list_consumer_groups.return_value = mock_list_result
+        source.admin_client.list_consumer_groups.return_value = mock_list_future
 
         result = source._build_topic_consumer_groups_map()
         assert result == {}
@@ -438,6 +456,10 @@ class TestConsumerGroupExtraction:
                             "partitions": [0, 1],
                         }
                     },
+                    "offsets": {
+                        0: {"current_offset": 50, "end_offset": 100, "lag": 50},
+                        1: {"current_offset": 80, "end_offset": 100, "lag": 20},
+                    },
                 }
             }
         }
@@ -451,6 +473,13 @@ class TestConsumerGroupExtraction:
         assert groups[0].memberCount == 1
         assert groups[0].members[0].memberId == "m1"
         assert groups[0].members[0].assignedPartitions == [0, 1]
+        assert groups[0].partitionOffsets is not None
+        assert len(groups[0].partitionOffsets) == 2
+        assert groups[0].partitionOffsets[0].partition == 0
+        assert groups[0].partitionOffsets[0].currentOffset == 50
+        assert groups[0].partitionOffsets[0].endOffset == 100
+        assert groups[0].partitionOffsets[0].lag == 50
+        assert groups[0].totalLag == 70
 
     def test_get_consumer_groups_for_topic_not_found(self):
         from metadata.ingestion.source.messaging.common_broker_source import (

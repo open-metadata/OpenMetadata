@@ -16,6 +16,7 @@ from typing import List, Optional
 
 import requests
 from pydantic import BaseModel
+from requests.exceptions import RequestException
 
 from metadata.utils.logger import ingestion_logger
 
@@ -61,7 +62,7 @@ class RedpandaAdminClient:
                         environment=item.get("environment"),
                     )
                 )
-        except Exception as exc:
+        except RequestException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch Redpanda transforms: {exc}")
         return transforms

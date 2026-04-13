@@ -14,6 +14,8 @@ Source connection handler
 """
 from typing import Optional
 
+from confluent_kafka.admin import KafkaException
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -62,7 +64,7 @@ def test_connection(
     def custom_executor():
         try:
             client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics
-        except Exception as err:
+        except KafkaException as err:
             raise InvalidKafkaCreds(
                 f"Failed to fetch topics due to: {err}. "
                 "Please validate credentials and check if you are using correct security protocol"
@@ -77,24 +79,31 @@ def test_connection(
                 "credentials in case you want topic schema and sample data to be ingested"
             )
 
+    def get_consumer_groups():
+        future = client.admin_client.list_consumer_groups()
+        result = future.result(timeout=10)
+        _ = [g.group_id for g in result.valid]
+
+    def admin_api_test():
+        if not service_connection.redpandaAdminApiUrl:
+            logger.info(
+                "Redpanda Admin API URL not configured. "
+                "Skipping Admin API connectivity check."
+            )
+            return
+        from metadata.ingestion.source.messaging.redpanda.client import (
+            RedpandaAdminClient,
+        )
+
+        admin_client = RedpandaAdminClient(str(service_connection.redpandaAdminApiUrl))
+        admin_client.check_connectivity()
+
     test_fn = {
         "GetTopics": custom_executor,
         "CheckSchemaRegistry": schema_registry_test,
+        "GetConsumerGroups": get_consumer_groups,
+        "CheckRedpandaAdminAPI": admin_api_test,
     }
-
-    if service_connection.redpandaAdminApiUrl:
-
-        def admin_api_test():
-            from metadata.ingestion.source.messaging.redpanda.client import (
-                RedpandaAdminClient,
-            )
-
-            admin_client = RedpandaAdminClient(
-                str(service_connection.redpandaAdminApiUrl)
-            )
-            admin_client.check_connectivity()
-
-        test_fn["CheckRedpandaAdminAPI"] = admin_api_test
 
     return test_connection_steps(
         metadata=metadata,

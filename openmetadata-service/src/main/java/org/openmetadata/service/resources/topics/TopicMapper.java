@@ -21,6 +21,7 @@ public class TopicMapper implements EntityMapper<Topic, CreateTopic> {
         .withRetentionTime(create.getRetentionTime())
         .withReplicationFactor(create.getReplicationFactor())
         .withTopicConfig(create.getTopicConfig())
+        .withConsumerGroups(create.getConsumerGroups())
         .withSourceUrl(create.getSourceUrl())
         .withSourceHash(create.getSourceHash());
   }

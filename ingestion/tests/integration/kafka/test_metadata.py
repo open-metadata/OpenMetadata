@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from confluent_kafka import Consumer
 
@@ -14,46 +16,54 @@ def test_ingest_metadata(
 
 def test_ingest_with_consumer_groups(
     patch_passwords_for_db_services,
-    run_workflow,
-    ingestion_config_with_consumer_groups,
+    kafka_consumer_group_service,
     metadata,
-    db_service,
     kafka_consumer_group,
 ):
     """Consumer groups are extracted when extractConsumerGroups is enabled.
 
-    Note: The consumerGroups field requires the OM server to be rebuilt
-    with the updated Topic schema. When running against an older server,
-    the workflow still succeeds and extracts consumer group data — the
-    server just doesn't persist the new field. We verify the workflow
-    completes and optionally check the field if the server supports it.
+    Uses a dedicated service so topics are created fresh with consumer groups
+    in a single workflow run (avoids sourceHash deduplication from prior runs).
     """
-    run_workflow(MetadataWorkflow, ingestion_config_with_consumer_groups)
+    svc, config = kafka_consumer_group_service
+    workflow = MetadataWorkflow.create(config)
+    workflow.execute()
+    workflow.print_status()
+
     topic: Topic = metadata.get_by_name(
         entity=Topic,
-        fqn=f"{db_service.fullyQualifiedName.root}.customers-100",
-        fields=["*"],
+        fqn=f"{svc.fullyQualifiedName.root}.customers-100",
+        fields=["consumerGroups"],
         nullable=False,
     )
     assert topic is not None
-    # If the OM server has the new schema, verify consumer groups
-    if topic.consumerGroups is not None:
-        group_ids = [cg.groupId for cg in topic.consumerGroups]
-        assert "om-integration-test-group" in group_ids
+    if topic.consumerGroups is None:
+        pytest.skip("Consumer groups not populated — server may need schema rebuild")
+    group_ids = [cg.groupId for cg in topic.consumerGroups]
+    assert "om-integration-test-group" in group_ids
+    test_group = next(
+        cg for cg in topic.consumerGroups if cg.groupId == "om-integration-test-group"
+    )
+    assert test_group.memberCount >= 0
+    if test_group.partitionOffsets:
+        assert len(test_group.partitionOffsets) >= 1
+        assert test_group.partitionOffsets[0].currentOffset is not None
+        assert test_group.totalLag is not None
 
 
 def test_ingest_with_sample_data(
-    patch_passwords_for_db_services,
-    run_workflow,
-    ingestion_config_with_sample_data,
+    kafka_sample_data_service,
     metadata,
-    db_service,
 ):
     """Sample data messages are extracted from topics."""
-    run_workflow(MetadataWorkflow, ingestion_config_with_sample_data)
+    svc, config = kafka_sample_data_service
+    workflow = MetadataWorkflow.create(config)
+    workflow.execute()
+    workflow.print_status()
+
     topic: Topic = metadata.get_by_name(
         entity=Topic,
-        fqn=f"{db_service.fullyQualifiedName.root}.customers-100",
+        fqn=f"{svc.fullyQualifiedName.root}.customers-100",
         fields=["*"],
         nullable=False,
     )
@@ -62,13 +72,13 @@ def test_ingest_with_sample_data(
     # Fetch sample data via the dedicated endpoint
     sample_response = metadata.client.get(f"/topics/{topic.id.root}/sampleData")
     assert sample_response is not None
-    # The endpoint returns a Topic with sampleData if data was ingested
     sample_data = sample_response.get("sampleData")
-    if sample_data is not None:
-        messages = sample_data.get("messages", [])
-        assert (
-            len(messages) > 0
-        ), "Sample data should contain at least one message from the test topic"
+    if sample_data is None:
+        pytest.skip("OM server did not return sampleData for this topic")
+    messages = sample_data.get("messages", [])
+    assert (
+        len(messages) > 0
+    ), "Sample data should contain at least one message from the test topic"
 
 
 @pytest.fixture(
@@ -105,18 +115,131 @@ def kafka_consumer_group(kafka_container):
     consumer = Consumer(conf)
     consumer.subscribe(["customers-100"])
 
-    # Poll a few messages so the group registers with the broker
-    for _ in range(10):
-        msg = consumer.poll(timeout=5.0)
+    # Poll messages so the group registers with the broker
+    for _ in range(20):
+        msg = consumer.poll(timeout=2.0)
         if msg is not None and msg.error() is None:
             break
 
-    # Commit offsets to ensure the group is registered
+    # Commit offsets and wait for group to stabilize
     consumer.commit()
+    time.sleep(5)
 
     yield consumer
 
     consumer.close()
+
+
+@pytest.fixture(scope="module")
+def kafka_consumer_group_service(
+    kafka_container, schema_registry_container, metadata, workflow_config, sink_config
+):
+    """Create a dedicated service for consumer group testing."""
+    import uuid
+
+    from metadata.generated.schema.api.services.createMessagingService import (
+        CreateMessagingServiceRequest,
+    )
+    from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+        KafkaConnection,
+    )
+    from metadata.generated.schema.entity.services.messagingService import (
+        MessagingConnection,
+        MessagingService,
+        MessagingServiceType,
+    )
+
+    svc_request = CreateMessagingServiceRequest(
+        name=f"kafka_cg_test_{uuid.uuid4().hex[:8]}",
+        serviceType=MessagingServiceType.Kafka,
+        connection=MessagingConnection(
+            config=KafkaConnection(
+                bootstrapServers=kafka_container.get_bootstrap_server(),
+                schemaRegistryURL=schema_registry_container.get_connection_url(),
+            )
+        ),
+    )
+    svc = metadata.create_or_update(data=svc_request)
+    config = {
+        "source": {
+            "type": "kafka",
+            "serviceName": svc.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {
+                    "type": "MessagingMetadata",
+                    "extractConsumerGroups": True,
+                }
+            },
+            "serviceConnection": svc.connection.model_dump(),
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+    yield svc, config
+    svc = metadata.get_by_name(MessagingService, svc.fullyQualifiedName.root)
+    if svc:
+        metadata.delete(
+            entity=MessagingService,
+            entity_id=svc.id,
+            recursive=True,
+            hard_delete=True,
+        )
+
+
+@pytest.fixture(scope="module")
+def kafka_sample_data_service(
+    kafka_container, schema_registry_container, metadata, workflow_config, sink_config
+):
+    """Create a dedicated service for sample data testing."""
+    import uuid
+
+    from metadata.generated.schema.api.services.createMessagingService import (
+        CreateMessagingServiceRequest,
+    )
+    from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+        KafkaConnection,
+    )
+    from metadata.generated.schema.entity.services.messagingService import (
+        MessagingConnection,
+        MessagingService,
+        MessagingServiceType,
+    )
+
+    svc_request = CreateMessagingServiceRequest(
+        name=f"kafka_sd_test_{uuid.uuid4().hex[:8]}",
+        serviceType=MessagingServiceType.Kafka,
+        connection=MessagingConnection(
+            config=KafkaConnection(
+                bootstrapServers=kafka_container.get_bootstrap_server(),
+                schemaRegistryURL=schema_registry_container.get_connection_url(),
+            )
+        ),
+    )
+    svc = metadata.create_or_update(data=svc_request)
+    config = {
+        "source": {
+            "type": "kafka",
+            "serviceName": svc.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {
+                    "type": "MessagingMetadata",
+                    "generateSampleData": True,
+                }
+            },
+            "serviceConnection": svc.connection.model_dump(),
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+    yield svc, config
+    svc = metadata.get_by_name(MessagingService, svc.fullyQualifiedName.root)
+    if svc:
+        metadata.delete(
+            entity=MessagingService,
+            entity_id=svc.id,
+            recursive=True,
+            hard_delete=True,
+        )
 
 
 @pytest.fixture(scope="module")
