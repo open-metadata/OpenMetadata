@@ -96,7 +96,9 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
     isFormDisabled || (lockPeriodicBatchFields ?? lockNonIncludeExcludeFields);
   const scheduleTypeDisabled =
     isFormDisabled ||
-    (lockScheduleTypeField ?? lockPeriodicBatchFields ?? lockNonIncludeExcludeFields);
+    (lockScheduleTypeField ??
+      lockPeriodicBatchFields ??
+      lockNonIncludeExcludeFields);
   const includeExcludeDisabled = isFormDisabled;
 
   const triggerTypeOptions = [
