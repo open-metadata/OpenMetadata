@@ -627,7 +627,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
                     id: testUser.responseData.id,
                     type: 'user',
                     name: userName,
-                    fullyQualifiedName: testUser.responseData.fullyQualifiedName,
+                    fullyQualifiedName:
+                      testUser.responseData.fullyQualifiedName,
                   },
                 ],
               },
@@ -649,7 +650,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         const userLink = page.getByTestId(userName).getByRole('link');
         await expect(userLink).toContainText(userName);
 
-        const userDetailsResponse = page.waitForResponse('/api/v1/users/name/*');
+        const userDetailsResponse = page.waitForResponse(
+          '/api/v1/users/name/*'
+        );
         await userLink.click();
         await userDetailsResponse;
 

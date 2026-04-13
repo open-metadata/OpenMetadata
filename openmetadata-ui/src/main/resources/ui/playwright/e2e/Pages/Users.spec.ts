@@ -257,9 +257,7 @@ test.describe('User with Admin Roles', () => {
     await restoreUserProfilePage(adminPage, user.responseData.displayName);
     await hardDeleteUserProfilePage(adminPage, user.responseData.displayName);
   });
-
 });
-
 
 test.describe('User with Data Consumer Roles', () => {
   test('Token generation & revocation for Data Consumer', async ({

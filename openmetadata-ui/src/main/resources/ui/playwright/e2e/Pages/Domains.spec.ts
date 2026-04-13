@@ -1380,9 +1380,9 @@ test.describe('Domains', () => {
 
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
-    const stringCP = EntityDataClass.customProperties['domain']?.[
-      'string'
-    ] as { name: string } | undefined;
+    const stringCP = EntityDataClass.customProperties['domain']?.['string'] as
+      | { name: string }
+      | undefined;
     const propertyName = stringCP?.name ?? '';
     const customPropertyValue = 'Test Domain Property Value';
 
