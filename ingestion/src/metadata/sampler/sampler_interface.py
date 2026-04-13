@@ -40,6 +40,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import TableConfig
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
 from metadata.sampler.config import (
+    StaticSamplingConfig,
     get_exclude_columns,
     get_include_columns,
     get_profile_sample_config,
@@ -179,6 +180,46 @@ class SamplerInterface(ABC):
 
         return self._columns
 
+    def _get_tiered_sample(self, row_count: int) -> StaticSamplingConfig:
+        """
+        Get the appropriate sampling config based on the row count
+        and the defined thresholds.
+
+        Args:
+            row_count (int): the row count of the table
+        """
+        if row_count <= 100_000:
+            return StaticSamplingConfig(
+                profileSample=100,
+                profileSampleType="percentage",
+            ) # type: ignore
+        if row_count <= 1_000_000:
+            return StaticSamplingConfig(
+                profileSample=50,
+                profileSampleType="percentage"
+            ) # type: ignore
+        if row_count <= 10_000_000:
+            return StaticSamplingConfig(
+                profileSample=10,
+                profileSampleType="percentage"
+            ) # type: ignore
+        if row_count <= 100_000_000:
+            return StaticSamplingConfig(
+                profileSample=5,
+                profileSampleType="percentage"
+            ) # type: ignore
+        if row_count <= 1_000_000_000:
+            return StaticSamplingConfig(
+                profileSample=1,
+                profileSampleType="percentage"
+            ) # type: ignore
+        else:
+            return StaticSamplingConfig(
+                profileSample=0.1,
+                profileSampleType="percentage"
+            ) # type: ignore
+
+
     def _get_excluded_columns(self) -> Set[str]:
         """Get excluded  columns for table being profiled"""
         if self.exclude_columns:
@@ -233,6 +274,11 @@ class SamplerInterface(ABC):
     @abstractmethod
     def get_columns(self) -> List[SQALikeColumn]:
         """get columns"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _get_asset_row_count(self) -> int:
+        """Get table row count"""
         raise NotImplementedError
 
     @staticmethod

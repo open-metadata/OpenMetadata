@@ -28,9 +28,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseCo
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
-
 
 class SnowflakeSampler(SQASampler):
     """
@@ -68,12 +68,12 @@ class SnowflakeSampler(SQASampler):
             if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
                 self.sampling_method_type = func.system
 
-    def set_tablesample(self, selectable: Table):
+    def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
         """Set the TABLESAMPLE clause for Snowflake
         Args:
-            selectable (Table): _description_
+            static (StaticSamplingConfig): sampling configuration
+            selectable (Table): table to sample
         """
-        static = self.sample_config.get_static_config()
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(
                 self.sampling_method_type(static.profileSample or 100)
@@ -83,9 +83,10 @@ class SnowflakeSampler(SQASampler):
             func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS"))
         )
 
-    def get_sample_query(self, *, column=None) -> CTE:
+    def get_sample_query(self, static: StaticSamplingConfig, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
-        rnd = self._base_sample_query(column).cte(
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)
+        rnd = self._base_sample_query(selectable, column).cte(
             f"{self.get_sampler_table_name()}_rnd"
         )
         with self.session_factory() as client:

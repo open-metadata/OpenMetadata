@@ -200,14 +200,14 @@ class TimescaleSampler(PostgresSampler):
             return self._get_uncompressed_dataset()
         return dataset
 
-    def _base_sample_query(self, column: Optional[Column], label=None):
+    def _base_sample_query(self, selectable, column: Optional[Column], label=None):
         """Add an uncompressed-chunks filter when sampling is active.
 
-        The base class builds the sampling query from ``raw_dataset.__table__``.
+        The base class builds the sampling query from the given selectable.
         We call super() to keep TABLESAMPLE / partition logic intact, then
         append a WHERE predicate that restricts rows to uncompressed chunks.
         """
-        query = super()._base_sample_query(column, label)
+        query = super()._base_sample_query(selectable, column, label)
         if not self._has_compressed_chunks():
             return query
 

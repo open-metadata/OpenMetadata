@@ -9,13 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Helper module to handle data sampling
-for the profiler
+Helper module to handle data sampling for the profiler
 """
-from sqlalchemy import inspect, or_, text
-
-from metadata.profiler.orm.registry import FLOAT_SET
-from metadata.profiler.processor.handle_partition import RANDOM_LABEL
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.sampler.sqlalchemy.stats_utils import get_row_count_from_show_stats
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -23,19 +18,10 @@ from metadata.utils.logger import profiler_interface_registry_logger
 logger = profiler_interface_registry_logger()
 
 
-class TrinoSampler(SQASampler):
+class AthenaSampler(SQASampler):
+    """Athena sampler using SHOW STATS for efficient row counts.
+    Athena supports the same SHOW STATS syntax as Presto/Trino.
     """
-    Generates a sample of the data to not
-    run the query in the whole table.
-    """
-
-    def __init__(self, *args, **kwargs):
-        # pylint: disable=import-outside-toplevel
-        from trino.sqlalchemy.dialect import TrinoDialect
-
-        TrinoDialect._json_deserializer = None
-
-        super().__init__(*args, **kwargs)
 
     def _get_asset_row_count(self) -> int:
         if self.partition_details:
@@ -54,19 +40,3 @@ class TrinoSampler(SQASampler):
             )
 
         return super()._get_asset_row_count()
-
-    def _base_sample_query(self, selectable, column, label=None):
-        sqa_columns = [
-            col for col in inspect(self.raw_dataset).c if col.name != RANDOM_LABEL
-        ]
-        entity = selectable if column is None else column
-        with self.get_client() as client:
-            return client.query(entity, label).where(
-                or_(
-                    *[
-                        text(f'is_nan("{cols.name}") = False')
-                        for cols in sqa_columns
-                        if type(cols.type) in FLOAT_SET
-                    ]
-                )
-            )

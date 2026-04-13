@@ -19,6 +19,9 @@ from metadata.ingestion.source.database.databricks.connection import (
 )
 from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.utils.logger import profiler_interface_registry_logger
+
+logger = profiler_interface_registry_logger()
 
 
 class DatabricksSamplerInterface(SQASampler):
@@ -43,6 +46,30 @@ class DatabricksSamplerInterface(SQASampler):
         client = super().get_client()
         self.set_catalog(client)
         return client
+
+    def _get_asset_row_count(self) -> int:
+        if self.partition_details:
+            return super()._get_asset_row_count()
+
+        try:
+            schema = self.raw_dataset.__table__.schema
+            table = self.raw_dataset.__tablename__
+            with self.session_factory() as session:
+                result = session.execute(
+                    text(f"DESCRIBE DETAIL `{schema}`.`{table}`")
+                ).first()
+                if result:
+                    row_dict = result._asdict()
+                    num_records = row_dict.get("numRecords")
+                    if num_records is not None:
+                        return int(num_records)
+        except Exception as exc:
+            logger.debug(
+                "DESCRIBE DETAIL row count failed, "
+                f"falling back to COUNT(*): {exc}"
+            )
+
+        return super()._get_asset_row_count()
 
     def _handle_array_column(self, column: Column) -> bool:
         """Check if a column is an array type"""

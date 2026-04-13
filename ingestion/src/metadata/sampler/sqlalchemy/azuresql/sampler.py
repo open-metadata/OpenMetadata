@@ -18,7 +18,7 @@ from sqlalchemy import Column, Table, text
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import TableData, TableType
-from metadata.sampler.sqlalchemy.sampler import ProfileSampleType, SQASampler
+from metadata.sampler.sqlalchemy.sampler import ProfileSampleType, SQASampler, StaticSamplingConfig
 
 
 class AzureSQLSampler(SQASampler):
@@ -32,7 +32,7 @@ class AzureSQLSampler(SQASampler):
     # pyodbc.ProgrammingError: ('ODBC SQL type -151 is not yet supported.  column-index=x  type=-151', 'HY106')
     NOT_COMPUTE_PYODBC = {"SQASGeography", "UndeterminedType"}
 
-    def set_tablesample(self, selectable: Table):
+    def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
         """Set the TABLESAMPLE clause for MSSQL
         Args:
             selectable (Table): _description_
@@ -50,9 +50,10 @@ class AzureSQLSampler(SQASampler):
 
         return selectable
 
-    def get_sample_query(self, *, column=None) -> CTE:
+    def get_sample_query(self, static: StaticSamplingConfig, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
-        rnd = self._base_sample_query(column).cte(
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)
+        rnd = self._base_sample_query(selectable, column).cte(
             f"{self.get_sampler_table_name()}_rnd"
         )
         query = self.get_client().query(rnd)

@@ -15,12 +15,15 @@ for the profiler
 import hashlib
 from typing import List, Optional, Union, cast
 
-from sqlalchemy import Column, inspect, select, text
+from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import Metrics
+from sqlalchemy import Column, TableSample, inspect, select, text
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
 from sqlalchemy.sql.sqltypes import Enum
 
+from metadata.generated.schema.type.dynamicSamplingConfig import DynamicSamplingConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     TableData,
@@ -30,7 +33,12 @@ from metadata.ingestion.connections.session import create_and_bind_thread_safe_s
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
+from metadata.profiler.orm.functions.table_metric_computer import (
+    ROW_COUNT,
+    table_metric_computer_factory,
+)
 from metadata.profiler.processor.handle_partition import build_partition_predicate
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import is_safe_sql_query
@@ -84,7 +92,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """Build the SQA Client"""
         return self.session_factory()
 
-    def set_tablesample(self, selectable: Table):
+    def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
         """Set the tablesample for the table. To be implemented by the child SQA sampler class
         Args:
             selectable (Table): a selectable table
@@ -121,7 +129,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         return column
 
-    def _base_sample_query(self, column: Optional[Column], label=None):
+    def _base_sample_query(self, selectable: Union[Table, TableSample], column: Optional[Column], label=None):
         """Base query for sampling
 
         Args:
@@ -130,9 +138,6 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         Returns:
         """
-        # only sample the column if we are computing a column metric to limit the amount of data scaned
-        selectable = self.set_tablesample(self.raw_dataset.__table__)
-
         with self.session_factory() as client:
             entity = selectable if column is None else selectable.c.get(column.key)
             if label is not None:
@@ -143,6 +148,58 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             if self.partition_details:
                 query = self.get_partitioned_query(query)
             return query
+
+    def _get_sample_config(self) -> Optional[StaticSamplingConfig]:
+        """Get the sampling config from the sample config object"""
+        static: Optional[StaticSamplingConfig] = self.sample_config.get_config(StaticSamplingConfig)
+        dynamic: Optional[DynamicSamplingConfig] = self.sample_config.get_config(DynamicSamplingConfig)
+        if dynamic:
+            row_count = self._get_asset_row_count()
+            if not dynamic.smartSampling and dynamic.thresholds is not None:
+                for threshold in sorted(dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True):
+                    if row_count >= threshold.rowCountThreshold:
+                        static = StaticSamplingConfig(
+                            profileSample=threshold.profileSample,
+                            profileSampleType=threshold.profileSampleType,
+                            samplingMethodType=threshold.samplingMethodType,
+                        )
+            if dynamic.smartSampling:
+                static = self._get_tiered_sample(row_count)
+
+        return static
+
+    def _get_asset_row_count(self) -> int:
+        """Get the row count for the table.
+        Uses the table_metric_computer_factory which dispatches to database-specific
+        system tables (pg_class, information_schema, sys.partitions, etc.) when a
+        dialect-specific computer is registered, otherwise falls back to naive COUNT(*).
+        When partition details are set, always uses COUNT(*) to respect the filter.
+        """
+        if self.partition_details:
+            with self.session_factory() as client:
+                query = client.query(self.raw_dataset)
+                query = self.get_partitioned_query(query)
+                return query.count()
+
+        with self.session_factory() as session:
+            runner = QueryRunner(
+                session=session,
+                dataset=self.raw_dataset,
+                raw_dataset=self.raw_dataset,
+            )
+            computer = table_metric_computer_factory.construct(
+                session.get_bind().dialect.name,
+                runner=runner,
+                metrics=[Metrics.rowCount],
+                conn_config=self.service_connection_config,
+                entity=self.entity,
+            )
+            result = computer.compute()
+            if result and hasattr(result, ROW_COUNT):
+                row_count = getattr(result, ROW_COUNT)
+                if row_count is not None:
+                    return int(row_count)
+            return 0
 
     def get_sampler_table_name(self) -> str:
         """Get the base name of the SQA table for sampling.
@@ -155,12 +212,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         hash_object = hashlib.md5(encoded_name)
         return hash_object.hexdigest()
 
-    def get_sample_query(self, *, column=None) -> Query:
+    def get_sample_query(self, static: StaticSamplingConfig, *, column=None) -> Query:
         """get query for sample data"""
-        static = self.sample_config.get_static_config()
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)
         with self.session_factory() as client:
             if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 rnd = self._base_sample_query(
+                    selectable,
                     column,
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 ).cte(f"{self.get_sampler_table_name()}_rnd")
@@ -173,6 +231,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             if self.partition_details:
                 table_query = self.get_partitioned_query(table_query)
             session_query = self._base_sample_query(
+                selectable,
                 column,
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
                 if self.sample_config.randomizedSample
@@ -195,7 +254,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        static = self.sample_config.get_static_config()
+        static = self._get_sample_config()
+
         if (
             not static
             or not static.profileSample
@@ -209,7 +269,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
             return self.raw_dataset
 
-        return self.get_sample_query(column=column)
+        return self.get_sample_query(static, column=column)
 
     def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
         """
