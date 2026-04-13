@@ -133,10 +133,6 @@ test(
     });
 
     await test.step('Update the pipeline', async () => {
-      const ingestionPipelinesListResponse =
-        waitForTestSuiteIngestionPipelinesListResponse(page);
-      await page.getByRole('tab', { name: 'Pipeline' }).click();
-      await ingestionPipelinesListResponse;
       await page
         .getByRole('row', {
           name: new RegExp(pipelineName),
