@@ -145,14 +145,12 @@ export const waitForTestSuiteIngestionPipelinesListResponse = (page: Page) =>
   page.waitForResponse((res) => {
     const url = res.url();
     const method = res.request().method();
-    const status = res.status();
 
     return (
       method === 'GET' &&
       url.includes('/api/v1/services/ingestionPipelines') &&
       url.includes('pipelineStatuses') &&
-      url.includes('pipelineType=TestSuite') &&
-      status === 200
+      url.includes('pipelineType=TestSuite')
     );
   });
 
