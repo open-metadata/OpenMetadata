@@ -2077,7 +2077,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, [graphDataToShow, dataSource, explorationMode, t]);
 
   const renderGraphContent = () => {
-    if (loading && !graphDataToShow) {
+    const hasNoVisibleNodes =
+      !graphDataToShow || graphDataToShow.nodes.length === 0;
+
+    if (loading && hasNoVisibleNodes) {
       return (
         <div
           className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
@@ -2110,7 +2113,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       );
     }
 
-    if (!graphDataToShow || graphDataToShow.nodes.length === 0) {
+    if (hasNoVisibleNodes && !loading) {
       const hasActiveFilter =
         withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
         withoutOntologyAutocompleteAll(filters.relationTypes).length > 0;
@@ -2126,6 +2129,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           </Typography>
         </div>
       );
+    }
+
+    if (!graphDataToShow) {
+      return null;
     }
 
     return (
@@ -2272,14 +2279,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   handleModeChange(key as ExplorationMode);
                 }
               }}>
-              <Tabs.List
-                items={[
-                  { label: t('label.model'), id: 'model' },
-                  { label: t('label.data'), id: 'data' },
-                ]}
-                size="sm"
-                type="button-border"
-              />
+              <Tabs.List size="sm" type="button-border">
+                <Tabs.Item id="model" label={t('label.model')} />
+                <Tabs.Item
+                  className={(state) =>
+                    state.isDisabled ? 'tw:cursor-not-allowed!' : ''
+                  }
+                  id="data"
+                  isDisabled={loading || isLoadingMore}
+                  label={t('label.data')}
+                />
+              </Tabs.List>
               <Tabs.Panel className="tw:hidden" id="model" />
               <Tabs.Panel className="tw:hidden" id="data" />
             </Tabs>
