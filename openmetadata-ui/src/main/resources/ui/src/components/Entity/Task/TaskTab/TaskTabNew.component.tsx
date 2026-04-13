@@ -151,9 +151,27 @@ const parseProposedChanges = (message: string): ProposedChanges | null => {
     return null;
   }
   try {
-    const parsed = JSON.parse(message) as ProposedChanges;
+    const parsed = JSON.parse(message);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return null;
+    }
+    const normalized: ProposedChanges = {};
+    for (const [field, value] of Object.entries(parsed)) {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        continue;
+      }
+      const entry = value as Record<string, unknown>;
+      normalized[field] = {
+        added: Array.isArray(entry.added)
+          ? (entry.added as unknown[]).filter((v): v is string => typeof v === 'string')
+          : [],
+        removed: Array.isArray(entry.removed)
+          ? (entry.removed as unknown[]).filter((v): v is string => typeof v === 'string')
+          : [],
+      };
+    }
 
-    return Object.keys(parsed).length > 0 ? parsed : null;
+    return Object.keys(normalized).length > 0 ? normalized : null;
   } catch {
     return null;
   }
@@ -1186,12 +1204,12 @@ export const TaskTabNew = ({
                       <div className="task-proposed-changes-chips">
                         {removed.map((val) =>
                           getUrl ? (
-                            <a
+                            <Link
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                              href={getUrl(val)}
-                              key={`removed-${val}`}>
+                              key={`removed-${val}`}
+                              to={getUrl(val)}>
                               {val}
-                            </a>
+                            </Link>
                           ) : (
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
@@ -1202,12 +1220,12 @@ export const TaskTabNew = ({
                         )}
                         {added.map((val) =>
                           getUrl ? (
-                            <a
+                            <Link
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                              href={getUrl(val)}
-                              key={`added-${val}`}>
+                              key={`added-${val}`}
+                              to={getUrl(val)}>
                               {val}
-                            </a>
+                            </Link>
                           ) : (
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
