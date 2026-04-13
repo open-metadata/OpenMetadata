@@ -154,27 +154,41 @@ if not records:
 
 record = records[0]
 timestamp = int(record.get("timestamp") or 0)
+start_time = int(record.get("startTime") or 0)
 status = str(record.get("status") or "").lower()
+execution_time = record.get("executionTime")
 
-if timestamp < threshold:
-    print(f"stale:{status}:{timestamp}")
+marker = start_time if start_time > 0 else timestamp
+terminal_statuses = {"completed", "success", "failed", "stopped"}
+active_statuses = {"running", "started", "pending", "active", "stopinprogress"}
+has_execution_time = execution_time not in (None, "", 0, "0")
+
+if marker < threshold:
+    print(f"stale:{status}:{marker}")
+elif status in terminal_statuses or has_execution_time:
+    print(f"current:{status}:{marker}:terminal")
+elif status in active_statuses:
+    print(f"current:{status}:{marker}:active")
 else:
-    print(f"current:{status}:{timestamp}")
+    print(f"current:{status}:{marker}:seen")
 PY
 )
 
     case "$status_line" in
-      current:completed:*|current:success:*)
+      current:completed:*:terminal|current:success:*:terminal)
         echo "✓ ${app_name} completed successfully"
         return 0
         ;;
-      current:failed:*|current:stopped:*)
+      current:failed:*:terminal|current:stopped:*:terminal)
         echo "✗ ${app_name} finished with status ${status_line#current:}"
         echo "  Response: ${status_response}"
         return 1
         ;;
-      current:running:*|current:started:*|current:pending:*|current:active:*|current:stopinprogress:*)
+      current:*:*:active)
         echo "Waiting for ${app_name} to finish (${status_line#current:})..."
+        ;;
+      current:*:*:seen)
+        echo "Waiting for ${app_name}; latest status was ${status_line#current:}"
         ;;
       stale:*|missing|invalid)
         echo "Waiting for a fresh run record for ${app_name}..."
@@ -507,18 +521,10 @@ run_local_docker_main() {
   fi
 
   echo "✔running reindexing"
-  response=$(curl -s -w "\n%{http_code}" --location --request POST \
-    "http://localhost:8585/api/v1/apps/trigger/SearchIndexingApplication" \
-    --header "Authorization: Bearer $authorizationToken")
-  http_code=$(echo "$response" | tail -n1)
-  body=$(echo "$response" | sed '$d')
-
-  if [ "$http_code" != "200" ] && [ "$http_code" != "201" ] && [ "$http_code" != "202" ]; then
-    echo "✗ Failed to trigger SearchIndexingApplication (HTTP ${http_code})"
-    echo "  Response: ${body}"
+  ensure_app_installed "SearchIndexingApplication"
+  if ! trigger_app_and_wait "SearchIndexingApplication" "" "$APP_RUN_WAIT_TIMEOUT_SECONDS"; then
     exit 1
   fi
-  sleep 60
 
   tput setaf 2
   echo "✔ OpenMetadata is up and running"

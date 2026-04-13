@@ -14,6 +14,7 @@ USERNAME = "admin"
 PASSWORD = "admin"
 
 _access_token: Optional[str] = None
+_last_dag_logs_supported: Optional[bool] = None
 
 
 def get_env_int(name: str, default: int) -> int:
@@ -115,13 +116,26 @@ def print_last_run_logs() -> None:
     """
     Show the logs
     """
+    global _last_dag_logs_supported
+
     try:
-        logs = requests.get(
+        response = requests.get(
             f"{AIRFLOW_URL}/api/v2/openmetadata/last_dag_logs?dag_id=sample_data&task_id=ingest_using_recipe",
             headers=get_auth_headers(),
             timeout=REQUESTS_TIMEOUT
-        ).text
-        pprint(logs)
+        )
+
+        if response.status_code == 404:
+            if _last_dag_logs_supported is not False:
+                log_ansi_encoded_string(
+                    message="Airflow last_dag_logs route is unavailable. Skipping task log fetch."
+                )
+                _last_dag_logs_supported = False
+            return
+
+        response.raise_for_status()
+        _last_dag_logs_supported = True
+        pprint(response.text)
     except Exception as e:
         log_ansi_encoded_string(message=f"Could not fetch logs: {e}")
 

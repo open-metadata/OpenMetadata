@@ -24,6 +24,7 @@ on:
       - "docker/run_local_docker.sh"
       - "docker/run_local_docker_common.sh"
       - "docker/run_local_docker_rdf.sh"
+      - "docker/validate_compose.py"
       - "docker/development/docker-compose-fuseki.yml"
       - "docker/development/docker-compose-postgres-fuseki.yml"
       - "docs/rdf-local-development.md"
