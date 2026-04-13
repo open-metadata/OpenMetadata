@@ -50,7 +50,11 @@ from metadata.profiler.metrics.core import (
     TMetric,
 )
 from metadata.profiler.metrics.static.row_count import RowCount
-from metadata.profiler.orm.registry import NOT_COMPUTE
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.registry import (
+    NOT_COMPUTE,
+    COMPLEX_SUPPORTED_TYPES,
+)
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.utils.logger import profiler_logger
 
@@ -379,6 +383,14 @@ class Profiler(Generic[TMetric]):
             for column in self.columns
             if column.type.__class__.__name__ not in NOT_COMPUTE
         ]
+
+        # Complex columns: in NOT_COMPUTE but support nullCount (Issue #15627)
+        complex_columns = [
+            column
+            for column in self.columns
+            if column.type.__class__.__name__ in NOT_COMPUTE
+            and column.type.__class__.__name__ in COMPLEX_SUPPORTED_TYPES
+        ]
         static_metrics = [
             ThreadPoolMetrics(
                 metrics=[
@@ -442,6 +454,20 @@ class Profiler(Generic[TMetric]):
                         table=self.table,
                     )
                 )
+
+
+        # Add nullCount for complex columns (Issue #15627)
+        if complex_columns:
+            complex_static_metrics = [
+                ThreadPoolMetrics(
+                    metrics=[Metrics.nullCount.value],
+                    metric_type=MetricTypes.Static,
+                    column=column,
+                    table=self.table,
+                )
+                for column in complex_columns
+            ]
+            column_metrics_for_thread_pool.extend(complex_static_metrics)
 
         return column_metrics_for_thread_pool
 

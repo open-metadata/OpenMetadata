@@ -137,6 +137,33 @@ NOT_COMPUTE = {
     DataType.XML.value,
     CustomTypes.UNDETERMINED.value.__name__,
 }
+
+# --- Complex type groups for limited profiling (Issue #15627) ---
+COMPLEX_COLLECTION_TYPES = frozenset({
+    sqlalchemy.ARRAY.__name__,
+    CustomTypes.ARRAY.value.__name__,
+})
+
+COMPLEX_STRUCT_TYPES = frozenset({
+    sqlalchemy.JSON.__name__,
+    sqa_types.SQAMap.__name__,
+    sqa_types.SQAStruct.__name__,
+    sqa_types.SQASet.__name__,
+    sqa_types.SQAUnion.__name__,
+})
+
+COMPLEX_GEO_TYPES = frozenset({
+    sqa_types.SQASGeography.__name__,
+    DataType.GEOMETRY.value,
+})
+
+# Union of all complex types eligible for limited profiling
+COMPLEX_SUPPORTED_TYPES = (
+    COMPLEX_COLLECTION_TYPES
+    | COMPLEX_STRUCT_TYPES
+    | COMPLEX_GEO_TYPES
+)
+
 FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
 QUANTIFIABLE_SET = {
@@ -237,3 +264,9 @@ def is_blob(_type) -> bool:
             DataType.TEXT.value,
         }
     return isinstance(_type, (HexByteString, LargeBinary, Text))
+
+
+def is_complex_supported(_type) -> bool:
+    """Return True if column is a complex type that supports
+    limited profiling (nullCount only). Issue #15627."""
+    return _type.__class__.__name__ in COMPLEX_SUPPORTED_TYPES

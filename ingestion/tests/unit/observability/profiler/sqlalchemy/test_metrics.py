@@ -1222,3 +1222,168 @@ class MetricsTest(TestCase):
         cls.sqa_profiler_interface.close()
         os.remove(cls.db_path)
         return super().tearDownClass()
+
+
+class TestComplexTypeNullCount(TestCase):
+    """
+    Tests for Issue #15627 — nullCount support for complex data types.
+    Verifies that complex columns (JSON, ARRAY, MAP, GEO) get nullCount
+    computed while standard profiling is still skipped for them.
+    """
+
+    def test_complex_columns_excluded_from_standard_profiling(self):
+        """
+        Verify that complex columns (JSON, SQAMap, SQAStruct) are still
+        in NOT_COMPUTE — standard profiling does not run for them.
+        """
+        import sqlalchemy
+
+        from metadata.ingestion.source import sqa_types
+        from metadata.profiler.orm.registry import NOT_COMPUTE
+
+        # JSON is in NOT_COMPUTE
+        self.assertIn(sqlalchemy.JSON.__name__, NOT_COMPUTE)
+        # SQAMap is in NOT_COMPUTE
+        self.assertIn(sqa_types.SQAMap.__name__, NOT_COMPUTE)
+        # SQAStruct is in NOT_COMPUTE
+        self.assertIn(sqa_types.SQAStruct.__name__, NOT_COMPUTE)
+        # SQASGeography is in NOT_COMPUTE
+        self.assertIn(sqa_types.SQASGeography.__name__, NOT_COMPUTE)
+
+    def test_complex_supported_types_identified_correctly(self):
+        """
+        Verify is_complex_supported() correctly identifies complex types
+        that should get limited profiling.
+        """
+        import sqlalchemy
+
+        from metadata.ingestion.source import sqa_types
+        from metadata.profiler.orm.registry import is_complex_supported
+
+        # These should return True
+        self.assertTrue(is_complex_supported(sqlalchemy.JSON()))
+        self.assertTrue(is_complex_supported(sqlalchemy.ARRAY(sqlalchemy.Integer)))
+        self.assertTrue(is_complex_supported(sqa_types.SQAMap()))
+        self.assertTrue(is_complex_supported(sqa_types.SQAStruct()))
+        self.assertTrue(is_complex_supported(sqa_types.SQASGeography()))
+
+    def test_standard_types_not_affected(self):
+        """
+        Verify is_complex_supported() returns False for standard types
+        that already get full profiling — no regression.
+        """
+        import sqlalchemy
+
+        from metadata.profiler.orm.registry import is_complex_supported
+
+        # Standard types must NOT be flagged as complex
+        self.assertFalse(is_complex_supported(sqlalchemy.Integer()))
+        self.assertFalse(is_complex_supported(sqlalchemy.String()))
+        self.assertFalse(is_complex_supported(sqlalchemy.Float()))
+        self.assertFalse(is_complex_supported(sqlalchemy.DateTime()))
+
+    def test_super_type_maps_to_json_in_converter(self):
+        """
+        Verify DataType.SUPER now maps to sqlalchemy.JSON in converter
+        instead of falling through to UndeterminedType.
+        """
+        import sqlalchemy
+
+        from metadata.generated.schema.entity.data.table import DataType
+        from metadata.profiler.orm.converter.common import CommonMapTypes
+
+        mapped = CommonMapTypes._TYPE_MAP.get(DataType.SUPER)
+        self.assertIsNotNone(
+            mapped,
+            "DataType.SUPER must be mapped — should not fall to UndeterminedType",
+        )
+        self.assertEqual(
+            mapped,
+            sqlalchemy.JSON,
+            "DataType.SUPER must map to sqlalchemy.JSON",
+        )
+
+    def test_geometry_type_maps_to_geography_in_converter(self):
+        """
+        Verify DataType.GEOMETRY now maps to SQASGeography in converter.
+        """
+        from metadata.generated.schema.entity.data.table import DataType
+        from metadata.ingestion.source import sqa_types
+        from metadata.profiler.orm.converter.common import CommonMapTypes
+
+        mapped = CommonMapTypes._TYPE_MAP.get(DataType.GEOMETRY)
+        self.assertIsNotNone(
+            mapped,
+            "DataType.GEOMETRY must be mapped — should not fall to UndeterminedType",
+        )
+        self.assertEqual(
+            mapped,
+            sqa_types.SQASGeography,
+            "DataType.GEOMETRY must map to SQASGeography",
+        )
+
+    def test_complex_columns_get_null_count_in_thread_pool(self):
+        """
+        Verify _prepare_column_metrics() produces ThreadPoolMetrics
+        entries with nullCount for complex columns.
+        Uses mocking — does not require a live database.
+        """
+        from unittest.mock import MagicMock, PropertyMock
+
+        import sqlalchemy
+
+        from metadata.profiler.api.models import ThreadPoolMetrics
+        from metadata.profiler.metrics.core import MetricTypes
+        from metadata.profiler.metrics.registry import Metrics
+        from metadata.profiler.processor.core import Profiler
+
+        # Build a mock column with JSON type (complex)
+        mock_json_col = MagicMock()
+        mock_json_col.type = sqlalchemy.JSON()
+        mock_json_col.name = "json_col"
+
+        # Build a mock column with Integer type (standard)
+        mock_int_col = MagicMock()
+        mock_int_col.type = sqlalchemy.Integer()
+        mock_int_col.name = "int_col"
+
+        # Build mock profiler with these columns
+        mock_profiler = MagicMock(spec=Profiler)
+        type(mock_profiler).columns = PropertyMock(
+            return_value=[mock_json_col, mock_int_col]
+        )
+        mock_profiler.source_config = None  # skip computeColumnMetrics check
+        mock_profiler.table = MagicMock()
+        mock_profiler.metric_filter = MagicMock()
+        mock_profiler.metric_filter.get_column_metrics.return_value = []
+        mock_profiler.profiler_interface = MagicMock()
+        mock_profiler.get_custom_metrics.return_value = None
+
+        # Bind the real method to the mock so it executes actual logic
+        mock_profiler._prepare_column_metrics = (
+            Profiler._prepare_column_metrics.__get__(mock_profiler, Profiler)
+        )
+
+        # Call the real method via the mock instance
+        result = mock_profiler._prepare_column_metrics()
+
+        # Find ThreadPoolMetrics entries for the JSON column
+        complex_entries = [
+            r for r in result if hasattr(r, "column") and r.column == mock_json_col
+        ]
+
+        self.assertTrue(
+            len(complex_entries) > 0,
+            "JSON column must have at least one ThreadPoolMetrics entry",
+        )
+        # Verify nullCount is in the metrics list
+        null_count_entries = [
+            r
+            for r in complex_entries
+            if isinstance(r.metrics, list) and Metrics.nullCount.value in r.metrics
+        ]
+        self.assertTrue(
+            len(null_count_entries) > 0,
+            "JSON column must have nullCount in its ThreadPoolMetrics",
+        )
+
