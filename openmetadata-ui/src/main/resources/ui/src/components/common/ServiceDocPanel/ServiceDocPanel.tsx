@@ -17,55 +17,19 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENDS_WITH_NUMBER_REGEX,
-  MARKDOWN_MATCH_ID,
   ONEOF_ANYOF_ALLOF_REGEX,
 } from '../../../constants/regex.constants';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
-import { MarkdownToHTMLConverter } from '../../../utils/FeedUtils';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
-import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
+import {
+  getActiveFieldNameForAppDocs,
+  processDocMarkdown,
+} from '../../../utils/ServiceUtils';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import './service-doc-panel.less';
-
-const SECTION_BLOCK_REGEX = /\$\$section\n([\s\S]*?)\n\$\$/g;
-
-const processServiceDocMarkdown = (markdown: string): string => {
-  const parts: string[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  SECTION_BLOCK_REGEX.lastIndex = 0;
-
-  while ((match = SECTION_BLOCK_REGEX.exec(markdown)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(
-        MarkdownToHTMLConverter.makeHtml(markdown.slice(lastIndex, match.index))
-      );
-    }
-
-    const sectionContent = match[1];
-    const idMatch = sectionContent.match(MARKDOWN_MATCH_ID);
-    const id = idMatch ? idMatch[1] : '';
-    const cleanContent = sectionContent.replace(MARKDOWN_MATCH_ID, '').trim();
-
-    parts.push(
-      `<section data-id="${id}" data-highlighted="false">${MarkdownToHTMLConverter.makeHtml(
-        cleanContent
-      )}</section>`
-    );
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < markdown.length) {
-    parts.push(MarkdownToHTMLConverter.makeHtml(markdown.slice(lastIndex)));
-  }
-
-  return parts.join('\n');
-};
 interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
@@ -203,7 +167,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
   const processedHtml = useMemo(
     () =>
-      DOMPurify.sanitize(processServiceDocMarkdown(markdownContent), {
+      DOMPurify.sanitize(processDocMarkdown(markdownContent), {
         ADD_ATTR: ['data-id', 'data-highlighted', 'target'],
       }),
     [markdownContent]
