@@ -516,6 +516,11 @@ export interface Pipeline {
      */
     lineageInformation?: LineageInformation;
     /**
+     * Optional configuration to soft delete charts in OpenMetadata if the source charts are
+     * deleted.
+     */
+    markDeletedCharts?: boolean;
+    /**
      * Optional configuration to soft delete dashboards in OpenMetadata if the source dashboards
      * are deleted. Also, if the dashboard is deleted, all the associated entities like lineage,
      * etc., with that dashboard will be deleted
