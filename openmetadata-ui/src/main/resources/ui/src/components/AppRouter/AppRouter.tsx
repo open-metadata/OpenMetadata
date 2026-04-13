@@ -20,6 +20,8 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 
 const AuthenticatedApp = withSuspenseFallback(
   lazy(() => import('./AuthenticatedApp'))
@@ -72,6 +74,8 @@ const AppRouter = () => {
     }))
   );
 
+    const { plugins = [] } = useApplicationsProvider();
+
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
    * and is false when the application is loaded.
@@ -111,6 +115,20 @@ const AppRouter = () => {
             element={<SamlCallback />}
             path={APP_ROUTER_ROUTES.AUTH_CALLBACK}
           />
+
+           {/* Render APP position plugin routes (they handle their own layouts) */}
+      {
+        plugins?.flatMap((plugin) => {
+          const routes = plugin.getRoutes?.() || [];
+          // Filter routes with APP position
+          const appRoutes = routes.filter(
+            (route) => route.position === RoutePosition.APP
+          );
+
+          return appRoutes.map((route, idx) => (
+            <Route key={`${plugin.name}-app-${idx}`} {...route} />
+          ));
+        })}
 
           <Route element={<AppContainer />} path="*" />
         </Routes>

@@ -63,8 +63,8 @@ export default defineConfig(({ mode }) => {
           const appVersion = process.env.APP_VERSION || 'unknown';
           return html.replaceAll(
             /(href|src)="([^"]+\.(?:js|css))(\?[^"]*)?"/g,
-            (_, attr, path, qs) =>
-              `${attr}="${path}${qs ? qs + '&' : '?'}v=${appVersion}"`
+            (_, attr, pathInternal, qs) =>
+              `${attr}="${pathInternal}${qs ? qs + '&' : '?'}v=${appVersion}"`
           );
         },
       },

@@ -18,14 +18,14 @@ export const APP_ROUTER_ROUTES = {
   LOGOUT: '/logout',
   UNAUTHORISED: '/unauthorised',
   SIGNUP: '/signup',
-  AUTH_CALLBACK: '/auth-callback',
+  AUTH_CALLBACK: '/auth/callback',
   SIGNIN: '/signin',
   FORGOT_PASSWORD: '/forgot-password',
   CALLBACK: '/callback',
   SILENT_CALLBACK: '/silent-callback',
   REGISTER: '/register',
-  RESET_PASSWORD: '/reset-password',
-  ACCOUNT_ACTIVATION: '/account-activation',
+  RESET_PASSWORD: '/users/password/reset',
+  ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
 } as const;
 
 export const UNPROTECTED_ROUTES: Set<string> = new Set([
