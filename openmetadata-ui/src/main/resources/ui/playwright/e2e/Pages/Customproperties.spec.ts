@@ -302,6 +302,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       if (makeInstance !== null) {
         await mainEntity.cleanupCustomProperty(apiContext);
         await mainEntity.delete(apiContext);
+        if (key === 'entity_dataProduct') {
+          for (const domain of (mainEntity as DataProduct).getDomains()) {
+            await domain.delete(apiContext);
+          }
+        }
       } else if (tableForColumnTest !== null) {
         await tableForColumnTest.delete(apiContext);
       }
@@ -596,6 +601,77 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             container.getByTestId(`toggle-${propertyName}`)
           ).not.toBeVisible();
         });
+      });
+
+      test('User visible in right panel when added as entityReferenceList custom property', async ({
+        page,
+      }) => {
+        const { apiContext, afterAction } = await getApiContext(page);
+        const propertyName =
+          mainEntity.customPropertyValue[
+            CustomPropertyTypeByName.ENTITY_REFERENCE_LIST
+          ].property.name;
+        const testUser = users[0];
+        const userName = testUser.responseData.name;
+        const userDisplayName = testUser.responseData.displayName ?? userName;
+
+        await (mainEntity as TableClass).patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/extension',
+              value: {
+                [propertyName]: [
+                  {
+                    id: testUser.responseData.id,
+                    type: 'user',
+                    name: userName,
+                    fullyQualifiedName: testUser.responseData.fullyQualifiedName,
+                  },
+                ],
+              },
+            },
+          ],
+        });
+
+        await mainEntity.visitEntityPage(page);
+
+        const userElement = page.getByTestId(userName);
+        const isUserVisible = await userElement.isVisible();
+        if (!isUserVisible) {
+          await page.getByTestId('custom_properties').click();
+        }
+
+        const rightPanelSection = page.getByTestId(propertyName);
+        await expect(rightPanelSection).toBeVisible();
+
+        const userLink = page.getByTestId(userName).getByRole('link');
+        await expect(userLink).toContainText(userName);
+
+        const userDetailsResponse = page.waitForResponse('/api/v1/users/name/*');
+        await userLink.click();
+        await userDetailsResponse;
+
+        await expect(page).toHaveURL(
+          new RegExp(`/users/(%22)?${userName}(%22)?`, 'i')
+        );
+        await expect(page.getByTestId('user-display-name')).toHaveText(
+          userDisplayName
+        );
+
+        await (mainEntity as TableClass).patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: `/extension/${propertyName}`,
+              value: [],
+            },
+          ],
+        });
+
+        await afterAction();
       });
 
       test('table-cp shows row count, scrollable container, no expand toggle', async ({

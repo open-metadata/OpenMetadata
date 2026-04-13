@@ -458,6 +458,7 @@ export class EntityDataClass {
       spreadsheet2: this.spreadsheet2.get(),
       worksheet1: this.worksheet1.get(),
       worksheet2: this.worksheet2.get(),
+      customProperties: this.customProperties,
     };
 
     const filePath = path.join(
@@ -676,6 +677,9 @@ export class EntityDataClass {
         }
         if (responseData.worksheet2) {
           this.worksheet2.set(responseData.worksheet2);
+        }
+        if (responseData.customProperties) {
+          Object.assign(this.customProperties, responseData.customProperties);
         }
       }
     } catch (error) {
