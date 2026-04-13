@@ -264,37 +264,22 @@ class SearchIndexRetryQueueIT {
 
   @Test
   void testClaimPendingIncludesRetryStatuses(TestNamespace ns) {
-    for (int i = 0; i < 4; i++) {
-      retryQueueDAO.upsert(
-          UUID.randomUUID().toString(),
-          ns.prefix("rq") + ".pending." + i,
-          "f",
-          SearchIndexRetryQueue.STATUS_PENDING,
-          "");
-      retryQueueDAO.upsert(
-          UUID.randomUUID().toString(),
-          ns.prefix("rq") + ".retry1." + i,
-          "f",
-          SearchIndexRetryQueue.STATUS_PENDING_RETRY_1,
-          "");
-      retryQueueDAO.upsert(
-          UUID.randomUUID().toString(),
-          ns.prefix("rq") + ".retry2." + i,
-          "f",
-          SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
-          "");
-    }
+    String id1 = UUID.randomUUID().toString();
+    String id2 = UUID.randomUUID().toString();
+    String id3 = UUID.randomUUID().toString();
+    String fqn1 = ns.prefix("rq") + ".a";
+    String fqn2 = ns.prefix("rq") + ".b";
+    String fqn3 = ns.prefix("rq") + ".c";
 
-    List<SearchIndexRetryRecord> claimed = retryQueueDAO.claimPending(12);
+    retryQueueDAO.upsert(id1, fqn1, "f", SearchIndexRetryQueue.STATUS_PENDING, "");
+    retryQueueDAO.upsert(id2, fqn2, "f", SearchIndexRetryQueue.STATUS_PENDING_RETRY_1, "");
+    retryQueueDAO.upsert(id3, fqn3, "f", SearchIndexRetryQueue.STATUS_PENDING_RETRY_2, "");
+
+    List<SearchIndexRetryRecord> claimed = retryQueueDAO.claimPending(10);
     assertTrue(claimed.size() >= 3);
-    assertTrue(
-        claimed.stream().anyMatch(r -> SearchIndexRetryQueue.STATUS_PENDING.equals(r.getStatus())));
-    assertTrue(
-        claimed.stream()
-            .anyMatch(r -> SearchIndexRetryQueue.STATUS_PENDING_RETRY_1.equals(r.getStatus())));
-    assertTrue(
-        claimed.stream()
-            .anyMatch(r -> SearchIndexRetryQueue.STATUS_PENDING_RETRY_2.equals(r.getStatus())));
+    assertTrue(claimed.stream().anyMatch(r -> r.getEntityId().equals(id1)));
+    assertTrue(claimed.stream().anyMatch(r -> r.getEntityId().equals(id2)));
+    assertTrue(claimed.stream().anyMatch(r -> r.getEntityId().equals(id3)));
   }
 
   // ---------------------------------------------------------------------------

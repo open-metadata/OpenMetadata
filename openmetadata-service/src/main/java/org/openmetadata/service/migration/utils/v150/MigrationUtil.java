@@ -105,7 +105,7 @@ public class MigrationUtil {
                   collectionDAO.ingestionPipelineDAO().update(ingestionPipeline);
 
                 } catch (Exception ex) {
-                  LOG.warn("Error updating automator [{}] due to: ", row, ex);
+                  LOG.warn("Error updating automator [{}] due to ", row, ex);
                 }
               });
     } catch (Exception ex) {

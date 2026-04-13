@@ -13,7 +13,13 @@
 import { expect, test } from '@playwright/test';
 import { DELETE_TERM } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { toastNotification, uuid } from '../../utils/common';
+import { GlobalSettingOptions } from '../../constant/settings';
+import {
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
+import { settingClick } from '../../utils/sidebar';
 import { addTeamHierarchy, getNewTeamDetails } from '../../utils/team';
 
 // use the admin user to login
@@ -39,6 +45,8 @@ test.describe(
     test.slow(true);
 
     test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+
       const getOrganizationResponse = page.waitForResponse(
         '/api/v1/teams/name/*'
       );
@@ -46,30 +54,25 @@ test.describe(
         '/api/v1/permissions/team/name/*'
       );
 
-      await page.goto('/settings/members/teams', {
-        waitUntil: 'domcontentloaded',
-      });
+      await settingClick(page, GlobalSettingOptions.TEAMS);
       await permissionResponse;
       await getOrganizationResponse;
-      await expect(page.getByTestId('add-team')).toBeVisible();
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
       for (const [index, teamName] of teamNames.entries()) {
+        const getOrganizationResponse = page.waitForResponse(
+          '/api/v1/teams/name/*'
+        );
         await addTeamHierarchy(page, getNewTeamDetails(teamName), index, true);
+        await getOrganizationResponse;
+
+        // Asserting the added values
         const permissionResponse = page.waitForResponse(
           '/api/v1/permissions/team/name/*'
         );
-        await page.goto(
-          `/settings/members/teams/${encodeURIComponent(teamName)}`,
-          {
-            waitUntil: 'domcontentloaded',
-          }
-        );
+        await page.getByRole('link', { name: teamName }).click();
         await permissionResponse;
-        await expect(
-          page.getByRole('heading', { name: teamName })
-        ).toBeVisible();
       }
     });
 
@@ -108,10 +111,7 @@ test.describe(
     });
 
     test('Delete Parent Team', async ({ page }) => {
-      await page.goto('/settings/members/teams', {
-        waitUntil: 'domcontentloaded',
-      });
-      await expect(page.getByTestId('add-team')).toBeVisible();
+      await settingClick(page, GlobalSettingOptions.TEAMS);
 
       await page.getByRole('link', { name: businessTeamName }).click();
 

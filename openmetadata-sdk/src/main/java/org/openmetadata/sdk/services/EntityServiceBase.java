@@ -2,7 +2,6 @@ package org.openmetadata.sdk.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -264,6 +263,8 @@ public abstract class EntityServiceBase<T> {
           }
         }
 
+        // Fetch original directly without storing a snapshot (avoids polluting the cache
+        // with a server-state snapshot that doesn't reflect the user's baseline).
         T original;
         if (!fieldsToFetch.isEmpty()) {
           String fields = String.join(",", fieldsToFetch);
@@ -271,6 +272,7 @@ public abstract class EntityServiceBase<T> {
         } else {
           original = fetchEntity(id, null);
         }
+
         originalNode = objectMapper.readTree(objectMapper.writeValueAsString(original));
       }
 
@@ -340,7 +342,7 @@ public abstract class EntityServiceBase<T> {
           "votes");
 
   private void removeComputedFields(JsonNode node) {
-    if (node instanceof ObjectNode objectNode) {
+    if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
       for (String field : COMPUTED_FIELDS) {
         objectNode.remove(field);
       }

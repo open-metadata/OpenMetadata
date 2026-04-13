@@ -14,9 +14,11 @@
 package org.openmetadata.service.apps.bundles.changeEvent.feed;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,12 +31,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.ActivityStreamRepository;
@@ -59,6 +63,17 @@ class ActivityStreamPublisherTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new ActivityStreamPublisher(eventSubscription, subscriptionDestination));
+  }
+
+  @Test
+  void requiresRecipientsIsDisabled() {
+    try (MockedConstruction<ActivityStreamRepository> ignored =
+        mockConstruction(ActivityStreamRepository.class)) {
+      ActivityStreamPublisher publisher =
+          new ActivityStreamPublisher(eventSubscription, subscriptionDestination);
+
+      assertFalse(publisher.requiresRecipients());
+    }
   }
 
   @Test
@@ -102,6 +117,29 @@ class ActivityStreamPublisherTest {
           new ActivityStreamPublisher(eventSubscription, subscriptionDestination);
 
       ChangeEvent event = createChangeEvent(Entity.TABLE, createTableEntity());
+
+      assertDoesNotThrow(() -> publisher.sendMessage(event, Collections.emptySet()));
+
+      ActivityStreamRepository repository = repositoryConstruction.constructed().getFirst();
+      verify(repository).createFieldEventsFromChangeEvent(any(), any());
+    }
+  }
+
+  @Test
+  void sendMessageParsesSerializedEntityPayload() throws EventPublisherException {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<ActivityStreamRepository> repositoryConstruction =
+            mockConstruction(
+                ActivityStreamRepository.class,
+                (repository, context) ->
+                    when(repository.createFieldEventsFromChangeEvent(any(), any()))
+                        .thenReturn(List.of(new ActivityEvent().withId(UUID.randomUUID()))))) {
+      entityMock.when(() -> Entity.getEntityClassFromType(Entity.TABLE)).thenReturn(Table.class);
+      ActivityStreamPublisher publisher =
+          new ActivityStreamPublisher(eventSubscription, subscriptionDestination);
+
+      ChangeEvent event =
+          createChangeEvent(Entity.TABLE, JsonUtils.pojoToJson(createTableEntity()));
 
       assertDoesNotThrow(() -> publisher.sendMessage(event, Collections.emptySet()));
 

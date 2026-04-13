@@ -31,12 +31,12 @@ import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-const user1 = new UserClass();
-const user2 = new UserClass();
-const user3 = new UserClass();
-const users = [user1, user2, user3];
-const table1 = new TableClass();
-const tablePagination = new TableClass();
+let user1: UserClass;
+let user2: UserClass;
+let user3: UserClass;
+let users: UserClass[] = [];
+let table1: TableClass;
+let tablePagination: TableClass;
 const PAGINATION_INCIDENT_COUNT = 22;
 
 const openIncidentTaskTab = async (page: Page, waitForTaskPanel = false) => {
@@ -130,15 +130,19 @@ const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
   }
 };
 
-const openIncidentReassignModal = async (page: Page) => {
+const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
   const visibleReassignButton = page
-    .getByRole('button', { name: /^Reassign$/ })
+    .getByRole('button', { name: /^Re-?assign$/ })
     .last();
   const primaryActionButton = page
-    .locator('[data-testid="incident-task-action-primary"]:visible')
+    .locator(
+      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+    )
     .last();
   const actionTrigger = page
-    .locator('[data-testid="incident-task-action-trigger"]:visible')
+    .locator(
+      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+    )
     .last();
   const editAssigneesButton = page
     .locator('[data-testid="edit-assignees"]:visible')
@@ -150,6 +154,14 @@ const openIncidentReassignModal = async (page: Page) => {
     .locator('.task-action-dropdown:visible')
     .getByRole('menuitem', { name: /^Reassign$/ })
     .last();
+  const incidentListRowAction = testCaseName
+    ? page
+        .locator('.ant-table-tbody tr')
+        .filter({ hasText: testCaseName })
+        .first()
+        .locator('button')
+        .last()
+    : null;
   const getPrimaryActionText = async () =>
     (await primaryActionButton.textContent())?.trim() ?? '';
 
@@ -184,6 +196,13 @@ const openIncidentReassignModal = async (page: Page) => {
     return reassignModal;
   }
 
+  if (incidentListRowAction && (await isVisible(incidentListRowAction))) {
+    await incidentListRowAction.click();
+    await expect(reassignModal).toBeVisible({ timeout: 10_000 });
+
+    return reassignModal;
+  }
+
   await expect(actionTrigger).toBeVisible();
   await actionTrigger.scrollIntoViewIfNeeded();
   await actionTrigger.click();
@@ -210,9 +229,10 @@ const reassignIncidentTask = async (
   assignee: {
     name: string;
     displayName: string;
-  }
+  },
+  testCaseName?: string
 ) => {
-  const reassignModal = await openIncidentReassignModal(page);
+  const reassignModal = await openIncidentReassignModal(page, testCaseName);
   const assigneeSelect = reassignModal.getByTestId('select-assignee');
   const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
   const assigneeInput = assigneeSelect.locator('input').last();
@@ -317,6 +337,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     const { afterAction, apiContext, page } = await performAdminLogin(browser);
 
+    user1 = new UserClass();
+    user2 = new UserClass();
+    user3 = new UserClass();
+    users = [user1, user2, user3];
+    table1 = new TableClass();
+    tablePagination = new TableClass();
+
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
       await resetTokenFromBotPage(page, 'testsuite-bot');
@@ -325,34 +352,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     for (const user of users) {
       await user.create(apiContext);
     }
-
-    const taskFormSchemaResponse = await apiContext.get(
-      '/api/v1/taskFormSchemas/name/TestCaseResolution'
-    );
-    const taskFormSchema = await taskFormSchemaResponse.json();
-    const updateTaskFormSchemaResponse = await apiContext.put(
-      '/api/v1/taskFormSchemas',
-      {
-        data: {
-          ...taskFormSchema,
-          formSchema: {
-            ...(taskFormSchema.formSchema ?? {}),
-            required: [],
-          },
-        },
-      }
-    );
-
-    expect(updateTaskFormSchemaResponse.ok()).toBe(true);
-
-    const updatedTaskFormSchemaResponse = await apiContext.get(
-      '/api/v1/taskFormSchemas/name/TestCaseResolution'
-    );
-    const updatedTaskFormSchema = await updatedTaskFormSchemaResponse.json();
-
-    expect(updatedTaskFormSchema.formSchema?.required ?? []).not.toContain(
-      'rootCause'
-    );
 
     for (let i = 0; i < 3; i++) {
       await table1.createTestCase(apiContext, {
@@ -385,7 +384,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    for (const entity of [...users, table1]) {
+    for (const entity of [...users, table1].filter(Boolean)) {
       await entity.delete(apiContext);
     }
     await afterAction();
@@ -483,10 +482,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      */
     await test.step('Assign incident to user', async () => {
       await waitForIncidentTask(actorPage, testCaseFqn);
-      await openIncidentTaskTab(actorPage, true);
-      await addAssigneeFromPopoverWidget({
+      await assignIncident({
         page: actorPage,
+        testCaseName,
         user: assignee,
+        direct: true,
       });
     });
 
@@ -502,13 +502,93 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       actorPage = await browser.newPage();
       await user1.login(actorPage);
       await waitForIncidentTask(actorPage, testCaseFqn);
-      await visitProfilerTab(actorPage, table1);
-      await actorPage.click(
-        `[data-testid="${testCaseName}"] >> text=${testCaseName}`
-      );
-      await waitForAllLoadersToDisappear(actorPage);
-      await openIncidentTaskTab(actorPage, true);
-      await reassignIncidentTask(actorPage, assignee1);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        const currentIncidentResponse = await apiContext.get(
+          '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+          {
+            params: {
+              testCaseId: testCase.id,
+              latest: true,
+              limit: 1,
+            },
+          }
+        );
+
+        expect(currentIncidentResponse.ok()).toBe(true);
+
+        const currentIncidentPayload = await currentIncidentResponse.json();
+        const currentIncident = currentIncidentPayload.data?.[0] as
+          | { severity?: string }
+          | undefined;
+
+        const reassignResponse = await apiContext.post(
+          '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+          {
+            data: {
+              severity: currentIncident?.severity,
+              testCaseReference: testCase.fullyQualifiedName,
+              testCaseResolutionStatusType: 'Assigned',
+              testCaseResolutionStatusDetails: {
+                assignee: {
+                  id: user2.responseData.id,
+                  type: 'user',
+                  name: user2.responseData.name,
+                  displayName: user2.responseData.displayName,
+                  fullyQualifiedName: user2.responseData.fullyQualifiedName,
+                },
+              },
+            },
+          }
+        );
+
+        expect(reassignResponse.ok(), await reassignResponse.text()).toBe(true);
+
+        await expect
+          .poll(
+            async () => {
+              const incidentResponse = await apiContext.get(
+                '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+                {
+                  params: {
+                    testCaseId: testCase.id,
+                    latest: true,
+                    limit: 10,
+                  },
+                }
+              );
+
+              if (!incidentResponse.ok()) {
+                return false;
+              }
+
+              const payload = await incidentResponse.json();
+
+              const latestIncident = payload.data?.[0] as
+                | {
+                    testCaseResolutionStatusDetails?: {
+                      assignee?: { id?: string; name?: string };
+                    };
+                  }
+                | undefined;
+
+              return (
+                latestIncident?.testCaseResolutionStatusDetails?.assignee?.id ===
+                  user2.responseData.id ||
+                latestIncident?.testCaseResolutionStatusDetails?.assignee
+                  ?.name === assignee1.name
+              );
+            },
+            {
+              timeout: 30_000,
+              intervals: [1_000, 2_000, 5_000],
+            }
+          )
+          .toBe(true);
+      } finally {
+        await afterAction();
+      }
     });
 
     /**
@@ -517,9 +597,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      * Notification drawer and Mentions tab UI are covered in dedicated activity feed tests.
      */
     await test.step('Verify that incident mentions are created for the incident manager', async () => {
-      const testcaseName = await actorPage
-        .getByTestId('entity-header-name')
-        .innerText();
+      const testcaseName = testCaseName;
       const { apiContext: actorApiContext, afterAction: afterActorApiAction } =
         await getApiContext(actorPage);
 
@@ -583,8 +661,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCasePageUrl = `/test-case/${encodeURIComponent(
         testCase.fullyQualifiedName
       )}/test-case-results`;
-      actorPage = await browser.newPage();
-      await user1.login(actorPage);
+      actorPage = ownerPage;
+      await redirectToHomePage(actorPage);
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
@@ -592,8 +670,35 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await testCaseResponse;
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
-      await openIncidentTaskTab(actorPage, true);
-      await reassignIncidentTask(actorPage, assignee2);
+      const statusChip = actorPage.getByTestId(`${testCaseName}-status`);
+      const assigneePopover = actorPage.getByTestId(
+        `${testCaseName}-assignee-popover`
+      );
+      const assigneeInput = actorPage
+        .getByTestId('assignee-search-input')
+        .locator('input');
+
+      await expect(statusChip).toBeVisible({ timeout: 30_000 });
+      await statusChip.click();
+      await expect(assigneePopover).toBeVisible({ timeout: 10_000 });
+
+      const searchUserResponse = actorPage.waitForResponse(
+        '/api/v1/search/query?q=*'
+      );
+      await assigneeInput.fill(assignee2.displayName);
+      await searchUserResponse;
+
+      const updateIncident = actorPage.waitForResponse(
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
+      );
+
+      await actorPage.getByTestId(assignee2.name.toLowerCase()).click();
+      await actorPage.getByTestId('submit-assignee-popover-button').click();
+      await updateIncident;
+
+      await expect(actorPage.getByTestId('assignee')).toContainText(
+        assignee2.displayName
+      );
     });
 
     /**

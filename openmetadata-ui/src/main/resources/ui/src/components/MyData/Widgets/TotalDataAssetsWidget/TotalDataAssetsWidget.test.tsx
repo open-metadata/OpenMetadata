@@ -52,27 +52,16 @@ jest.mock('react-i18next', () => ({
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   customFormatDateTime: jest.fn((timestamp: number, format: string) => {
     const date = new Date(timestamp);
-    const monthNames = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
     if (format === 'dd MMM') {
-      return `${date.getUTCDate().toString().padStart(2, '0')} ${
-        monthNames[date.getUTCMonth()]
-      }`;
+      return `${date
+        .getDate()
+        .toString()
+        .padStart(2, '0')} ${date.toLocaleDateString('en', {
+        month: 'short',
+      })}`;
     }
 
-    return date.toISOString().split('T')[0];
+    return date.toLocaleDateString();
   }),
   getCurrentMillis: jest.fn(() => 1640995200000), // 2022-01-01
   getEpochMillisForPastDays: jest.fn(

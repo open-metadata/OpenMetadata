@@ -16,11 +16,12 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
+const user = new UserClass();
+
 const waitForTourBadgeWithRetry = async (
   page: Page,
   maxAttempts = 3,
-  timeout = 20000,
-  onRetry?: () => Promise<void>
+  timeout = 20000
 ) => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -32,11 +33,7 @@ const waitForTourBadgeWithRetry = async (
       return; // Success
     } catch (e) {
       if (attempt < maxAttempts) {
-        if (onRetry) {
-          await onRetry();
-        } else {
-          await page.reload();
-        }
+        await page.reload();
         await waitForAllLoadersToDisappear(page);
         await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       } else {
@@ -82,7 +79,7 @@ const validateTourSteps = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expectTourBadge(page, '4', 20000);
+  await expectTourBadge(page, '4');
 
   // step 3
   await page.locator('[data-tour-elem="right-arrow"]').click();
@@ -161,29 +158,20 @@ test.describe(
   'Tour should work properly',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.describe.configure({ mode: 'serial' });
-    let user: UserClass;
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await user.create(apiContext);
+      await afterAction();
+    });
 
-    test.beforeEach(
-      'Create user and visit entity details page',
-      async ({ browser, page }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        user = new UserClass();
-        await user.create(apiContext);
-        await afterAction();
-
-        await user.login(page);
-      }
-    );
-
-    test.afterEach(async ({ browser }) => {
-      if (!user?.responseData?.id) {
-        return;
-      }
-
+    test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await afterAction();
+    });
+
+    test.beforeEach('Visit entity details page', async ({ page }) => {
+      await user.login(page);
     });
 
     test('Tour should work from help section', async ({ page }) => {
@@ -204,22 +192,11 @@ test.describe(
       await page
         .getByTestId('whats-new-alert-card')
         .locator('.whats-new-alert-close')
-        .click()
-        .catch(() => undefined);
-
-      const welcomeTourCta = page
-        .getByTestId('welcome-screen')
-        .getByRole('link', { name: 'Take a product tour to get started!' });
-
-      if (await welcomeTourCta.isVisible().catch(() => false)) {
-        await welcomeTourCta.click();
-      } else {
-        await page.locator('[data-testid="help-icon"]').click();
-        await page.getByRole('link', { name: 'Tour', exact: true }).click();
-      }
+        .click();
+      await page.getByText('Take a product tour to get started!').click();
+      await page.waitForURL('**/tour');
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await page.waitForURL('**/tour');
 
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
@@ -244,9 +221,7 @@ test.describe(
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
-      await waitForTourBadgeWithRetry(page, 3, 20000, async () => {
-        await page.goto('/tour');
-      });
+      await waitForTourBadgeWithRetry(page);
     });
   }
 );

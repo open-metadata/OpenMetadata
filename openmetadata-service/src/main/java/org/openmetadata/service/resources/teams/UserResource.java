@@ -732,7 +732,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                 create.getCreatePasswordType(),
                 create.getPassword());
       } catch (Exception ex) {
-        LOG.error("Error in sending invite to User: {}", ex.getMessage());
+        LOG.error("Error in sending invite to User{}", ex.getMessage());
       }
     }
   }
@@ -1358,7 +1358,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               EmailUtil.getPasswordResetSubject(),
               TemplateConstants.RESET_LINK_TEMPLATE);
     } catch (Exception ex) {
-      LOG.error("Error in sending mail for reset password: {}", ex.getMessage());
+      LOG.error("Error in sending mail for reset password{}", ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
     }
     return Response.status(Response.Status.OK)

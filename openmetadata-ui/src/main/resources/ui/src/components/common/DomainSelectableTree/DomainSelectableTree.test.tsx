@@ -171,7 +171,6 @@ describe('DomainSelectableTree', () => {
       });
 
     jest.spyOn(domainAPI, 'searchDomains').mockResolvedValue([mockDomains[0]]);
-    jest.spyOn(domainAPI, 'getDomainByName').mockResolvedValue(mockDomains[0]);
   });
 
   it('should render the component', async () => {

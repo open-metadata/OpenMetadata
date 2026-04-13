@@ -187,32 +187,6 @@ describe('Test auth provider', () => {
 
     expect(loginButton).toBeInTheDocument();
   });
-
-  it('cleans up login polling on unmount', () => {
-    jest.useFakeTimers();
-    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
-
-    const ConsumerComponent = () => {
-      const { onLoginHandler } = useAuthProvider();
-
-      return <button data-testid="login-button" onClick={onLoginHandler} />;
-    };
-
-    const { getByTestId, unmount } = render(
-      <AuthProvider childComponentType={ConsumerComponent}>
-        <ConsumerComponent />
-      </AuthProvider>
-    );
-
-    fireEvent.click(getByTestId('login-button'));
-    unmount();
-
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
-    clearTimeoutSpy.mockRestore();
-  });
 });
 
 describe('Test axios response interceptor', () => {

@@ -107,16 +107,6 @@ export const showErrorToast = (
     errorMessage = error.toString();
   } else if ('config' in error && 'response' in error) {
     const method = error.config?.method?.toUpperCase();
-    const responseData = get(error, 'response.data', '');
-
-    // Suppress Jetty badMessage errors from WebSocket upgrade failures
-    if (
-      typeof responseData === 'string' &&
-      responseData.includes('badMessage')
-    ) {
-      return;
-    }
-
     const fallback =
       fallbackText && fallbackText.length > 0
         ? fallbackText

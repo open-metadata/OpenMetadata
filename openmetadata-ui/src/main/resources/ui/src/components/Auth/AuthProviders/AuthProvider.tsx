@@ -154,20 +154,6 @@ export const AuthProvider = ({
   const [msalInstance, setMsalInstance] = useState<IPublicClientApplication>();
 
   const authenticatorRef = useRef<AuthenticatorRef>(null);
-  const loginRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
-  const isMountedRef = useRef(true);
-
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      if (loginRetryTimeoutRef.current) {
-        clearTimeout(loginRetryTimeoutRef.current);
-        loginRetryTimeoutRef.current = null;
-      }
-    };
-  }, []);
 
   const userConfig = useMemo(
     () =>
@@ -189,14 +175,14 @@ export const AuthProvider = ({
       if (authenticatorRef.current) {
         authenticatorRef.current.invokeLogin?.();
         resetWebAnalyticSession();
-      } else if (attempts < maxAttempts && isMountedRef.current) {
+      } else if (attempts < maxAttempts) {
         // Polling mechanism to wait for authenticator ref to be available.
         // This handles race conditions in production builds where onLoginHandler
         // may be called before the authenticator component has mounted and set the ref.
         // Retry every 50ms until ref is available (max 100 attempts = 5 seconds).
         attempts++;
-        loginRetryTimeoutRef.current = setTimeout(invokeLogin, 50);
-      } else if (isMountedRef.current) {
+        setTimeout(invokeLogin, 50);
+      } else {
         // Max attempts reached, stop loading and silently fail
         setApplicationLoading(false);
       }

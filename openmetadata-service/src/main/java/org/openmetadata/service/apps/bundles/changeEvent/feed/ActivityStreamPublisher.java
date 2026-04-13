@@ -129,13 +129,21 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
 
   private EntityInterface getEntityFromChangeEvent(ChangeEvent changeEvent) {
     try {
-      // Try to get entity from the change event itself
       Object entityObj = changeEvent.getEntity();
       if (entityObj instanceof EntityInterface entityInterface) {
         return entityInterface;
       }
 
-      // If entity is a map/JSON, we need to fetch it from the database
+      if (entityObj != null) {
+        Class<? extends EntityInterface> entityClass =
+            Entity.getEntityClassFromType(changeEvent.getEntityType());
+        if (entityClass != null) {
+          return entityObj instanceof String entityJson
+              ? JsonUtils.readValue(entityJson, entityClass)
+              : JsonUtils.convertValue(entityObj, entityClass);
+        }
+      }
+
       if (changeEvent.getEntityId() != null) {
         return Entity.getEntity(
             changeEvent.getEntityType(), changeEvent.getEntityId(), "domains", null);
@@ -144,7 +152,7 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
       return null;
     } catch (Exception e) {
       LOG.debug(
-          "Could not fetch entity {} {}: {}",
+          "Could not resolve entity from change event {} {}: {}",
           changeEvent.getEntityType(),
           changeEvent.getEntityId(),
           e.getMessage());
@@ -174,6 +182,11 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
   @Override
   public boolean getEnabled() {
     return subscriptionDestination.getEnabled();
+  }
+
+  @Override
+  public boolean requiresRecipients() {
+    return false;
   }
 
   public void close() {

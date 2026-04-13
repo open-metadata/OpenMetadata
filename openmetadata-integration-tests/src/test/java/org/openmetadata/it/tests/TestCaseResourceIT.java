@@ -2242,7 +2242,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
 
     Awaitility.await()
-        .atMost(90, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {

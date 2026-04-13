@@ -647,6 +647,26 @@ export const closeTaskFromDetails = async (page: Page) => {
   logTaskDebug('closeTaskFromDetails:start');
   const taskPanel = page.locator(TASK_PANEL_SELECTOR);
   const closeButton = taskPanel.getByTestId('close-button');
+  const workflowPrimaryButton = taskPanel
+    .getByTestId('workflow-task-action-primary')
+    .first();
+
+  await expect(taskPanel).toBeVisible();
+  await expect
+    .poll(async () => {
+      return (
+        (await closeButton.isVisible().catch(() => false)) ||
+        (await workflowPrimaryButton.isVisible().catch(() => false)) ||
+        (await taskPanel
+          .locator(
+            '[data-testid="workflow-task-action-dropdown"], [data-testid="edit-accept-task-dropdown"], [data-testid="add-close-task-dropdown"]'
+          )
+          .first()
+          .isVisible()
+          .catch(() => false))
+      );
+    })
+    .toBe(true);
 
   if (await closeButton.isVisible().catch(() => false)) {
     const taskActionResponse = waitForTaskActionResponse(page);
@@ -655,6 +675,24 @@ export const closeTaskFromDetails = async (page: Page) => {
     logTaskDebug('closeTaskFromDetails:closeButtonDone');
 
     return;
+  }
+
+  if (await workflowPrimaryButton.isVisible().catch(() => false)) {
+    const primaryLabel = (
+      await workflowPrimaryButton.textContent().catch(() => '')
+    )
+      ?.trim()
+      .replace(/\s+/g, ' ');
+
+    if (primaryLabel?.match(/reject|decline|close/i)) {
+      const taskActionResponse = waitForTaskActionResponse(page);
+      await workflowPrimaryButton.click({ force: true });
+      await taskActionResponse;
+      await waitForPageLoaded(page);
+      logTaskDebug('closeTaskFromDetails:workflowPrimaryDone');
+
+      return;
+    }
   }
 
   const dropdown = taskPanel
@@ -677,9 +715,18 @@ export const closeTaskFromDetails = async (page: Page) => {
       await commentInput.fill('Rejected by Playwright');
     }
 
-    await visibleModal
-      .getByRole('button', { name: /save|ok|reject|close/i })
-      .click();
+    const rejectButton = visibleModal
+      .getByRole('button', { name: /reject|decline|close/i })
+      .first();
+    const confirmButton = visibleModal
+      .getByRole('button', { name: /save|ok/i })
+      .first();
+
+    if (await rejectButton.isVisible().catch(() => false)) {
+      await rejectButton.click();
+    } else {
+      await confirmButton.click();
+    }
   }
 
   await taskActionResponse;

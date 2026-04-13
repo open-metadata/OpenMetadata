@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Nested;
@@ -42,8 +43,6 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Base class for all entity integration tests.
@@ -65,9 +64,9 @@ import org.slf4j.LoggerFactory;
  * @param <T> Entity type (e.g., Database, Table, User)
  * @param <K> Create request type (e.g., CreateDatabase, CreateTable)
  */
+@Slf4j
 @ExtendWith(TestNamespaceExtension.class)
 public abstract class BaseEntityIT<T extends EntityInterface, K> {
-  private static final Logger LOG = LoggerFactory.getLogger(BaseEntityIT.class);
 
   // ===================================================================
   // ABSTRACT METHODS - Must be implemented by subclasses
@@ -2674,7 +2673,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_entityStatus(TestNamespace ns) {
     // Only test if entity has entityStatus field (check if getEntityStatus method exists)
     if ("glossaryTerm".equals(getEntityType())) {
-      LOG.info(
+      log.info(
           "Skipping entityStatus test for GlossaryTerm - has different entityStatus implementation");
       return;
     }
@@ -2688,7 +2687,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
       // If entityStatus is null, the entity doesn't support this field - skip the test
       if (currentStatus == null) {
-        LOG.info(
+        log.info(
             "Entity {} does not support entityStatus field - skipping test",
             entity.getClass().getSimpleName());
         return;
@@ -2756,7 +2755,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       }
 
     } catch (NoSuchMethodError | UnsupportedOperationException e) {
-      LOG.info(
+      log.info(
           "Entity "
               + entity.getClass().getSimpleName()
               + " does not support entityStatus: "

@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import jakarta.validation.constraints.NotNull;
@@ -1053,62 +1054,20 @@ public final class EntityUtil {
   public static void addDomainQueryParam(
       SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    // If the user is admin or bot then no need to add domain restrictions.
-    if (subjectContext.isAdmin()
-        || subjectContext.isBot()
-        || !subjectContext.hasDomainOnlyAccessRole()) {
-      return;
-    }
-
-    String requestedDomainIds = filter.getQueryParam("domainId");
-    boolean hasRequestedDomainFilter =
-        !nullOrEmpty(requestedDomainIds) && !NULL_PARAM.equals(requestedDomainIds);
-    List<EntityReference> userDomains = subjectContext.getUserDomains();
-
-    if (!nullOrEmpty(userDomains)) {
-      if (hasRequestedDomainFilter) {
-        String effectiveDomainIds = getEffectiveDomainIds(requestedDomainIds, userDomains);
-        filter.addQueryParam("domainId", effectiveDomainIds);
-        filter.removeQueryParam("domainAccessControl");
-      } else {
-        filter.addQueryParam("domainId", getCommaSeparatedIdsFromRefs(userDomains));
+    // If the User is admin then no need to add domainId in the query param
+    // Also if there are domain restriction on the subject context via role
+    if (!subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+      if (!nullOrEmpty(subjectContext.getUserDomains())) {
+        filter.addQueryParam(
+            "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
         filter.addQueryParam("domainAccessControl", "true");
+      } else {
+        filter.addQueryParam("domainId", NULL_PARAM);
+        filter.addQueryParam("entityType", entityType);
       }
-      return;
     }
-
-    if (hasRequestedDomainFilter) {
-      filter.addQueryParam("domainId", "'00000000-0000-0000-0000-000000000000'");
-      filter.removeQueryParam("domainAccessControl");
-    } else {
-      filter.addQueryParam("domainId", NULL_PARAM);
-      filter.addQueryParam("entityType", entityType);
-    }
-  }
-
-  private static String getEffectiveDomainIds(
-      String requestedDomainIds, List<EntityReference> userDomains) {
-    Set<String> requested = parseDomainIds(requestedDomainIds);
-    Set<String> allowed =
-        listOrEmpty(userDomains).stream()
-            .map(ref -> ref.getId().toString())
-            .collect(Collectors.toSet());
-
-    String effectiveIds =
-        requested.stream()
-            .filter(allowed::contains)
-            .map(id -> "'" + id + "'")
-            .collect(Collectors.joining(","));
-
-    return nullOrEmpty(effectiveIds) ? "'00000000-0000-0000-0000-000000000000'" : effectiveIds;
-  }
-
-  private static Set<String> parseDomainIds(String domainIds) {
-    return Arrays.stream(domainIds.split(","))
-        .map(String::trim)
-        .filter(id -> !id.isEmpty())
-        .map(id -> id.replace("'", ""))
-        .collect(Collectors.toSet());
   }
 
   public static String encodeEntityFqn(String fqn) {

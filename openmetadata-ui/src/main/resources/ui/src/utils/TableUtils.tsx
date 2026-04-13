@@ -414,7 +414,6 @@ const entityIconMapping: Record<string, SvgComponent> = {
   [SearchIndex.DASHBOARD]: DashboardIcon,
   [EntityType.DASHBOARD_SERVICE]: DashboardIcon,
   [SearchIndex.MLMODEL]: MlModelIcon,
-  [SearchIndex.ML_MODEL_SERVICE]: MlModelIcon,
   [EntityType.MLMODEL_SERVICE]: MlModelIcon,
   [SearchIndex.PIPELINE]: PipelineIcon,
   [EntityType.PIPELINE_SERVICE]: PipelineIcon,

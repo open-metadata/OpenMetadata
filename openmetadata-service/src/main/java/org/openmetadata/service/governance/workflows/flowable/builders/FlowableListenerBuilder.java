@@ -27,9 +27,7 @@ public class FlowableListenerBuilder {
   }
 
   public FlowableListenerBuilder addFieldExtension(FieldExtension fieldExtension) {
-    if (fieldExtension != null) {
-      this.fieldExtensions.add(fieldExtension);
-    }
+    this.fieldExtensions.add(fieldExtension);
     return this;
   }
 

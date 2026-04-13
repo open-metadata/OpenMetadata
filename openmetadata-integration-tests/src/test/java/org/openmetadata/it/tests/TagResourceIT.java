@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,27 +60,6 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     supportsFollowers = false; // Tags don't support followers
     supportsTags = false; // Tags don't support tags on themselves
     supportsListHistoryByTimestamp = true;
-  }
-
-  @Override
-  @Test
-  void checkCreatedEntity(TestNamespace ns) throws Exception {
-    CreateTag createRequest = createMinimalRequest(ns);
-    Tag entity = createEntity(createRequest);
-
-    Awaitility.await("Wait for entity to appear in search index")
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofMinutes(3))
-        .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              String searchResponse = searchForEntity(entity.getId().toString());
-              assertNotNull(searchResponse, "Search response should not be null");
-              assertTrue(
-                  searchResponse.contains(entity.getId().toString()),
-                  "Entity should be present in search index");
-            });
   }
 
   // ===================================================================
@@ -705,31 +683,6 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                 .withName(ns.shortPrefix("display_name_tag"))
                 .withClassification(classification.getFullyQualifiedName())
                 .withDescription("Tag for classification display name search"));
-
-    Awaitility.await("Tag should be present in tag_search_index before display name query")
-        .atMost(java.time.Duration.ofSeconds(30))
-        .pollInterval(java.time.Duration.ofMillis(500))
-        .untilAsserted(
-            () -> {
-              String response =
-                  client
-                      .search()
-                      .query("id:" + tag.getId())
-                      .index("tag_search_index")
-                      .size(5)
-                      .execute();
-              JsonNode root = mapper.readTree(response);
-              JsonNode hits = root.path("hits").path("hits");
-              boolean found =
-                  StreamSupport.stream(hits.spliterator(), false)
-                      .anyMatch(
-                          hit ->
-                              tag.getId().toString().equals(hit.path("_id").asText())
-                                  || tag.getId()
-                                      .toString()
-                                      .equals(hit.path("_source").path("id").asText()));
-              assertTrue(found, "Expected tag to be present in tag_search_index before querying");
-            });
 
     Awaitility.await("Tag should be searchable by classification display name")
         .atMost(java.time.Duration.ofSeconds(30))

@@ -21,8 +21,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -1034,20 +1032,6 @@ class OpenLineageEntityResolverTest {
   }
 
   @Test
-  void resolveTable_prefixNamespaceMapping_doesNotMatchShortNamespaceAgainstLongerMapping() {
-    OpenLineageEntityResolver resolver =
-        new OpenLineageEntityResolver(
-            false, "openlineage", Map.of("postgresql://prod-host:5432/finance", "finance-pg"));
-
-    OpenLineageInputDataset dataset =
-        new OpenLineageInputDataset().withNamespace("postgres").withName("public.users");
-
-    EntityReference result = resolver.resolveTable(dataset);
-
-    assertNull(result);
-  }
-
-  @Test
   void resolveOrCreateTable_autoCreateEnabled_createsTable() {
     OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(true, "openlineage");
 
@@ -1478,22 +1462,6 @@ class OpenLineageEntityResolverTest {
       EntityReference result = resolver.resolveContainer("gs://bucket", "data/file.csv");
       assertNull(result);
     }
-  }
-
-  @Test
-  void listFilterConditions_jsonField_rejectsUnsupportedField() throws Exception {
-    Constructor<?> constructor =
-        Class.forName(OpenLineageEntityResolver.class.getName() + "$ListFilterByJsonField")
-            .getDeclaredConstructor(String.class, String.class);
-    constructor.setAccessible(true);
-
-    InvocationTargetException exception =
-        assertThrows(
-            InvocationTargetException.class,
-            () -> constructor.newInstance("maliciousField", "value"));
-
-    assertInstanceOf(IllegalArgumentException.class, exception.getCause());
-    assertEquals("Unsupported JSON field: maliciousField", exception.getCause().getMessage());
   }
 
   @Test

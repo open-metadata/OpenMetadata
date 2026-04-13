@@ -107,50 +107,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
   ): Promise<void> {
     await page.getByTestId('edit-description').click();
 
-    const dialog = page
-      .locator('[role="dialog"]')
-      .filter({
-        has: page.locator('.om-block-editor[contenteditable="true"]'),
-      })
-      .last();
-    const modalDescriptionBox = dialog
-      .locator('.om-block-editor[contenteditable="true"]')
-      .first();
-    const hasModalEditor = await modalDescriptionBox
-      .isVisible({ timeout: 2000 })
-      .catch(() => false);
-
-    if (hasModalEditor) {
-      await expect(dialog).toBeVisible();
-    }
-
-    const descriptionBoxLocator = () =>
-      (hasModalEditor
-        ? dialog.locator('.om-block-editor[contenteditable="true"]')
-        : page.locator('.om-block-editor[contenteditable="true"]')
-      ).first();
-
-    let descriptionUpdated = false;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const descriptionBox = descriptionBoxLocator();
-      await expect(descriptionBox).toBeVisible();
-
-      try {
-        await descriptionBox.focus();
-        await page.keyboard.press('ControlOrMeta+A');
-        await page.keyboard.press('Backspace');
-        await descriptionBox.fill(description);
-        descriptionUpdated = true;
-        break;
-      } catch (error) {
-        if (attempt === 2) {
-          throw error;
-        }
-        await page.waitForTimeout(250);
-      }
-    }
-
-    expect(descriptionUpdated).toBe(true);
+    const descriptionBox = '.om-block-editor[contenteditable="true"]';
+    await page.locator(descriptionBox).first().click();
+    await page.locator(descriptionBox).first().clear();
+    await page.locator(descriptionBox).first().fill(description);
 
     const patchResponse = page.waitForResponse(
       (response) =>
@@ -159,9 +119,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     );
     await page.getByTestId('save').click();
     await patchResponse;
-    if (hasModalEditor) {
-      await expect(dialog).toBeHidden();
-    }
   }
 
   test('Rename then update description - assets should be preserved', async ({

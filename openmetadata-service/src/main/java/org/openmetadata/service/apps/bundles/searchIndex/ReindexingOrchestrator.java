@@ -427,12 +427,6 @@ public class ReindexingOrchestrator {
     // and so the database is consistent before the UI is notified.
     context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
 
-    // stop() already persists/broadcasts the STOPPED terminal state before delegating here.
-    // Avoid a second identical DB push on that path while still persisting other terminal states.
-    if (appRecord.getStatus() != AppRunRecord.Status.STOPPED) {
-      context.pushStatusUpdate(appRecord, true);
-    }
-
     if (WebSocketManager.getInstance() != null) {
       String messageJson = JsonUtils.pojoToJson(appRecord);
       WebSocketManager.getInstance()
