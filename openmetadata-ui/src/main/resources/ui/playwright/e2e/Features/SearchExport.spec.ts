@@ -27,9 +27,20 @@ const getExportModalContent = (page: Page) =>
 const openExportScopeModal = async (page: Page) => {
   await page.getByTestId('export-search-results-button').click();
   await expect(getExportModalContent(page)).toBeVisible();
-  await expect(
-    getExportModalContent(page).getByRole('button', { name: 'Export' })
-  ).toBeEnabled();
+};
+
+const mockSearchQueryCount = async (page: Page, count = 10) => {
+  await page.route('**/api/v1/search/query?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        took: 1,
+        hits: { total: { value: count, relation: 'eq' }, hits: [] },
+        aggregations: {},
+      }),
+    });
+  });
 };
 
 test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
@@ -91,6 +102,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
   test('All matching assets export calls API with dataAsset index', async ({
     page,
   }) => {
+    await mockSearchQueryCount(page);
     await openExportScopeModal(page);
 
     await test.step('All matching assets radio is pre-selected', async () => {
@@ -190,6 +202,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       });
     });
 
+    await mockSearchQueryCount(page);
     await openExportScopeModal(page);
 
     await test.step('Export button becomes disabled and shows loading after click', async () => {
@@ -215,6 +228,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       });
     });
 
+    await mockSearchQueryCount(page);
     await openExportScopeModal(page);
 
     await getExportModalContent(page)
@@ -282,6 +296,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       });
     });
 
+    await mockSearchQueryCount(page);
     await openExportScopeModal(page);
 
     await test.step('Export button shows loading state while downloading', async () => {
