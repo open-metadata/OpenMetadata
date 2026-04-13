@@ -333,7 +333,7 @@ public class OpenSearchBulkSink implements BulkSink {
     return null;
   }
 
-  private static final int BULK_OPERATION_METADATA_OVERHEAD = 50;
+  private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
   private void addEntity(
       EntityInterface entity,
@@ -910,12 +910,14 @@ public class OpenSearchBulkSink implements BulkSink {
 
         long operationSize =
             estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
-        buffer.add(operation);
-        currentBufferSize += operationSize;
 
-        if (buffer.size() >= bulkActions || currentBufferSize >= maxPayloadSizeBytes) {
+        if (!buffer.isEmpty()
+            && (buffer.size() >= bulkActions
+                || currentBufferSize + operationSize >= maxPayloadSizeBytes)) {
           flushInternal();
         }
+        buffer.add(operation);
+        currentBufferSize += operationSize;
       } finally {
         lock.unlock();
       }
