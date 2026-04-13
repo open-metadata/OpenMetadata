@@ -10,10 +10,14 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
 /** Posts that are part of conversation threads require special handling */
-public record PostResourceContext(String postedBy, Thread thread)
+public record PostResourceContext(String postedBy, ThreadResourceContext threadContext)
     implements ResourceContextInterface {
   public PostResourceContext(String postedBy) {
-    this(postedBy, null);
+    this(postedBy, (ThreadResourceContext) null);
+  }
+
+  public PostResourceContext(String postedBy, Thread thread) {
+    this(postedBy, thread == null ? null : new ThreadResourceContext(thread));
   }
 
   @Override
@@ -38,11 +42,11 @@ public record PostResourceContext(String postedBy, Thread thread)
 
   @Override
   public EntityInterface getEntity() {
-    return ThreadResourceContext.resolveAboutEntity(thread);
+    return threadContext == null ? null : threadContext.getEntity();
   }
 
   @Override
   public List<EntityReference> getDomains() {
-    return ThreadResourceContext.resolveDomains(thread);
+    return threadContext == null ? null : threadContext.getDomains();
   }
 }
