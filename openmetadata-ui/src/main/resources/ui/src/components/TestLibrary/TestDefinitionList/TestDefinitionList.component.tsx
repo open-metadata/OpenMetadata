@@ -611,7 +611,7 @@ const TestDefinitionList = () => {
     [
       currentPage,
       pageSize,
-      filteredTestDefinitions,
+      filteredTestDefinitions.length,
       handlePageChange,
       handlePageSizeChange,
       isLoading,
