@@ -135,9 +135,7 @@ describe('GlossaryTermRelationSettingsPage', () => {
       await renderPage();
 
       // '#bc1b06' is in COLOR_META_BY_HEX mapped to 'label.color-orange'
-      expect(
-        await screen.findByText('label.color-orange')
-      ).toBeInTheDocument();
+      expect(await screen.findByText('label.color-orange')).toBeInTheDocument();
     });
 
     it('shows raw hex when custom type color is not in design palette', async () => {
