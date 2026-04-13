@@ -14,7 +14,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -482,11 +484,13 @@ public class GlossaryTermRelationSettingsIT {
             "usedToCalculate", "#ba24d5",
             "seeAlso", "#c11574");
 
+    Set<String> verified = new HashSet<>();
     for (JsonNode type : relationTypes) {
       String name = type.get("name").asText();
       if (!expectedColors.containsKey(name)) {
         continue;
       }
+      verified.add(name);
       JsonNode colorNode = type.get("color");
       assertNotNull(colorNode, "color should exist for system-defined type: " + name);
       String actualColor = colorNode.asText().toLowerCase();
@@ -502,6 +506,12 @@ public class GlossaryTermRelationSettingsIT {
               + actualColor
               + ". Old Ant Design colors (e.g. #1890ff, #722ed1) indicate the 2.0.0 migration did not run.");
     }
+
+    Set<String> missing = new HashSet<>(expectedColors.keySet());
+    missing.removeAll(verified);
+    assertTrue(
+        missing.isEmpty(),
+        "All 10 system-defined relation types must be present. Missing: " + missing);
   }
 
   @Test
