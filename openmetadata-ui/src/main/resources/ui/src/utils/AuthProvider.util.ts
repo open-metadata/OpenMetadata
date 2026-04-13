@@ -21,8 +21,9 @@ import {
   OidcUser,
   UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { REDIRECT_PATHNAME, ROUTES } from '../constants/constants';
+import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
+import { REDIRECT_PATHNAME } from '../constants/router.constants';
 import {
   AuthenticationConfiguration,
   ClientType,
