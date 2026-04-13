@@ -496,3 +496,162 @@ class TestConsumerGroupExtraction:
 
         groups = source._get_consumer_groups_for_topic("unknown-topic")
         assert groups is None
+
+
+class TestBatchEndOffsets:
+    """Test batched end-offset fetching in _fetch_consumer_group_offsets"""
+
+    @staticmethod
+    def _make_source():
+        from metadata.ingestion.source.messaging.common_broker_source import (
+            CommonBrokerSource,
+        )
+
+        source = MagicMock(spec=CommonBrokerSource)
+        source._fetch_consumer_group_offsets = (
+            CommonBrokerSource._fetch_consumer_group_offsets.__get__(
+                source, CommonBrokerSource
+            )
+        )
+        source._collect_committed_offsets = (
+            CommonBrokerSource._collect_committed_offsets.__get__(
+                source, CommonBrokerSource
+            )
+        )
+        source._batch_get_end_offsets = (
+            CommonBrokerSource._batch_get_end_offsets.__get__(
+                source, CommonBrokerSource
+            )
+        )
+        return source
+
+    def test_deduplicates_partitions_across_groups(self):
+        """Same partition in multiple groups should trigger only one list_offsets call."""
+        source = self._make_source()
+
+        mock_tp = MagicMock()
+        mock_tp.topic = "shared-topic"
+        mock_tp.partition = 0
+        mock_tp.offset = 50
+
+        mock_offset_result = MagicMock()
+        mock_offset_result.topic_partitions = [mock_tp]
+
+        mock_future = MagicMock()
+        mock_future.result.return_value = mock_offset_result
+
+        source.admin_client = MagicMock()
+        source.admin_client.list_consumer_group_offsets.return_value = {
+            "key": mock_future
+        }
+
+        topic_cg_map = {
+            "shared-topic": {
+                "group-A": {
+                    "state": "Stable",
+                    "partition_assignor": "range",
+                    "members": {},
+                    "offsets": {},
+                },
+                "group-B": {
+                    "state": "Stable",
+                    "partition_assignor": "range",
+                    "members": {},
+                    "offsets": {},
+                },
+            }
+        }
+
+        mock_end_offset = MagicMock()
+        mock_end_offset.offset = 100
+        mock_end_future = MagicMock()
+        mock_end_future.result.return_value = mock_end_offset
+
+        def mock_list_offsets(tp_spec):
+            return {tp: mock_end_future for tp in tp_spec}
+
+        source.admin_client.list_offsets.side_effect = mock_list_offsets
+
+        source._fetch_consumer_group_offsets(["group-A", "group-B"], topic_cg_map)
+
+        assert source.admin_client.list_offsets.call_count == 1
+        call_args = source.admin_client.list_offsets.call_args[0][0]
+        assert len(call_args) == 1
+
+        for group_id in ("group-A", "group-B"):
+            offset_data = topic_cg_map["shared-topic"][group_id]["offsets"][0]
+            assert offset_data["current_offset"] == 50
+            assert offset_data["end_offset"] == 100
+            assert offset_data["lag"] == 50
+
+    def test_batches_large_partition_sets(self):
+        """Partitions exceeding batch_size should result in multiple list_offsets calls."""
+        source = self._make_source()
+
+        committed = {
+            "group-1": {
+                (f"topic-{i}", 0): 10 for i in range(750)
+            }
+        }
+
+        mock_end_offset = MagicMock()
+        mock_end_offset.offset = 100
+        mock_end_future = MagicMock()
+        mock_end_future.result.return_value = mock_end_offset
+
+        def mock_list_offsets(tp_spec):
+            return {tp: mock_end_future for tp in tp_spec}
+
+        source.admin_client = MagicMock()
+        source.admin_client.list_offsets.side_effect = mock_list_offsets
+
+        end_offsets = source._batch_get_end_offsets(committed, batch_size=500)
+
+        assert source.admin_client.list_offsets.call_count == 2
+        assert len(end_offsets) == 750
+        for offset in end_offsets.values():
+            assert offset == 100
+
+    def test_empty_committed_offsets(self):
+        """No list_offsets calls when there are no committed offsets."""
+        source = self._make_source()
+        source.admin_client = MagicMock()
+
+        topic_cg_map = {}
+        source._fetch_consumer_group_offsets([], topic_cg_map)
+
+        source.admin_client.list_offsets.assert_not_called()
+
+    def test_end_offset_failure_returns_negative(self):
+        """Partitions with failed end-offset lookup should get lag=None."""
+        source = self._make_source()
+
+        committed = {"group-1": {("topic-a", 0): 50}}
+
+        mock_end_future = MagicMock()
+        mock_end_future.result.side_effect = Exception("broker timeout")
+
+        def mock_list_offsets(tp_spec):
+            return {tp: mock_end_future for tp in tp_spec}
+
+        source.admin_client = MagicMock()
+        source.admin_client.list_offsets.side_effect = mock_list_offsets
+
+        end_offsets = source._batch_get_end_offsets(committed)
+
+        assert end_offsets[("topic-a", 0)] == -1
+
+    def test_batch_rpc_failure_marks_all_in_chunk(self):
+        """If list_offsets itself raises, all partitions in that chunk get -1."""
+        source = self._make_source()
+
+        committed = {"group-1": {("topic-a", i): 10 for i in range(3)}}
+
+        source.admin_client = MagicMock()
+        source.admin_client.list_offsets.side_effect = Exception("connection lost")
+
+        end_offsets = source._batch_get_end_offsets(committed)
+
+        assert len(end_offsets) == 3
+        for offset in end_offsets.values():
+            assert offset == -1

@@ -462,6 +462,27 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self, group_ids: list, topic_cg_map: dict
     ) -> None:
         """Fetch committed offsets and compute lag for each consumer group."""
+        committed = self._collect_committed_offsets(group_ids, topic_cg_map)
+        end_offsets = self._batch_get_end_offsets(committed)
+        for group_id, partitions in committed.items():
+            for tp_key, current_offset in partitions.items():
+                topic, partition = tp_key
+                end_offset = end_offsets.get(tp_key, -1)
+                lag = max(0, end_offset - current_offset) if end_offset >= 0 else None
+                topic_cg_map[topic][group_id]["offsets"][partition] = {
+                    "current_offset": current_offset,
+                    "end_offset": end_offset if end_offset >= 0 else None,
+                    "lag": lag,
+                }
+
+    def _collect_committed_offsets(
+        self, group_ids: list, topic_cg_map: dict
+    ) -> dict:
+        """Collect committed offsets per group.
+
+        Returns {group_id: {(topic, partition): offset}}.
+        """
+        committed = {}
         for group_id in group_ids:
             try:
                 request = [ConsumerGroupTopicPartitions(group_id)]
@@ -475,31 +496,49 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             continue
                         if tp.offset < 0:
                             continue
-                        end_offset = self._get_end_offset(tp.topic, tp.partition)
-                        lag = (
-                            max(0, end_offset - tp.offset) if end_offset >= 0 else None
-                        )
-                        topic_cg_map[tp.topic][group_id]["offsets"][tp.partition] = {
-                            "current_offset": tp.offset,
-                            "end_offset": end_offset if end_offset >= 0 else None,
-                            "lag": lag,
-                        }
+                        committed.setdefault(group_id, {})[
+                            (tp.topic, tp.partition)
+                        ] = tp.offset
             except Exception as exc:
                 logger.debug(
                     f"Failed to fetch offsets for consumer group {group_id}: {exc}"
                 )
+        return committed
 
-    def _get_end_offset(self, topic: str, partition: int) -> int:
-        """Get the high watermark (end offset) for a topic partition."""
-        try:
-            from confluent_kafka.admin import OffsetSpec
+    def _batch_get_end_offsets(
+        self, committed: dict, batch_size: int = 500
+    ) -> dict:
+        """Fetch end offsets for all unique topic-partitions in batched RPCs."""
+        from confluent_kafka.admin import OffsetSpec
 
-            tp = confluent_kafka.TopicPartition(topic, partition)
-            result = self.admin_client.list_offsets({tp: OffsetSpec.latest()})
-            offset_info = result[tp].result(timeout=10)
-            return offset_info.offset
-        except Exception:
-            return -1
+        unique_tps = set()
+        for partitions in committed.values():
+            unique_tps.update(partitions.keys())
+
+        if not unique_tps:
+            return {}
+
+        end_offsets = {}
+        tp_list = list(unique_tps)
+        for i in range(0, len(tp_list), batch_size):
+            chunk = tp_list[i : i + batch_size]
+            tp_spec = {
+                confluent_kafka.TopicPartition(topic, partition): OffsetSpec.latest()
+                for topic, partition in chunk
+            }
+            try:
+                result = self.admin_client.list_offsets(tp_spec)
+                for tp, future in result.items():
+                    try:
+                        offset_info = future.result(timeout=10)
+                        end_offsets[(tp.topic, tp.partition)] = offset_info.offset
+                    except Exception:
+                        end_offsets[(tp.topic, tp.partition)] = -1
+            except Exception as exc:
+                logger.debug(f"Failed to batch-fetch end offsets: {exc}")
+                for topic, partition in chunk:
+                    end_offsets.setdefault((topic, partition), -1)
+        return end_offsets
 
     def _get_consumer_groups_for_topic(self, topic_name: str) -> Optional[list]:
         """
