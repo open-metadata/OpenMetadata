@@ -808,7 +808,7 @@ class TableauSource(DashboardServiceSource):
                     f"/{workbook_chart_name.chart_url_name}"
                 )
 
-                chart = CreateChartRequest(
+                chart_request = CreateChartRequest(
                     name=EntityName(chart.id),
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
@@ -823,7 +823,8 @@ class TableauSource(DashboardServiceSource):
                         self.context.get().dashboard_service
                     ),
                 )
-                yield Either(right=chart)
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
