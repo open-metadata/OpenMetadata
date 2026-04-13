@@ -11,10 +11,9 @@
 """
 Sampling Models
 """
-from enum import Enum
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, TypeVar, Union
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 from typing_extensions import Annotated
 
 from metadata.config.common import ConfigModel
@@ -32,53 +31,12 @@ from metadata.generated.schema.type.basic import (
     ProfileSampleType,
     SamplingMethodType,
 )
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.pii.types import ClassifiableEntityType
 
-
-class ProfileSampleConfigType(str, Enum):
-    STATIC = "STATIC"
-    DYNAMIC = "DYNAMIC"
-
-
-class DynamicSamplingThreshold(ConfigModel):
-    """Single threshold entry for dynamic sampling"""
-
-    rowCountThreshold: int
-    profileSample: Union[float, int]
-    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
-    samplingMethodType: Optional[SamplingMethodType] = None
-
-
-class DynamicSamplingConfig(ConfigModel):
-    """Configuration for dynamic sampling with row-count-based thresholds"""
-
-    thresholds: Optional[List[DynamicSamplingThreshold]] = None
-
-    @field_validator("thresholds")
-    @classmethod
-    def sort_thresholds_descending(
-        cls, v: Optional[List[DynamicSamplingThreshold]]
-    ) -> Optional[List[DynamicSamplingThreshold]]:
-        if v is not None:
-            return sorted(v, key=lambda t: t.rowCountThreshold, reverse=True)
-        return v
-
-
-class StaticSamplingConfig(ConfigModel):
-    """Configuration for static sampling"""
-
-    profileSample: Optional[Union[float, int]] = None
-    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
-    samplingMethodType: Optional[SamplingMethodType] = None
-
-
-class ProfileSampleConfig(ConfigModel):
-    """Profile sample configuration supporting static and dynamic sampling"""
-
-    sampleConfigType: ProfileSampleConfigType = ProfileSampleConfigType.STATIC
-    config: Optional[Union[DynamicSamplingConfig, StaticSamplingConfig]] = None
+T = TypeVar("T")
 
 
 class BaseProfileConfig(ConfigModel):
@@ -176,10 +134,10 @@ class SampleConfig(ConfigModel):
     profileSampleConfig: Optional[ProfileSampleConfig] = None
     randomizedSample: Optional[bool] = True
 
-    def get_static_config(self) -> Optional[StaticSamplingConfig]:
-        """Extract the StaticSamplingConfig from profileSampleConfig, or None."""
+    def get_config(self, config_type: type[T]) -> Optional[T]:
+        """Extract the config of the specified type from profileSampleConfig, or None."""
         if self.profileSampleConfig and self.profileSampleConfig.config:
             cfg = self.profileSampleConfig.config
-            if isinstance(cfg, StaticSamplingConfig):
+            if isinstance(cfg, config_type):
                 return cfg
         return None

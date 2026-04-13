@@ -38,8 +38,8 @@ from metadata.sampler.models import (
     ProfileSampleConfig,
     ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 

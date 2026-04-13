@@ -28,8 +28,8 @@ from metadata.sampler.models import (
     ProfileSampleConfig,
     ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.timeout import cls_timeout
 

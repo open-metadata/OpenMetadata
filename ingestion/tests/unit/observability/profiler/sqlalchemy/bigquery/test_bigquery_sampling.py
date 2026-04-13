@@ -30,9 +30,9 @@ from metadata.profiler.orm.functions.table_metric_computer import TableType
 from metadata.sampler.models import (
     ProfileSampleConfig,
     ProfileSampleConfigType,
-    SampleConfig,
-    StaticSamplingConfig,
 )
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 

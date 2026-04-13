@@ -33,13 +33,12 @@ from metadata.profiler.config import (
 )
 from metadata.sampler.models import (
     DatabaseAndSchemaConfig,
-    ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
     TableConfig,
 )
-
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
 
 def get_sample_storage_config(
     config: Union[
@@ -140,7 +139,7 @@ def _resolve_profile_sample_config(
         try:
             if config.profileSample:
                 return ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=config.profileSample,
                         profileSampleType=config.profileSampleType,

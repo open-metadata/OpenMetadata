@@ -44,7 +44,8 @@ from metadata.sampler.config import (
     get_exclude_columns,
     get_include_columns,
 )
-from metadata.sampler.models import ProfileSampleConfig, SampleConfig
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
+from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,

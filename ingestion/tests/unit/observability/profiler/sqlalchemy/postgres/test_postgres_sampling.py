@@ -25,8 +25,8 @@ from metadata.sampler.models import (
     ProfileSampleConfig,
     ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.postgres.sampler import PostgresSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
