@@ -1345,6 +1345,191 @@ public class FeedResourceIT {
   }
 
   @Test
+  void post_descriptionTaskWithOldValueAndSuggestion_200(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about = String.format("<#E::table::%s::description>", table.getFullyQualifiedName());
+    EntityReference assignee =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+
+    for (TaskType type : List.of(TaskType.RequestDescription, TaskType.UpdateDescription)) {
+      CreateThread createThread =
+          new CreateThread()
+              .withFrom(ADMIN_USER)
+              .withMessage("Desc task " + type)
+              .withAbout(about)
+              .withType(ThreadType.Task)
+              .withTaskDetails(
+                  new CreateTaskDetails()
+                      .withType(type)
+                      .withAssignees(List.of(assignee))
+                      .withOldValue("old description")
+                      .withSuggestion("new description"));
+
+      Thread thread = createThread(createThread);
+      assertNotNull(thread.getTask());
+      assertEquals(type, thread.getTask().getType());
+      assertEquals("old description", thread.getTask().getOldValue());
+      assertEquals("new description", thread.getTask().getSuggestion());
+      deleteThread(thread.getId());
+    }
+  }
+
+  @Test
+  void post_updateTagTaskWithValidJsonArrays_200(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about =
+        String.format("<#E::table::%s::columns::%s::tags>", table.getFullyQualifiedName(), "id");
+    EntityReference assignee =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+
+    String oldTags =
+        "[{\"tagFQN\":\"PersonalData.Personal\",\"source\":\"Classification\","
+            + "\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]";
+    String newTags =
+        "[{\"tagFQN\":\"PII.Sensitive\",\"source\":\"Classification\","
+            + "\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]";
+
+    CreateThread createThread =
+        new CreateThread()
+            .withFrom(ADMIN_USER)
+            .withMessage("Update tags")
+            .withAbout(about)
+            .withType(ThreadType.Task)
+            .withTaskDetails(
+                new CreateTaskDetails()
+                    .withType(TaskType.UpdateTag)
+                    .withAssignees(List.of(assignee))
+                    .withOldValue(oldTags)
+                    .withSuggestion(newTags));
+
+    Thread thread = createThread(createThread);
+    assertNotNull(thread.getTask());
+    assertEquals(TaskType.UpdateTag, thread.getTask().getType());
+    deleteThread(thread.getId());
+  }
+
+  @Test
+  void post_approvalTaskWithOldValueAndSuggestion_200(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    EntityReference assignee =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+
+    CreateThread createThread =
+        new CreateThread()
+            .withFrom(ADMIN_USER)
+            .withMessage("Please approve")
+            .withAbout(about)
+            .withType(ThreadType.Task)
+            .withTaskDetails(
+                new CreateTaskDetails()
+                    .withType(TaskType.RequestApproval)
+                    .withAssignees(List.of(assignee))
+                    .withOldValue("Draft")
+                    .withSuggestion("Approved"));
+
+    Thread thread = createThread(createThread);
+    assertNotNull(thread.getTask());
+    assertEquals(TaskType.RequestApproval, thread.getTask().getType());
+    assertEquals("Draft", thread.getTask().getOldValue());
+    assertEquals("Approved", thread.getTask().getSuggestion());
+    deleteThread(thread.getId());
+  }
+
+  @Test
+  void post_genericTaskWithOldValueAndSuggestion_200(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    EntityReference assignee =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+
+    CreateThread createThread =
+        new CreateThread()
+            .withFrom(ADMIN_USER)
+            .withMessage("Generic task")
+            .withAbout(about)
+            .withType(ThreadType.Task)
+            .withTaskDetails(
+                new CreateTaskDetails()
+                    .withType(TaskType.Generic)
+                    .withAssignees(List.of(assignee))
+                    .withOldValue("some value")
+                    .withSuggestion("another value"));
+
+    Thread thread = createThread(createThread);
+    assertNotNull(thread.getTask());
+    assertEquals(TaskType.Generic, thread.getTask().getType());
+    deleteThread(thread.getId());
+  }
+
+  @Test
+  void post_testCaseFailureResolutionTaskWithOldValue_400(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    EntityReference assignee =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+
+    CreateThread createThread =
+        new CreateThread()
+            .withFrom(ADMIN_USER)
+            .withMessage("Failure resolution")
+            .withAbout(about)
+            .withType(ThreadType.Task)
+            .withTaskDetails(
+                new CreateTaskDetails()
+                    .withType(TaskType.RequestTestCaseFailureResolution)
+                    .withAssignees(List.of(assignee))
+                    .withOldValue("should be rejected"));
+
+    assertThrows(Exception.class, () -> createThread(createThread));
+  }
+
+  @Test
+  void post_recognizerFeedbackApprovalTaskWithSuggestion_400(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    EntityReference assignee =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+
+    CreateThread createThread =
+        new CreateThread()
+            .withFrom(ADMIN_USER)
+            .withMessage("Recognizer feedback")
+            .withAbout(about)
+            .withType(ThreadType.Task)
+            .withTaskDetails(
+                new CreateTaskDetails()
+                    .withType(TaskType.RecognizerFeedbackApproval)
+                    .withAssignees(List.of(assignee))
+                    .withSuggestion("should be rejected"));
+
+    assertThrows(Exception.class, () -> createThread(createThread));
+  }
+
+  @Test
+  void post_tagTaskWithInvalidJson_400(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about =
+        String.format("<#E::table::%s::columns::%s::tags>", table.getFullyQualifiedName(), "id");
+    EntityReference assignee =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+
+    CreateThread createThread =
+        new CreateThread()
+            .withFrom(ADMIN_USER)
+            .withMessage("Bad tag json")
+            .withAbout(about)
+            .withType(ThreadType.Task)
+            .withTaskDetails(
+                new CreateTaskDetails()
+                    .withType(TaskType.RequestTag)
+                    .withAssignees(List.of(assignee))
+                    .withSuggestion("not valid json"));
+
+    assertThrows(Exception.class, () -> createThread(createThread));
+  }
+
+  @Test
   void list_threadsWithPagination(TestNamespace ns) throws Exception {
     Table table = createTestTable(ns);
     String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());

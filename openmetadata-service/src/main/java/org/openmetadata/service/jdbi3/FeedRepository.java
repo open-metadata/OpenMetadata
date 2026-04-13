@@ -1198,14 +1198,16 @@ public class FeedRepository {
     if (task == null) {
       throw new IllegalArgumentException("taskDetails is required for threads of type Task");
     }
-    TaskType taskType = task.getType();
-    if (!EntityUtil.isDescriptionTask(taskType) && !EntityUtil.isTagTask(taskType)) {
-      rejectField(task.getOldValue(), "oldValue", taskType);
-      rejectField(task.getSuggestion(), "suggestion", taskType);
-    }
-    if (EntityUtil.isTagTask(taskType)) {
-      validateTagLabelArray(task.getSuggestion(), "suggestion", taskType);
-      validateTagLabelArray(task.getOldValue(), "oldValue", taskType);
+    switch (task.getType()) {
+      case RequestTag, UpdateTag -> {
+        validateTagLabelArray(task.getOldValue(), "oldValue", task.getType());
+        validateTagLabelArray(task.getSuggestion(), "suggestion", task.getType());
+      }
+      case RequestTestCaseFailureResolution, RecognizerFeedbackApproval -> {
+        rejectField(task.getOldValue(), "oldValue", task.getType());
+        rejectField(task.getSuggestion(), "suggestion", task.getType());
+      }
+      case RequestDescription, UpdateDescription, RequestApproval, Generic -> {}
     }
   }
 
