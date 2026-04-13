@@ -1471,6 +1471,113 @@ public class ColumnGridResourceIT {
         .until(() -> true);
   }
 
+  @Test
+  void test_getColumnGrid_patternSearchIsCaseInsensitive(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String colName = ns.prefix("CaseMixCol");
+    Column col = Columns.build(colName).withType(ColumnDataType.VARCHAR).withLength(255).create();
+    Tables.create()
+        .name(ns.prefix("case_test_table"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(col))
+        .execute();
+
+    waitForSearchIndexRefresh();
+
+    // Search with all lowercase
+    ColumnGridResponse lowerResponse =
+        getColumnGrid(
+            client,
+            "entityTypes=table&columnNamePattern=casemixcol&serviceName=" + service.getName());
+
+    assertNotNull(lowerResponse);
+    boolean foundLower =
+        lowerResponse.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName));
+    assertTrue(foundLower, "Lowercase search should find the mixed-case column");
+
+    // Search with all uppercase
+    ColumnGridResponse upperResponse =
+        getColumnGrid(
+            client,
+            "entityTypes=table&columnNamePattern=CASEMIXCOL&serviceName=" + service.getName());
+
+    assertNotNull(upperResponse);
+    boolean foundUpper =
+        upperResponse.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName));
+    assertTrue(foundUpper, "Uppercase search should find the mixed-case column");
+  }
+
+  @Test
+  void test_getColumnGrid_patternSearchExcludesNonMatching(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String matchCol = ns.prefix("regex_target");
+    String noMatchCol = ns.prefix("other_field");
+    Column col1 = Columns.build(matchCol).withType(ColumnDataType.VARCHAR).withLength(255).create();
+    Column col2 =
+        Columns.build(noMatchCol).withType(ColumnDataType.VARCHAR).withLength(255).create();
+    Tables.create()
+        .name(ns.prefix("regex_exclude_table"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(col1, col2))
+        .execute();
+
+    waitForSearchIndexRefresh();
+
+    ColumnGridResponse response =
+        getColumnGrid(
+            client,
+            "entityTypes=table&columnNamePattern=regex_target&serviceName=" + service.getName());
+
+    assertNotNull(response);
+    boolean foundMatch =
+        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(matchCol));
+    boolean foundNoMatch =
+        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(noMatchCol));
+    assertTrue(foundMatch, "Matching column should be in results");
+    assertFalse(foundNoMatch, "Non-matching column from same table should be excluded");
+  }
+
+  @Test
+  void test_getColumnGrid_patternSearchWithSpecialChars(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String colWithDot = ns.prefix("col.with.dots");
+    String colNoDot = ns.prefix("colXwithXdots");
+    Column col1 =
+        Columns.build(colWithDot).withType(ColumnDataType.VARCHAR).withLength(255).create();
+    Column col2 = Columns.build(colNoDot).withType(ColumnDataType.VARCHAR).withLength(255).create();
+    Tables.create()
+        .name(ns.prefix("special_char_table"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(col1, col2))
+        .execute();
+
+    waitForSearchIndexRefresh();
+
+    // Search for "col.with" — dot should be literal, not wildcard
+    ColumnGridResponse response =
+        getColumnGrid(
+            client,
+            "entityTypes=table&columnNamePattern=col.with&serviceName=" + service.getName());
+
+    assertNotNull(response);
+    boolean foundDotCol =
+        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colWithDot));
+    boolean foundNoDotCol =
+        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colNoDot));
+    assertTrue(foundDotCol, "Column with literal dot should match");
+    assertFalse(
+        foundNoDotCol, "Column without dot should not match — dot must be literal, not wildcard");
+  }
+
   private void waitForColumnToBeIndexed(
       OpenMetadataClient client, String columnName, String serviceName) {
     await()
