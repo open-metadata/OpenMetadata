@@ -53,7 +53,7 @@ runs:
 
     - name: Install yarn
       if: ${{ inputs.install-server == 'true' }}
-      run: npm install -g yarn
+      run: corepack enable
       shell: bash
     # ------------------------------------------------------------------------------
 

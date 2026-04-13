@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+// TODO: delete this file after collate PR get merged
 import {
   Box,
   Button,

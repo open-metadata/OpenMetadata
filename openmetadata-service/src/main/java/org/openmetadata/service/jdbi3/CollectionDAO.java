@@ -1912,6 +1912,26 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), 'relatedTo') as relationType, "
+                + "COUNT(*) as cnt FROM entity_relationship "
+                + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
+                + "GROUP BY relationType",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COALESCE(json->>'relationType', 'relatedTo') as relationType, "
+                + "COUNT(*) as cnt FROM entity_relationship "
+                + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
+                + "GROUP BY relationType",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(RelationTypeCountMapper.class)
+    List<List<String>> countByRelationType(
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
     @SqlQuery(
         "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation IN (<relation>)")
@@ -2463,6 +2483,13 @@ public interface CollectionDAO {
             .id(UUID.fromString(rs.getString(1)))
             .count(rs.getInt(2))
             .build();
+      }
+    }
+
+    class RelationTypeCountMapper implements RowMapper<List<String>> {
+      @Override
+      public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Arrays.asList(rs.getString("relationType"), rs.getString("cnt"));
       }
     }
 
