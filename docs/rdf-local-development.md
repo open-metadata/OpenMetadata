@@ -28,9 +28,9 @@ OpenMetadata supports RDF (Resource Description Framework) for knowledge graph c
 
 ## Quick Start
 
-### Step 1: Start the Default Local Docker Stack
+### Step 1: Choose the Right Startup Mode
 
-The default local Docker flow now starts Fuseki alongside OpenMetadata:
+The standard local Docker flow does not enable RDF or start Fuseki:
 
 ```bash
 cd /path/to/OpenMetadata
@@ -43,13 +43,23 @@ For PostgreSQL-based development:
 ./docker/run_local_docker.sh -d postgresql
 ```
 
-This starts OpenMetadata, the backing database, search, ingestion services, and Fuseki with:
+Use the RDF-specific startup script when you want the full Docker stack with Fuseki enabled:
+
+```bash
+./docker/run_local_docker_rdf.sh -d mysql
+```
+
+For PostgreSQL-based RDF development:
+
+```bash
+./docker/run_local_docker_rdf.sh -d postgresql
+```
+
+This RDF startup path starts OpenMetadata, the backing database, search, ingestion services, and Fuseki with:
 - **Port**: 3030
 - **Admin Password**: admin
 - **Dataset**: openmetadata
 - **Memory**: 2-4GB allocated
-
-`./docker/run_local_docker_rdf.sh` remains available as a compatibility wrapper, but it now delegates to `./docker/run_local_docker.sh`.
 
 ### Step 2: Verify Fuseki is Running
 
@@ -67,7 +77,13 @@ The Fuseki web UI is available at `http://localhost:3030` with credentials:
 
 ### Step 3: Configure IntelliJ Run Configuration
 
-If you are using `run_local_docker.sh`, the Docker services already receive the RDF environment variables automatically.
+If you are running the full RDF Docker stack with `run_local_docker_rdf.sh`, the Docker services already receive the RDF environment variables automatically.
+
+If you want to run the OpenMetadata server directly from IntelliJ while keeping Fuseki in Docker, start Fuseki separately:
+
+```bash
+docker compose -f docker/development/docker-compose-fuseki.yml up -d
+```
 
 Create or modify your IntelliJ run configuration for `OpenMetadataApplication` with these environment variables only when you want to run the OpenMetadata server directly from IntelliJ while keeping Fuseki in Docker:
 

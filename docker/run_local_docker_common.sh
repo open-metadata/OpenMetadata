@@ -507,10 +507,18 @@ run_local_docker_main() {
   fi
 
   echo "✔running reindexing"
-  ensure_app_installed "SearchIndexingApplication"
-  if ! trigger_app_and_wait "SearchIndexingApplication" "" "$APP_RUN_WAIT_TIMEOUT_SECONDS"; then
+  response=$(curl -s -w "\n%{http_code}" --location --request POST \
+    "http://localhost:8585/api/v1/apps/trigger/SearchIndexingApplication" \
+    --header "Authorization: Bearer $authorizationToken")
+  http_code=$(echo "$response" | tail -n1)
+  body=$(echo "$response" | sed '$d')
+
+  if [ "$http_code" != "200" ] && [ "$http_code" != "201" ] && [ "$http_code" != "202" ]; then
+    echo "✗ Failed to trigger SearchIndexingApplication (HTTP ${http_code})"
+    echo "  Response: ${body}"
     exit 1
   fi
+  sleep 60
 
   tput setaf 2
   echo "✔ OpenMetadata is up and running"

@@ -22,6 +22,7 @@ on:
       - ".github/actions/setup-openmetadata-test-environment/action.yml"
       - ".github/workflows/playwright-knowledge-graph-postgresql-e2e.yml"
       - "docker/run_local_docker.sh"
+      - "docker/run_local_docker_common.sh"
       - "docker/run_local_docker_rdf.sh"
       - "docker/development/docker-compose-fuseki.yml"
       - "docker/development/docker-compose-postgres-fuseki.yml"
