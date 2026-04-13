@@ -255,7 +255,8 @@ public class VectorDocBuilder {
   }
 
   static String buildBodyText(EntityInterface entity, String entityType) {
-    BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
+    BodyTextExtractor customExtractor =
+        entityType != null ? BODY_TEXT_EXTRACTORS.get(entityType) : null;
     if (customExtractor != null) {
       String custom = customExtractor.extract(entity);
       if (custom != null) {
