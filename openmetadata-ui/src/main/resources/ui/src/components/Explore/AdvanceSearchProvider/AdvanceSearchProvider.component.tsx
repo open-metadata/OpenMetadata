@@ -90,8 +90,11 @@ export const AdvanceSearchProvider = ({
     null
   );
 
-  // Tracks the effectiveEntityType that was used to build the cached customProps.
-  // Used to invalidate the cache when the entity type context changes.
+  // Tracks which effectiveEntityType was used to populate the customProps cache
+  // (e.g., "databaseSchema" when the user is on the Database Schema explore tab,
+  // or undefined when showing all entity types). The cache must be invalidated
+  // whenever users switch between explore tabs so that extension field paths are
+  // rebuilt for the new entity type context.
   const customPropsEntityTypeRef = useRef<string | undefined>(undefined);
 
   const [searchIndex, setSearchIndex] = useState<
@@ -100,8 +103,10 @@ export const AdvanceSearchProvider = ({
 
   // When entityType is not explicitly provided, derive it from the current searchIndex
   // so that custom property extension field paths do not include the entity type namespace
-  // prefix (e.g., "extension.informationOwners" instead of
-  // "extension.databaseSchema.informationOwners"), matching the actual ES document structure.
+  // prefix. The Elasticsearch `extension` field uses the `flattened` type and stores data
+  // WITHOUT the entity type prefix (e.g., key is "informationOwners.displayName", not
+  // "databaseSchema.informationOwners.displayName"), so omitting the prefix is required
+  // for queries to match actual documents.
   const effectiveEntityType = useMemo(() => {
     if (entityType) {
       return entityType;
@@ -272,9 +277,10 @@ export const AdvanceSearchProvider = ({
       isExplorePage,
     });
 
-    // Use cached custom properties only if the effective entity type hasn't changed.
-    // If the entity type context changed (e.g., user switched explore tabs), refetch
-    // so that extension field paths are built without a stale namespace prefix.
+    // Use cached custom properties only if the effective entity type matches the
+    // context used to build the cache. When users switch explore tabs the entity
+    // type changes, so the cache must be refetched to rebuild extension field paths
+    // with the correct namespace context for the new entity type.
     let extensionSubField =
       customPropsEntityTypeRef.current === effectiveEntityType
         ? customProps
