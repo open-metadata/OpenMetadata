@@ -260,8 +260,10 @@ describe('CustomPropertiesSection', () => {
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveAttribute('data-type', 'PERMISSION');
-      
-      expect(errorPlaceholder).toHaveTextContent('message.no-access-placeholder');
+
+      expect(errorPlaceholder).toHaveTextContent(
+        'message.no-access-placeholder'
+      );
 
       expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
       expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
@@ -281,7 +283,7 @@ describe('CustomPropertiesSection', () => {
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveAttribute('data-type', 'CUSTOM');
-      
+
       expect(errorPlaceholder).toHaveTextContent(
         'message.no-custom-properties-entity'
       );

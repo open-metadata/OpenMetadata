@@ -33,7 +33,7 @@ export const imageTypes = {
   image48: 's48-c',
   image512: 's512-c',
   image72: 's72-c',
-}
+};
 
 export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
@@ -55,10 +55,7 @@ export const getUserDataFromOidc = (
     ? getImages(oidcUser.profile.picture)
     : undefined;
   const profileEmail = oidcUser.profile.email;
-  const email =
-    profileEmail?.includes('@')
-      ? profileEmail
-      : userData.email;
+  const email = profileEmail?.includes('@') ? profileEmail : userData.email;
 
   return {
     ...userData,

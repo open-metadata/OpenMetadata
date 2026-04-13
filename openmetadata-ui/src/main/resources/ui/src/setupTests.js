@@ -229,24 +229,29 @@ jest.mock('@mui/material', () => {
   };
 });
 
-
 jest.mock('./utils/i18next/LocalUtil', () => {
   const React = require('react');
 
-  return ({
-  Transi18next: jest.fn().mockImplementation(({ i18nKey, renderElement, values }) => {
-    const valueArr = Object.values(values ?? {})
-    
-    return React.createElement('div', i18nKey,
-        [i18nKey, renderElement, valueArr]);
-  }),
-  __esModule: true,
-  default: {
+  return {
+    Transi18next: jest
+      .fn()
+      .mockImplementation(({ i18nKey, renderElement, values }) => {
+        const valueArr = Object.values(values ?? {});
+
+        return React.createElement('div', i18nKey, [
+          i18nKey,
+          renderElement,
+          valueArr,
+        ]);
+      }),
+    __esModule: true,
+    default: {
+      t: jest.fn().mockImplementation((key) => key),
+    },
     t: jest.fn().mockImplementation((key) => key),
-  },
-  t: jest.fn().mockImplementation((key) => key),
-  detectBrowserLanguage: jest.fn().mockImplementation(() => 'en'),
-  translateWithNestedKeys: jest.fn().mockImplementation((key, params) => {
-    return params ? `${key}_${JSON.stringify(params)}` : key;
-  }),
-})});
+    detectBrowserLanguage: jest.fn().mockImplementation(() => 'en'),
+    translateWithNestedKeys: jest.fn().mockImplementation((key, params) => {
+      return params ? `${key}_${JSON.stringify(params)}` : key;
+    }),
+  };
+});

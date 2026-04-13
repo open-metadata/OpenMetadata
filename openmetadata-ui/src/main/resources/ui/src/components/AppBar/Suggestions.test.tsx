@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useTranslation } from 'react-i18next';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import { searchQuery } from '../../rest/searchAPI';

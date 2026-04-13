@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import {  render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { useParams } from 'react-router-dom';
 import { Page, PageType } from '../../generated/system/ui/page';
 import {
@@ -25,7 +26,6 @@ import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { CustomizablePage } from './CustomizablePage';
 import { WidgetConfig } from './CustomizablePage.interface';
-import { act } from 'react';
 
 jest.mock(
   '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',

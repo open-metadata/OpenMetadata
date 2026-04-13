@@ -12,11 +12,11 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { createUser } from '../../rest/userAPI';
+import { getImages } from '../../utils/UserDataUtils';
 import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';
 import SignUp from './SignUpPage';
-import { getImages } from '../../utils/UserDataUtils';
-import { act } from 'react';
 
 let letExpectedUserName = {
   name: 'sample123',
@@ -109,12 +109,8 @@ describe('SignUp page', () => {
 
     render(<SignUp />);
     const form = screen.getByTestId('create-user-form');
-    const fullNameInput = screen.getByTestId(
-      'full-name-input'
-    );
-    const userNameInput = screen.getByTestId(
-      'username-input'
-    ) ;
+    const fullNameInput = screen.getByTestId('full-name-input');
+    const userNameInput = screen.getByTestId('username-input');
     const emailInput = screen.getByTestId('email-input');
     const submitButton = screen.getByTestId('create-button');
 

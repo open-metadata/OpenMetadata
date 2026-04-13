@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { CacheLocation } from '@auth0/auth0-react';
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import { lazy, ReactNode } from 'react';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { CacheLocation } from '@auth0/auth0-react';
 
 const Auth0ProviderComponent = withSuspenseFallback(
   lazy(() =>
@@ -43,8 +43,8 @@ interface Auth0ProviderWrapperProps {
   domain: string;
   redirectUri: string;
   children: ReactNode;
-  useRefreshTokens: boolean
-  cacheLocation?: CacheLocation
+  useRefreshTokens: boolean;
+  cacheLocation?: CacheLocation;
 }
 
 export const LazyAuth0ProviderWrapper = ({
@@ -53,17 +53,17 @@ export const LazyAuth0ProviderWrapper = ({
   redirectUri,
   children,
   useRefreshTokens,
-  cacheLocation
+  cacheLocation,
 }: Auth0ProviderWrapperProps) => {
   return (
-      <Auth0ProviderComponent
-        cacheLocation={cacheLocation}
-        clientId={clientId}
-        domain={domain}
-        redirectUri={redirectUri}
-        useRefreshTokens={useRefreshTokens}>
-        {children}
-      </Auth0ProviderComponent>
+    <Auth0ProviderComponent
+      cacheLocation={cacheLocation}
+      clientId={clientId}
+      domain={domain}
+      redirectUri={redirectUri}
+      useRefreshTokens={useRefreshTokens}>
+      {children}
+    </Auth0ProviderComponent>
   );
 };
 

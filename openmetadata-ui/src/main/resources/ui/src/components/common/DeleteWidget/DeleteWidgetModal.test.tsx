@@ -13,11 +13,11 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';
 import DeleteWidgetModal from './DeleteWidgetModal';
-import { ReactNode } from 'react';
 
 const mockProps: DeleteWidgetModalProps = {
   visible: true,
@@ -36,7 +36,6 @@ const mockPropsUser: DeleteWidgetModalProps = {
 };
 
 const mockOnLogoutHandler = jest.fn();
-
 
 jest.mock('../../../rest/miscAPI', () => ({
   deleteEntity: jest.fn().mockImplementation(() =>

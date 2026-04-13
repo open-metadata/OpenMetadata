@@ -126,6 +126,7 @@ import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
@@ -198,32 +199,53 @@ import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 
-const SampleDataTableComponent = withSuspenseFallback(lazy(() => import('../components/Database/SampleDataTable/SampleDataTable.component')));
-
-const TableQueries = withSuspenseFallback(lazy(() => import('../components/Database/TableQueries/TableQueries')));
-
-const ContractTab = withSuspenseFallback(lazy(() => import('../components/DataContract/ContractTab/ContractTab').then(
-  (module) => ({ default: module.ContractTab })
-)));
-
-const DataObservabilityTab = withSuspenseFallback(lazy(
-  () =>
-    import(
-      '../components/Database/Profiler/DataObservability/DataObservabilityTab'
-    )
-));
-
-const EntityLineageTab = withSuspenseFallback(lazy(() =>
-  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-    (module) => ({ default: module.EntityLineageTab })
+const SampleDataTableComponent = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Database/SampleDataTable/SampleDataTable.component')
   )
-));
+);
 
-const TableConstraints = withSuspenseFallback(lazy(() => import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')));
+const TableQueries = withSuspenseFallback(
+  lazy(() => import('../components/Database/TableQueries/TableQueries'))
+);
 
-const KnowledgeGraph = withSuspenseFallback(lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph')));
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+
+const DataObservabilityTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Database/Profiler/DataObservability/DataObservabilityTab'
+      )
+  )
+);
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+      (module) => ({ default: module.EntityLineageTab })
+    )
+  )
+);
+
+const TableConstraints = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
+  )
+);
+
+const KnowledgeGraph = withSuspenseFallback(
+  lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'))
+);
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;

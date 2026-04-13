@@ -21,7 +21,6 @@ jest.mock('./TableUtils', () => ({
   getUsagePercentile: jest.fn().mockImplementation((value) => value + 'th'),
 }));
 
-
 jest.mock('./CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((value) => value),

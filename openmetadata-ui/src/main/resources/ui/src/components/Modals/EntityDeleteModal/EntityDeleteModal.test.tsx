@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import {  fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import EntityDeleteModal from './EntityDeleteModal';
-import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import EntityDeleteModal from './EntityDeleteModal';
 
 const onCancel = jest.fn();
 const onConfirm = jest.fn();
@@ -135,8 +135,6 @@ describe('Test EntityDelete Modal Component', () => {
   });
 
   it('should render with correct brandName (OpenMetadata or Collate)', async () => {
-    
-
     await act(async () => {
       render(<EntityDeleteModal {...mockProp} visible />, {
         wrapper: MemoryRouter,

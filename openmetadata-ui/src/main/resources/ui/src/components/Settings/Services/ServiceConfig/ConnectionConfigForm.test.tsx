@@ -216,7 +216,7 @@ describe('ServiceConfig', () => {
     jest
       .spyOn(LocalUtils, 'Transi18next')
       .mockImplementation(() => <>message.airflow-host-ip-address</>);
-  })
+  });
 
   it('should render Service Config', async () => {
     render(<ConnectionConfigForm {...mockProps} />);
@@ -307,9 +307,7 @@ describe('ServiceConfig', () => {
       </div>
     ));
 
-    jest
-      .spyOn(LocalUtils, 'Transi18next')
-      .mockImplementation(mockTransi18next);
+    jest.spyOn(LocalUtils, 'Transi18next').mockImplementation(mockTransi18next);
 
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} />);
