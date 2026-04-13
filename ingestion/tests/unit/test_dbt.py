@@ -3552,3 +3552,160 @@ class TestFilterLatestPerProject:
         assert _has_date_pattern("project/dbt_project_one") is False
         assert _has_date_pattern("project/some_static_dir") is False
         assert _has_date_pattern("dir_a") is False
+
+
+class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
+    """
+    Tests that add_dbt_test_result() skips entries that were compiled but
+    never executed (produced by dbt jobs that only run ``dbt run``).
+
+    When multiple dbt Cloud jobs share the same project a ``dbt run`` job
+    populates run_results.json with test nodes that have status="success" but
+    message=null because no SQL was actually executed.  These compiled-only
+    entries must not be ingested as real test case results.
+    """
+
+    @staticmethod
+    def _make_dbt_source():
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = MagicMock(spec=DbtSource)
+        # Bind the real method so self is the mock instance
+        source.add_dbt_test_result = DbtSource.add_dbt_test_result.__get__(
+            source, DbtSource
+        )
+        source.metadata = MagicMock()
+        source.context = MagicMock()
+        return source
+
+    @staticmethod
+    def _make_manifest_node(name="test_not_null_orders_id"):
+        node = MagicMock()
+        node.name = name
+        return node
+
+    @staticmethod
+    def _make_test_result(status, message, timing=None):
+        result = MagicMock()
+        result.status = MagicMock(value=status)
+        result.message = message
+        result.timing = timing or []
+        result.unique_id = f"test.pkg.{status}"
+        return result
+
+    def _make_dbt_test(self, status, message, timing=None, upstream=None):
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status=status, message=message, timing=timing
+            ),
+            DbtCommonEnum.UPSTREAM.value: upstream or [],
+        }
+
+    def test_compiled_only_null_message_is_skipped(self):
+        """
+        Compiled-only entry: status=success, message=None.
+        Must not call add_test_case_results.
+        """
+        source = self._make_dbt_source()
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=None))
+        source.metadata.add_test_case_results.assert_not_called()
+
+    def test_compiled_only_empty_message_is_skipped(self):
+        """
+        Compiled-only entry: status=success, message="" (empty string).
+        Empty string is falsy — must also be skipped.
+        """
+        source = self._make_dbt_source()
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=""))
+        source.metadata.add_test_case_results.assert_not_called()
+
+    def test_real_pass_result_is_ingested(self):
+        """
+        Real test pass: status=pass, message="Pass".
+        Must call add_test_case_results exactly once.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="pass", message="Pass", timing=[timing]
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
+    def test_real_failure_result_is_ingested(self):
+        """
+        Real test failure: status=fail, message populated.
+        Must not be skipped by the compiled-only guard.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="fail",
+                message="Got 3 results, configured to fail if != 0",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
+    def test_real_warn_result_is_ingested(self):
+        """
+        Real test warn: status=warn, message populated.
+        Must not be skipped.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="warn",
+                message="Got 1 result, configured to warn if != 0",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
