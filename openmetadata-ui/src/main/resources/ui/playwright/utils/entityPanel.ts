@@ -29,7 +29,9 @@ const findOptionByScrolling = async (page: Page, endpoint: string) => {
   let tries = 0;
   const maxTries = 5; // Limit the number of scroll attempts to prevent infinite loops
   const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
-  const dropdown = page.getByTestId('global-search-select-dropdown');
+  const dropdown = page
+    .getByTestId('global-search-select-dropdown')
+    .locator('.rc-virtual-list-holder');
   const option = page.getByTestId(`global-search-select-option-${filterName}`);
   while (tries < maxTries) {
     if (await option.isVisible()) {
@@ -63,11 +65,7 @@ export const openEntitySummaryPanel = async ({
   fullyQualifiedName?: string;
   exploreTab?: string;
 }) => {
-  if (
-    endpoint &&
-    ENDPOINT_TO_FILTER_MAP[endpoint] &&
-    ENDPOINT_TO_FILTER_MAP[endpoint] !== 'Search Index'
-  ) {
+  if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
     await page.getByTestId('global-search-selector').waitFor({
       state: 'visible',
     });
