@@ -489,6 +489,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
+  protected void preDeleteByFqnHashPrefix(String fqnHashPrefix, String deletedBy) {
+    List<UUID> ids = getDao().findIdsByFqnHashPrefix(fqnHashPrefix);
+    for (UUID id : ids) {
+      try {
+        IngestionPipeline pipeline = find(id, Include.ALL);
+        if (pipelineServiceClient != null) {
+          pipelineServiceClient.deletePipeline(pipeline);
+        }
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .delete(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
+      } catch (Exception e) {
+        LOG.warn("Failed cleanup for ingestion pipeline {}: {}", id, e.getMessage());
+      }
+    }
+  }
+
+  @Override
   protected EntityReference getParentReference(IngestionPipeline entity) {
     return entity.getService();
   }

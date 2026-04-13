@@ -1726,6 +1726,21 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   @Override
+  protected void preDeleteByFqnHashPrefix(String fqnHashPrefix, String deletedBy) {
+    List<UUID> ids = getDao().findIdsByFqnHashPrefix(fqnHashPrefix);
+    for (UUID id : ids) {
+      try {
+        DataContract contract = find(id, Include.ALL);
+        if (!nullOrEmpty(contract.getQualityExpectations())) {
+          deleteTestSuite(contract);
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed cleanup for data contract {}: {}", id, e.getMessage());
+      }
+    }
+  }
+
+  @Override
   protected void preDelete(DataContract entity, String deletedBy) {
     // Inherited contracts cannot be deleted - they are virtual contracts derived from Data Product
     if (Boolean.TRUE.equals(entity.getInherited())) {

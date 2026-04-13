@@ -14,6 +14,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -52,6 +53,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
+  }
+
+  @Override
+  protected void preDeleteByFqnHashPrefix(String fqnHashPrefix, String deletedBy) {
+    if (!WorkflowHandler.isInitialized()) {
+      return;
+    }
+    List<UUID> ids = getDao().findIdsByFqnHashPrefix(fqnHashPrefix);
+    for (UUID id : ids) {
+      try {
+        WorkflowDefinition definition = find(id, Include.ALL);
+        WorkflowHandler.getInstance().deleteWorkflowDefinition(definition);
+      } catch (Exception e) {
+        LOG.warn("Failed to delete workflow definition {}: {}", id, e.getMessage());
+      }
+    }
   }
 
   @Override

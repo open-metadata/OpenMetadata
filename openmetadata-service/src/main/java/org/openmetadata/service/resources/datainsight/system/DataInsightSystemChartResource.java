@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -304,5 +305,28 @@ public class DataInsightSystemChartResource
       errorResponse.put("error", "Failed to stop streaming: " + e.getMessage());
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(errorResponse).build();
     }
+  }
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteDataInsightSystemChartPrefixHard",
+      summary = "Hard-delete a data insight system chart and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this data insight system chart and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Id of the data insight system chart",
+              schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 }

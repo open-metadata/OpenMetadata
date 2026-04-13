@@ -129,10 +129,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     EntityReference database = schema.getDatabase();
     addRelationship(
         database.getId(),
+        database.getFullyQualifiedName(),
         schema.getId(),
+        schema.getFullyQualifiedName(),
         database.getType(),
         Entity.DATABASE_SCHEMA,
-        Relationship.CONTAINS);
+        Relationship.CONTAINS,
+        null,
+        false);
   }
 
   @Override

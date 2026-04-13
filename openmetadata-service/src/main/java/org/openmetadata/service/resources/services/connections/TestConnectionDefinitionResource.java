@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -20,6 +21,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
@@ -216,5 +218,28 @@ public class TestConnectionDefinitionResource
           @DefaultValue("non-deleted")
           Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+  }
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteTestConnectionDefinitionPrefixHard",
+      summary = "Hard-delete a test connection definition and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this test connection definition and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Id of the test connection definition",
+              schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 }

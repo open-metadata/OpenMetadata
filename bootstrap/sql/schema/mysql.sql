@@ -352,9 +352,13 @@ CREATE TABLE `entity_relationship` (
   `jsonSchema` varchar(256) DEFAULT NULL,
   `json` json DEFAULT NULL,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
+  `fromFQNHash` varchar(768) DEFAULT NULL,
+  `toFQNHash` varchar(768) DEFAULT NULL,
   PRIMARY KEY (`fromId`,`toId`,`relation`),
   KEY `from_index` (`fromId`,`relation`),
-  KEY `to_index` (`toId`,`relation`)
+  KEY `to_index` (`toId`,`relation`),
+  KEY `idx_er_from_fqn_hash` (`fromFQNHash`(768)),
+  KEY `idx_er_to_fqn_hash` (`toFQNHash`(768))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

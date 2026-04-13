@@ -150,3 +150,20 @@ FROM user_entity ue, role_entity re
 WHERE ue.name = 'mcpapplicationbot'
   AND re.name = 'ApplicationBotImpersonationRole'
 ON CONFLICT DO NOTHING;
+
+-- Add FQN hash columns to entity_relationship to enable fast prefix-based bulk deletion.
+-- This allows deleting all relationships for an entire entity subtree in a single indexed query
+-- instead of walking the tree entity-by-entity.
+ALTER TABLE entity_relationship
+    ADD COLUMN IF NOT EXISTS fromFQNHash VARCHAR(768) DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS toFQNHash   VARCHAR(768) DEFAULT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_er_from_fqn_hash ON entity_relationship (fromFQNHash);
+CREATE INDEX IF NOT EXISTS idx_er_to_fqn_hash   ON entity_relationship (toFQNHash);
+
+-- Fix entity_deletion_lock column types: id and entityId were created as native UUID
+-- in 1.9.0 but the rest of the codebase uses VARCHAR(36) for UUID columns so that
+-- BindUUID (which binds via UUID.toString()) can compare them without an explicit cast.
+ALTER TABLE entity_deletion_lock
+    ALTER COLUMN id TYPE VARCHAR(36) USING id::VARCHAR,
+    ALTER COLUMN entityId TYPE VARCHAR(36) USING entityId::VARCHAR;

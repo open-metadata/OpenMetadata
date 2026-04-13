@@ -1632,13 +1632,16 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void storeRelationships(Table table) {
-    // Add relationship from database to table
     addRelationship(
         table.getDatabaseSchema().getId(),
+        table.getDatabaseSchema().getFullyQualifiedName(),
         table.getId(),
+        table.getFullyQualifiedName(),
         DATABASE_SCHEMA,
         TABLE,
-        Relationship.CONTAINS);
+        Relationship.CONTAINS,
+        null,
+        false);
   }
 
   @Override

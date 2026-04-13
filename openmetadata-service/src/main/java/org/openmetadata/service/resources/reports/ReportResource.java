@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -226,5 +227,25 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         .withId(UUID.randomUUID())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
+  }
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deleteReportPrefixHard",
+      summary = "Hard-delete a report and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this report and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 }

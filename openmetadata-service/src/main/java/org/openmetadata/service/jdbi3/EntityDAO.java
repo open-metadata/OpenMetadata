@@ -191,6 +191,19 @@ public interface EntityDAO<T extends EntityInterface> {
   void updateFqnInternal(
       @Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
 
+  @SqlQuery("SELECT id FROM <table> WHERE <col> LIKE :prefix")
+  List<String> findIdsByFqnHashPrefixInternal(
+      @Define("table") String table, @Define("col") String col, @Bind("prefix") String prefix);
+
+  default List<UUID> findIdsByFqnHashPrefix(String fqnHashPrefix) {
+    if (!"fqnHash".equals(getNameHashColumn())) {
+      return List.of();
+    }
+    return findIdsByFqnHashPrefixInternal(getTableName(), "fqnHash", fqnHashPrefix + ".%").stream()
+        .map(UUID::fromString)
+        .toList();
+  }
+
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
@@ -684,6 +697,16 @@ public interface EntityDAO<T extends EntityInterface> {
       String entityType = Entity.getEntityTypeFromClass(getEntityClass());
       throw EntityNotFoundException.byMessage(entityNotFound(entityType, id));
     }
+  }
+
+  @SqlUpdate("DELETE FROM <table> WHERE id IN (<ids>)")
+  void deleteBatchInternal(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  default void deleteBatch(List<String> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return;
+    }
+    deleteBatchInternal(getTableName(), ids);
   }
 
   record EntityNameColumnHashJsonPair(String nameColumnHash, String json) {}

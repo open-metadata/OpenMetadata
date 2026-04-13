@@ -422,6 +422,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     lockManager = manager;
   }
 
+  public static HierarchicalLockManager getLockManager() {
+    return lockManager;
+  }
+
   public boolean isSupportsOwners() {
     return supportsOwners;
   }
@@ -1105,7 +1109,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final void addServiceRelationship(T entity, EntityReference service) {
     if (service != null) {
       addRelationship(
-          service.getId(), entity.getId(), service.getType(), entityType, Relationship.CONTAINS);
+          service.getId(),
+          service.getFullyQualifiedName(),
+          entity.getId(),
+          entity.getFullyQualifiedName(),
+          service.getType(),
+          entityType,
+          Relationship.CONTAINS,
+          null,
+          false);
     }
   }
 
@@ -3435,6 +3447,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Called once per entity type before prefix deletion removes entities from the DB.
+   * Override for bulk-efficient cleanup (e.g. calling an external system like Airflow).
+   * Entities matching the prefix are still in the DB when this runs.
+   */
+  protected void preDeleteByFqnHashPrefix(String fqnHashPrefix, String deletedBy) {}
+
+  /**
+   * Called once per entity type after prefix deletion has removed entities from the DB.
+   * Override for post-deletion metadata updates that do not require loading the deleted entities.
+   */
+  protected void postDeleteByFqnHashPrefix(String fqnHashPrefix) {}
+
   public final void deleteFromSearch(T entity, boolean hardDelete) {
     try (var ignored = phase("lifecycleDispatch")) {
       if (hardDelete) {
@@ -3784,6 +3809,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
+
+  @SuppressWarnings("unchecked")
+  final void callPreDelete(EntityInterface entity, String deletedBy) {
+    preDelete((T) entity, deletedBy);
+  }
+
+  @SuppressWarnings("unchecked")
+  final void invalidateEntity(EntityInterface entity) {
+    invalidate((T) entity);
+  }
 
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
@@ -4917,17 +4952,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Relationship relationship,
       String json,
       boolean bidirectional) {
+    addRelationship(
+        fromId, null, toId, null, fromEntity, toEntity, relationship, json, bidirectional);
+  }
+
+  @Transaction
+  public final void addRelationship(
+      UUID fromId,
+      String fromFqn,
+      UUID toId,
+      String toFqn,
+      String fromEntity,
+      String toEntity,
+      Relationship relationship,
+      String json,
+      boolean bidirectional) {
     UUID from = fromId;
     UUID to = toId;
+    String fromHash = fromFqn != null ? FullyQualifiedName.buildHash(fromFqn) : null;
+    String toHash = toFqn != null ? FullyQualifiedName.buildHash(toFqn) : null;
     if (bidirectional && fromId.compareTo(toId) > 0) {
-      // For bidirectional relationship, instead of adding two row fromId -> toId and toId ->
-      // fromId, just add one row where fromId is alphabetically less than toId
       from = toId;
       to = fromId;
+      fromHash = toFqn != null ? FullyQualifiedName.buildHash(toFqn) : null;
+      toHash = fromFqn != null ? FullyQualifiedName.buildHash(fromFqn) : null;
     }
     daoCollection
         .relationshipDAO()
-        .insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
+        .insert(from, to, fromEntity, toEntity, relationship.ordinal(), json, fromHash, toHash);
 
     // Update RDF
     EntityRelationship entityRelationship =
@@ -4940,7 +4992,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     RdfUpdater.addRelationship(entityRelationship);
 
     if (bidirectional) {
-      // Also add the reverse relationship to RDF
       EntityRelationship reverseRelationship =
           new EntityRelationship()
               .withFromId(toId)
@@ -4950,6 +5001,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .withRelationshipType(relationship);
       RdfUpdater.addRelationship(reverseRelationship);
     }
+  }
+
+  protected void deleteTimeSeriesByFqnPrefix(String fqnHashPrefix) {
+    // No-op default — override in repositories with associated time-series tables
   }
 
   @Transaction

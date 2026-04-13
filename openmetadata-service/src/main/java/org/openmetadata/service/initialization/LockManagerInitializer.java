@@ -3,6 +3,7 @@ package org.openmetadata.service.initialization;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.PrefixDeletionService;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 
 /**
@@ -43,6 +44,9 @@ public class LockManagerInitializer {
 
         // Set it on EntityRepository
         EntityRepository.setLockManager(lockManager);
+
+        // Initialize PrefixDeletionService with the same lock manager
+        PrefixDeletionService.initialize(lockManager);
 
         initialized = true;
         LOG.info("Hierarchical lock manager initialized successfully");

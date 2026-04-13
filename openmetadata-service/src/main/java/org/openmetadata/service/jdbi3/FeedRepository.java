@@ -772,6 +772,22 @@ public class FeedRepository {
     }
   }
 
+  @Transaction
+  public void deleteByAboutBatch(List<UUID> entityIds) {
+    if (nullOrEmpty(entityIds)) {
+      return;
+    }
+    List<String> ids = entityIds.stream().map(UUID::toString).toList();
+    List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityIds(ids));
+    for (String threadId : threadIds) {
+      try {
+        deleteThreadInternal(UUID.fromString(threadId));
+      } catch (Exception ex) {
+        // Continue deletion
+      }
+    }
+  }
+
   public List<ThreadCount> getThreadsCount(String link) {
     List<List<String>> result;
     EntityLink entityLink = EntityLink.parse(link);

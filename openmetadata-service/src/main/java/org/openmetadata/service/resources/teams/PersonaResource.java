@@ -30,6 +30,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.*;
 import java.util.List;
 import java.util.UUID;
@@ -412,6 +414,27 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
           UUID id) {
     authorizer.authorizeAdmin(securityContext);
     return deleteByIdAsync(uriInfo, securityContext, id, false, true);
+  }
+
+  @DELETE
+  @Path("/prefix/{id}")
+  @Operation(
+      operationId = "deletePersonaPrefixHard",
+      summary = "Hard-delete a persona and all descendants by FQN prefix",
+      description =
+          "Bulk hard-delete this persona and all descendants whose FQN starts with this "
+              + "entity's FQN. Significantly faster than recursive delete for large hierarchies.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Deletion accepted and running"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deletePrefixHardById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the persona", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return super.deletePrefixHardById(uriInfo, securityContext, id);
   }
 
   @DELETE

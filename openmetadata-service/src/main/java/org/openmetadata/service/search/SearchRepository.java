@@ -2178,6 +2178,28 @@ public class SearchRepository {
     }
   }
 
+  public void deleteByEntityTypeFqnPrefix(String entityType, String fqnPrefix) {
+    if (!checkIfIndexingIsSupported(entityType)) {
+      return;
+    }
+    if (!getSearchClient().isClientAvailable()) {
+      return;
+    }
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    try {
+      searchClient.deleteEntityByFQNPrefix(indexMapping.getIndexName(clusterAlias), fqnPrefix);
+    } catch (Exception ie) {
+      LOG.error(
+          "Issue deleting search documents for entityType [{}] with FQN prefix [{}]",
+          entityType,
+          fqnPrefix,
+          ie);
+    } finally {
+      RequestLatencyContext.endSearchOperation(searchSample);
+    }
+  }
+
   public void deleteTimeSeriesEntityById(EntityTimeSeriesInterface entity) {
     if (entity != null) {
       String entityId = entity.getId().toString();
