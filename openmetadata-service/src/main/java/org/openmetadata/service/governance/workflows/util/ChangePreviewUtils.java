@@ -22,6 +22,7 @@ import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,12 +105,14 @@ public final class ChangePreviewUtils {
   }
 
   private static List<String> setMinus(List<String> a, List<String> b) {
-    return a.stream().filter(v -> !b.contains(v)).collect(Collectors.toList());
+    Set<String> bSet = new LinkedHashSet<>(b);
+    return a.stream().filter(v -> !bSet.contains(v)).collect(Collectors.toList());
   }
 
   private static List<String> setUnion(List<String> a, List<String> b) {
+    Set<String> aSet = new LinkedHashSet<>(a);
     List<String> result = new ArrayList<>(a);
-    b.stream().filter(v -> !a.contains(v)).forEach(result::add);
+    b.stream().filter(v -> !aSet.contains(v)).forEach(result::add);
     return result;
   }
 

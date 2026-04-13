@@ -83,8 +83,16 @@ public class CreateApprovalTaskImpl implements TaskListener {
       Expression expr, DelegateTask delegateTask, int defaultValue) {
     if (expr == null) return defaultValue;
     String raw = (String) expr.getValue(delegateTask);
-    if (raw == null || raw.isEmpty()) return defaultValue;
-    return Integer.parseInt(raw);
+    if (raw == null || raw.trim().isEmpty()) return defaultValue;
+    try {
+      return Integer.parseInt(raw.trim());
+    } catch (NumberFormatException exc) {
+      LOG.warn(
+          "Invalid threshold value '{}' resolved from workflow expression. Falling back to default value {}.",
+          raw,
+          defaultValue);
+      return defaultValue;
+    }
   }
 
   private List<EntityReference> getAssignees(DelegateTask delegateTask) {
