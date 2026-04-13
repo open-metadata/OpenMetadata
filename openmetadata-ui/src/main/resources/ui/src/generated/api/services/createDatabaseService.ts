@@ -166,6 +166,8 @@ export interface DatabaseConnection {
  * BurstIQ LifeGraph Database Connection Config
  *
  * IBM Informix Database Connection Config
+ *
+ * IOMETE Connection Config
  */
 export interface Connection {
     /**
@@ -260,6 +262,8 @@ export interface Connection {
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      *
      * Host and port of the Informix service.
+     *
+     * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      */
     hostPort?: string;
     /**
@@ -277,6 +281,9 @@ export interface Connection {
      *
      * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
      * are mapped as schemas.
+     *
+     * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+     * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -487,6 +494,8 @@ export interface Connection {
      * Password to connect to BurstIQ.
      *
      * Password to connect to Informix.
+     *
+     * Password to connect to IOMETE.
      */
     password?: string;
     /**
@@ -593,6 +602,8 @@ export interface Connection {
      *
      * Username to connect to Informix. This user should have privileges to read all the
      * metadata in Informix.
+     *
+     * Username to connect to IOMETE.
      */
     username?: string;
     /**
@@ -606,6 +617,10 @@ export interface Connection {
      *
      * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
      * as the schema name
+     *
+     * IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an
+     * optional parameter; if left blank, OpenMetadata attempts to scan all databases in the
+     * catalog.
      */
     databaseSchema?: string;
     /**
@@ -642,6 +657,9 @@ export interface Connection {
      * Presto catalog
      *
      * Catalog of the data source.
+     *
+     * Catalog of the data source (e.g. spark_catalog). This is an optional parameter; if left
+     * blank, OpenMetadata uses default catalog.
      */
     catalog?: string;
     /**
@@ -1066,6 +1084,14 @@ export interface Connection {
      * variable.
      */
     serverName?: string;
+    /**
+     * IOMETE lakehouse cluster name to connect to.
+     */
+    cluster?: string;
+    /**
+     * IOMETE data plane name.
+     */
+    dataPlane?: string;
     [property: string]: any;
 }
 
@@ -1767,6 +1793,9 @@ export interface AccessDatabaseLocationLocalPathOrS3 {
  * Regex to only include/exclude tables that match the pattern.
  *
  * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+ *
+ * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+ * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
  */
 export interface FilterPattern {
     /**
@@ -2221,6 +2250,7 @@ export enum ConfigType {
     Hive = "Hive",
     Impala = "Impala",
     Informix = "Informix",
+    Iomete = "Iomete",
     MariaDB = "MariaDB",
     MicrosoftAccess = "MicrosoftAccess",
     MicrosoftFabric = "MicrosoftFabric",
@@ -2349,6 +2379,7 @@ export enum DatabaseServiceType {
     Hive = "Hive",
     Impala = "Impala",
     Informix = "Informix",
+    Iomete = "Iomete",
     MariaDB = "MariaDB",
     MicrosoftAccess = "MicrosoftAccess",
     MicrosoftFabric = "MicrosoftFabric",

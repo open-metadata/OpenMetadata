@@ -20,15 +20,18 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
 
-const table = new TableClass();
-
 test.describe(
   'Incident Manager Date Filter',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Incident_Manager` },
   () => {
+    let table: TableClass;
+
     test.beforeAll(async ({ browser }) => {
       test.slow();
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      table = new TableClass();
+
+      await table.create(apiContext);
 
       // Create table and test cases
       await table.createTestCase(apiContext, {
