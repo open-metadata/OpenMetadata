@@ -56,7 +56,7 @@ public class LabelBuilder {
     labels.put(LABEL_APP_NAME, APP_NAME);
     labels.put(LABEL_APP_COMPONENT, COMPONENT_INGESTION);
     labels.put(LABEL_APP_MANAGED_BY, MANAGED_BY_OMJOB_OPERATOR);
-    labels.put(LABEL_OMJOB_NAME, omJob.getMetadata().getName());
+    labels.put(LABEL_OMJOB_NAME, sanitizeLabelValue(omJob.getMetadata().getName()));
 
     // Copy pipeline and run-id from OMJob labels
     String pipelineName = omJob.getPipelineName();
@@ -113,7 +113,7 @@ public class LabelBuilder {
    */
   public static Map<String, String> buildPodSelector(OMJobResource omJob) {
     Map<String, String> selector = new HashMap<>();
-    selector.put(LABEL_OMJOB_NAME, omJob.getMetadata().getName());
+    selector.put(LABEL_OMJOB_NAME, sanitizeLabelValue(omJob.getMetadata().getName()));
     selector.put(LABEL_APP_MANAGED_BY, MANAGED_BY_OMJOB_OPERATOR);
     return selector;
   }
