@@ -219,8 +219,8 @@ function GlossaryTermRelationSettingsPage() {
   const renderColorBadge = useCallback(
     (record: GlossaryTermRelationType) => {
       const effectiveColor = record.isSystemDefined
-        ? (RELATION_META[record.name]?.color ?? record.color)
-        : (record.color ?? RELATION_META[record.name]?.color);
+        ? RELATION_META[record.name]?.color ?? record.color
+        : record.color ?? RELATION_META[record.name]?.color;
 
       if (!effectiveColor) {
         return (

@@ -135,9 +135,7 @@ describe('GlossaryTermRelationSettingsPage', () => {
 
     it('shows raw hex when custom type color is not in design palette', async () => {
       (getGlossaryTermRelationSettings as jest.Mock).mockResolvedValue({
-        relationTypes: [
-          { ...CUSTOM_RELATION_TYPE, color: '#abcdef' },
-        ],
+        relationTypes: [{ ...CUSTOM_RELATION_TYPE, color: '#abcdef' }],
       });
 
       await renderPage();
