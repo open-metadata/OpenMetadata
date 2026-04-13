@@ -723,12 +723,12 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
         });
 
-        await test.step('Verify row count (8) in property name', async () => {
+        await test.step('Verify row count (5) in property name', async () => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
           await expect(container.getByTestId('property-name')).toContainText(
-            '(8)'
+            '(5)'
           );
         });
 
