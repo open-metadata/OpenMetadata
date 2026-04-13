@@ -525,9 +525,6 @@ class LineageSource(QueryParserSource, ABC):
         """
         By default cross database lineage is not supported.
         """
-        logger.info(
-            f"Processing Cross Database Lineage not supported for {str(self.service_connection.type.value)}"
-        )
 
     def _iter(
         self, *_, **__
