@@ -933,6 +933,9 @@ export interface Pipeline {
  *
  * Regex to only include/exclude dictionaries (tables) that matches the pattern.
  *
+ * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+ * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+ *
  * Regex to only include/exclude domains that match the pattern.
  *
  * Regex to only include/exclude glossaries that match the pattern.
@@ -1375,6 +1378,12 @@ export interface Action {
      */
     propagationDepthMode?: PropagationDepthMode;
     /**
+     * Determines how the filter selects entities. 'SOURCE' (default): filtered entities push
+     * their metadata downstream to all discovered entities via lineage. 'TARGET': filtered
+     * entities receive metadata from upstream lineage.
+     */
+    propagationFilterMode?: PropagationFilterMode;
+    /**
      * List of configurations to stop propagation based on conditions
      */
     propagationStopConfigs?: PropagationStopConfig[];
@@ -1406,6 +1415,16 @@ export enum LabelElement {
 export enum PropagationDepthMode {
     DataAsset = "DATA_ASSET",
     Root = "ROOT",
+}
+
+/**
+ * Determines how the filter selects entities. 'SOURCE' (default): filtered entities push
+ * their metadata downstream to all discovered entities via lineage. 'TARGET': filtered
+ * entities receive metadata from upstream lineage.
+ */
+export enum PropagationFilterMode {
+    Source = "SOURCE",
+    Target = "TARGET",
 }
 
 /**
@@ -2993,6 +3012,8 @@ export interface ServiceConnection {
  *
  * IBM Informix Database Connection Config
  *
+ * IOMETE Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -3346,6 +3367,8 @@ export interface ConfigObject {
      *
      * Host and port of the Informix service.
      *
+     * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -3467,6 +3490,8 @@ export interface ConfigObject {
      * Password to connect to BurstIQ.
      *
      * Password to connect to Informix.
+     *
+     * Password to connect to IOMETE.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -3590,6 +3615,8 @@ export interface ConfigObject {
      *
      * Username to connect to Informix. This user should have privileges to read all the
      * metadata in Informix.
+     *
+     * Username to connect to IOMETE.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -3876,6 +3903,9 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
      * are mapped as schemas.
+     *
+     * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+     * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -4033,6 +4063,10 @@ export interface ConfigObject {
      *
      * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
      * as the schema name
+     *
+     * IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an
+     * optional parameter; if left blank, OpenMetadata attempts to scan all databases in the
+     * catalog.
      */
     databaseSchema?: string;
     /**
@@ -4059,6 +4093,9 @@ export interface ConfigObject {
      * Presto catalog
      *
      * Catalog of the data source.
+     *
+     * Catalog of the data source (e.g. spark_catalog). This is an optional parameter; if left
+     * blank, OpenMetadata uses default catalog.
      */
     catalog?: string;
     /**
@@ -4428,6 +4465,14 @@ export interface ConfigObject {
      * variable.
      */
     serverName?: string;
+    /**
+     * IOMETE lakehouse cluster name to connect to.
+     */
+    cluster?: string;
+    /**
+     * IOMETE data plane name.
+     */
+    dataPlane?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -7364,6 +7409,7 @@ export enum PurpleType {
     Hive = "Hive",
     Impala = "Impala",
     Informix = "Informix",
+    Iomete = "Iomete",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",

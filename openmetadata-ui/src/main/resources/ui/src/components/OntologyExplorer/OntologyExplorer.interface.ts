@@ -32,6 +32,7 @@ export interface OntologyNode {
   originalLabel?: string;
   assetCount?: number;
   loadedAssetCount?: number;
+  isLoadingAssets?: boolean;
   type: string;
   fullyQualifiedName?: string;
   description?: string;
@@ -125,6 +126,7 @@ export interface OntologyGraphProps {
     position: { x: number; y: number }
   ) => void;
   onPaneClick: () => void;
+  onScrollNearEdge?: () => void;
 }
 
 export interface FilterToolbarProps {

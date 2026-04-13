@@ -531,17 +531,20 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
     // List topics
     ListParams params = new ListParams();
+    params.setFields("service");
     params.setLimit(100);
+    params.setService(service.getFullyQualifiedName());
     ListResponse<Topic> response = listEntities(params);
     assertNotNull(response);
 
-    // Verify we have at least our 3 topics
-    long serviceCount =
+    assertTrue(response.getData().size() >= 3);
+    assertTrue(
         response.getData().stream()
-            .filter(
-                t -> t.getService().getFullyQualifiedName().equals(service.getFullyQualifiedName()))
-            .count();
-    assertTrue(serviceCount >= 3);
+            .allMatch(
+                t ->
+                    t.getService()
+                        .getFullyQualifiedName()
+                        .equals(service.getFullyQualifiedName())));
   }
 
   @Test

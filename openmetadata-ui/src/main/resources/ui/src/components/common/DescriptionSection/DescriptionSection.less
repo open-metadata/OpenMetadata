@@ -23,8 +23,18 @@
   }
   .description-header {
     display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
     gap: 8px;
     margin-bottom: 12px;
+
+    .description-title-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
 
     .description-title {
       font-weight: 600;
@@ -78,11 +88,19 @@
           color: @primary-6;
         }
       }
+
+      .description-metadata {
+        margin-top: 10px;
+      }
     }
 
     .no-data-placeholder {
       color: @grey-500;
       font-size: 12px;
+    }
+
+    .description-metadata {
+      margin-top: 10px;
     }
   }
 }

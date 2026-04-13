@@ -14,6 +14,7 @@ Utilities for Looker service
 """
 
 import os
+import re
 import shutil
 from typing import Optional, Union
 
@@ -101,4 +102,5 @@ def _clone_repo(
 
         logger.info(f"repo {repo_name} cloned to {path}")
     except Exception as exc:
-        logger.error(f"GitHubCloneReader::_clone: ERROR {exc} ")
+        sanitized_msg = re.sub(r"https://[^@]+@", "https://****@", str(exc))
+        logger.error(f"GitHubCloneReader::_clone: ERROR {sanitized_msg}")
