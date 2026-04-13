@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   RelationCardinality,
@@ -106,8 +106,11 @@ describe('GlossaryTermRelationSettingsPage', () => {
       // RELATION_META['relatedTo'].color is '#1570ef', which maps to 'label.color-blue' in COLOR_META_BY_HEX.
       // The old backend color '#1890ff' is NOT in COLOR_META_BY_HEX and would fall through to show the raw hex.
       // If the fix is working, we see the translated label key — not the raw stale hex.
-      expect(screen.getByText('label.color-blue')).toBeInTheDocument();
-      expect(screen.queryByText('#1890ff')).not.toBeInTheDocument();
+      expect(await screen.findByText('label.color-blue')).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.queryByText('#1890ff')).not.toBeInTheDocument();
+      });
     });
 
     it('does not display the raw stale backend hex for system-defined types', async () => {
@@ -117,7 +120,9 @@ describe('GlossaryTermRelationSettingsPage', () => {
 
       await renderPage();
 
-      expect(screen.queryByText('#1890ff')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText('#1890ff')).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -130,7 +135,9 @@ describe('GlossaryTermRelationSettingsPage', () => {
       await renderPage();
 
       // '#bc1b06' is in COLOR_META_BY_HEX mapped to 'label.color-orange'
-      expect(screen.getByText('label.color-orange')).toBeInTheDocument();
+      expect(
+        await screen.findByText('label.color-orange')
+      ).toBeInTheDocument();
     });
 
     it('shows raw hex when custom type color is not in design palette', async () => {
@@ -140,7 +147,7 @@ describe('GlossaryTermRelationSettingsPage', () => {
 
       await renderPage();
 
-      expect(screen.getByText('#abcdef')).toBeInTheDocument();
+      expect(await screen.findByText('#abcdef')).toBeInTheDocument();
     });
   });
 
@@ -158,7 +165,7 @@ describe('GlossaryTermRelationSettingsPage', () => {
 
       await renderPage();
 
-      expect(screen.getByText('—')).toBeInTheDocument();
+      expect(await screen.findByText('—')).toBeInTheDocument();
     });
   });
 });
