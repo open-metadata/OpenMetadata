@@ -333,7 +333,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     BASIC_PROPERTIES.forEach((property) => {
       test(property, async ({ page }) => {
-        const propertyName = `pwcp${Date.now()}test${entity.name}`;
+        const propertyName = `pwcp${uuid()}test${entity.name}`;
 
         await settingClick(
           page,
@@ -368,7 +368,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     CONFIG_PROPERTIES.forEach((propertyConfig) => {
       test(propertyConfig.name, async ({ page }) => {
         test.slow();
-        const propertyName = `pwcp${Date.now()}test${entity.name}`;
+        const propertyName = `pwcp${uuid()}test${entity.name}`;
 
         await settingClick(
           page,

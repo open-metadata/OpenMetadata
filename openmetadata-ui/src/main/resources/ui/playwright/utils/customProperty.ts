@@ -18,8 +18,8 @@ import {
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
@@ -122,7 +122,7 @@ export const setValueForProperty = async (data: {
   const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
-      await page.locator(descriptionBox).isVisible();
+      await expect(page.locator(descriptionBox)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
@@ -130,14 +130,18 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'email':
-      await container.locator('[data-testid="email-input"]').isVisible();
+      await expect(
+        container.locator('[data-testid="email-input"]')
+      ).toBeVisible();
       await container.locator('[data-testid="email-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
-      await container.locator('[data-testid="duration-input"]').isVisible();
+      await expect(
+        container.locator('[data-testid="duration-input"]')
+      ).toBeVisible();
       await container.locator('[data-testid="duration-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -161,7 +165,9 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'timestamp':
-      await container.locator('[data-testid="timestamp-input"]').isVisible();
+      await expect(
+        container.locator('[data-testid="timestamp-input"]')
+      ).toBeVisible();
       await container.locator('[data-testid="timestamp-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -169,9 +175,13 @@ export const setValueForProperty = async (data: {
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
-      await container.locator('[data-testid="start-input"]').isVisible();
+      await expect(
+        container.locator('[data-testid="start-input"]')
+      ).toBeVisible();
       await container.locator('[data-testid="start-input"]').fill(startValue);
-      await container.locator('[data-testid="end-input"]').isVisible();
+      await expect(
+        container.locator('[data-testid="end-input"]')
+      ).toBeVisible();
       await container.locator('[data-testid="end-input"]').fill(endValue);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -179,7 +189,9 @@ export const setValueForProperty = async (data: {
     }
 
     case 'time-cp': {
-      await container.locator('[data-testid="time-picker"]').isVisible();
+      await expect(
+        container.locator('[data-testid="time-picker"]')
+      ).toBeVisible();
       await container.locator('[data-testid="time-picker"]').click();
       await container.locator('[data-testid="time-picker"]').fill(value);
       await page.getByRole('button', { name: 'OK', exact: true }).click();
@@ -190,7 +202,9 @@ export const setValueForProperty = async (data: {
 
     case 'date-cp':
     case 'dateTime-cp': {
-      await container.locator('[data-testid="date-time-picker"]').isVisible();
+      await expect(
+        container.locator('[data-testid="date-time-picker"]')
+      ).toBeVisible();
       await container.locator('[data-testid="date-time-picker"]').click();
       await container.locator('[data-testid="date-time-picker"]').fill(value);
       await page.keyboard.press('Enter');
@@ -202,7 +216,9 @@ export const setValueForProperty = async (data: {
     case 'string':
     case 'integer':
     case 'number':
-      await container.locator('[data-testid="value-input"]').isVisible();
+      await expect(
+        container.locator('[data-testid="value-input"]')
+      ).toBeVisible();
       await container.locator('[data-testid="value-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -250,9 +266,9 @@ export const setValueForProperty = async (data: {
     case 'hyperlink-cp': {
       // Value format: "url,displayText" or just "url"
       const [url, displayText] = value.split(',');
-      await container
-        .locator('[data-testid="hyperlink-url-input"]')
-        .isVisible();
+      await expect(
+        container.locator('[data-testid="hyperlink-url-input"]')
+      ).toBeVisible();
       await container.locator('[data-testid="hyperlink-url-input"]').fill(url);
       if (displayText) {
         await container
@@ -1299,7 +1315,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
   switch (propertyType) {
     case 'markdown':
-      await page.locator(descriptionBox).isVisible();
+      await expect(page.locator(descriptionBox)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
@@ -1307,14 +1323,16 @@ export const updateCustomPropertyInRightPanel = async (data: {
       break;
 
     case 'email':
-      await page.locator('[data-testid="email-input"]').isVisible();
+      await expect(page.locator('[data-testid="email-input"]')).toBeVisible();
       await page.locator('[data-testid="email-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
-      await page.locator('[data-testid="duration-input"]').isVisible();
+      await expect(
+        page.locator('[data-testid="duration-input"]')
+      ).toBeVisible();
       await page.locator('[data-testid="duration-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -1335,14 +1353,16 @@ export const updateCustomPropertyInRightPanel = async (data: {
       break;
 
     case 'timestamp':
-      await page.locator('[data-testid="timestamp-input"]').isVisible();
+      await expect(
+        page.locator('[data-testid="timestamp-input"]')
+      ).toBeVisible();
       await page.locator('[data-testid="timestamp-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'time-cp': {
-      await page.locator('[data-testid="time-picker"]').isVisible();
+      await expect(page.locator('[data-testid="time-picker"]')).toBeVisible();
       await page.locator('[data-testid="time-picker"]').click();
       await page.locator('[data-testid="time-picker"]').fill(value);
       await page.getByRole('button', { name: 'OK', exact: true }).click();
@@ -1353,9 +1373,9 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
-      await page.locator('[data-testid="start-input"]').isVisible();
+      await expect(page.locator('[data-testid="start-input"]')).toBeVisible();
       await page.locator('[data-testid="start-input"]').fill(startValue);
-      await page.locator('[data-testid="end-input"]').isVisible();
+      await expect(page.locator('[data-testid="end-input"]')).toBeVisible();
       await page.locator('[data-testid="end-input"]').fill(endValue);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -1364,7 +1384,9 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
     case 'date-cp':
     case 'dateTime-cp': {
-      await page.locator('[data-testid="date-time-picker"]').isVisible();
+      await expect(
+        page.locator('[data-testid="date-time-picker"]')
+      ).toBeVisible();
       await page.locator('[data-testid="date-time-picker"]').click();
       await page.locator('[data-testid="date-time-picker"]').fill(value);
       await page.locator('[data-testid="date-time-picker"]').press('Enter');
@@ -1376,7 +1398,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     case 'string':
     case 'integer':
     case 'number':
-      await page.locator('[data-testid="value-input"]').isVisible();
+      await expect(page.locator('[data-testid="value-input"]')).toBeVisible();
       await page.locator('[data-testid="value-input"]').clear();
       await page.locator('[data-testid="value-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
