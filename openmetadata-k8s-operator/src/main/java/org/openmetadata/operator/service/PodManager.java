@@ -408,18 +408,17 @@ public class PodManager {
   }
 
   private String normalize(String name) {
-
+    
     int MAX = 63;
 
     if (name.length() <= MAX) return name;
 
-    LOG.warn("Normalizing long name (>63 chars): {}", name);  // Logs 
+    LOG.warn("Normalizing long name (>63 chars): {}", name);
 
-    String hash = Integer.toHexString(name.hashCode());
+    String hash = Integer.toHexString(Math.abs(name.hashCode()));
     int trimLength = MAX - hash.length() - 1;
 
     return name.substring(0, trimLength) + "-" + hash;
-
   }
 
   private String generateMainPodName(OMJobResource omJob) {
