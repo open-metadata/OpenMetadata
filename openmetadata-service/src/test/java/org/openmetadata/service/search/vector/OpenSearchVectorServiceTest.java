@@ -474,6 +474,49 @@ class OpenSearchVectorServiceTest {
         "Pipeline body should contain custom weights [0.3,0.7]");
   }
 
+  @Test
+  void testCheckHybridSearchPipelineReturnsEmptyWhenAvailable() throws IOException {
+    mockOpenSearchResponse("{\"hybrid-rrf\":{}}");
+
+    assertTrue(
+        vectorService.checkHybridSearchPipeline().isEmpty(),
+        "Pipeline should be available when OpenSearch returns 200");
+  }
+
+  @Test
+  void testCheckHybridSearchPipelineReturnsErrorOn404() throws IOException {
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getStatus()).thenReturn(404);
+    when(mockResponse.getBody()).thenReturn(Optional.empty());
+    when(mockGenericClient.execute(any())).thenReturn(mockResponse);
+
+    Optional<String> result = vectorService.checkHybridSearchPipeline();
+    assertTrue(result.isPresent(), "Should return error when pipeline not found");
+    assertTrue(result.get().contains("not found"), "Error should mention pipeline not found");
+  }
+
+  @Test
+  void testCheckHybridSearchPipelineReturnsErrorOn5xx() throws IOException {
+    Response mockResponse = mock(Response.class);
+    when(mockResponse.getStatus()).thenReturn(500);
+    when(mockResponse.getBody()).thenReturn(Optional.empty());
+    when(mockGenericClient.execute(any())).thenReturn(mockResponse);
+
+    Optional<String> result = vectorService.checkHybridSearchPipeline();
+    assertTrue(result.isPresent(), "Should return error on server error");
+    assertTrue(result.get().contains("Unexpected status 500"), "Error should mention status code");
+  }
+
+  @Test
+  void testCheckHybridSearchPipelineReturnsErrorOnException() throws IOException {
+    when(mockGenericClient.execute(any())).thenThrow(new IOException("Connection refused"));
+
+    Optional<String> result = vectorService.checkHybridSearchPipeline();
+    assertTrue(result.isPresent(), "Should return error when exception occurs");
+    assertTrue(
+        result.get().contains("Connection refused"), "Error should include exception message");
+  }
+
   private void mockOpenSearchResponse(String responseJson) throws IOException {
     mockOpenSearchResponses(responseJson);
   }

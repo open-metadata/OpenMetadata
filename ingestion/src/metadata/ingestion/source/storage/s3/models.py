@@ -29,10 +29,6 @@ class S3BucketResponse(BaseModel):
     Class modelling a response received from s3_client.list_buckets operation
     """
 
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-
     name: str = Field(..., description="Bucket name", alias="Name")
     creation_date: Optional[datetime] = Field(
         None,

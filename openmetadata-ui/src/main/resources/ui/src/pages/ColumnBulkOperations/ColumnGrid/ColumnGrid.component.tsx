@@ -2271,6 +2271,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     title: drawerTitle,
     width: '40%',
     closeOnEscape: true,
+    className: 'tw:z-[20]',
     testId: 'column-bulk-operations-form-drawer',
     onCancel: discardPendingEdits,
     form: drawerContent,
