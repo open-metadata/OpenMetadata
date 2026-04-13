@@ -32,6 +32,7 @@ export interface OntologyNode {
   originalLabel?: string;
   assetCount?: number;
   loadedAssetCount?: number;
+  isLoadingAssets?: boolean;
   type: string;
   fullyQualifiedName?: string;
   description?: string;
