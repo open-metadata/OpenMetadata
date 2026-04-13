@@ -1036,6 +1036,9 @@ public class LineageRepository {
         RdfUpdater.removeRelationship(lineageRelationship);
       }
 
+      if (result) {
+        cleanUpExtendedLineage(from, to, lineageDetails);
+      }
       return result;
     }
     return false;
@@ -1104,14 +1107,15 @@ public class LineageRepository {
       }
 
       if (result) {
-        cleanUpExtendedLineage(from, to);
+        cleanUpExtendedLineage(from, to, lineageDetails);
       }
       return result;
     }
     return false;
   }
 
-  private void cleanUpExtendedLineage(EntityReference from, EntityReference to) {
+  private void cleanUpExtendedLineage(
+      EntityReference from, EntityReference to, LineageDetails lineageDetails) {
     boolean addService = hasField(from, FIELD_SERVICE) && hasField(to, FIELD_SERVICE);
     boolean addDomain = hasField(from, FIELD_DOMAINS) && hasField(to, FIELD_DOMAINS);
     boolean addDataProduct =
@@ -1123,9 +1127,25 @@ public class LineageRepository {
     EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
 
     cleanUpLineage(fromEntity, toEntity, FIELD_SERVICE, EntityInterface::getService);
+    cleanUpPipelineServiceEdges(fromEntity, toEntity, lineageDetails);
     cleanupListLineage(fromEntity, toEntity, FIELD_DOMAINS, EntityInterface::getDomains);
     cleanUpLineageForDataProducts(
         fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface::getDataProducts);
+  }
+
+  private void cleanUpPipelineServiceEdges(
+      EntityInterface fromEntity, EntityInterface toEntity, LineageDetails entityLineageDetails) {
+    if (!shouldAddServiceLineage(fromEntity, toEntity)) {
+      return;
+    }
+    EntityReference pipelineService = getPipelineService(entityLineageDetails);
+    if (pipelineService == null) {
+      return;
+    }
+    EntityReference fromService = fromEntity.getService();
+    EntityReference toService = toEntity.getService();
+    processExtendedLineageCleanup(fromService, pipelineService);
+    processExtendedLineageCleanup(pipelineService, toService);
   }
 
   private boolean hasField(EntityReference entity, String field) {
