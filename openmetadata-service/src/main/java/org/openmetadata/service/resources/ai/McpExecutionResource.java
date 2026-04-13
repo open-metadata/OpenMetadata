@@ -110,6 +110,10 @@ public class McpExecutionResource
     ResourceContextInterface resourceContext = McpExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
+    if ((startTs == null) != (endTs == null)) {
+      throw new IllegalArgumentException("Both startTs and endTs must be provided together");
+    }
+
     ListFilter filter = new ListFilter(org.openmetadata.schema.type.Include.ALL);
     if (serverId != null) {
       filter.addQueryParam("serverId", serverId.toString());
@@ -117,9 +121,8 @@ public class McpExecutionResource
 
     if (startTs != null && endTs != null) {
       return repository.listWithOffset(null, filter, limitParam, startTs, endTs, false, false);
-    } else {
-      return repository.listWithOffset(null, filter, limitParam, false);
     }
+    return repository.listWithOffset(null, filter, limitParam, false);
   }
 
   @GET

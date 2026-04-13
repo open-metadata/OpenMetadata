@@ -135,6 +135,7 @@ import {
   getBotsPagePath,
   getBotsPath,
   getClassificationTagPath,
+  getDataProductDetailsPath,
   getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
@@ -1841,7 +1842,6 @@ export const getEntityLinkFromType = (
     case EntityType.CONTAINER:
     case EntityType.DATABASE:
     case EntityType.DATABASE_SCHEMA:
-    case EntityType.DATA_PRODUCT:
     case EntityType.DASHBOARD_DATA_MODEL:
     case EntityType.STORED_PROCEDURE:
     case EntityType.SEARCH_INDEX:
@@ -1854,6 +1854,8 @@ export const getEntityLinkFromType = (
       return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.METRIC:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
+    case EntityType.DATA_PRODUCT:
+      return getDataProductDetailsPath(fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermDetailsPath(fullyQualifiedName);
@@ -2530,7 +2532,7 @@ export const getEntityBreadcrumbs = (
 
     case EntityType.DATA_PRODUCT: {
       const data = entity as DataProduct;
-      if (!data.domains) {
+      if (!data.domains?.length) {
         return [];
       }
 

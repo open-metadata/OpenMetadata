@@ -25,6 +25,19 @@ public interface SearchManagementClient {
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   /**
+   * Execute a search returning typed results for export.
+   * Uses the same query-building logic as {@link #search} but returns a {@link SearchResultListMapper}
+   * instead of a serialized JAX-RS Response, avoiding double serialization/deserialization.
+   *
+   * @param request the search request
+   * @param subjectContext the subject context for RBAC evaluation
+   * @return typed search results with hits and sort values
+   * @throws IOException if search execution fails
+   */
+  SearchResultListMapper searchForExport(SearchRequest request, SubjectContext subjectContext)
+      throws IOException;
+
+  /**
    * Execute a preview search with custom search settings.
    * This is typically used for testing search configurations before applying them.
    *

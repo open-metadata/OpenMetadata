@@ -30,6 +30,7 @@ import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Column, Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
+import { useChangeSummary } from '../../../hooks/useChangeSummary';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
@@ -112,6 +113,15 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   );
 
   const { entityRules } = useEntityRules(type);
+
+  // limit=1000 is the backend max. Entities with more tracked field changes
+  // will have entries beyond this limit silently omitted. Use fieldPrefix
+  // filtering when targeting a specific section (e.g., 'columns.').
+  const { changeSummary } = useChangeSummary(
+    isVersionView ? '' : type,
+    isVersionView ? '' : data.id ?? '',
+    { limit: 1000 }
+  );
 
   // Extract columns from data
   const extractedColumns = useMemo(() => {
@@ -417,6 +427,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       openColumnDetailPanel,
       closeColumnDetailPanel,
       setDisplayedColumns,
+      changeSummary,
     }),
     [
       data,
@@ -438,6 +449,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       openColumnDetailPanel,
       closeColumnDetailPanel,
       setDisplayedColumns,
+      changeSummary,
     ]
   );
 

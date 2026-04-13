@@ -138,8 +138,17 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     // Performs silent signIn and returns with IDToken
     const signInSilently = async () => {
-      // For OIDC token will be coming as silent-callback as an IFram hence not returning new token here
-      await userManager.signinSilent();
+      try {
+        // Token will be coming as silent-callback via an iframe
+        await userManager.signinSilent();
+      } catch (error) {
+        // Silent iframe renewal failed (e.g., Safari ITP blocking third-party cookies)
+        // Fall back to popup which is a visible first-party navigation
+        const user = await userManager.signinPopup();
+        await setOidcToken(user.id_token);
+        updateAxiosInterceptors();
+        TokenService.getInstance().clearRefreshInProgress();
+      }
     };
 
     const handleSilentSignInSuccess = async (user: User) => {

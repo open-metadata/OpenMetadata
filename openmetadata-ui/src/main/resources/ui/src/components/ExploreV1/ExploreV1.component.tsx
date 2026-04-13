@@ -12,17 +12,34 @@
  */
 
 import {
-  ExclamationCircleOutlined,
   FilterOutlined,
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, Col, Menu, Row, Switch, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Card as CoreCard,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
+import { Download01 } from '@untitledui/icons';
+import {
+  Button as AntdButton,
+  Card,
+  Col,
+  Menu,
+  Modal,
+  Radio,
+  Row,
+  Spin,
+  Switch,
+  Typography,
+} from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -30,20 +47,24 @@ import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import {
   entitySortingFields,
-  SEARCH_INDEXING_APPLICATION,
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { SearchIndex } from '../../enums/search.enum';
+import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import {
+  exportSearchResultsCsvStream,
+  searchQuery,
+} from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
-import { Transi18next } from '../../utils/CommonUtils';
+import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   getExploreQueryFilterMust,
   getSelectedValuesFromQuickFilter,
 } from '../../utils/ExploreUtils';
-import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
@@ -57,47 +78,9 @@ import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
+import { IndexNotFoundBanner } from './IndexNotFoundBanner';
 
-const IndexNotFoundBanner = () => {
-  const { theme } = useApplicationStore();
-  const { t } = useTranslation();
-
-  return (
-    <Alert
-      closable
-      description={
-        <div className="d-flex items-start gap-3">
-          <ExclamationCircleOutlined
-            style={{
-              color: theme.errorColor,
-              fontSize: '16px',
-            }}
-          />
-          <div className="d-flex flex-col gap-2">
-            <Typography.Text className="font-semibold text-xs">
-              {t('server.indexing-error')}
-            </Typography.Text>
-            <Typography.Paragraph className="m-b-0 text-xs">
-              <Transi18next
-                i18nKey="message.configure-search-re-index"
-                renderElement={
-                  <Link
-                    className="alert-link"
-                    to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
-                  />
-                }
-                values={{
-                  settings: t('label.search-index-setting-plural'),
-                }}
-              />
-            </Typography.Paragraph>
-          </div>
-        </div>
-      }
-      type="error"
-    />
-  );
-};
+const EXPORT_ALL_ASSETS_LIMIT = 200000;
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
@@ -145,7 +128,127 @@ const ExploreV1: React.FC<ExploreProps> = ({
     [location.search]
   );
 
-  const { toggleModal, sqlQuery, onResetAllFilters } = useAdvanceSearch();
+  const { toggleModal, sqlQuery, queryFilter, onResetAllFilters } =
+    useAdvanceSearch();
+
+  const [showExportScopeModal, setShowExportScopeModal] = useState(false);
+  const [exportScope, setExportScope] = useState<'visible' | 'all'>('all');
+  const [isExporting, setIsExporting] = useState(false);
+  const [allAssetsCount, setAllAssetsCount] = useState<number>();
+  const [exportError, setExportError] = useState<string | undefined>();
+  const [isCountLoading, setIsCountLoading] = useState(false);
+
+  const visibleResultCount = searchResults?.hits?.hits?.length ?? 0;
+  const isAllAssetsLimitExceeded =
+    exportScope === 'all' &&
+    allAssetsCount !== undefined &&
+    allAssetsCount > EXPORT_ALL_ASSETS_LIMIT;
+
+  const handleExportScopeChange = (scope: 'visible' | 'all') => {
+    setExportScope(scope);
+    setExportError(undefined);
+  };
+
+  const handleOpenExportScopeModal = useCallback(async () => {
+    setExportScope('all');
+    setAllAssetsCount(undefined);
+    setExportError(undefined);
+    setShowExportScopeModal(true);
+    setIsCountLoading(true);
+
+    try {
+      const combinedQueryFilter = getCombinedQueryFilterObject(
+        quickFilters,
+        queryFilter as QueryFilterInterface | undefined
+      );
+      const response = await searchQuery({
+        query: searchQueryParam || '*',
+        searchIndex: SearchIndex.DATA_ASSET,
+        pageSize: 0,
+        trackTotalHits: true,
+        includeDeleted: showDeleted,
+        queryFilter: combinedQueryFilter ?? undefined,
+      });
+      setAllAssetsCount(response.hits.total.value);
+    } catch {
+      // Count fetch failed — modal still usable without count
+    } finally {
+      setIsCountLoading(false);
+    }
+  }, [searchQueryParam, showDeleted, quickFilters, queryFilter]);
+
+  const handleExportScopeConfirm = useCallback(async () => {
+    if (isAllAssetsLimitExceeded) {
+      return;
+    }
+
+    const isVisibleScope = exportScope === 'visible';
+    const combinedQueryFilter = getCombinedQueryFilterObject(
+      quickFilters,
+      queryFilter as QueryFilterInterface | undefined
+    );
+
+    const params: Parameters<typeof exportSearchResultsCsvStream>[0] = {
+      q: searchQueryParam || '*',
+      index: isVisibleScope ? searchIndex : SearchIndex.DATA_ASSET,
+      sort_field: sortValue,
+      sort_order: sortOrder,
+    };
+
+    if (showDeleted !== undefined) {
+      params.deleted = showDeleted;
+    }
+
+    if (combinedQueryFilter) {
+      params.query_filter = JSON.stringify(combinedQueryFilter);
+    }
+
+    if (isVisibleScope) {
+      const currentPage = isString(parsedSearch.page)
+        ? Number.parseInt(parsedSearch.page, 10) || 1
+        : 1;
+      const pageSize = isString(parsedSearch.size)
+        ? Number.parseInt(parsedSearch.size, 10) || visibleResultCount
+        : visibleResultCount;
+
+      params.size = visibleResultCount;
+      params.from = (currentPage - 1) * pageSize;
+    }
+
+    setExportError(undefined);
+    setIsExporting(true);
+
+    try {
+      const blob = await exportSearchResultsCsvStream(params);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Search_Results_${new Date().toISOString()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowExportScopeModal(false);
+    } catch (error) {
+      const message = await parseExportErrorMessage(
+        error as AxiosError<Blob | { message?: string }>,
+        t('server.unexpected-error')
+      );
+      setExportError(message);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [
+    exportScope,
+    searchIndex,
+    visibleResultCount,
+    parsedSearch,
+    searchQueryParam,
+    sortValue,
+    sortOrder,
+    showDeleted,
+    quickFilters,
+    queryFilter,
+    isAllAssetsLimitExceeded,
+  ]);
 
   const translatedSortingFields = useMemo(() => {
     const sortingFields =
@@ -303,6 +406,22 @@ const ExploreV1: React.FC<ExploreProps> = ({
     return <Loader />;
   }
 
+  const exportModalTitle = () => {
+    return (
+      <div className="d-flex flex-col gap-1">
+        <CoreTypography className="tw:text-primary" size="text-md">
+          {t('label.export')}
+        </CoreTypography>
+        <CoreTypography
+          className="tw:text-secondary"
+          size="text-xs"
+          weight="regular">
+          {t('label.export-search-results-description')}
+        </CoreTypography>
+      </div>
+    );
+  };
+
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
       <ResizableLeftPanels
@@ -347,6 +466,21 @@ const ExploreV1: React.FC<ExploreProps> = ({
                           <Col
                             className="d-flex items-center justify-end gap-3"
                             flex={410}>
+                            <Button
+                              color="secondary"
+                              data-testid="export-search-results-button"
+                              iconLeading={
+                                <Download01 height={16} width={16} />
+                              }
+                              size="sm"
+                              onClick={handleOpenExportScopeModal}>
+                              <CoreTypography
+                                className="tw:text-secondary"
+                                size="text-sm"
+                                weight="medium">
+                                {t('label.export')}
+                              </CoreTypography>
+                            </Button>
                             <span className="flex-center">
                               <Switch
                                 checked={showDeleted}
@@ -368,7 +502,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                               </Typography.Text>
                             )}
 
-                            <Button
+                            <AntdButton
                               className="cursor-pointer"
                               data-testid="advance-search-button"
                               icon={<FilterOutlined />}
@@ -381,7 +515,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                                 handleFieldDropDown={onChangeSortValue}
                                 sortField={sortValue}
                               />
-                              <Button
+                              <AntdButton
                                 className="p-0"
                                 data-testid="sort-order-button"
                                 size="small"
@@ -404,7 +538,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                                     {...sortProps}
                                   />
                                 )}
-                              </Button>
+                              </AntdButton>
                             </span>
                           </Col>
                           {isElasticSearchIssue ? (
@@ -487,6 +621,117 @@ const ExploreV1: React.FC<ExploreProps> = ({
       />
 
       {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
+
+      <Modal
+        centered
+        cancelText={t('label.cancel')}
+        className="search-export-modal tw:overflow-hidden"
+        data-testid="export-scope-modal"
+        okButtonProps={{
+          disabled: isExporting || isCountLoading || isAllAssetsLimitExceeded,
+          loading: isExporting,
+        }}
+        okText={t('label.export')}
+        open={showExportScopeModal}
+        title={exportModalTitle()}
+        width={610}
+        onCancel={() => {
+          setShowExportScopeModal(false);
+          setExportError(undefined);
+        }}
+        onOk={handleExportScopeConfirm}>
+        {isAllAssetsLimitExceeded && (
+          <Alert
+            className="m-b-sm"
+            title={t('message.export-assets-limit-exceeded', {
+              limit: EXPORT_ALL_ASSETS_LIMIT,
+            })}
+            variant="error"
+          />
+        )}
+        {exportError && (
+          <Alert className="m-b-sm" title={exportError} variant="error" />
+        )}
+        <CoreTypography
+          className="tw:text-secondary"
+          size="text-sm"
+          weight="medium">
+          {t('label.export-scope')}
+        </CoreTypography>
+        <Radio.Group
+          className="d-flex gap-3 m-t-sm w-full"
+          value={exportScope}
+          onChange={(e) =>
+            handleExportScopeChange(e.target.value as 'visible' | 'all')
+          }>
+          <CoreCard
+            isClickable
+            className="export-scope-option-card tw:flex-1 tw:p-4"
+            isSelected={exportScope === 'visible'}
+            onClick={() => handleExportScopeChange('visible')}>
+            <div className="d-flex items-start gap-2">
+              <Radio value="visible" />
+              <div>
+                <div className="d-flex items-center gap-2">
+                  <CoreTypography
+                    className="tw:text-primary d-flex items-center tw:gap-0.5"
+                    size="text-sm"
+                    weight="semibold">
+                    {`${t('label.visible-result-plural')} `}
+                    <CoreTypography
+                      className="tw:text-tertiary"
+                      size="text-sm"
+                      weight="regular">
+                      ({visibleResultCount} {t('label.result-plural')})
+                    </CoreTypography>
+                  </CoreTypography>
+                </div>
+                <CoreTypography
+                  className="tw:text-tertiary"
+                  size="text-sm"
+                  weight="regular">
+                  {t('message.export-visible-results-description')}
+                </CoreTypography>
+              </div>
+            </div>
+          </CoreCard>
+          <CoreCard
+            isClickable
+            className="export-scope-option-card tw:flex-1 tw:p-4"
+            isSelected={exportScope === 'all'}
+            onClick={() => handleExportScopeChange('all')}>
+            <div className="d-flex items-start tw:gap-1">
+              <Radio value="all" />
+              <div>
+                <CoreTypography
+                  className="tw:text-primary d-flex items-center tw:gap-0.5"
+                  size="text-sm"
+                  weight="semibold">
+                  {`${t('label.all-matching-asset-plural')} `}
+                  {isCountLoading ? (
+                    <Spin className="m-l-xs" size="small" />
+                  ) : (
+                    allAssetsCount !== undefined && (
+                      <CoreTypography
+                        className="tw:text-tertiary"
+                        size="text-sm"
+                        weight="regular">
+                        ({allAssetsCount} {t('label.result-plural')})
+                      </CoreTypography>
+                    )
+                  )}
+                </CoreTypography>
+                <CoreTypography
+                  className="tw:text-tertiary"
+                  size="text-sm"
+                  weight="regular">
+                  {t('message.export-all-matching-assets-description')}
+                </CoreTypography>
+              </div>
+            </div>
+          </CoreCard>
+        </Radio.Group>
+      </Modal>
     </div>
   );
 };
