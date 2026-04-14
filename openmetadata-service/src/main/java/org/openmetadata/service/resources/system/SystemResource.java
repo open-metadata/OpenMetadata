@@ -819,7 +819,7 @@ public class SystemResource {
   public SecurityValidationResponse validateSecurityConfig(
       @Context SecurityContext securityContext,
       @QueryParam("context") String context,
-      @Valid SecurityConfiguration securityConfig) {
+      SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
     // Auto-derive fields from discoveryUri before validation
