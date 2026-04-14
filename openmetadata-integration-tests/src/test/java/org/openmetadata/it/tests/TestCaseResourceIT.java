@@ -818,6 +818,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   client.testCaseResults().searchList(params);
               assertTrue(response.getData().isEmpty(), "TestCaseResults should be empty");
             });
+  }
 
   @Test
   void test_listTestCases_200_OK(TestNamespace ns) {
