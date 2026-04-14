@@ -451,8 +451,9 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<String> searchByNameAndDisplayName(
       ListFilter filter, String searchTerm, int limit, int offset) {
+    String term = searchTerm == null ? "" : searchTerm.trim();
     return searchByNameAndDisplayName(
-        getTableName(), filter.getCondition(), "%" + searchTerm.trim() + "%", limit, offset);
+        getTableName(), filter.getCondition(), "%" + escape(term) + "%", limit, offset);
   }
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")

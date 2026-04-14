@@ -1962,7 +1962,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public ResultList<T> search(
       Fields fields, ListFilter filter, String query, int limit, int offset) {
-    List<String> jsons = dao.searchByNameAndDisplayName(filter, query, limit + 1, offset);
+    String searchTerm = query == null ? "" : query;
+    List<String> jsons = dao.searchByNameAndDisplayName(filter, searchTerm, limit + 1, offset);
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
