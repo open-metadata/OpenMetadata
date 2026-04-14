@@ -2124,9 +2124,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, [loading, onLoadingChange]);
 
   useEffect(() => {
-    if (statsItems.length > 0) {
-      onStatsChange?.(statsItems);
-    }
+    onStatsChange?.(statsItems);
   }, [statsItems, onStatsChange]);
 
   const renderGraphContent = () => {
