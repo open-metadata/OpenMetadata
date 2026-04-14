@@ -14,7 +14,7 @@ Test Snowflake connector with CLI
 """
 from datetime import datetime
 from time import sleep
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 from sqlalchemy import text
@@ -67,7 +67,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_view_query: str = """
         CREATE VIEW E2E_DB.e2e_test.view_persons AS
             SELECT person_id, full_name
-            FROM e2e_test.persons;
+            FROM E2E_DB.e2e_test.persons;
     """
 
     insert_data_queries: List[str] = [
@@ -136,6 +136,22 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             self.expected_tables(),
         )
 
+    def assert_for_table_with_profiler_time_partition(
+        self, source_status: Status, sink_status: Status
+    ) -> None:
+        self.assertEqual(len(source_status.failures), 0)
+        self.assertEqual(len(sink_status.failures), 0)
+        partitioned_fqn = "e2e_snowflake.E2E_DB.E2E_TEST.E2E_PARTITIONED_DATA"
+        profile = self.retrieve_profile(partitioned_fqn)
+        self.assertIsNotNone(
+            profile,
+            "Partitioned table should have a profile after profiler run",
+        )
+        self.assertIsNotNone(
+            profile.profile,
+            "Partitioned table profile data should not be empty",
+        )
+
     def create_table_and_view(self) -> None:
         with self.engine.begin() as connection:
             connection.execute(text(self.create_table_query))
@@ -171,8 +187,9 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             yaml.dump(config, file, default_flow_style=False)
 
     @pytest.mark.order(2)
-    @pytest.mark.skip(
-        reason="System profile assertions fail due to ACCOUNT_USAGE latency"
+    @pytest.mark.xfail(
+        strict=False,
+        reason="System profile assertions are flaky due to ACCOUNT_USAGE latency",
     )
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists
@@ -199,7 +216,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_tables() -> int:
-        return 2
+        return 8
 
     def expected_sample_size(self) -> int:
         return len(
@@ -327,7 +344,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     @classmethod
-    def wait_for_query_log(cls, timeout=600):
+    def wait_for_query_log(cls, timeout=60):
         start = datetime.now().timestamp()
         with cls.engine.connect() as conn:
             conn.execute(text("SELECT 'e2e_query_log_wait'"))
@@ -373,8 +390,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return [TestCaseResult(testCaseStatus=TestCaseStatus.Success, timestamp=0)]
 
     @pytest.mark.order(13)
-    @pytest.mark.skip(reason="tableDiff test aborts due to ACCOUNT_USAGE latency")
+    @pytest.mark.xfail(
+        strict=False,
+        reason="tableDiff test is flaky due to ACCOUNT_USAGE latency",
+    )
     def test_data_quality(self) -> None:
+        self.wait_for_query_log()
         super().test_data_quality()
 
     @staticmethod
@@ -412,7 +433,9 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             yaml.dump(config, file, default_flow_style=False)
 
     def build_config_file_with_overrides(
-        self, source_config_overrides: Dict = None, connection_overrides: Dict = None
+        self,
+        source_config_overrides: Optional[Dict[str, Any]] = None,
+        connection_overrides: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Build config file with arbitrary overrides for sourceConfig and/or connection"""
         import yaml
@@ -540,17 +563,21 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.assert_for_table_with_profiler_time_partition(source_status, sink_status)
 
     # ==========================================================================
-    # Stored Procedures (DB-15)
+    # Snowflake Feature Ingestion (combined test)
+    # Creates all Snowflake-specific objects, runs a single ingestion workflow
+    # with all features enabled, and validates each feature was ingested.
     # ==========================================================================
     @pytest.mark.order(16)
-    def test_stored_procedures(self) -> None:
-        """Test stored procedure ingestion"""
+    def test_snowflake_features_ingestion(self) -> None:
+        """Test stored procedures, tags, dynamic tables, streams, constraints,
+        and clustering in a single ingestion workflow."""
+        # -- 1. Create all Snowflake objects --
+        # Stored procedure (requires raw connection for USE DATABASE)
         raw_conn = self.engine.raw_connection()
         try:
             cursor = raw_conn.cursor()
-            cursor.execute("USE DATABASE E2E_DB")
             cursor.execute(
-                "CREATE OR REPLACE PROCEDURE e2e_test.e2e_test_proc() "
+                "CREATE OR REPLACE PROCEDURE E2E_DB.e2e_test.e2e_test_proc() "
                 "RETURNS VARCHAR LANGUAGE JAVASCRIPT EXECUTE AS CALLER AS "
                 "'return \"hello\";'"
             )
@@ -559,21 +586,8 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         finally:
             raw_conn.close()
 
-        self.build_config_file_with_overrides(
-            source_config_overrides={"includeStoredProcedures": True}
-        )
-        result = self.run_command()
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assertEqual(len(source_status.failures), 0)
-        self.assertEqual(len(sink_status.failures), 0)
-
-    # ==========================================================================
-    # Tags/Classification (DB-19)
-    # ==========================================================================
-    @pytest.mark.order(17)
-    def test_tags_ingestion(self) -> None:
-        """Test Snowflake tag ingestion on tables"""
         with self.engine.begin() as connection:
+            # Tag + apply to table
             connection.execute(
                 text(
                     "CREATE OR REPLACE TAG E2E_DB.e2e_test.e2e_sensitivity "
@@ -587,22 +601,10 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 )
             )
 
-        self.build_config_file_with_overrides(
-            source_config_overrides={"includeTags": True}
-        )
-        result = self.run_command()
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assertEqual(len(source_status.failures), 0)
-        self.assertEqual(len(sink_status.failures), 0)
-
-    # ==========================================================================
-    # Dynamic Tables (SF-04)
-    # ==========================================================================
-    @pytest.mark.order(18)
-    def test_dynamic_table_ingestion(self) -> None:
-        """Test that dynamic tables are ingested with correct table type"""
-        with self.engine.begin() as connection:
-            warehouse = connection.execute(text("SELECT CURRENT_WAREHOUSE()")).scalar()
+            # Dynamic table
+            warehouse = connection.execute(
+                text("SELECT CURRENT_WAREHOUSE()")
+            ).scalar()
             connection.execute(
                 text(
                     f"CREATE OR REPLACE DYNAMIC TABLE E2E_DB.e2e_test.e2e_dynamic_table "
@@ -611,28 +613,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 )
             )
 
-        self.build_config_file(E2EType.INGEST)
-        result = self.run_command()
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assertEqual(len(source_status.failures), 0)
-
-        dynamic_table = self.retrieve_table(
-            "e2e_snowflake.E2E_DB.E2E_TEST.E2E_DYNAMIC_TABLE"
-        )
-        self.assertIsNotNone(dynamic_table, "Dynamic table should be ingested")
-        self.assertEqual(
-            str(dynamic_table.tableType.value),
-            "Dynamic",
-            "Table type should be Dynamic",
-        )
-
-    # ==========================================================================
-    # Streams (SF-05)
-    # ==========================================================================
-    @pytest.mark.order(19)
-    def test_stream_ingestion(self) -> None:
-        """Test Snowflake stream ingestion with includeStreams=true"""
-        with self.engine.begin() as connection:
+            # Stream
             connection.execute(
                 text(
                     "CREATE OR REPLACE STREAM E2E_DB.e2e_test.e2e_stream "
@@ -640,25 +621,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 )
             )
 
-        self.build_config_file_with_overrides(
-            connection_overrides={"includeStreams": True}
-        )
-        result = self.run_command()
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assertEqual(len(source_status.failures), 0)
-
-        stream = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.E2E_STREAM")
-        self.assertIsNotNone(
-            stream, "Stream should be ingested when includeStreams=true"
-        )
-
-    # ==========================================================================
-    # Table Constraints FK/PK (DB-22)
-    # ==========================================================================
-    @pytest.mark.order(20)
-    def test_table_constraints(self) -> None:
-        """Test FK/PK constraint ingestion"""
-        with self.engine.begin() as connection:
+            # FK constraint
             connection.execute(
                 text(
                     "ALTER TABLE E2E_DB.e2e_test.countries ADD CONSTRAINT fk_region "
@@ -667,28 +630,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 )
             )
 
-        self.build_config_file(E2EType.INGEST)
-        result = self.run_command()
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assertEqual(len(source_status.failures), 0)
-
-        countries_table = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.COUNTRIES")
-        self.assertIsNotNone(countries_table)
-
-        regions_table = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.REGIONS")
-        self.assertIsNotNone(regions_table)
-        pk_columns = [
-            col for col in regions_table.columns if col.name.root == "REGION_ID"
-        ]
-        self.assertGreater(len(pk_columns), 0, "REGION_ID column should exist")
-
-    # ==========================================================================
-    # Partition Detection / Clustering Keys (DB-26)
-    # ==========================================================================
-    @pytest.mark.order(21)
-    def test_partition_detection(self) -> None:
-        """Test that Snowflake clustering keys are detected as partition details"""
-        with self.engine.begin() as connection:
+            # Clustered table
             connection.execute(
                 text(
                     "CREATE OR REPLACE TABLE E2E_DB.e2e_test.e2e_clustered_table "
@@ -704,19 +646,76 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 )
             )
 
-        self.build_config_file(E2EType.INGEST)
+        # -- 2. Run a single ingestion with all features enabled --
+        self.build_config_file_with_overrides(
+            source_config_overrides={
+                "includeStoredProcedures": True,
+                "includeTags": True,
+            },
+            connection_overrides={
+                "includeStreams": True,
+            },
+        )
         result = self.run_command()
         sink_status, source_status = self.retrieve_statuses(result)
         self.assertEqual(len(source_status.failures), 0)
+        self.assertEqual(len(sink_status.failures), 0)
 
-        table = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.E2E_CLUSTERED_TABLE")
-        self.assertIsNotNone(table, "Clustered table should be ingested")
+        # -- 3. Validate each feature --
+        # Stored procedure — queried from ACCOUNT_USAGE.PROCEDURES which
+        # has ~2 hour sync latency, so we only verify the ingestion ran
+        # without failures (assertion above). The proc entity may not be
+        # available immediately after creation.
+
+        # Tags — queried from ACCOUNT_USAGE.TAG_REFERENCES which has
+        # ~2 hour sync latency, so tag assertions are skipped here.
+        # The includeTags config flag is still exercised above to verify
+        # the ingestion path doesn't fail.
+
+        # Dynamic table
+        dynamic_table = self.retrieve_table(
+            "e2e_snowflake.E2E_DB.E2E_TEST.E2E_DYNAMIC_TABLE"
+        )
+        self.assertIsNotNone(dynamic_table, "Dynamic table should be ingested")
+        self.assertEqual(
+            str(dynamic_table.tableType.value),
+            "Dynamic",
+            "Table type should be Dynamic",
+        )
+
+        # Stream
+        stream = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.E2E_STREAM")
         self.assertIsNotNone(
-            table.tablePartition,
+            stream, "Stream should be ingested when includeStreams=true"
+        )
+
+        # FK constraint
+        countries_table = self.retrieve_table(
+            "e2e_snowflake.E2E_DB.E2E_TEST.COUNTRIES"
+        )
+        self.assertIsNotNone(countries_table)
+        regions_table = self.retrieve_table(
+            "e2e_snowflake.E2E_DB.E2E_TEST.REGIONS"
+        )
+        self.assertIsNotNone(regions_table)
+        pk_columns = [
+            col
+            for col in regions_table.columns
+            if col.name.root == "REGION_ID"
+        ]
+        self.assertGreater(len(pk_columns), 0, "REGION_ID column should exist")
+
+        # Clustering / partition detection
+        clustered_table = self.retrieve_table(
+            "e2e_snowflake.E2E_DB.E2E_TEST.E2E_CLUSTERED_TABLE"
+        )
+        self.assertIsNotNone(clustered_table, "Clustered table should be ingested")
+        self.assertIsNotNone(
+            clustered_table.tablePartition,
             "Table should have partition details from clustering key",
         )
         self.assertGreater(
-            len(table.tablePartition.columns),
+            len(clustered_table.tablePartition.columns),
             0,
             "Should have at least one partition column",
         )
