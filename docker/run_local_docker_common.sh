@@ -31,6 +31,61 @@ current_time_ms() {
   python3 -c "import time; print(int(time.time() * 1000))"
 }
 
+parse_app_run_status_line() {
+  local payload=$1
+  local payload_shape=$2
+  local threshold_ms=$3
+  local tolerance_ms=$4
+
+  APP_RUN_BODY="$payload" python3 - "$payload_shape" "$threshold_ms" "$tolerance_ms" <<'PY'
+import json
+import os
+import sys
+
+payload_shape = sys.argv[1]
+threshold = int(sys.argv[2])
+tolerance = int(sys.argv[3])
+
+try:
+    payload = json.loads(os.environ["APP_RUN_BODY"])
+except json.JSONDecodeError:
+    print("invalid")
+    sys.exit(0)
+
+if payload_shape == "latest":
+    record = payload if isinstance(payload, dict) else None
+else:
+    records = payload.get("data") if isinstance(payload, dict) else None
+    record = records[0] if records else None
+
+if not isinstance(record, dict) or not record:
+    print("missing")
+    sys.exit(0)
+
+timestamp = int(record.get("timestamp") or 0)
+start_time = int(record.get("startTime") or 0)
+status = str(record.get("status") or "").lower()
+execution_time = record.get("executionTime")
+
+marker = start_time if start_time > 0 else timestamp
+success_statuses = {"completed", "success"}
+failure_statuses = {"activeerror", "failed", "stopped"}
+active_statuses = {"running", "started", "pending", "active", "stopinprogress"}
+has_execution_time = execution_time not in (None, "", 0, "0")
+
+if marker + tolerance < threshold:
+    print(f"stale:{status}:{marker}")
+elif status in success_statuses:
+    print(f"success:{status}:{marker}")
+elif status in failure_statuses or (has_execution_time and status not in active_statuses):
+    print(f"failure:{status}:{marker}")
+elif status in active_statuses:
+    print(f"active:{status}:{marker}")
+else:
+    print(f"seen:{status}:{marker}")
+PY
+}
+
 wait_for_app_availability() {
   local app_name=$1
   local timeout_seconds=${2:-120}
@@ -131,9 +186,13 @@ wait_for_app_run_completion() {
 
   while [ $SECONDS -lt $deadline ]; do
     local latest_run_response
+    local fallback_status_response
     local http_code
+    local fallback_http_code
     local body
+    local fallback_body
     local status_line
+    local fallback_status_line
 
     latest_run_response=$(curl -s -w "\n%{http_code}" \
       --header "Authorization: Bearer $authorizationToken" \
@@ -143,56 +202,48 @@ wait_for_app_run_completion() {
 
     case "$http_code" in
       200)
-        status_line=$(APP_RUN_BODY="$body" python3 - "$trigger_timestamp_ms" "$freshness_tolerance_ms" <<'PY'
-import json
-import os
-import sys
-
-threshold = int(sys.argv[1])
-tolerance = int(sys.argv[2])
-
-try:
-    record = json.loads(os.environ["APP_RUN_BODY"])
-except json.JSONDecodeError:
-    print("invalid")
-    sys.exit(0)
-
-if not isinstance(record, dict) or not record:
-    print("missing")
-    sys.exit(0)
-timestamp = int(record.get("timestamp") or 0)
-start_time = int(record.get("startTime") or 0)
-status = str(record.get("status") or "").lower()
-execution_time = record.get("executionTime")
-
-marker = start_time if start_time > 0 else timestamp
-success_statuses = {"completed", "success"}
-failure_statuses = {"activeerror", "failed", "stopped"}
-active_statuses = {"running", "started", "pending", "active", "stopinprogress"}
-has_execution_time = execution_time not in (None, "", 0, "0")
-
-if marker + tolerance < threshold:
-    print(f"stale:{status}:{marker}")
-elif status in success_statuses:
-    print(f"success:{status}:{marker}")
-elif status in failure_statuses or (has_execution_time and status not in active_statuses):
-    print(f"failure:{status}:{marker}")
-elif status in active_statuses:
-    print(f"active:{status}:{marker}")
-else:
-    print(f"seen:{status}:{marker}")
-PY
-)
+        status_line=$(parse_app_run_status_line "$body" "latest" "$trigger_timestamp_ms" "$freshness_tolerance_ms")
         ;;
       204)
         status_line="missing"
         ;;
       *)
-        echo "✗ Failed to read latest run for ${app_name} (HTTP ${http_code})"
-        echo "  Response: ${body}"
-        return 1
+        status_line="endpoint_error:${http_code}"
         ;;
     esac
+
+    if [[ "$status_line" == stale:* || "$status_line" == "missing" || "$status_line" == "invalid" || "$status_line" == endpoint_error:* ]]; then
+      fallback_status_response=$(curl -s -w "\n%{http_code}" \
+        --header "Authorization: Bearer $authorizationToken" \
+        "http://localhost:8585/api/v1/apps/name/${app_name}/status?offset=0&limit=1")
+      fallback_http_code=$(printf "%s" "$fallback_status_response" | tail -n1)
+      fallback_body=$(printf "%s" "$fallback_status_response" | sed '$d')
+
+      case "$fallback_http_code" in
+        200)
+          fallback_status_line=$(parse_app_run_status_line "$fallback_body" "list" "$trigger_timestamp_ms" "$freshness_tolerance_ms")
+          ;;
+        204)
+          fallback_status_line="missing"
+          ;;
+        *)
+          fallback_status_line="endpoint_error:${fallback_http_code}"
+          ;;
+      esac
+
+      if [[ "$fallback_status_line" != stale:* && "$fallback_status_line" != "missing" && "$fallback_status_line" != "invalid" && "$fallback_status_line" != endpoint_error:* ]]; then
+        status_line="$fallback_status_line"
+        body="$fallback_body"
+      elif [[ "$status_line" == endpoint_error:* && "$fallback_status_line" == endpoint_error:* ]]; then
+        echo "✗ Failed to read run status for ${app_name} from both app run endpoints"
+        echo "  runs/latest response: ${body}"
+        echo "  status response: ${fallback_body}"
+        return 1
+      elif [[ "$status_line" == "missing" || "$status_line" == "invalid" || "$status_line" == endpoint_error:* ]]; then
+        status_line="$fallback_status_line"
+        body="$fallback_body"
+      fi
+    fi
 
     case "$status_line" in
       success:completed:*|success:success:*)
