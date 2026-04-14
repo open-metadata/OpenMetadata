@@ -1218,7 +1218,7 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.getByTestId('add-domain').getByText(tag.data.displayName)
+          page.getByTestId('add-domain-form').getByText(tag.data.displayName)
         ).toBeVisible();
       });
 
@@ -1270,7 +1270,7 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.getByTestId('add-domain').getByText(tag.data.displayName)
+          page.getByTestId('add-domain-form').getByText(tag.data.displayName)
         ).toBeVisible();
       });
 
@@ -1410,7 +1410,7 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
 
       const addDomainButton = page.click('[data-testid="add-domain"]');
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.getByTestId('add-domain-form')).toBeVisible();
       await addDomainButton;
 
       const formHeading = page.locator('[data-testid="form-heading"]');

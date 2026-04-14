@@ -504,8 +504,8 @@ export const renderFieldElement = (
               const nextValue = allowsMultiple
                 ? Array.from(files ?? [])
                 : files?.[0]
-                ? { file: files[0] }
-                : null;
+                  ? { file: files[0] }
+                  : null;
 
               field.onChange(nextValue);
               onSelect?.(files);

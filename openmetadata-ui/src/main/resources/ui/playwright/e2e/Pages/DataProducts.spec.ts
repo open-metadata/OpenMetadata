@@ -489,7 +489,7 @@ test.describe('Data Products', () => {
       });
 
       await expect(
-        page.getByTestId('add-domain').getByText(tag.data.displayName)
+        page.getByTestId('add-domain-form').getByText(tag.data.displayName)
       ).toBeVisible();
     });
 

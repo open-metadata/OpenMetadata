@@ -12,10 +12,10 @@
  */
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
-import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, noop } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
@@ -23,7 +23,6 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
-import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -37,9 +36,13 @@ import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
-import { useFormDrawerWithRef } from '../../common/atoms/drawer';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
-import AddDomainForm from '../../Domain/AddDomainForm/AddDomainForm.component';
+import AddDomainForm, {
+  DOMAIN_FORM_DEFAULTS,
+  transformDomainFormData,
+} from '../../Domain/AddDomainForm/AddDomainForm.component';
+import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../../Domain/DomainPage.interface';
 import '../marketplace-widget-shared.less';
 import MarketplaceItemCard from '../MarketplaceItemCard/MarketplaceItemCard.component';
@@ -55,7 +58,9 @@ const MarketplaceDataProductsWidget = ({
   const { dataProductBasePath } = useMarketplaceStore();
   const { permissions } = usePermissionProvider();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
-  const [form] = useForm();
+  const form = useForm<DomainFormValues>({
+    defaultValues: DOMAIN_FORM_DEFAULTS,
+  });
   const [dataProducts, setDataProducts] = useState<DataProduct[]>(
     isEditView ? dataMarketplaceClassBase.getDummyDataProducts() : []
   );
@@ -95,52 +100,58 @@ const MarketplaceDataProductsWidget = ({
     fetchDataProducts();
   }, [fetchDataProducts]);
 
-  const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
-    title: t('label.add-entity', { entity: t('label.data-product') }),
-    width: 670,
-    className: 'tw:z-[20]',
-    closeOnEscape: false,
-    onCancel: () => {
-      form.resetFields();
+  const handleDataProductSubmit = useCallback(
+    async (data: DomainFormValues) => {
+      const formData = transformDomainFormData(
+        data,
+        DomainFormType.DATA_PRODUCT
+      ) as CreateDataProduct;
+      setIsFormLoading(true);
+      try {
+        await createEntityWithCoverImage({
+          formData,
+          entityType: EntityType.DATA_PRODUCT,
+          entityLabel: t('label.data-product'),
+          entityPluralLabel: 'data-products',
+          createEntity: addDataProducts,
+          patchEntity: patchDataProduct,
+          onSuccess: () => {
+            form.reset();
+            closeDrawer();
+            fetchDataProducts();
+          },
+          enqueueSnackbar,
+          closeSnackbar,
+          t,
+        });
+      } finally {
+        setIsFormLoading(false);
+      }
     },
-    form: (
-      <AddDomainForm
-        isFormInDialog
-        formRef={form}
-        loading={isFormLoading}
-        type={DomainFormType.DATA_PRODUCT}
-        onCancel={() => {
-          // No-op: handled by useFormDrawerWithRef
-        }}
-        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
-          setIsFormLoading(true);
-          try {
-            await createEntityWithCoverImage({
-              formData: formData as CreateDataProduct,
-              entityType: EntityType.DATA_PRODUCT,
-              entityLabel: t('label.data-product'),
-              entityPluralLabel: 'data-products',
-              createEntity: addDataProducts,
-              patchEntity: patchDataProduct,
-              onSuccess: () => {
-                closeDrawer();
-                fetchDataProducts();
-              },
-              enqueueSnackbar,
-              closeSnackbar,
-              t,
-            });
-          } finally {
-            setIsFormLoading(false);
-          }
-        }}
-      />
-    ),
-    formRef: form,
-    onSubmit: () => {
-      form.submit();
-    },
-  });
+    [form, enqueueSnackbar, closeSnackbar, t, fetchDataProducts]
+  );
+
+  const { formDrawer, openDrawer, closeDrawer } =
+    useFormDrawerWithHook<DomainFormValues>({
+      title: t('label.add-entity', { entity: t('label.data-product') }),
+      width: 670,
+      className: 'tw:z-[20]',
+      closeOnEscape: false,
+      hookForm: form,
+      form: (
+        <AddDomainForm
+          isFormInDialog
+          form={form}
+          loading={isFormLoading}
+          type={DomainFormType.DATA_PRODUCT}
+          onCancel={() => {
+            // No-op: handled by useFormDrawerWithHook
+          }}
+          onSubmit={handleDataProductSubmit}
+        />
+      ),
+      onSubmit: handleDataProductSubmit,
+    });
 
   const handleClick = useCallback(
     (dp: DataProduct) => {

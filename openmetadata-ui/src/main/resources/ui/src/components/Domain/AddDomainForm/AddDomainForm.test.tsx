@@ -12,11 +12,12 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { FormEvent, ReactNode } from 'react';
+import { useForm } from 'react-hook-form';
 import { Domain } from '../../../generated/entity/domains/domain';
 import '../../../test/unit/mocks/mui.mock';
 import { DomainFormType } from '../DomainPage.interface';
-import AddDomainForm from './AddDomainForm.component';
-import { DomainFormRef } from './AddDomainForm.interface';
+import AddDomainForm, { DOMAIN_FORM_DEFAULTS } from './AddDomainForm.component';
+import { DomainFormValues } from './AddDomainForm.interface';
 
 // Mock i18next
 jest.mock('react-i18next', () => ({
@@ -169,29 +170,51 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () =>
 const mockOnCancel = jest.fn();
 const mockOnSubmit = jest.fn();
 
-describe('AddDomainForm', () => {
-  const defaultProps = {
-    loading: false,
-    isFormInDialog: false,
-    onCancel: mockOnCancel,
-    onSubmit: mockOnSubmit,
-    type: DomainFormType.DOMAIN,
-  };
+type HarnessProps = {
+  loading?: boolean;
+  isFormInDialog?: boolean;
+  type?: DomainFormType;
+  parentDomain?: Domain;
+};
 
+const AddDomainFormHarness = ({
+  loading = false,
+  isFormInDialog = false,
+  type = DomainFormType.DOMAIN,
+  parentDomain,
+}: HarnessProps) => {
+  const form = useForm<DomainFormValues>({
+    defaultValues: DOMAIN_FORM_DEFAULTS,
+  });
+
+  return (
+    <AddDomainForm
+      form={form}
+      isFormInDialog={isFormInDialog}
+      loading={loading}
+      parentDomain={parentDomain}
+      type={type}
+      onCancel={mockOnCancel}
+      onSubmit={mockOnSubmit}
+    />
+  );
+};
+
+describe('AddDomainForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('should render the form component', () => {
-    render(<AddDomainForm {...defaultProps} />);
-    // Form should be rendered
+    render(<AddDomainFormHarness />);
+
     const form = document.querySelector('form');
 
     expect(form).toBeInTheDocument();
   });
 
   it('should call onCancel when cancel button is clicked', () => {
-    render(<AddDomainForm {...defaultProps} />);
+    render(<AddDomainFormHarness />);
 
     const cancelButton = screen.getByTestId('cancel-domain');
     fireEvent.click(cancelButton);
@@ -200,7 +223,7 @@ describe('AddDomainForm', () => {
   });
 
   it('should render loading state on save button when loading is true', () => {
-    render(<AddDomainForm {...defaultProps} loading />);
+    render(<AddDomainFormHarness loading />);
 
     const saveButton = screen.getByTestId('save-domain');
 
@@ -208,7 +231,7 @@ describe('AddDomainForm', () => {
   });
 
   it('should not render footer buttons when isFormInDialog is true', () => {
-    render(<AddDomainForm {...defaultProps} isFormInDialog />);
+    render(<AddDomainFormHarness isFormInDialog />);
 
     const footerButtons = screen.queryByTestId('cta-buttons');
 
@@ -216,55 +239,24 @@ describe('AddDomainForm', () => {
   });
 
   it('should render footer buttons when isFormInDialog is false', () => {
-    render(<AddDomainForm {...defaultProps} isFormInDialog={false} />);
+    render(<AddDomainFormHarness isFormInDialog={false} />);
 
     const footerButtons = screen.getByTestId('cta-buttons');
 
     expect(footerButtons).toBeInTheDocument();
   });
 
-  it('should render properly when no formRef is provided', () => {
-    const { container } = render(<AddDomainForm {...defaultProps} />);
-
-    const formElement = container.querySelector('form');
-
-    expect(formElement).toBeInTheDocument();
-  });
-
-  it('should use provided formRef when passed', () => {
-    const providedRef = { current: null as DomainFormRef | null };
-
-    const { container } = render(
-      <AddDomainForm {...defaultProps} formRef={providedRef} />
-    );
-
-    const formElement = container.querySelector('form');
-
-    expect(formElement).toBeInTheDocument();
-    expect(providedRef.current).toEqual(
-      expect.objectContaining({
-        resetFields: expect.any(Function),
-        submit: expect.any(Function),
-        validateFields: expect.any(Function),
-      })
-    );
-  });
-
   it('should handle form submission', () => {
-    render(<AddDomainForm {...defaultProps} />);
+    render(<AddDomainFormHarness />);
 
     const saveButton = screen.getByTestId('save-domain');
     fireEvent.click(saveButton);
 
-    // Note: onSubmit is called through form.onFinish which requires form validation
-    // In this simplified test, we're just verifying the button is clickable
     expect(saveButton).toBeInTheDocument();
   });
 
   it('should render form for DATA_PRODUCT type', () => {
-    render(
-      <AddDomainForm {...defaultProps} type={DomainFormType.DATA_PRODUCT} />
-    );
+    render(<AddDomainFormHarness type={DomainFormType.DATA_PRODUCT} />);
 
     const form = document.querySelector('form');
 
@@ -281,8 +273,7 @@ describe('AddDomainForm', () => {
     } as Domain;
 
     render(
-      <AddDomainForm
-        {...defaultProps}
+      <AddDomainFormHarness
         parentDomain={parentDomain}
         type={DomainFormType.SUBDOMAIN}
       />
@@ -294,7 +285,7 @@ describe('AddDomainForm', () => {
   });
 
   it('should have correct button labels', () => {
-    render(<AddDomainForm {...defaultProps} />);
+    render(<AddDomainFormHarness />);
 
     const cancelButton = screen.getByTestId('cancel-domain');
     const saveButton = screen.getByTestId('save-domain');
@@ -304,7 +295,7 @@ describe('AddDomainForm', () => {
   });
 
   it('should disable save button during loading', () => {
-    render(<AddDomainForm {...defaultProps} loading />);
+    render(<AddDomainFormHarness loading />);
 
     const saveButton = screen.getByTestId('save-domain');
 
@@ -312,7 +303,7 @@ describe('AddDomainForm', () => {
   });
 
   it('should not disable cancel button during loading', () => {
-    render(<AddDomainForm {...defaultProps} loading />);
+    render(<AddDomainFormHarness loading />);
 
     const cancelButton = screen.getByTestId('cancel-domain');
 

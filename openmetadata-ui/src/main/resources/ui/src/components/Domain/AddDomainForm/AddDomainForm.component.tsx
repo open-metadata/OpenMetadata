@@ -18,22 +18,14 @@ import {
   FieldTypes,
   FormField,
   FormItemLabel,
-  FormSelectItem,
   getField,
   HintText,
   HookForm,
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce, omit } from 'lodash';
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useState,
-} from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
@@ -79,13 +71,9 @@ import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import {
   AddDomainFormProps,
-  DomainFormRef,
-  DomainFormRefProp,
+  DomainFormSelectItem,
+  DomainFormValues,
 } from './AddDomainForm.interface';
-
-interface DomainFormSelectItem extends FormSelectItem {
-  value: TagLabel | EntityReference | DomainType | string;
-}
 
 const COVER_IMAGE_ACCEPTED_TYPES = [
   'image/svg+xml',
@@ -94,35 +82,71 @@ const COVER_IMAGE_ACCEPTED_TYPES = [
   'image/gif',
 ];
 
-const syncFormRef = (
-  targetRef: DomainFormRefProp | undefined,
-  value: DomainFormRef | null
-) => {
-  if (!targetRef) {
-    return undefined;
+export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
+  name: '',
+  displayName: '',
+  description: '',
+  color: '',
+  iconURL: '',
+  coverImage: undefined,
+  tags: [],
+  glossaryTerms: [],
+  owners: [],
+  experts: [],
+  domainType: null,
+  domains: undefined,
+};
+
+export const transformDomainFormData = (
+  formData: DomainFormValues,
+  type: DomainFormType,
+  parentDomain?: Domain
+): CreateDomain | CreateDataProduct => {
+  const tags = formData.tags.map((item) => item.value as TagLabel);
+  const expertsList = formData.experts.map(
+    (item) => item.value as EntityReference
+  );
+  const ownersList = formData.owners.map(
+    (item) => item.value as EntityReference
+  );
+
+  const updatedData = omit(
+    formData,
+    'color',
+    'iconURL',
+    'glossaryTerms',
+    'tags',
+    'owners',
+    'experts',
+    'domains',
+    'domainType'
+  );
+  const style = {
+    color: formData.color,
+    iconURL: formData.iconURL,
+  };
+
+  const data: CreateDomain | CreateDataProduct = {
+    ...updatedData,
+    domainType: (formData.domainType?.value as DomainType) ?? undefined,
+    experts: expertsList.map((item) => item.name ?? ''),
+    owners: ownersList,
+    style,
+    tags: [...tags, ...formData.glossaryTerms],
+  } as CreateDomain | CreateDataProduct;
+
+  if (type === DomainFormType.DATA_PRODUCT) {
+    const domainRef = formData.domains?.value as EntityReference | undefined;
+    if (domainRef?.fullyQualifiedName) {
+      (data as CreateDataProduct).domains = [domainRef.fullyQualifiedName];
+    } else if (parentDomain?.fullyQualifiedName) {
+      (data as CreateDataProduct).domains = [parentDomain.fullyQualifiedName];
+    }
+  } else {
+    delete (data as CreateDomain & { domains?: unknown }).domains;
   }
 
-  if (typeof targetRef === 'function') {
-    targetRef(value);
-
-    return () => targetRef(null);
-  }
-
-  if ('current' in targetRef) {
-    targetRef.current = value;
-
-    return () => {
-      if (targetRef.current === value) {
-        targetRef.current = null;
-      }
-    };
-  }
-
-  if (value) {
-    Object.assign(targetRef, value);
-  }
-
-  return undefined;
+  return data;
 };
 
 const createTagLabel = ({
@@ -170,666 +194,531 @@ const mapEntityReferenceToOption = (
   value: reference,
 });
 
-const AddDomainForm = forwardRef<DomainFormRef, AddDomainFormProps>(
-  (
-    {
-      formRef,
-      isFormInDialog,
-      loading,
-      onCancel,
-      onSubmit,
-      type,
-      parentDomain,
-    },
-    ref
-  ) => {
-    const { t } = useTranslation();
-    const { permissions } = usePermissionProvider();
-    const [tagOptions, setTagOptions] = useState<DomainFormSelectItem[]>([]);
-    const [domainOptions, setDomainOptions] = useState<DomainFormSelectItem[]>(
-      []
-    );
-    const [userTeamOptions, setUserTeamOptions] = useState<
-      DomainFormSelectItem[]
-    >([]);
-    const [userOnlyOptions, setUserOnlyOptions] = useState<
-      DomainFormSelectItem[]
-    >([]);
-    const [descriptionEditorKey, setDescriptionEditorKey] = useState(0);
+const AddDomainForm = ({
+  form,
+  isFormInDialog,
+  loading,
+  onCancel,
+  onSubmit,
+  type,
+  parentDomain,
+}: AddDomainFormProps) => {
+  const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const [tagOptions, setTagOptions] = useState<DomainFormSelectItem[]>([]);
+  const [domainOptions, setDomainOptions] = useState<DomainFormSelectItem[]>(
+    []
+  );
+  const [userTeamOptions, setUserTeamOptions] = useState<
+    DomainFormSelectItem[]
+  >([]);
+  const [userOnlyOptions, setUserOnlyOptions] = useState<
+    DomainFormSelectItem[]
+  >([]);
+  const [descriptionEditorKey, setDescriptionEditorKey] = useState(0);
 
-    const domainTypeOptions = Object.keys(DomainType).map((key) => ({
-      label: key,
-      id: DomainType[key as keyof typeof DomainType],
-      value: DomainType[key as keyof typeof DomainType],
+  const domainTypeOptions = Object.keys(DomainType).map((key) => ({
+    label: key,
+    id: DomainType[key as keyof typeof DomainType],
+    value: DomainType[key as keyof typeof DomainType],
+  }));
+
+  const selectedColor = useWatch({
+    control: form.control,
+    name: 'color',
+  });
+
+  const { onImageUpload } =
+    imageClassBase.getBlockEditorAttachmentProps() ?? {};
+  const isCoverImageUploadAvailable = !!onImageUpload;
+
+  const createPermission = useMemo(
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
+    [permissions]
+  );
+
+  const defaultIcon = useMemo(
+    () =>
+      type === DomainFormType.DATA_PRODUCT
+        ? DEFAULT_DATA_PRODUCT_ICON
+        : DEFAULT_DOMAIN_ICON,
+    [type]
+  );
+
+  const iconOptions = useMemo<DomainFormSelectItem[]>(() => {
+    return [
+      defaultIcon,
+      ...AVAILABLE_ICONS.filter((icon) => icon.name !== defaultIcon.name),
+    ].map((icon) => ({
+      id: icon.name,
+      icon: icon.component,
+      label: icon.name,
+      value: icon.name,
     }));
+  }, [defaultIcon]);
 
-    const form = useForm({
-      defaultValues: {
-        name: '',
-        displayName: '',
-        description: '',
-        color: '',
-        iconURL: '',
-        coverImage: undefined,
-        tags: [],
-        glossaryTerms: [],
-        owners: [],
-        experts: [],
-        domainType: '',
-        domains: undefined,
-      },
-    });
-    const selectedColor = useWatch({
-      control: form.control,
-      name: 'color',
-    });
+  const domainTypeFieldRequired = useMemo(
+    () => type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN,
+    [type]
+  );
 
-    const { onImageUpload } =
-      imageClassBase.getBlockEditorAttachmentProps() ?? {};
-    const isCoverImageUploadAvailable = !!onImageUpload;
-
-    const createPermission = useMemo(
-      () =>
-        checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
-      [permissions]
-    );
-
-    const defaultIcon = useMemo(
-      () =>
-        type === DomainFormType.DATA_PRODUCT
-          ? DEFAULT_DATA_PRODUCT_ICON
-          : DEFAULT_DOMAIN_ICON,
-      [type]
-    );
-
-    const iconOptions = useMemo<DomainFormSelectItem[]>(() => {
-      return [
-        defaultIcon,
-        ...AVAILABLE_ICONS.filter((icon) => icon.name !== defaultIcon.name),
-      ].map((icon) => ({
-        id: icon.name,
-        icon: icon.component,
-        label: icon.name,
-        value: icon.name,
-      }));
-    }, [defaultIcon]);
-
-    const domainTypeFieldRequired = useMemo(
-      () => type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN,
-      [type]
-    );
-
-    const fetchTagOptions = useCallback(async (searchText = '') => {
-      try {
-        const response = await tagClassBase.getTags(searchText, 1, true);
-        const nextOptions = (response?.data ?? [])
-          .map((option) => {
-            const tag = option.data as {
-              description?: string;
-              displayName?: string;
-              fullyQualifiedName?: string;
-              name?: string;
-              style?: TagLabel['style'];
-            };
-
-            if (!tag?.fullyQualifiedName) {
-              return null;
-            }
-
-            return mapTagLabelToOption(
-              createTagLabel({
-                description: tag.description,
-                displayName: tag.displayName,
-                name: tag.name,
-                source: TagSource.Classification,
-                style: tag.style,
-                tagFQN: tag.fullyQualifiedName,
-              })
-            );
-          })
-          .filter((option): option is DomainFormSelectItem => option !== null);
-
-        setTagOptions(nextOptions);
-      } catch {
-        setTagOptions([]);
-      }
-    }, []);
-
-    const fetchDomainOptions = useCallback(async (searchText = '') => {
-      try {
-        const domains = await searchDomains(searchText, 1);
-        const nextOptions = domains.map((domain: Domain) =>
-          mapEntityReferenceToOption({
-            displayName: domain.displayName,
-            fullyQualifiedName: domain.fullyQualifiedName,
-            id: domain.id,
-            name: domain.name,
-            type: EntityType.DOMAIN,
-          })
-        );
-
-        setDomainOptions(nextOptions);
-      } catch {
-        setDomainOptions([]);
-      }
-    }, []);
-
-    const fetchUserTeamOptions = useCallback(async (searchText = '') => {
-      try {
-        const [usersResponse, teamsResponse] = await Promise.all([
-          searchQuery({
-            pageNumber: 1,
-            pageSize: PAGE_SIZE_MEDIUM,
-            query: searchText,
-            queryFilter: getTermQuery({ isBot: 'false' }),
-            searchIndex: SearchIndex.USER,
-            sortField: 'displayName.keyword',
-            sortOrder: 'asc',
-          }),
-          searchQuery({
-            pageNumber: 1,
-            pageSize: PAGE_SIZE_MEDIUM,
-            query: searchText,
-            queryFilter: getTermQuery({}, 'must', undefined, {
-              matchTerms: { teamType: 'Group' },
-            }),
-            searchIndex: SearchIndex.TEAM,
-            sortField: 'displayName.keyword',
-            sortOrder: 'asc',
-          }),
-        ]);
-
-        const userOptions = usersResponse.hits.hits.map((hit) => {
-          const source = hit._source;
-
-          const name = getEntityName(source);
-          const { color, backgroundColor, character } = getRandomColor(
-            source.displayName ?? source.name ?? ''
-          );
-
-          return {
-            id: source.id,
-            label: name,
-            supportingText: source.fullyQualifiedName ?? EntityType.USER,
-            icon: (
-              <Avatar
-                initials={character}
-                size="xs"
-                src={source.profile?.images?.image ?? undefined}
-                style={{ color, backgroundColor }}
-              />
-            ),
-            value: {
-              id: source.id,
-              type: EntityType.USER,
-              name: source.name,
-              displayName: source.displayName,
-              fullyQualifiedName: source.fullyQualifiedName,
-            },
+  const fetchTagOptions = useCallback(async (searchText = '') => {
+    try {
+      const response = await tagClassBase.getTags(searchText, 1, true);
+      const nextOptions = (response?.data ?? [])
+        .map((option) => {
+          const tag = option.data as {
+            description?: string;
+            displayName?: string;
+            fullyQualifiedName?: string;
+            name?: string;
+            style?: TagLabel['style'];
           };
-        });
 
-        const teams = getEntityReferenceListFromEntities(
-          formatTeamsResponse(teamsResponse.hits.hits),
-          EntityType.TEAM
-        );
-
-        setUserOnlyOptions(userOptions);
-        setUserTeamOptions([
-          ...userOptions,
-          ...teams.map((reference) => ({
-            ...mapEntityReferenceToOption(reference),
-            icon: <Avatar placeholderIcon={Users01} size="xs" />,
-          })),
-        ]);
-      } catch {
-        setUserOnlyOptions([]);
-        setUserTeamOptions([]);
-      }
-    }, []);
-
-    const handleTagFocus = useCallback(() => {
-      void fetchTagOptions();
-    }, [fetchTagOptions]);
-
-    const handleDomainFocus = useCallback(() => {
-      void fetchDomainOptions();
-    }, [fetchDomainOptions]);
-
-    const handleUserTeamFocus = useCallback(() => {
-      void fetchUserTeamOptions();
-    }, [fetchUserTeamOptions]);
-
-    const debouncedTagSearch = useMemo(
-      () =>
-        debounce((searchText: string) => void fetchTagOptions(searchText), 250),
-      [fetchTagOptions]
-    );
-
-    const debouncedDomainSearch = useMemo(
-      () =>
-        debounce(
-          (searchText: string) => void fetchDomainOptions(searchText),
-          250
-        ),
-      [fetchDomainOptions]
-    );
-
-    const debouncedUserTeamSearch = useMemo(
-      () =>
-        debounce(
-          (searchText: string) => void fetchUserTeamOptions(searchText),
-          250
-        ),
-      [fetchUserTeamOptions]
-    );
-
-    useEffect(
-      () => () => {
-        debouncedTagSearch.cancel();
-        debouncedDomainSearch.cancel();
-        debouncedUserTeamSearch.cancel();
-      },
-      [debouncedDomainSearch, debouncedTagSearch, debouncedUserTeamSearch]
-    );
-
-    const transformFormData = useCallback(
-      (formData: Record<string, unknown>): CreateDomain | CreateDataProduct => {
-        const tagItems = (formData.tags as DomainFormSelectItem[]) ?? [];
-        const glossaryTerms = (formData.glossaryTerms as TagLabel[]) ?? [];
-        const expertItems = (formData.experts as DomainFormSelectItem[]) ?? [];
-        const ownerItems = (formData.owners as DomainFormSelectItem[]) ?? [];
-
-        const tags = tagItems.map((item) => item.value as TagLabel);
-        const expertsList = expertItems.map(
-          (item) => item.value as EntityReference
-        );
-        const ownersList = ownerItems.map(
-          (item) => item.value as EntityReference
-        );
-
-        const domainTypeItem =
-          formData.domainType as DomainFormSelectItem | null;
-
-        const updatedData = omit(
-          formData,
-          'color',
-          'iconURL',
-          'glossaryTerms',
-          'tags',
-          'owners',
-          'experts',
-          'domains',
-          'domainType'
-        );
-        const style = {
-          color: formData.color as string,
-          iconURL: formData.iconURL as string,
-        };
-
-        const data: CreateDomain | CreateDataProduct = {
-          ...updatedData,
-          domainType: (domainTypeItem?.value as DomainType) ?? undefined,
-          experts: expertsList.map((item) => item.name ?? ''),
-          owners: ownersList,
-          style,
-          tags: [...tags, ...glossaryTerms],
-        } as CreateDomain | CreateDataProduct;
-
-        if (type === DomainFormType.DATA_PRODUCT) {
-          const domainItem = formData.domains as
-            | DomainFormSelectItem
-            | undefined;
-          const domainRef = domainItem?.value as EntityReference | undefined;
-          if (domainRef?.fullyQualifiedName) {
-            (data as CreateDataProduct).domains = [
-              domainRef.fullyQualifiedName,
-            ];
-          } else if (parentDomain?.fullyQualifiedName) {
-            (data as CreateDataProduct).domains = [
-              parentDomain.fullyQualifiedName,
-            ];
+          if (!tag?.fullyQualifiedName) {
+            return null;
           }
-        } else {
-          delete (data as CreateDomain & { domains?: unknown }).domains;
-        }
 
-        return data;
-      },
-      [parentDomain, type]
-    );
+          return mapTagLabelToOption(
+            createTagLabel({
+              description: tag.description,
+              displayName: tag.displayName,
+              name: tag.name,
+              source: TagSource.Classification,
+              style: tag.style,
+              tagFQN: tag.fullyQualifiedName,
+            })
+          );
+        })
+        .filter((option): option is DomainFormSelectItem => option !== null);
 
-    const handleFormSubmit = useCallback(
-      (formData: Record<string, unknown>) => {
-        const data = transformFormData(formData);
+      setTagOptions(nextOptions);
+    } catch {
+      setTagOptions([]);
+    }
+  }, []);
 
-        onSubmit(data)
-          .then(() => {
-            form.reset();
-            setDescriptionEditorKey((prev) => prev + 1);
-          })
-          .catch(() => {
-            // Error is already handled by parent component
-          });
-      },
-      [form, onSubmit, transformFormData]
-    );
+  const fetchDomainOptions = useCallback(async (searchText = '') => {
+    try {
+      const domains = await searchDomains(searchText, 1);
+      const nextOptions = domains.map((domain: Domain) =>
+        mapEntityReferenceToOption({
+          displayName: domain.displayName,
+          fullyQualifiedName: domain.fullyQualifiedName,
+          id: domain.id,
+          name: domain.name,
+          type: EntityType.DOMAIN,
+        })
+      );
 
-    const submit = useCallback(() => {
-      void form.handleSubmit(handleFormSubmit)();
-    }, [form, handleFormSubmit]);
+      setDomainOptions(nextOptions);
+    } catch {
+      setDomainOptions([]);
+    }
+  }, []);
 
-    const resetFields = useCallback(() => {
-      form.reset();
-      setDescriptionEditorKey((prev) => prev + 1);
-    }, [form]);
-
-    const validateFields = useCallback(async () => {
-      const isValid = await form.trigger();
-
-      if (!isValid) {
-        throw new Error('Form validation failed');
-      }
-
-      return transformFormData(form.getValues() as Record<string, unknown>);
-    }, [form, transformFormData]);
-
-    const imperativeFormRef = useMemo<DomainFormRef>(
-      () => ({
-        submit,
-        resetFields,
-        validateFields,
-      }),
-      [resetFields, submit, validateFields]
-    );
-
-    useImperativeHandle(ref, () => imperativeFormRef, [imperativeFormRef]);
-
-    useEffect(
-      () => syncFormRef(formRef, imperativeFormRef),
-      [formRef, imperativeFormRef]
-    );
-
-    const nameField: FieldProp = {
-      id: 'root/name',
-      label: t('label.name'),
-      name: 'name',
-      placeholder: t('label.name'),
-      props: { 'data-testid': 'name' },
-      required: true,
-      rules: {
-        required: t('label.field-required', { field: t('label.name') }),
-        maxLength: {
-          message: t('message.entity-size-in-between', {
-            entity: t('label.name'),
-            max: 128,
-            min: 1,
-          }),
-          value: 128,
-        },
-        minLength: {
-          message: t('message.entity-size-in-between', {
-            entity: t('label.name'),
-            max: 128,
-            min: 1,
-          }),
-          value: 1,
-        },
-        pattern: {
-          message: t('message.entity-name-validation'),
-          value: ENTITY_NAME_REGEX,
-        },
-      },
-      type: FieldTypes.TEXT,
-    };
-
-    const displayNameField: FieldProp = {
-      id: 'root/displayName',
-      label: t('label.display-name'),
-      name: 'displayName',
-      placeholder: t('label.display-name'),
-      props: { 'data-testid': 'display-name' },
-      type: FieldTypes.TEXT,
-    };
-
-    const coverImageField: FieldProp = {
-      id: 'root/coverImage',
-      label: t('label.cover-image'),
-      name: 'coverImage',
-      placeholder: t('label.upload-cover-image'),
-      props: {
-        acceptedFileTypes: COVER_IMAGE_ACCEPTED_TYPES,
-        children: (
-          <Button color="secondary" type="button">
-            {t('label.upload-cover-image')}
-          </Button>
-        ),
-      },
-      type: FieldTypes.COVER_IMAGE_UPLOAD,
-    };
-
-    const iconField: FieldProp = {
-      id: 'root/iconURL',
-      label: t('label.icon'),
-      name: 'iconURL',
-      placeholder: t('label.select-field', { field: t('label.icon') }),
-      props: {
-        allowUrl: true,
-        'data-testid': 'icon-url',
-        backgroundColor: selectedColor,
-        defaultIcon,
-        options: iconOptions,
-      },
-      type: FieldTypes.ICON_PICKER,
-    };
-
-    const colorField: FieldProp = {
-      id: 'root/color',
-      label: t('label.color'),
-      name: 'color',
-      type: FieldTypes.COLOR_PICKER,
-    };
-
-    const tagsField: FieldProp = {
-      id: 'root/tags',
-      label: t('label.tag-plural'),
-      name: 'tags',
-      placeholder: t('label.select-field', { field: t('label.tag-plural') }),
-      props: {
-        'data-testid': 'tags-container',
-        filterOption: () => true,
-        multiple: true,
-        onFocus: handleTagFocus,
-        onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
-        options: tagOptions,
-      },
-      type: FieldTypes.TAG_SUGGESTION,
-    };
-
-    const domainTypeField: FieldProp = {
-      label: t('label.domain-type'),
-      name: 'domainType',
-      placeholder: t('label.select-entity', {
-        entity: t('label.domain-type'),
-      }),
-      props: {
-        options: domainTypeOptions,
-        size: 'sm',
-        fontSize: 'sm',
-      },
-      required: domainTypeFieldRequired,
-      rules: domainTypeFieldRequired
-        ? {
-            required: t('label.field-required', {
-              field: t('label.domain-type'),
-            }),
-          }
-        : undefined,
-      type: FieldTypes.SELECT,
-    };
-
-    const domainField: FieldProp = {
-      id: 'root/domains',
-      label: t('label.domain'),
-      name: 'domains',
-      placeholder: t('label.select-field', { field: t('label.domain') }),
-      props: {
-        filterOption: () => true,
-        onFocus: handleDomainFocus,
-        onSearchChange: (searchText: string) =>
-          debouncedDomainSearch(searchText),
-        options: domainOptions,
-      },
-      required: true,
-      rules: {
-        required: t('label.field-required', {
-          field: t('label.domain'),
+  const fetchUserTeamOptions = useCallback(async (searchText = '') => {
+    try {
+      const [usersResponse, teamsResponse] = await Promise.all([
+        searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_MEDIUM,
+          query: searchText,
+          queryFilter: getTermQuery({ isBot: 'false' }),
+          searchIndex: SearchIndex.USER,
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
         }),
-      },
-      type: FieldTypes.DOMAIN_SELECT,
-    };
+        searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_MEDIUM,
+          query: searchText,
+          queryFilter: getTermQuery({}, 'must', undefined, {
+            matchTerms: { teamType: 'Group' },
+          }),
+          searchIndex: SearchIndex.TEAM,
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
+        }),
+      ]);
 
-    const ownersField: FieldProp = {
-      id: 'root/owners',
-      label: t('label.owner-plural'),
-      name: 'owners',
-      placeholder: t('label.select-field', {
-        field: t('label.owner-plural'),
-      }),
-      props: {
-        filterOption: () => true,
-        multiple: true,
-        onFocus: handleUserTeamFocus,
-        onSearchChange: (searchText: string) =>
-          debouncedUserTeamSearch(searchText),
-        options: userTeamOptions,
-      },
-      type: FieldTypes.USER_TEAM_SELECT_INPUT,
-    };
+      const userOptions = usersResponse.hits.hits.map((hit) => {
+        const source = hit._source;
 
-    const expertsField: FieldProp = {
-      id: 'root/experts',
-      label: t('label.expert-plural'),
-      name: 'experts',
-      placeholder: t('label.select-field', {
-        field: t('label.expert-plural'),
-      }),
-      props: {
-        filterOption: () => true,
-        multiple: true,
-        onFocus: handleUserTeamFocus,
-        onSearchChange: (searchText: string) =>
-          debouncedUserTeamSearch(searchText),
-        options: userOnlyOptions,
-      },
-      type: FieldTypes.USER_TEAM_SELECT,
-    };
+        const name = getEntityName(source);
+        const { color, backgroundColor, character } = getRandomColor(
+          source.displayName ?? source.name ?? ''
+        );
 
-    return (
-      <HookForm
-        className="tw:flex tw:flex-col tw:gap-6"
-        data-testid="add-domain"
-        form={form}
-        onSubmit={form.handleSubmit(handleFormSubmit)}>
-        {isCoverImageUploadAvailable && <div>{getField(coverImageField)}</div>}
-
-        <div className="tw:flex tw:items-start tw:gap-4">
-          <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
-            {getField(iconField)}
-          </div>
-          <div className="tw:min-w-0 tw:basis-[90%] tw:flex-[0_0_90%]">
-            {getField(colorField)}
-          </div>
-        </div>
-
-        <div className="tw:flex tw:gap-4">
-          <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-            {getField(nameField)}
-          </div>
-          <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-            {getField(displayNameField)}
-          </div>
-        </div>
-
-        <div className="tw:flex tw:flex-col tw:gap-[6px]">
-          <FormItemLabel required label={t('label.description')} />
-          <FormField
-            control={form.control}
-            name="description"
-            rules={{
-              required: t('label.field-required', {
-                field: t('label.description'),
-              }),
-            }}>
-            {({ field, fieldState }) => (
-              <>
-                <RichTextEditor
-                  className="add-domain-form-description new-form-style"
-                  initialValue={
-                    typeof field.value === 'string' ? field.value : ''
-                  }
-                  key={descriptionEditorKey}
-                  onTextChange={field.onChange}
-                />
-                {fieldState.error?.message && (
-                  <HintText isInvalid>{fieldState.error.message}</HintText>
-                )}
-              </>
-            )}
-          </FormField>
-        </div>
-        <div>{getField(tagsField)}</div>
-        <FormField control={form.control} name="glossaryTerms">
-          {({ field }) => (
-            <MUIGlossaryTagSuggestion
-              data-testid="glossary-terms"
-              label={t('label.glossary-term-plural')}
-              placeholder={t('label.select-field', {
-                field: t('label.glossary-term-plural'),
-              })}
-              value={field.value}
-              onChange={field.onChange}
+        return {
+          id: source.id,
+          label: name,
+          supportingText: source.fullyQualifiedName ?? EntityType.USER,
+          icon: (
+            <Avatar
+              initials={character}
+              size="xs"
+              src={source.profile?.images?.image ?? undefined}
+              style={{ color, backgroundColor }}
             />
+          ),
+          value: {
+            id: source.id,
+            type: EntityType.USER,
+            name: source.name,
+            displayName: source.displayName,
+            fullyQualifiedName: source.fullyQualifiedName,
+          },
+        };
+      });
+
+      const teams = getEntityReferenceListFromEntities(
+        formatTeamsResponse(teamsResponse.hits.hits),
+        EntityType.TEAM
+      );
+
+      setUserOnlyOptions(userOptions);
+      setUserTeamOptions([
+        ...userOptions,
+        ...teams.map((reference) => ({
+          ...mapEntityReferenceToOption(reference),
+          icon: <Avatar placeholderIcon={Users01} size="xs" />,
+        })),
+      ]);
+    } catch {
+      setUserOnlyOptions([]);
+      setUserTeamOptions([]);
+    }
+  }, []);
+
+  const handleTagFocus = useCallback(() => {
+    void fetchTagOptions();
+  }, [fetchTagOptions]);
+
+  const handleDomainFocus = useCallback(() => {
+    void fetchDomainOptions();
+  }, [fetchDomainOptions]);
+
+  const handleUserTeamFocus = useCallback(() => {
+    void fetchUserTeamOptions();
+  }, [fetchUserTeamOptions]);
+
+  const debouncedTagSearch = useMemo(
+    () =>
+      debounce((searchText: string) => void fetchTagOptions(searchText), 250),
+    [fetchTagOptions]
+  );
+
+  const debouncedDomainSearch = useMemo(
+    () =>
+      debounce(
+        (searchText: string) => void fetchDomainOptions(searchText),
+        250
+      ),
+    [fetchDomainOptions]
+  );
+
+  const debouncedUserTeamSearch = useMemo(
+    () =>
+      debounce(
+        (searchText: string) => void fetchUserTeamOptions(searchText),
+        250
+      ),
+    [fetchUserTeamOptions]
+  );
+
+  useEffect(
+    () => () => {
+      debouncedTagSearch.cancel();
+      debouncedDomainSearch.cancel();
+      debouncedUserTeamSearch.cancel();
+    },
+    [debouncedDomainSearch, debouncedTagSearch, debouncedUserTeamSearch]
+  );
+
+  useEffect(() => {
+    if (form.formState.isSubmitSuccessful) {
+      setDescriptionEditorKey((prev) => prev + 1);
+    }
+  }, [form.formState.isSubmitSuccessful]);
+
+  const nameField: FieldProp = {
+    id: 'root/name',
+    label: t('label.name'),
+    name: 'name',
+    placeholder: t('label.name'),
+    props: { 'data-testid': 'name' },
+    required: true,
+    rules: {
+      required: t('label.field-required', { field: t('label.name') }),
+      maxLength: {
+        message: t('message.entity-size-in-between', {
+          entity: t('label.name'),
+          max: 128,
+          min: 1,
+        }),
+        value: 128,
+      },
+      minLength: {
+        message: t('message.entity-size-in-between', {
+          entity: t('label.name'),
+          max: 128,
+          min: 1,
+        }),
+        value: 1,
+      },
+      pattern: {
+        message: t('message.entity-name-validation'),
+        value: ENTITY_NAME_REGEX,
+      },
+    },
+    type: FieldTypes.TEXT,
+  };
+
+  const displayNameField: FieldProp = {
+    id: 'root/displayName',
+    label: t('label.display-name'),
+    name: 'displayName',
+    placeholder: t('label.display-name'),
+    props: { 'data-testid': 'display-name' },
+    type: FieldTypes.TEXT,
+  };
+
+  const coverImageField: FieldProp = {
+    id: 'root/coverImage',
+    label: t('label.cover-image'),
+    name: 'coverImage',
+    placeholder: t('label.upload-cover-image'),
+    props: {
+      acceptedFileTypes: COVER_IMAGE_ACCEPTED_TYPES,
+      children: (
+        <Button color="secondary" type="button">
+          {t('label.upload-cover-image')}
+        </Button>
+      ),
+    },
+    type: FieldTypes.COVER_IMAGE_UPLOAD,
+  };
+
+  const iconField: FieldProp = {
+    id: 'root/iconURL',
+    label: t('label.icon'),
+    name: 'iconURL',
+    placeholder: t('label.select-field', { field: t('label.icon') }),
+    props: {
+      allowUrl: true,
+      'data-testid': 'icon-url',
+      backgroundColor: selectedColor,
+      defaultIcon,
+      options: iconOptions,
+    },
+    type: FieldTypes.ICON_PICKER,
+  };
+
+  const colorField: FieldProp = {
+    id: 'root/color',
+    label: t('label.color'),
+    name: 'color',
+    type: FieldTypes.COLOR_PICKER,
+  };
+
+  const tagsField: FieldProp = {
+    id: 'root/tags',
+    label: t('label.tag-plural'),
+    name: 'tags',
+    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
+    props: {
+      'data-testid': 'tags-container',
+      filterOption: () => true,
+      multiple: true,
+      onFocus: handleTagFocus,
+      onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
+      options: tagOptions,
+    },
+    type: FieldTypes.TAG_SUGGESTION,
+  };
+
+  const domainTypeField: FieldProp = {
+    label: t('label.domain-type'),
+    name: 'domainType',
+    placeholder: t('label.select-entity', {
+      entity: t('label.domain-type'),
+    }),
+    props: {
+      options: domainTypeOptions,
+      size: 'sm',
+      fontSize: 'sm',
+    },
+    required: domainTypeFieldRequired,
+    rules: domainTypeFieldRequired
+      ? {
+          required: t('label.field-required', {
+            field: t('label.domain-type'),
+          }),
+        }
+      : undefined,
+    type: FieldTypes.SELECT,
+  };
+
+  const domainField: FieldProp = {
+    id: 'root/domains',
+    label: t('label.domain'),
+    name: 'domains',
+    placeholder: t('label.select-field', { field: t('label.domain') }),
+    props: {
+      filterOption: () => true,
+      onFocus: handleDomainFocus,
+      onSearchChange: (searchText: string) => debouncedDomainSearch(searchText),
+      options: domainOptions,
+    },
+    required: true,
+    rules: {
+      required: t('label.field-required', {
+        field: t('label.domain'),
+      }),
+    },
+    type: FieldTypes.DOMAIN_SELECT,
+  };
+
+  const ownersField: FieldProp = {
+    id: 'root/owners',
+    label: t('label.owner-plural'),
+    name: 'owners',
+    placeholder: t('label.select-field', {
+      field: t('label.owner-plural'),
+    }),
+    props: {
+      filterOption: () => true,
+      multiple: true,
+      onFocus: handleUserTeamFocus,
+      onSearchChange: (searchText: string) =>
+        debouncedUserTeamSearch(searchText),
+      options: userTeamOptions,
+    },
+    type: FieldTypes.USER_TEAM_SELECT_INPUT,
+  };
+
+  const expertsField: FieldProp = {
+    id: 'root/experts',
+    label: t('label.expert-plural'),
+    name: 'experts',
+    placeholder: t('label.select-field', {
+      field: t('label.expert-plural'),
+    }),
+    props: {
+      filterOption: () => true,
+      multiple: true,
+      onFocus: handleUserTeamFocus,
+      onSearchChange: (searchText: string) =>
+        debouncedUserTeamSearch(searchText),
+      options: userOnlyOptions,
+    },
+    type: FieldTypes.USER_TEAM_SELECT,
+  };
+
+  return (
+    <HookForm
+      className="tw:flex tw:flex-col tw:gap-6"
+      data-testid="add-domain-form"
+      form={form}
+      onSubmit={form.handleSubmit(onSubmit)}>
+      {isCoverImageUploadAvailable && <div>{getField(coverImageField)}</div>}
+
+      <div className="tw:flex tw:items-start tw:gap-4">
+        <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
+          {getField(iconField)}
+        </div>
+        <div className="tw:min-w-0 tw:basis-[90%] tw:flex-[0_0_90%]">
+          {getField(colorField)}
+        </div>
+      </div>
+
+      <div className="tw:flex tw:gap-4">
+        <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
+          {getField(nameField)}
+        </div>
+        <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
+          {getField(displayNameField)}
+        </div>
+      </div>
+
+      <div className="tw:flex tw:flex-col tw:gap-[6px]">
+        <FormItemLabel required label={t('label.description')} />
+        <FormField
+          control={form.control}
+          name="description"
+          rules={{
+            required: t('label.field-required', {
+              field: t('label.description'),
+            }),
+          }}>
+          {({ field, fieldState }) => (
+            <>
+              <RichTextEditor
+                className="add-domain-form-description new-form-style"
+                initialValue={
+                  typeof field.value === 'string' ? field.value : ''
+                }
+                key={descriptionEditorKey}
+                onTextChange={field.onChange}
+              />
+              {fieldState.error?.message && (
+                <HintText isInvalid>{fieldState.error.message}</HintText>
+              )}
+            </>
           )}
         </FormField>
-
-        {(type === DomainFormType.DOMAIN ||
-          type === DomainFormType.SUBDOMAIN) && (
-          <div data-testid="domainType">{getField(domainTypeField)}</div>
+      </div>
+      <div>{getField(tagsField)}</div>
+      <FormField control={form.control} name="glossaryTerms">
+        {({ field }) => (
+          <MUIGlossaryTagSuggestion
+            data-testid="glossary-terms"
+            label={t('label.glossary-term-plural')}
+            placeholder={t('label.select-field', {
+              field: t('label.glossary-term-plural'),
+            })}
+            value={field.value}
+            onChange={field.onChange}
+          />
         )}
+      </FormField>
 
-        {type === DomainFormType.DATA_PRODUCT && !parentDomain && (
-          <div data-testid="domain-select">{getField(domainField)}</div>
-        )}
+      {(type === DomainFormType.DOMAIN ||
+        type === DomainFormType.SUBDOMAIN) && (
+        <div data-testid="domainType">{getField(domainTypeField)}</div>
+      )}
 
-        <div>{getField(ownersField)}</div>
-        <div>{getField(expertsField)}</div>
+      {type === DomainFormType.DATA_PRODUCT && !parentDomain && (
+        <div data-testid="domain-select">{getField(domainField)}</div>
+      )}
 
-        {!isFormInDialog && (
-          <div
-            className="tw:flex tw:justify-end tw:gap-4"
-            data-testid="cta-buttons">
-            <Button
-              color="tertiary"
-              data-testid="cancel-domain"
-              onPress={onCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="save-domain"
-              isDisabled={!createPermission}
-              isLoading={loading}
-              type="submit">
-              {t('label.save')}
-            </Button>
-          </div>
-        )}
-      </HookForm>
-    );
-  }
-);
+      <div>{getField(ownersField)}</div>
+      <div>{getField(expertsField)}</div>
 
-AddDomainForm.displayName = 'AddDomainForm';
+      {!isFormInDialog && (
+        <div
+          className="tw:flex tw:justify-end tw:gap-4"
+          data-testid="cta-buttons">
+          <Button
+            color="tertiary"
+            data-testid="cancel-domain"
+            onPress={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            color="primary"
+            data-testid="save-domain"
+            isDisabled={!createPermission}
+            isLoading={loading}
+            type="submit">
+            {t('label.save')}
+          </Button>
+        </div>
+      )}
+    </HookForm>
+  );
+};
 
 export default AddDomainForm;

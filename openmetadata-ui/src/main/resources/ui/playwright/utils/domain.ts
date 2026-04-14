@@ -414,7 +414,7 @@ export const fillDomainForm = async (
   await fillCommonFormItems(page, entity);
 
   const domainTypeTrigger = page
-    .getByTestId('add-domain')
+    .getByTestId('add-domain-form')
     .getByTestId('domainType')
     .getByRole('button');
   await domainTypeTrigger.click();

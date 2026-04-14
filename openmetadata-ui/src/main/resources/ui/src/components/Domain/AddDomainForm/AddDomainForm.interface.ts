@@ -10,29 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MutableRefObject, RefCallback } from 'react';
-import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
-import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { FormSelectItem } from '@openmetadata/ui-core-components';
+import { UseFormReturn } from 'react-hook-form';
+import { DomainType } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { EntityReference } from '../../../generated/entity/type';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { DomainFormType } from '../DomainPage.interface';
 
-export interface DomainFormRef {
-  submit: () => void;
-  resetFields: () => void;
-  validateFields: () => Promise<CreateDomain | CreateDataProduct>;
+export interface DomainFormSelectItem extends FormSelectItem {
+  value: TagLabel | EntityReference | DomainType | string;
 }
 
-export type DomainFormRefProp =
-  | MutableRefObject<DomainFormRef | null>
-  | RefCallback<DomainFormRef>
-  | Partial<DomainFormRef>
-  | null;
+export interface DomainFormValues {
+  name: string;
+  displayName: string;
+  description: string;
+  color: string;
+  iconURL: string;
+  coverImage: File | undefined;
+  tags: DomainFormSelectItem[];
+  glossaryTerms: TagLabel[];
+  owners: DomainFormSelectItem[];
+  experts: DomainFormSelectItem[];
+  domainType: DomainFormSelectItem | null;
+  domains: DomainFormSelectItem | undefined;
+}
 
 export interface AddDomainFormProps {
+  form: UseFormReturn<DomainFormValues>;
   isFormInDialog: boolean;
   onCancel: () => void;
-  onSubmit: (data: CreateDomain | CreateDataProduct) => Promise<void>;
-  formRef?: DomainFormRefProp;
+  onSubmit: (data: DomainFormValues) => Promise<void> | void;
   loading: boolean;
   type: DomainFormType;
   parentDomain?: Domain;

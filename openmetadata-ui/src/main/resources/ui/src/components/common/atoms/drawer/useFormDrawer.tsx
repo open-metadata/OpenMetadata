@@ -13,6 +13,7 @@
 
 import classNames from 'classnames';
 import React, { ReactNode, useCallback, useMemo, useState } from 'react';
+import type { FieldValues, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { createScrollToErrorHandler } from '../../../../utils/formUtils';
 import {
@@ -225,4 +226,44 @@ export const useFormDrawerWithRef = <T,>(
     ...drawer,
     submitForm,
   };
+};
+
+/**
+ * Form drawer variant backed by a react-hook-form `UseFormReturn` instance.
+ *
+ * The caller owns the form state via `useForm()` from react-hook-form and
+ * passes it in; the drawer triggers validation via `form.trigger()`, scrolls to
+ * the first error on failure, and invokes `onSubmit(form.getValues())` on
+ * success. On cancel the form is reset before any caller-supplied `onCancel`
+ * handler runs.
+ */
+export const useFormDrawerWithHook = <T extends FieldValues>(
+  config: Omit<FormDrawerConfig<T>, 'onSubmit'> & {
+    hookForm: UseFormReturn<T>;
+    onSubmit: (data: T) => Promise<void> | void;
+  }
+) => {
+  const { hookForm, onSubmit, onCancel, ...rest } = config;
+  const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
+
+  const handleSubmit = useCallback(async () => {
+    const valid = await hookForm.trigger();
+    if (!valid) {
+      scrollToError();
+
+      return;
+    }
+    await onSubmit(hookForm.getValues());
+  }, [hookForm, onSubmit, scrollToError]);
+
+  const handleCancel = useCallback(() => {
+    hookForm.reset();
+    onCancel?.();
+  }, [hookForm, onCancel]);
+
+  return useFormDrawer<T>({
+    ...rest,
+    onCancel: handleCancel,
+    onSubmit: handleSubmit,
+  });
 };
