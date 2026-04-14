@@ -203,54 +203,47 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       page.locator('[data-testid="knowledge-graph-canvas"]')
     ).toBeVisible();
 
-    // The controls toolbar (position:absolute, z-index:1000) covers the top of the
-    // canvas. We must pick a node whose center is below it; otherwise page.mouse.move
-    // delivers the pointer event to the toolbar, not the G6 node, and no highlight fires.
-    const controlsBox = await page
-      .locator('[data-testid="knowledge-graph-controls"]')
-      .boundingBox();
-    const controlsBottom = controlsBox ? controlsBox.y + controlsBox.height : 0;
+    // Wait for some time to ensure G6 has applied the fit-screen transformation and nodes are in their final positions
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(2000);
 
-    let targetNode: GraphApiNode | undefined;
+    let targetNode = graphData.nodes.find((n) => n.type === 'databaseSchema');
     let targetBox: {
       x: number;
       y: number;
       width: number;
       height: number;
-    } | null = null;
-
-    for (const node of graphData.nodes.filter((n) => n.type !== 'table')) {
-      const box = await page
-        .locator(`[data-testid="node-${node.label}"]`)
-        .boundingBox();
-      if (box && box.y + box.height / 2 > controlsBottom) {
-        targetNode = node;
-        targetBox = box;
-        break;
-      }
-    }
+    } | null = await page
+      .locator(`[data-testid="node-${targetNode?.label}"]`)
+      .boundingBox();
 
     if (!targetNode || !targetBox) {
-      throw new Error('No non-table node found below the controls bar');
+      throw new Error('No databaseSchema node found below the controls bar');
     }
 
-    const nodeLocator = page.locator(
-      `[data-testid="node-${targetNode.label}"]`
-    );
-
-    await expect(nodeLocator).not.toHaveClass(/highlighted/);
+    await expect(
+      page.locator(`[data-testid="node-${targetNode.label}"]`)
+    ).not.toHaveClass(/highlighted/);
 
     await page.mouse.move(
       targetBox.x + targetBox.width / 2,
       targetBox.y + targetBox.height / 2
     );
 
-    await expect(nodeLocator).toHaveClass(/highlighted/);
+    await expect(
+      page.locator(`[data-testid="node-${targetNode.label}"]`)
+    ).toHaveClass(/highlighted/);
+
+    const canvasBox = await page
+      .locator('[data-testid="knowledge-graph-canvas"]')
+      .boundingBox();
 
     // Move mouse away; G6 fires node:pointerleave → clearAllHighlights()
-    await page.mouse.move(0, 0);
+    await page.mouse.move(canvasBox?.x ?? 0, canvasBox?.y ?? 0);
 
-    await expect(nodeLocator).not.toHaveClass(/highlighted/);
+    await expect(
+      page.locator(`[data-testid="node-${targetNode.label}"]`)
+    ).not.toHaveClass(/highlighted/);
   });
 
   test('Verify entity summary panel opens when a node is clicked', async ({
