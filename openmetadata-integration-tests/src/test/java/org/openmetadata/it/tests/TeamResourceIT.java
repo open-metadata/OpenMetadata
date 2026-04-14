@@ -1466,112 +1466,111 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   // ===================================================================
 
   @Test
-  void test_searchTeamsByName(TestNamespace ns) {
+  void test_searchTeamsEndpoint(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    String uniqueToken = ns.prefix("searchable");
+    String uniqueToken = ns.prefix("srch");
 
-    for (int i = 0; i < 3; i++) {
-      CreateTeam create =
+    // Create teams with distinct names and display names to test both search paths
+    Team teamByName =
+        createEntity(
+            new CreateTeam()
+                .withName(uniqueToken + "ByNameOnly")
+                .withTeamType(TeamType.GROUP)
+                .withDescription("Team findable by name"));
+
+    Team teamByDisplay =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("hiddenName"))
+                .withTeamType(TeamType.GROUP)
+                .withDisplayName(uniqueToken + " Visible Display")
+                .withDescription("Team findable by display name, not by name token"));
+
+    // Create additional teams for pagination testing
+    for (int i = 0; i < 4; i++) {
+      createEntity(
           new CreateTeam()
-              .withName(uniqueToken + "Team" + i)
+              .withName(uniqueToken + "Paged" + i)
               .withTeamType(TeamType.GROUP)
-              .withDescription("Team for search test");
-      createEntity(create);
+              .withDescription("Team for pagination"));
     }
 
-    ResultList<Team> results = searchTeams(client, uniqueToken, 50, 0);
+    // -- Search by shared token should return both name-match and displayName-match teams --
+    ResultList<Team> allMatches = searchTeams(client, uniqueToken, 50, 0);
+    assertNotNull(allMatches.getData());
 
-    assertNotNull(results);
-    assertNotNull(results.getData());
-    assertEquals(3, results.getData().size());
+    // Should find teamByName (name contains token) AND teamByDisplay (displayName contains token)
+    // plus the 4 paged teams = 6 total
+    assertEquals(6, allMatches.getData().size(), "Should find all 6 teams matching the token");
 
-    for (Team team : results.getData()) {
-      assertTrue(
-          team.getName().toLowerCase().contains(uniqueToken.toLowerCase()),
-          "Team name should contain search term: " + team.getName());
-    }
-  }
-
-  @Test
-  void test_searchTeamsByDisplayName(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    String uniqueDisplay = ns.prefix("UniqueDisplay");
-
-    CreateTeam create =
-        new CreateTeam()
-            .withName(ns.prefix("displaySearchTeam"))
-            .withTeamType(TeamType.GROUP)
-            .withDisplayName(uniqueDisplay + " Team")
-            .withDescription("Team with display name for search");
-    createEntity(create);
-
-    ResultList<Team> results = searchTeams(client, uniqueDisplay, 50, 0);
-
-    assertNotNull(results);
-    assertNotNull(results.getData());
-    assertTrue(results.getData().size() >= 1);
     assertTrue(
-        results.getData().stream()
-            .anyMatch(
-                t -> t.getDisplayName() != null && t.getDisplayName().contains(uniqueDisplay)),
-        "Should find team by display name");
-  }
+        allMatches.getData().stream().anyMatch(t -> t.getId().equals(teamByName.getId())),
+        "Should find team matched by name");
+    assertTrue(
+        allMatches.getData().stream().anyMatch(t -> t.getId().equals(teamByDisplay.getId())),
+        "Should find team matched by displayName");
 
-  @Test
-  void test_searchTeamsNoResults(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
+    // -- Verify results are ordered by name --
+    List<String> names = allMatches.getData().stream().map(Team::getName).toList();
+    List<String> sorted = names.stream().sorted().toList();
+    assertEquals(sorted, names, "Search results should be ordered by name");
 
-    ResultList<Team> results = searchTeams(client, "nonExistentTeamXyz" + System.nanoTime(), 50, 0);
+    // -- Search with no matches returns empty, not an error --
+    ResultList<Team> noMatches =
+        searchTeams(client, "nonExistentTeamXyz" + System.nanoTime(), 50, 0);
+    assertNotNull(noMatches.getData());
+    assertEquals(0, noMatches.getData().size());
 
-    assertNotNull(results);
-    assertNotNull(results.getData());
-    assertEquals(0, results.getData().size());
-  }
-
-  @Test
-  void test_searchTeamsWithPagination(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    String uniqueToken = ns.prefix("paged");
-
-    for (int i = 0; i < 5; i++) {
-      CreateTeam create =
-          new CreateTeam()
-              .withName(uniqueToken + "Team" + i)
-              .withTeamType(TeamType.GROUP)
-              .withDescription("Team for pagination test");
-      createEntity(create);
-    }
-
+    // -- Pagination: walk through all 6 results in pages of 2 --
     ResultList<Team> page1 = searchTeams(client, uniqueToken, 2, 0);
-    assertNotNull(page1);
     assertEquals(2, page1.getData().size());
-    assertNotNull(page1.getPaging().getAfter(), "Should have next page cursor");
+    assertNotNull(page1.getPaging().getAfter(), "Page 1 should indicate more results exist");
 
     ResultList<Team> page2 = searchTeams(client, uniqueToken, 2, 2);
-    assertNotNull(page2);
     assertEquals(2, page2.getData().size());
+    assertNotNull(page2.getPaging().getAfter(), "Page 2 should indicate more results exist");
 
     ResultList<Team> page3 = searchTeams(client, uniqueToken, 2, 4);
-    assertNotNull(page3);
-    assertEquals(1, page3.getData().size());
-  }
+    assertEquals(2, page3.getData().size());
 
-  @Test
-  void test_searchTeamsEmptyQuery(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
+    // Verify no duplicates across pages
+    List<UUID> allPagedIds = new java.util.ArrayList<>();
+    page1.getData().forEach(t -> allPagedIds.add(t.getId()));
+    page2.getData().forEach(t -> allPagedIds.add(t.getId()));
+    page3.getData().forEach(t -> allPagedIds.add(t.getId()));
+    assertEquals(6, new java.util.HashSet<>(allPagedIds).size(), "No duplicates across pages");
 
-    ResultList<Team> results = searchTeams(client, null, 10, 0);
+    // -- Empty query falls back to listing all teams --
+    ResultList<Team> emptyQuery = searchTeams(client, null, 10, 0);
+    assertNotNull(emptyQuery.getData());
+    assertTrue(emptyQuery.getData().size() > 0, "Empty query should return teams");
 
-    assertNotNull(results);
-    assertNotNull(results.getData());
-    assertTrue(results.getData().size() > 0, "Empty query should return teams");
+    // -- Search with fields param returns requested fields --
+    ResultList<Team> withUsers = searchTeams(client, uniqueToken, 10, 0, "users,policies");
+    assertNotNull(withUsers.getData());
+    assertFalse(withUsers.getData().isEmpty());
+
+    // -- Verify soft-deleted teams are excluded by default --
+    deleteEntity(teamByName.getId().toString());
+
+    ResultList<Team> afterDelete = searchTeams(client, uniqueToken, 50, 0);
+    assertFalse(
+        afterDelete.getData().stream().anyMatch(t -> t.getId().equals(teamByName.getId())),
+        "Soft-deleted team should not appear in search results");
+    assertEquals(5, afterDelete.getData().size(), "Should have one fewer result after soft delete");
+
+    // Restore for cleanup
+    restoreEntity(teamByName.getId().toString());
   }
 
   private ResultList<Team> searchTeams(
       OpenMetadataClient client, String query, Integer limit, Integer offset) {
+    return searchTeams(client, query, limit, offset, null);
+  }
+
+  private ResultList<Team> searchTeams(
+      OpenMetadataClient client, String query, Integer limit, Integer offset, String fields) {
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     if (query != null) {
       optionsBuilder.queryParam("q", query);
@@ -1581,6 +1580,9 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     }
     if (offset != null) {
       optionsBuilder.queryParam("offset", offset.toString());
+    }
+    if (fields != null) {
+      optionsBuilder.queryParam("fields", fields);
     }
 
     return client
