@@ -425,6 +425,9 @@ export const assignDataProduct = async (
   action: 'Add' | 'Edit' = 'Add',
   parentId = 'KnowledgePanel.DataProducts'
 ) => {
+  await expect(page.getByTestId('domain-link')).toContainText(
+    domain.displayName
+  );
   await page
     .getByTestId(parentId)
     .getByTestId('data-products-container')
