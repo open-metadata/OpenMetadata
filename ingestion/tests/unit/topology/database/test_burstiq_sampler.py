@@ -25,13 +25,13 @@ from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
-    ProfileSampleType,
     Table,
     TableData,
 )
 from metadata.generated.schema.entity.services.connections.database.burstIQConnection import (
     BurstIQConnection,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.pandas.burstiq.sampler import _PAGE_SIZE, BurstIQSampler
