@@ -21,7 +21,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
@@ -717,32 +716,26 @@ public class SystemResource {
 
   @GET
   @Path("/config/auth/test-login/initiate")
-  @Produces("text/html")
-  @Consumes("*/*")
   @Operation(
       operationId = "testLoginInitiate",
       summary = "Initiate Test Login",
       description =
           "Initiates a Test Login flow by redirecting to the IdP. "
               + "Opens in a popup window. After authentication, redirects to the callback endpoint.")
-  public void testLoginInitiate(
-      @Context HttpServletRequest request, @Context HttpServletResponse response) {
-    TestLoginHandler.handleInitiate(request, response);
+  public Response testLoginInitiate(@Context HttpServletRequest request) {
+    return TestLoginHandler.handleInitiate(request);
   }
 
   @GET
   @Path("/config/auth/test-login/callback")
-  @Produces("text/html")
-  @Consumes("*/*")
   @Operation(
       operationId = "testLoginCallback",
       summary = "Test Login Callback",
       description =
           "Handles the IdP redirect after Test Login authentication. "
               + "Extracts claims from the token and posts them to the parent window.")
-  public void testLoginCallback(
-      @Context HttpServletRequest request, @Context HttpServletResponse response) {
-    TestLoginHandler.handleCallback(request, response);
+  public Response testLoginCallback(@Context HttpServletRequest request) {
+    return TestLoginHandler.handleCallback(request);
   }
 
   @POST
