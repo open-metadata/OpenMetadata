@@ -109,6 +109,17 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
       return;
     }
 
+    if (discoveryUri.includes('{') || discoveryUri.includes('}')) {
+      setIsLoading(false);
+      setStatus('error');
+      const msg =
+        'Replace the placeholder values in the Discovery URI (e.g., {tenant-id}, {your-domain}) with your actual values.';
+      setErrorMessage(msg);
+      showErrorToast(msg);
+
+      return;
+    }
+
     const callbackUrl =
       formData?.oidcConfiguration?.callbackUrl ??
       `${window.location.origin}/callback`;
