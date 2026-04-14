@@ -164,6 +164,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           className="tw:w-36"
           data-testid="view-mode-select"
           fontSize="sm"
+          isDisabled={viewModeDisabled}
           items={viewModeItems}
           size="sm"
           value={filters.viewMode}

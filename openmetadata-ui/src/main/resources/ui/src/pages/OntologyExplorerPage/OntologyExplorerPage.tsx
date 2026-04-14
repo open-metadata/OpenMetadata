@@ -79,7 +79,12 @@ const OntologyExplorerPage: React.FC = () => {
                         orientation="vertical"
                       />
                     )}
-                    <Typography size="text-sm" weight="regular">
+                    <Typography
+                      data-testid={
+                        index === 0 ? 'ontology-explorer-stats-item' : undefined
+                      }
+                      size="text-sm"
+                      weight="regular">
                       {item}
                     </Typography>
                   </React.Fragment>
