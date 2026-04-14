@@ -3,9 +3,8 @@ package org.openmetadata.service.search.indexes;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 
-public class PipelineIndex implements SearchIndex {
+public class PipelineIndex implements DataAssetIndex {
   final Pipeline pipeline;
 
   public PipelineIndex(Pipeline pipeline) {
@@ -17,18 +16,18 @@ public class PipelineIndex implements SearchIndex {
     return pipeline;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.PIPELINE;
+  }
+
+  @Override
+  public Object getIndexServiceType() {
+    return pipeline.getServiceType();
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.PIPELINE, pipeline));
-    Map<String, Object> commonAttributes = getCommonAttributesMap(pipeline, Entity.PIPELINE);
-    doc.putAll(commonAttributes);
     doc.put("name", pipeline.getName() != null ? pipeline.getName() : pipeline.getDisplayName());
-    doc.put("tags", parseTags.getTags());
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("serviceType", pipeline.getServiceType());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(pipeline.getEntityReference()));
-    doc.put("service", getEntityWithDisplayName(pipeline.getService()));
     return doc;
   }
 
