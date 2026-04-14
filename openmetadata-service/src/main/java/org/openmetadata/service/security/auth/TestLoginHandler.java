@@ -26,9 +26,8 @@ import com.nimbusds.openid.connect.sdk.OIDCTokenResponse;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponseParser;
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import java.io.IOException;
+import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.Collections;
 import java.util.HashMap;
@@ -52,14 +51,14 @@ public class TestLoginHandler {
 
   private TestLoginHandler() {}
 
-  public static void handleInitiate(HttpServletRequest req, HttpServletResponse resp) {
+  public static Response handleInitiate(HttpServletRequest req) {
     try {
       AuthenticationCodeFlowHandler codeFlowHandler = AuthenticationCodeFlowHandler.getInstance();
       OidcClient client = codeFlowHandler.getClient();
 
       if (client == null || client.getConfiguration() == null) {
-        sendError(resp, "OIDC client is not configured. Save your SSO configuration first.");
-        return;
+        return buildHtmlErrorResponse(
+            "OIDC client is not configured. Save your SSO configuration first.");
       }
 
       HttpSession session = req.getSession(true);
@@ -111,43 +110,43 @@ public class TestLoginHandler {
 
       String authUrl = authorizationEndpoint + "?" + queryString;
       LOG.info("[Test Login] Redirecting to IdP: {}", authorizationEndpoint);
-      resp.sendRedirect(authUrl);
+
+      return Response.temporaryRedirect(new URI(authUrl)).build();
     } catch (Exception e) {
       LOG.error("[Test Login] Failed to initiate", e);
-      sendError(resp, "Failed to initiate Test Login: " + e.getMessage());
+
+      return buildHtmlErrorResponse("Failed to initiate Test Login: " + e.getMessage());
     }
   }
 
-  public static void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
+  public static Response handleCallback(HttpServletRequest req) {
     try {
       HttpSession session = req.getSession(false);
       if (session == null) {
-        sendPostMessage(resp, false, "Session expired. Please try again.", null);
-        return;
+        return buildPostMessageResponse(false, "Session expired. Please try again.", null);
       }
 
       String error = req.getParameter("error");
       if (!nullOrEmpty(error)) {
         String errorDesc = req.getParameter("error_description");
-        sendPostMessage(resp, false, "IdP returned error: " + error + " - " + errorDesc, null);
-        return;
+
+        return buildPostMessageResponse(
+            false, "IdP returned error: " + error + " - " + errorDesc, null);
       }
 
       String expectedState = (String) session.getAttribute(TEST_LOGIN_STATE);
       String receivedState = req.getParameter("state");
       if (expectedState != null && !expectedState.equals(receivedState)) {
-        sendPostMessage(resp, false, "Invalid state parameter. Possible CSRF attack.", null);
-        return;
+        return buildPostMessageResponse(
+            false, "Invalid state parameter. Possible CSRF attack.", null);
       }
 
       String code = req.getParameter("code");
       if (nullOrEmpty(code)) {
-        sendPostMessage(resp, false, "No authorization code received from IdP.", null);
-        return;
+        return buildPostMessageResponse(false, "No authorization code received from IdP.", null);
       }
 
       AuthenticationCodeFlowHandler codeFlowHandler = AuthenticationCodeFlowHandler.getInstance();
-      OidcClient client = codeFlowHandler.getClient();
 
       String callbackUrl = (String) session.getAttribute("testLoginCallbackUrl");
       if (nullOrEmpty(callbackUrl)) {
@@ -161,14 +160,12 @@ public class TestLoginHandler {
       HTTPResponse httpResponse = codeFlowHandler.executeTokenHttpRequest(tokenRequest);
 
       if (httpResponse.getStatusCode() != 200) {
-        sendPostMessage(
-            resp,
+        return buildPostMessageResponse(
             false,
             "Token exchange failed (HTTP "
                 + httpResponse.getStatusCode()
                 + "). Check Client ID and Secret.",
             null);
-        return;
       }
 
       OIDCTokenResponse tokenResponse =
@@ -177,9 +174,8 @@ public class TestLoginHandler {
       JWT idToken = tokens.getIDToken();
 
       if (idToken == null) {
-        sendPostMessage(
-            resp, false, "No id_token received from IdP. Check your scope configuration.", null);
-        return;
+        return buildPostMessageResponse(
+            false, "No id_token received from IdP. Check your scope configuration.", null);
       }
 
       JWTClaimsSet claimsSet = idToken.getJWTClaimsSet();
@@ -188,91 +184,16 @@ public class TestLoginHandler {
 
       Map<String, Object> result = buildTestLoginResult(claims, tokens.getRefreshToken() != null);
 
-      sendPostMessage(resp, true, null, result);
-
       session.removeAttribute(TEST_LOGIN_STATE);
       session.removeAttribute(TEST_LOGIN_NONCE);
       session.removeAttribute("testLoginCallbackUrl");
       LOG.info("[Test Login] Callback successful, {} claims extracted", claims.size());
+
+      return buildPostMessageResponse(true, null, result);
     } catch (Exception e) {
       LOG.error("[Test Login] Callback failed", e);
-      sendPostMessage(resp, false, "Token exchange failed: " + e.getMessage(), null);
-    }
-  }
 
-  private static Map<String, Object> buildTestLoginResult(
-      Map<String, Object> claims, boolean hasRefreshToken) {
-    Map<String, Object> result = new LinkedHashMap<>();
-
-    Map<String, String> claimMap = new LinkedHashMap<>();
-    for (Map.Entry<String, Object> entry : claims.entrySet()) {
-      String key = entry.getKey();
-      if ("iat".equals(key) || "exp".equals(key) || "nbf".equals(key) || "auth_time".equals(key)) {
-        continue;
-      }
-      Object value = entry.getValue();
-      claimMap.put(key, value != null ? value.toString() : "");
-    }
-    result.put("claims", claimMap);
-
-    String suggestedEmail = null;
-    for (Map.Entry<String, String> entry : claimMap.entrySet()) {
-      if (entry.getValue() != null && entry.getValue().contains("@")) {
-        suggestedEmail = entry.getKey();
-        break;
-      }
-    }
-    result.put("suggestedEmailClaim", suggestedEmail);
-
-    if (suggestedEmail != null) {
-      String emailValue = claimMap.get(suggestedEmail);
-      if (emailValue != null && emailValue.contains("@")) {
-        result.put("derivedPrincipalDomain", emailValue.split("@")[1]);
-        result.put("suggestedAdminPrincipal", emailValue);
-      }
-    }
-
-    result.put("hasRefreshToken", hasRefreshToken);
-    return result;
-  }
-
-  private static void sendPostMessage(
-      HttpServletResponse resp, boolean success, String error, Map<String, Object> data) {
-    try {
-      Map<String, Object> message = new LinkedHashMap<>();
-      message.put("type", "sso-test-login");
-      message.put("success", success);
-      if (error != null) {
-        message.put("error", error);
-      }
-      if (data != null) {
-        message.putAll(data);
-      }
-
-      String json = JsonUtils.pojoToJson(message);
-
-      resp.setContentType("text/html; charset=UTF-8");
-      resp.getWriter()
-          .write(
-              "<!DOCTYPE html><html><body>"
-                  + "<p>"
-                  + (success
-                      ? "Authentication successful. This window will close."
-                      : "Error: " + error)
-                  + "</p>"
-                  + "<script>"
-                  + "if (window.opener) {"
-                  + "  window.opener.postMessage("
-                  + json
-                  + ", window.location.origin);"
-                  + "}"
-                  + "if ("
-                  + success
-                  + ") { setTimeout(function() { window.close(); }, 1000); }"
-                  + "</script>"
-                  + "</body></html>");
-    } catch (IOException e) {
-      LOG.error("[Test Login] Failed to send postMessage response", e);
+      return buildPostMessageResponse(false, "Token exchange failed: " + e.getMessage(), null);
     }
   }
 
@@ -295,33 +216,102 @@ public class TestLoginHandler {
           "derivedPrincipalDomain",
           user.getEmail().contains("@") ? user.getEmail().split("@")[1] : "");
       result.put("suggestedAdminPrincipal", user.getEmail());
+
       return result;
     } catch (Exception e) {
       LOG.error("[Test Login] LDAP test login failed", e);
+
       return Map.of("success", false, "error", "LDAP authentication failed: " + e.getMessage());
     }
   }
 
-  private static void sendError(HttpServletResponse resp, String message) {
-    try {
-      resp.setContentType("text/html; charset=UTF-8");
-      resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-      resp.getWriter()
-          .write(
-              "<!DOCTYPE html><html><body>"
-                  + "<p>Test Login Error: "
-                  + message
-                  + "</p>"
-                  + "<script>"
-                  + "if (window.opener) {"
-                  + "  window.opener.postMessage({type: 'sso-test-login', success: false, error: '"
-                  + message.replace("'", "\\'")
-                  + "'}, window.location.origin);"
-                  + "}"
-                  + "</script>"
-                  + "</body></html>");
-    } catch (IOException e) {
-      LOG.error("[Test Login] Failed to send error response", e);
+  private static Map<String, Object> buildTestLoginResult(
+      Map<String, Object> claims, boolean hasRefreshToken) {
+    Map<String, Object> result = new LinkedHashMap<>();
+
+    Map<String, String> claimMap = new LinkedHashMap<>();
+    for (Map.Entry<String, Object> entry : claims.entrySet()) {
+      String key = entry.getKey();
+      if ("iat".equals(key) || "exp".equals(key) || "nbf".equals(key) || "auth_time".equals(key)) {
+        continue;
+      }
+      Object value = entry.getValue();
+      claimMap.put(key, value != null ? value.toString() : "");
     }
+    result.put("claims", claimMap);
+
+    String suggestedEmail = null;
+    for (Map.Entry<String, String> entry : claimMap.entrySet()) {
+      if (entry.getValue() != null && entry.getValue().contains("@")) {
+        suggestedEmail = entry.getKey();
+
+        break;
+      }
+    }
+    result.put("suggestedEmailClaim", suggestedEmail);
+
+    if (suggestedEmail != null) {
+      String emailValue = claimMap.get(suggestedEmail);
+      if (emailValue != null && emailValue.contains("@")) {
+        result.put("derivedPrincipalDomain", emailValue.split("@")[1]);
+        result.put("suggestedAdminPrincipal", emailValue);
+      }
+    }
+
+    result.put("hasRefreshToken", hasRefreshToken);
+
+    return result;
+  }
+
+  private static Response buildPostMessageResponse(
+      boolean success, String error, Map<String, Object> data) {
+    Map<String, Object> message = new LinkedHashMap<>();
+    message.put("type", "sso-test-login");
+    message.put("success", success);
+    if (error != null) {
+      message.put("error", error);
+    }
+    if (data != null) {
+      message.putAll(data);
+    }
+
+    String json = JsonUtils.pojoToJson(message);
+
+    String html =
+        "<!DOCTYPE html><html><body>"
+            + "<p>"
+            + (success ? "Authentication successful. This window will close." : "Error: " + error)
+            + "</p>"
+            + "<script>"
+            + "if (window.opener) {"
+            + "  window.opener.postMessage("
+            + json
+            + ", window.location.origin);"
+            + "}"
+            + "if ("
+            + success
+            + ") { setTimeout(function() { window.close(); }, 1000); }"
+            + "</script>"
+            + "</body></html>";
+
+    return Response.ok(html, "text/html").build();
+  }
+
+  private static Response buildHtmlErrorResponse(String message) {
+    String html =
+        "<!DOCTYPE html><html><body>"
+            + "<p>Test Login Error: "
+            + message
+            + "</p>"
+            + "<script>"
+            + "if (window.opener) {"
+            + "  window.opener.postMessage({type: 'sso-test-login', success: false, error: '"
+            + message.replace("'", "\\'")
+            + "'}, window.location.origin);"
+            + "}"
+            + "</script>"
+            + "</body></html>";
+
+    return Response.status(Response.Status.BAD_REQUEST).entity(html).type("text/html").build();
   }
 }
