@@ -3021,6 +3021,7 @@
     "remove-lineage-edge": "הסר קישוריות",
     "rename-entity": "שנה את השם והשם לתצוגה של {{entity}}.",
     "request-approval-message": "בקשת אישור עבור",
+    "request-approval-notification": "Approval required for",
     "request-description": "תיאור הבקשה",
     "request-description-message": "בקש תיאור עבור",
     "request-tags-message": "בקש תגיות עבור",

@@ -3021,6 +3021,7 @@
     "remove-lineage-edge": "حذف لبه نسبت.",
     "rename-entity": "نام و نمایش نام برای {{entity}} را تغییر دهید.",
     "request-approval-message": "درخواست تأیید برای",
+    "request-approval-notification": "Approval required for",
     "request-description": "توضیحات درخواست.",
     "request-description-message": "توضیحات درخواست برای",
     "request-tags-message": "درخواست برچسب‌ها برای",

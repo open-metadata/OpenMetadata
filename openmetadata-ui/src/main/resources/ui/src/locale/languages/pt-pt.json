@@ -3021,6 +3021,7 @@
     "remove-lineage-edge": "Remover aresta de linhagem",
     "rename-entity": "Renomear o Nome e o Nome de Exibição para {{entity}}.",
     "request-approval-message": "Pedido de aprovação para",
+    "request-approval-notification": "Approval required for",
     "request-description": "Descrição da solicitação",
     "request-description-message": "Solicitar descrição para",
     "request-tags-message": "Solicitar tags para",

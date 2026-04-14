@@ -3021,6 +3021,7 @@
     "remove-lineage-edge": "Supprimer une arête de lignée",
     "rename-entity": "Renommer le nom et le nom d'affichage pour {{entity}}.",
     "request-approval-message": "Demande de validation pour",
+    "request-approval-notification": "Approval required for",
     "request-description": "Demander une description",
     "request-description-message": "Demander une description pour",
     "request-tags-message": "Demander des tags pour",

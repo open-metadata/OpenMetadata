@@ -3021,6 +3021,7 @@
     "remove-lineage-edge": "Veri soyu kenarını kaldır",
     "rename-entity": "{{entity}} için Adı ve Görünen Adı yeniden adlandırın.",
     "request-approval-message": "için onay talebi",
+    "request-approval-notification": "Approval required for",
     "request-description": "Açıklama iste",
     "request-description-message": "için açıklama isteği",
     "request-tags-message": "için etiket isteği",
