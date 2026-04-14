@@ -1958,14 +1958,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     List<T> entities = listInternal(jsons, fields, uriInfo);
 
-    boolean hasMore = entities.size() > limit;
-    if (hasMore) {
+    if (entities.size() > limit) {
       entities.remove(limit);
     }
 
-    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-    String after = hasMore ? String.valueOf(offset + limit) : null;
-    return new ResultList<>(entities, before, after, total);
+    return new ResultList<>(entities, offset, limit, total);
   }
 
   private List<T> listInternal(List<String> jsons, Fields fields, UriInfo uriInfo) {

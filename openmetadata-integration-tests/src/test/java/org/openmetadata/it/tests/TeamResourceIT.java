@@ -1477,6 +1477,8 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             new CreateTeam()
                 .withName(uniqueToken + "ByNameOnly")
                 .withTeamType(TeamType.GROUP)
+                .withUsers(List.of(shared().USER1.getId()))
+                .withPolicies(List.of(shared().POLICY1.getId()))
                 .withDescription("Team findable by name"));
 
     Team teamByDisplay =
@@ -1546,14 +1548,17 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     // -- Pagination: walk through all 6 results in pages of 2 --
     ResultList<Team> page1 = searchTeams(client, uniqueToken, 2, 0);
     assertEquals(2, page1.getData().size());
-    assertNotNull(page1.getPaging().getAfter(), "Page 1 should indicate more results exist");
+    assertEquals(6, page1.getPaging().getTotal());
+    assertEquals(0, page1.getPaging().getOffset());
 
     ResultList<Team> page2 = searchTeams(client, uniqueToken, 2, 2);
     assertEquals(2, page2.getData().size());
-    assertNotNull(page2.getPaging().getAfter(), "Page 2 should indicate more results exist");
+    assertEquals(6, page2.getPaging().getTotal());
+    assertEquals(2, page2.getPaging().getOffset());
 
     ResultList<Team> page3 = searchTeams(client, uniqueToken, 2, 4);
     assertEquals(2, page3.getData().size());
+    assertEquals(4, page3.getPaging().getOffset());
 
     // Verify no duplicates across pages
     List<UUID> allPagedIds = new java.util.ArrayList<>();
@@ -1568,9 +1573,19 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     assertTrue(emptyQuery.getData().size() > 0, "Empty query should return teams");
 
     // -- Search with fields param returns requested fields --
-    ResultList<Team> withUsers = searchTeams(client, uniqueToken, 10, 0, "users,policies");
-    assertNotNull(withUsers.getData());
-    assertFalse(withUsers.getData().isEmpty());
+    ResultList<Team> withFields = searchTeams(client, uniqueToken, 10, 0, "users,policies");
+    assertNotNull(withFields.getData());
+    assertFalse(withFields.getData().isEmpty());
+    Team teamWithFields =
+        withFields.getData().stream()
+            .filter(t -> t.getId().equals(teamByName.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertNotNull(teamWithFields.getUsers(), "Users field should be populated when requested");
+    assertFalse(teamWithFields.getUsers().isEmpty());
+    assertNotNull(
+        teamWithFields.getPolicies(), "Policies field should be populated when requested");
+    assertFalse(teamWithFields.getPolicies().isEmpty());
 
     // -- Verify soft-deleted teams are excluded by default --
     deleteEntity(teamByName.getId().toString());

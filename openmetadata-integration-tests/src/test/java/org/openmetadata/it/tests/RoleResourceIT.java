@@ -463,14 +463,17 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
     // -- Offset-based pagination: walk through all 6 results in pages of 2 --
     ResultList<Role> page1 = searchRoles(client, uniqueToken, 2, 0);
     assertEquals(2, page1.getData().size());
-    assertNotNull(page1.getPaging().getAfter(), "Page 1 should indicate more results exist");
+    assertEquals(6, page1.getPaging().getTotal());
+    assertEquals(0, page1.getPaging().getOffset());
 
     ResultList<Role> page2 = searchRoles(client, uniqueToken, 2, 2);
     assertEquals(2, page2.getData().size());
-    assertNotNull(page2.getPaging().getAfter(), "Page 2 should indicate more results exist");
+    assertEquals(6, page2.getPaging().getTotal());
+    assertEquals(2, page2.getPaging().getOffset());
 
     ResultList<Role> page3 = searchRoles(client, uniqueToken, 2, 4);
     assertEquals(2, page3.getData().size());
+    assertEquals(4, page3.getPaging().getOffset());
 
     // Verify no duplicates across pages
     List<UUID> allPagedIds = new java.util.ArrayList<>();
