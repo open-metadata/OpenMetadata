@@ -950,6 +950,8 @@ public class OpenSearchBulkSink implements BulkSink {
           throw new IllegalStateException("Bulk processor is closed");
         }
 
+        totalSubmitted.incrementAndGet();
+
         if (docId != null) {
           if (entityType != null) {
             docIdToEntityType.put(docId, entityType);
@@ -962,13 +964,15 @@ public class OpenSearchBulkSink implements BulkSink {
         long operationSize =
             estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
 
-        if (!buffer.isEmpty()
-            && (buffer.size() >= bulkActions
-                || currentBufferSize + operationSize >= maxPayloadSizeBytes)) {
+        if (!buffer.isEmpty() && currentBufferSize + operationSize >= maxPayloadSizeBytes) {
           flushInternal();
         }
         buffer.add(operation);
         currentBufferSize += operationSize;
+
+        if (buffer.size() >= bulkActions) {
+          flushInternal();
+        }
       } finally {
         lock.unlock();
       }
@@ -1054,8 +1058,6 @@ public class OpenSearchBulkSink implements BulkSink {
 
       long executionId = executionIdCounter.incrementAndGet();
       int numberOfActions = toFlush.size();
-      totalSubmitted.addAndGet(numberOfActions);
-
       LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
 
       try {
