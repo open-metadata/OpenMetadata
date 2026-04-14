@@ -81,7 +81,7 @@ export default defineConfig({
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
       grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
-      teardown: 'SearchRBAC',
+      teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
         '**/Auth/**',
@@ -90,12 +90,6 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
       ],
-    },
-    {
-      name: 'SearchRBAC',
-      testMatch: '**/SearchRBAC.spec.ts',
-      use: { ...devices['Desktop Chrome'] },
-      teardown: 'entity-data-teardown',
     },
     {
       name: 'entity-data-teardown',
@@ -140,6 +134,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
       fullyParallel: true,
+    },
+    {
+      name: 'SearchRBAC',
+      testMatch: '**/SearchRBAC.spec.ts',
+      dependencies: ['DataAssetRulesDisabled'],
+      use: { ...devices['Desktop Chrome'] },
+      teardown: 'entity-data-teardown',
     },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
     // They must run in isolation after the main chromium project to avoid flakiness
