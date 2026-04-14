@@ -355,7 +355,7 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Soft Delete Team', async () => {
-      await softDeleteTeam(page, teamDetails?.name ?? '');
+      await softDeleteTeam(page, teamDetails?.displayName ?? '');
 
       await page.goto('/settings/members/teams', {
         waitUntil: 'domcontentloaded',
@@ -387,7 +387,7 @@ test.describe('Teams Page', () => {
         teamDetails?.updatedName ?? ''
       );
 
-      await hardDeleteTeam(page, teamDetails?.name ?? '');
+      await hardDeleteTeam(page, teamDetails?.updatedName ?? '');
     });
   });
 
