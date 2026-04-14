@@ -40,6 +40,8 @@ import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
+import org.openmetadata.service.util.TableUtil;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -2785,17 +2787,26 @@ public class TableRepository extends EntityRepository<Table> {
       List<EntityReference> piiOwners,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return getTableColumns(
+        tableId, limit, offset, fieldsParam, include, sortBy, sortOrder, null, piiOwners,
+        authorizer, securityContext);
+  }
+
+  public ResultList<Column> getTableColumns(
+      UUID tableId,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      String tag,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = find(tableId, include);
     return getTableColumnsInternal(
-        table,
-        limit,
-        offset,
-        fieldsParam,
-        include,
-        sortBy,
-        sortOrder,
-        piiOwners,
-        authorizer,
+        table, limit, offset, fieldsParam, include, sortBy, sortOrder, tag, piiOwners, authorizer,
         securityContext);
   }
 
@@ -2858,17 +2869,26 @@ public class TableRepository extends EntityRepository<Table> {
       List<EntityReference> piiOwners,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return getTableColumnsByFQN(
+        fqn, limit, offset, fieldsParam, include, sortBy, sortOrder, null, piiOwners, authorizer,
+        securityContext);
+  }
+
+  public ResultList<Column> getTableColumnsByFQN(
+      String fqn,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      String tag,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = findByName(fqn, include);
     return getTableColumnsInternal(
-        table,
-        limit,
-        offset,
-        fieldsParam,
-        include,
-        sortBy,
-        sortOrder,
-        piiOwners,
-        authorizer,
+        table, limit, offset, fieldsParam, include, sortBy, sortOrder, tag, piiOwners, authorizer,
         securityContext);
   }
 
@@ -2880,6 +2900,7 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       String sortBy,
       String sortOrder,
+      String tag,
       List<EntityReference> piiOwners,
       Authorizer authorizer,
       SecurityContext securityContext) {
@@ -2889,8 +2910,26 @@ public class TableRepository extends EntityRepository<Table> {
       return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
     }
 
+    boolean hasTagFilter = tag != null && !tag.trim().isEmpty();
+    boolean needsTags = fieldsParam != null && fieldsParam.contains("tags");
+
+    // When filtering by tag, populate tags on ALL columns BEFORE filtering
+    if (hasTagFilter && needsTags) {
+      populateEntityFieldTags(entityType, allColumns, table.getFullyQualifiedName(), true);
+    }
+
+    List<Column> workingColumns = new ArrayList<>(allColumns);
+
+    // Apply tag filter if provided
+    if (hasTagFilter) {
+      Set<String> tagFQNs = Set.of(tag.split(","));
+      workingColumns =
+          workingColumns.stream()
+              .filter(column -> columnMatchesAnyTag(column, tagFQNs))
+              .collect(Collectors.toCollection(ArrayList::new));
+    }
+
     // Sort columns based on sortBy and sortOrder parameters
-    List<Column> sortedColumns = new ArrayList<>(allColumns);
     Comparator<Column> comparator;
     if ("ordinalPosition".equals(sortBy)) {
       comparator =
@@ -2907,17 +2946,18 @@ public class TableRepository extends EntityRepository<Table> {
     if ("desc".equalsIgnoreCase(sortOrder)) {
       comparator = comparator.reversed();
     }
-    sortedColumns.sort(comparator);
+    workingColumns.sort(comparator);
 
     // Apply pagination
-    int total = sortedColumns.size();
+    int total = workingColumns.size();
     int fromIndex = Math.min(offset, total);
     int toIndex = Math.min(offset + limit, total);
 
-    List<Column> paginatedColumns = sortedColumns.subList(fromIndex, toIndex);
+    List<Column> paginatedColumns = workingColumns.subList(fromIndex, toIndex);
 
     // Apply field processing if needed
-    if (fieldsParam != null && fieldsParam.contains("tags")) {
+    // Populate tags only if NOT already done for tag filtering
+    if (needsTags && !hasTagFilter) {
       populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
     }
 
@@ -2935,7 +2975,10 @@ public class TableRepository extends EntityRepository<Table> {
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(paginatedColumns);
-      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      if (!hasTagFilter) {
+        populateEntityFieldTags(
+            entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      }
       paginatedColumns =
           piiOwners != null
               ? PIIMasker.getTableProfile(piiOwners, paginatedColumns, authorizer, securityContext)
@@ -3149,9 +3192,27 @@ public class TableRepository extends EntityRepository<Table> {
       String sortOrder,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return searchTableColumnsById(
+        id, query, limit, offset, fieldsParam, include, sortBy, sortOrder, null, authorizer,
+        securityContext);
+  }
+
+  public ResultList<Column> searchTableColumnsById(
+      UUID id,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      String tag,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, sortBy, sortOrder, tag, authorizer,
+        securityContext);
   }
 
   public ResultList<Column> searchTableColumnsByFQN(
@@ -3187,9 +3248,27 @@ public class TableRepository extends EntityRepository<Table> {
       String sortOrder,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return searchTableColumnsByFQN(
+        fqn, query, limit, offset, fieldsParam, include, sortBy, sortOrder, null, authorizer,
+        securityContext);
+  }
+
+  public ResultList<Column> searchTableColumnsByFQN(
+      String fqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      String tag,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, sortBy, sortOrder, tag, authorizer,
+        securityContext);
   }
 
   private ResultList<Column> searchTableColumnsInternal(
@@ -3200,11 +3279,21 @@ public class TableRepository extends EntityRepository<Table> {
       String fieldsParam,
       String sortBy,
       String sortOrder,
+      String tag,
       Authorizer authorizer,
       SecurityContext securityContext) {
     List<Column> allColumns = table.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
       return new ResultList<>(List.of(), null, null, 0);
+    }
+
+    boolean hasTagFilter = tag != null && !tag.trim().isEmpty();
+    Fields fields = getFields(fieldsParam);
+    boolean needsTags = fields.contains("tags") || fields.contains("*");
+
+    // When filtering by tag, populate tags on ALL columns BEFORE filtering
+    if (hasTagFilter && needsTags) {
+      populateEntityFieldTags(entityType, allColumns, table.getFullyQualifiedName(), true);
     }
 
     // Flatten nested columns for search
@@ -3228,6 +3317,15 @@ public class TableRepository extends EntityRepository<Table> {
                             && column.getDisplayName().toLowerCase().contains(searchTerm);
                       })
                   .toList());
+    }
+
+    // Apply tag filter if provided
+    if (hasTagFilter) {
+      Set<String> tagFQNs = Set.of(tag.split(","));
+      matchingColumns =
+          matchingColumns.stream()
+              .filter(column -> columnMatchesAnyTag(column, tagFQNs))
+              .collect(Collectors.toCollection(ArrayList::new));
     }
 
     // Sort matching columns based on sortBy and sortOrder parameters
@@ -3256,20 +3354,23 @@ public class TableRepository extends EntityRepository<Table> {
     List<Column> paginatedResults =
         startIndex < total ? matchingColumns.subList(startIndex, endIndex) : List.of();
 
-    Fields fields = getFields(fieldsParam);
     if (fields.contains("customMetrics") || fields.contains("*")) {
       for (Column column : paginatedResults) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
     }
 
-    if (fields.contains("tags") || fields.contains("*")) {
+    // Populate tags only if NOT already done for tag filtering
+    if (needsTags && !hasTagFilter) {
       populateEntityFieldTags(entityType, paginatedResults, table.getFullyQualifiedName(), true);
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(matchingColumns);
-      populateEntityFieldTags(entityType, matchingColumns, table.getFullyQualifiedName(), true);
+      if (!hasTagFilter) {
+        populateEntityFieldTags(
+            entityType, matchingColumns, table.getFullyQualifiedName(), true);
+      }
       matchingColumns =
           PIIMasker.getTableProfile(
               table.getFullyQualifiedName(), matchingColumns, authorizer, securityContext);
@@ -3278,6 +3379,11 @@ public class TableRepository extends EntityRepository<Table> {
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = endIndex < total ? String.valueOf(endIndex) : null;
     return new ResultList<>(paginatedResults, before, after, total);
+  }
+
+  /** Check if a column or any of its children match any of the given tag FQNs. */
+  private boolean columnMatchesAnyTag(Column column, Set<String> tagFQNs) {
+    return TableUtil.columnMatchesAnyTag(column, tagFQNs);
   }
 
   private List<Column> flattenTableColumns(List<Column> columns) {
