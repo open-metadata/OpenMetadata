@@ -536,11 +536,7 @@ test.describe('Ontology Explorer', () => {
       const box = await canvas.boundingBox();
 
       expect(box).not.toBeNull();
-      await clickCanvasAndWaitForPanel(
-        page,
-        box!.width / 2,
-        box!.height / 2
-      );
+      await clickCanvasAndWaitForPanel(page, box!.width / 2, box!.height / 2);
 
       await expect(
         page.getByTestId('entity-summary-panel-container')
