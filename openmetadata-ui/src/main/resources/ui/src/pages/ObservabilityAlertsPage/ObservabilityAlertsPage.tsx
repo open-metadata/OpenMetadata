@@ -52,7 +52,6 @@ import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBa
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { ColumnsType } from 'antd/lib/table';
 
 const ObservabilityAlertsPage = () => {
   const { t } = useTranslation();
@@ -222,7 +221,7 @@ const ObservabilityAlertsPage = () => {
           return resources?.join(', ') || '--';
         },
       },
-      ...(descriptionTableObject() as ColumnsType<EventSubscription>),
+      ...descriptionTableObject<EventSubscription>(),
       {
         title: t('label.action-plural'),
         dataIndex: 'fullyQualifiedName',

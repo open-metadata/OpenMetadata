@@ -22,9 +22,9 @@ import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getSettingsPathFromPipelineType } from './IngestionUtils';
+import observabilityRouterClassBase from './ObservabilityRouterClassBase';
 import {
   getApplicationDetailsPath,
-  getDataQualityPagePath,
   getLogEntityPath,
   getSettingPath,
 } from './RouterUtils';
@@ -89,7 +89,7 @@ class LogsClassBase {
       return [
         {
           name: startCase(serviceType),
-          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+          url: observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
         },
         {
           name: getEntityName(ingestionDetails),
