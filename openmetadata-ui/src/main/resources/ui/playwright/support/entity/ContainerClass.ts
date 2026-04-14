@@ -273,6 +273,16 @@ export class ContainerClass extends EntityClass {
     });
   }
 
+  async exists(apiContext: APIRequestContext): Promise<boolean> {
+    const name =
+      this.serviceResponseData?.fullyQualifiedName ?? '';
+    const res = await apiContext.get(
+      `/api/v1/services/storageServices/name/${encodeURIComponent(name)}`
+    );
+
+    return res.ok();
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/storageServices/name/${encodeURIComponent(

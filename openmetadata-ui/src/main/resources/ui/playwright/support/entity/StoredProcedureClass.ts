@@ -205,6 +205,16 @@ export class StoredProcedureClass extends EntityClass {
     });
   }
 
+  async exists(apiContext: APIRequestContext): Promise<boolean> {
+    const name =
+      this.serviceResponseData?.fullyQualifiedName ?? '';
+    const res = await apiContext.get(
+      `/api/v1/services/databaseServices/name/${encodeURIComponent(name)}`
+    );
+
+    return res.ok();
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(

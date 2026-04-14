@@ -90,6 +90,10 @@ export class EntityClass {
     return this.type;
   }
 
+  async exists(_apiContext: APIRequestContext): Promise<boolean> {
+    return false;
+  }
+
   public get() {
     return {};
   }

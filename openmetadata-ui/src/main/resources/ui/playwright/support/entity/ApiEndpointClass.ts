@@ -296,6 +296,16 @@ export class ApiEndpointClass extends EntityClass {
     });
   }
 
+  async exists(apiContext: APIRequestContext): Promise<boolean> {
+    const name =
+      this.serviceResponseData?.fullyQualifiedName ?? '';
+    const res = await apiContext.get(
+      `/api/v1/services/apiServices/name/${encodeURIComponent(name)}`
+    );
+
+    return res.ok();
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/apiServices/name/${encodeURIComponent(
