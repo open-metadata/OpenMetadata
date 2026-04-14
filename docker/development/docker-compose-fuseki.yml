@@ -1,5 +1,7 @@
 version: "3.9"
 
+# Compose override for RDF-enabled local stacks.
+# Use together with docker-compose.yml or docker-compose-postgres.yml.
 services:
   execute-migrate-all:
     environment:

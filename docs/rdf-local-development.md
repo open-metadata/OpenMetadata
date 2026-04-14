@@ -82,8 +82,10 @@ If you are running the full RDF Docker stack with `run_local_docker_rdf.sh`, the
 If you want to run the OpenMetadata server directly from IntelliJ while keeping Fuseki in Docker, start Fuseki separately:
 
 ```bash
-docker compose -f docker/development/docker-compose-fuseki.yml up -d
+docker compose -f docker/development/docker-compose.yml -f docker/development/docker-compose-fuseki.yml up -d fuseki
 ```
+
+If your local backend uses PostgreSQL, swap `docker-compose.yml` for `docker-compose-postgres.yml`.
 
 Create or modify your IntelliJ run configuration for `OpenMetadataApplication` with these environment variables only when you want to run the OpenMetadata server directly from IntelliJ while keeping Fuseki in Docker:
 

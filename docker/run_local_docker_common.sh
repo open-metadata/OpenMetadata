@@ -126,69 +126,89 @@ wait_for_app_run_completion() {
   local app_name=$1
   local trigger_timestamp_ms=$2
   local timeout_seconds=${3:-${APP_RUN_WAIT_TIMEOUT_SECONDS:-300}}
+  local freshness_tolerance_ms=${APP_RUN_FRESHNESS_TOLERANCE_MS:-5000}
   local deadline=$((SECONDS + timeout_seconds))
 
   while [ $SECONDS -lt $deadline ]; do
-    local status_response
+    local latest_run_response
+    local http_code
+    local body
     local status_line
 
-    status_response=$(curl -s \
+    latest_run_response=$(curl -s -w "\n%{http_code}" \
       --header "Authorization: Bearer $authorizationToken" \
-      "http://localhost:8585/api/v1/apps/name/${app_name}/status?offset=0&limit=1")
-    status_line=$(printf "%s" "$status_response" | python3 - "$trigger_timestamp_ms" <<'PY'
+      "http://localhost:8585/api/v1/apps/name/${app_name}/runs/latest")
+    http_code=$(printf "%s" "$latest_run_response" | tail -n1)
+    body=$(printf "%s" "$latest_run_response" | sed '$d')
+
+    case "$http_code" in
+      200)
+        status_line=$(APP_RUN_BODY="$body" python3 - "$trigger_timestamp_ms" "$freshness_tolerance_ms" <<'PY'
 import json
+import os
 import sys
 
 threshold = int(sys.argv[1])
+tolerance = int(sys.argv[2])
 
 try:
-    payload = json.load(sys.stdin)
+    record = json.loads(os.environ["APP_RUN_BODY"])
 except json.JSONDecodeError:
     print("invalid")
     sys.exit(0)
 
-records = payload.get("data") or []
-if not records:
+if not isinstance(record, dict) or not record:
     print("missing")
     sys.exit(0)
-
-record = records[0]
 timestamp = int(record.get("timestamp") or 0)
 start_time = int(record.get("startTime") or 0)
 status = str(record.get("status") or "").lower()
 execution_time = record.get("executionTime")
 
 marker = start_time if start_time > 0 else timestamp
-terminal_statuses = {"completed", "success", "failed", "stopped"}
+success_statuses = {"completed", "success"}
+failure_statuses = {"activeerror", "failed", "stopped"}
 active_statuses = {"running", "started", "pending", "active", "stopinprogress"}
 has_execution_time = execution_time not in (None, "", 0, "0")
 
-if marker < threshold:
+if marker + tolerance < threshold:
     print(f"stale:{status}:{marker}")
-elif status in terminal_statuses or has_execution_time:
-    print(f"current:{status}:{marker}:terminal")
+elif status in success_statuses:
+    print(f"success:{status}:{marker}")
+elif status in failure_statuses or (has_execution_time and status not in active_statuses):
+    print(f"failure:{status}:{marker}")
 elif status in active_statuses:
-    print(f"current:{status}:{marker}:active")
+    print(f"active:{status}:{marker}")
 else:
-    print(f"current:{status}:{marker}:seen")
+    print(f"seen:{status}:{marker}")
 PY
 )
+        ;;
+      204)
+        status_line="missing"
+        ;;
+      *)
+        echo "✗ Failed to read latest run for ${app_name} (HTTP ${http_code})"
+        echo "  Response: ${body}"
+        return 1
+        ;;
+    esac
 
     case "$status_line" in
-      current:completed:*:terminal|current:success:*:terminal)
+      success:completed:*|success:success:*)
         echo "✓ ${app_name} completed successfully"
         return 0
         ;;
-      current:failed:*:terminal|current:stopped:*:terminal)
-        echo "✗ ${app_name} finished with status ${status_line#current:}"
-        echo "  Response: ${status_response}"
+      failure:*)
+        echo "✗ ${app_name} finished with status ${status_line#failure:}"
+        echo "  Response: ${body}"
         return 1
         ;;
-      current:*:*:active)
-        echo "Waiting for ${app_name} to finish (${status_line#current:})..."
+      active:*)
+        echo "Waiting for ${app_name} to finish (${status_line#active:})..."
         ;;
-      current:*:*:seen)
-        echo "Waiting for ${app_name}; latest status was ${status_line#current:}"
+      seen:*)
+        echo "Waiting for ${app_name}; latest status was ${status_line#seen:}"
         ;;
       stale:*|missing|invalid)
         echo "Waiting for a fresh run record for ${app_name}..."
