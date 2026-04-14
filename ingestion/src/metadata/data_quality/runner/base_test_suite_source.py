@@ -31,12 +31,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.generated.schema.type.samplingConfig import (
     ProfileSampleConfig,
     SampleConfigType,
 )
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.bigquery_utils import copy_service_config

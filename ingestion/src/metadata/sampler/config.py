@@ -26,19 +26,18 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
     DataStorageConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.samplingConfig import (
+    ProfileSampleConfig,
+    SampleConfigType,
+)
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.config import (
     get_database_profiler_config,
     get_schema_profiler_config,
 )
-from metadata.sampler.models import (
-    DatabaseAndSchemaConfig,
-    SampleConfig,
-    TableConfig,
-)
-from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
-from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
-from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.sampler.models import DatabaseAndSchemaConfig, SampleConfig, TableConfig
+
 
 def get_sample_storage_config(
     config: Union[

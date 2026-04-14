@@ -65,8 +65,7 @@ class DatabricksSamplerInterface(SQASampler):
                         return int(num_records)
         except Exception as exc:
             logger.debug(
-                "DESCRIBE DETAIL row count failed, "
-                f"falling back to COUNT(*): {exc}"
+                "DESCRIBE DETAIL row count failed, " f"falling back to COUNT(*): {exc}"
             )
 
         return super()._get_asset_row_count()

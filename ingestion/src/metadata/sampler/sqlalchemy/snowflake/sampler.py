@@ -26,11 +26,12 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
-from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+
 
 class SnowflakeSampler(SQASampler):
     """

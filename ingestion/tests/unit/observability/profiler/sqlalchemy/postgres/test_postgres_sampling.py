@@ -18,6 +18,7 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
     PostgresConnection,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -26,7 +27,6 @@ from metadata.sampler.models import (
     ProfileSampleConfigType,
     SampleConfig,
 )
-from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.postgres.sampler import PostgresSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 

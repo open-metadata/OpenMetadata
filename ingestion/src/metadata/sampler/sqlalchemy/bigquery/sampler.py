@@ -42,6 +42,7 @@ logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
 
+
 class BigQuerySampler(SQASampler):
     """
     Generates a sample of the data to not

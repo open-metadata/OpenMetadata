@@ -99,6 +99,7 @@ class SamplerInterface(ABC):
 
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
+        self._row_count = None
 
     # pylint: disable=too-many-arguments, too-many-locals
     @classmethod
@@ -192,33 +193,27 @@ class SamplerInterface(ABC):
             return StaticSamplingConfig(
                 profileSample=100,
                 profileSampleType="percentage",
-            ) # type: ignore
+            )  # type: ignore
         if row_count <= 1_000_000:
             return StaticSamplingConfig(
-                profileSample=50,
-                profileSampleType="percentage"
-            ) # type: ignore
+                profileSample=50, profileSampleType="percentage"
+            )  # type: ignore
         if row_count <= 10_000_000:
             return StaticSamplingConfig(
-                profileSample=10,
-                profileSampleType="percentage"
-            ) # type: ignore
+                profileSample=10, profileSampleType="percentage"
+            )  # type: ignore
         if row_count <= 100_000_000:
             return StaticSamplingConfig(
-                profileSample=5,
-                profileSampleType="percentage"
-            ) # type: ignore
+                profileSample=5, profileSampleType="percentage"
+            )  # type: ignore
         if row_count <= 1_000_000_000:
             return StaticSamplingConfig(
-                profileSample=1,
-                profileSampleType="percentage"
-            ) # type: ignore
+                profileSample=1, profileSampleType="percentage"
+            )  # type: ignore
         else:
             return StaticSamplingConfig(
-                profileSample=0.1,
-                profileSampleType="percentage"
-            ) # type: ignore
-
+                profileSample=0.1, profileSampleType="percentage"
+            )  # type: ignore
 
     def _get_excluded_columns(self) -> Set[str]:
         """Get excluded  columns for table being profiled"""

@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.azureSQLConn
     AzureSQLConnection,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -35,7 +36,6 @@ from metadata.sampler.models import (
     ProfileSampleConfigType,
     SampleConfig,
 )
-from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 

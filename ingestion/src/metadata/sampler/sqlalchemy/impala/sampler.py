@@ -43,8 +43,7 @@ class ImpalaSampler(SQASampler):
                     return total_rows
         except Exception as exc:
             logger.debug(
-                "SHOW TABLE STATS row count failed, "
-                f"falling back to COUNT(*): {exc}"
+                "SHOW TABLE STATS row count failed, " f"falling back to COUNT(*): {exc}"
             )
 
         return super()._get_asset_row_count()

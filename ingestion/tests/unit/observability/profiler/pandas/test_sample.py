@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
@@ -39,7 +40,6 @@ from metadata.sampler.models import (
     ProfileSampleConfigType,
     SampleConfig,
 )
-from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 

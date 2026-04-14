@@ -18,7 +18,11 @@ from sqlalchemy import Column, Table, text
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import TableData, TableType
-from metadata.sampler.sqlalchemy.sampler import ProfileSampleType, SQASampler, StaticSamplingConfig
+from metadata.sampler.sqlalchemy.sampler import (
+    ProfileSampleType,
+    SQASampler,
+    StaticSamplingConfig,
+)
 
 
 class AzureSQLSampler(SQASampler):

@@ -15,22 +15,22 @@ for the profiler
 import hashlib
 from typing import List, Optional, Union, cast
 
-from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import Metrics
 from sqlalchemy import Column, TableSample, inspect, select, text
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
 from sqlalchemy.sql.sqltypes import Enum
 
-from metadata.generated.schema.type.dynamicSamplingConfig import DynamicSamplingConfig
-from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     TableData,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.dynamicSamplingConfig import DynamicSamplingConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
+from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import Metrics
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.functions.table_metric_computer import (
@@ -129,7 +129,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         return column
 
-    def _base_sample_query(self, selectable: Union[Table, TableSample], column: Optional[Column], label=None):
+    def _base_sample_query(
+        self,
+        selectable: Union[Table, TableSample],
+        column: Optional[Column],
+        label=None,
+    ):
         """Base query for sampling
 
         Args:
@@ -151,12 +156,18 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def _get_sample_config(self) -> Optional[StaticSamplingConfig]:
         """Get the sampling config from the sample config object"""
-        static: Optional[StaticSamplingConfig] = self.sample_config.get_config(StaticSamplingConfig)
-        dynamic: Optional[DynamicSamplingConfig] = self.sample_config.get_config(DynamicSamplingConfig)
+        static: Optional[StaticSamplingConfig] = self.sample_config.get_config(
+            StaticSamplingConfig
+        )
+        dynamic: Optional[DynamicSamplingConfig] = self.sample_config.get_config(
+            DynamicSamplingConfig
+        )
         if dynamic:
             row_count = self._get_asset_row_count()
             if not dynamic.smartSampling and dynamic.thresholds is not None:
-                for threshold in sorted(dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True):
+                for threshold in sorted(
+                    dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True
+                ):
                     if row_count >= threshold.rowCountThreshold:
                         static = StaticSamplingConfig(
                             profileSample=threshold.profileSample,
@@ -175,6 +186,9 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         dialect-specific computer is registered, otherwise falls back to naive COUNT(*).
         When partition details are set, always uses COUNT(*) to respect the filter.
         """
+        if self._row_count is not None:
+            return self._row_count
+
         if self.partition_details:
             with self.session_factory() as client:
                 query = client.query(self.raw_dataset)
@@ -198,7 +212,9 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             if result and hasattr(result, ROW_COUNT):
                 row_count = getattr(result, ROW_COUNT)
                 if row_count is not None:
-                    return int(row_count)
+                    self._row_count = int(row_count)
+                    return self._row_count
+            # this will cause the sampler to fallback to 100% sampling
             return 0
 
     def get_sampler_table_name(self) -> str:

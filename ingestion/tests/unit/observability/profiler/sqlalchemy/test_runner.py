@@ -22,6 +22,7 @@ from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase
 
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.models import (
@@ -29,7 +30,6 @@ from metadata.sampler.models import (
     ProfileSampleConfigType,
     SampleConfig,
 )
-from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.timeout import cls_timeout
 

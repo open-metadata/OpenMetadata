@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import pytest
 
 from metadata.generated.schema.type.dynamicSamplingConfig import (
     DynamicSamplingConfig,
@@ -38,9 +37,7 @@ class TestSampleConfigGetConfig:
         dynamic = DynamicSamplingConfig(
             smartSampling=True,
             thresholds=[
-                Threshold(
-                    rowCountThreshold=1000, profileSample=10.0
-                ),
+                Threshold(rowCountThreshold=1000, profileSample=10.0),
             ],
         )
         sample_config = SampleConfig(
@@ -80,9 +77,7 @@ class TestSampleConfigGetConfig:
         dynamic = DynamicSamplingConfig(
             smartSampling=True,
             thresholds=[
-                Threshold(
-                    rowCountThreshold=500, profileSample=25.0
-                ),
+                Threshold(rowCountThreshold=500, profileSample=25.0),
             ],
         )
         sample_config = SampleConfig(
