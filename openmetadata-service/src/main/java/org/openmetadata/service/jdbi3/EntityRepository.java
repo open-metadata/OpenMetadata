@@ -1975,7 +1975,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     setFieldsInBulk(fields, entities);
-    entities.forEach(entity -> withHref(uriInfo, entity));
 
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = hasMore ? String.valueOf(offset + limit) : null;
