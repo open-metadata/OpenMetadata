@@ -20,11 +20,8 @@ from typing import Callable, Iterator, List, Optional
 
 import pandas as pd
 
-from metadata.generated.schema.entity.data.table import (
-    DataType,
-    ProfileSampleType,
-    TableData,
-)
+from metadata.generated.schema.entity.data.table import DataType, TableData
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.source.database.burstiq.client import BurstIQClient
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
