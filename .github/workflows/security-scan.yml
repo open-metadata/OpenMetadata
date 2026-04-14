@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  retire-js-scan:
+  vulnerability-scan:
     runs-on: ubuntu-latest
     environment: security-scan
     permissions:
