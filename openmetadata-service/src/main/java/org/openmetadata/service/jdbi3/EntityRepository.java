@@ -1976,11 +1976,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     setFieldsInBulk(fields, entities);
 
+    int total = dao.listCount(filter);
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = hasMore ? String.valueOf(offset + limit) : null;
-    int knownTotal = offset + entities.size() + (hasMore ? 1 : 0);
 
-    return new ResultList<>(entities, before, after, knownTotal);
+    return new ResultList<>(entities, before, after, total);
   }
 
   public ResultList<T> listAfterKeyset(
