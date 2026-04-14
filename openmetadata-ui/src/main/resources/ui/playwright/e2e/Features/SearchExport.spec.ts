@@ -169,7 +169,11 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
   test('Visible results export uses tab-specific index without pagination offset', async ({
     page,
   }) => {
-    await mockSearchQuery(page, { totalCount: 50, tabKey: 'table', tabCount: 30 });
+    await mockSearchQuery(page, {
+      totalCount: 50,
+      tabKey: 'table',
+      tabCount: 30,
+    });
     await page.goto('/explore/tables?search=test');
     await expect(page.getByTestId('explore-page')).toBeVisible();
 
