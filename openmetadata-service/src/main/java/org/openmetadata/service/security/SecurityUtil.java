@@ -137,27 +137,48 @@ public final class SecurityUtil {
       List<String> jwtPrincipalClaimsOrder,
       Map<String, ?> claims,
       String defaulPrincipalClaim) {
-    String email;
+    return findEmailFromClaims(
+        jwtPrincipalClaimsMapping, null, jwtPrincipalClaimsOrder, claims, defaulPrincipalClaim);
+  }
 
+  public static String findEmailFromClaims(
+      Map<String, String> jwtPrincipalClaimsMapping,
+      String emailClaimName,
+      List<String> jwtPrincipalClaimsOrder,
+      Map<String, ?> claims,
+      String defaulPrincipalClaim) {
+    // Priority 1: jwtPrincipalClaimsMapping (existing, highest priority)
+    // Explicit config — hard fail if claim missing
     if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBotW(claims)) {
-      // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
       if (!nullOrEmpty(emailClaimValue) && emailClaimValue.contains("@")) {
-        email = emailClaimValue;
-      } else {
-        throw new AuthenticationException(
-            String.format(
-                "Invalid JWT token, 'email' claim is not present or invalid : %s",
-                emailClaimValue));
+        return emailClaimValue.toLowerCase();
       }
-    } else {
-      String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
-      email =
-          jwtClaim.contains("@")
-              ? jwtClaim
-              : String.format("%s@%s", jwtClaim, defaulPrincipalClaim);
+      throw new AuthenticationException(
+          String.format(
+              "Invalid JWT token, 'email' claim is not present or invalid : %s", emailClaimValue));
     }
+
+    // Priority 2: emailClaim (new, set via Test Login)
+    // Explicit config — hard fail if claim missing
+    if (!nullOrEmpty(emailClaimName) && !isBotW(claims)) {
+      String emailClaimValue = getClaimOrObject(claims.get(emailClaimName));
+      if (!nullOrEmpty(emailClaimValue) && emailClaimValue.contains("@")) {
+        return emailClaimValue.toLowerCase();
+      }
+      throw new AuthenticationException(
+          String.format(
+              "Email claim '%s' not found or invalid in JWT token. "
+                  + "Run Test Login in SSO settings to reconfigure the email claim.",
+              emailClaimName));
+    }
+
+    // Priority 3: jwtPrincipalClaims (legacy fallback)
+    // No explicit config — soft matching, existing behavior
+    String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
+    String email =
+        jwtClaim.contains("@") ? jwtClaim : String.format("%s@%s", jwtClaim, defaulPrincipalClaim);
     return email.toLowerCase();
   }
 

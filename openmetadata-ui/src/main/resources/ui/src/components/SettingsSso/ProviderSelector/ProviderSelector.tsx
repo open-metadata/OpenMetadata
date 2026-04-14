@@ -16,7 +16,11 @@ import { Button, Typography } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
-import { PROVIDER_OPTIONS } from '../../../utils/SSOUtils';
+import {
+  getDefaultProviderForProtocol,
+  PROTOCOL_OPTIONS,
+  SsoProtocol,
+} from '../../../utils/SSOUtils';
 import './provider-selector.less';
 import { ProviderSelectorProps } from './ProviderSelector.interface';
 
@@ -25,17 +29,19 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   onProviderSelect,
 }) => {
   const { t } = useTranslation();
-  const [selectedProvider, setSelectedProvider] = useState<
-    AuthProvider | undefined
-  >(initialSelectedProvider);
+  const [selectedProtocol, setSelectedProtocol] = useState<
+    SsoProtocol | undefined
+  >();
 
-  const handleCardClick = (provider: AuthProvider) => {
-    setSelectedProvider(provider);
+  const handleCardClick = (protocol: SsoProtocol) => {
+    setSelectedProtocol(protocol);
   };
 
   const handleConfigureClick = () => {
-    if (selectedProvider) {
-      onProviderSelect(selectedProvider);
+    if (selectedProtocol) {
+      const provider = getDefaultProviderForProtocol(selectedProtocol);
+
+      onProviderSelect(provider);
     }
   };
 
@@ -43,10 +49,10 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
     <div className="provider-selector-container">
       <div className="provider-selector-header">
         <Typography.Title className="m-b-lg" level={5}>
-          {t('label.choose-provider')}
+          {t('label.choose-protocol')}
         </Typography.Title>
         <Button
-          disabled={!selectedProvider}
+          disabled={!selectedProtocol}
           type="primary"
           onClick={handleConfigureClick}>
           {t('label.configure')}
@@ -55,28 +61,25 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
       </div>
 
       <div className="provider-selection-container d-flex flex-wrap">
-        {PROVIDER_OPTIONS.map((provider) => (
+        {PROTOCOL_OPTIONS.map((protocol) => (
           <div
             className={`provider-item ${
-              selectedProvider === provider.key ? 'selected' : ''
+              selectedProtocol === protocol.key ? 'selected' : ''
             }`}
-            key={provider.key}
-            onClick={() => handleCardClick(provider.key)}>
+            key={protocol.key}
+            onClick={() => handleCardClick(protocol.key)}>
             <div className="provider-icon">
               <div className="provider-icon-inner">
-                {typeof provider.icon === 'string' ? (
-                  <img
-                    alt={provider.label}
-                    height="24"
-                    src={provider.icon}
-                    width="24"
-                  />
-                ) : (
-                  provider.icon
-                )}
+                <img
+                  alt={protocol.label}
+                  height="24"
+                  src={protocol.icon}
+                  width="24"
+                />
               </div>
             </div>
-            <span className="provider-name">{provider.label}</span>
+            <span className="provider-name">{protocol.label}</span>
+            <span className="provider-description">{protocol.description}</span>
           </div>
         ))}
       </div>

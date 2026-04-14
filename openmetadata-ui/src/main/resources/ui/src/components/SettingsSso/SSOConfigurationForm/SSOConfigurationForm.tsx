@@ -86,10 +86,14 @@ import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTempl
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 import Loader from '../../common/Loader/Loader';
+import AuthModeWidget from './AuthModeWidget';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
+import { TestLoginResult } from '../TestLogin/TestLogin.interface';
+import ClaimSelector from '../TestLogin/ClaimSelector.component';
+import TestLoginButton from '../TestLogin/TestLoginButton.component';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
 import './sso-configuration-form.less';
 import {
@@ -154,6 +158,7 @@ const MetadataUploadStatusCard = ({
 const widgets = {
   SelectWidget: SelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
+  AuthModeWidget: AuthModeWidget,
 };
 
 const SSOConfigurationFormRJSF = ({
@@ -188,6 +193,59 @@ const SSOConfigurationFormRJSF = ({
   const [metadataUploadFileName, setMetadataUploadFileName] =
     useState<string>('');
   const fieldErrorsRef = useRef<ErrorSchema>({});
+  const [testLoginResult, setTestLoginResult] = useState<
+    TestLoginResult | undefined
+  >();
+
+  const handleTestLoginSuccess = useCallback(
+    (result: TestLoginResult) => {
+      setTestLoginResult(result);
+    },
+    []
+  );
+
+  const handleClaimConfirm = useCallback(
+    (emailClaim: string, principalDomain: string, adminPrincipal: string) => {
+      setInternalData((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          authenticationConfiguration: {
+            ...prev.authenticationConfiguration,
+            emailClaim,
+          },
+          authorizerConfiguration: {
+            ...prev.authorizerConfiguration,
+            principalDomain,
+            adminPrincipals: [
+              ...new Set([
+                ...(prev.authorizerConfiguration?.adminPrincipals ?? []),
+                adminPrincipal,
+              ]),
+            ],
+          },
+        };
+      });
+      setTestLoginResult(undefined);
+      showSuccessToast(t('message.test-login-success'));
+    },
+    [t]
+  );
+
+  const handleClaimCancel = useCallback(() => {
+    setTestLoginResult(undefined);
+  }, []);
+
+  const isOidcProvider =
+    currentProvider === AuthProvider.Google ||
+    currentProvider === AuthProvider.Azure ||
+    currentProvider === AuthProvider.Okta ||
+    currentProvider === AuthProvider.Auth0 ||
+    currentProvider === AuthProvider.AwsCognito ||
+    currentProvider === AuthProvider.CustomOidc;
 
   // Helper function to setup configuration state - extracted to avoid redundancy
   const setupConfigurationState = useCallback(
@@ -1111,6 +1169,23 @@ const SSOConfigurationFormRJSF = ({
             children: (
               <>
                 {formContent}
+                {isEditMode && isOidcProvider && !testLoginResult && (
+                  <div className="m-t-md m-b-md p-x-md">
+                    <TestLoginButton
+                      disabled={!showForm}
+                      onSuccess={handleTestLoginSuccess}
+                    />
+                  </div>
+                )}
+                {testLoginResult && (
+                  <div className="m-t-md m-b-md p-x-md">
+                    <ClaimSelector
+                      result={testLoginResult}
+                      onCancel={handleClaimCancel}
+                      onConfirm={handleClaimConfirm}
+                    />
+                  </div>
+                )}
                 {isEditMode && (
                   <div className="form-actions-bottom">
                     <Button
@@ -1211,6 +1286,23 @@ const SSOConfigurationFormRJSF = ({
             <>
               <div className="sso-form-sticky-header" />
               {wrappedFormContent}
+              {isEditMode && isOidcProvider && !testLoginResult && (
+                <div className="m-t-md m-b-md">
+                  <TestLoginButton
+                    disabled={!showForm}
+                    onSuccess={handleTestLoginSuccess}
+                  />
+                </div>
+              )}
+              {testLoginResult && (
+                <div className="m-t-md m-b-md">
+                  <ClaimSelector
+                    result={testLoginResult}
+                    onCancel={handleClaimCancel}
+                    onConfirm={handleClaimConfirm}
+                  />
+                </div>
+              )}
               {isEditMode && (
                 <div className="form-actions-bottom">
                   <Button

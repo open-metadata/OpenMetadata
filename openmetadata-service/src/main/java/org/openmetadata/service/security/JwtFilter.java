@@ -79,6 +79,7 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
+  @Getter private String emailClaim;
   @Getter private String jwtTeamClaimMapping;
   private JwkProvider jwkProvider;
   private String principalDomain;
@@ -104,7 +105,8 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/password/reset",
           "v1/users/login",
           "v1/users/refresh",
-          "v1/collate/apps/support/login");
+          "v1/collate/apps/support/login",
+          "v1/system/config/auth/test-login/callback");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
@@ -121,6 +123,7 @@ public class JwtFilter implements ContainerRequestFilter {
             .map(s -> s.split(":"))
             .collect(Collectors.toMap(s -> s[0], s -> s[1]));
     validatePrincipalClaimsMapping(jwtPrincipalClaimsMapping);
+    this.emailClaim = authenticationConfiguration.getEmailClaim();
     this.jwtTeamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
@@ -170,7 +173,7 @@ public class JwtFilter implements ContainerRequestFilter {
           findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
       String email =
           findEmailFromClaims(
-              jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+              jwtPrincipalClaimsMapping, emailClaim, jwtPrincipalClaims, claims, principalDomain);
       boolean isBotUser = isBot(claims);
 
       String impersonateUser = requestContext.getHeaderString("X-Impersonate-User");
@@ -340,7 +343,8 @@ public class JwtFilter implements ContainerRequestFilter {
     Map<String, Claim> claims = validateJwtAndGetClaims(token);
     String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
     String email =
-        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+        findEmailFromClaims(
+            jwtPrincipalClaimsMapping, emailClaim, jwtPrincipalClaims, claims, principalDomain);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     boolean isBotUser = isBot(claims);
     return new CatalogSecurityContext(

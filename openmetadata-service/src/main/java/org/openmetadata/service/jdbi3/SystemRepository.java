@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
@@ -100,6 +101,7 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
+import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
 @Repository
@@ -1353,6 +1355,99 @@ public class SystemRepository {
     } catch (Exception e) {
       LOG.error("Failed to auto-populate publicKeyUrls: {}", e.getMessage(), e);
     }
+  }
+
+  /**
+   * Syncs fields between top-level authenticationConfiguration and nested oidcConfiguration.
+   * Also auto-derives authority from discovery document's issuer field.
+   * Called during save to ensure both public and confidential flows have correct values.
+   */
+  public void syncFieldsFromDiscoveryUri(AuthenticationConfiguration authConfig) {
+    if (authConfig == null) {
+      return;
+    }
+
+    syncDiscoveryUri(authConfig);
+    syncClientId(authConfig);
+    syncCallbackUrl(authConfig);
+    deriveAuthorityFromDiscoveryUri(authConfig);
+    deriveClientTypeFromSecret(authConfig);
+  }
+
+  private void syncDiscoveryUri(AuthenticationConfiguration authConfig) {
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    String topLevelUri = authConfig.getDiscoveryUri();
+    String nestedUri = oidcConfig != null ? oidcConfig.getDiscoveryUri() : null;
+
+    if (!nullOrEmpty(topLevelUri) && oidcConfig != null && nullOrEmpty(nestedUri)) {
+      oidcConfig.setDiscoveryUri(topLevelUri);
+      LOG.debug("Synced discoveryUri from top-level to oidcConfiguration");
+    } else if (nullOrEmpty(topLevelUri) && !nullOrEmpty(nestedUri)) {
+      authConfig.setDiscoveryUri(nestedUri);
+      LOG.debug("Synced discoveryUri from oidcConfiguration to top-level");
+    }
+  }
+
+  private void syncClientId(AuthenticationConfiguration authConfig) {
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    String topLevelId = authConfig.getClientId();
+    String nestedId = oidcConfig != null ? oidcConfig.getId() : null;
+
+    if (!nullOrEmpty(topLevelId) && oidcConfig != null && nullOrEmpty(nestedId)) {
+      oidcConfig.setId(topLevelId);
+      LOG.debug("Synced clientId from top-level to oidcConfiguration");
+    } else if (nullOrEmpty(topLevelId) && !nullOrEmpty(nestedId)) {
+      authConfig.setClientId(nestedId);
+      LOG.debug("Synced clientId from oidcConfiguration to top-level");
+    }
+  }
+
+  private void syncCallbackUrl(AuthenticationConfiguration authConfig) {
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    if (oidcConfig == null) {
+      return;
+    }
+    String topLevelCallback = authConfig.getCallbackUrl();
+    String nestedCallback = oidcConfig.getCallbackUrl();
+
+    if (!nullOrEmpty(topLevelCallback) && nullOrEmpty(nestedCallback)) {
+      oidcConfig.setCallbackUrl(topLevelCallback);
+      LOG.debug("Synced callbackUrl from top-level to oidcConfiguration");
+    } else if (nullOrEmpty(topLevelCallback) && !nullOrEmpty(nestedCallback)) {
+      authConfig.setCallbackUrl(nestedCallback);
+      LOG.debug("Synced callbackUrl from oidcConfiguration to top-level");
+    }
+  }
+
+  private void deriveAuthorityFromDiscoveryUri(AuthenticationConfiguration authConfig) {
+    String discoveryUri = authConfig.getDiscoveryUri();
+    if (nullOrEmpty(discoveryUri) || !nullOrEmpty(authConfig.getAuthority())) {
+      return;
+    }
+
+    try {
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
+      if (response.getStatusCode() == 200) {
+        JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+        if (discoveryDoc.has("issuer")) {
+          String issuer = discoveryDoc.get("issuer").asText();
+          authConfig.setAuthority(issuer);
+          LOG.info("Auto-derived authority '{}' from discovery document", issuer);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to derive authority from discoveryUri: {}", e.getMessage());
+    }
+  }
+
+  private void deriveClientTypeFromSecret(AuthenticationConfiguration authConfig) {
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    if (authConfig.getClientType() != null || oidcConfig == null) {
+      return;
+    }
+    boolean hasSecret = !nullOrEmpty(oidcConfig.getSecret());
+    authConfig.setClientType(hasSecret ? ClientType.CONFIDENTIAL : ClientType.PUBLIC);
+    LOG.debug("Auto-derived clientType: {}", authConfig.getClientType());
   }
 
   private FieldError validateLdapConfiguration(LdapConfiguration ldapConfig) {
