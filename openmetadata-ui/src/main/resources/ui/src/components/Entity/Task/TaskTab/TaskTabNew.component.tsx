@@ -479,12 +479,17 @@ export const TaskTabNew = ({
         newValue: data.newValue,
         payload: data.payload,
       });
+      const taskRemainsOpen = isTaskPendingFurtherApproval(updatedTask);
       showSuccessToast(
-        isTaskPendingFurtherApproval(updatedTask)
-          ? 'Vote recorded.'
-          : t('server.task-resolved-successfully')
+        taskRemainsOpen ? 'Vote recorded.' : t('server.task-resolved-successfully')
       );
-      rest.onAfterClose?.();
+
+      if (taskRemainsOpen) {
+        await fetchUpdatedThread(task.id, true);
+      } else {
+        rest.onAfterClose?.();
+      }
+
       rest.onUpdateEntityDetails?.();
     } catch (err) {
       showErrorToast(
@@ -990,7 +995,9 @@ export const TaskTabNew = ({
               onClick: handleGlossaryTaskMenuClick,
             }}
             overlayClassName="task-action-dropdown"
-            onClick={onTaskDropdownClick}>
+            onClick={() =>
+              handleGlossaryTaskMenuClick({ key: taskAction.key } as MenuInfo)
+            }>
             {taskAction.label}
           </Dropdown.Button>
         </Tooltip>

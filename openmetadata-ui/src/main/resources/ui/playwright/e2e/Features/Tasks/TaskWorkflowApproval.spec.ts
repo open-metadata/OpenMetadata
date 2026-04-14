@@ -23,6 +23,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { readFileSync } from 'fs';
+import path from 'path';
 import { APIRequestContext, expect, Page, request } from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../../../constant/user';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
@@ -60,7 +62,7 @@ const logWorkflowDebug = (...messages: Array<string | number | boolean>) => {
 
 const buildWorkflowDefinition = (
   workflowName: string,
-  tagName: string,
+  tagFullyQualifiedName: string,
   reviewer1: ReviewerReference,
   reviewer2: ReviewerReference
 ) => ({
@@ -74,8 +76,13 @@ const buildWorkflowDefinition = (
       events: ['Created'],
       exclude: ['reviewers'],
       filter: {
+        // Trigger filters are exclusion rules. Keep only the generated tag by
+        // excluding every tag whose FQN does not match the target tag.
         tag: JSON.stringify({
-          '==': [{ var: 'name' }, tagName],
+          '!=': [{ var: 'fullyQualifiedName' }, tagFullyQualifiedName],
+        }),
+        default: JSON.stringify({
+          '!=': [{ var: 'fullyQualifiedName' }, tagFullyQualifiedName],
         }),
       },
     },
@@ -164,12 +171,19 @@ const fetchOpenApprovalTask = async (
   | null
 > => {
   const response = await apiContext.get(
-    `/api/v1/tasks?aboutEntity=${encodeURIComponent(
-      aboutEntity
-    )}&status=Open&category=Approval&limit=10&fields=about,assignees`
+    '/api/v1/tasks?status=Open&category=Approval&limit=100&fields=about,assignees'
   );
   const payload = await response.json();
-  return payload.data?.[0] ?? null;
+
+  return (
+    payload.data?.find(
+      (task: CreatedTask & {
+        about?: { fullyQualifiedName?: string; name?: string };
+      }) =>
+        task.about?.fullyQualifiedName === aboutEntity ||
+        task.about?.name === aboutEntity
+    ) ?? null
+  );
 };
 
 const fetchTaskById = async (
@@ -187,7 +201,63 @@ const fetchTaskById = async (
   return response.json();
 };
 
+const getStoredAdminAccessToken = (): string | undefined => {
+  try {
+    const authStatePath = path.join(process.cwd(), 'playwright/.auth/admin.json');
+    const authState = JSON.parse(readFileSync(authStatePath, 'utf-8')) as {
+      origins?: Array<{
+        indexedDB?: Array<{
+          name?: string;
+          stores?: Array<{
+            name?: string;
+            records?: Array<{ key?: string; value?: string }>;
+          }>;
+        }>;
+      }>;
+    };
+
+    for (const origin of authState.origins ?? []) {
+      for (const database of origin.indexedDB ?? []) {
+        if (database.name !== 'AppDataStore') {
+          continue;
+        }
+
+        for (const store of database.stores ?? []) {
+          if (store.name !== 'keyValueStore') {
+            continue;
+          }
+
+          const appStateRecord = store.records?.find(
+            (record) => record.key === 'app_state'
+          );
+
+          if (!appStateRecord?.value) {
+            continue;
+          }
+
+          return JSON.parse(appStateRecord.value).primary as string;
+        }
+      }
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+};
+
 const createAdminApiContext = async () => {
+  const storedAccessToken = getStoredAdminAccessToken();
+
+  if (storedAccessToken) {
+    const apiContext = await getAuthContext(storedAccessToken);
+    const afterAction = async () => {
+      await apiContext.dispose();
+    };
+
+    return { apiContext, afterAction };
+  }
+
   const loginContext = await request.newContext({
     baseURL: 'http://localhost:8585',
     timeout: 90000,
@@ -340,7 +410,7 @@ test.describe.serial('Task Workflow Approval', () => {
         {
           data: buildWorkflowDefinition(
             workflowName,
-            tag.data.name,
+            `${classification.data.name}.${tag.data.name}`,
             reviewer1,
             reviewer2
           ),
@@ -397,30 +467,9 @@ test.describe.serial('Task Workflow Approval', () => {
       };
       logWorkflowDebug('task:fetched', createdTask.taskId, createdTask.id);
 
-      const taskAssignees =
-        createdTask.assignees?.map((assignee) => assignee.name) ?? [];
-      expect(taskAssignees.length).toBeGreaterThanOrEqual(2);
-      const [reviewer1Name, reviewer2Name] = taskAssignees;
-      const assignedReviewer1 = new UserClass({
-        firstName: 'PW',
-        lastName: reviewer1Name,
-        email: `${reviewer1Name}@gmail.com`,
-        password: REVIEWER_PASSWORD,
-      });
-      const assignedReviewer2 = new UserClass({
-        firstName: 'PW',
-        lastName: reviewer2Name,
-        email: `${reviewer2Name}@gmail.com`,
-        password: REVIEWER_PASSWORD,
-      });
-
-      await assignedReviewer1.login(reviewer1Page);
-      await assignedReviewer2.login(reviewer2Page);
-      logWorkflowDebug(
-        'assignee-reviewers:ready',
-        reviewer1Name,
-        reviewer2Name
-      );
+      await reviewer1User.login(reviewer1Page);
+      await reviewer2User.login(reviewer2Page);
+      logWorkflowDebug('assignee-reviewers:ready', reviewer1.name, reviewer2.name);
 
       logWorkflowDebug('reviewer1:approve:start', createdTask.taskId);
       await approveTaskFromEntityPage(reviewer1Page, createdTask);

@@ -52,7 +52,6 @@ import {
   waitForTaskListResponse,
   waitForTaskResolveResponse,
 } from './task';
-import { openTaskEditModal, saveTaskEditModal } from './taskWorkflow';
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
@@ -328,10 +327,7 @@ export const verifyGlossaryDetails = async (
   page: Page,
   glossaryDetails: GlossaryData
 ) => {
-  await page
-    .getByRole('menuitem', { name: glossaryDetails.name })
-    .locator('span')
-    .click();
+  await selectActiveGlossary(page, glossaryDetails.name, false);
 
   await checkName(page, glossaryDetails.name);
 
@@ -371,10 +367,7 @@ export const verifyGlossaryDetails = async (
 };
 
 export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
-  await page
-    .getByRole('menuitem', { name: glossary.displayName })
-    .locator('span')
-    .click();
+  await selectActiveGlossary(page, glossary.displayName, false);
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
@@ -620,43 +613,19 @@ export const verifyGlossaryWorkflowReviewerCase = async (
     .toEqual('Auto-Approved by Reviewer');
 };
 
-export const validateGlossaryTermTask = async (
-  page: Page,
-  term: GlossaryTermData
-) => {
-  await page.click('[data-testid="activity_feed"]');
-
-  const taskFeeds = waitForTaskListResponse(page);
-  await page
-    .getByTestId('global-setting-left-panel')
-    .getByText('Tasks')
-    .click();
-
-  await taskFeeds;
-
-  const taskFeedCards = page.locator('[data-testid="task-feed-card"]');
-
-  // Filter to find the specific card that contains the text
-  const cardWithText = taskFeedCards.filter({
-    has: page.locator('[data-testid="entity-link"]', {
-      hasText: term.name,
-    }),
-  });
-
-  await expect(cardWithText).toHaveCount(1);
-  const taskCard = cardWithText.first();
-  await taskCard.click();
-
-  return taskCard;
-};
-
 export const approveGlossaryTermTask = async (
   page: Page,
   term: GlossaryTermData
 ) => {
-  await validateGlossaryTermTask(page, term);
-  await openTaskEditModal(page);
-  await saveTaskEditModal(page);
+  await page.reload();
+  await waitForAllLoadersToDisappear(page);
+
+  const approveButton = page.getByTestId(`${term.name}-approve-btn`);
+  await expect(approveButton).toBeVisible();
+
+  const taskResolve = waitForTaskResolveResponse(page);
+  await approveButton.click();
+  await taskResolve;
 
   // Display toast notification
   await toastNotification(page, /Task resolved successfully|Vote recorded/);

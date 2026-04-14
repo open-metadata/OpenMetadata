@@ -183,6 +183,27 @@ public class ActivityStreamRepository {
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
 
+  /** List activity for all entities of a given type. */
+  public List<ActivityEvent> listByEntityType(String entityType, long afterTimestamp, int limit) {
+    List<String> jsonList = activityStreamDAO.listByEntityType(entityType, afterTimestamp, limit);
+    return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
+  }
+
+  /** List activity for all entities of a given type scoped to specific domains. */
+  public List<ActivityEvent> listByEntityType(
+      String entityType, List<UUID> domainIds, long afterTimestamp, int limit) {
+    if (nullOrEmpty(domainIds)) {
+      return listByEntityType(entityType, afterTimestamp, limit);
+    }
+
+    List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
+    String domainJson = JsonUtils.pojoToJson(domainIdStrings);
+    List<String> jsonList =
+        activityStreamDAO.listByEntityTypeAndDomains(
+            entityType, domainJson, domainIdStrings, afterTimestamp, limit);
+    return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
+  }
+
   /** List activity for a specific entity scoped to specific domains. */
   public List<ActivityEvent> listByEntity(
       String entityType, UUID entityId, List<UUID> domainIds, long afterTimestamp, int limit) {

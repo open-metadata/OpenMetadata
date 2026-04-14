@@ -1336,6 +1336,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   @Test
   void testDefaultAssigneeFromEntityOwners(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
+    Table ownedTable = createTableWithDomainAndOwners(ns, null, List.of(shared.USER1_REF));
 
     CreateTask request =
         new CreateTask()
@@ -1343,13 +1344,16 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Task with about entity that has owners")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(shared.GLOSSARY1.getFullyQualifiedName())
-            .withAboutType("glossary");
+            .withAbout(ownedTable.getFullyQualifiedName())
+            .withAboutType("table");
 
     Task task = SdkClients.adminClient().tasks().create(request);
 
     assertNotNull(task.getAssignees(), "Task should have assignees from entity owners");
     assertFalse(task.getAssignees().isEmpty(), "Assignees should not be empty");
+    assertTrue(
+        task.getAssignees().stream().anyMatch(ref -> ref.getId().equals(shared.USER1_REF.getId())),
+        "Task assignees should include the target entity owner");
   }
 
   @Test
@@ -3284,7 +3288,9 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
     Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
 
-    table.setDomains(List.of(domainRef));
+    if (domainRef != null) {
+      table.setDomains(List.of(domainRef));
+    }
     table.setOwners(owners);
 
     return SdkClients.adminClient().tables().update(table.getId().toString(), table);

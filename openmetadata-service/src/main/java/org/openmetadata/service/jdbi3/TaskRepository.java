@@ -33,9 +33,11 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -160,7 +162,7 @@ public class TaskRepository extends EntityRepository<Task> {
             .toList();
 
     if (!nullOrEmpty(domains)) {
-      filter.addQueryParam("domainId", EntityUtil.getCommaSeparatedIdsFromRefs(domains));
+      filter.addQueryParam("requestedDomainId", EntityUtil.getCommaSeparatedIdsFromRefs(domains));
     }
   }
 
@@ -175,18 +177,56 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   public void applyTaskDomainFilter(ListFilter filter) {
+    String requestedDomainId = filter.getQueryParam("requestedDomainId");
     String domainId = filter.getQueryParam("domainId");
+    boolean domainAccessControl = Boolean.parseBoolean(filter.getQueryParam("domainAccessControl"));
+
+    if (requestedDomainId != null) {
+      String effectiveDomainId =
+          domainAccessControl && domainId != null
+              ? intersectDomainIds(requestedDomainId, domainId)
+              : requestedDomainId;
+      filter.addQueryParam("domainId", effectiveDomainId);
+      domainId = effectiveDomainId;
+    }
+
     if (domainId == null) {
+      filter.removeQueryParam("requestedDomainId");
       return;
     }
 
-    // Tasks now carry explicit domains, so domain-scoped task queries should always match
-    // the selected/allowed domain set and should not include no-domain tasks by fallback.
-    if (ListFilter.NULL_PARAM.equals(domainId)) {
+    // Task queries should only return tasks in the effective domain set. Unlike generic entity
+    // listing, no-domain fallback should not apply once task domain scoping is in effect.
+    if (ListFilter.NULL_PARAM.equals(domainId) || nullOrEmpty(domainId)) {
       filter.addQueryParam("domainId", NO_MATCH_DOMAIN_ID);
       filter.removeQueryParam("entityType");
     }
-    filter.removeQueryParam("domainAccessControl");
+
+    if (domainAccessControl) {
+      filter.removeQueryParam("domainAccessControl");
+    }
+    filter.removeQueryParam("requestedDomainId");
+  }
+
+  private String intersectDomainIds(String requestedDomainId, String allowedDomainId) {
+    if (ListFilter.NULL_PARAM.equals(allowedDomainId)) {
+      return ListFilter.NULL_PARAM;
+    }
+
+    List<String> requestedIds =
+        Arrays.stream(requestedDomainId.split(","))
+            .map(String::trim)
+            .filter(id -> !id.isEmpty())
+            .toList();
+    Set<String> allowedIds =
+        new LinkedHashSet<>(
+            Arrays.stream(allowedDomainId.split(","))
+                .map(String::trim)
+                .filter(id -> !id.isEmpty())
+                .toList());
+    List<String> intersection = requestedIds.stream().filter(allowedIds::contains).toList();
+
+    return intersection.isEmpty() ? ListFilter.NULL_PARAM : String.join(",", intersection);
   }
 
   @Override

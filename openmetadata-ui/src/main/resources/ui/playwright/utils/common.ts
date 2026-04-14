@@ -274,14 +274,30 @@ export const assignSingleSelectDomain = async (
   // Wait for the tag element to be visible and ensure page is still valid
   const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
   await tagSelector.waitFor({ state: 'visible' });
+  const saveAssociatedTag = page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag');
+  const hasExplicitSave = await saveAssociatedTag.isVisible().catch(() => false);
+  const waitForDomainUpdate = () =>
+    page.waitForResponse((response) => {
+      const method = response.request().method();
 
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
+      return (
+        ['PATCH', 'PUT'].includes(method) &&
+        response.url().includes('/api/v1/')
+      );
+    });
 
-  await tagSelector.click();
-
-  await patchReq;
+  if (hasExplicitSave) {
+    await tagSelector.click();
+    const updateReq = waitForDomainUpdate();
+    await saveAssociatedTag.click();
+    await updateReq;
+  } else {
+    const updateReq = waitForDomainUpdate();
+    await tagSelector.click();
+    await updateReq;
+  }
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('domain-link')).toContainText(
@@ -396,14 +412,31 @@ export const removeSingleSelectDomain = async (
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  const saveAssociatedTag = page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag');
+  const hasExplicitSave = await saveAssociatedTag.isVisible().catch(() => false);
+  const waitForDomainUpdate = () =>
+    page.waitForResponse((response) => {
+      const method = response.request().method();
 
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
+      return (
+        ['PATCH', 'PUT'].includes(method) &&
+        response.url().includes('/api/v1/')
+      );
+    });
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-
-  await patchReq;
+  if (hasExplicitSave) {
+    await tagSelector.click();
+    const updateReq = waitForDomainUpdate();
+    await saveAssociatedTag.click();
+    await updateReq;
+  } else {
+    const updateReq = waitForDomainUpdate();
+    await tagSelector.click();
+    await updateReq;
+  }
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('no-domain-text')).toContainText(

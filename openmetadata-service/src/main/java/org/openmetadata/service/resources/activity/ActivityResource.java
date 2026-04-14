@@ -126,11 +126,13 @@ public class ActivityResource {
 
     List<ActivityEvent> events;
 
-    if (entityType != null && entityId != null) {
-      // Filter by specific entity
+    if (entityType != null) {
       events =
-          activityStreamRepository.listByEntity(
-              entityType, entityId, domainIds, afterTimestamp, limit);
+          entityId != null
+              ? activityStreamRepository.listByEntity(
+                  entityType, entityId, domainIds, afterTimestamp, limit)
+              : activityStreamRepository.listByEntityType(
+                  entityType, domainIds, afterTimestamp, limit);
     } else if (actorId != null) {
       // Filter by actor
       events = activityStreamRepository.listByActor(actorId, domainIds, afterTimestamp, limit);

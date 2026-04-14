@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
@@ -38,6 +38,26 @@ let users: UserClass[] = [];
 let table1: TableClass;
 let tablePagination: TableClass;
 const PAGINATION_INCIDENT_COUNT = 22;
+
+const performIncidentAdminLogin = async (browser: Browser) => {
+  try {
+    const context = await browser.newContext({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    const page = await context.newPage();
+    await redirectToHomePage(page);
+    const { apiContext } = await getApiContext(page);
+    const afterAction = async () => {
+      await apiContext.dispose();
+      await page.close();
+      await context.close();
+    };
+
+    return { page, apiContext, afterAction };
+  } catch {
+    return performAdminLogin(browser);
+  }
+};
 
 const openIncidentTaskTab = async (page: Page, waitForTaskPanel = false) => {
   const incidentTab = page.getByRole('tab', { name: /Incident/i });
@@ -260,9 +280,20 @@ const reassignIncidentTask = async (
   await expect(reassignModal).not.toBeVisible();
 };
 
-const openIncidentResolveDialog = async (page: Page) => {
-  const primaryActionButton = page.getByTestId('incident-task-action-primary');
-  const actionTrigger = page.getByTestId('incident-task-action-trigger');
+const openIncidentResolveDialog = async (
+  page: Page,
+  allowProgressTransition = true
+) => {
+  const primaryActionButton = page
+    .locator(
+      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+    )
+    .last();
+  const actionTrigger = page
+    .locator(
+      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+    )
+    .last();
   const resolveModal = page.locator('.ant-modal .ant-modal-content').last();
   const modalTextareas = resolveModal.locator('textarea');
 
@@ -281,11 +312,57 @@ const openIncidentResolveDialog = async (page: Page) => {
     await actionTrigger.click();
 
     const resolveMenuItem = page
-      .locator('[data-testid="task-action-menu-item-resolve"]:visible')
+      .locator(
+        '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible'
+      )
       .last();
+    const startProgressMenuItem = page
+      .locator(
+        '[data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
+      )
+      .last();
+    const workflowMenuItem = page
+      .locator(
+        '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible, [data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
+      )
+      .first();
 
-    await expect(resolveMenuItem).toBeVisible();
-    await resolveMenuItem.click();
+    await expect(workflowMenuItem).toBeVisible({ timeout: 5_000 });
+
+    if (await resolveMenuItem.isVisible().catch(() => false)) {
+      await resolveMenuItem.click();
+    } else if (
+      allowProgressTransition &&
+      (await startProgressMenuItem.isVisible().catch(() => false))
+    ) {
+      await startProgressMenuItem.click();
+
+      if (await resolveModal.isVisible().catch(() => false)) {
+        const advanceIncident = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'POST' &&
+            response.url().includes('/api/v1/tasks/') &&
+            response.url().includes('/resolve')
+        );
+
+        await resolveModal
+          .getByRole('button', { name: /ok|save/i })
+          .click();
+        await advanceIncident;
+      } else {
+        await expect
+          .poll(async () => (await primaryActionButton.textContent())?.trim(), {
+            timeout: 10_000,
+          })
+          .toContain('Resolve');
+      }
+
+      await waitForAllLoadersToDisappear(page);
+
+      return openIncidentResolveDialog(page, false);
+    } else {
+      await expect(resolveMenuItem).toBeVisible();
+    }
 
     if (!(await isVisible(resolveModal))) {
       await expect
@@ -332,10 +409,13 @@ test.describe.configure({ mode: 'serial' });
  */
 test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
-    // since we need to poll for the pipeline status, we need to increase the timeout
-    test.slow();
+    // Setup provisions test cases and waits for a TestSuite pipeline run before the first
+    // incident workflow assertion can start, so the default slow timeout is not sufficient.
+    test.setTimeout(7 * 60 * 1000);
 
-    const { afterAction, apiContext, page } = await performAdminLogin(browser);
+    const { afterAction, apiContext, page } = await performIncidentAdminLogin(
+      browser
+    );
 
     user1 = new UserClass();
     user2 = new UserClass();
@@ -383,7 +463,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await performIncidentAdminLogin(
+      browser
+    );
     for (const entity of [...users, table1].filter(Boolean)) {
       await entity.delete(apiContext);
     }

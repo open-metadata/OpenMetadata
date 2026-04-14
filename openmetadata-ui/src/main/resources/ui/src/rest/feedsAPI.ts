@@ -217,7 +217,10 @@ export const getEntityActivityByFqn = async (
   const response = await APIClient.get<{
     data: ActivityEvent[];
     paging: Paging;
-  }>(`${ACTIVITY_BASE_URL}/entity/${entityType}/name/${fqn}`, { params });
+  }>(
+    `${ACTIVITY_BASE_URL}/entity/${entityType}/name/${encodeURIComponent(fqn)}`,
+    { params }
+  );
 
   return response.data;
 };

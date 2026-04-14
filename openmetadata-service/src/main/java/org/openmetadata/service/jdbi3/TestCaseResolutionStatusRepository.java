@@ -264,6 +264,19 @@ public class TestCaseResolutionStatusRepository
         getFromEntityRef(recordEntity.getId(), Relationship.PARENT_OF, Entity.TEST_CASE, true));
   }
 
+  @Override
+  protected boolean shouldSkipSearchResultOnInheritedFieldError(
+      RuntimeException exception, TestCaseResolutionStatus entity) {
+    if (exception instanceof EntityNotFoundException) {
+      return true;
+    }
+
+    String message = exception.getMessage();
+    return message != null
+        && message.contains(Entity.TEST_CASE_RESOLUTION_STATUS)
+        && message.contains(Relationship.PARENT_OF.value());
+  }
+
   private void openOrAssignTask(TestCaseResolutionStatus incidentStatus) {
     LOG.debug(
         "openOrAssignTask called with status: {}",
