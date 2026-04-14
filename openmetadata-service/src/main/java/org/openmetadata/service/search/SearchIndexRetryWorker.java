@@ -481,7 +481,7 @@ public class SearchIndexRetryWorker implements Managed {
 
     Set<String> failedEntityIds = ConcurrentHashMap.newKeySet();
     AtomicReference<String> firstFailureDetail = new AtomicReference<>();
-    BulkSink bulkSink = searchRepository.createBulkSink(200, 5, 10L * 1024L * 1024L);
+    BulkSink bulkSink = searchRepository.createBulkSink(200, 5, 9L * 1024L * 1024L);
     bulkSink.setFailureCallback(
         (entityType, entityId, entityFqn, errorMessage, stage) -> {
           if (entityId != null && !entityId.isEmpty()) {

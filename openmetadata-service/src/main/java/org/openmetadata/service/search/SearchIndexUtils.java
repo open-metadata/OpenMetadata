@@ -116,6 +116,34 @@ public final class SearchIndexUtils {
     return json;
   }
 
+  public static Map<String, Object> stripDocMapIfOversized(
+      Map<String, Object> doc, long maxBytes, String docId, String entityType) {
+    String json = JsonUtils.pojoToJson(doc);
+    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+      return doc;
+    }
+    if (doc.remove("lineageSqlQueries") != null) {
+      json = JsonUtils.pojoToJson(doc);
+      LOG.warn(
+          "Live index doc {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
+          docId,
+          entityType,
+          json.getBytes(StandardCharsets.UTF_8).length);
+      if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+        return doc;
+      }
+    }
+    if (doc.remove("upstreamLineage") != null) {
+      json = JsonUtils.pojoToJson(doc);
+      LOG.warn(
+          "Live index doc {} ({}) still too large, stripped upstreamLineage ({} bytes)",
+          docId,
+          entityType,
+          json.getBytes(StandardCharsets.UTF_8).length);
+    }
+    return doc;
+  }
+
   public static List<String> parseFollowers(List<EntityReference> followersRef) {
     if (followersRef == null) {
       return Collections.emptyList();

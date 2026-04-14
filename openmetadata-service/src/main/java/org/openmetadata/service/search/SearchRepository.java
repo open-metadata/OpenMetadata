@@ -1081,10 +1081,10 @@ public class SearchRepository {
         }
         SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
         doc = elasticSearchIndex.buildSearchIndexDoc();
+        doc =
+            SearchIndexUtils.stripDocMapIfOversized(doc, 9L * 1024L * 1024L, entityId, entityType);
       }
 
-      // Use synchronous update to ensure tests pass
-      // TODO: Consider using async updates with proper wait mechanisms in tests
       searchClient.updateEntity(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
 
       if (Entity.TABLE.equals(entityType)) {
