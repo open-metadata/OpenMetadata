@@ -12,6 +12,7 @@
 name: Integration Tests - MySQL + Elasticsearch
 
 on:
+  merge_group:
   workflow_dispatch:
   push:
     branches:

@@ -1,6 +1,7 @@
 name: TypeScript Type Generation
 
 on:
+  merge_group:
   pull_request_target:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:

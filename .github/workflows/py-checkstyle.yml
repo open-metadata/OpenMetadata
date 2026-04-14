@@ -14,6 +14,7 @@ name: Python Checkstyle
 # read-write repo token
 # access to secrets
 on:
+  merge_group:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths-ignore:

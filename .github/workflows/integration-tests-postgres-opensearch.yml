@@ -12,6 +12,7 @@
 name: Integration Tests - PostgreSQL + OpenSearch
 
 on:
+  merge_group:
   workflow_dispatch:
   push:
     branches:

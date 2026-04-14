@@ -12,6 +12,7 @@
 name: Java Checkstyle
 
 on:
+  merge_group:
   # Trigger analysis when pushing in master or pull requests, and when creating
   # a pull request.
   push:
