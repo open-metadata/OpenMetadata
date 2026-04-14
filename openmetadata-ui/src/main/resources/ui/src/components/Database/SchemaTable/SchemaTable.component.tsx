@@ -982,6 +982,7 @@ const SchemaTable = () => {
               Classification: (filters[TABLE_COLUMNS_KEYS.TAGS] as string[]) || [],
               Glossary: (filters[TABLE_COLUMNS_KEYS.GLOSSARY] as string[]) || [],
             });
+            handlePageChange(1);
           }}
           extraTableFilters={
             <div className="d-flex items-center gap-4">
