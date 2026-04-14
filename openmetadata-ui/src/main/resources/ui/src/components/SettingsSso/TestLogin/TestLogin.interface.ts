@@ -24,3 +24,16 @@ export interface ClaimSelectorProps {
   onConfirm: (emailClaim: string, principalDomain: string, adminPrincipal: string) => void;
   onCancel: () => void;
 }
+
+export interface TestLoginFormData {
+  discoveryUri?: string;
+  clientId?: string;
+  clientSecret?: string;
+  scope?: string;
+  oidcConfiguration?: {
+    discoveryUri?: string;
+    id?: string;
+    secret?: string;
+    scope?: string;
+  };
+}
