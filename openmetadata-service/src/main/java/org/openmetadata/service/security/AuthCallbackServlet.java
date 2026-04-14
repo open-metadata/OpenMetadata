@@ -17,6 +17,32 @@ public class AuthCallbackServlet extends HttpServlet {
     // /callback (the registered redirect URI). Forward to /mcp/callback so McpCallbackServlet
     // can handle it with proper state restoration from DB.
     String state = req.getParameter("state");
+
+    // Check if this is a Test Login callback (state prefixed with "test-login:")
+    if (state != null && state.startsWith("test-login:")) {
+      try {
+        LOG.debug("Handling Test Login callback");
+        jakarta.ws.rs.core.Response testLoginResponse =
+            org.openmetadata.service.security.auth.TestLoginHandler.handleCallback(req);
+        resp.setContentType(
+            testLoginResponse.getMediaType() != null
+                ? testLoginResponse.getMediaType().toString()
+                : "text/html");
+        resp.setStatus(testLoginResponse.getStatus());
+        resp.getWriter().write(testLoginResponse.getEntity().toString());
+      } catch (Exception e) {
+        LOG.error("Failed to handle Test Login callback", e);
+        try {
+          resp.sendError(
+              HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to process Test Login");
+        } catch (Exception writeEx) {
+          LOG.error("Failed to write error response", writeEx);
+        }
+      }
+
+      return;
+    }
+
     if (AuthenticationCodeFlowHandler.isMcpState(state)) {
       try {
         LOG.debug("Forwarding MCP OAuth callback to /mcp/callback");

@@ -250,16 +250,4 @@ public class ConfigResource {
 
     return Response.ok(result).build();
   }
-
-  @GET
-  @Path("/auth/test-login/callback")
-  @Operation(
-      operationId = "testLoginCallback",
-      summary = "Test Login Callback",
-      description =
-          "Handles the IdP redirect after Test Login authentication. "
-              + "Extracts claims from the token and posts them to the parent window.")
-  public Response testLoginCallback(@Context HttpServletRequest request) {
-    return TestLoginHandler.handleCallback(request);
-  }
 }

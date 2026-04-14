@@ -109,11 +109,16 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
       return;
     }
 
+    const callbackUrl =
+      formData?.oidcConfiguration?.callbackUrl ??
+      `${window.location.origin}/callback`;
+
     const params = new URLSearchParams({
       discoveryUri,
       clientId,
       clientSecret,
       scope,
+      callbackUrl,
     });
     const initiateUrl = `${window.location.origin}/api/v1/system/config/auth/test-login/initiate?${params.toString()}`;
 

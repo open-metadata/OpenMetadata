@@ -53,8 +53,8 @@ public class TestLoginHandler {
   private static final String TEST_LOGIN_CLIENT_SECRET = "testLoginClientSecret";
   private static final String TEST_LOGIN_DISCOVERY_URI = "testLoginDiscoveryUri";
   private static final String TEST_LOGIN_CALLBACK_URL = "testLoginCallbackUrl";
-  private static final String TEST_LOGIN_CALLBACK_PATH =
-      "/api/v1/system/config/auth/test-login/callback";
+  private static final String TEST_LOGIN_STATE_PREFIX = "test-login:";
+  private static final String DEFAULT_CALLBACK_PATH = "/callback";
 
   private TestLoginHandler() {}
 
@@ -97,29 +97,35 @@ public class TestLoginHandler {
 
       HttpSession session = req.getSession(true);
 
-      String serverUrl =
-          req.getScheme()
-              + "://"
-              + req.getServerName()
-              + (req.getServerPort() != 80 && req.getServerPort() != 443
-                  ? ":" + req.getServerPort()
-                  : "");
-      String testCallbackUrl = serverUrl + TEST_LOGIN_CALLBACK_PATH;
+      // Use the registered callback URL (same one registered in the IdP)
+      // so we don't need customers to register a separate redirect URI
+      String callbackUrl = req.getParameter("callbackUrl");
+      if (nullOrEmpty(callbackUrl)) {
+        String serverUrl =
+            req.getScheme()
+                + "://"
+                + req.getServerName()
+                + (req.getServerPort() != 80 && req.getServerPort() != 443
+                    ? ":" + req.getServerPort()
+                    : "");
+        callbackUrl = serverUrl + DEFAULT_CALLBACK_PATH;
+      }
 
       session.setAttribute(TEST_LOGIN_CLIENT_ID, clientId);
       session.setAttribute(TEST_LOGIN_CLIENT_SECRET, clientSecret != null ? clientSecret : "");
       session.setAttribute(TEST_LOGIN_DISCOVERY_URI, discoveryUri);
-      session.setAttribute(TEST_LOGIN_CALLBACK_URL, testCallbackUrl);
+      session.setAttribute(TEST_LOGIN_CALLBACK_URL, callbackUrl);
 
       Map<String, String> params = new HashMap<>();
       params.put(OidcConfiguration.SCOPE, scope);
       params.put(OidcConfiguration.RESPONSE_TYPE, "code");
       params.put(OidcConfiguration.RESPONSE_MODE, "query");
       params.put(OidcConfiguration.CLIENT_ID, clientId);
-      params.put(OidcConfiguration.REDIRECT_URI, testCallbackUrl);
+      params.put(OidcConfiguration.REDIRECT_URI, callbackUrl);
       params.put("access_type", "offline");
 
-      String state = java.util.UUID.randomUUID().toString();
+      // Prefix state with "test-login:" so AuthCallbackServlet routes to us
+      String state = TEST_LOGIN_STATE_PREFIX + java.util.UUID.randomUUID().toString();
       params.put("state", state);
       session.setAttribute(TEST_LOGIN_STATE, state);
 
