@@ -64,7 +64,7 @@ class TableConfig(BaseProfileConfig):
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig] = None
     columnConfig: Optional[ColumnConfig] = None
-    randomizedSample: Optional[bool] = True
+    randomizedSample: Optional[bool] = False
 
     @classmethod
     def from_database_and_schema_config(

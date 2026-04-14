@@ -134,7 +134,12 @@ export const Typography = (props: TypographyProps) => {
     return (
       <Tooltip title={ellipsisTooltip}>
         <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
-          <div className={cx('prose', quoteStyles[quoteVariant])}>
+          <div
+            className={cx(
+              'prose',
+              quoteStyles[quoteVariant],
+              ellipsisClassName
+            )}>
             <Component {...otherProps} className={innerClassName} style={style}>
               {children}
             </Component>
@@ -145,7 +150,7 @@ export const Typography = (props: TypographyProps) => {
   }
 
   return (
-    <div className={cx('prose', quoteStyles[quoteVariant])}>
+    <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
       <Component {...otherProps} className={innerClassName} style={style}>
         {children}
       </Component>
