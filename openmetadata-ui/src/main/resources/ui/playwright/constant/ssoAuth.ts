@@ -11,9 +11,6 @@
  *  limitations under the License.
  */
 
-// Mirrors playwright.config.ts `baseURL` resolution so the SSO config we
-// PUT into OpenMetadata always matches the host the Playwright suite is
-// driving. Defaults to the local stack.
 export const OM_BASE_URL =
   process.env.PLAYWRIGHT_TEST_BASE_URL ?? 'http://localhost:8585';
 
@@ -26,7 +23,6 @@ export const SSO_ENV = {
   OKTA_PRINCIPAL_DOMAIN: 'OKTA_PRINCIPAL_DOMAIN',
   AZURE_SAML_TENANT_ID: 'AZURE_SAML_TENANT_ID',
   AZURE_SAML_PRINCIPAL_DOMAIN: 'AZURE_SAML_PRINCIPAL_DOMAIN',
-  AZURE_SAML_IDP_CERTIFICATE: 'AZURE_SAML_IDP_CERTIFICATE',
   KEYCLOAK_SAML_BASE_URL: 'KEYCLOAK_SAML_BASE_URL',
   KEYCLOAK_SAML_AZURE_REALM: 'KEYCLOAK_SAML_AZURE_REALM',
   KEYCLOAK_SAML_GOOGLE_REALM: 'KEYCLOAK_SAML_GOOGLE_REALM',

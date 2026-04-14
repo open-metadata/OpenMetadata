@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
 import { ProviderConfigOverride, ProviderCredentials } from '../ssoAuth';
 import type { ProviderHelper } from './index';
+import { fetchIdpX509Certificate } from './saml-metadata';
 
 const SUPPORTED_OM_BASE_URL = 'http://localhost:8585';
 
@@ -35,9 +36,6 @@ interface KeycloakSamlProfile {
 const escapeRegExp = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const descriptorUrl = (realm: string): string =>
-  `${KEYCLOAK_SAML.baseUrl}/realms/${realm}/protocol/saml/descriptor`;
-
 const assertSupportedBaseUrl = (): void => {
   if (OM_BASE_URL !== SUPPORTED_OM_BASE_URL) {
     throw new Error(
@@ -47,58 +45,17 @@ const assertSupportedBaseUrl = (): void => {
   }
 };
 
-const wrapPemCertificate = (certificate: string): string => {
-  const body = certificate.replace(/\s+/g, '');
-  const lines = body.match(/.{1,64}/g);
-
-  if (!lines) {
-    throw new Error(
-      'Keycloak SAML descriptor returned an empty X509 certificate'
-    );
-  }
-
-  return [
-    '-----BEGIN CERTIFICATE-----',
-    ...lines,
-    '-----END CERTIFICATE-----',
-  ].join('\n');
-};
-
-const extractIdpCertificate = (descriptor: string, realm: string): string => {
-  const match = descriptor.match(
-    /<[^>]*X509Certificate[^>]*>([^<]+)<\/[^>]*X509Certificate>/
-  );
-
-  if (!match?.[1]) {
-    throw new Error(
-      `Could not find IdP X509 certificate in Keycloak SAML descriptor for realm "${realm}"`
-    );
-  }
-
-  return wrapPemCertificate(match[1]);
-};
-
-const fetchIdpCertificate = async (realm: string): Promise<string> => {
-  const url = descriptorUrl(realm);
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch Keycloak SAML descriptor from ${url}: ${response.status} ${response.statusText}`
-    );
-  }
-
-  return extractIdpCertificate(await response.text(), realm);
-};
-
 const buildConfigPayload = async ({
   realm,
   providerName,
 }: KeycloakSamlProfile): Promise<ProviderConfigOverride> => {
   assertSupportedBaseUrl();
 
-  const idpX509Certificate = await fetchIdpCertificate(realm);
   const realmBaseUrl = `${KEYCLOAK_SAML.baseUrl}/realms/${realm}`;
+  const idpX509Certificate = await fetchIdpX509Certificate(
+    `${realmBaseUrl}/protocol/saml/descriptor`,
+    `Keycloak realm "${realm}"`
+  );
 
   return {
     authenticationConfiguration: {
@@ -163,10 +120,8 @@ const performProviderLogin = async (
   await loginButton.click();
 };
 
-// OM's sign-in page uses a single "SAML SSO" label for every SAML provider —
-// `authenticationConfiguration.providerName` isn't propagated into the store
-// for the SAML branch in getAuthConfig, so even with a per-realm providerName
-// the button renders as "Sign in with SAML SSO".
+// OM renders a fixed "SAML SSO" label for every SAML provider — providerName
+// is dropped for the SAML branch of getAuthConfig.
 const createKeycloakSamlProviderHelper = (
   profile: KeycloakSamlProfile
 ): ProviderHelper => ({

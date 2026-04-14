@@ -119,9 +119,6 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     });
 
     await test.step('Return to OpenMetadata and complete self-signup if needed', async () => {
-      // The IdP can land the user on /signup (first-ever sign-in against this
-      // OM instance) or /my-data (user already exists from a prior run). Wait
-      // for either, and handle the one-time self-signup click when it appears.
       await page.waitForURL(
         (url) =>
           url.pathname.endsWith('/signup') || url.pathname.endsWith('/my-data'),
