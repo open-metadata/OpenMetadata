@@ -312,6 +312,92 @@ class VectorDocBuilderTest {
     return term;
   }
 
+  @Test
+  void testRegisterCustomExtractorIsUsed() {
+    String type = "customExtractorTest_" + UUID.randomUUID();
+    VectorDocBuilder.registerBodyTextExtractor(
+        type, entity -> "custom body for " + entity.getName());
+
+    Table table = createTestTable("ext_table", null, "original desc");
+    String body = VectorDocBuilder.buildBodyText(table, type);
+
+    assertEquals("custom body for ext_table", body);
+  }
+
+  @Test
+  void testCustomExtractorReturningNullFallsBackToDefault() {
+    String type = "nullExtractorTest_" + UUID.randomUUID();
+    VectorDocBuilder.registerBodyTextExtractor(type, entity -> null);
+
+    Table table = createTestTable("fallback_table", null, "fallback desc");
+    String body = VectorDocBuilder.buildBodyText(table, type);
+
+    assertTrue(body.contains("fallback desc"));
+  }
+
+  @Test
+  void testCustomExtractorThrowingFallsBackToDefault() {
+    String type = "throwExtractorTest_" + UUID.randomUUID();
+    VectorDocBuilder.registerBodyTextExtractor(
+        type,
+        entity -> {
+          throw new RuntimeException("boom");
+        });
+
+    Table table = createTestTable("err_table", null, "safe desc");
+    String body = VectorDocBuilder.buildBodyText(table, type);
+
+    assertTrue(body.contains("safe desc"));
+  }
+
+  @Test
+  void testRegisterExtractorIgnoresNullAndBlank() {
+    String type = "ignoreTest_" + UUID.randomUUID();
+
+    VectorDocBuilder.registerBodyTextExtractor(null, entity -> "nope");
+    VectorDocBuilder.registerBodyTextExtractor("", entity -> "nope");
+    VectorDocBuilder.registerBodyTextExtractor("  ", entity -> "nope");
+    VectorDocBuilder.registerBodyTextExtractor(type, null);
+
+    Table table = createTestTable("guard_table", null, "default desc");
+    String body = VectorDocBuilder.buildBodyText(table, type);
+
+    assertTrue(body.contains("default desc"));
+  }
+
+  @Test
+  void testVectorBodyTextContributorRegister() {
+    String type = "contributorTest_" + UUID.randomUUID();
+
+    VectorBodyTextContributor contributor =
+        new VectorBodyTextContributor() {
+          @Override
+          public String entityType() {
+            return type;
+          }
+
+          @Override
+          public VectorDocBuilder.BodyTextExtractor extractor() {
+            return entity -> "contributed: " + entity.getName();
+          }
+        };
+
+    contributor.register();
+
+    Table table = createTestTable("contrib_table", null, "ignored");
+    String body = VectorDocBuilder.buildBodyText(table, type);
+
+    assertEquals("contributed: contrib_table", body);
+  }
+
+  @Test
+  void testBuildBodyTextWithNullEntityType() {
+    Table table = createTestTable("null_type_table", null, "some desc");
+    String body = VectorDocBuilder.buildBodyText(table, null);
+
+    assertTrue(body.contains("some desc"));
+  }
+
   private Table createTestTable(String name, String displayName, String description) {
     Table table = new Table();
     table.setId(UUID.randomUUID());
