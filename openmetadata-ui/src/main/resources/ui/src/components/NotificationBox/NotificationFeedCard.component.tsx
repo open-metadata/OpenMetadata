@@ -50,7 +50,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
             {task.message?.trimStart().startsWith('{')
               ? t('message.request-approval-notification')
               : task.message}
-          </span>
+          </span>{' '}
           <Link
             className='className="p-r-xss"'
             to={getEntityLinkFromType(

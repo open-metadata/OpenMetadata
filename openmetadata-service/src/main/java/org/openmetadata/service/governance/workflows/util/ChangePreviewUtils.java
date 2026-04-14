@@ -45,8 +45,9 @@ public final class ChangePreviewUtils {
   private ChangePreviewUtils() {}
 
   public static List<String> extractIdentifiers(Object fieldValue) {
-    if (nullOrEmpty(fieldValue)) return List.of();
+    if (fieldValue == null) return List.of();
     if (fieldValue instanceof List<?> list) {
+      if (list.isEmpty()) return List.of();
       List<String> result = new ArrayList<>();
       for (Object item : list) {
         result.addAll(extractIdentifiers(item));
@@ -54,6 +55,7 @@ public final class ChangePreviewUtils {
       return result;
     }
     if (fieldValue instanceof Map<?, ?> map) {
+      if (map.isEmpty()) return List.of();
       return extractFromMap(map);
     }
     if (fieldValue instanceof String str) {

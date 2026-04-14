@@ -1209,37 +1209,37 @@ export const TaskTabNew = ({
                       className="task-proposed-changes-field-row"
                       key={field}>
                       <Typography.Text className="task-proposed-changes-field-name">
-                        {field}
+                        {startCase(field)}
                       </Typography.Text>
                       <div className="task-proposed-changes-chips">
-                        {removed.map((val) =>
+                        {removed.map((val, index) =>
                           getUrl ? (
                             <Link
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                              key={`removed-${val}`}
+                              key={`${field}-removed-${val}-${index}`}
                               to={getUrl(val)}>
                               {val}
                             </Link>
                           ) : (
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                              key={`removed-${val}`}>
+                              key={`${field}-removed-${val}-${index}`}>
                               {val}
                             </span>
                           )
                         )}
-                        {added.map((val) =>
+                        {added.map((val, index) =>
                           getUrl ? (
                             <Link
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                              key={`added-${val}`}
+                              key={`${field}-added-${val}-${index}`}
                               to={getUrl(val)}>
                               {val}
                             </Link>
                           ) : (
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                              key={`added-${val}`}>
+                              key={`${field}-added-${val}-${index}`}>
                               {val}
                             </span>
                           )
