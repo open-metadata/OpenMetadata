@@ -85,7 +85,11 @@ public class TestLoginHandler {
       oidcConfig.setScope(scope);
       oidcConfig.setResponseType("code");
 
-      OIDCProviderMetadata providerMetadata = OIDCProviderMetadata.resolve(new URI(discoveryUri));
+      OIDCProviderMetadata providerMetadata =
+          OIDCProviderMetadata.parse(
+              new HTTPRequest(HTTPRequest.Method.GET, new URI(discoveryUri).toURL())
+                  .send()
+                  .getContent());
       if (providerMetadata == null || providerMetadata.getAuthorizationEndpointURI() == null) {
         return buildHtmlErrorResponse(
             "Could not fetch OIDC discovery document from: " + discoveryUri);
@@ -180,7 +184,11 @@ public class TestLoginHandler {
             false, "Session data missing. Please try Test Login again.", null);
       }
 
-      OIDCProviderMetadata providerMetadata = OIDCProviderMetadata.resolve(new URI(discoveryUri));
+      OIDCProviderMetadata providerMetadata =
+          OIDCProviderMetadata.parse(
+              new HTTPRequest(HTTPRequest.Method.GET, new URI(discoveryUri).toURL())
+                  .send()
+                  .getContent());
       URI tokenEndpoint = providerMetadata.getTokenEndpointURI();
 
       AuthorizationCodeGrant grant =
