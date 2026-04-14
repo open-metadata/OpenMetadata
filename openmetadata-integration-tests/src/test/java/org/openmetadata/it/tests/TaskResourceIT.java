@@ -36,6 +36,7 @@ import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.api.data.CreateContainer;
@@ -49,6 +50,9 @@ import org.openmetadata.schema.api.tasks.Payload;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.tasks.TaskCount;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
@@ -68,7 +72,9 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.BulkTaskOperationParams;
@@ -81,6 +87,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TagLabel;
@@ -91,11 +98,14 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TaskRepository;
 
 /**
  * Integration tests for Task entity operations.
@@ -1176,9 +1186,19 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         "Domain endpoint should not include tasks from a different domain");
 
     ListResponse<Task> cancelledDomainTasks =
-        SdkClients.adminClient()
-            .domains()
-            .listTasks(domainA.getFullyQualifiedName(), TaskEntityStatus.Cancelled, 1000);
+        Awaitility.await("cancelled domain task visibility for " + closedDomainTask.getId())
+            .atMost(Duration.ofSeconds(20))
+            .pollInterval(Duration.ofMillis(250))
+            .until(
+                () ->
+                    SdkClients.adminClient()
+                        .domains()
+                        .listTasks(
+                            domainA.getFullyQualifiedName(), TaskEntityStatus.Cancelled, 1000),
+                response ->
+                    response.getData() != null
+                        && response.getData().stream()
+                            .anyMatch(t -> t.getId().equals(closedDomainTask.getId())));
 
     assertTrue(
         cancelledDomainTasks.getData().stream()
@@ -2008,8 +2028,18 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .withAboutType("table")
                     .withPayload(payload));
 
-    task.setAvailableTransitions(List.of());
-    Task updatedTask = SdkClients.adminClient().tasks().update(task.getId().toString(), task);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    Task taskWithoutTransitions =
+        SdkClients.adminClient()
+            .tasks()
+            .get(
+                task.getId().toString(),
+                "assignees,reviewers,watchers,about,domains,comments,createdBy,payload");
+    taskWithoutTransitions.setAvailableTransitions(List.of());
+    Task updatedTask =
+        SdkClients.adminClient()
+            .tasks()
+            .update(taskWithoutTransitions.getId().toString(), taskWithoutTransitions);
 
     Task resolvedTask =
         SdkClients.adminClient()
@@ -2056,8 +2086,18 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .withAboutType("table")
                     .withPayload(rawSuggestionPayload));
 
-    task.setAvailableTransitions(List.of());
-    Task updatedTask = SdkClients.adminClient().tasks().update(task.getId().toString(), task);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    Task taskWithoutTransitions =
+        SdkClients.adminClient()
+            .tasks()
+            .get(
+                task.getId().toString(),
+                "assignees,reviewers,watchers,about,domains,comments,createdBy,payload");
+    taskWithoutTransitions.setAvailableTransitions(List.of());
+    Task updatedTask =
+        SdkClients.adminClient()
+            .tasks()
+            .update(taskWithoutTransitions.getId().toString(), taskWithoutTransitions);
 
     Task rejectedTask =
         SdkClients.adminClient()
@@ -2105,6 +2145,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     // Reject the task
     ResolveTask resolveRequest =
@@ -2153,6 +2194,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task task = SdkClients.adminClient().tasks().create(request);
     assertEquals(TaskEntityStatus.Open, task.getStatus());
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2199,6 +2241,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2254,6 +2297,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task task = SdkClients.adminClient().tasks().create(request);
     assertEquals(TaskEntityStatus.Open, task.getStatus());
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2306,6 +2350,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task task = SdkClients.adminClient().tasks().create(request);
     assertEquals(TaskEntityStatus.Open, task.getStatus());
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2357,6 +2402,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2417,6 +2463,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2482,6 +2529,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2560,6 +2608,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2761,6 +2810,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(tagPayload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2814,6 +2864,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2869,6 +2920,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -2929,6 +2981,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -3109,6 +3162,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withPayload(tagPayload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
 
     ResolveTask resolveRequest =
         new ResolveTask()
@@ -3552,6 +3606,124 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertNull(unchangedTable.getDescription());
   }
 
+  @Test
+  void testDeletingBotCreatorCleansUpOpenSuggestionTasks(TestNamespace ns) {
+    BotWithUser botWithUser = createBotWithJwtUser(ns, "suggestion_cleanup");
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    Map<String, Object> payload =
+        Map.of(
+            "suggestionType", "Description",
+            "fieldPath", "description",
+            "suggestedValue", "Suggestion from deleted bot creator",
+            "source", "Agent",
+            "confidence", 90.0);
+
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withName(ns.prefix("deleted-bot-suggestion"))
+            .withDescription("Deleted bot creators should not leave orphaned tasks")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.Suggestion)
+            .withStatus(TaskEntityStatus.Open)
+            .withPriority(TaskPriority.Medium)
+            .withPayload(payload)
+            .withAbout(
+                Entity.getEntityReferenceByName(
+                    Entity.TABLE, table.getFullyQualifiedName(), Include.NON_DELETED))
+            .withCreatedBy(
+                Entity.getEntityReferenceByName(
+                    Entity.USER, botWithUser.user().getName(), Include.NON_DELETED))
+            .withCreatedAt(System.currentTimeMillis())
+            .withUpdatedAt(System.currentTimeMillis())
+            .withUpdatedBy(botWithUser.user().getName());
+    task = taskRepository.create(null, task);
+
+    assertNotNull(task.getId(), "Suggestion task should be created");
+    Task storedTask = SdkClients.adminClient().tasks().get(task.getId().toString(), "createdBy");
+    assertNotNull(storedTask.getCreatedBy(), "Suggestion task should track its creator");
+    assertEquals(
+        botWithUser.user().getId(),
+        storedTask.getCreatedBy().getId(),
+        "Suggestion task should be created by the bot user");
+
+    SdkClients.adminClient()
+        .bots()
+        .delete(
+            botWithUser.bot().getId().toString(),
+            Map.of("hardDelete", "true", "recursive", "true"));
+
+    awaitSuggestionTaskDeleted(
+        botWithUser.user().getId(), table.getFullyQualifiedName(), task.getId());
+
+    Table unchangedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "description");
+    assertNull(
+        unchangedTable.getDescription(),
+        "Deleting the bot creator should not apply the suggestion payload");
+  }
+
+  private record BotWithUser(Bot bot, User user) {}
+
+  private BotWithUser createBotWithJwtUser(TestNamespace ns, String suffix) {
+    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+    String userName = ns.prefix("botuser_" + suffix + "_" + uniqueId);
+    String email = "botuser" + suffix + uniqueId + "@test.com";
+
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+
+    User botUser =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(email)
+                    .withDescription("Bot user for suggestion cleanup test")
+                    .withIsBot(true)
+                    .withAuthenticationMechanism(authMechanism));
+
+    Bot bot =
+        SdkClients.adminClient()
+            .bots()
+            .create(
+                new CreateBot()
+                    .withName(ns.prefix("bot_" + suffix + "_" + uniqueId))
+                    .withDescription("Bot for suggestion cleanup test")
+                    .withBotUser(botUser.getName()));
+
+    return new BotWithUser(bot, botUser);
+  }
+
+  private void awaitSuggestionTaskDeleted(UUID creatorId, String aboutEntity, UUID taskId) {
+    Awaitility.await("suggestion task cleanup for creator " + creatorId)
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () -> {
+              ListParams params =
+                  new ListParams()
+                      .withLimit(25)
+                      .addQueryParam("createdById", creatorId.toString())
+                      .addFilter("aboutEntity", aboutEntity);
+
+              ListResponse<Task> remainingTasks = SdkClients.adminClient().tasks().list(params);
+              assertTrue(
+                  remainingTasks.getData() == null || remainingTasks.getData().isEmpty(),
+                  "Suggestion tasks for the deleted creator should be removed synchronously");
+              assertThrows(
+                  ApiException.class,
+                  () -> SdkClients.adminClient().tasks().get(taskId.toString()),
+                  "Deleted suggestion task should no longer be retrievable");
+            });
+  }
+
   private void awaitTaskReadyForWorkflowResolution(UUID taskId) {
     Awaitility.await("task workflow materialization for " + taskId)
         .atMost(Duration.ofSeconds(20))
@@ -3566,6 +3738,10 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                           "status,workflowDefinitionId,workflowInstanceId,workflowStageId,availableTransitions");
 
               assertNotNull(task.getWorkflowDefinitionId(), "workflow definition should be bound");
+              assertTrue(
+                  org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
+                      .hasActiveRuntimeTask(taskId),
+                  "workflow runtime task should be active before resolution");
               assertNotNull(task.getWorkflowStageId(), "workflow stage should be materialized");
               assertNotNull(task.getAvailableTransitions(), "workflow transitions should exist");
               assertFalse(

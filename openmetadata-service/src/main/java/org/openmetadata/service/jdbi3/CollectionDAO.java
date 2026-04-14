@@ -1939,17 +1939,17 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')) AS relationType, COUNT(*) AS cnt "
-                + "FROM entity_relationship "
+            "SELECT COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), 'relatedTo') AS relationType, "
+                + "COUNT(*) AS cnt FROM entity_relationship "
                 + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
-                + "GROUP BY JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType'))",
+                + "GROUP BY relationType",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json->>'relationType' AS relationType, COUNT(*) AS cnt "
-                + "FROM entity_relationship "
+            "SELECT COALESCE(json->>'relationType', 'relatedTo') AS relationType, "
+                + "COUNT(*) AS cnt FROM entity_relationship "
                 + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
-                + "GROUP BY json->>'relationType'",
+                + "GROUP BY relationType",
         connectionType = POSTGRES)
     @RegisterRowMapper(RelationTypeUsageCountMapper.class)
     List<RelationTypeUsageCount> countByRelationType(
@@ -2245,13 +2245,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
+                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
+                + "WHERE (json->'pipeline'->>'id' =:toId OR toId = :toId) AND relation = :relation "
                 + "AND json->>'source' = :source ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipObjectMapper.class)
@@ -2467,13 +2467,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
+                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
+                + "WHERE (json->'pipeline'->>'id' =:toId OR toId = :toId) AND relation = :relation "
                 + "AND json->>'source' = :source",
         connectionType = POSTGRES)
     void deleteLineageBySourcePipeline(

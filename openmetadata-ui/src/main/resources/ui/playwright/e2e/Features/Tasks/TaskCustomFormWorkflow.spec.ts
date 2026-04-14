@@ -381,6 +381,31 @@ test.describe.serial('Task Custom Form Workflow', () => {
         createdSchemaId = createdSchema.id;
       }
 
+      await expect
+        .poll(
+          async () => {
+            const resolvedSchemaResponse = await apiContext.get(
+              '/api/v1/taskFormSchemas?taskType=CustomTask&taskCategory=Custom&limit=1&include=all'
+            );
+
+            if (!resolvedSchemaResponse.ok()) {
+              return null;
+            }
+
+            const resolvedSchemaPayload = await resolvedSchemaResponse.json();
+            const resolvedSchema = resolvedSchemaPayload.data?.[0] as
+              | TaskFormSchema
+              | undefined;
+
+            return resolvedSchema?.workflowDefinitionRef ?? null;
+          },
+          {
+            timeout: 30000,
+            intervals: [500, 1000, 2000],
+          }
+        )
+        .toBe(workflowName);
+
       const createTaskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `pw-custom-task-${uuid()}`,
@@ -436,8 +461,19 @@ test.describe.serial('Task Custom Form Workflow', () => {
 
       const visibleModal = page.getByRole('dialog').first();
       await expect(visibleModal).toBeVisible();
-      await visibleModal.getByRole('textbox').nth(0).fill(updatedDescription);
-      await visibleModal.getByRole('textbox').nth(1).fill(updatedReviewNotes);
+      const proposedTextField = visibleModal
+        .locator('.ant-form-item')
+        .filter({ hasText: 'Proposed Text' })
+        .getByRole('textbox')
+        .first();
+      const reviewNotesField = visibleModal
+        .locator('.ant-form-item')
+        .filter({ hasText: 'Review Notes' })
+        .getByRole('textbox')
+        .first();
+
+      await proposedTextField.fill(updatedDescription);
+      await reviewNotesField.fill(updatedReviewNotes);
 
       const resolveTaskResponse = page.waitForResponse(
         (response) =>

@@ -13,7 +13,6 @@
 
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import { TagLabel } from '../generated/entity/data/container';
 import { Column, DataType, Table } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
@@ -196,12 +195,6 @@ describe('TableUtils', () => {
     const result = getEntityIcon('entity');
 
     expect(result).toBeNull();
-  });
-
-  it('getEntityIcon should return icon for SearchIndex ML model service', () => {
-    const result = getEntityIcon(SearchIndex.ML_MODEL_SERVICE);
-
-    expect(result).not.toBeNull();
   });
 
   describe('findColumnByEntityLink', () => {

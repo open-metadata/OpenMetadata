@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { APIRequestContext, expect, Page, test as base } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -40,6 +39,46 @@ const user1 = new UserClass();
 const entity = new TableClass();
 const extraEntity = new TableClass();
 const testPersona = new PersonaClass();
+
+const waitForConversationMaterialization = async ({
+  apiContext,
+  entityLink,
+  threadId,
+  message,
+}: {
+  apiContext: APIRequestContext;
+  entityLink: string;
+  threadId?: string;
+  message?: string;
+}) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get('/api/v1/feed', {
+          params: {
+            entityLink,
+            type: 'Conversation',
+          },
+        });
+
+        if (!response.ok()) {
+          return false;
+        }
+
+        const payload = await response.json();
+
+        return (payload.data ?? []).some(
+          (thread: { id?: string; message?: string }) =>
+            thread.id === threadId || thread.message === message
+        );
+      },
+      {
+        timeout: 30_000,
+        intervals: [1_000, 2_000, 5_000],
+      }
+    )
+    .toBe(true);
+};
 
 test.describe('FeedWidget on landing page', () => {
   test.beforeAll(
@@ -407,7 +446,7 @@ test.describe('FeedWidget on landing page', () => {
 test.describe('Mention notifications in Notification Box', () => {
   const adminUser = new UserClass();
   const user1 = new UserClass();
-  const entity = EntityDataClass.table1;
+  const entity = new TableClass();
 
   const test = base.extend<{
     adminPage: Page;
@@ -457,10 +496,7 @@ test.describe('Mention notifications in Notification Box', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
     await user1.create(apiContext);
-
-    // Reload entity data in case it wasn't loaded when module was imported
-    // (entity-data.setup.ts creates the JSON file AFTER module import)
-    EntityDataClass.loadResponseData();
+    await entity.create(apiContext);
 
     // Create initial conversation via API since the Activity Feed UI
     // doesn't provide an input field when the feed is empty
@@ -475,7 +511,12 @@ test.describe('Mention notifications in Notification Box', () => {
     });
     const conversation = await conversationResponse.json();
     conversationThreadId = conversation.id;
-
+    await waitForConversationMaterialization({
+      apiContext,
+      entityLink: `<#E::table::${entityFqn}>`,
+      threadId: conversationThreadId,
+      message: conversationSeedText,
+    });
     await afterAction();
   });
 
@@ -656,13 +697,22 @@ test.describe('Mention notifications in Notification Box', () => {
       await expect(message).toBeVisible();
 
       // Add reaction
-      await message.locator('[data-testid="add-reactions"]').click();
+      const addReactionButton = message
+        .locator('[data-testid="feed-reaction-container"]')
+        .getByTestId('add-reactions');
+      await expect(addReactionButton).toBeVisible();
+      await addReactionButton.click();
+      await user1Page
+        .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
+        .waitFor({ state: 'visible' });
       const reactionResponse = user1Page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed') &&
-          response.request().method() === 'PATCH'
+          response.url().includes('/api/v1/feed/') &&
+          ['PATCH', 'POST', 'PUT'].includes(response.request().method())
       );
-      await user1Page.locator('[title="rocket"]').click();
+      await user1Page
+        .locator('[data-testid="reaction-button"][title="rocket"]')
+        .click();
       await reactionResponse;
 
       // Hover over the emoji button to see the popover
@@ -691,6 +741,12 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
   const apiEndpoint = new ApiEndpointClass(undefined, endpointName);
   let schemaFqn: string;
   const userName = `测试-${uuid()}`;
+  const chineseMentionUser = new UserClass({
+    firstName: userName,
+    lastName: '',
+    email: `activity-feed-mention-${uuid()}@example.com`,
+    password: 'User@OMD123',
+  });
 
   test.beforeAll(
     'Create database, schema, and user with Chinese name',
@@ -701,17 +757,10 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       await apiEndpoint.create(apiContext);
       await adminUser.create(apiContext);
       schemaFqn = database.schemaResponseData.fullyQualifiedName;
-      const user = new UserClass({
-        firstName: userName,
-        lastName: '',
-        email: `${userName}@example.com`,
-        password: 'User@OMD123',
-      });
-
-      await user.create(apiContext);
+      await chineseMentionUser.create(apiContext);
 
       // Create a conversation thread via API so we can post replies in the tests
-      await apiContext.post('/api/v1/feed', {
+      const conversationResponse = await apiContext.post('/api/v1/feed', {
         data: {
           from: adminUser.responseData.name,
           message: 'Initial conversation for Chinese character encoding test',
@@ -719,10 +768,41 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
           type: 'Conversation',
         },
       });
+      const conversation = await conversationResponse.json();
+      await waitForConversationMaterialization({
+        apiContext,
+        entityLink: `<#E::databaseSchema::${schemaFqn}>`,
+        threadId: conversation.id,
+        message: 'Initial conversation for Chinese character encoding test',
+      });
 
       await afterAction();
     }
   );
+
+  test.afterAll('Cleanup chinese mention fixtures', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      if (apiEndpoint.entityResponseData?.id) {
+        await apiEndpoint.delete(apiContext);
+      }
+
+      if (database.responseData?.id) {
+        await database.delete(apiContext);
+      }
+
+      if (chineseMentionUser.responseData?.id) {
+        await chineseMentionUser.delete(apiContext);
+      }
+
+      if (adminUser.responseData?.id) {
+        await adminUser.delete(apiContext);
+      }
+    } finally {
+      await afterAction();
+    }
+  });
 
   test.beforeEach(async ({ page }) => {
     await adminUser.login(page);
@@ -848,22 +928,19 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     expect(feedResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
+    const seededThread = page
+      .locator('[data-testid="message-container"]')
+      .filter({
+        hasText: 'Initial conversation for Chinese character encoding test',
+      })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
     const commentsInput = page.getByTestId('comments-input-field');
-    if (!(await commentsInput.isVisible().catch(() => false))) {
-      const seededThread = page
-        .locator(
-          '[data-testid="message-container"], [data-testid="feed-reply-card"]'
-        )
-        .filter({
-          hasText: 'Initial conversation for Chinese character encoding test',
-        })
-        .first();
-
-      await expect(seededThread).toBeVisible({ timeout: 30_000 });
-      await seededThread.click();
-      await waitForAllLoadersToDisappear(page);
-    }
-
+    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
     await commentsInput.click();
 
     const editorLocator = page.locator(

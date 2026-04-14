@@ -35,6 +35,10 @@ import org.openmetadata.schema.entity.feed.FormSchema;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.feed.TransitionForms;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.Config__1;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.TransitionMetadatum;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -135,6 +139,34 @@ class TaskWorkflowLifecycleResolverTest {
     assertEquals("startProgress", transition.getId());
     assertEquals("inProgress", transition.getTargetStageId());
     assertEquals(TaskEntityStatus.InProgress, transition.getTargetTaskStatus());
+  }
+
+  @Test
+  void resolveTransitionsForStageUsesWorkflowDefinitionNodeConfig() {
+    WorkflowDefinition workflowDefinition =
+        new WorkflowDefinition()
+            .withNodes(
+                List.of(
+                    new UserApprovalTaskDefinition()
+                        .withName("TaskReview")
+                        .withConfig(
+                            new Config__1()
+                                .withStageId("review")
+                                .withTransitionMetadata(
+                                    List.of(
+                                        new TransitionMetadatum()
+                                            .withId("approve")
+                                            .withLabel("Approve")
+                                            .withTargetStageId("approved")
+                                            .withTargetTaskStatus(TaskEntityStatus.Approved)
+                                            .withResolutionType(TaskResolutionType.Approved))))));
+
+    List<TaskAvailableTransition> transitions =
+        TaskWorkflowLifecycleResolver.resolveTransitionsForStage(workflowDefinition, "review");
+
+    assertEquals(1, transitions.size());
+    assertEquals("approve", transitions.getFirst().getId());
+    assertEquals(TaskEntityStatus.Approved, transitions.getFirst().getTargetTaskStatus());
   }
 
   @Test

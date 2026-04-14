@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test as base } from '@playwright/test';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { expect, Page, test as base } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
+import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
-import { addOwner } from '../../utils/entity';
 import { waitForPageLoaded } from '../../utils/polling';
 
 const test = base;
@@ -26,7 +24,104 @@ const adminUser = new UserClass();
 const testTable = new TableClass();
 const testTag = new TagClass({});
 
+type ActivityApiEvent = {
+  actor?: { displayName?: string; name?: string };
+  eventType?: string;
+  summary?: string;
+};
+
+type ActivityApiResponse = {
+  data?: ActivityApiEvent[];
+};
+
+const openActivityFeedAndWaitForApi = async (page: Page, entityFqn: string) => {
+  const expectedActivityPath = `/api/v1/activity/entity/table/name/${entityFqn}`;
+  const activityResponsePromise = page.waitForResponse(
+    (response) =>
+      decodeURIComponent(response.url()).includes(expectedActivityPath) &&
+      response.status() === 200,
+    { timeout: 15000 }
+  );
+
+  await page.getByTestId('activity_feed').click();
+  await waitForPageLoaded(page);
+
+  const activityResponse = await activityResponsePromise;
+
+  return (await activityResponse.json()) as ActivityApiResponse;
+};
+
+const waitForActivityEvent = async (entityFqn: string, eventType: string) => {
+  const { apiContext, afterAction } = await createAdminApiContext();
+  const activityUrl = `/api/v1/activity/entity/table/name/${encodeURIComponent(
+    entityFqn
+  )}?days=30&limit=50`;
+  let events: ActivityApiEvent[] = [];
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(activityUrl);
+
+          if (!response.ok()) {
+            return false;
+          }
+
+          const body = (await response.json()) as ActivityApiResponse;
+          events = body.data ?? [];
+
+          return events.some((event) => event.eventType === eventType);
+        },
+        {
+          timeout: 75000,
+          intervals: [1000, 2000, 5000, 10000],
+          message: `Timed out waiting for ${eventType} event for ${entityFqn}`,
+        }
+      )
+      .toBe(true);
+
+    return events.find((event) => event.eventType === eventType);
+  } finally {
+    await afterAction();
+  }
+};
+
+const addOwnerFromActivitySpec = async (page: Page, owner: string) => {
+  await page.getByTestId('edit-owner').click();
+
+  const usersTab = page.getByRole('tab', { name: /^Users\b/ });
+  if ((await usersTab.getAttribute('aria-selected')) !== 'true') {
+    await usersTab.click();
+  }
+
+  const ownerSearchInput = page.getByTestId('owner-select-users-search-bar');
+  await expect(ownerSearchInput).toBeVisible({ timeout: 30000 });
+
+  const searchUser = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') && response.ok()
+  );
+  await ownerSearchInput.fill(owner);
+  await searchUser;
+
+  const ownerItem = page.getByRole('listitem', { name: owner });
+  await expect(ownerItem).toBeVisible({ timeout: 60000 });
+  await ownerItem.click();
+
+  const patchRequest = page.waitForResponse('/api/v1/tables/*');
+  await page
+    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+    .getByTestId('selectable-list-update-btn')
+    .click();
+  await patchRequest;
+
+  await expect(page.getByTestId('owner-link').getByTestId(owner)).toBeVisible();
+};
+
 test.describe('Activity API - Entity Changes', () => {
+  test.describe.configure({ timeout: 120000 });
+
   test.beforeAll('Setup: create entities and users', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -62,6 +157,7 @@ test.describe('Activity API - Entity Changes', () => {
     page,
   }) => {
     const newDescription = `Test description updated at ${Date.now()}`;
+    const entityFqn = testTable.entityResponseData.fullyQualifiedName;
 
     // Navigate to entity page
     await testTable.visitEntityPage(page);
@@ -78,43 +174,30 @@ test.describe('Activity API - Entity Changes', () => {
     await page.getByTestId('save').click();
     await patchResponse;
 
-    // Wait for activity to be indexed
-    await page.waitForTimeout(2000);
-
-    // Navigate to Activity Feed tab
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    // Check if there are any feed items
+    const descriptionEvent = await waitForActivityEvent(
+      entityFqn,
+      'DescriptionUpdated'
+    );
+    const activityResponse = await openActivityFeedAndWaitForApi(
+      page,
+      entityFqn
+    );
     const feedContainer = page.locator('[data-testid="message-container"]');
-    const emptyState = page.locator(
-      '[data-testid="no-data-placeholder-container"]'
+    const renderedDescriptionEvent = activityResponse.data?.find(
+      (event) => event.eventType === 'DescriptionUpdated'
     );
 
-    // Wait for either feed items or empty state
-    await Promise.race([
-      feedContainer.first().waitFor({ state: 'visible', timeout: 10000 }),
-      emptyState.waitFor({ state: 'visible', timeout: 10000 }),
-    ]).catch(() => {});
-
-    // If we have feed items, verify the description change
-    if ((await feedContainer.count()) > 0) {
-      const feedContent = await feedContainer.first().textContent();
-
-      expect(feedContent?.toLowerCase()).toContain('description');
-    } else {
-      // Activity API may not be generating events yet
-      test.info().annotations.push({
-        type: 'note',
-        description: 'Activity feed is empty - Activity API may not be active',
-      });
-    }
+    expect(descriptionEvent).toBeDefined();
+    expect(renderedDescriptionEvent).toBeDefined();
+    await expect(feedContainer.first()).toContainText(/description/i);
   });
 
   test('Activity event is created when tags are added', async ({
     page,
     browser,
   }) => {
+    const entityFqn = testTable.entityResponseData.fullyQualifiedName;
+
     // Add tag via API to bypass search indexing issues
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -142,85 +225,48 @@ test.describe('Activity API - Entity Changes', () => {
       await afterAction();
     }
 
-    // Wait for activity to be indexed
-    await page.waitForTimeout(2000);
+    const tagsEvent = await waitForActivityEvent(entityFqn, 'TagsUpdated');
 
     // Navigate to entity page
     await testTable.visitEntityPage(page);
 
-    // Navigate to Activity Feed tab
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    // Check if there are any feed items - activity may not appear immediately
+    const activityResponse = await openActivityFeedAndWaitForApi(
+      page,
+      entityFqn
+    );
     const feedContainer = page.locator('[data-testid="message-container"]');
-    const emptyState = page.locator(
-      '[data-testid="no-data-placeholder-container"]'
+    const renderedTagsEvent = activityResponse.data?.find(
+      (event) => event.eventType === 'TagsUpdated'
     );
 
-    // Wait for either feed items or empty state
-    await Promise.race([
-      feedContainer.first().waitFor({ state: 'visible', timeout: 10000 }),
-      emptyState.waitFor({ state: 'visible', timeout: 10000 }),
-    ]).catch(() => {});
-
-    // If we have feed items, check for tag content
-    if ((await feedContainer.count()) > 0) {
-      const feedContent = await feedContainer.first().textContent();
-
-      expect(feedContent?.toLowerCase()).toContain('tag');
-    } else {
-      // Activity API may not be generating events yet, skip assertion
-      test.info().annotations.push({
-        type: 'note',
-        description: 'Activity feed is empty - Activity API may not be active',
-      });
-    }
+    expect(tagsEvent).toBeDefined();
+    expect(renderedTagsEvent).toBeDefined();
+    await expect(feedContainer.first()).toContainText(/tag/i);
   });
 
   test('Activity event is created when owner is added', async ({ page }) => {
+    const entityFqn = testTable.entityResponseData.fullyQualifiedName;
+    const ownerDisplayName = adminUser.getUserDisplayName();
+
     // Navigate to entity page
     await testTable.visitEntityPage(page);
 
-    // Add owner using utility function
-    await addOwner({
+    await addOwnerFromActivitySpec(page, ownerDisplayName);
+
+    const ownerEvent = await waitForActivityEvent(entityFqn, 'OwnerUpdated');
+    const activityResponse = await openActivityFeedAndWaitForApi(
       page,
-      owner: adminUser.responseData.displayName,
-      endpoint: EntityTypeEndpoint.Table,
-      type: 'Users',
-    });
-
-    // Wait for activity to be indexed
-    await page.waitForTimeout(2000);
-
-    // Navigate to Activity Feed tab
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    // Check if there are any feed items
+      entityFqn
+    );
     const feedContainer = page.locator('[data-testid="message-container"]');
-    const emptyState = page.locator(
-      '[data-testid="no-data-placeholder-container"]'
+    const renderedOwnerEvent = activityResponse.data?.find(
+      (event) => event.eventType === 'OwnerUpdated'
     );
 
-    // Wait for either feed items or empty state
-    await Promise.race([
-      feedContainer.first().waitFor({ state: 'visible', timeout: 10000 }),
-      emptyState.waitFor({ state: 'visible', timeout: 10000 }),
-    ]).catch(() => {});
-
-    // If we have feed items, verify the owner change
-    if ((await feedContainer.count()) > 0) {
-      const feedContent = await feedContainer.first().textContent();
-
-      expect(feedContent?.toLowerCase()).toContain('owner');
-    } else {
-      // Activity API may not be generating events yet
-      test.info().annotations.push({
-        type: 'note',
-        description: 'Activity feed is empty - Activity API may not be active',
-      });
-    }
+    expect(ownerEvent).toBeDefined();
+    expect(renderedOwnerEvent).toBeDefined();
+    await expect(feedContainer.first()).toContainText(/owner/i);
+    await expect(feedContainer.first()).toContainText(ownerDisplayName);
   });
 
   test('Activity event shows the actor who made the change', async ({
@@ -302,8 +348,11 @@ test.describe('Activity API - Entity Changes', () => {
       .catch(() => {});
 
     if ((await feedContainer.count()) > 0) {
-      // Find a link to the entity within the feed item
-      const entityLink = feedContainer.first().locator('a').first();
+      // Activity cards now render actor/profile links ahead of the entity link.
+      const entityLink = feedContainer
+        .first()
+        .locator('a[href*="/table/"]')
+        .first();
 
       if (await entityLink.isVisible()) {
         const href = await entityLink.getAttribute('href');

@@ -77,7 +77,7 @@ public class OpenMetadataConnectionBuilder {
       initializeBotUser(getBotFromPipeline(ingestionPipeline));
     } catch (Exception e) {
       LOG.warn(
-          "Could not initialize bot for pipeline [{}] due to: ",
+          "Could not initialize bot for pipeline [{}] due to ",
           ingestionPipeline.getPipelineType(),
           e);
       initializeBotUser(Entity.INGESTION_BOT_NAME);

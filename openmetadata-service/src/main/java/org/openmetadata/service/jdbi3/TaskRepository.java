@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -773,6 +774,15 @@ public class TaskRepository extends EntityRepository<Task> {
 
     // Allow if user is owner of the target entity
     List<EntityReference> owners = about != null ? Entity.getOwners(about) : null;
+    LOG.info(
+        "[TaskRepository] checkPermissionsForResolveTask taskId='{}' user='{}' closeTask={} type='{}' about='{}' assignees={} owners={}",
+        task.getId(),
+        userName,
+        closeTask,
+        task.getType(),
+        about != null ? about.getFullyQualifiedName() : null,
+        assignees != null ? assignees.stream().map(EntityReference::getName).toList() : null,
+        owners != null ? owners.stream().map(EntityReference::getName).toList() : null);
     if (!nullOrEmpty(owners)
         && owners.stream().anyMatch(owner -> owner.getName().equals(userName))) {
       return;
@@ -1148,6 +1158,14 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     try {
+      LOG.info(
+          "[TaskRepository] triggerWorkflowManagedTask taskId='{}' draftAssignees={} createdBy='{}' updatedBy='{}'",
+          task.getId(),
+          task.getAssignees() != null
+              ? task.getAssignees().stream().map(EntityReference::getName).toList()
+              : null,
+          task.getCreatedBy() != null ? task.getCreatedBy().getName() : null,
+          task.getUpdatedBy());
       WorkflowDefinition workflowDefinition =
           Entity.getEntity(
               Entity.WORKFLOW_DEFINITION,
@@ -1300,8 +1318,10 @@ public class TaskRepository extends EntityRepository<Task> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateAssignees();
       updateTaskReviewers();
+      updateWorkflowMetadata();
       updateStatus();
       updatePriority();
+      updatePayload();
       updateResolution();
       updateWorkflowFields();
     }
@@ -1399,6 +1419,56 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updatePriority() {
       recordChange("priority", original.getPriority(), updated.getPriority());
+    }
+
+    private void updateWorkflowMetadata() {
+      recordChange(
+          "workflowInstanceId",
+          original.getWorkflowInstanceId(),
+          updated.getWorkflowInstanceId(),
+          false,
+          Objects::equals,
+          false);
+      recordChange(
+          "workflowStageId",
+          original.getWorkflowStageId(),
+          updated.getWorkflowStageId(),
+          false,
+          Objects::equals,
+          false);
+      recordChange(
+          "workflowStageDisplayName",
+          original.getWorkflowStageDisplayName(),
+          updated.getWorkflowStageDisplayName(),
+          false,
+          Objects::equals,
+          false);
+      recordChange(
+          "availableTransitions",
+          original.getAvailableTransitions(),
+          updated.getAvailableTransitions(),
+          true,
+          Objects::equals,
+          false);
+      recordChange(
+          "taskFormSchemaId",
+          original.getTaskFormSchemaId(),
+          updated.getTaskFormSchemaId(),
+          false,
+          Objects::equals,
+          false);
+      recordChange(
+          "taskFormSchemaVersion",
+          original.getTaskFormSchemaVersion(),
+          updated.getTaskFormSchemaVersion(),
+          false,
+          Objects::equals,
+          false);
+    }
+
+    private void updatePayload() {
+      recordChange(
+          FIELD_PAYLOAD, original.getPayload(), updated.getPayload(), true, Objects::equals, false);
     }
 
     private void updateResolution() {

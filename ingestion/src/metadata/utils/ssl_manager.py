@@ -153,6 +153,7 @@ class SSLManager:
         matillion_connection = cast(MatillionConnection, connection)
         if (
             matillion_connection.connection
+            and hasattr(matillion_connection.connection, "sslConfig")
             and matillion_connection.connection.sslConfig
         ):
             if matillion_connection.connection.sslConfig.root.caCertificate:
@@ -369,7 +370,9 @@ def check_ssl_and_init(
 @check_ssl_and_init.register(MatillionConnection)
 def _(connection) -> Union[SSLManager, None]:
     service_connection = cast(MatillionConnection, connection)
-    if service_connection.connection:
+    if service_connection.connection and hasattr(
+        service_connection.connection, "sslConfig"
+    ):
         ssl: Optional[
             verifySSLConfig.SslConfig
         ] = service_connection.connection.sslConfig

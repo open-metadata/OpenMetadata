@@ -15,13 +15,23 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TaskRepository;
 
 class CreateTaskImplTest {
 
@@ -54,7 +64,7 @@ class CreateTaskImplTest {
   }
 
   @Test
-  void testResolveExistingTaskAssigneesUsesWorkflowAssigneesAfterMaterialization() {
+  void testResolveExistingTaskAssigneesPreservesDatabaseAssignmentsAfterMaterialization() {
     EntityReference existingAssignee =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -78,6 +88,103 @@ class CreateTaskImplTest {
         CreateTaskImpl.resolveExistingTaskAssignees(
             existingTask, List.of(workflowAssignee), List.of(workflowAssignee));
 
+    assertNull(resolved);
+  }
+
+  @Test
+  void testResolveExistingTaskAssigneesUsesWorkflowAssigneesForWorkflowNativeTasks() {
+    EntityReference workflowAssignee =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("user")
+            .withName("shared_user1")
+            .withFullyQualifiedName("shared_user1");
+
+    Task existingTask =
+        new Task().withId(UUID.randomUUID()).withWorkflowStageId("review").withAssignees(null);
+
+    List<EntityReference> resolved =
+        CreateTaskImpl.resolveExistingTaskAssignees(existingTask, List.of(workflowAssignee), null);
+
     assertEquals(List.of(workflowAssignee), resolved);
+  }
+
+  @Test
+  void testShouldSkipDeletedWorkflowManagedDraftTaskWhenPendingDraftWasRemoved() {
+    assertTrue(
+        CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(UUID.randomUUID(), true, null));
+  }
+
+  @Test
+  void testShouldNotSkipTaskMaterializationForWorkflowNativeOrExistingTasks() {
+    Task existingTask = new Task().withId(UUID.randomUUID());
+
+    assertFalse(
+        CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(UUID.randomUUID(), false, null));
+    assertFalse(CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(null, true, null));
+    assertFalse(
+        CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(
+            UUID.randomUUID(), true, existingTask));
+  }
+
+  @Test
+  void testFindExistingTaskWithRetryBridgesTransientDraftVisibilityGap() {
+    UUID taskId = UUID.randomUUID();
+    TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    Task existingTask = new Task().withId(taskId);
+
+    when(taskRepository.find(taskId, Include.ALL))
+        .thenThrow(EntityNotFoundException.byId(taskId.toString()))
+        .thenReturn(existingTask);
+
+    Task resolvedTask = CreateTaskImpl.findExistingTaskWithRetry(taskRepository, taskId, true);
+
+    assertEquals(existingTask, resolvedTask);
+    verify(taskRepository, times(2)).find(taskId, Include.ALL);
+  }
+
+  @Test
+  void testFindExistingTaskWithRetryDoesSingleLookupForNonWorkflowManagedTasks() {
+    UUID taskId = UUID.randomUUID();
+    TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    Task existingTask = new Task().withId(taskId);
+
+    when(taskRepository.find(taskId, Include.ALL)).thenReturn(existingTask);
+
+    Task resolvedTask = CreateTaskImpl.findExistingTaskWithRetry(taskRepository, taskId, false);
+
+    assertEquals(existingTask, resolvedTask);
+    verify(taskRepository).find(taskId, Include.ALL);
+  }
+
+  @Test
+  void testFindExistingTaskWithRetryReturnsNullAfterExhaustingWorkflowManagedLookup() {
+    UUID taskId = UUID.randomUUID();
+    TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+
+    when(taskRepository.find(taskId, Include.ALL))
+        .thenThrow(EntityNotFoundException.byId(taskId.toString()));
+
+    Task resolvedTask = CreateTaskImpl.findExistingTaskWithRetry(taskRepository, taskId, true);
+
+    assertNull(resolvedTask);
+    verify(taskRepository, times(6)).find(taskId, Include.ALL);
+  }
+
+  @Test
+  void testIsTerminalTaskStatusReturnsTrueForResolvedStates() {
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Approved));
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Rejected));
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Completed));
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Cancelled));
+    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Failed));
+  }
+
+  @Test
+  void testIsTerminalTaskStatusReturnsFalseForOpenStates() {
+    assertFalse(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Open));
+    assertFalse(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.InProgress));
+    assertFalse(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Pending));
+    assertFalse(CreateTaskImpl.isTerminalTaskStatus(null));
   }
 }

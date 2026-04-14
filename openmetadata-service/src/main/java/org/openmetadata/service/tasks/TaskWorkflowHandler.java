@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -49,6 +51,7 @@ import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBin
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.FieldPathUtils;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Handles workflow integration for Task entities.
@@ -854,6 +857,18 @@ public class TaskWorkflowHandler {
       }
 
       if ("Description".equals(suggestionType)) {
+        Optional<String> currentDescription = FieldPathUtils.getFieldDescription(entity, fieldPath);
+        if (currentDescription.isPresent() && suggestedValue.equals(currentDescription.get())) {
+          String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
+          if (changeSummaryField != null) {
+            repository.patchChangeSummary(
+                entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
+          }
+          LOG.info(
+              "[TaskWorkflowHandler] Recorded no-op description suggestion change summary: fieldPath={}",
+              fieldPath);
+          return;
+        }
         boolean success =
             FieldPathUtils.updateFieldDescription(
                 entity, repository, user, fieldPath, suggestedValue);
@@ -909,6 +924,27 @@ public class TaskWorkflowHandler {
     if (patch != null && !patch.toJsonArray().isEmpty()) {
       repository.patch(null, entity.getId(), user, patch, null, null);
     }
+  }
+
+  private String resolveSuggestionChangeSummaryField(String fieldPath) {
+    if (fieldPath == null
+        || fieldPath.isBlank()
+        || fieldPath.equals("description")
+        || fieldPath.equals("entity")) {
+      return "description";
+    }
+
+    FieldPathUtils.FieldPathComponents components = FieldPathUtils.parseFieldPath(fieldPath);
+    if (components == null || !"description".equals(components.property())) {
+      return null;
+    }
+
+    if (components.fieldName() == null || components.fieldName().isBlank()) {
+      return "description";
+    }
+
+    return FullyQualifiedName.build(
+        components.containerName(), components.fieldName(), components.property());
   }
 
   private List<EntityReference> readEntityReferences(

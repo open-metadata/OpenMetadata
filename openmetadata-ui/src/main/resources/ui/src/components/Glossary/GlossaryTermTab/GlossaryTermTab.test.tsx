@@ -63,8 +63,12 @@ jest.mock('../../../rest/tasksAPI', () => ({
   resolveTask: jest
     .fn()
     .mockImplementation((...args) => mockResolveTask(...args)),
+  TaskCategory: { Approval: 'Approval' },
   TaskEntityStatus: { Open: 'Open' },
-  TaskEntityType: { GlossaryApproval: 'GlossaryApproval' },
+  TaskEntityType: {
+    GlossaryApproval: 'GlossaryApproval',
+    RequestApproval: 'RequestApproval',
+  },
   TaskResolutionType: { Approved: 'Approved', Rejected: 'Rejected' },
 }));
 
@@ -652,9 +656,9 @@ describe('Test GlossaryTermTab component', () => {
       await waitFor(() => {
         expect(mockListTasks).toHaveBeenCalledWith(
           expect.objectContaining({
-            aboutEntity: 'Business Glossary.Clothing',
             status: 'Open',
-            type: 'GlossaryApproval',
+            category: 'Approval',
+            type: 'RequestApproval',
             limit: 100000,
             fields: 'about,assignees',
           })
@@ -670,9 +674,9 @@ describe('Test GlossaryTermTab component', () => {
       await waitFor(() => {
         expect(mockListTasks).toHaveBeenCalledWith(
           expect.objectContaining({
-            aboutEntity: 'Business Glossary.Clothing',
             status: 'Open',
-            type: 'GlossaryApproval',
+            category: 'Approval',
+            type: 'RequestApproval',
             limit: 100000,
             fields: 'about,assignees',
           })

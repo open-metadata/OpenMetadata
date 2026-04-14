@@ -154,20 +154,6 @@ export const AuthProvider = ({
   const [msalInstance, setMsalInstance] = useState<IPublicClientApplication>();
 
   const authenticatorRef = useRef<AuthenticatorRef>(null);
-  const loginRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
-  const isMountedRef = useRef(true);
-
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      if (loginRetryTimeoutRef.current) {
-        clearTimeout(loginRetryTimeoutRef.current);
-        loginRetryTimeoutRef.current = null;
-      }
-    };
-  }, []);
 
   const userConfig = useMemo(
     () =>
@@ -189,14 +175,14 @@ export const AuthProvider = ({
       if (authenticatorRef.current) {
         authenticatorRef.current.invokeLogin?.();
         resetWebAnalyticSession();
-      } else if (attempts < maxAttempts && isMountedRef.current) {
+      } else if (attempts < maxAttempts) {
         // Polling mechanism to wait for authenticator ref to be available.
         // This handles race conditions in production builds where onLoginHandler
         // may be called before the authenticator component has mounted and set the ref.
         // Retry every 50ms until ref is available (max 100 attempts = 5 seconds).
         attempts++;
-        loginRetryTimeoutRef.current = setTimeout(invokeLogin, 50);
-      } else if (isMountedRef.current) {
+        setTimeout(invokeLogin, 50);
+      } else {
         // Max attempts reached, stop loading and silently fail
         setApplicationLoading(false);
       }
@@ -350,6 +336,49 @@ export const AuthProvider = ({
       tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
     }
   }, [authenticatorRef.current?.renewIdToken]);
+
+  // When the tab becomes visible after being backgrounded, browsers may have
+  // throttled or suspended the proactive renewal timer. Check token freshness
+  // immediately and refresh if expired, or reschedule the timer with the
+  // correct remaining time.
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      try {
+        const token = await getOidcToken();
+        const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
+
+        // eslint-disable-next-line no-console
+        console.debug(
+          '[VisibilityHandler] token length:',
+          token?.length,
+          'isExpired:',
+          isExpired,
+          'timeoutExpiry:',
+          timeoutExpiry,
+          'hasTokenService:',
+          !!tokenService.current
+        );
+
+        if (isExpired || timeoutExpiry <= 0) {
+          tokenService.current?.refreshToken();
+        } else {
+          startTokenExpiryTimer();
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[VisibilityHandler] error:', error);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   /**
    * Performs cleanup around timers

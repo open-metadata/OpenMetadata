@@ -31,7 +31,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchAggregationNode;
 import org.openmetadata.service.search.SearchListFilter;
@@ -504,23 +503,13 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                 hitList -> {
                   for (Map<String, Object> hit : (List<Map<String, Object>>) hitList) {
                     Map<String, Object> source = extractAndFilterSource(hit);
-                    T entity = JsonUtils.readOrConvertValue(source, entityClass);
-
-                    if (entity == null) {
-                      continue;
-                    }
-
-                    try {
-                      entity = setFieldsInternal(entity, fields);
+                    T entity =
+                        setFieldsInternal(
+                            JsonUtils.readOrConvertValue(source, entityClass), fields);
+                    if (entity != null) {
                       setInheritedFields(entity);
                       clearFieldsInternal(entity, fields);
                       entityList.add(entity);
-                    } catch (UnhandledServerException | EntityNotFoundException e) {
-                      LOG.warn(
-                          "Skipping orphaned {} search hit id={} during latest listing: {}",
-                          entityType,
-                          entity.getId(),
-                          e.getMessage());
                     }
                   }
                 });

@@ -20,18 +20,24 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
-import jakarta.json.JsonPatch;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.engine.RuntimeService;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
+import org.flowable.engine.runtime.Execution;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
@@ -76,6 +82,22 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class CreateTaskImpl implements TaskListener {
   static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
   private static final String DEFAULT_SYSTEM_USER = "admin";
+  private static final int WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS = 6;
+  private static final long INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 25L;
+  private static final long MAX_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 250L;
+  private static final IntervalFunction WORKFLOW_MANAGED_DRAFT_LOOKUP_INTERVAL_FUNCTION =
+      attempt -> {
+        long retryDelayMillis =
+            INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS << Math.max(0, (int) attempt - 1);
+        return Math.min(retryDelayMillis, MAX_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS);
+      };
+  private static final RetryConfig WORKFLOW_MANAGED_DRAFT_LOOKUP_RETRY_CONFIG =
+      RetryConfig.<Task>custom()
+          .maxAttempts(WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS)
+          .intervalFunction(WORKFLOW_MANAGED_DRAFT_LOOKUP_INTERVAL_FUNCTION)
+          .retryOnResult(task -> task == null)
+          .failAfterMaxAttempts(false)
+          .build();
   private Expression inputNamespaceMapExpr;
   private Expression assigneesVarNameExpr;
   private Expression approvalThresholdExpr;
@@ -127,6 +149,10 @@ public class CreateTaskImpl implements TaskListener {
               approvalThreshold,
               rejectionThreshold,
               payload);
+
+      if (task == null) {
+        return;
+      }
 
       // Register with WorkflowHandler for resolution
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
@@ -370,6 +396,7 @@ public class CreateTaskImpl implements TaskListener {
     String workflowDefinitionId = stringVariable(delegateTask, "workflowDefinitionId");
     UUID resolvedWorkflowDefinitionId =
         resolveWorkflowDefinitionId(delegateTask, workflowDefinitionId);
+    boolean workflowManagedDraftTask = booleanVariable(delegateTask, "taskWorkflowManaged");
     String taskFormSchemaId = stringVariable(delegateTask, "taskFormSchemaId");
     Double taskFormSchemaVersion = doubleVariable(delegateTask, "taskFormSchemaVersion");
     String workflowStageId = stringExpression(stageIdExpr, delegateTask);
@@ -378,6 +405,11 @@ public class CreateTaskImpl implements TaskListener {
     List<TaskAvailableTransition> availableTransitions =
         TaskWorkflowLifecycleResolver.parseTransitions(
             transitionMetadataExpr != null ? transitionMetadataExpr.getValue(delegateTask) : null);
+    if (availableTransitions.isEmpty()) {
+      availableTransitions =
+          TaskWorkflowLifecycleResolver.resolveTransitionsForStage(
+              resolvedWorkflowDefinitionId, workflowStageId);
+    }
 
     // Build the about reference
     EntityReference aboutRef =
@@ -394,27 +426,44 @@ public class CreateTaskImpl implements TaskListener {
             ? requestedUpdatedBy
             : resolveUpdatedBy(entity, createdByRef);
 
-    Task existingTask = null;
-    if (requestedTaskId != null) {
-      try {
-        existingTask = taskRepository.find(requestedTaskId, Include.ALL);
-      } catch (EntityNotFoundException ignored) {
-        LOG.debug(
-            "[CreateTaskImpl] No existing task entity found for requested task id '{}'; creating workflow-managed task row",
-            requestedTaskId);
-      }
+    Task existingTask =
+        findExistingTaskWithRetry(taskRepository, requestedTaskId, workflowManagedDraftTask);
+    if (shouldSkipDeletedWorkflowManagedDraftTask(
+        requestedTaskId, workflowManagedDraftTask, existingTask)) {
+      terminateDeletedWorkflowManagedDraftTask(delegateTask, requestedTaskId);
+      return null;
     }
     if (existingTask != null) {
+      LOG.info(
+          "[CreateTaskImpl] Updating existing task '{}' stage='{}' workflowAssignees={} requestedAssignees={}",
+          existingTask.getId(),
+          existingTask.getWorkflowStageId(),
+          assignees != null ? assignees.stream().map(EntityReference::getName).toList() : null,
+          requestedAssignees != null
+              ? requestedAssignees.stream().map(EntityReference::getName).toList()
+              : null);
       Task currentTask =
-          taskRepository.get(
-              null,
-              existingTask.getId(),
-              taskRepository.getFields(
-                  "assignees,reviewers,watchers,about,createdBy,domains,tags"));
+          taskRepository.get(null, existingTask.getId(), taskRepository.getFields("*"));
       Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
+      UUID effectiveWorkflowDefinitionId =
+          resolvedWorkflowDefinitionId != null
+              ? resolvedWorkflowDefinitionId
+              : currentTask.getWorkflowDefinitionId();
+      if (availableTransitions.isEmpty()) {
+        availableTransitions =
+            TaskWorkflowLifecycleResolver.resolveTransitionsForStage(
+                effectiveWorkflowDefinitionId, workflowStageId);
+      }
       List<EntityReference> resolvedAssignees =
           resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees);
-      updatedTask.setStatus(stageStatus != null ? stageStatus : updatedTask.getStatus());
+      boolean preserveTerminalWorkflowState = isTerminalTaskStatus(currentTask.getStatus());
+      if (!preserveTerminalWorkflowState) {
+        updatedTask.setStatus(stageStatus != null ? stageStatus : updatedTask.getStatus());
+        updatedTask.setWorkflowStageId(workflowStageId);
+        updatedTask.setWorkflowStageDisplayName(
+            workflowStageDisplayName != null ? workflowStageDisplayName : workflowStageId);
+        updatedTask.setAvailableTransitions(availableTransitions);
+      }
       if (resolvedAssignees != null) {
         updatedTask.setAssignees(resolvedAssignees);
       }
@@ -423,16 +472,12 @@ public class CreateTaskImpl implements TaskListener {
       }
       updatedTask.setWorkflowInstanceId(
           workflowInstanceId != null ? workflowInstanceId : updatedTask.getWorkflowInstanceId());
-      updatedTask.setWorkflowStageId(workflowStageId);
-      updatedTask.setWorkflowStageDisplayName(
-          workflowStageDisplayName != null ? workflowStageDisplayName : workflowStageId);
-      updatedTask.setAvailableTransitions(availableTransitions);
       updatedTask.setUpdatedAt(System.currentTimeMillis());
       updatedTask.setUpdatedBy(updatedBy);
       updatedTask.setPayload(
           requestedPayload != null ? requestedPayload : updatedTask.getPayload());
-      if (resolvedWorkflowDefinitionId != null) {
-        updatedTask.setWorkflowDefinitionId(resolvedWorkflowDefinitionId);
+      if (effectiveWorkflowDefinitionId != null) {
+        updatedTask.setWorkflowDefinitionId(effectiveWorkflowDefinitionId);
       }
       if (taskFormSchemaId != null && !taskFormSchemaId.isBlank()) {
         updatedTask.setTaskFormSchemaId(UUID.fromString(taskFormSchemaId));
@@ -466,12 +511,7 @@ public class CreateTaskImpl implements TaskListener {
                 new com.fasterxml.jackson.core.type.TypeReference<List<TagLabel>>() {}));
       }
 
-      JsonPatch patch = JsonUtils.getJsonPatch(currentTask, updatedTask);
-      if (patch.toJsonArray().isEmpty()) {
-        return currentTask;
-      }
-
-      return taskRepository.patch(null, currentTask.getId(), updatedBy, patch).entity();
+      return taskRepository.update(null, currentTask, updatedTask, updatedBy).getEntity();
     }
 
     // Create the task
@@ -560,11 +600,11 @@ public class CreateTaskImpl implements TaskListener {
     List<EntityReference> existingAssignees = existingTask.getAssignees();
     boolean hasExistingAssignees = existingAssignees != null && !existingAssignees.isEmpty();
 
-    // The initial workflow materialization runs asynchronously after the task row is created.
-    // If the API caller has already updated assignees on the pending row, leave assignees unset
-    // in the workflow-side PUT so the repository preserves the current database value.
-    if (PENDING_WORKFLOW_START_STAGE_ID.equals(existingTask.getWorkflowStageId())
-        && hasExistingAssignees) {
+    // For API-created workflow-managed tasks, taskAssignees is seeded into the workflow start
+    // variables. Subsequent workflow callbacks must not overwrite the task row's current
+    // assignees with BPMN candidate users or the original start-variable snapshot; the persisted
+    // task row is the source of truth once assignees are present.
+    if (requestedAssignees != null && !requestedAssignees.isEmpty() && hasExistingAssignees) {
       return null;
     }
 
@@ -577,6 +617,57 @@ public class CreateTaskImpl implements TaskListener {
     }
 
     return existingAssignees;
+  }
+
+  static boolean isTerminalTaskStatus(TaskEntityStatus status) {
+    return status != null
+        && status != TaskEntityStatus.Open
+        && status != TaskEntityStatus.InProgress
+        && status != TaskEntityStatus.Pending;
+  }
+
+  static boolean shouldSkipDeletedWorkflowManagedDraftTask(
+      UUID requestedTaskId, boolean workflowManagedDraftTask, Task existingTask) {
+    return workflowManagedDraftTask && requestedTaskId != null && existingTask == null;
+  }
+
+  static Task findExistingTaskWithRetry(
+      TaskRepository taskRepository, UUID requestedTaskId, boolean workflowManagedDraftTask) {
+    if (requestedTaskId == null) {
+      return null;
+    }
+
+    Supplier<Task> lookupTask =
+        () -> {
+          try {
+            return taskRepository.find(requestedTaskId, Include.ALL);
+          } catch (EntityNotFoundException ignored) {
+            LOG.debug(
+                "[CreateTaskImpl] Task '{}' not visible yet during workflow callback",
+                requestedTaskId);
+            return null;
+          }
+        };
+
+    if (!workflowManagedDraftTask) {
+      return lookupTask.get();
+    }
+
+    Task existingTask =
+        Retry.decorateSupplier(
+                Retry.of(
+                    "workflowManagedDraftTaskLookup", WORKFLOW_MANAGED_DRAFT_LOOKUP_RETRY_CONFIG),
+                lookupTask)
+            .get();
+
+    if (existingTask == null) {
+      LOG.info(
+          "[CreateTaskImpl] Workflow-managed draft task '{}' remained unavailable after {} lookup attempts",
+          requestedTaskId,
+          WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS);
+    }
+
+    return existingTask;
   }
 
   private UUID resolveRequestedTaskId(DelegateTask delegateTask) {
@@ -668,6 +759,17 @@ public class CreateTaskImpl implements TaskListener {
 
   private Object variable(DelegateTask delegateTask, String variableName) {
     return delegateTask.getVariable(variableName);
+  }
+
+  private boolean booleanVariable(DelegateTask delegateTask, String variableName) {
+    Object value = variable(delegateTask, variableName);
+    if (value instanceof Boolean booleanValue) {
+      return booleanValue;
+    }
+    if (value instanceof String stringValue && !stringValue.isBlank()) {
+      return Boolean.parseBoolean(stringValue);
+    }
+    return false;
   }
 
   private String stringVariable(DelegateTask delegateTask, String variableName) {
@@ -797,6 +899,61 @@ public class CreateTaskImpl implements TaskListener {
       LOG.warn("Failed to build recognizer feedback payload for task: {}", e.getMessage());
       return null;
     }
+  }
+
+  private void terminateDeletedWorkflowManagedDraftTask(
+      DelegateTask delegateTask, UUID requestedTaskId) {
+    String processInstanceId = delegateTask.getProcessInstanceId();
+    RuntimeService runtimeService = WorkflowHandler.getInstance().getRuntimeService();
+    String terminationReason =
+        String.format(
+            "Workflow-managed draft task %s was deleted before workflow materialization",
+            requestedTaskId);
+
+    try {
+      String terminationMessageName =
+          deriveTerminationMessageName(delegateTask.getTaskDefinitionKey());
+      if (terminationMessageName != null) {
+        Execution execution =
+            runtimeService
+                .createExecutionQuery()
+                .processInstanceId(processInstanceId)
+                .messageEventSubscriptionName(terminationMessageName)
+                .singleResult();
+        if (execution != null) {
+          LOG.info(
+              "[CreateTaskImpl] Draft task '{}' was deleted before materialization; "
+                  + "terminating workflow instance '{}' via message '{}'",
+              requestedTaskId,
+              processInstanceId,
+              terminationMessageName);
+          runtimeService.messageEventReceived(terminationMessageName, execution.getId());
+          return;
+        }
+      }
+
+      LOG.info(
+          "[CreateTaskImpl] Draft task '{}' was deleted before materialization; deleting workflow instance '{}'",
+          requestedTaskId,
+          processInstanceId);
+      runtimeService.deleteProcessInstance(processInstanceId, terminationReason);
+    } catch (FlowableObjectNotFoundException e) {
+      LOG.debug(
+          "[CreateTaskImpl] Workflow instance '{}' already ended while handling deleted draft task '{}'",
+          processInstanceId,
+          requestedTaskId);
+    }
+  }
+
+  private String deriveTerminationMessageName(String taskDefinitionKey) {
+    if (taskDefinitionKey == null || taskDefinitionKey.isBlank()) {
+      return null;
+    }
+    int lastDot = taskDefinitionKey.lastIndexOf('.');
+    if (lastDot < 0) {
+      return null;
+    }
+    return taskDefinitionKey.substring(0, lastDot) + ".terminateProcess";
   }
 
   private TagLabelRecognizerMetadata resolveRecognizerMetadata(RecognizerFeedback feedback) {

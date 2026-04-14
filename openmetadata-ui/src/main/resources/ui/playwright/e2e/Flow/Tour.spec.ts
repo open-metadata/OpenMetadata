@@ -21,8 +21,7 @@ const user = new UserClass();
 const waitForTourBadgeWithRetry = async (
   page: Page,
   maxAttempts = 3,
-  timeout = 20000,
-  onRetry?: () => Promise<void>
+  timeout = 20000
 ) => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -34,11 +33,7 @@ const waitForTourBadgeWithRetry = async (
       return; // Success
     } catch (e) {
       if (attempt < maxAttempts) {
-        if (onRetry) {
-          await onRetry();
-        } else {
-          await page.reload();
-        }
+        await page.reload();
         await waitForAllLoadersToDisappear(page);
         await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       } else {
@@ -84,7 +79,7 @@ const validateTourSteps = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expectTourBadge(page, '4', 20000);
+  await expectTourBadge(page, '4');
 
   // step 3
   await page.locator('[data-tour-elem="right-arrow"]').click();
@@ -197,22 +192,11 @@ test.describe(
       await page
         .getByTestId('whats-new-alert-card')
         .locator('.whats-new-alert-close')
-        .click()
-        .catch(() => undefined);
-
-      const welcomeTourCta = page
-        .getByTestId('welcome-screen')
-        .getByRole('link', { name: 'Take a product tour to get started!' });
-
-      if (await welcomeTourCta.isVisible().catch(() => false)) {
-        await welcomeTourCta.click();
-      } else {
-        await page.locator('[data-testid="help-icon"]').click();
-        await page.getByRole('link', { name: 'Tour', exact: true }).click();
-      }
+        .click();
+      await page.getByText('Take a product tour to get started!').click();
+      await page.waitForURL('**/tour');
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await page.waitForURL('**/tour');
 
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
@@ -237,9 +221,7 @@ test.describe(
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
-      await waitForTourBadgeWithRetry(page, 3, 20000, async () => {
-        await page.goto('/tour');
-      });
+      await waitForTourBadgeWithRetry(page);
     });
   }
 );

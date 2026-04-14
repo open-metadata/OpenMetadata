@@ -74,10 +74,16 @@ export const addAssigneeFromPopoverWidget = async (data: {
   const { page, user, testCaseName } = data;
 
   if (testCaseName) {
-    await page
-      .getByRole('row', { name: testCaseName })
-      .getByTestId('edit-owner')
-      .click();
+    const incidentRow = page
+      .getByRole('row', { name: new RegExp(testCaseName, 'i') })
+      .first();
+    const editOwnerButton = incidentRow.getByTestId('edit-owner');
+
+    if (await editOwnerButton.isVisible().catch(() => false)) {
+      await editOwnerButton.click();
+    } else {
+      await incidentRow.locator('td').last().getByRole('button').click();
+    }
   } else {
     // direct assignment from edit assignee icon
     await page.getByTestId('assignee').getByTestId('edit-owner').click();

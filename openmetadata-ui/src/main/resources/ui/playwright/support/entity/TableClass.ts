@@ -34,26 +34,20 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-interface Service {
+/**
+ * Database service shape used when creating tables in tests. `connection.config` is intentionally
+ * loose so tests can override with MySQL, BigQuery, or other connector configs.
+ */
+export type TableServiceConfig = {
   name: string;
   serviceType: string;
   connection: {
-    config: {
-      type: string;
-      scheme: string;
-      username: string;
-      authType: { password: string };
-      hostPort: string;
-      supportsMetadataExtraction: boolean;
-      supportsDBTExtraction: boolean;
-      supportsProfiler: boolean;
-      supportsQueryComment: boolean;
-    };
+    config: Record<string, unknown>;
   };
-}
+};
 
 export class TableClass extends EntityClass {
-  service: Service;
+  service: TableServiceConfig;
   database: { name: string; service: string };
   schema: { name: string; database: string };
   columnsName: string[];
@@ -80,7 +74,11 @@ export class TableClass extends EntityClass {
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string, tableType?: string, service?: Partial<Service>) {
+  constructor(
+    name?: string,
+    tableType?: string,
+    service?: Partial<TableServiceConfig>
+  ) {
     super(EntityTypeEndpoint.Table);
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
@@ -514,9 +512,11 @@ export class TableClass extends EntityClass {
   async patch({
     apiContext,
     patchData,
+    queryParams,
   }: {
     apiContext: APIRequestContext;
     patchData: Operation[];
+    queryParams?: Record<string, string>;
   }) {
     if (
       !this.entityResponseData?.fullyQualifiedName &&
@@ -542,10 +542,14 @@ export class TableClass extends EntityClass {
       );
     }
 
+    const queryString = queryParams
+      ? `?${new URLSearchParams(queryParams).toString()}`
+      : '';
+
     const response = await apiContext.patch(
       tableId
-        ? `/api/v1/tables/${tableId}`
-        : `/api/v1/tables/name/${encodeURIComponent(tableFqn!)}`,
+        ? `/api/v1/tables/${tableId}${queryString}`
+        : `/api/v1/tables/name/${encodeURIComponent(tableFqn!)}${queryString}`,
       {
         data: patchData,
         headers: {

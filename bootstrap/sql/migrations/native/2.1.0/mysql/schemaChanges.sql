@@ -1,1 +1,0 @@
--- Schema changes for legacy thread archival - OpenMetadata 2.1.0

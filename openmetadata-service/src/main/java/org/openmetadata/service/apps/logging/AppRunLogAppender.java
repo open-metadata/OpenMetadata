@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
  * matching: MDC for the scheduler thread, thread name prefixes for worker threads.
  */
 public class AppRunLogAppender extends AppenderBase<ILoggingEvent> {
-  private static final org.slf4j.Logger APP_LOG = LoggerFactory.getLogger(AppRunLogAppender.class);
   public static final String MDC_APP_RUN_ID = "appRunId";
   public static final String MDC_APP_NAME = "appName";
   public static final String MDC_SERVER_ID = "serverId";
@@ -156,17 +155,7 @@ public class AppRunLogAppender extends AppenderBase<ILoggingEvent> {
       String appRunId, String appId, String appName, String serverId, String... threadPrefixes) {
     ensureRegistered();
     cleanupOldRuns(appName);
-    long runTimestamp;
-    try {
-      runTimestamp = Long.parseLong(appRunId);
-    } catch (NumberFormatException e) {
-      runTimestamp = System.currentTimeMillis();
-      APP_LOG.warn(
-          "Received non-numeric appRunId '{}' for app '{}'; using current time for log capture",
-          appRunId,
-          appName,
-          e);
-    }
+    long runTimestamp = Long.parseLong(appRunId);
     Path logFile = resolveLogFile(appName, runTimestamp, serverId);
     RunLogBuffer buffer =
         new RunLogBuffer(appId, appName, serverId, runTimestamp, maxLinesPerRun, logFile);

@@ -19,6 +19,11 @@ import {
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  confirmIngestionPipelineHardDelete,
+  submitTestCaseForm,
+  waitForTestSuiteIngestionPipelinesListResponse,
+} from '../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -61,19 +66,16 @@ test(
       await page.getByTestId('test-type').locator('div').click();
       await page.getByTestId('tableColumnCountToEqual').click();
       await page.getByPlaceholder('Enter a Count').fill('13');
-      const createTestCaseResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByTestId('create-btn').click();
-      await createTestCaseResponse;
+      await submitTestCaseForm(page);
 
       await page.reload();
       await waitForAllLoadersToDisappear(page);
 
       await page.getByRole('tab', { name: 'Data Quality' }).click();
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
       await page.getByRole('tab', { name: 'Pipeline' }).click();
+      await ingestionPipelinesListResponse;
       await page.getByTestId('add-pipeline-button').click();
 
       await page.fill('[data-testid="pipeline-name"]', pipelineName);
@@ -112,7 +114,10 @@ test(
      * validates the updated success messaging before returning to the service view.
      */
     await test.step('Verify test case count column displays correct values', async () => {
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
       await page.getByRole('tab', { name: 'Pipeline' }).click();
+      await ingestionPipelinesListResponse;
 
       // Verify the pipeline with selected test case shows count "1"
       const pipelineRow = page.getByRole('row', {
@@ -131,7 +136,6 @@ test(
     });
 
     await test.step('Update the pipeline', async () => {
-      await page.getByRole('tab', { name: 'Pipeline' }).click();
       await page
         .getByRole('row', {
           name: new RegExp(pipelineName),
@@ -174,7 +178,10 @@ test(
      * then verifies the Pipeline tab shows the assignment placeholder and add CTA.
      */
     await test.step('Delete the pipeline', async () => {
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
       await page.getByRole('tab', { name: 'Pipeline' }).click();
+      await ingestionPipelinesListResponse;
       await page
         .getByRole('row', {
           name: new RegExp(pipelineName),
@@ -188,16 +195,12 @@ test(
         )
         .click();
 
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-      const deleteRes = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines/*?hardDelete=true'
-      );
-      await page.getByTestId('confirm-button').click();
-      await deleteRes;
+      await confirmIngestionPipelineHardDelete(page);
 
       await page
         .getByTestId('ingestion-list-table')
         .getByTestId('more-actions')
+        .first()
         .click();
 
       await page
@@ -205,9 +208,7 @@ test(
           '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
         )
         .click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-      await page.getByTestId('confirm-button').click();
-      await deleteRes;
+      await confirmIngestionPipelineHardDelete(page);
 
       await expect(
         page.getByTestId('assign-error-placeholder-Pipeline')
@@ -252,7 +253,10 @@ test(
     await page.getByText('Data Observability').click();
     await page.getByRole('tab', { name: 'Data Quality' }).click();
 
+    const ingestionPipelinesListResponse =
+      waitForTestSuiteIngestionPipelinesListResponse(page);
     await page.getByRole('tab', { name: 'Pipeline' }).click();
+    await ingestionPipelinesListResponse;
 
     // Verify the pipeline shows count "2" for 2 selected test cases
     const pipelineRow = page.getByRole('row', {
@@ -302,7 +306,10 @@ test(
 
     await page.getByTestId('view-service-button').click();
 
+    const ingestionPipelinesListResponse2 =
+      waitForTestSuiteIngestionPipelinesListResponse(page);
     await page.getByRole('tab', { name: 'Pipeline' }).click();
+    await ingestionPipelinesListResponse2;
 
     // Verify the pipeline now shows count "1" after unchecking one test case
     const updatedPipelineRow = page.getByRole('row', {
