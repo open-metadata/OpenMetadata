@@ -23,7 +23,6 @@ on:
         type: choice
         options:
           - okta
-          - azure-saml
           - keycloak-azure-saml
           - keycloak-google-saml
           - all

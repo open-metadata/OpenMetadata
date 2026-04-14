@@ -12,7 +12,6 @@
  */
 import { Page } from '@playwright/test';
 import { ProviderConfigOverride, ProviderCredentials } from '../ssoAuth';
-import { azureSamlProviderHelper } from './azure-saml';
 import {
   keycloakAzureSamlProviderHelper,
   keycloakGoogleSamlProviderHelper,
@@ -37,8 +36,6 @@ export const getProviderHelper = (providerType: string): ProviderHelper => {
   switch (providerType) {
     case 'okta':
       return oktaProviderHelper;
-    case 'azure-saml':
-      return azureSamlProviderHelper;
     case 'keycloak-azure-saml':
       return keycloakAzureSamlProviderHelper;
     case 'keycloak-google-saml':
@@ -46,7 +43,7 @@ export const getProviderHelper = (providerType: string): ProviderHelper => {
     default:
       throw new Error(
         `No SSO provider helper registered for "${providerType}". ` +
-          `Supported providers: okta, azure-saml, keycloak-azure-saml, keycloak-google-saml`
+          `Supported providers: okta, keycloak-azure-saml, keycloak-google-saml`
       );
   }
 };
