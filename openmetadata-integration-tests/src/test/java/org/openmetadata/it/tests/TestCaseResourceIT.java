@@ -734,11 +734,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
-  void test_testCaseHardDelete_deletes_results_and_resolution_statuses(TestNamespace ns) throws Exception {
+  void test_testCaseHardDelete_deletes_results_and_resolution_statuses(TestNamespace ns)
+      throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    TestCase testCase = TestCaseBuilder.create(client)
+    TestCase testCase =
+        TestCaseBuilder.create(client)
             .name(ns.prefix("hard_delete_children"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
@@ -759,19 +761,26 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Create a resolution status
     org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus ackStatus =
         new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus();
-    ackStatus.setTestCaseResolutionStatusType(org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Ack);
+    ackStatus.setTestCaseResolutionStatusType(
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Ack);
     ackStatus.setTestCaseReference(fqn);
     client.testCaseResolutionStatuses().create(ackStatus);
-    
+
     // Wait for it to be indexed
     Awaitility.await("Wait for resolution status")
         .atMost(15, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
-        .untilAsserted(() -> {
-          org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams().withLimit(10).addFilter("testCaseFQN", fqn);
-          org.openmetadata.sdk.models.ListResponse<?> response = client.testCaseResolutionStatuses().searchList(params);
-          assertFalse(response.getData().isEmpty(), "Resolution status should exist before delete");
-        });
+        .untilAsserted(
+            () -> {
+              org.openmetadata.sdk.models.ListParams params =
+                  new org.openmetadata.sdk.models.ListParams()
+                      .withLimit(10)
+                      .addFilter("testCaseFQN", fqn);
+              org.openmetadata.sdk.models.ListResponse<?> response =
+                  client.testCaseResolutionStatuses().searchList(params);
+              assertFalse(
+                  response.getData().isEmpty(), "Resolution status should exist before delete");
+            });
 
     // Hard delete test case
     hardDeleteEntity(id);
@@ -783,22 +792,32 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     Awaitility.await("Verify children resolution statuses are deleted")
         .atMost(15, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
-        .untilAsserted(() -> {
-          org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams().withLimit(10).addFilter("testCaseFQN", fqn);
-          org.openmetadata.sdk.models.ListResponse<?> response = client.testCaseResolutionStatuses().searchList(params);
-          assertTrue(response.getData().isEmpty(), "TestCaseResolutionStatuses should be empty");
-        });
+        .untilAsserted(
+            () -> {
+              org.openmetadata.sdk.models.ListParams params =
+                  new org.openmetadata.sdk.models.ListParams()
+                      .withLimit(10)
+                      .addFilter("testCaseFQN", fqn);
+              org.openmetadata.sdk.models.ListResponse<?> response =
+                  client.testCaseResolutionStatuses().searchList(params);
+              assertTrue(
+                  response.getData().isEmpty(), "TestCaseResolutionStatuses should be empty");
+            });
 
     // Wait and verify test case results are empty
     Awaitility.await("Verify test case results are deleted")
         .atMost(15, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
-        .untilAsserted(() -> {
-          org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams().withLimit(10).addFilter("testCaseFQN", fqn);
-          org.openmetadata.sdk.models.ListResponse<?> response = client.testCaseResults().searchList(params);
-          assertTrue(response.getData().isEmpty(), "TestCaseResults should be empty");
-        });
-  }
+        .untilAsserted(
+            () -> {
+              org.openmetadata.sdk.models.ListParams params =
+                  new org.openmetadata.sdk.models.ListParams()
+                      .withLimit(10)
+                      .addFilter("testCaseFQN", fqn);
+              org.openmetadata.sdk.models.ListResponse<?> response =
+                  client.testCaseResults().searchList(params);
+              assertTrue(response.getData().isEmpty(), "TestCaseResults should be empty");
+            });
 
   @Test
   void test_listTestCases_200_OK(TestNamespace ns) {
