@@ -112,11 +112,9 @@ class AzuresqlUnitTest(TestCase):
         result = self.azuresql_source.get_configured_database()
         assert result is None
 
-    def test_azure_sql_get_databases_query_uses_sys_databases(self):
-        """Verify the query uses sys.databases without master. prefix
-        (master.sys.databases is not supported on Azure SQL Database)"""
-        assert "master" not in AZURE_SQL_GET_DATABASES
-        assert "sys.databases" in AZURE_SQL_GET_DATABASES
+    def test_azure_sql_get_databases_query(self):
+        """Verify the query fetches from master.sys.databases"""
+        assert "master.sys.databases" in AZURE_SQL_GET_DATABASES
 
     def test_mark_deleted_databases_skipped_single_db(self):
         """When ingestAllDatabases=false, mark_databases_as_deleted should be skipped

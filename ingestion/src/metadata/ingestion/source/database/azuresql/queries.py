@@ -12,4 +12,4 @@
 SQL Queries used during ingestion
 """
 
-AZURE_SQL_GET_DATABASES = "SELECT name FROM sys.databases order by name"
+AZURE_SQL_GET_DATABASES = "SELECT name FROM master.sys.databases order by name"
