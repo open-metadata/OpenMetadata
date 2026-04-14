@@ -599,25 +599,14 @@ export const AUTHORIZER_FIELD_TITLES = {
     'ui:placeholder':
       'Enter value (e.g. admin@example.com, security@example.com) and press ENTER',
   },
-  botPrincipals: {
-    'ui:title': 'Bot Principals',
-    'ui:placeholder':
-      'Enter value (e.g. ingestion-bot@example.com) and press ENTER',
-  },
-  principalDomain: {
-    'ui:title': 'Principal Domain',
-    'ui:placeholder': 'e.g. https://accounts.google.com',
-  },
-  enforcePrincipalDomain: { 'ui:title': 'Enforce Principal Domain' },
-  enableSecureSocketConnection: {
-    'ui:title': 'Enable Secure Socket Connection',
-  },
-  useRolesFromProvider: { 'ui:title': 'Use Roles From Provider' },
-  allowedEmailRegistrationDomains: {
-    'ui:title': 'Allowed Email Registration Domains',
-    'ui:placeholder':
-      'Enter domain (e.g. example.com) and press ENTER. Use "all" to allow all domains.',
-  },
+  botPrincipals: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  principalDomain: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enforcePrincipalDomain: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableSecureSocketConnection: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  useRolesFromProvider: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  allowedEmailRegistrationDomains: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  allowedDomains: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  defaultOAuthRole: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Type definitions for UI Schema
