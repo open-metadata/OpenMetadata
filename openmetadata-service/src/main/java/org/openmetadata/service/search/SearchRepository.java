@@ -2784,9 +2784,61 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
-  public Response searchDataQualityLineage(
+public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
     return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+  }
+
+  @SuppressWarnings("unchecked")
+  public List<Map<String, Object>> searchTestCasesForImpact(
+      String query, int from, int size, SubjectContext subjectContext) throws IOException {
+    SearchRequest searchRequest =
+        new SearchRequest()
+            .withIndex(Entity.TEST_CASE)
+            .withQuery(query)
+            .withFrom(from)
+            .withSize(size)
+            .withSortFieldParam("timestamp")
+            .withDeleted(false)
+            .withSortOrder("desc");
+
+    Response response = search(searchRequest, subjectContext);
+
+    if (response.getStatus() != 200) {
+      return new ArrayList<>();
+    }
+
+    String json = (String) response.getEntity();
+    List<Map<String, Object>> results = new ArrayList<>();
+
+    try {
+      JsonNode hitsNode = JsonUtils.extractValue(json, HITS, HITS);
+      if (hitsNode == null || !hitsNode.isArray()) {
+        return results;
+      }
+
+      for (Iterator<JsonNode> it = hitsNode.elements(); it.hasNext(); ) {
+        JsonNode jsonNode = it.next();
+        JsonNode sourceNode = JsonUtils.extractValue(jsonNode.toString(), SEARCH_SOURCE);
+        if (sourceNode != null) {
+          Map<String, Object> doc = new HashMap<>();
+          doc.put("testCaseId", JsonUtils.extractValue(sourceNode.toString(), ID));
+          doc.put(
+              "testCaseFullyQualifiedName",
+              JsonUtils.extractValue(sourceNode.toString(), FULLY_QUALIFIED_NAME));
+          doc.put("entityFQN", JsonUtils.extractValue(sourceNode.toString(), "entityFQN"));
+          doc.put("testCaseStatus", JsonUtils.extractValue(sourceNode.toString(), "testCaseStatus"));
+          doc.put("timestamp", JsonUtils.extractValue(sourceNode.toString(), "timestamp"));
+          doc.put("downstreamUsage", 0);
+          doc.put("consumerCount", 0);
+          results.add(doc);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Error parsing search test cases for impact", e);
+    }
+
+    return results;
   }
 
   public Response searchSchemaEntityRelationship(
