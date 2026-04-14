@@ -381,6 +381,28 @@ export const navigateToExploreAndSelectEntity = async ({
   });
 };
 
+export const getExportModalContent = (page: Page) =>
+  page.getByTestId('export-scope-modal').locator('.ant-modal-content');
+
+export const openExportScopeModal = async (page: Page) => {
+  await page.getByTestId('export-search-results-button').click();
+  await expect(getExportModalContent(page)).toBeVisible();
+};
+
+export const countCsvResponseRows = (csvText: string): number =>
+  csvText.split('\n').filter((line: string) => line.trim().length > 0).length -
+  1;
+
+export const getExportCount = async (
+  page: Page,
+  testId: string
+): Promise<number> => {
+  const text = await page.getByTestId(testId).textContent();
+  const match = text?.match(/(\d[\d,]*)/);
+
+  return match ? parseInt(match[1].replace(/,/g, ''), 10) : 0;
+};
+
 export const getFlatColumnCountOfTable = (
   columns: TableClass['entity']['columns']
 ) => {

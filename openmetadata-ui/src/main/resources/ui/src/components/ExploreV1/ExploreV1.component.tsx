@@ -231,12 +231,33 @@ const ExploreV1: React.FC<ExploreProps> = ({
       queryFilter as QueryFilterInterface | undefined
     );
 
+    const exportSize = isVisibleScope
+      ? isSearchMode
+        ? visibleResultCount
+        : pageResultCount
+      : allAssetsCount ?? EXPORT_ALL_ASSETS_LIMIT;
+
+    const exportFrom = (() => {
+      if (!isVisibleScope || isSearchMode) {
+        return undefined;
+      }
+      const currentPage = isString(parsedSearch.page)
+        ? Number.parseInt(parsedSearch.page, 10) || 1
+        : 1;
+      const pageSize = isString(parsedSearch.size)
+        ? Number.parseInt(parsedSearch.size, 10) || pageResultCount
+        : pageResultCount;
+
+      return (currentPage - 1) * pageSize;
+    })();
+
     const params: Parameters<typeof exportSearchResultsCsvStream>[0] = {
       q: searchQueryParam || '*',
       index: isVisibleScope ? searchIndex : SearchIndex.DATA_ASSET,
       sort_field: sortValue,
       sort_order: sortOrder,
-      size: isSearchMode ? visibleResultCount : pageResultCount,
+      size: exportSize,
+      ...(exportFrom !== undefined && { from: exportFrom }),
     };
 
     if (showDeleted !== undefined) {
@@ -245,21 +266,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
     if (combinedQueryFilter) {
       params.query_filter = JSON.stringify(combinedQueryFilter);
-    }
-
-    if (isVisibleScope) {
-      if (isSearchMode) {
-        params.size = visibleResultCount;
-      } else {
-        const currentPage = isString(parsedSearch.page)
-          ? Number.parseInt(parsedSearch.page, 10) || 1
-          : 1;
-        const pageSize = isString(parsedSearch.size)
-          ? Number.parseInt(parsedSearch.size, 10) || pageResultCount
-          : pageResultCount;
-        params.size = pageResultCount;
-        params.from = (currentPage - 1) * pageSize;
-      }
     }
 
     setExportError(undefined);
@@ -286,6 +292,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }, [
     exportScope,
     searchIndex,
+    allAssetsCount,
     visibleResultCount,
     isSearchMode,
     pageResultCount,
@@ -335,7 +342,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   );
 
   const clearFilters = () => {
-    // onChangeAdvancedSearchQuickFilters(undefined);
     onResetAllFilters();
   };
 
@@ -474,6 +480,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     ) : (
       <CoreTypography
         className="tw:text-tertiary"
+        data-testid="export-scope-visible-count"
         size="text-sm"
         weight="regular">
         (
@@ -492,6 +499,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     allAssetsCount !== undefined && (
       <CoreTypography
         className="tw:text-tertiary"
+        data-testid="export-scope-all-count"
         size="text-sm"
         weight="regular">
         ({allAssetsCount} {t('label.result-plural')})
