@@ -568,37 +568,43 @@ class PostgresUnitTest(TestCase):
         # Mock the database entity source state
         self.postgres_source.database_entity_source_state = {"test_db_fqn"}
 
-        # Mock the _get_filtered_database_names method
+        # Simulate ingestAllDatabases=true so mark_databases_as_deleted is not skipped
         with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
-            mock_filtered_dbs.return_value = ["test_db", "another_db"]
+            self.postgres_source, "get_configured_database", return_value=None
+        ):
+            # Mock the _get_filtered_database_names method
+            with patch.object(
+                self.postgres_source, "_get_filtered_database_names"
+            ) as mock_filtered_dbs:
+                mock_filtered_dbs.return_value = ["test_db", "another_db"]
 
-            # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
-                mock_delete.return_value = iter([])
+                # Mock the delete_entity_from_source function
+                with patch(
+                    "metadata.ingestion.source.database.database_service.delete_entity_from_source"
+                ) as mock_delete:
+                    mock_delete.return_value = iter([])
 
-                # Call the method
-                result = list(self.postgres_source.mark_databases_as_deleted())
+                    # Call the method
+                    result = list(self.postgres_source.mark_databases_as_deleted())
 
-                # Verify that delete_entity_from_source was called with correct parameters
-                mock_delete.assert_called_once()
-                call_args = mock_delete.call_args
-                self.assertEqual(call_args[1]["entity_type"], Database)
-                self.assertEqual(call_args[1]["mark_deleted_entity"], True)
-                self.assertEqual(call_args[1]["params"], {"service": "test_service"})
+                    # Verify that delete_entity_from_source was called with correct parameters
+                    mock_delete.assert_called_once()
+                    call_args = mock_delete.call_args
+                    self.assertEqual(call_args[1]["entity_type"], Database)
+                    self.assertEqual(call_args[1]["mark_deleted_entity"], True)
+                    self.assertEqual(
+                        call_args[1]["params"], {"service": "test_service"}
+                    )
 
-                # Verify the entity_source_state contains both processed and filtered databases
-                expected_source_state = {
-                    "test_db_fqn",
-                    "test_service.test_db",
-                    "test_service.another_db",
-                }
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                    # Verify the entity_source_state contains both processed and filtered databases
+                    expected_source_state = {
+                        "test_db_fqn",
+                        "test_service.test_db",
+                        "test_service.another_db",
+                    }
+                    self.assertEqual(
+                        call_args[1]["entity_source_state"], expected_source_state
+                    )
 
     def test_mark_deleted_databases_disabled(self):
         """Test mark deleted databases when the config is disabled"""
@@ -612,6 +618,51 @@ class PostgresUnitTest(TestCase):
 
         # Verify that no deletion operations are performed
         self.assertEqual(result, [])
+
+    def test_mark_deleted_databases_skipped_when_single_db_configured(self):
+        """Test that mark_databases_as_deleted is skipped when
+        get_configured_database returns a value (ingestAllDatabases=false)"""
+        mock_source_config = MagicMock()
+        mock_source_config.markDeletedDatabases = True
+        self.postgres_source.source_config = mock_source_config
+
+        with patch.object(
+            self.postgres_source, "get_configured_database", return_value="my_database"
+        ):
+            with patch(
+                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
+            ) as mock_delete:
+                result = list(self.postgres_source.mark_databases_as_deleted())
+
+                self.assertEqual(result, [])
+                mock_delete.assert_not_called()
+
+    def test_mark_deleted_databases_runs_when_all_databases_ingested(self):
+        """Test that mark_databases_as_deleted runs when
+        get_configured_database returns None (ingestAllDatabases=true)"""
+        mock_source_config = MagicMock()
+        mock_source_config.markDeletedDatabases = True
+        self.postgres_source.source_config = mock_source_config
+
+        self.postgres_source.context.get().__dict__["database_service"] = "test_service"
+        self.postgres_source.database_entity_source_state = {"test_db_fqn"}
+
+        with patch.object(
+            self.postgres_source, "get_configured_database", return_value=None
+        ):
+            with patch.object(
+                self.postgres_source, "_get_filtered_database_names"
+            ) as mock_filtered_dbs:
+                mock_filtered_dbs.return_value = ["test_db"]
+
+                with patch(
+                    "metadata.ingestion.source.database.database_service.delete_entity_from_source"
+                ) as mock_delete:
+                    mock_delete.return_value = iter([])
+
+                    list(self.postgres_source.mark_databases_as_deleted())
+
+                    mock_delete.assert_called_once()
 
     def test_mark_deleted_schemas_with_schema_filter_pattern(self):
         """Test mark deleted schemas with schema filter pattern applied"""
@@ -675,34 +726,38 @@ class PostgresUnitTest(TestCase):
             "test_service.db2",
         }
 
-        # Mock the _get_filtered_database_names method to return filtered databases
+        # Simulate ingestAllDatabases=true so mark_databases_as_deleted is not skipped
         with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
-            mock_filtered_dbs.return_value = ["db1"]
+            self.postgres_source, "get_configured_database", return_value=None
+        ):
+            # Mock the _get_filtered_database_names method to return filtered databases
+            with patch.object(
+                self.postgres_source, "_get_filtered_database_names"
+            ) as mock_filtered_dbs:
+                mock_filtered_dbs.return_value = ["db1"]
 
-            # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
-                mock_delete.return_value = iter([])
+                # Mock the delete_entity_from_source function
+                with patch(
+                    "metadata.ingestion.source.database.database_service.delete_entity_from_source"
+                ) as mock_delete:
+                    mock_delete.return_value = iter([])
 
-                # Call the method
-                result = list(self.postgres_source.mark_databases_as_deleted())
+                    # Call the method
+                    result = list(self.postgres_source.mark_databases_as_deleted())
 
-                # Verify that delete_entity_from_source was called
-                mock_delete.assert_called_once()
-                call_args = mock_delete.call_args
+                    # Verify that delete_entity_from_source was called
+                    mock_delete.assert_called_once()
+                    call_args = mock_delete.call_args
 
-                # Verify the entity_source_state contains both processed and filtered databases
-                expected_source_state = {
-                    "test_service.db1",
-                    "test_service.db2",
-                    "test_service.db1",
-                }
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                    # Verify the entity_source_state contains both processed and filtered databases
+                    expected_source_state = {
+                        "test_service.db1",
+                        "test_service.db2",
+                        "test_service.db1",
+                    }
+                    self.assertEqual(
+                        call_args[1]["entity_source_state"], expected_source_state
+                    )
 
     def test_mark_deleted_schemas_empty_source_state(self):
         """Test mark deleted schemas with empty source state"""
@@ -754,28 +809,32 @@ class PostgresUnitTest(TestCase):
         # Mock empty database entity source state
         self.postgres_source.database_entity_source_state = set()
 
-        # Mock the _get_filtered_database_names method
+        # Simulate ingestAllDatabases=true so mark_databases_as_deleted is not skipped
         with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
-            mock_filtered_dbs.return_value = ["db1"]
+            self.postgres_source, "get_configured_database", return_value=None
+        ):
+            # Mock the _get_filtered_database_names method
+            with patch.object(
+                self.postgres_source, "_get_filtered_database_names"
+            ) as mock_filtered_dbs:
+                mock_filtered_dbs.return_value = ["db1"]
 
-            # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
-                mock_delete.return_value = iter([])
+                # Mock the delete_entity_from_source function
+                with patch(
+                    "metadata.ingestion.source.database.database_service.delete_entity_from_source"
+                ) as mock_delete:
+                    mock_delete.return_value = iter([])
 
-                # Call the method
-                result = list(self.postgres_source.mark_databases_as_deleted())
+                    # Call the method
+                    result = list(self.postgres_source.mark_databases_as_deleted())
 
-                # Verify that delete_entity_from_source was called with only filtered databases
-                mock_delete.assert_called_once()
-                call_args = mock_delete.call_args
-                expected_source_state = {"test_service.db1"}
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                    # Verify that delete_entity_from_source was called with only filtered databases
+                    mock_delete.assert_called_once()
+                    call_args = mock_delete.call_args
+                    expected_source_state = {"test_service.db1"}
+                    self.assertEqual(
+                        call_args[1]["entity_source_state"], expected_source_state
+                    )
 
     def test_mark_deleted_schemas_exception_handling(self):
         """Test mark deleted schemas exception handling"""
@@ -814,15 +873,19 @@ class PostgresUnitTest(TestCase):
         # Mock the database entity source state
         self.postgres_source.database_entity_source_state = {"test_db_fqn"}
 
-        # Mock the _get_filtered_database_names method to raise an exception
+        # Simulate ingestAllDatabases=true so mark_databases_as_deleted is not skipped
         with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
-            mock_filtered_dbs.side_effect = Exception("Test exception")
+            self.postgres_source, "get_configured_database", return_value=None
+        ):
+            # Mock the _get_filtered_database_names method to raise an exception
+            with patch.object(
+                self.postgres_source, "_get_filtered_database_names"
+            ) as mock_filtered_dbs:
+                mock_filtered_dbs.side_effect = Exception("Test exception")
 
-            # Call the method and expect it to handle the exception gracefully
-            with self.assertRaises(Exception):
-                list(self.postgres_source.mark_databases_as_deleted())
+                # Call the method and expect it to handle the exception gracefully
+                with self.assertRaises(Exception):
+                    list(self.postgres_source.mark_databases_as_deleted())
 
     def test_mark_deleted_schemas_with_multiple_schemas(self):
         """Test mark deleted schemas with multiple schemas in source state"""
@@ -893,20 +956,24 @@ class PostgresUnitTest(TestCase):
             "test_service.db3",
         }
 
-        # Mock the _get_filtered_database_names method
+        # Simulate ingestAllDatabases=true so mark_databases_as_deleted is not skipped
         with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
-            mock_filtered_dbs.return_value = ["db1", "db2"]
+            self.postgres_source, "get_configured_database", return_value=None
+        ):
+            # Mock the _get_filtered_database_names method
+            with patch.object(
+                self.postgres_source, "_get_filtered_database_names"
+            ) as mock_filtered_dbs:
+                mock_filtered_dbs.return_value = ["db1", "db2"]
 
-            # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
-                mock_delete.return_value = iter([])
+                # Mock the delete_entity_from_source function
+                with patch(
+                    "metadata.ingestion.source.database.database_service.delete_entity_from_source"
+                ) as mock_delete:
+                    mock_delete.return_value = iter([])
 
-                # Call the method
-                result = list(self.postgres_source.mark_databases_as_deleted())
+                    # Call the method
+                    result = list(self.postgres_source.mark_databases_as_deleted())
 
                 # Verify that delete_entity_from_source was called
                 mock_delete.assert_called_once()

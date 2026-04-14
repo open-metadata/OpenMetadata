@@ -54,6 +54,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
@@ -817,6 +818,12 @@ class DatabaseServiceSource(
         """
         Use the current inspector to mark databases as deleted
         """
+        if (
+            isinstance(self, MultiDBSource)
+            and self.get_configured_database() is not None
+        ):
+            return
+
         if self.source_config.markDeletedDatabases:
             logger.info(
                 f"Mark Deleted Databases set to True. Processing service [{self.context.get().database_service}]"
