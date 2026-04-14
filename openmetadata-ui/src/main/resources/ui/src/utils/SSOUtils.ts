@@ -542,7 +542,7 @@ export const getDefaultsForProvider = (
       type: provider,
       id: '',
       secret: '',
-      scope: 'openid email profile',
+      scope: 'openid email profile offline_access',
       discoveryUri,
       useNonce: false,
       preferredJwsAlgorithm: 'RS256',
@@ -1042,7 +1042,7 @@ export const handlePublicToConfidentialSwitch = (
     oidcConfig.sessionExpiry = OIDC_SSO_DEFAULTS.sessionExpiry;
     oidcConfig.serverUrl = OIDC_SSO_DEFAULTS.serverUrl;
     // Set default values for other required OIDC fields
-    oidcConfig.scope = oidcConfig.scope || 'openid email profile';
+    oidcConfig.scope = oidcConfig.scope || 'openid email profile offline_access';
     oidcConfig.useNonce = oidcConfig.useNonce ?? false;
     oidcConfig.preferredJwsAlgorithm =
       oidcConfig.preferredJwsAlgorithm || 'RS256';

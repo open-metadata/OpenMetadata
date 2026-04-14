@@ -102,7 +102,7 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
     const clientId =
       formData?.oidcConfiguration?.id ?? formData?.clientId ?? '';
     const clientSecret = formData?.oidcConfiguration?.secret ?? '';
-    const scope = formData?.oidcConfiguration?.scope ?? 'openid email profile';
+    const scope = formData?.oidcConfiguration?.scope ?? 'openid email profile offline_access';
 
     if (!discoveryUri || !clientId) {
       setIsLoading(false);
