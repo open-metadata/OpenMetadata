@@ -3,11 +3,13 @@ package org.openmetadata.service.search;
 import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
 import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -77,6 +79,41 @@ public final class SearchIndexUtils {
     }
 
     return sqlQueries;
+  }
+
+  /**
+   * Progressively strips lineage fields from a search document JSON to bring it under maxBytes.
+   *
+   * <p>Stripping order: lineageSqlQueries first (retains topology), then upstreamLineage.
+   * Returns the (possibly stripped) JSON — caller must re-check size and handle the still-oversized
+   * case.
+   */
+  public static String stripLineageForSize(
+      String json, long maxBytes, String docId, String entityType) {
+    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+      return json;
+    }
+    TypeReference<Map<String, Object>> mapType = new TypeReference<>() {};
+    Map<String, Object> doc = JsonUtils.readValue(json, mapType);
+    if (doc.remove("lineageSqlQueries") != null) {
+      json = JsonUtils.pojoToJson(doc);
+      LOG.warn(
+          "Document {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
+          docId,
+          entityType,
+          json.getBytes(StandardCharsets.UTF_8).length);
+      if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+        return json;
+      }
+    }
+    doc.remove("upstreamLineage");
+    json = JsonUtils.pojoToJson(doc);
+    LOG.warn(
+        "Document {} ({}) still too large, stripped upstreamLineage ({} bytes)",
+        docId,
+        entityType,
+        json.getBytes(StandardCharsets.UTF_8).length);
+    return json;
   }
 
   public static List<String> parseFollowers(List<EntityReference> followersRef) {

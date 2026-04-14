@@ -42,6 +42,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -360,6 +361,13 @@ public class OpenSearchBulkSink implements BulkSink {
       long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
 
       if (estimatedSize > maxPayloadSizeBytes) {
+        long sizeLimit = maxPayloadSizeBytes - BULK_OPERATION_METADATA_OVERHEAD;
+        finalJson = SearchIndexUtils.stripLineageForSize(finalJson, sizeLimit, docId, entityType);
+        rawDocSize = finalJson.getBytes(StandardCharsets.UTF_8).length;
+        estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
+      }
+
+      if (estimatedSize > maxPayloadSizeBytes) {
         LOG.warn(
             "Document {} of type {} is too large for bulk ({} bytes), sending directly",
             docId,
@@ -373,6 +381,7 @@ public class OpenSearchBulkSink implements BulkSink {
         return;
       }
 
+      final String indexableJson = finalJson;
       BulkOperation operation;
       if (recreateIndex) {
         operation =
@@ -382,7 +391,7 @@ public class OpenSearchBulkSink implements BulkSink {
                         idx ->
                             idx.index(indexName)
                                 .id(docId)
-                                .document(OsUtils.toJsonData(finalJson))));
+                                .document(OsUtils.toJsonData(indexableJson))));
       } else {
         operation =
             BulkOperation.of(
@@ -391,7 +400,7 @@ public class OpenSearchBulkSink implements BulkSink {
                         upd ->
                             upd.index(indexName)
                                 .id(docId)
-                                .document(OsUtils.toJsonData(finalJson))
+                                .document(OsUtils.toJsonData(indexableJson))
                                 .docAsUpsert(true)));
       }
       if (tracker != null) {

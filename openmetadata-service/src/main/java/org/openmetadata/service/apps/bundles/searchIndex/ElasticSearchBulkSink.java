@@ -46,6 +46,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
@@ -309,6 +310,13 @@ public class ElasticSearchBulkSink implements BulkSink {
       long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
 
       if (estimatedSize > maxPayloadSizeBytes) {
+        long sizeLimit = maxPayloadSizeBytes - BULK_OPERATION_METADATA_OVERHEAD;
+        json = SearchIndexUtils.stripLineageForSize(json, sizeLimit, docId, entityType);
+        rawDocSize = json.getBytes(StandardCharsets.UTF_8).length;
+        estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
+      }
+
+      if (estimatedSize > maxPayloadSizeBytes) {
         LOG.warn(
             "Document {} of type {} is too large for bulk ({} bytes), sending directly",
             docId,
@@ -322,13 +330,17 @@ public class ElasticSearchBulkSink implements BulkSink {
         return;
       }
 
+      final String indexableJson = json;
       BulkOperation operation;
       if (recreateIndex) {
         operation =
             BulkOperation.of(
                 op ->
                     op.index(
-                        idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
+                        idx ->
+                            idx.index(indexName)
+                                .id(docId)
+                                .document(EsUtils.toJsonData(indexableJson))));
       } else {
         operation =
             BulkOperation.of(
@@ -337,7 +349,10 @@ public class ElasticSearchBulkSink implements BulkSink {
                         upd ->
                             upd.index(indexName)
                                 .id(docId)
-                                .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
+                                .action(
+                                    a ->
+                                        a.doc(EsUtils.toJsonData(indexableJson))
+                                            .docAsUpsert(true))));
       }
       if (tracker != null) {
         tracker.incrementPendingSink();
