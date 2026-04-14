@@ -19,10 +19,14 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.api.configuration.UiThemePreference;
@@ -38,6 +42,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLoginHandler;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -218,5 +223,43 @@ public class ConfigResource {
       })
   public JWKSResponse getJWKSResponse() {
     return jwtTokenGenerator.getJWKSResponse();
+  }
+
+  @GET
+  @Path("/auth/test-login/initiate")
+  @Operation(
+      operationId = "testLoginInitiate",
+      summary = "Initiate Test Login",
+      description =
+          "Initiates a Test Login flow by redirecting to the IdP. "
+              + "Opens in a popup window. After authentication, redirects to the callback endpoint.")
+  public Response testLoginInitiate(@Context HttpServletRequest request) {
+    return TestLoginHandler.handleInitiate(request);
+  }
+
+  @POST
+  @Path("/auth/test-login")
+  @Operation(
+      operationId = "testLoginLdap",
+      summary = "Test Login (LDAP)",
+      description = "Tests LDAP authentication with provided credentials and returns user email.")
+  public Response testLoginLdap(Map<String, String> credentials) {
+    String email = credentials.get("email");
+    String password = credentials.get("password");
+    Map<String, Object> result = TestLoginHandler.handleLdapTestLogin(email, password);
+
+    return Response.ok(result).build();
+  }
+
+  @GET
+  @Path("/auth/test-login/callback")
+  @Operation(
+      operationId = "testLoginCallback",
+      summary = "Test Login Callback",
+      description =
+          "Handles the IdP redirect after Test Login authentication. "
+              + "Extracts claims from the token and posts them to the parent window.")
+  public Response testLoginCallback(@Context HttpServletRequest request) {
+    return TestLoginHandler.handleCallback(request);
   }
 }
