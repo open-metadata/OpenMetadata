@@ -31,6 +31,18 @@ current_time_ms() {
   python3 -c "import time; print(int(time.time() * 1000))"
 }
 
+run_with_timeout() {
+  local secs=$1
+  shift
+  if command -v timeout &>/dev/null; then
+    timeout "$secs" "$@"
+  elif command -v gtimeout &>/dev/null; then
+    gtimeout "$secs" "$@"
+  else
+    "$@"
+  fi
+}
+
 parse_app_run_status_line() {
   local payload=$1
   local payload_shape=$2
@@ -564,7 +576,7 @@ run_local_docker_main() {
     sample_data_validation_failed=false
     validation_timeout_seconds="${VALIDATION_TIMEOUT_SECONDS:-300}"
 
-    timeout "$validation_timeout_seconds" python docker/validate_compose.py || {
+    run_with_timeout "$validation_timeout_seconds" python docker/validate_compose.py || {
       local exit_code=$?
       sample_data_validation_failed=true
       if [ $exit_code -eq 124 ]; then
