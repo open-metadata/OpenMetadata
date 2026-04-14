@@ -309,6 +309,14 @@ public class ElasticSearchBulkSink implements BulkSink {
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
       long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
 
+      if (rawDocSize > 1024 * 1024) {
+        LOG.warn(
+            "Large indexed doc: entityType={}, docId={}, size={}MB",
+            entityType,
+            docId,
+            rawDocSize / (1024 * 1024));
+      }
+
       if (estimatedSize > maxPayloadSizeBytes) {
         long sizeLimit = maxPayloadSizeBytes - BULK_OPERATION_METADATA_OVERHEAD;
         json = SearchIndexUtils.stripLineageForSize(json, sizeLimit, docId, entityType);
