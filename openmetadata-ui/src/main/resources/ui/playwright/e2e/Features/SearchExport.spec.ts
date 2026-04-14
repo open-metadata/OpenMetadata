@@ -27,9 +27,28 @@ const getExportModalContent = (page: Page) =>
 const openExportScopeModal = async (page: Page) => {
   await page.getByTestId('export-search-results-button').click();
   await expect(getExportModalContent(page)).toBeVisible();
-  await expect(
-    getExportModalContent(page).getByRole('button', { name: 'Export' })
-  ).toBeEnabled();
+};
+
+const mockSearchQuery = async (
+  page: Page,
+  options: { totalCount?: number; tabKey?: string; tabCount?: number } = {}
+) => {
+  const { totalCount = 10, tabKey = 'table', tabCount = 5 } = options;
+  await page.route('**/api/v1/search/query?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        took: 1,
+        hits: { total: { value: totalCount, relation: 'eq' }, hits: [] },
+        aggregations: {
+          entityType: {
+            buckets: [{ key: tabKey, doc_count: tabCount }],
+          },
+        },
+      }),
+    });
+  });
 };
 
 test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
@@ -150,6 +169,10 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
   test('Visible results export uses tab-specific index without pagination offset', async ({
     page,
   }) => {
+    await mockSearchQuery(page, { totalCount: 50, tabKey: 'table', tabCount: 30 });
+    await page.goto('/explore/tables?search=test');
+    await expect(page.getByTestId('explore-page')).toBeVisible();
+
     await openExportScopeModal(page);
     await getExportModalContent(page).locator('input[value="visible"]').click();
 
@@ -263,6 +286,37 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     await test.step('Export button remains disabled', async () => {
       await expect(exportButton).toBeDisabled();
     });
+  });
+
+  test('Browse mode visible export sends page size and from offset', async ({
+    page,
+  }) => {
+    await page.route('**/api/v1/search/export?*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/csv',
+        body: 'Entity Type\ntable',
+      });
+    });
+
+    await openExportScopeModal(page);
+    await getExportModalContent(page).locator('input[value="visible"]').click();
+
+    const exportApiPromise = page.waitForRequest(
+      (req) =>
+        req.url().includes('/api/v1/search/export') && req.method() === 'GET'
+    );
+
+    await getExportModalContent(page)
+      .getByRole('button', { name: 'Export' })
+      .click();
+
+    const request = await exportApiPromise;
+    const url = request.url();
+
+    expect(url).toContain('size=');
+    expect(url).toContain('from=');
+    expect(url).toContain('index=dataAsset');
   });
 
   test('Export downloads CSV and closes modal', async ({ page }) => {
