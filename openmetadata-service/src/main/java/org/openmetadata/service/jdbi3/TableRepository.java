@@ -3237,20 +3237,17 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (tags != null && !tags.trim().isEmpty()) {
-      String[] tagFQNs = tags.split(",");
-      matchingColumns =
-          new ArrayList<>(
-              matchingColumns.stream()
-                  .filter(
-                      column ->
-                          column.getTags() != null
-                              && column.getTags().stream()
-                                  .anyMatch(
-                                      tag ->
-                                          Arrays.stream(tagFQNs)
-                                              .anyMatch(
-                                                  tagFQN -> tag.getTagFQN().equals(tagFQN.trim()))))
-                  .toList());
+      Set<String> tagFQNSet = Arrays.stream(tags.split(","))
+          .map(String::trim)
+          .filter(s -> !s.isEmpty())
+          .collect(Collectors.toSet());
+      matchingColumns = new ArrayList<>(
+          matchingColumns.stream()
+              .filter(column -> column.getTags() != null
+                  && column.getTags().stream()
+                      .anyMatch(tag -> tagFQNSet.contains(
+                          tag.getTagFQN())))
+              .toList());
     }
 
     // Sort matching columns based on sortBy and sortOrder parameters

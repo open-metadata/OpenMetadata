@@ -119,11 +119,11 @@ import TableTags from '../TableTags/TableTags.component';
 import { TableCellRendered } from './SchemaTable.interface';
 
 export const buildTagsParam = (
-  tagFilter: Record<TagSource, TagFilterOptions[]>
+  activeFilter: Record<string, string[]>
 ): string | undefined => {
   const tagsList = [
-    ...(tagFilter?.Classification?.map((t) => t.value) ?? []),
-    ...(tagFilter?.Glossary?.map((t) => t.value) ?? []),
+    ...(activeFilter?.Classification ?? []),
+    ...(activeFilter?.Glossary ?? []),
   ];
   return tagsList.length > 0 ? tagsList.join(',') : undefined;
 };
@@ -136,6 +136,7 @@ const SchemaTable = () => {
   const [editColumn, setEditColumn] = useState<Column>();
   const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [activeTagFilter, setActiveTagFilter] = useState<Record<string, string[]>>({});
 
   const {
     currentPage,
@@ -252,7 +253,7 @@ const SchemaTable = () => {
         const sortByParam = columnSortBy ?? sortBy;
         const sortOrderParam = columnSortOrder ?? sortOrder;
 
-        const tagsParam = buildTagsParam(tagFilter);
+        const tagsParam = buildTagsParam(activeTagFilter);
 
         const response = await searchTableColumnsByFQN(tableFqn, {
           q: searchQuery,
@@ -277,7 +278,7 @@ const SchemaTable = () => {
         setColumnsLoading(false);
       }
     },
-    [tableFqn, pageSize, handlePagingChange, tagFilter]
+    [tableFqn, pageSize, handlePagingChange, activeTagFilter]
   );
 
   const fetchTableColumns = useCallback(
@@ -296,19 +297,31 @@ const SchemaTable = () => {
         const sortByParam = columnSortBy ?? sortBy;
         const sortOrderParam = columnSortOrder ?? sortOrder;
 
-        const tagsParam = buildTagsParam(tagFilter);
+        const tagsParam = buildTagsParam(activeTagFilter);
 
-        const response = await getTableColumnsByFQN(tableFqn, {
-          limit: pageSize,
-          offset: offset,
-          fields: 'tags,customMetrics,extension',
-          sortBy: sortByParam,
-          sortOrder: sortOrderParam,
-          ...(tagsParam ? { tags: tagsParam } : {}),
-        });
-
-        setTableColumns(pruneEmptyChildren(response.data) || []);
-        handlePagingChange(response.paging);
+        if (tagsParam) {
+          const response = await searchTableColumnsByFQN(tableFqn, {
+            q: '',
+            limit: pageSize,
+            offset: offset,
+            fields: 'tags,customMetrics,extension',
+            sortBy: sortByParam,
+            sortOrder: sortOrderParam,
+            tags: tagsParam,
+          });
+          setTableColumns(pruneEmptyChildren(response.data) || []);
+          handlePagingChange(response.paging);
+        } else {
+          const response = await getTableColumnsByFQN(tableFqn, {
+            limit: pageSize,
+            offset: offset,
+            fields: 'tags,customMetrics,extension',
+            sortBy: sortByParam,
+            sortOrder: sortOrderParam,
+          });
+          setTableColumns(pruneEmptyChildren(response.data) || []);
+          handlePagingChange(response.paging);
+        }
       } catch {
         setTableColumns([]);
         handlePagingChange({
@@ -320,7 +333,7 @@ const SchemaTable = () => {
         setColumnsLoading(false);
       }
     },
-    [tableFqn, pageSize, handlePagingChange, tagFilter]
+    [tableFqn, pageSize, handlePagingChange, activeTagFilter]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -347,7 +360,7 @@ const SchemaTable = () => {
     if (searchText) {
       searchTableColumns(searchText, currentPage, sortBy, sortOrder);
     }
-  }, [searchText, currentPage, searchTableColumns, sortBy, sortOrder, tagFilter]);
+  }, [searchText, currentPage, searchTableColumns, sortBy, sortOrder, activeTagFilter]);
 
   useEffect(() => {
     if (searchText) {
@@ -362,7 +375,7 @@ const SchemaTable = () => {
     fetchTableColumns,
     sortBy,
     sortOrder,
-    tagFilter,
+    activeTagFilter,
   ]);
 
   useEffect(() => {
@@ -964,6 +977,12 @@ const SchemaTable = () => {
           dataSource={tableColumns}
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
+          onChange={(_pagination, filters) => {
+            setActiveTagFilter({
+              Classification: (filters[TABLE_COLUMNS_KEYS.TAGS] as string[]) || [],
+              Glossary: (filters[TABLE_COLUMNS_KEYS.GLOSSARY] as string[]) || [],
+            });
+          }}
           extraTableFilters={
             <div className="d-flex items-center gap-4">
               <Dropdown

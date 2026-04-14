@@ -19,9 +19,6 @@ import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { getTableColumnsByFQN, searchTableColumnsByFQN } from '../../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import SchemaTable, { buildTagsParam } from './SchemaTable.component';
-import { TagFilterOptions } from 'Models';
-import { TagSource } from '../../../generated/type/schema';
-import { getAllTags, searchTagInData } from '../../../utils/TableTags/TableTags.utils';
 
 const mockTableConstraints = [
   {
@@ -644,30 +641,30 @@ describe('Test EntityTable Component', () => {
 
     it('TEST 2 — Classification filter', () => {
       expect(buildTagsParam({
-        Classification: [{ value: 'PII.Sensitive' }],
+        Classification: ['PII.Sensitive'],
         Glossary: []
-      } as Record<TagSource, TagFilterOptions[]>)).toBe('PII.Sensitive');
+      })).toBe('PII.Sensitive');
     });
 
     it('TEST 3 — Glossary filter', () => {
       expect(buildTagsParam({
         Classification: [],
-        Glossary: [{ value: 'Glossary.Term1' }]
-      } as Record<TagSource, TagFilterOptions[]>)).toBe('Glossary.Term1');
+        Glossary: ['Glossary.Term1']
+      })).toBe('Glossary.Term1');
     });
 
     it('TEST 4 — Multiple tags comma-separated', () => {
       expect(buildTagsParam({
-        Classification: [{ value: 'PII.Sensitive' }],
-        Glossary: [{ value: 'Glossary.Term1' }]
-      } as Record<TagSource, TagFilterOptions[]>)).toBe('PII.Sensitive,Glossary.Term1');
+        Classification: ['PII.Sensitive'],
+        Glossary: ['Glossary.Term1']
+      })).toBe('PII.Sensitive,Glossary.Term1');
     });
 
     it('TEST 5 — Empty filter returns undefined', () => {
       expect(buildTagsParam({
         Classification: [],
         Glossary: []
-      } as Record<TagSource, TagFilterOptions[]>)).toBeUndefined();
+      })).toBeUndefined();
     });
   });
 });
