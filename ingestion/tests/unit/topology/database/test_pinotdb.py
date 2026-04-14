@@ -51,5 +51,5 @@ def test_pinot_type_mapping(pinot_type, expected_om_type):
 def test_double_mapping_is_supported_and_not_integer():
     """Pinot double must map to a floating-point type across SQLAlchemy versions."""
     result = _resolve("double")
-    assert result in {"DOUBLE", "FLOAT"}
     assert result != "INT", "Pinot DOUBLE is incorrectly mapped to INT"
+    assert result in {"DOUBLE", "FLOAT"}

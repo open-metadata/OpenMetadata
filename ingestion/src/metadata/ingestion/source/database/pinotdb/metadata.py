@@ -26,17 +26,18 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
-def get_type_custom(data_type, field_size):
-    # SQLAlchemy 1.4 does not expose DOUBLE in sqlalchemy.types, but
-    # pinotdb returns "double". Prefer DOUBLE when available, then fall back
-    # to sqltypes.DOUBLE, and finally Float to avoid runtime crashes.
-    double_type = getattr(types, "DOUBLE", getattr(sqltypes, "DOUBLE", types.Float))
+DOUBLE_TYPE = getattr(types, "DOUBLE", getattr(sqltypes, "DOUBLE", types.Float))
 
+
+def get_type_custom(data_type, field_size):
     type_map = {
         "int": types.BigInteger,
         "long": types.BigInteger,
         "float": types.Float,
-        "double": double_type,
+        # SQLAlchemy 1.4 does not expose DOUBLE in sqlalchemy.types, but
+        # pinotdb returns "double". Prefer DOUBLE when available, then fall back
+        # to sqltypes.DOUBLE, and finally Float to avoid runtime crashes.
+        "double": DOUBLE_TYPE,
         # BOOLEAN, is added after release 0.7.1.
         # In release 0.7.1 and older releases, BOOLEAN is equivalent to STRING.
         "boolean": types.Boolean,
