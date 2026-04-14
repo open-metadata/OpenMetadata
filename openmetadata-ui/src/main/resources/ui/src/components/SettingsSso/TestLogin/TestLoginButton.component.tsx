@@ -107,9 +107,9 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
     setErrorMessage('');
 
     const discoveryUri =
-      formData?.oidcConfiguration?.discoveryUri ?? formData?.discoveryUri ?? '';
+      formData?.discoveryUri ?? formData?.oidcConfiguration?.discoveryUri ?? '';
     const clientId =
-      formData?.oidcConfiguration?.id ?? formData?.clientId ?? '';
+      formData?.clientId ?? formData?.oidcConfiguration?.id ?? '';
     const clientSecret = formData?.oidcConfiguration?.secret ?? '';
     const scope = formData?.oidcConfiguration?.scope ?? 'openid email profile offline_access';
 

@@ -269,9 +269,9 @@ const SSOConfigurationFormRJSF = ({
             ...prev.authenticationConfiguration,
             provider: selectedOption.key,
             providerName: selectedOption.label,
+            discoveryUri: selectedOption.discoveryUriTemplate || '',
             oidcConfiguration: {
               ...prev.authenticationConfiguration?.oidcConfiguration,
-              discoveryUri: selectedOption.discoveryUriTemplate || '',
               type: selectedOption.key,
             },
           },
