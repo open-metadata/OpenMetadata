@@ -272,7 +272,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Wait for the filtered tree result to render
       await tableTitle.waitFor({ state: 'visible' });
 
-      // Uncheck Table only if it is currently checked 
+      // Uncheck Table only if it is currently checked
       const isTableChecked = await tableTitle.evaluate((el) => {
         let node = el.parentElement;
         while (node) {
@@ -318,7 +318,9 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Reload to pick up the current instance ID before attempting delete.
       const appResponse = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/apps/name/SearchIndexingApplication') &&
+          response
+            .url()
+            .includes('/api/v1/apps/name/SearchIndexingApplication') &&
           !response.url().includes('/status') &&
           response.request().method() === 'GET'
       );
