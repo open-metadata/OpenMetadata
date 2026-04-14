@@ -777,7 +777,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                       .withLimit(10)
                       .addFilter("testCaseFQN", fqn);
               org.openmetadata.sdk.models.ListResponse<?> response =
-                  client.testCaseResolutionStatuses().searchList(params);
+                  client.testCaseResolutionStatuses().list(params);
               assertFalse(
                   response.getData().isEmpty(), "Resolution status should exist before delete");
             });
@@ -799,7 +799,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                       .withLimit(10)
                       .addFilter("testCaseFQN", fqn);
               org.openmetadata.sdk.models.ListResponse<?> response =
-                  client.testCaseResolutionStatuses().searchList(params);
+                  client.testCaseResolutionStatuses().list(params);
               assertTrue(
                   response.getData().isEmpty(), "TestCaseResolutionStatuses should be empty");
             });
@@ -812,10 +812,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             () -> {
               org.openmetadata.sdk.models.ListParams params =
                   new org.openmetadata.sdk.models.ListParams()
-                      .withLimit(10)
-                      .addFilter("testCaseFQN", fqn);
+                      .withLimit(10);
               org.openmetadata.sdk.models.ListResponse<?> response =
-                  client.testCaseResults().searchList(params);
+                  client.testCaseResults().get(fqn, params);
               assertTrue(response.getData().isEmpty(), "TestCaseResults should be empty");
             });
   }
