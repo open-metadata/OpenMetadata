@@ -97,11 +97,11 @@ public class WorkflowInstanceListener implements JavaDelegate {
       DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
     String processKey = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     String workflowDefinitionName = getMainWorkflowDefinitionNameFromTrigger(processKey);
-    if (workflowDefinitionName.equals(processKey)) {
+    String existingKey = execution.getProcessInstanceBusinessKey();
+    if (existingKey != null && !existingKey.isEmpty()) {
       LOG.debug(
-          "[WORKFLOW_INSTANCE_SKIP] ProcessInstance: {} - process key '{}' is not an OM trigger workflow, skipping",
-          execution.getProcessInstanceId(),
-          processKey);
+          "[WORKFLOW_INSTANCE_SKIP] ProcessInstance: {} - business key already set by trigger, skipping",
+          execution.getProcessInstanceId());
       return;
     }
     updateBusinessKey(execution.getProcessInstanceId());
@@ -125,14 +125,14 @@ public class WorkflowInstanceListener implements JavaDelegate {
       DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
     String processKey = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     String workflowDefinitionName = getMainWorkflowDefinitionNameFromTrigger(processKey);
-    if (workflowDefinitionName.equals(processKey)) {
+    String businessKeyForUpdate = execution.getProcessInstanceBusinessKey();
+    if (businessKeyForUpdate == null || businessKeyForUpdate.isEmpty()) {
       LOG.debug(
-          "[WORKFLOW_INSTANCE_SKIP] ProcessInstance: {} - process key '{}' is not an OM trigger workflow, skipping",
-          execution.getProcessInstanceId(),
-          processKey);
+          "[WORKFLOW_INSTANCE_SKIP] ProcessInstance: {} - no business key, skipping update",
+          execution.getProcessInstanceId());
       return;
     }
-    UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
+    UUID workflowInstanceId = UUID.fromString(businessKeyForUpdate);
 
     // Capture all variables including any failure indicators
     java.util.Map<String, Object> variables = new java.util.HashMap<>(execution.getVariables());

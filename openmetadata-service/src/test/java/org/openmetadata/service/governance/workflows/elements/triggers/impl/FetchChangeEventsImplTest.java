@@ -11,11 +11,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.PROCESSED_FQNS_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger.HAS_FINISHED_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl.CURRENT_BATCH_OFFSET_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl.MAX_PROCESSED_OFFSET_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl.PROCESSED_FQNS_MAX_SIZE;
-import static org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl.PROCESSED_FQNS_VARIABLE;
 
 import java.lang.reflect.Field;
 import java.util.LinkedHashMap;

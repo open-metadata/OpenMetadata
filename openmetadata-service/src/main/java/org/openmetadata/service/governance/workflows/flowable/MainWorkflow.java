@@ -25,11 +25,13 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceListener;
 import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.NodeFactory;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.DataCompletenessImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
+import org.openmetadata.service.governance.workflows.flowable.builders.FlowableListenerBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.InclusiveGatewayBuilder;
 
 @Getter
@@ -51,6 +53,16 @@ public class MainWorkflow {
     process.setName(
         Optional.ofNullable(workflowDefinition.getDisplayName())
             .orElse(workflowDefinition.getFullyQualifiedName()));
+
+    for (String event : List.of("start", "end")) {
+      org.flowable.bpmn.model.FlowableListener listener =
+          new FlowableListenerBuilder()
+              .event(event)
+              .implementation(WorkflowInstanceListener.class.getName())
+              .build();
+      process.getExecutionListeners().add(listener);
+    }
+
     model.addProcess(process);
 
     List<EdgeDefinition> edges = workflowDefinition.getEdges();

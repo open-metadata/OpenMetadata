@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
@@ -185,6 +187,10 @@ public class WorkflowHandler {
       return instance;
     }
     throw new UnhandledServerException("WorkflowHandler is not initialized.");
+  }
+
+  public static boolean isInitialized() {
+    return initialized;
   }
 
   public ProcessEngineConfiguration getProcessEngineConfiguration() {
@@ -1106,17 +1112,22 @@ public class WorkflowHandler {
   }
 
   public boolean triggerWorkflow(String workflowName) {
+    return triggerWorkflow(workflowName, null);
+  }
+
+  public boolean triggerWorkflow(String workflowName, String triggeredBy) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     RepositoryService repositoryService = processEngine.getRepositoryService();
 
     String baseProcessKey = getTriggerWorkflowId(workflowName);
+    Map<String, Object> initialVars = buildInitialVariables(triggeredBy);
 
     // Prefer the current workflow definition config to avoid triggering stale process keys left
     // behind by older deployments.
     List<String> configuredTriggerKeys =
         getConfiguredPeriodicTriggerProcessKeys(workflowName, baseProcessKey);
     if (!configuredTriggerKeys.isEmpty()) {
-      return triggerProcessDefinitions(runtimeService, configuredTriggerKeys);
+      return triggerProcessDefinitions(runtimeService, configuredTriggerKeys, initialVars);
     }
 
     // Legacy fallback: trigger all latest process definitions matching the workflow prefix.
@@ -1128,12 +1139,14 @@ public class WorkflowHandler {
             .list();
     if (!processDefinitions.isEmpty()) {
       return triggerProcessDefinitions(
-          runtimeService, processDefinitions.stream().map(ProcessDefinition::getKey).toList());
+          runtimeService,
+          processDefinitions.stream().map(ProcessDefinition::getKey).toList(),
+          initialVars);
     }
 
     // Fallback to original behavior for non-periodic trigger types.
     try {
-      runtimeService.startProcessInstanceByKey(baseProcessKey);
+      runtimeService.startProcessInstanceByKey(baseProcessKey, initialVars);
       return true;
     } catch (FlowableObjectNotFoundException ex) {
       LOG.error("No process definition found for key: {}", baseProcessKey);
@@ -1141,13 +1154,21 @@ public class WorkflowHandler {
     }
   }
 
+  private Map<String, Object> buildInitialVariables(String triggeredBy) {
+    Map<String, Object> vars = new HashMap<>();
+    if (triggeredBy != null && !triggeredBy.isEmpty()) {
+      vars.put(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), triggeredBy);
+    }
+    return vars;
+  }
+
   private boolean triggerProcessDefinitions(
-      RuntimeService runtimeService, List<String> processKeys) {
+      RuntimeService runtimeService, List<String> processKeys, Map<String, Object> initialVars) {
     boolean anyStarted = false;
     for (String processKey : processKeys) {
       try {
         LOG.info("Triggering process with key: {}", processKey);
-        runtimeService.startProcessInstanceByKey(processKey);
+        runtimeService.startProcessInstanceByKey(processKey, initialVars);
         anyStarted = true;
       } catch (Exception e) {
         LOG.error("Failed to start process: {}", processKey, e);

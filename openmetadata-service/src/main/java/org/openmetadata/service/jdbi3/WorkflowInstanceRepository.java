@@ -3,8 +3,10 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.PROCESSED_FQNS_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +64,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
 
     workflowInstance.setEndedAt(endedAt);
+    workflowInstance.setEntityList(extractFinalEntityList(variables));
 
     WorkflowInstanceStateRepository workflowInstanceStateRepository =
         (WorkflowInstanceStateRepository)
@@ -90,6 +93,23 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     }
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstance), workflowInstanceId);
+  }
+
+  private List<String> extractFinalEntityList(Map<String, Object> variables) {
+    List<String> fromProcessedFqns = extractEntityListFromProcessedFqns(variables);
+    if (fromProcessedFqns != null && !fromProcessedFqns.isEmpty()) {
+      return fromProcessedFqns;
+    }
+    return extractEntityList(variables);
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<String> extractEntityListFromProcessedFqns(Map<String, Object> variables) {
+    Object obj = variables.get(PROCESSED_FQNS_VARIABLE);
+    if (obj instanceof Map<?, ?> map && !map.isEmpty()) {
+      return new ArrayList<>(((Map<String, ?>) map).keySet());
+    }
+    return null;
   }
 
   @SuppressWarnings("unchecked")

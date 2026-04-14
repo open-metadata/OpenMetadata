@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.triggers;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_SCHEDULE_RUN_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -111,7 +112,6 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     process.setId(processId);
     process.setName(processId);
     attachScheduleRunIdListener(process);
-    attachWorkflowInstanceListeners(process);
     return process;
   }
 
@@ -162,7 +162,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
         new CallActivityBuilder()
             .id(getFlowableElementId(triggerWorkflowId, "workflowTrigger"))
             .calledElement(mainWorkflowName)
-            .inheritBusinessKey(false)
+            .inheritBusinessKey(true)
             .build();
     workflowTrigger.setInParameters(buildInParameters());
     workflowTrigger.setOutParameters(buildOutParameters());
@@ -180,7 +180,11 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     scheduleRunIdParameter.setTarget(
         getNamespacedVariableName(GLOBAL_NAMESPACE, WORKFLOW_SCHEDULE_RUN_ID_VARIABLE));
 
-    return List.of(entityListParameter, scheduleRunIdParameter);
+    IOParameter updatedByParameter = new IOParameter();
+    updatedByParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE));
+    updatedByParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE));
+
+    return List.of(entityListParameter, scheduleRunIdParameter, updatedByParameter);
   }
 
   private List<IOParameter> buildOutParameters() {

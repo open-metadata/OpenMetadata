@@ -622,7 +622,8 @@ public class WorkflowDefinitionResource
             .build();
       }
 
-      boolean triggerResponse = WorkflowHandler.getInstance().triggerWorkflow(fqn);
+      String triggeredBy = securityContext.getUserPrincipal().getName();
+      boolean triggerResponse = WorkflowHandler.getInstance().triggerWorkflow(fqn, triggeredBy);
       if (triggerResponse) {
         return Response.status(Response.Status.OK)
             .entity(
