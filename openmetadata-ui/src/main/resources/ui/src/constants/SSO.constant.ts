@@ -581,8 +581,10 @@ export const COMMON_FIELD_TITLES = {
   jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
   jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
   jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
-  enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
+  discoveryUri: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  emailClaim: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableAutoRedirect: { 'ui:widget': 'hidden', 'ui:hideError': true },
   clientType: {
     'ui:title': 'Authentication Mode',
     'ui:widget': 'AuthModeWidget',
@@ -594,11 +596,7 @@ export const COMMON_FIELD_TITLES = {
 export const AUTHORIZER_FIELD_TITLES = {
   className: { 'ui:widget': 'hidden', 'ui:hideError': true },
   containerRequestFilter: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  adminPrincipals: {
-    'ui:title': 'Admin Principals',
-    'ui:placeholder':
-      'Enter value (e.g. admin@example.com, security@example.com) and press ENTER',
-  },
+  adminPrincipals: { 'ui:widget': 'hidden', 'ui:hideError': true },
   botPrincipals: { 'ui:widget': 'hidden', 'ui:hideError': true },
   principalDomain: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enforcePrincipalDomain: { 'ui:widget': 'hidden', 'ui:hideError': true },
