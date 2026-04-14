@@ -819,13 +819,13 @@ public class ElasticSearchBulkSink implements BulkSink {
         long operationSize =
             estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
 
-        if (!buffer.isEmpty()
-            && (buffer.size() >= bulkActions
-                || currentBufferSize + operationSize >= maxPayloadSizeBytes)) {
-          flushInternal();
-        }
+        totalSubmitted.incrementAndGet();
         buffer.add(operation);
         currentBufferSize += operationSize;
+
+        if (buffer.size() >= bulkActions || currentBufferSize >= maxPayloadSizeBytes) {
+          flushInternal();
+        }
       } finally {
         lock.unlock();
       }
@@ -906,7 +906,6 @@ public class ElasticSearchBulkSink implements BulkSink {
 
       long executionId = executionIdCounter.incrementAndGet();
       int numberOfActions = toFlush.size();
-      totalSubmitted.addAndGet(numberOfActions);
 
       LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
 
