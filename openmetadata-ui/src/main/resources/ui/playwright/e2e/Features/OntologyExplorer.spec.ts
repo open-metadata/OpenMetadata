@@ -48,6 +48,21 @@ async function waitForGraphLoaded(page: Page) {
   });
 }
 
+async function clickCanvasAndWaitForPanel(
+  page: Page,
+  x: number,
+  y: number
+): Promise<boolean> {
+  const canvas = page.locator('.ontology-g6-container canvas').first();
+  await canvas.click({ position: { x, y } });
+
+  return page
+    .getByTestId('entity-summary-panel-container')
+    .waitFor({ state: 'visible', timeout: 3000 })
+    .then(() => true)
+    .catch(() => false);
+}
+
 test.describe('Ontology Explorer', () => {
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage({
@@ -500,6 +515,32 @@ test.describe('Ontology Explorer', () => {
         'aria-selected',
         'true'
       );
+    });
+  });
+
+  test.describe('Term Click - Entity Summary Panel', () => {
+    test('clicking a term node opens the entity summary panel without a permission error', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+
+      const glossaryName =
+        glossary.responseData.displayName ?? glossary.responseData.name;
+      await applyGlossaryFilter(page, glossaryName);
+      await clickOutside(page);
+      await waitForGraphLoaded(page);
+
+      await page.getByTestId('fit-view').click();
+
+      await clickCanvasAndWaitForPanel(page, 0.5, 0.5);
+
+      await expect(
+        page.getByTestId('entity-summary-panel-container')
+      ).toBeVisible();
+
+      await expect(
+        page.getByTestId('permission-error-placeholder')
+      ).not.toBeVisible();
     });
   });
 
