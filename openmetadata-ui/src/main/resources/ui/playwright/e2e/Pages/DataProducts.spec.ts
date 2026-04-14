@@ -467,9 +467,10 @@ test.describe('Data Products', () => {
         .fill(dataProduct.data.displayName);
       await page.locator(descriptionBox).fill(dataProduct.data.description);
 
-      const domainInput = page.getByTestId('domain-select');
-      await domainInput.scrollIntoViewIfNeeded();
-      await domainInput.waitFor({ state: 'visible' });
+      const domainContainer = page.getByTestId('domain-select');
+      await domainContainer.scrollIntoViewIfNeeded();
+      await domainContainer.waitFor({ state: 'visible' });
+      const domainInput = domainContainer.getByRole('combobox');
       await domainInput.click();
       const searchDomain = page.waitForResponse(
         '/api/v1/search/query?q=*index=domain*'
