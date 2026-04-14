@@ -137,6 +137,32 @@ export const waitForTestSuiteListResponse = (page: Page) =>
       res.status() === 200
   );
 
+/**
+ * Waits for the entity Pipeline tab / pipeline card list request that loads TestSuite
+ * ingestion pipelines (owners + pipelineStatuses, paginated).
+ */
+export const waitForTestSuiteIngestionPipelinesListResponse = (page: Page) =>
+  page.waitForResponse((res) => {
+    const url = res.url();
+    const method = res.request().method();
+
+    return (
+      method === 'GET' &&
+      url.includes('/api/v1/services/ingestionPipelines') &&
+      url.includes('pipelineStatuses') &&
+      url.includes('pipelineType=TestSuite')
+    );
+  });
+
+export const confirmIngestionPipelineHardDelete = async (page: Page) => {
+  await page.getByTestId('confirmation-text-input').fill('DELETE');
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/services/ingestionPipelines/*?hardDelete=true'
+  );
+  await page.getByTestId('confirm-button').click();
+  await deleteResponse;
+};
+
 export const visitTestSuitesPage = async (page: Page) => {
   const listPromise = waitForTestSuiteListResponse(page);
   await page.goto('/data-quality/test-suites');
