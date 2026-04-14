@@ -34,10 +34,14 @@ OpenMetadata Consists of Four Main Components:
 - **Metadata Schemas**: These are the core definitions and vocabulary for metadata based on common abstractions and types. They also allow for custom extensions and properties to suit different use cases and domains.
 - **Metadata Store**: This is the central repository for storing and managing the metadata graph, which connects data assets, users, and tool-generated metadata in a unified way.
 - **Metadata APIs**: These are the interfaces for producing and consuming metadata, built on top of the metadata schemas. They enable seamless integration of user interfaces and tools, systems, and services with the metadata store.
-- **Ingestion Framework**: This is a pluggable framework for ingesting metadata from various sources and tools to the metadata store. It supports about 84+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
+- **Ingestion Framework**: This is a pluggable framework for ingesting metadata from various sources and tools to the metadata store. It supports about 120+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
 
 ## Key Features of OpenMetadata
+
 **Data Discovery**: Find and explore all your data assets in a single place using various strategies, such as keyword search, data associations, and advanced queries. You can search across tables, topics, dashboards, pipelines, and services.
+
+**AI & MCP Integration (New in v1.8.0)**: Connect LLMs and AI agents directly to your metadata using OpenMetadata's built-in MCP (Model Context Protocol) Server. Compatible with Claude, Cursor, OpenAI, and any MCP client. Agents can search assets, read lineage, manage glossaries, and automate data operations — all governed by OpenMetadata's authorization engine.  
+[Learn more](https://open-metadata.org/mcp) | [Get started with Claude Desktop](https://docs.open-metadata.org/latest/how-to-guides/mcp/claude)
 
 ![12](https://github.com/open-metadata/OpenMetadata/assets/40225091/0dbd2746-c93d-4a47-8d3e-ceb3ae01436f)
 <br><br><br>
@@ -73,8 +77,30 @@ OpenMetadata Consists of Four Main Components:
 
 Take a look and play with sample data at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
 
+## Prerequisites
+ 
+| Component | Requirement |
+|---|---|
+| Docker & Docker Compose | For local deployment |
+| Python 3.8+ | For the Ingestion Framework |
+| Java 17 | For the backend server |
+| Node.js 16+ | For the frontend UI |
+ 
+> **Note:** If you're just exploring, the [Sandbox](https://sandbox.open-metadata.org)  
+> or [Free Cloud](https://cloud.getcollate.io/signup) options require no local setup at all.
+
 ## Install and Run OpenMetadata
-Get up and running in a few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/quick-start/local-docker-deployment).
+ 
+Get up and running in minutes — choose the option that works best for you:
+ 
+- **Self-Host (Docker):** Deploy OpenMetadata in your own environment →  
+  [Local Docker Deployment Guide](https://docs.open-metadata.org/quick-start/local-docker-deployment)
+
+- **Live Sandbox:** Explore OpenMetadata instantly with sample data →  
+  [Try the Sandbox](https://sandbox.open-metadata.org)
+
+- **Free Managed Cloud:** Use OpenMetadata as a fully managed service with your own data →  
+  [Sign Up Free on Collate](https://cloud.getcollate.io/signup)
 
 ## Documentation and Support
 
