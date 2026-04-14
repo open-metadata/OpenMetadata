@@ -18,6 +18,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
 from sqlalchemy.types import String
