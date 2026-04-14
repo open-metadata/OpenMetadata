@@ -20,6 +20,11 @@ public record ContainerIndex(Container container) implements ColumnIndex {
     return container;
   }
 
+  @Override
+  public Set<String> getExcludedFields() {
+    return Set.of("children");
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
