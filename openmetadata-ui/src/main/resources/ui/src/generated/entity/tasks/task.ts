@@ -483,6 +483,10 @@ export interface TaskResolution {
      */
     newValue?: string;
     /**
+     * Structured resolution data submitted via the transition form at resolution time.
+     */
+    payload?: { [key: string]: any };
+    /**
      * Timestamp when the task was resolved.
      */
     resolvedAt?: number;
