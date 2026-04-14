@@ -521,6 +521,7 @@ export function useGraphDataBuilder({
             assetCount,
             loadedAssetCount: node.loadedAssetCount ?? 0,
             assetsExpanded,
+            isLoadingAssets: node.isLoadingAssets ?? false,
           },
           style: buildDataModeTermNodeStyle(getCanvasColor, label, color, pos),
         };

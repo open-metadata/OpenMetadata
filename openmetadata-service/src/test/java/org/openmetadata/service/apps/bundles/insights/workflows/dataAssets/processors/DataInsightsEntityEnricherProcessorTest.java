@@ -185,6 +185,43 @@ class DataInsightsEntityEnricherProcessorTest {
     assertFalse(configContent.contains("\"status\""));
   }
 
+  @Test
+  void testStripNestedColumnChildrenRemovesChildrenAndPreservesOtherFields() throws Exception {
+    Map<String, Object> column = new HashMap<>();
+    column.put("name", "struct_col");
+    column.put("dataType", "STRUCT");
+    column.put("description", "A struct column");
+    column.put("children", List.of(Map.of("name", "child_field")));
+
+    Map<String, Object> entityMap = new HashMap<>();
+    entityMap.put("columns", new ArrayList<>(List.of(column)));
+
+    invokeStripNestedColumnChildren(entityMap);
+
+    assertFalse(column.containsKey("children"));
+    assertEquals("struct_col", column.get("name"));
+    assertEquals("STRUCT", column.get("dataType"));
+    assertEquals("A struct column", column.get("description"));
+  }
+
+  @Test
+  void testStripNestedColumnChildrenNoOpWhenColumnsKeyAbsent() throws Exception {
+    Map<String, Object> entityMap = new HashMap<>();
+    entityMap.put("name", "some_entity");
+
+    invokeStripNestedColumnChildren(entityMap);
+
+    assertFalse(entityMap.containsKey("columns"));
+  }
+
+  private void invokeStripNestedColumnChildren(Map<String, Object> entityMap) throws Exception {
+    Method stripMethod =
+        DataInsightsEntityEnricherProcessor.class.getDeclaredMethod(
+            "stripNestedColumnChildren", Map.class);
+    stripMethod.setAccessible(true);
+    stripMethod.invoke(null, entityMap);
+  }
+
   @SuppressWarnings("unchecked")
   private Map<String, Object> invokeEnrichEntity(EntityInterface entity, String entityType)
       throws Exception {

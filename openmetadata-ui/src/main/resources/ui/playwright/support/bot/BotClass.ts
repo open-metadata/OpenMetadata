@@ -47,8 +47,8 @@ export class BotClass {
   constructor(data?: BotResponseDataType) {
     this.id = uuid();
     this.data = data ?? {
-      botUser: `PW%Bot-${this.id}`,
-      name: `PW%Bot-${this.id}`,
+      botUser: `pw%bot-${this.id}`,
+      name: `pw%bot-${this.id}`,
       description: 'playwright for bot description',
     };
     this.userData = {
