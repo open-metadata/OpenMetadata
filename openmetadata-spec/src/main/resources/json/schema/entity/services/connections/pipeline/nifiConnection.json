@@ -45,12 +45,12 @@
       "javaType": "org.openmetadata.schema.services.connections.pipeline.NifiClientAuth",
       "properties": {
         "certificateAuthorityPath":{
-          "title":"Certificat Authority Path",
+          "title":"Certificate Authority Path",
           "description": "Path to the root CA certificate",
           "type": "string"
         },
         "clientCertificatePath":{
-          "title":"Client Certificat",
+          "title":"Client Certificate",
           "description": "Path to the client certificate",
           "type": "string"
         },
