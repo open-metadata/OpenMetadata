@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { BrowserContext, expect, Page, test } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
 import { performAdminLogin } from '../../utils/admin';
 import { getAuthContext, redirectToHomePage } from '../../utils/common';
@@ -40,6 +40,8 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   let helper: ProviderHelper;
   let adminJwt: string | undefined;
   let originalSecurityConfig: SecurityConfigSnapshot | undefined;
+  let userContext: BrowserContext | undefined;
+  let userPage: Page | undefined;
 
   test.beforeAll(
     'Swap OpenMetadata server to target SSO provider',
@@ -70,10 +72,16 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
       } finally {
         await afterAction();
       }
+
+      userContext = await browser.newContext();
+      userPage = await userContext.newPage();
     }
   );
 
   test.afterAll('Restore original security configuration', async () => {
+    await userPage?.close();
+    await userContext?.close();
+
     if (!adminJwt || !originalSecurityConfig) {
       return;
     }
@@ -99,10 +107,9 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     await expect(page.getByTestId('email')).toHaveCount(0);
   });
 
-  test('should complete full SSO login and verify user session', async ({
-    page,
-  }) => {
+  test('should complete full SSO login and verify user session', async () => {
     test.slow();
+    const page = userPage!;
 
     await test.step('Click SSO button and redirect to IdP', async () => {
       await page.goto('/signin');
@@ -139,5 +146,45 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     await test.step('Verify JWT against loggedInUser API', async () => {
       await verifyLoggedInUserMatches(page, username);
     });
+  });
+
+  test('should keep the session after a page reload', async () => {
+    const page = userPage!;
+
+    await page.reload();
+    await page.waitForURL('**/my-data', { timeout: 30_000 });
+    await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+    await verifyLoggedInUserMatches(page, username);
+  });
+
+  test('should share the session with a new page in the same context', async () => {
+    const extraPage = await userContext!.newPage();
+
+    try {
+      await extraPage.goto('/');
+      await extraPage.waitForURL('**/my-data', { timeout: 30_000 });
+      await expect(extraPage.getByTestId('dropdown-profile')).toBeVisible();
+      await verifyLoggedInUserMatches(extraPage, username);
+    } finally {
+      await extraPage.close();
+    }
+  });
+
+  test('should sign out and return to /signin', async () => {
+    const page = userPage!;
+
+    await page.getByRole('menuitem', { name: /logout/i }).click();
+    await page.getByTestId('confirm-logout').click();
+    await page.waitForURL('**/signin', { timeout: 30_000 });
+    await expect(page.locator('.signin-button')).toBeVisible();
+  });
+
+  test('should stay signed-out after refreshing', async () => {
+    const page = userPage!;
+
+    await page.reload();
+    await page.waitForURL('**/signin', { timeout: 30_000 });
+    await expect(page.locator('.signin-button')).toBeVisible();
+    await expect(page.getByTestId('dropdown-profile')).toHaveCount(0);
   });
 });
