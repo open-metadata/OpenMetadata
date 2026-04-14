@@ -2,7 +2,6 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
@@ -54,10 +53,10 @@ public class FilterEntityImpl implements JavaDelegate {
           JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), List.class);
     }
 
-    String entityLinkStr =
-        (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
-
-    varHandler.setGlobalVariable(ENTITY_LIST_VARIABLE, List.of(entityLinkStr));
+    @SuppressWarnings("unchecked")
+    List<String> entityListVar =
+        (List<String>) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE);
+    String entityLinkStr = entityListVar.getFirst();
 
     // Parse entity type from entity link to determine which filter to use
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
@@ -177,10 +176,11 @@ public class FilterEntityImpl implements JavaDelegate {
     // If the triggering object is a recognizer and points to the workflow's related entity
     // then this is a feedback creation workflow, and we should let it through
 
-    String entityLinkStr =
-        (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
+    @SuppressWarnings("unchecked")
+    List<String> entityList =
+        (List<String>) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE);
     // Parse entity type from entity link to determine which filter to use
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityList.getFirst());
 
     if (!Entity.TAG.equals(entityLink.getEntityType())) return false;
 
@@ -201,7 +201,7 @@ public class FilterEntityImpl implements JavaDelegate {
       log.info(
           "Triggering object with id {} not found. Related entity link: {}",
           feedbackId.get(),
-          entityLinkStr);
+          entityList.getFirst());
       return false;
     }
 

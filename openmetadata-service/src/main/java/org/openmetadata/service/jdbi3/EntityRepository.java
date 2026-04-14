@@ -9849,6 +9849,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new Fields(allowedFields, bulkFields);
   }
 
+  public void bulkUpdateEntities(
+      List<T> updateEntities, Map<String, T> existingByFqn, String userName) {
+    List<BulkResponse> success = new ArrayList<>();
+    List<BulkResponse> failed = new ArrayList<>();
+    List<Long> latencies = new ArrayList<>();
+    bulkUpdateEntities(null, updateEntities, existingByFqn, userName, success, failed, latencies);
+    if (!failed.isEmpty()) {
+      LOG.warn("Bulk update: {} succeeded, {} failed", success.size(), failed.size());
+    }
+  }
+
   private void bulkUpdateEntities(
       UriInfo uriInfo,
       List<T> updateEntities,

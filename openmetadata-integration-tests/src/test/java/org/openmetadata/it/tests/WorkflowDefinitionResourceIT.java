@@ -3920,16 +3920,14 @@ public class WorkflowDefinitionResourceIT {
             """;
       CreateWorkflowDefinition clashingNodeWorkflow =
           MAPPER.readValue(clashingNodeWorkflowJson, CreateWorkflowDefinition.class);
-      clashingNodeWorkflow.withName(clashingNodeWorkflow.getName() + "_" + UUID.randomUUID());
+      // No UUID suffix needed -- validate endpoint does not persist to DB
 
-      try {
-        client.workflowDefinitions().validate(clashingNodeWorkflow);
-        // If we reach here, validation didn't throw. Log warning.
-        LOG.warn("Expected OpenMetadataException for clashing node workflow, but none was thrown.");
-      } catch (OpenMetadataException clashEx) {
-        assertTrue(clashEx.getMessage().contains("clashes with the workflow name"));
-        LOG.debug("Node clashing with workflow name correctly rejected");
-      }
+      OpenMetadataException clashEx =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> client.workflowDefinitions().validate(clashingNodeWorkflow));
+      assertTrue(clashEx.getMessage().contains("clashes with the workflow name"));
+      LOG.debug("Node clashing with workflow name correctly rejected");
 
       // Test 5: User approval task on any entity type should now be allowed
       String validUserTaskWorkflowJson =
@@ -4691,9 +4689,9 @@ public class WorkflowDefinitionResourceIT {
                       "candidates": []
                     }
                   },
-                  "input": ["relatedEntity"],
+                  "input": ["entityList"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global"
+                    "entityList": "global"
                   },
                   "output": ["result"]
                 },

@@ -4,7 +4,6 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -232,8 +231,6 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
       String entityLinkString = entityLink.getLinkString();
       variables.put(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE), entityLinkString);
-      variables.put(
           getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE),
           List.of(entityLinkString));
 
@@ -262,8 +259,6 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         new MessageParser.EntityLink(Entity.TAG, entityReference.getFullyQualifiedName());
 
     String entityLinkString = entityLink.getLinkString();
-    variables.put(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE), entityLinkString);
     variables.put(
         getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE),
         List.of(entityLinkString));

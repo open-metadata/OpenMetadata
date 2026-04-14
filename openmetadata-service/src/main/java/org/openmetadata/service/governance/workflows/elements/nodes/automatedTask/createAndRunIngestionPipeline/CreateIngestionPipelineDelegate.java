@@ -2,7 +2,6 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.INGESTION_PIPELINE_ID_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.Workflow.getResultFromBoolean;
@@ -50,9 +49,7 @@ public class CreateIngestionPipelineDelegate implements JavaDelegate {
 
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+              WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler).getFirst());
 
       ServiceEntityInterface service =
           Entity.getEntity(entityLink, "owners,ingestionRunner", Include.NON_DELETED);
