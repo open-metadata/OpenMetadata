@@ -169,7 +169,7 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
         }, 1000);
       }
     }, 500);
-  }, [isLoading, status, t]);
+  }, [formData, isLoading, status, t]);
 
   return (
     <div className="d-flex flex-col gap-2">

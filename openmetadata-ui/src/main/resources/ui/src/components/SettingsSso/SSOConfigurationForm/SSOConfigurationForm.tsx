@@ -1198,7 +1198,12 @@ const SSOConfigurationFormRJSF = ({
                     <Button
                       className="save-sso-configuration text-md"
                       data-testid="save-sso-configuration"
-                      disabled={isLoading}
+                      disabled={
+                        isLoading ||
+                        (isOidcProvider &&
+                          !hasExistingConfig &&
+                          !internalData?.authenticationConfiguration?.emailClaim)
+                      }
                       loading={isLoading}
                       type="primary"
                       onClick={handleSave}>
